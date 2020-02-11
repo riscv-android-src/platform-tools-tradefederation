@@ -17,12 +17,12 @@
 package com.android.tradefed.targetprep;
 
 import com.android.ddmlib.IDevice;
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -46,7 +46,7 @@ import java.util.Map;
  * <p>Should be performed <strong>after</strong> a new build is flashed.
  */
 @OptionClass(alias = "device-setup")
-public class DeviceSetup extends BaseTargetPreparer implements ITargetCleaner {
+public class DeviceSetup extends BaseTargetPreparer {
 
     // Networking
     @Option(name = "airplane-mode",
@@ -309,10 +309,13 @@ public class DeviceSetup extends BaseTargetPreparer implements ITargetCleaner {
     protected boolean mSetTestHarness = true;
     // setprop ro.monkey 1
     // setprop ro.test_harness 1
+    // setprop persist.sys.test_harness 1
 
-    @Option(name = "disable-dalvik-verifier",
-            description = "Disable the dalvik verifier on device. Allows package-private " +
-            "framework tests to run.")
+    @Option(
+            name = "disable-dalvik-verifier",
+            description =
+                    "Disable the dalvik verifier on device. Allows package-private "
+                            + "framework tests to run.")
     protected boolean mDisableDalvikVerifier = false;
     // setprop dalvik.vm.dexopt-flags v=n
 
@@ -413,16 +416,15 @@ public class DeviceSetup extends BaseTargetPreparer implements ITargetCleaner {
 
     private static final String PERSIST_PREFIX = "persist.";
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void setUp(ITestDevice device, IBuildInfo buildInfo) throws DeviceNotAvailableException,
-            TargetSetupError {
-        if (isDisabled()) {
-            return;
-        }
+    public ITestDevice getDevice(TestInformation testInfo) {
+        return testInfo.getDevice();
+    }
 
+    /** {@inheritDoc} */
+    @Override
+    public void setUp(TestInformation testInfo)
+            throws DeviceNotAvailableException, BuildError, TargetSetupError {
+        ITestDevice device = getDevice(testInfo);
         CLog.i("Performing setup on %s", device.getSerialNumber());
 
         if (device.getOptions().isEnableAdbRoot() && !device.enableAdbRoot()) {
@@ -455,14 +457,12 @@ public class DeviceSetup extends BaseTargetPreparer implements ITargetCleaner {
         device.clearErrorDialogs();
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
-            throws DeviceNotAvailableException {
+    public void tearDown(TestInformation testInfo, Throwable e) throws DeviceNotAvailableException {
+        ITestDevice device = testInfo.getDevice();
         // ignore tearDown if it's a stub device, since there is no real device to clean.
-        if (isDisabled() || device.getIDevice() instanceof StubDevice) {
+        if (device.getIDevice() instanceof StubDevice) {
             return;
         }
 
@@ -681,9 +681,11 @@ public class DeviceSetup extends BaseTargetPreparer implements ITargetCleaner {
         }
 
         if (mSetTestHarness) {
-            // set both ro.monkey and ro.test_harness, for compatibility with older platforms
+            // set both ro.monkey, ro.test_harness, persist.sys.test_harness, for compatibility with
+            // older platforms
             mSetProps.put("ro.monkey", "1");
             mSetProps.put("ro.test_harness", "1");
+            mSetProps.put("persist.sys.test_harness", "1");
         }
 
         if (mDisableDalvikVerifier) {

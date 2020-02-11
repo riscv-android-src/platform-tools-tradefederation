@@ -16,11 +16,11 @@
 
 package com.android.tradefed.targetprep;
 
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.FileInputStreamSource;
@@ -38,6 +38,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -45,7 +46,7 @@ import java.util.List;
 /** Target preparer to run arbitrary host commands before and after running the test. */
 @OptionClass(alias = "run-host-command")
 public class RunHostCommandTargetPreparer extends BaseTargetPreparer
-        implements ITargetCleaner, ITestLoggerReceiver {
+        implements ITestLoggerReceiver {
 
     /** Placeholder to be replaced with real device serial number in commands */
     private static final String DEVICE_SERIAL_PLACEHOLDER = "$SERIAL";
@@ -82,12 +83,8 @@ public class RunHostCommandTargetPreparer extends BaseTargetPreparer
     )
     private List<String> mBgCommands = new ArrayList<>();
 
-    @Option(
-        name = "host-cmd-timeout",
-        isTimeVal = true,
-        description = "Timeout for each command specified."
-    )
-    private long mTimeout = 60000L;
+    @Option(name = "host-cmd-timeout", description = "Timeout for each command specified.")
+    private Duration mTimeout = Duration.ofMinutes(1L);
 
     private List<Process> mBgProcesses = new ArrayList<>();
     private List<BgCommandLog> mBgCommandLogs = new ArrayList<>();
@@ -143,13 +140,14 @@ public class RunHostCommandTargetPreparer extends BaseTargetPreparer
 
     /** {@inheritDoc} */
     @Override
-    public void setUp(ITestDevice device, IBuildInfo buildInfo)
+    public void setUp(TestInformation testInfo)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
         if (mWorkDir != null) {
             getRunUtil().setWorkingDir(mWorkDir);
         }
+        ITestDevice device = testInfo.getDevice();
         replaceSerialNumber(mSetUpCommands, device);
-        runCommandList(mSetUpCommands);
+        runCommandList(mSetUpCommands, device);
 
         try {
             mBgCommandLogs = createBgCommandLogs();
@@ -162,10 +160,14 @@ public class RunHostCommandTargetPreparer extends BaseTargetPreparer
 
     /** {@inheritDoc} */
     @Override
-    public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
-            throws DeviceNotAvailableException {
+    public void tearDown(TestInformation testInfo, Throwable e) throws DeviceNotAvailableException {
+        ITestDevice device = testInfo.getDevice();
         replaceSerialNumber(mTearDownCommands, device);
-        runCommandList(mTearDownCommands);
+        try {
+            runCommandList(mTearDownCommands, device);
+        } catch (TargetSetupError tse) {
+            CLog.e(tse);
+        }
 
         // Terminate background commands after test finished
         for (Process process : mBgProcesses) {
@@ -188,10 +190,13 @@ public class RunHostCommandTargetPreparer extends BaseTargetPreparer
      * Sequentially runs command from specified list.
      *
      * @param commands list of commands to run.
+     * @param device device being prepared
      */
-    private void runCommandList(final List<String> commands) {
+    private void runCommandList(final List<String> commands, ITestDevice device)
+            throws TargetSetupError {
         for (final String command : commands) {
-            final CommandResult result = getRunUtil().runTimedCmd(mTimeout, command.split("\\s+"));
+            final CommandResult result =
+                    getRunUtil().runTimedCmd(mTimeout.toMillis(), command.split("\\s+"));
             switch (result.getStatus()) {
                 case SUCCESS:
                     CLog.i(
@@ -199,16 +204,19 @@ public class RunHostCommandTargetPreparer extends BaseTargetPreparer
                             command, result.getStdout());
                     break;
                 case FAILED:
-                    CLog.e(
-                            "Command %s failed, stdout = [%s], stderr = [%s].",
-                            command, result.getStdout(), result.getStderr());
-                    break;
+                    throw new TargetSetupError(
+                            String.format(
+                                    "Command %s failed, stdout = [%s], stderr = [%s].",
+                                    command, result.getStdout(), result.getStderr()),
+                            device.getDeviceDescriptor());
                 case TIMED_OUT:
-                    CLog.e("Command %s timed out.", command);
-                    break;
+                    throw new TargetSetupError(
+                            String.format("Command %s timed out.", command),
+                            device.getDeviceDescriptor());
                 case EXCEPTION:
-                    CLog.e("Exception occurred when running command %s.", command);
-                    break;
+                    throw new TargetSetupError(
+                            String.format("Exception occurred when running command %s.", command),
+                            device.getDeviceDescriptor());
             }
         }
     }

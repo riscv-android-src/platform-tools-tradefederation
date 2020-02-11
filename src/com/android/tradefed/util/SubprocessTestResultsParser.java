@@ -18,6 +18,7 @@ package com.android.tradefed.util;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.TfObjectTracker;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.FileInputStreamSource;
@@ -42,6 +43,7 @@ import com.android.tradefed.util.SubprocessEventHelper.TestRunStartedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestStartedEventInfo;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
+import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 
 import org.json.JSONException;
@@ -59,8 +61,10 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -82,6 +86,8 @@ public class SubprocessTestResultsParser implements Closeable {
     private EventReceiverThread mEventReceiver = null;
     private IInvocationContext mContext = null;
     private Long mStartTime = null;
+    // Keep track of which files we received TEST_LOG event from.
+    private Set<String> mTestLogged = new HashSet<>();
 
     /** Relevant test status keys. */
     public static class StatusKeys {
@@ -495,6 +501,7 @@ public class SubprocessTestResultsParser implements Closeable {
             String name = String.format("subprocess-%s", logInfo.mDataName);
             try (InputStreamSource data = new FileInputStreamSource(logInfo.mDataFile, true)) {
                 mListener.testLog(name, logInfo.mLogType, data);
+                mTestLogged.add(logInfo.mDataName);
             }
         }
     }
@@ -512,6 +519,12 @@ public class SubprocessTestResultsParser implements Closeable {
             File path = new File(file.getPath());
             String name = String.format("subprocess-%s", assosInfo.mDataName);
             if (Strings.isNullOrEmpty(file.getUrl()) && path.exists()) {
+                if (mTestLogged.contains(assosInfo.mDataName)) {
+                    CLog.d(
+                            "Already called testLog on %s, ignoring the logAssociation.",
+                            assosInfo.mDataName);
+                    return;
+                }
                 try (InputStreamSource source = new FileInputStreamSource(path)) {
                     LogDataType type = file.getType();
                     // File might have already been compressed
@@ -571,6 +584,21 @@ public class SubprocessTestResultsParser implements Closeable {
                     }
                 }
                 infos.get(0).addBuildAttributes(attributes);
+                if (attributes.containsKey(TfObjectTracker.TF_OBJECTS_TRACKING_KEY)) {
+                    String val = attributes.get(TfObjectTracker.TF_OBJECTS_TRACKING_KEY);
+                    for (String pair : Splitter.on(",").split(val)) {
+                        if (!pair.contains("=")) {
+                            continue;
+                        }
+                        String[] pairSplit = pair.split("=");
+                        try {
+                            TfObjectTracker.directCount(pairSplit[0], Long.parseLong(pairSplit[1]));
+                        } catch (NumberFormatException e) {
+                            CLog.e(e);
+                            continue;
+                        }
+                    }
+                }
             }
         }
     }

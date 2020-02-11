@@ -61,10 +61,14 @@ python_binary_host {
     ],
     data: [
         "tools/updatedb_darwin.sh",
+        ":asuite_version",
     ],
     // Make atest's built name to atest-dev
     stem: "atest-dev",
     defaults: ["atest_py2_default"],
+    dist: {
+        targets: ["droidcore"],
+    },
 }
 
 python_library_host {
@@ -165,10 +169,8 @@ java_library_host {
     srcs: [
         "proto/*.proto",
     ],
-    libs: [
-        "libprotobuf-java-full",
-    ],
     proto: {
+        type: "full",
         canonical_path_from_root: false,
         include_dirs: ["external/protobuf/src"],
     },
@@ -202,3 +204,16 @@ python_library_host {
     ],
 }
 
+
+genrule {
+    name: "asuite_version",
+    cmd: "DATETIME=$$(TZ='America/Log_Angelos' date +'%F');" +
+         "if [[ -n $$BUILD_NUMBER ]]; then" +
+         "  echo $${DATETIME}_$${BUILD_NUMBER} > $(out);" +
+         "else" +
+         "  echo $$(date +'%F_%R') > $(out);" +
+         "fi",
+    out: [
+        "VERSION",
+    ],
+}

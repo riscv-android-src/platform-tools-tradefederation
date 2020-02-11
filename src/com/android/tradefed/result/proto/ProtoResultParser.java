@@ -20,6 +20,7 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
+import com.android.tradefed.invoker.logger.TfObjectTracker;
 import com.android.tradefed.invoker.proto.InvocationContext.Context;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -37,6 +38,7 @@ import com.android.tradefed.testtype.suite.ModuleDefinition;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.proto.TestRecordProtoUtil;
 
+import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.protobuf.Any;
 import com.google.protobuf.InvalidProtocolBufferException;
@@ -360,7 +362,7 @@ public class ProtoResultParser {
         long elapsedTime =
                 timeStampToMillis(runProto.getEndTime())
                         - timeStampToMillis(runProto.getStartTime());
-        HashMap<String, Metric> metrics = new HashMap<>(runProto.getMetrics());
+        HashMap<String, Metric> metrics = new HashMap<>(runProto.getMetricsMap());
         mListener.testRunEnded(elapsedTime, metrics);
     }
 
@@ -510,6 +512,23 @@ public class ProtoResultParser {
                     }
                 } else {
                     InvocationMetricLogger.addInvocationMetrics(key, val);
+                }
+            }
+        }
+        if (attributes.containsKey(TfObjectTracker.TF_OBJECTS_TRACKING_KEY)) {
+            List<String> values = attributes.get(TfObjectTracker.TF_OBJECTS_TRACKING_KEY);
+            for (String val : values) {
+                for (String pair : Splitter.on(",").split(val)) {
+                    if (!pair.contains("=")) {
+                        continue;
+                    }
+                    String[] pairSplit = pair.split("=");
+                    try {
+                        TfObjectTracker.directCount(pairSplit[0], Long.parseLong(pairSplit[1]));
+                    } catch (NumberFormatException e) {
+                        CLog.e(e);
+                        continue;
+                    }
                 }
             }
         }

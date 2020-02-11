@@ -24,7 +24,9 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.targetprep.BaseTargetPreparer;
 import com.android.tradefed.testtype.Abi;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IRemoteTest;
@@ -53,6 +55,7 @@ public class SuiteModuleLoaderTest {
 
     private static final String TEST_CONFIG =
             "<configuration description=\"Runs a stub tests part of some suite\">\n"
+                    + "    <target_preparer class=\"com.android.tradefed.testtype.suite.SuiteModuleLoaderTest$PreparerInject\" />\n"
                     + "    <test class=\"com.android.tradefed.testtype.suite.SuiteModuleLoaderTest"
                     + "$TestInject\" />\n"
                     + "</configuration>";
@@ -95,6 +98,12 @@ public class SuiteModuleLoaderTest {
         FileUtil.writeToFile(TEST_INSTANT_CONFIG, module);
     }
 
+    @OptionClass(alias = "preparer-inject")
+    public static class PreparerInject extends BaseTargetPreparer {
+        @Option(name = "preparer-string")
+        public String preparer = null;
+    }
+
     @OptionClass(alias = "test-inject")
     public static class TestInject implements IRemoteTest {
         @Option(name = "simple-string")
@@ -113,7 +122,8 @@ public class SuiteModuleLoaderTest {
         public Map<String, String> testMap = new HashMap<>();
 
         @Override
-        public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {}
+        public void run(TestInformation testInfo, ITestInvocationListener listener)
+                throws DeviceNotAvailableException {}
     }
 
     /** Test an end-to-end injection of --module-arg. */
@@ -166,6 +176,11 @@ public class SuiteModuleLoaderTest {
     @Test
     public void testInjectConfigOptions_testArgs() throws Exception {
         List<String> testArgs = new ArrayList<>();
+        // Value for ITargetPreparer
+        testArgs.add(
+                "com.android.tradefed.testtype.suite.SuiteModuleLoaderTest$PreparerInject:"
+                        + "preparer-string:preparer");
+        // Values for IRemoteTest
         testArgs.add(
                 "com.android.tradefed.testtype.suite.SuiteModuleLoaderTest$TestInject:"
                         + "simple-string:value1");
@@ -207,6 +222,9 @@ public class SuiteModuleLoaderTest {
                         Arrays.asList(mTestsDir), mAbis, null, null, patterns);
         assertNotNull(res.get("armeabi-v7a module1"));
         IConfiguration config = res.get("armeabi-v7a module1");
+
+        PreparerInject preparer = (PreparerInject) config.getTargetPreparers().get(0);
+        assertEquals("preparer", preparer.preparer);
 
         TestInject checker = (TestInject) config.getTests().get(0);
         assertEquals("value1", checker.test);

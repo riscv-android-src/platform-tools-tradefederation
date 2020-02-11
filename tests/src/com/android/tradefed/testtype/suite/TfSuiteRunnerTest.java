@@ -21,6 +21,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 
+import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.Configuration;
@@ -32,6 +33,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -73,6 +75,7 @@ public class TfSuiteRunnerTest {
     private TfSuiteRunner mRunner;
     private IConfiguration mStubMainConfiguration;
     private ILogSaver mMockLogSaver;
+    private TestInformation mTestInfo;
 
     @Before
     public void setUp() {
@@ -81,6 +84,11 @@ public class TfSuiteRunnerTest {
         mStubMainConfiguration = new Configuration("stub", "stub");
         mStubMainConfiguration.setLogSaver(mMockLogSaver);
         mRunner.setConfiguration(mStubMainConfiguration);
+
+        IInvocationContext context = new InvocationContext();
+        context.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, null);
+        context.addDeviceBuildInfo(ConfigurationDef.DEFAULT_DEVICE_NAME, new BuildInfo());
+        mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
     }
 
     /**
@@ -131,7 +139,7 @@ public class TfSuiteRunnerTest {
         OptionSetter setter = new OptionSetter(mRunner);
         setter.setOptionValue("suite-config-prefix", "suite");
         setter.setOptionValue("run-suite-tag", "example-suite");
-        Collection<IRemoteTest> tests = mRunner.split(2);
+        Collection<IRemoteTest> tests = mRunner.split(2, mTestInfo);
         assertEquals(2, tests.size());
         for (IRemoteTest test : tests) {
             assertTrue(test instanceof TfSuiteRunner);
@@ -202,7 +210,10 @@ public class TfSuiteRunnerTest {
         }
     }
 
-    /** Test for {@link TfSuiteRunner#run(ITestInvocationListener)} when loading another suite. */
+    /**
+     * Test for {@link TfSuiteRunner#run(TestInformation, ITestInvocationListener)} when loading
+     * another suite.
+     */
     @Test
     public void testLoadTests_suite() throws Exception {
         OptionSetter setter = new OptionSetter(mRunner);
@@ -215,6 +226,8 @@ public class TfSuiteRunnerTest {
         IInvocationContext context = new InvocationContext();
         context.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mock(ITestDevice.class));
         mRunner.setInvocationContext(context);
+        TestInformation testInfo =
+                TestInformation.newBuilder().setInvocationContext(context).build();
         // runs the expanded suite
         listener.testModuleStarted(EasyMock.anyObject());
         listener.testRunStarted(
@@ -222,13 +235,13 @@ public class TfSuiteRunnerTest {
         listener.testRunEnded(EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         listener.testModuleEnded();
         EasyMock.replay(listener);
-        mRunner.run(listener);
+        mRunner.run(testInfo, listener);
         EasyMock.verify(listener);
     }
 
     /**
-     * Test for {@link TfSuiteRunner#run(ITestInvocationListener)} when loading test configs from
-     * additional-tests-zip.
+     * Test for {@link TfSuiteRunner#run(TestInformation, ITestInvocationListener)} when loading
+     * test configs from additional-tests-zip.
      */
     @Test
     public void testLoadTests_additionalTestsZip() throws Exception {

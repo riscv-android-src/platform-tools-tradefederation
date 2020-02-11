@@ -39,7 +39,7 @@ import java.util.List;
  * please look at {@link TestAppInstallSetup}.
  */
 @OptionClass(alias = "all-tests-zip-installer")
-public class InstallAllTestZipAppsSetup extends BaseTargetPreparer implements ITargetCleaner {
+public class InstallAllTestZipAppsSetup extends BaseTargetPreparer {
     @Option(
         name = "install-arg",
         description =
@@ -47,6 +47,10 @@ public class InstallAllTestZipAppsSetup extends BaseTargetPreparer implements IT
                         + "including leading dash, e.g. \"-d\""
     )
     private Collection<String> mInstallArgs = new ArrayList<>();
+
+    @Option(name = "force-queryable",
+            description = "Whether apks should be installed as force queryable.")
+    private boolean mForceQueryable = true;
 
     @Option(
         name = "cleanup-apks",
@@ -101,6 +105,10 @@ public class InstallAllTestZipAppsSetup extends BaseTargetPreparer implements IT
         } catch (IOException e) {
             throw new TargetSetupError(
                     "Failed to extract test zip.", e, device.getDeviceDescriptor());
+        }
+
+        if (mForceQueryable && device.isAppEnumerationSupported()) {
+            mInstallArgs.add("--force-queryable");
         }
 
         try {

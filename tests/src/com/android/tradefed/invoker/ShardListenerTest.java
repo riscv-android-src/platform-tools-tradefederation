@@ -302,14 +302,14 @@ public class ShardListenerTest {
         EasyMock.expect(
                         mMockSaver.saveLogData(
                                 EasyMock.eq(TestInvocation.TRADEFED_END_HOST_LOG),
-                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.eq(LogDataType.HOST_LOG),
                                 EasyMock.anyObject()))
                 .andReturn(invocFile);
         mMockSaver.invocationEnded(0L);
         EasyMock.expect(
                         mMockSaver.saveLogData(
                                 EasyMock.eq(TestInvocation.TRADEFED_END_HOST_LOG),
-                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.eq(LogDataType.HOST_LOG),
                                 EasyMock.anyObject()))
                 .andReturn(invocFile);
         mMockSaver.invocationEnded(0L);

@@ -26,6 +26,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -152,8 +153,11 @@ public class ConfigurationUtil {
         Object comparisonBaseObj = null;
         if (!printUnchangedOptions) {
             try {
-                comparisonBaseObj = obj.getClass().newInstance();
-            } catch (InstantiationException | IllegalAccessException e) {
+                comparisonBaseObj = obj.getClass().getDeclaredConstructor().newInstance();
+            } catch (InstantiationException
+                    | IllegalAccessException
+                    | InvocationTargetException
+                    | NoSuchMethodException e) {
                 throw new RuntimeException(e);
             }
         }

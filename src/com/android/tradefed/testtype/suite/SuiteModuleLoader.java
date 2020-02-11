@@ -64,7 +64,7 @@ import java.util.regex.Pattern;
 public class SuiteModuleLoader {
 
     public static final String CONFIG_EXT = ".config";
-    private Map<String, List<OptionDef>> mTestOptions = new HashMap<>();
+    private Map<String, List<OptionDef>> mTestOrPreparerOptions = new HashMap<>();
     private Map<String, List<OptionDef>> mModuleOptions = new HashMap<>();
     private boolean mIncludeAll;
     private Map<String, List<SuiteTestFilter>> mIncludeFilters = new HashMap<>();
@@ -93,7 +93,7 @@ public class SuiteModuleLoader {
         mIncludeFilters = includeFilters;
         mExcludeFilters = excludeFilters;
 
-        parseArgs(testArgs, mTestOptions);
+        parseArgs(testArgs, mTestOrPreparerOptions);
         parseArgs(moduleArgs, mModuleOptions);
     }
 
@@ -160,6 +160,16 @@ public class SuiteModuleLoader {
         List<String> configs = configFactory.getConfigList(suitePrefix, false);
         // Sort configs to ensure they are always evaluated and added in the same order.
         Collections.sort(configs);
+        toRun.putAll(loadTfConfigsFromSpecifiedPaths(configs, abis, suiteTag));
+        return toRun;
+    }
+
+    /** Main loading of configurations, looking into the specified resources on the classpath. */
+    public LinkedHashMap<String, IConfiguration> loadTfConfigsFromSpecifiedPaths(
+        List<String> configs,
+        Set<IAbi> abis,
+        String suiteTag) {
+        LinkedHashMap<String, IConfiguration> toRun = new LinkedHashMap<>();
         for (String configName : configs) {
             toRun.putAll(loadOneConfig(configName, configName, abis, suiteTag));
         }
@@ -610,6 +620,10 @@ public class SuiteModuleLoader {
         // Set target preparers
         List<ITargetPreparer> preparers = config.getTargetPreparers();
         for (ITargetPreparer preparer : preparers) {
+            String className = preparer.getClass().getName();
+            if (mTestOrPreparerOptions.containsKey(className)) {
+                config.injectOptionValues(mTestOrPreparerOptions.get(className));
+            }
             if (preparer instanceof IAbiReceiver) {
                 ((IAbiReceiver) preparer).setAbi(abi);
             }
@@ -619,8 +633,8 @@ public class SuiteModuleLoader {
         List<IRemoteTest> tests = config.getTests();
         for (IRemoteTest test : tests) {
             String className = test.getClass().getName();
-            if (mTestOptions.containsKey(className)) {
-                config.injectOptionValues(mTestOptions.get(className));
+            if (mTestOrPreparerOptions.containsKey(className)) {
+                config.injectOptionValues(mTestOrPreparerOptions.get(className));
             }
             addFiltersToTest(test, abi, fullId, mIncludeFilters, mExcludeFilters);
             if (test instanceof IAbiReceiver) {

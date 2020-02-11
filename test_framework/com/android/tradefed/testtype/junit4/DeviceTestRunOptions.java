@@ -37,6 +37,7 @@ public class DeviceTestRunOptions {
     private Long mMaxInstrumentationTimeoutMs; // optional
     private boolean mCheckResults = true; // optional
     private boolean mDisableHiddenApiCheck = false; // optional
+    private boolean mDisableTestApiCheck = true; // optional
     private boolean mDisableIsolatedStorage = false; // optional
     private boolean mDisableWindowAnimation = false; // optional
     private Map<String, String> mInstrumentationArgs = new LinkedHashMap<>(); // optional
@@ -171,6 +172,19 @@ public class DeviceTestRunOptions {
 
     public boolean isHiddenApiCheckDisabled() {
         return mDisableHiddenApiCheck;
+    }
+
+    /**
+     * sets whether or not to add the --no-test-api-access to the 'am instrument' used from the host
+     * side.
+     */
+    public DeviceTestRunOptions setDisableTestApiCheck(boolean disableTestApiCheck) {
+        this.mDisableTestApiCheck = disableTestApiCheck;
+        return this;
+    }
+
+    public boolean isTestApiCheckDisabled() {
+        return mDisableTestApiCheck;
     }
 
     /**

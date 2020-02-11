@@ -17,17 +17,17 @@ package com.android.tradefed.targetprep;
 
 import com.android.helper.aoa.AoaDevice;
 import com.android.helper.aoa.UsbHelper;
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.RegexTrie;
 
 import com.google.common.annotations.VisibleForTesting;
 
-import java.awt.*;
+import java.awt.Point;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -148,12 +148,12 @@ public class AoaTargetPreparer extends BaseTargetPreparer {
     private List<String> mActions = new ArrayList<>();
 
     @Override
-    public void setUp(ITestDevice device, IBuildInfo buildInfo)
-            throws TargetSetupError, DeviceNotAvailableException {
+    public void setUp(TestInformation testInfo)
+            throws TargetSetupError, BuildError, DeviceNotAvailableException {
         if (mActions.isEmpty()) {
             return;
         }
-
+        ITestDevice device = testInfo.getDevice();
         try {
             configure(device.getSerialNumber());
         } catch (RuntimeException e) {

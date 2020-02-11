@@ -19,6 +19,7 @@ import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.MockFileUtil;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 
@@ -40,6 +41,7 @@ public class GoogleBenchmarkTestTest extends TestCase {
     private CollectingOutputReceiver mMockReceiver = null;
     private ITestDevice mMockITestDevice = null;
     private GoogleBenchmarkTest mGoogleBenchmarkTest;
+    private TestInformation mTestInfo;
 
     /**
      * Helper to initialize the various EasyMocks we'll need.
@@ -68,6 +70,7 @@ public class GoogleBenchmarkTestTest extends TestCase {
             }
         };
         mGoogleBenchmarkTest.setDevice(mMockITestDevice);
+        mTestInfo = TestInformation.newBuilder().build();
     }
 
     /**
@@ -121,11 +124,11 @@ public class GoogleBenchmarkTestTest extends TestCase {
         mMockInvocationListener.testRunStarted(test1, 3);
         mMockInvocationListener.testRunStarted(test2, 2);
         mMockInvocationListener.testRunEnded(
-                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         EasyMock.expectLastCall().times(2);
         replayMocks();
 
-        mGoogleBenchmarkTest.run(mMockInvocationListener);
+        mGoogleBenchmarkTest.run(mTestInfo, mMockInvocationListener);
         verifyMocks();
     }
 
@@ -135,7 +138,7 @@ public class GoogleBenchmarkTestTest extends TestCase {
     public void testRun_noDevice() throws DeviceNotAvailableException {
         mGoogleBenchmarkTest.setDevice(null);
         try {
-            mGoogleBenchmarkTest.run(mMockInvocationListener);
+            mGoogleBenchmarkTest.run(mTestInfo, mMockInvocationListener);
         } catch (IllegalArgumentException e) {
             assertEquals("Device has not been set", e.getMessage());
             return;
@@ -151,7 +154,7 @@ public class GoogleBenchmarkTestTest extends TestCase {
                 .andReturn(false);
         replayMocks();
         try {
-            mGoogleBenchmarkTest.run(mMockInvocationListener);
+            mGoogleBenchmarkTest.run(mTestInfo, mMockInvocationListener);
             fail("Should have thrown an exception.");
         } catch (RuntimeException e) {
             // expected
@@ -197,11 +200,11 @@ public class GoogleBenchmarkTestTest extends TestCase {
         mMockInvocationListener.testRunStarted(test1, 3);
         mMockInvocationListener.testRunStarted(test2, 2);
         mMockInvocationListener.testRunEnded(
-                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         EasyMock.expectLastCall().times(2);
         replayMocks();
 
-        mGoogleBenchmarkTest.run(mMockInvocationListener);
+        mGoogleBenchmarkTest.run(mTestInfo, mMockInvocationListener);
         verifyMocks();
     }
 
@@ -232,11 +235,11 @@ public class GoogleBenchmarkTestTest extends TestCase {
         // Expect reportName instead of test name
         mMockInvocationListener.testRunStarted(reportName, 3);
         mMockInvocationListener.testRunEnded(
-                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         EasyMock.expectLastCall();
         replayMocks();
 
-        mGoogleBenchmarkTest.run(mMockInvocationListener);
+        mGoogleBenchmarkTest.run(mTestInfo, mMockInvocationListener);
         verifyMocks();
     }
 
@@ -264,15 +267,15 @@ public class GoogleBenchmarkTestTest extends TestCase {
                                         "%s/test1 --benchmark_list_tests=true", nativeTestPath)))
                 .andReturn("method1\nmethod2\nmethod3");
         mMockInvocationListener.testRunStarted(test1, 3);
-        mMockInvocationListener.testRunFailed(EasyMock.anyObject());
+        mMockInvocationListener.testRunFailed((String) EasyMock.anyObject());
         // Even with exception testrunEnded is expected.
         mMockInvocationListener.testRunEnded(
-                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         EasyMock.expectLastCall();
         replayMocks();
 
         try {
-            mGoogleBenchmarkTest.run(mMockInvocationListener);
+            mGoogleBenchmarkTest.run(mTestInfo, mMockInvocationListener);
             fail();
         } catch (DeviceNotAvailableException e) {
             // expected

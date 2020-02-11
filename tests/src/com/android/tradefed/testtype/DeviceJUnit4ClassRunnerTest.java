@@ -20,6 +20,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.mockito.Mockito.doReturn;
 
 import com.android.tradefed.build.BuildInfo;
+import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.DynamicRemoteFileResolver;
@@ -30,6 +31,7 @@ import com.android.tradefed.config.remote.IRemoteFileResolver;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -76,10 +78,9 @@ public class DeviceJUnit4ClassRunnerTest {
                                                     .when(mockResolver)
                                                     .resolveRemoteFiles(
                                                             Mockito.eq(FAKE_REMOTE_FILE_PATH),
-                                                            Mockito.any(),
                                                             Mockito.any());
                                             return mockResolver;
-                                        } catch (ConfigurationException e) {
+                                        } catch (BuildRetrievalError e) {
                                             CLog.e(e);
                                         }
                                     }
@@ -116,6 +117,7 @@ public class DeviceJUnit4ClassRunnerTest {
     private ITestInvocationListener mListener;
     private HostTest mHostTest;
     private ITestDevice mMockDevice;
+    private TestInformation mTestInfo;
 
     @Before
     public void setUp() throws Exception {
@@ -129,6 +131,7 @@ public class DeviceJUnit4ClassRunnerTest {
         OptionSetter setter = new OptionSetter(mHostTest);
         // Disable pretty logging for testing
         setter.setOptionValue("enable-pretty-logs", "false");
+        mTestInfo = TestInformation.newBuilder().build();
     }
 
     @Test
@@ -140,7 +143,7 @@ public class DeviceJUnit4ClassRunnerTest {
         mListener.testEnded(EasyMock.eq(test1), EasyMock.<HashMap<String, Metric>>anyObject());
         mListener.testRunEnded(EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         EasyMock.replay(mListener);
-        mHostTest.run(mListener);
+        mHostTest.run(mTestInfo, mListener);
         EasyMock.verify(mListener);
     }
 }

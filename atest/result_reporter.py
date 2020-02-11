@@ -69,6 +69,120 @@ from test_runners import test_runner_base
 
 UNSUPPORTED_FLAG = 'UNSUPPORTED_RUNNER'
 FAILURE_FLAG = 'RUNNER_FAILURE'
+BENCHMARK_ESSENTIAL_KEYS = {'repetition_index', 'cpu_time', 'name', 'repetitions',
+                            'run_type', 'threads', 'time_unit', 'iterations',
+                            'run_name', 'real_time'}
+# TODO(b/146875480): handle the optional benchmark events
+BENCHMARK_OPTIONAL_KEYS = {'bytes_per_second', 'label'}
+BENCHMARK_EVENT_KEYS = BENCHMARK_ESSENTIAL_KEYS.union(BENCHMARK_OPTIONAL_KEYS)
+INT_KEYS = {'cpu_time', 'real_time'}
+
+class PerfInfo(object):
+    """Class for storing performance test of a test run."""
+
+    def __init__(self):
+        """Initialize a new instance of PerfInfo class."""
+        # perf_info: A list of benchmark_info(dict).
+        self.perf_info = []
+
+    def update_perf_info(self, test):
+        """Update perf_info with the given result of a single test.
+
+        Args:
+            test: A TestResult namedtuple.
+        """
+        all_additional_keys = set(test.additional_info.keys())
+        # Ensure every key is in all_additional_keys.
+        if not BENCHMARK_ESSENTIAL_KEYS.issubset(all_additional_keys):
+            return
+        benchmark_info = {}
+        benchmark_info['test_name'] = test.test_name
+        for key, data in test.additional_info.items():
+            if key in INT_KEYS:
+                data_to_int = data.split('.')[0]
+                benchmark_info[key] = data_to_int
+            elif key in BENCHMARK_EVENT_KEYS:
+                benchmark_info[key] = data
+        if benchmark_info:
+            self.perf_info.append(benchmark_info)
+
+    def print_perf_info(self):
+        """Print summary of a perf_info."""
+        if not self.perf_info:
+            return
+        classify_perf_info, max_len = self._classify_perf_info()
+        separator = '-' * au.get_terminal_size()[0]
+        print(separator)
+        print("{:{name}}    {:^{real_time}}    {:^{cpu_time}}    "
+              "{:>{iterations}}".format(
+                  'Benchmark', 'Time', 'CPU', 'Iteration',
+                  name=max_len['name']+3,
+                  real_time=max_len['real_time']+max_len['time_unit']+1,
+                  cpu_time=max_len['cpu_time']+max_len['time_unit']+1,
+                  iterations=max_len['iterations']))
+        print(separator)
+        for module_name, module_perf_info in classify_perf_info.items():
+            print("{}:".format(module_name))
+            for benchmark_info in module_perf_info:
+                # BpfBenchMark/MapWriteNewEntry/1    1530 ns     1522 ns   460517
+                print("  #{:{name}}    {:>{real_time}} {:{time_unit}}    "
+                      "{:>{cpu_time}} {:{time_unit}}    "
+                      "{:>{iterations}}".format(benchmark_info['name'],
+                                                benchmark_info['real_time'],
+                                                benchmark_info['time_unit'],
+                                                benchmark_info['cpu_time'],
+                                                benchmark_info['time_unit'],
+                                                benchmark_info['iterations'],
+                                                name=max_len['name'],
+                                                real_time=max_len['real_time'],
+                                                time_unit=max_len['time_unit'],
+                                                cpu_time=max_len['cpu_time'],
+                                                iterations=max_len['iterations']))
+
+    def _classify_perf_info(self):
+        """Classify the perf_info by test moudle name.
+
+        Returns:
+            A tuple of (classified_perf_info, max_len), where
+            classified_perf_info: A dict of perf_info and each perf_info are
+                                 belong to different modules.
+                e.g.
+                    { module_name_01: [perf_info of module_1],
+                      module_name_02: [perf_info of module_2], ...}
+            max_len: A dict which stores the max length of each event.
+                     It contains the max string length of 'name', real_time',
+                     'time_unit', 'cpu_time', 'iterations'.
+                e.g.
+                    {name: 56, real_time: 9, time_unit: 2, cpu_time: 8,
+                     iterations: 12}
+        """
+        module_categories = set()
+        max_len = {}
+        all_name = []
+        all_real_time = []
+        all_time_unit = []
+        all_cpu_time = []
+        all_iterations = ['Iteration']
+        for benchmark_info in self.perf_info:
+            module_categories.add(benchmark_info['test_name'].split('#')[0])
+            all_name.append(benchmark_info['name'])
+            all_real_time.append(benchmark_info['real_time'])
+            all_time_unit.append(benchmark_info['time_unit'])
+            all_cpu_time.append(benchmark_info['cpu_time'])
+            all_iterations.append(benchmark_info['iterations'])
+        classified_perf_info = {}
+        for module_name in module_categories:
+            module_perf_info = []
+            for benchmark_info in self.perf_info:
+                if benchmark_info['test_name'].split('#')[0] == module_name:
+                    module_perf_info.append(benchmark_info)
+            classified_perf_info[module_name] = module_perf_info
+        max_len = {'name': len(max(all_name, key=len)),
+                   'real_time': len(max(all_real_time, key=len)),
+                   'time_unit': len(max(all_time_unit, key=len)),
+                   'cpu_time': len(max(all_cpu_time, key=len)),
+                   'iterations': len(max(all_iterations, key=len))}
+        return classified_perf_info, max_len
 
 
 class RunStat(object):
@@ -91,6 +205,7 @@ class RunStat(object):
         self.failed = failed
         self.ignored = ignored
         self.assumption_failed = assumption_failed
+        self.perf_info = PerfInfo()
         # Run errors are not for particular tests, they are runner errors.
         self.run_errors = run_errors
 
@@ -141,13 +256,20 @@ class ResultReporter(object):
               'VtsTradefedTestRunner': {'Module1': RunStat(passed:4, failed:0)}}
     """
 
-    def __init__(self):
+    def __init__(self, silent=False):
+        """Init ResultReporter.
+
+        Args:
+            silent: A boolean of silence or not.
+        """
         self.run_stats = RunStat()
         self.runners = OrderedDict()
         self.failed_tests = []
         self.all_test_results = []
         self.pre_test = None
         self.log_path = None
+        self.silent = silent
+        self.rerun_options = ''
 
     def process_test_result(self, test):
         """Given the results of a single test, update stats and print results.
@@ -219,6 +341,8 @@ class ResultReporter(object):
             return tests_ret
         print('\n%s' % au.colorize('Summary', constants.CYAN))
         print('-------')
+        if self.rerun_options:
+            print(self.rerun_options)
         failed_sum = len(self.failed_tests)
         for runner_name, groups in self.runners.items():
             if groups == UNSUPPORTED_FLAG:
@@ -238,6 +362,7 @@ class ResultReporter(object):
                     tests_ret = constants.EXIT_CODE_TEST_FAILURE
                     failed_sum += 1 if not stats.failed else 0
                 print(summary)
+        self.run_stats.perf_info.print_perf_info()
         print()
         if tests_ret == constants.EXIT_CODE_SUCCESS:
             print(au.colorize('All tests passed!', constants.GREEN))
@@ -324,6 +449,7 @@ class ResultReporter(object):
         elif test.status == test_runner_base.ERROR_STATUS:
             self.run_stats.run_errors = True
             group.run_errors = True
+        self.run_stats.perf_info.update_perf_info(test)
 
     def _print_group_title(self, test):
         """Print the title line for a test group.
@@ -334,6 +460,8 @@ class ResultReporter(object):
         Args:
             test: A TestResult namedtuple.
         """
+        if self.silent:
+            return
         title = test.group_name or test.runner_name
         underline = '-' * (len(title))
         print('\n%s\n%s' % (title, underline))
@@ -347,6 +475,8 @@ class ResultReporter(object):
         Args:
             test: a TestResult namedtuple.
         """
+        if self.silent:
+            return
         if not self.pre_test or (test.test_run_name !=
                                  self.pre_test.test_run_name):
             print('%s (%s %s)' % (au.colorize(test.test_run_name,
@@ -369,7 +499,8 @@ class ResultReporter(object):
                                                  constants.GREEN),
                                              test.test_time))
                 for key, data in test.additional_info.items():
-                    print('\t%s: %s' % (au.colorize(key, constants.BLUE), data))
+                    if key not in BENCHMARK_EVENT_KEYS:
+                        print('\t%s: %s' % (au.colorize(key, constants.BLUE), data))
             elif test.status == test_runner_base.IGNORED_STATUS:
                 # Example: [33/92] test_name: IGNORED (12ms)
                 print('[%s/%s] %s: %s %s' % (test.test_count, test.group_total,

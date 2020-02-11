@@ -16,12 +16,11 @@
 
 package com.android.tradefed.targetprep;
 
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
-import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.TestInformation;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -34,7 +33,7 @@ import java.util.Collection;
  * tearDown will be called.
  */
 public class TearDownPassThroughPreparer extends BaseTargetPreparer
-        implements IConfigurationReceiver, ITargetCleaner {
+        implements IConfigurationReceiver {
     private IConfiguration mConfiguration;
 
     @Option(name = "preparer", description = "names of preparers to tearDown")
@@ -48,29 +47,24 @@ public class TearDownPassThroughPreparer extends BaseTargetPreparer
         mConfiguration = configuration;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void setUp(ITestDevice device, IBuildInfo buildInfo) {
-        //setUp is taken care of elsewhere
+    public void setUp(TestInformation testInfo) {
+        // setUp is taken care of elsewhere
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
-            throws DeviceNotAvailableException {
+    public void tearDown(TestInformation testInfo, Throwable e) throws DeviceNotAvailableException {
         for (String preparer : mPreparers) {
             Object configObject = mConfiguration.getConfigurationObject(preparer);
-            if (configObject instanceof ITargetCleaner) {
-                ITargetCleaner cleaner = (ITargetCleaner)configObject;
-                cleaner.tearDown(device, buildInfo, e);
+            if (configObject instanceof ITargetPreparer) {
+                ITargetPreparer cleaner = (ITargetPreparer) configObject;
+                cleaner.tearDown(testInfo, e);
             }
             if (configObject instanceof IHostCleaner) {
                 IHostCleaner cleaner = (IHostCleaner)configObject;
-                cleaner.cleanUp(buildInfo, e);
+                cleaner.cleanUp(testInfo.getBuildInfo(), e);
             }
         }
     }

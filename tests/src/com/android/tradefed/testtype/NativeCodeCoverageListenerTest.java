@@ -155,8 +155,9 @@ public class NativeCodeCoverageListenerTest {
             logs.get(0).writeTo(out);
         }
 
-        ZipFile loggedZip = new ZipFile(outputZip);
-        assertThat(loggedZip.size()).isEqualTo(0);
+        try (ZipFile loggedZip = new ZipFile(outputZip)) {
+            assertThat(loggedZip.size()).isEqualTo(0);
+        }
     }
 
     @Test
@@ -226,6 +227,46 @@ public class NativeCodeCoverageListenerTest {
 
         // Verify testLog(..) was not called.
         assertThat(mFakeListener.getLogs()).isEmpty();
+    }
+
+    @Test
+    public void testNoCollectOnTestEnd_noCoverageMeasurements() throws Exception {
+        mCodeCoverageListener = new NativeCodeCoverageListener(mMockDevice, mFakeListener);
+        mCodeCoverageListener.setCollectOnTestEnd(false);
+
+        // Simute a test run.
+        mCodeCoverageListener.testRunStarted(RUN_NAME, TEST_COUNT);
+        Map<String, String> metric = new HashMap<>();
+        mCodeCoverageListener.testRunEnded(ELAPSED_TIME, TfMetricProtoUtil.upgradeConvert(metric));
+
+        // Verify nothing was logged.
+        assertThat(mFakeListener.getLogs()).isEmpty();
+
+        // Setup mocks to write the coverage measurement to the file.
+        doReturn(true).when(mMockDevice).enableAdbRoot();
+        File tarGz =
+                createTarGz(
+                        ImmutableMap.of(
+                                "path/to/coverage.gcda", ByteString.copyFromUtf8("coverage.gcda")));
+        doReturn(tarGz).when(mMockDevice).pullFile(anyString());
+
+        // Manually call logCoverageMeasurements().
+        mCodeCoverageListener.logCoverageMeasurements("manual");
+
+        // Verify testLog(..) was called with the coverage file in a zip.
+        List<ByteString> logs = mFakeListener.getLogs();
+        assertThat(logs).hasSize(1);
+        File outputZip = folder.newFile("coverage.zip");
+        try (OutputStream out = new FileOutputStream(outputZip)) {
+            logs.get(0).writeTo(out);
+        }
+
+        URI uri = URI.create(String.format("jar:file:%s", outputZip));
+        try (FileSystem filesystem = FileSystems.newFileSystem(uri, new HashMap<>())) {
+            Path path = filesystem.getPath("/path/to/coverage.gcda");
+            assertThat(ByteString.readFrom(Files.newInputStream(path)))
+                    .isEqualTo(ByteString.copyFromUtf8("coverage.gcda"));
+        }
     }
 
     /** An {@link ITestInvocationListener} which reads test log data streams for verification. */

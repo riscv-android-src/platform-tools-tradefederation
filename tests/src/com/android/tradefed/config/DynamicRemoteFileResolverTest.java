@@ -20,6 +20,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.config.remote.GcsRemoteFileResolver;
 import com.android.tradefed.config.remote.IRemoteFileResolver;
 import com.android.tradefed.util.FileUtil;
@@ -111,7 +112,6 @@ public class DynamicRemoteFileResolverTest {
         EasyMock.expect(
                         mMockResolver.resolveRemoteFiles(
                                 EasyMock.eq(new File("gs:/fake/path")),
-                                EasyMock.anyObject(),
                                 EasyMock.anyObject()))
                 .andReturn(fake);
         EasyMock.replay(mMockResolver);
@@ -151,7 +151,6 @@ public class DynamicRemoteFileResolverTest {
         EasyMock.expect(
                         mMockResolver.resolveRemoteFiles(
                                 EasyMock.eq(new File("gs:/fake/path")),
-                                EasyMock.anyObject(),
                                 EasyMock.eq(testMap)))
                 .andReturn(fake);
         EasyMock.replay(mMockResolver);
@@ -190,9 +189,8 @@ public class DynamicRemoteFileResolverTest {
         EasyMock.expect(
                         mMockResolver.resolveRemoteFiles(
                                 EasyMock.eq(new File("gs:/fake/path")),
-                                EasyMock.anyObject(),
                                 EasyMock.eq(testMap)))
-                .andThrow(new ConfigurationException("Failed to download"));
+                .andThrow(new BuildRetrievalError("Failed to download"));
         EasyMock.replay(mMockResolver);
 
         Set<File> downloadedFile = setter.validateRemoteFilePath();
@@ -226,7 +224,6 @@ public class DynamicRemoteFileResolverTest {
         EasyMock.expect(
                         mMockResolver.resolveRemoteFiles(
                                 EasyMock.eq(new File("gs:/fake/path")),
-                                EasyMock.anyObject(),
                                 EasyMock.anyObject()))
                 .andReturn(fake);
         EasyMock.replay(mMockResolver);
@@ -270,26 +267,23 @@ public class DynamicRemoteFileResolverTest {
         EasyMock.expect(
                         mMockResolver.resolveRemoteFiles(
                                 EasyMock.eq(new File("gs://success/fake/path")),
-                                EasyMock.anyObject(),
                                 EasyMock.anyObject()))
                 .andReturn(fake);
         EasyMock.expect(
                         mMockResolver.resolveRemoteFiles(
                                 EasyMock.eq(new File("gs://success/fake/path2")),
-                                EasyMock.anyObject(),
                                 EasyMock.anyObject()))
                 .andReturn(fake);
         EasyMock.expect(
                         mMockResolver.resolveRemoteFiles(
                                 EasyMock.eq(new File("gs://failure/test")),
-                                EasyMock.anyObject(),
                                 EasyMock.anyObject()))
-                .andThrow(new ConfigurationException("retrieval error"));
+                .andThrow(new BuildRetrievalError("retrieval error"));
         EasyMock.replay(mMockResolver);
         try {
             setter.validateRemoteFilePath();
             fail("Should have thrown an exception");
-        } catch (ConfigurationException expected) {
+        } catch (BuildRetrievalError expected) {
             // Only when we reach failure/test it fails
             assertTrue(expected.getMessage().contains("retrieval error"));
         }
@@ -318,13 +312,11 @@ public class DynamicRemoteFileResolverTest {
         EasyMock.expect(
                         mMockResolver.resolveRemoteFiles(
                                 EasyMock.eq(new File("gs:/fake/path")),
-                                EasyMock.anyObject(),
                                 EasyMock.anyObject()))
                 .andReturn(fake);
         EasyMock.expect(
                         mMockResolver.resolveRemoteFiles(
                                 EasyMock.eq(new File("gs:/fake/path2")),
-                                EasyMock.anyObject(),
                                 EasyMock.anyObject()))
                 .andReturn(fake2);
         EasyMock.replay(mMockResolver);
@@ -369,19 +361,16 @@ public class DynamicRemoteFileResolverTest {
         EasyMock.expect(
                         mMockResolver.resolveRemoteFiles(
                                 EasyMock.eq(new File("gs:/fake/path")),
-                                EasyMock.anyObject(),
                                 EasyMock.anyObject()))
                 .andReturn(fake);
         EasyMock.expect(
                         mMockResolver.resolveRemoteFiles(
                                 EasyMock.eq(new File("gs:/fake/path2")),
-                                EasyMock.anyObject(),
                                 EasyMock.anyObject()))
                 .andReturn(fake2);
         EasyMock.expect(
                         mMockResolver.resolveRemoteFiles(
                                 EasyMock.eq(new File("gs:/fake/path3")),
-                                EasyMock.anyObject(),
                                 EasyMock.anyObject()))
                 .andReturn(fake3);
         EasyMock.replay(mMockResolver);
@@ -424,7 +413,6 @@ public class DynamicRemoteFileResolverTest {
         EasyMock.expect(
                         mMockResolver.resolveRemoteFiles(
                                 EasyMock.eq(new File("gs:/fake/path")),
-                                EasyMock.anyObject(),
                                 EasyMock.anyObject()))
                 .andReturn(fake);
         EasyMock.replay(mMockResolver);
@@ -468,11 +456,9 @@ public class DynamicRemoteFileResolverTest {
                                     new IRemoteFileResolver() {
 
                                         @Override
-                                        public @Nonnull File resolveRemoteFiles(
-                                                File consideredFile, Option option)
-                                                throws ConfigurationException {
-                                            return mMockResolver.resolveRemoteFiles(
-                                                    consideredFile, option);
+                                        public @Nonnull File resolveRemoteFiles(File consideredFile)
+                                                throws BuildRetrievalError {
+                                            return mMockResolver.resolveRemoteFiles(consideredFile);
                                         }
 
                                         @Override
@@ -503,8 +489,7 @@ public class DynamicRemoteFileResolverTest {
 
         EasyMock.expect(
                         mMockResolver.resolveRemoteFiles(
-                                EasyMock.eq(new File("fakeprotocol:/fake/path")),
-                                EasyMock.anyObject()))
+                                EasyMock.eq(new File("fakeprotocol:/fake/path"))))
                 .andReturn(fake);
         EasyMock.replay(mMockResolver);
 
@@ -534,7 +519,6 @@ public class DynamicRemoteFileResolverTest {
         EasyMock.expect(
                         mMockResolver.resolveRemoteFiles(
                                 EasyMock.eq(new File("gs:/fake/path")),
-                                EasyMock.eq(null),
                                 EasyMock.eq(queryArgs)))
                 .andReturn(null);
         EasyMock.replay(mMockResolver);
@@ -558,9 +542,8 @@ public class DynamicRemoteFileResolverTest {
         EasyMock.expect(
                         mMockResolver.resolveRemoteFiles(
                                 EasyMock.eq(new File("gs:/fake/path?optional=true")),
-                                EasyMock.eq(null),
                                 EasyMock.eq(queryArgs)))
-                .andThrow(new ConfigurationException("should not throw this exception."));
+                .andThrow(new BuildRetrievalError("should not throw this exception."));
         EasyMock.replay(mMockResolver);
 
         mResolver.resolvePartialDownloadZip(
@@ -594,13 +577,11 @@ public class DynamicRemoteFileResolverTest {
         EasyMock.expect(
                         mMockResolver.resolveRemoteFiles(
                                 EasyMock.eq(new File("gs:/fake/path")),
-                                EasyMock.anyObject(),
                                 EasyMock.anyObject()))
                 .andReturn(fake);
         EasyMock.expect(
                         mMockResolver.resolveRemoteFiles(
                                 EasyMock.eq(new File("gs:/fake2/path2")),
-                                EasyMock.anyObject(),
                                 EasyMock.anyObject()))
                 .andReturn(fake2);
         EasyMock.replay(mMockResolver);
@@ -644,13 +625,11 @@ public class DynamicRemoteFileResolverTest {
         EasyMock.expect(
                         mMockResolver.resolveRemoteFiles(
                                 EasyMock.eq(new File("gs:/fake/path")),
-                                EasyMock.anyObject(),
                                 EasyMock.anyObject()))
                 .andReturn(fake);
         EasyMock.expect(
                         mMockResolver.resolveRemoteFiles(
                                 EasyMock.eq(new File("gs:/fake/path")),
-                                EasyMock.anyObject(),
                                 EasyMock.anyObject()))
                 .andReturn(fake2);
         EasyMock.replay(mMockResolver);

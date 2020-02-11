@@ -50,6 +50,7 @@ import org.mockito.Mockito;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.lang.ProcessBuilder.Redirect;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -168,7 +169,7 @@ public class GceManagerTest {
         File reportFile = null;
         try {
             reportFile = FileUtil.createTempFile("test-gce-cmd", "report");
-            List<String> result = mGceManager.buildGceCmd(reportFile, mMockBuildInfo);
+            List<String> result = mGceManager.buildGceCmd(reportFile, mMockBuildInfo, null);
             List<String> expected =
                     ArrayUtil.list(
                             mOptions.getAvdDriverBinary().getAbsolutePath(),
@@ -206,7 +207,7 @@ public class GceManagerTest {
         setter.setOptionValue("gce-driver-service-account-json-key-path", "/path/to/key.json");
         try {
             reportFile = FileUtil.createTempFile("test-gce-cmd", "report");
-            List<String> result = mGceManager.buildGceCmd(reportFile, mMockBuildInfo);
+            List<String> result = mGceManager.buildGceCmd(reportFile, mMockBuildInfo, null);
             List<String> expected =
                     ArrayUtil.list(
                             mOptions.getAvdDriverBinary().getAbsolutePath(),
@@ -255,7 +256,7 @@ public class GceManagerTest {
                         }
                     };
             reportFile = FileUtil.createTempFile("test-gce-cmd", "report");
-            List<String> result = mGceManager.buildGceCmd(reportFile, mMockBuildInfo);
+            List<String> result = mGceManager.buildGceCmd(reportFile, mMockBuildInfo, null);
             List<String> expected =
                     ArrayUtil.list(
                             mOptions.getAvdDriverBinary().getAbsolutePath(),
@@ -296,7 +297,7 @@ public class GceManagerTest {
         setter.setOptionValue("gce-driver-param", "--no-autoconnect");
         try {
             reportFile = FileUtil.createTempFile("test-gce-cmd", "report");
-            List<String> result = mGceManager.buildGceCmd(reportFile, mMockBuildInfo);
+            List<String> result = mGceManager.buildGceCmd(reportFile, mMockBuildInfo, null);
             List<String> expected =
                     ArrayUtil.list(
                             mOptions.getAvdDriverBinary().getAbsolutePath(),
@@ -332,7 +333,8 @@ public class GceManagerTest {
                     }
 
                     @Override
-                    protected List<String> buildGceCmd(File reportFile, IBuildInfo b) {
+                    protected List<String> buildGceCmd(
+                            File reportFile, IBuildInfo b, String ipDevice) {
                         List<String> tmp = new ArrayList<String>();
                         tmp.add("");
                         return tmp;
@@ -374,7 +376,7 @@ public class GceManagerTest {
             setter.setOptionValue("gce-driver-param", "--kernel_build_id");
             setter.setOptionValue("gce-driver-param", "KERNELBUILDID");
             reportFile = FileUtil.createTempFile("test-gce-cmd", "report");
-            List<String> result = mGceManager.buildGceCmd(reportFile, mMockBuildInfo);
+            List<String> result = mGceManager.buildGceCmd(reportFile, mMockBuildInfo, null);
             List<String> expected =
                     ArrayUtil.list(
                             mOptions.getAvdDriverBinary().getAbsolutePath(),
@@ -413,7 +415,8 @@ public class GceManagerTest {
                     }
 
                     @Override
-                    protected List<String> buildGceCmd(File reportFile, IBuildInfo b) {
+                    protected List<String> buildGceCmd(
+                            File reportFile, IBuildInfo b, String ipDevice) {
                         String valid =
                                 " {\n"
                                         + "\"data\": {\n"
@@ -467,7 +470,8 @@ public class GceManagerTest {
                     }
 
                     @Override
-                    protected List<String> buildGceCmd(File reportFile, IBuildInfo b) {
+                    protected List<String> buildGceCmd(
+                            File reportFile, IBuildInfo b, String ipDevice) {
                         // We delete the potential report file to create an issue.
                         FileUtil.deleteFile(reportFile);
                         List<String> tmp = new ArrayList<String>();
@@ -506,7 +510,8 @@ public class GceManagerTest {
                     }
 
                     @Override
-                    protected List<String> buildGceCmd(File reportFile, IBuildInfo b) {
+                    protected List<String> buildGceCmd(
+                            File reportFile, IBuildInfo b, String ipDevice) {
                         String validFail =
                                 " {\n"
                                         + "\"data\": {\n"
@@ -599,7 +604,10 @@ public class GceManagerTest {
         cmd.setStatus(CommandStatus.SUCCESS);
         cmd.setStdout("output");
         Capture<List<String>> capture = new Capture<>();
-        EasyMock.expect(mMockRunUtil.runCmdInBackground(EasyMock.<List<String>>capture(capture)))
+        EasyMock.expect(
+                        mMockRunUtil.runCmdInBackground(
+                                EasyMock.eq(Redirect.DISCARD),
+                                EasyMock.<List<String>>capture(capture)))
                 .andReturn(Mockito.mock(Process.class));
 
         EasyMock.replay(mMockRunUtil);
@@ -728,7 +736,7 @@ public class GceManagerTest {
                                 EasyMock.eq("-i"),
                                 EasyMock.anyObject(),
                                 EasyMock.eq("root@127.0.0.1"),
-                                EasyMock.eq("adb"),
+                                EasyMock.eq("./bin/adb"),
                                 EasyMock.eq("shell"),
                                 EasyMock.eq("bugreportz")))
                 .andReturn(res);
@@ -747,7 +755,7 @@ public class GceManagerTest {
                                 EasyMock.eq("-i"),
                                 EasyMock.anyObject(),
                                 EasyMock.eq("root@127.0.0.1"),
-                                EasyMock.eq("adb"),
+                                EasyMock.eq("./bin/adb"),
                                 EasyMock.eq("pull"),
                                 EasyMock.eq("/bugreports/bugreport.zip")))
                 .andReturn(res);
@@ -831,7 +839,8 @@ public class GceManagerTest {
                     }
 
                     @Override
-                    protected List<String> buildGceCmd(File reportFile, IBuildInfo b) {
+                    protected List<String> buildGceCmd(
+                            File reportFile, IBuildInfo b, String ipDevice) {
                         // We delete the potential report file to create an issue.
                         FileUtil.deleteFile(reportFile);
                         List<String> tmp = new ArrayList<String>();

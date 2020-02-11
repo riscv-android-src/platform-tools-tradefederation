@@ -16,10 +16,10 @@
 
 package com.android.tradefed.targetprep;
 
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.FileInputStreamSource;
@@ -36,22 +36,23 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * A {@link ITargetCleaner} that pulls directories off device, compresses and saves it into logging
+ * A {@link ITargetPreparer} that pulls directories off device, compresses and saves it into logging
  * backend.
  */
-public class FolderSaver extends BaseTargetPreparer implements ITargetCleaner, ITestLoggerReceiver {
+public final class FolderSaver extends BaseTargetPreparer implements ITestLoggerReceiver {
 
     @Option(name = "device-path", description = "Location of directory on device to be pulled and "
             + "logged, may be repeated.")
     private List<String> mDevicePaths = new ArrayList<>();
 
+    @Option(name = "include-empty", description = "Upload empty folders if set; don't if not.")
+    private Boolean mIncludeEmpty = false;
+
     private ITestLogger mTestLogger;
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void setUp(ITestDevice device, IBuildInfo buildInfo)
+    public void setUp(TestInformation testInfo)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
         // no-op
     }
@@ -64,21 +65,37 @@ public class FolderSaver extends BaseTargetPreparer implements ITargetCleaner, I
         mTestLogger = testLogger;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
-            throws DeviceNotAvailableException {
+    public void tearDown(TestInformation testInfo, Throwable e) throws DeviceNotAvailableException {
         if (e instanceof DeviceNotAvailableException) {
-            CLog.i("Device %s not available, skipping.", device.getSerialNumber());
+            CLog.i("Device %s not available, skipping.", testInfo.getDevice().getSerialNumber());
             return;
         }
         if (mDevicePaths.isEmpty()) {
             CLog.i("No device path provided, skipping.");
             return;
         }
+        ITestDevice device = testInfo.getDevice();
         for (String path : mDevicePaths) {
+            // Don't try to pull a directory if it doesn't exist.
+            if (!device.doesFileExist(path)) {
+                CLog.w("Directory, %s, does not exist.", path);
+                continue;
+            }
+
+            // Don't try to pull a file that isn't a directory.
+            if (!device.isDirectory(path)) {
+                CLog.w("File, %s, is not a directory.", path);
+                continue;
+            }
+
+            // Don't pull empty directories if it's specified not to.
+            if (!mIncludeEmpty && device.getFileEntry(path).getChildren(false).isEmpty()) {
+                CLog.w("Skipping empty directory, %s.", path);
+                continue;
+            }
+
             File tempDir = null;
             try {
                 tempDir = FileUtil.createTempDir("tf-pulled-dir");

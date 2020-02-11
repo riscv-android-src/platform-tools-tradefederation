@@ -29,6 +29,7 @@ java_defaults {
       "-Xep:GetClassOnClass:ERROR",
       "-Xep:IdentityBinaryExpression:ERROR",
       "-Xep:JUnit3TestNotRun:ERROR",
+      "-Xep:JUnit4TestNotRun:ERROR",
       "-Xep:JUnit4ClassUsedInJUnit3:ERROR",
       "-Xep:JUnitAmbiguousTestClass:ERROR",
       "-Xep:MissingFail:ERROR",
@@ -110,13 +111,14 @@ java_library_host {
         "guice",
         "jacoco-cli",
         "jline-1.0",
-        "junit",
         "junit-params",
         "kxml2-2.3.0",
         "libprotobuf-java-full",
         "platform-test-annotations",
         "tf-remote-client",
         "tradefed-protos",
+        "tradefed-isolation-protos",
+        "tradefed-lite",
     ],
     libs: [
         "loganalysis",
@@ -169,4 +171,29 @@ droiddoc_host {
           "-package " +
           "-devsite ",
     create_stubs: false,
+}
+
+sh_binary_host {
+    name: "tradefed.sh",
+    src: "tradefed.sh",
+}
+
+sh_binary_host {
+    name: "tradefed_win",
+    src: "tradefed_win.bat",
+}
+
+sh_binary_host {
+    name: "script_help.sh",
+    src: "script_help.sh",
+}
+
+sh_binary_host {
+    name: "run_tf_cmd.sh",
+    src: "run_tf_cmd.sh",
+}
+
+sh_binary_host {
+    name: "atest_tradefed.sh",
+    src: "atest_tradefed.sh",
 }

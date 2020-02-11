@@ -28,6 +28,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.ProcessBuilder.Redirect;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -194,7 +195,16 @@ public class RunUtil implements IRunUtil {
         return createProcessBuilder(Arrays.asList(command));
     }
 
+    private synchronized ProcessBuilder createProcessBuilder(Redirect redirect, String... command) {
+        return createProcessBuilder(redirect, Arrays.asList(command));
+    }
+
     private synchronized ProcessBuilder createProcessBuilder(List<String> commandList) {
+        return createProcessBuilder(null, commandList);
+    }
+
+    private synchronized ProcessBuilder createProcessBuilder(
+            Redirect redirect, List<String> commandList) {
         ProcessBuilder processBuilder = new ProcessBuilder();
         if (mWorkingDir != null) {
             processBuilder.directory(mWorkingDir);
@@ -219,6 +229,10 @@ public class RunUtil implements IRunUtil {
             }
         }
         processBuilder.redirectErrorStream(mRedirectStderr);
+        if (redirect != null) {
+            processBuilder.redirectOutput(redirect);
+            processBuilder.redirectError(redirect);
+        }
         return processBuilder.command(commandList);
     }
 
@@ -298,9 +312,16 @@ public class RunUtil implements IRunUtil {
      */
     @Override
     public Process runCmdInBackground(final String... command) throws IOException  {
+        return runCmdInBackground(null, command);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Process runCmdInBackground(Redirect redirect, final String... command)
+            throws IOException {
         final String fullCmd = Arrays.toString(command);
         CLog.v("Running in background: %s", fullCmd);
-        return createProcessBuilder(command).start();
+        return createProcessBuilder(redirect, command).start();
     }
 
     /**
@@ -308,8 +329,15 @@ public class RunUtil implements IRunUtil {
      */
     @Override
     public Process runCmdInBackground(final List<String> command) throws IOException  {
+        return runCmdInBackground(null, command);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Process runCmdInBackground(Redirect redirect, final List<String> command)
+            throws IOException {
         CLog.v("Running in background: %s", command);
-        return createProcessBuilder(command).start();
+        return createProcessBuilder(redirect, command).start();
     }
 
     /**
@@ -679,13 +707,17 @@ public class RunUtil implements IRunUtil {
                 try {
                     rc = mProcess.waitFor();
                     // wait for stdout and stderr to be read
-                    stdoutThread.join(IO_THREAD_JOIN_INTERVAL);
-                    if (stdoutThread.isAlive()) {
-                        CLog.d("stdout read thread %s still alive.", stdoutThread.toString());
+                    if (stdoutThread != null) {
+                        stdoutThread.join(IO_THREAD_JOIN_INTERVAL);
+                        if (stdoutThread.isAlive()) {
+                            CLog.d("stdout read thread %s still alive.", stdoutThread.toString());
+                        }
                     }
-                    stderrThread.join(IO_THREAD_JOIN_INTERVAL);
-                    if (stderrThread.isAlive()) {
-                        CLog.d("stderr read thread %s still alive.", stderrThread.toString());
+                    if (stderrThread != null) {
+                        stderrThread.join(IO_THREAD_JOIN_INTERVAL);
+                        if (stderrThread.isAlive()) {
+                            CLog.d("stderr read thread %s still alive.", stderrThread.toString());
+                        }
                     }
                 } finally {
                     rc = (rc != null) ? rc : 1; // In case of interruption ReturnCode is null
@@ -762,6 +794,10 @@ public class RunUtil implements IRunUtil {
      * @return a {@link Thread} started that receives the IO.
      */
     private static Thread inheritIO(final InputStream src, final OutputStream dest, String name) {
+        // In case of some Process redirect, source stream can be null.
+        if (src == null) {
+            return null;
+        }
         Thread t = new Thread(new Runnable() {
             @Override
             public void run() {

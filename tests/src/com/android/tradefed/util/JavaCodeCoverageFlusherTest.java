@@ -16,6 +16,7 @@
 package com.android.tradefed.util;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.mockito.Mockito.contains;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 
@@ -85,6 +86,8 @@ public final class JavaCodeCoverageFlusherTest {
         verify(mMockDevice)
                 .executeShellCommand(
                         "am attach-agent com.android.phone /system/lib/libdumpcoverage.so=reset");
+
+        verify(mMockDevice).executeShellCommand("cmd coverage reset");
     }
 
     @Test
@@ -102,6 +105,8 @@ public final class JavaCodeCoverageFlusherTest {
         verify(mMockDevice)
                 .executeShellCommand(
                         "am attach-agent com.android.phone /system/lib/libdumpcoverage.so=reset");
+
+        verify(mMockDevice).executeShellCommand("cmd coverage reset");
     }
 
     @Test
@@ -122,7 +127,8 @@ public final class JavaCodeCoverageFlusherTest {
                 .containsExactly(
                         "/data/misc/trace/com.android.bluetooth-123.ec",
                         "/data/misc/trace/com.google.android.gms.persistent-4567.ec",
-                        "/data/misc/trace/com.android.phone-890.ec");
+                        "/data/misc/trace/com.android.phone-890.ec",
+                        "/data/misc/trace/system_server.ec");
 
         verify(mMockDevice)
                 .executeShellCommand(
@@ -137,6 +143,8 @@ public final class JavaCodeCoverageFlusherTest {
                 .executeShellCommand(
                         "am attach-agent com.android.phone /system/lib/libdumpcoverage.so="
                                 + "dump:/data/misc/trace/com.android.phone-890.ec");
+
+        verify(mMockDevice).executeShellCommand(contains("cmd coverage dump"));
     }
 
     @Test
@@ -156,12 +164,16 @@ public final class JavaCodeCoverageFlusherTest {
         // com.google.android.gms.persistent (not a valid process, coverage is not flushed).
         List<String> coverageFiles = mFlusher.forceCoverageFlush();
 
-        assertThat(coverageFiles).containsExactly("/data/misc/trace/com.android.bluetooth-234.ec");
+        assertThat(coverageFiles)
+                .containsExactly(
+                        "/data/misc/trace/com.android.bluetooth-234.ec",
+                        "/data/misc/trace/system_server.ec");
 
         verify(mMockDevice).executeShellCommand("pm list packages -a");
         verify(mMockDevice)
                 .executeShellCommand(
                         "am attach-agent com.android.bluetooth /system/lib/libdumpcoverage.so"
                                 + "=dump:/data/misc/trace/com.android.bluetooth-234.ec");
+        verify(mMockDevice).executeShellCommand(contains("cmd coverage dump"));
     }
 }

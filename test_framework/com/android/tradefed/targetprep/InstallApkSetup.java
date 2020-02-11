@@ -63,6 +63,10 @@ public class InstallApkSetup extends BaseTargetPreparer {
                     + "including leading dash, e.g. \"-d\"")
     private Collection<String> mInstallArgs = new ArrayList<>();
 
+    @Option(name = "force-queryable",
+            description = "Whether apks should be installed as force queryable.")
+    private boolean mForceQueryable = true;
+
     @Option(name = "post-install-cmd", description =
             "optional post-install adb shell commands; can be repeated.")
     private List<String> mPostInstallCmds = new ArrayList<>();
@@ -94,6 +98,10 @@ public class InstallApkSetup extends BaseTargetPreparer {
                 if (abi != null) {
                     mInstallArgs.add(String.format("--abi %s", abi));
                 }
+            }
+            if (mForceQueryable && device.isAppEnumerationSupported()
+                    && !mInstallArgs.contains("--force-queryable")) {
+                mInstallArgs.add("--force-queryable");
             }
             String result = device.installPackage(apk, true, mInstallArgs.toArray(new String[]{}));
             if (result != null) {

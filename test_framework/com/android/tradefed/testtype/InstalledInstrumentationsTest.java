@@ -27,7 +27,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.metric.CollectorHelper;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
-import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.BugreportCollector;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -51,7 +51,6 @@ public class InstalledInstrumentationsTest
         implements IDeviceTest,
                 IShardableTest,
                 IMetricCollectorReceiver,
-                IInvocationContextReceiver,
                 IAutoRetriableTest,
                 IConfigurationReceiver {
 
@@ -180,6 +179,14 @@ public class InstalledInstrumentationsTest
     private boolean mHiddenApiChecks = true;
 
     @Option(
+            name = "test-api-access",
+            description =
+                    "If set to false and hidden API checks are enabled, the '--no-test-api-access'"
+                            + " flag will be passed to the am instrument command."
+                            + " Only works for R or later.")
+    private boolean mTestApiAccess = true;
+
+    @Option(
         name = "isolated-storage",
         description =
                 "If set to false, the '--no-isolated-storage' flag will be passed to the am "
@@ -196,6 +203,13 @@ public class InstalledInstrumentationsTest
     private boolean mWindowAnimation = true;
 
     @Option(
+            name = "disable-duplicate-test-check",
+            description =
+                    "If set to true, it will not check that a method is only run once by a "
+                            + "given instrumentation.")
+    private boolean mDisableDuplicateCheck = false;
+
+    @Option(
             name = "create-instrumentation-tests",
             description =
                     "Create InstrumentationTest type rather than more recent AndroidJUnitTest.")
@@ -204,7 +218,6 @@ public class InstalledInstrumentationsTest
     private int mTotalShards = 0;
     private int mShardIndex = 0;
     private List<IMetricCollector> mMetricCollectorList = new ArrayList<>();
-    private IInvocationContext mContext;
     private IConfiguration mConfiguration;
 
     private List<InstrumentationTest> mTests = null;
@@ -263,12 +276,6 @@ public class InstalledInstrumentationsTest
         mDevice = device;
     }
 
-    /** {@inheritDoc} */
-    @Override
-    public void setInvocationContext(IInvocationContext invocationContext) {
-        mContext = invocationContext;
-    }
-
     /**
      * Gets the list of {@link InstrumentationTest}s contained within.
      * <p/>
@@ -296,11 +303,10 @@ public class InstalledInstrumentationsTest
         mShardIndex = shardIndex;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+    public void run(TestInformation testInfo, ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
         if (getDevice() == null) {
             throw new IllegalArgumentException("Device has not been set");
         }
@@ -309,7 +315,7 @@ public class InstalledInstrumentationsTest
             return;
         }
         buildTests();
-        doRun(listener);
+        doRun(testInfo, listener);
     }
 
     /**
@@ -354,7 +360,6 @@ public class InstalledInstrumentationsTest
                         // Bail out rather than run tests with unexpected options
                         throw new RuntimeException("failed to copy instrumentation options", e);
                     }
-                    t.setInvocationContext(mContext);
                     // Pass the collectors to each instrumentation, which will take care of init
                     t.setMetricCollectors(collectors);
                     String targetPackageName = target.packageName;
@@ -398,10 +403,12 @@ public class InstalledInstrumentationsTest
     /**
      * Run the previously built tests.
      *
+     * @param testInfo the {@link TestInformation} of the invocation.
      * @param listener the {@link ITestInvocationListener}
      * @throws DeviceNotAvailableException
      */
-    private void doRun(ITestInvocationListener listener) throws DeviceNotAvailableException {
+    private void doRun(TestInformation testInfo, ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
         while (!mTests.isEmpty()) {
             InstrumentationTest test = mTests.get(0);
 
@@ -420,7 +427,7 @@ public class InstalledInstrumentationsTest
             } else if (mTestPackageName != null) {
                 test.setTestPackageName(mTestPackageName);
             }
-            test.run(listener);
+            test.run(testInfo, listener);
             // test completed, remove from list
             mTests.remove(0);
         }

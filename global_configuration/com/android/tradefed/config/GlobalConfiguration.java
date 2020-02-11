@@ -16,6 +16,7 @@
 
 package com.android.tradefed.config;
 
+import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.command.CommandScheduler;
 import com.android.tradefed.command.ICommandScheduler;
 import com.android.tradefed.config.gcs.GCSConfigurationFactory;
@@ -33,6 +34,8 @@ import com.android.tradefed.invoker.shard.IShardHelper;
 import com.android.tradefed.invoker.shard.StrictShardHelper;
 import com.android.tradefed.log.ITerribleFailureHandler;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.sandbox.ISandboxFactory;
+import com.android.tradefed.sandbox.TradefedSandboxFactory;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.MultiMap;
@@ -75,6 +78,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     public static final String KEY_STORE_TYPE_NAME = "key_store";
     public static final String SHARDING_STRATEGY_TYPE_NAME = "sharding_strategy";
     public static final String GLOBAL_CONFIG_SERVER = "global_config_server";
+    public static final String SANDBOX_FACTORY_TYPE_NAME = "sandbox_factory";
 
     public static final String GLOBAL_CONFIG_VARIABLE = "TF_GLOBAL_CONFIG";
     public static final String GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE =
@@ -105,6 +109,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     private String[] mOriginalArgs;
     private final String mName;
     private final String mDescription;
+    private IConfigurationFactory mConfigFactory = null;
 
     /**
      * Returns a reference to the singleton {@link GlobalConfiguration} instance for this TF
@@ -159,26 +164,24 @@ public class GlobalConfiguration implements IGlobalConfiguration {
                     createGlobalConfigServer(args, nonConfigServerArgs);
             if (globalConfigServer == null) {
                 String path = getGlobalConfigPath();
-                IConfigurationFactory configFactory = ConfigurationFactory.getInstance();
                 String[] arrayArgs = ArrayUtil.buildArray(new String[] {path}, args);
+                IConfigurationFactory configFactory = ConfigurationFactory.getInstance();
                 sInstance =
                         configFactory.createGlobalConfigurationFromArgs(arrayArgs, nonGlobalArgs);
                 ((GlobalConfiguration) sInstance).mOriginalArgs = arrayArgs;
             } else {
                 String currentHostConfig = globalConfigServer.getCurrentHostConfig();
-                GCSConfigurationFactory configFactory =
-                        (GCSConfigurationFactory)
-                                GCSConfigurationFactory.getInstance(globalConfigServer);
+                IConfigurationFactory configFactory =
+                        GCSConfigurationFactory.getInstance(globalConfigServer);
                 String[] arrayArgs =
                         ArrayUtil.buildArray(
                                 new String[] {currentHostConfig},
                                 nonConfigServerArgs.toArray(new String[0]));
                 sInstance =
                         configFactory.createGlobalConfigurationFromArgs(arrayArgs, nonGlobalArgs);
-                // Get the local configuration file and track it as the current local global config
-                File config = configFactory.getLatestDownloadedFile();
-                ((GlobalConfiguration) sInstance).mOriginalArgs =
-                        new String[] {config.getAbsolutePath()};
+                // Keep the original args, later if we want to clone the global config,
+                // we will reuse GCSConfigurationFactory to download the config again.
+                ((GlobalConfiguration) sInstance).mOriginalArgs = arrayArgs;
             }
             // Validate that madatory options have been set
             sInstance.validateOptions();
@@ -301,6 +304,8 @@ public class GlobalConfiguration implements IGlobalConfiguration {
                     SHARDING_STRATEGY_TYPE_NAME, new ObjTypeInfo(IShardHelper.class, false));
             sObjTypeMap.put(
                     GLOBAL_CONFIG_SERVER, new ObjTypeInfo(IConfigurationServer.class, false));
+            sObjTypeMap.put(
+                    SANDBOX_FACTORY_TYPE_NAME, new ObjTypeInfo(ISandboxFactory.class, false));
         }
         return sObjTypeMap;
     }
@@ -321,6 +326,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
         setCommandScheduler(new CommandScheduler());
         setKeyStoreFactory(new StubKeyStoreFactory());
         setShardingStrategy(new StrictShardHelper());
+        setSandboxFactory(new TradefedSandboxFactory());
     }
 
     /** {@inheritDoc} */
@@ -381,9 +387,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
         return (IConfigurationServer) getConfigurationObject(GLOBAL_CONFIG_SERVER);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     @SuppressWarnings("unchecked")
     public List<IHostMonitor> getHostMonitors() {
@@ -415,15 +419,19 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     /** {@inheritDoc} */
     @Override
     public IDeviceManager getDeviceManager() {
-        return (IDeviceManager)getConfigurationObject(DEVICE_MANAGER_TYPE_NAME);
+        return (IDeviceManager) getConfigurationObject(DEVICE_MANAGER_TYPE_NAME);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
+    @Override
+    public ISandboxFactory getSandboxFactory() {
+        return (ISandboxFactory) getConfigurationObject(SANDBOX_FACTORY_TYPE_NAME);
+    }
+
+    /** {@inheritDoc} */
     @Override
     public IDeviceSelection getDeviceRequirements() {
-        return (IDeviceSelection)getConfigurationObject(DEVICE_REQUIREMENTS_TYPE_NAME);
+        return (IDeviceSelection) getConfigurationObject(DEVICE_REQUIREMENTS_TYPE_NAME);
     }
 
     /**
@@ -592,9 +600,12 @@ public class GlobalConfiguration implements IGlobalConfiguration {
         setConfigurationObjectNoThrow(SCHEDULER_TYPE_NAME, scheduler);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    @Override
+    public void setSandboxFactory(ISandboxFactory factory) {
+        setConfigurationObjectNoThrow(SANDBOX_FACTORY_TYPE_NAME, factory);
+    }
+
+    /** {@inheritDoc} */
     @Override
     public void setConfigurationObject(String typeName, Object configObject)
             throws ConfigurationException {
@@ -757,7 +768,11 @@ public class GlobalConfiguration implements IGlobalConfiguration {
         CLog.d("Resolve and remote files from @Option");
         // Setup and validate the GCS File paths, they will be deleted when TF ends
         List<File> remoteFiles = new ArrayList<>();
-        remoteFiles.addAll(argsParser.validateRemoteFilePath());
+        try {
+            remoteFiles.addAll(argsParser.validateRemoteFilePath());
+        } catch (BuildRetrievalError e) {
+            throw new ConfigurationException(e.getMessage(), e);
+        }
         remoteFiles.forEach(File::deleteOnExit);
     }
 
@@ -803,16 +818,22 @@ public class GlobalConfiguration implements IGlobalConfiguration {
                 isGenericObject = true;
             }
             ConfigurationUtil.dumpClassToXml(
-                    serializer, config, configObj, isGenericObject, new ArrayList<>(), true, true);
+                    serializer, config, configObj, isGenericObject, new ArrayList<>(), true, false);
         }
         serializer.endTag(null, ConfigurationUtil.CONFIGURATION_NAME);
         serializer.endDocument();
         return filteredGlobalConfig;
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public void setConfigurationFactory(IConfigurationFactory configFactory) {
+        mConfigFactory = configFactory;
+    }
+
     @VisibleForTesting
     protected IConfigurationFactory getConfigurationFactory() {
-        return ConfigurationFactory.getInstance();
+        return mConfigFactory;
     }
 
     private boolean shouldDump(String name, Set<String> patterns) {

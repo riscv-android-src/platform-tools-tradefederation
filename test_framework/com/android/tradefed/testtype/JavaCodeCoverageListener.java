@@ -38,6 +38,7 @@ import org.jacoco.core.tools.ExecFileLoader;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 
 /**
  * A {@link ResultForwarder} that will pull Java coverage measurements off of the device and log
@@ -119,34 +120,13 @@ final class JavaCodeCoverageListener extends ResultForwarder {
             ImmutableList.Builder<String> devicePaths = ImmutableList.builder();
             devicePaths.add(testCoveragePath);
 
-            File coverageFile = null;
             try {
                 if (mCoverageOptions.isCoverageFlushEnabled()) {
                     devicePaths.addAll(mFlusher.forceCoverageFlush());
                 }
 
-                for (String devicePath : devicePaths.build()) {
-                    coverageFile = mDevice.pullFile(devicePath);
-                    verifyNotNull(
-                            coverageFile, "Failed to pull the coverage file from %s", devicePath);
+                collectAndLogCoverageMeasurementsAsRoot(devicePaths.build());
 
-                    // When merging, load the measurement data. Otherwise log the measurement
-                    // immediately.
-                    try {
-                        if (mMergeCoverageMeasurements) {
-                            mExecFileLoader.load(coverageFile);
-                        } else {
-                            logCoverageMeasurement(
-                                    mCurrentRunName
-                                            + "_"
-                                            + getNameWithoutExtension(devicePath)
-                                            + "_runtime_coverage",
-                                    coverageFile);
-                        }
-                    } finally {
-                        FileUtil.deleteFile(coverageFile);
-                    }
-                }
             } catch (DeviceNotAvailableException | IOException e) {
                 throw new RuntimeException(e);
             } finally {
@@ -155,9 +135,59 @@ final class JavaCodeCoverageListener extends ResultForwarder {
         }
     }
 
-    private void logCoverageMeasurement(String name, File coverageFile) throws IOException {
+    private void logCoverageMeasurement(String name, File coverageFile) {
         try (FileInputStreamSource source = new FileInputStreamSource(coverageFile, true)) {
             testLog(name, LogDataType.COVERAGE, source);
+        }
+    }
+
+    private void collectAndLogCoverageMeasurementsAsRoot(List<String> devicePaths)
+            throws IOException, DeviceNotAvailableException {
+
+        // We enable root before pulling files off the device since the coverage file of the test
+        // process is written in its private directory which is otherwise inaccessible. Coverage
+        // files of other processes should be accessible without root. Note that we also restore
+        // root status to what it was after we're done to not interfere with subsequent tests that
+        // run on the device.
+        boolean wasRoot = mDevice.isAdbRoot();
+        if (!wasRoot && !mDevice.enableAdbRoot()) {
+            throw new RuntimeException(
+                    "Failed to enable root before pulling coverage files off device");
+        }
+
+        try {
+            collectAndLogCoverageMeasurements(devicePaths);
+        } finally {
+            if (!wasRoot && !mDevice.disableAdbRoot()) {
+                throw new RuntimeException(
+                        "Failed to disable root after pulling coverage files off device");
+            }
+        }
+    }
+
+    private void collectAndLogCoverageMeasurements(List<String> devicePaths)
+            throws IOException, DeviceNotAvailableException {
+
+        for (String devicePath : devicePaths) {
+            File coverageFile = mDevice.pullFile(devicePath);
+            verifyNotNull(coverageFile, "Failed to pull the coverage file from %s", devicePath);
+
+            // When merging, load the measurement data. Otherwise log the measurement
+            // immediately.
+            try {
+                if (mMergeCoverageMeasurements) {
+                    mExecFileLoader.load(coverageFile);
+                } else {
+                    logCoverageMeasurement(
+                            mCurrentRunName
+                                    + "_"
+                                    + getNameWithoutExtension(devicePath)
+                                    + "_runtime_coverage",
+                            coverageFile);
+                }
+            } finally {
+                FileUtil.deleteFile(coverageFile);
+            }
         }
     }
 }

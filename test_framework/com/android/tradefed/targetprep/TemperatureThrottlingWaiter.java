@@ -15,13 +15,16 @@
  */
 package com.android.tradefed.targetprep;
 
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.RunUtil;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /** An {@link ITargetPreparer} that waits until device's temperature gets down to target */
 @OptionClass(alias = "temperature-throttle-waiter")
@@ -46,26 +49,24 @@ public class TemperatureThrottlingWaiter extends BaseTargetPreparer {
     public static final String DEVICE_TEMPERATURE_FILE_PATH_NAME = "device-temperature-file-path";
 
     @Option(
-        name = DEVICE_TEMPERATURE_FILE_PATH_NAME,
-        description =
-                "Name of file that contains device"
-                        + "temperature. Example: /sys/class/hwmon/hwmon1/device/msm_therm"
-    )
+            name = DEVICE_TEMPERATURE_FILE_PATH_NAME,
+            description =
+                    "Name of file that contains device"
+                            + "temperature. Example: /sys/class/hwmon/hwmon1/device/msm_therm")
     private String mDeviceTemperatureFilePath = null;
 
     @Option(name = "target-temperature", description = "Target Temperature that device should have;"
         + "defaults to 30c")
     private int mTargetTemperature = 30;
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
-            BuildError, DeviceNotAvailableException {
+    public void setUp(TestInformation testInfo)
+            throws TargetSetupError, BuildError, DeviceNotAvailableException {
         if (mDeviceTemperatureFilePath == null) {
             return;
         }
+        ITestDevice device = testInfo.getDevice();
         long start = System.currentTimeMillis();
         long maxWaitMs = mMaxWaitSecs * 1000;
         long intervalMs = mPollIntervalSecs * 1000;
@@ -110,21 +111,28 @@ public class TemperatureThrottlingWaiter extends BaseTargetPreparer {
         String result = device.executeShellCommand(
                 String.format("cat %s", fileName)).trim();
         CLog.i(String.format("Temperature file output : %s", result));
-        // example output : Result:30 Raw:7f6f
+
         if (result == null || result.contains("No such file or directory")) {
             throw new TargetSetupError(String.format("File %s doesn't exist", fileName),
                     device.getDeviceDescriptor());
-        } else if (!result.toLowerCase().startsWith("result:")) {
-            throw new TargetSetupError(
-                    String.format("file content is not as expected. Content : %s", result),
-                    device.getDeviceDescriptor());
         }
 
-        try {
-            deviceTemp = Integer.parseInt(result.split(" ")[0].split(":")[1].trim());
-        } catch (NumberFormatException numEx) {
-            CLog.e(String.format("Temperature is not of right format %s", numEx.getMessage()));
-            throw numEx;
+        // temperature raw format example output : Result:30 Raw:7f6f
+        final Pattern TEMPERATURE_RAW_FORMAT_REGEX = Pattern.compile("Result:(\\d+)\\sRaw:(\\w+)");
+        // temperature format example output : 30
+        final Pattern TEMPERATURE_FORMAT_REGEX = Pattern.compile("\\d+");
+        Matcher matcher = TEMPERATURE_RAW_FORMAT_REGEX.matcher(result);
+        if (matcher.find()) {
+            deviceTemp = Integer.parseInt(matcher.group(1));
+        } else {
+            matcher = TEMPERATURE_FORMAT_REGEX.matcher(result);
+            if (matcher.find()) {
+                deviceTemp = Integer.parseInt(matcher.group());
+            } else {
+                throw new TargetSetupError(
+                        String.format("file content is not as expected. Content : %s", result),
+                        device.getDeviceDescriptor());
+            }
         }
 
         return deviceTemp;

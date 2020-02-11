@@ -214,7 +214,7 @@ public class GoogleBenchmarkResultParserTest {
         EasyMock.expectLastCall().times(4);
         Capture<String> capture = new Capture<>();
         mMockInvocationListener.testFailed(
-                (TestDescription) EasyMock.anyObject(), (String) EasyMock.capture(capture));
+                (TestDescription) EasyMock.anyObject(), EasyMock.capture(capture));
         EasyMock.expectLastCall().times(1);
 
         EasyMock.replay(mMockInvocationListener);

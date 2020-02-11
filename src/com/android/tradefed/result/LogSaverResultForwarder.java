@@ -77,7 +77,8 @@ public class LogSaverResultForwarder extends ResultForwarder implements ILogSave
                 return;
             }
             try (InputStream stream = source.createInputStream()) {
-                saver.saveLogData(TestInvocation.TRADEFED_END_HOST_LOG, LogDataType.TEXT, stream);
+                saver.saveLogData(
+                        TestInvocation.TRADEFED_END_HOST_LOG, LogDataType.HOST_LOG, stream);
             }
             if (SystemUtil.isRemoteEnvironment()) {
                 try (InputStream stream = source.createInputStream()) {

@@ -24,6 +24,7 @@ import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.result.ITestInvocationListener;
 
 import org.easymock.EasyMock;
@@ -50,7 +51,7 @@ public class GTestBaseTest {
         }
 
         @Override
-        public void run(ITestInvocationListener listener) {
+        public void run(TestInformation testInfo, ITestInvocationListener listener) {
             return;
         }
     }

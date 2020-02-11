@@ -23,6 +23,9 @@ import static org.mockito.Mockito.verify;
 
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.NativeDevice;
+import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -36,11 +39,15 @@ public class CreateUserPreparerTest {
 
     private CreateUserPreparer mPreparer;
     private ITestDevice mMockDevice;
+    private TestInformation mTestInfo;
 
     @Before
     public void setUp() {
         mMockDevice = Mockito.mock(ITestDevice.class);
         mPreparer = new CreateUserPreparer();
+        IInvocationContext context = new InvocationContext();
+        context.addAllocatedDevice("device", mMockDevice);
+        mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
     }
 
     @Test
@@ -49,24 +56,24 @@ public class CreateUserPreparerTest {
         doReturn(5).when(mMockDevice).createUser(Mockito.any());
         doReturn(true).when(mMockDevice).switchUser(5);
         doReturn(true).when(mMockDevice).startUser(5, true);
-        mPreparer.setUp(mMockDevice, null);
+        mPreparer.setUp(mTestInfo);
 
         doReturn(true).when(mMockDevice).removeUser(5);
         doReturn(true).when(mMockDevice).switchUser(10);
-        mPreparer.tearDown(mMockDevice, null, null);
+        mPreparer.tearDown(mTestInfo, null);
     }
 
     @Test
     public void testSetUp_tearDown_noCurrent() throws Exception {
         doReturn(NativeDevice.INVALID_USER_ID).when(mMockDevice).getCurrentUser();
         try {
-            mPreparer.setUp(mMockDevice, null);
+            mPreparer.setUp(mTestInfo);
             fail("Should have thrown an exception.");
         } catch (TargetSetupError expected) {
             // Expected
         }
 
-        mPreparer.tearDown(mMockDevice, null, null);
+        mPreparer.tearDown(mTestInfo, null);
         verify(mMockDevice, never()).removeUser(Mockito.anyInt());
         verify(mMockDevice, never()).switchUser(Mockito.anyInt());
     }
@@ -78,7 +85,7 @@ public class CreateUserPreparerTest {
                 .createUser(Mockito.any());
 
         try {
-            mPreparer.setUp(mMockDevice, null);
+            mPreparer.setUp(mTestInfo);
             fail("Should have thrown an exception.");
         } catch (TargetSetupError expected) {
             // Expected
@@ -87,7 +94,7 @@ public class CreateUserPreparerTest {
 
     @Test
     public void testTearDown_only() throws Exception {
-        mPreparer.tearDown(mMockDevice, null, null);
+        mPreparer.tearDown(mTestInfo, null);
 
         verify(mMockDevice, never()).removeUser(Mockito.anyInt());
     }

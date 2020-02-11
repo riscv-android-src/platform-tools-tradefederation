@@ -16,7 +16,9 @@
 package com.android.tradefed.testtype.suite;
 
 import com.android.ddmlib.Log.LogLevel;
+import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
@@ -30,7 +32,9 @@ import com.android.tradefed.device.metric.LogcatOnFailureCollector;
 import com.android.tradefed.device.metric.ScreenshotOnFailureCollector;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.TfObjectTracker;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.invoker.shard.token.TokenProperty;
 import com.android.tradefed.log.ILogRegistry.EventType;
@@ -51,14 +55,12 @@ import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.retry.RetryStatistics;
 import com.android.tradefed.suite.checker.ISystemStatusCheckerReceiver;
 import com.android.tradefed.targetprep.BuildError;
-import com.android.tradefed.targetprep.ITargetCleaner;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
-import com.android.tradefed.testtype.IMultiDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IRuntimeHintProvider;
 import com.android.tradefed.testtype.ITestCollector;
@@ -67,7 +69,6 @@ import com.android.tradefed.testtype.suite.module.IModuleController.RunStrategy;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
-import com.google.api.client.repackaged.com.google.common.base.Joiner;
 import com.google.common.annotations.VisibleForTesting;
 
 import java.io.PrintWriter;
@@ -113,6 +114,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
 
     private final IInvocationContext mModuleInvocationContext;
     private final IConfiguration mModuleConfiguration;
+    private IConfiguration mInternalTestConfiguration;
     private ILogSaver mLogSaver;
 
     private final String mId;
@@ -122,7 +124,6 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     private List<IMultiTargetPreparer> mMultiPreparers = new ArrayList<>();
     private IBuildInfo mBuild;
     private ITestDevice mDevice;
-    private Map<ITestDevice, IBuildInfo> mDeviceInfos;
     private List<IMetricCollector> mRunMetricCollectors = new ArrayList<>();
     private boolean mCollectTestsOnly = false;
 
@@ -263,13 +264,6 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         mDevice = device;
     }
 
-    /**
-     * Inject the {@link Map} of {@link ITestDevice} and {@link IBuildInfo} for the configuration.
-     */
-    public void setDeviceInfos(Map<ITestDevice, IBuildInfo> deviceInfos) {
-        mDeviceInfos = deviceInfos;
-    }
-
     /** Inject the List of {@link IMetricCollector} to be used by the module. */
     public void setMetricCollectors(List<IMetricCollector> collectors) {
         if (collectors == null) {
@@ -290,8 +284,9 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
      * @param listener the {@link ITestInvocationListener} where to report results.
      * @throws DeviceNotAvailableException in case of device going offline.
      */
-    public final void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
-        run(listener, null, null);
+    public final void run(TestInformation moduleInfo, ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
+        run(moduleInfo, listener, null, null);
     }
 
     /**
@@ -304,17 +299,19 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
      * @throws DeviceNotAvailableException in case of device going offline.
      */
     public final void run(
+            TestInformation moduleInfo,
             ITestInvocationListener listener,
             List<ITestInvocationListener> moduleLevelListeners,
             TestFailureListener failureListener)
             throws DeviceNotAvailableException {
-        run(listener, moduleLevelListeners, failureListener, 1);
+        run(moduleInfo, listener, moduleLevelListeners, failureListener, 1);
     }
 
     /**
      * Run all the {@link IRemoteTest} contained in the module and use all the preparers before and
      * after to setup and clean the device.
      *
+     * @param moduleInfo the {@link TestInformation} for the module.
      * @param listener the {@link ITestInvocationListener} where to report results.
      * @param moduleLevelListeners The list of listeners at the module level.
      * @param failureListener a particular listener to collect logs on testFail. Can be null.
@@ -322,6 +319,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
      * @throws DeviceNotAvailableException in case of device going offline.
      */
     public final void run(
+            TestInformation moduleInfo,
             ITestInvocationListener listener,
             List<ITestInvocationListener> moduleLevelListeners,
             TestFailureListener failureListener,
@@ -340,16 +338,16 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             skipTestCases = true;
         }
 
-        CLog.d("Running module %s", getId());
+        CLog.logAndDisplay(LogLevel.DEBUG, "Running module %s", getId());
         // Exception generated during setUp or run of the tests
         Throwable preparationException = null;
         DeviceNotAvailableException runException = null;
-        // Resolve dynamic files
+        // Resolve dynamic files except for the IRemotTest ones
         preparationException = invokeRemoteDynamic(mModuleConfiguration);
         // Setup
         long prepStartTime = getCurrentTime();
         if (preparationException == null) {
-            preparationException = runTargetPreparation(listener);
+            preparationException = runTargetPreparation(moduleInfo, listener);
         }
         // Skip multi-preparation if preparation already failed.
         if (preparationException == null) {
@@ -366,28 +364,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         // Run the tests
         try {
             if (preparationException != null) {
-                List<ITestInvocationListener> allListeners = new ArrayList<>();
-                allListeners.add(listener);
-                if (moduleLevelListeners != null) {
-                    allListeners.addAll(moduleLevelListeners);
-                }
-                // Report the early module failures to the moduleListeners too in order for them
-                // to know about it.
-                ITestInvocationListener forwarder = new ResultForwarder(allListeners);
-                // For reporting purpose we create a failure placeholder with the error stack
-                // similar to InitializationError of JUnit.
-                forwarder.testRunStarted(getId(), 1, 0, System.currentTimeMillis());
-                StringWriter sw = new StringWriter();
-                preparationException.printStackTrace(new PrintWriter(sw));
-                forwarder.testRunFailed(sw.toString());
-                HashMap<String, Metric> metricsProto = new HashMap<>();
-                metricsProto.put(
-                        TEST_TIME, TfMetricProtoUtil.createSingleValue(0L, "milliseconds"));
-                forwarder.testRunEnded(0, metricsProto);
-                // If it was a not available exception rethrow it to signal the new device state.
-                if (preparationException instanceof DeviceNotAvailableException) {
-                    throw (DeviceNotAvailableException) preparationException;
-                }
+                reportSetupFailure(preparationException, listener, moduleLevelListeners);
                 return;
             }
             mStartTestTime = getCurrentTime();
@@ -396,20 +373,21 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 if (test == null) {
                     return;
                 }
-
+                TfObjectTracker.countWithParents(test.getClass());
                 if (test instanceof IBuildReceiver) {
                     ((IBuildReceiver) test).setBuild(mBuild);
                 }
                 if (test instanceof IDeviceTest) {
                     ((IDeviceTest) test).setDevice(mDevice);
                 }
-                if (test instanceof IMultiDeviceTest) {
-                    ((IMultiDeviceTest) test).setDeviceInfos(mDeviceInfos);
-                }
                 if (test instanceof IInvocationContextReceiver) {
                     ((IInvocationContextReceiver) test)
                             .setInvocationContext(mModuleInvocationContext);
                 }
+                mInternalTestConfiguration = new Configuration("tmp-download", "tmp-download");
+                // We do it before the official set, otherwise the IConfiguration will not be the
+                // right one.
+                mInternalTestConfiguration.setTest(test);
                 if (test instanceof IConfigurationReceiver) {
                     ((IConfigurationReceiver) test).setConfiguration(mModuleConfiguration);
                 }
@@ -424,7 +402,6 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                     }
                     ((ITestCollector) test).setCollectTestsOnly(mCollectTestsOnly);
                 }
-
                 GranularRetriableTestWrapper retriableTest =
                         prepareGranularRetriableWrapper(
                                 test,
@@ -434,8 +411,14 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                                 skipTestCases,
                                 maxRunLimit);
                 retriableTest.setCollectTestsOnly(mCollectTestsOnly);
+                // Resolve the dynamic options for that one test.
+                preparationException = invokeRemoteDynamic(mInternalTestConfiguration);
+                if (preparationException != null) {
+                    reportSetupFailure(preparationException, listener, moduleLevelListeners);
+                    return;
+                }
                 try {
-                    retriableTest.run(listener);
+                    retriableTest.run(moduleInfo, listener);
                 } catch (DeviceNotAvailableException dnae) {
                     runException = dnae;
                     // We do special logging of some information in Context of the module for easier
@@ -453,6 +436,8 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                             getId());
                     throw dnae;
                 } finally {
+                    mInternalTestConfiguration.cleanConfigurationData();
+                    mInternalTestConfiguration = null;
                     if (mMergeAttempts) {
                         // A single module can generate several test runs
                         mTestsResults.addAll(retriableTest.getFinalTestRunResults());
@@ -483,7 +468,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             try {
                 Throwable exception = (runException != null) ? runException : preparationException;
                 // Tear down
-                runTearDown(exception);
+                runTearDown(moduleInfo, exception);
             } catch (DeviceNotAvailableException dnae) {
                 CLog.e(
                         "Module %s failed during tearDown with: %s",
@@ -658,7 +643,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         }
         // If there is any errors report them all at once
         if (!runFailureMessages.isEmpty()) {
-            listener.testRunFailed(Joiner.on(TestRunResult.ERROR_DIVIDER).join(runFailureMessages));
+            listener.testRunFailed(String.join(TestRunResult.ERROR_DIVIDER, runFailureMessages));
         }
 
         // Provide a strong association of the run to its logs.
@@ -714,11 +699,15 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
 
     /** Run all the prepare steps. */
     private Throwable runPreparerSetup(
-            ITestDevice device, IBuildInfo build, ITargetPreparer preparer, ITestLogger logger) {
+            TestInformation moduleInfo,
+            ITargetPreparer preparer,
+            ITestLogger logger,
+            int deviceIndex) {
         if (preparer.isDisabled()) {
             // If disabled skip completely.
             return null;
         }
+        TfObjectTracker.countWithParents(preparer.getClass());
         CLog.d("Running setup preparer: %s", preparer.getClass().getSimpleName());
         try {
             // set the logger in case they need it.
@@ -729,7 +718,8 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 ((IInvocationContextReceiver) preparer)
                         .setInvocationContext(mModuleInvocationContext);
             }
-            preparer.setUp(device, build);
+            moduleInfo.setActiveDeviceIndex(deviceIndex);
+            preparer.setUp(moduleInfo);
             return null;
         } catch (BuildError
                 | TargetSetupError
@@ -742,6 +732,8 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             CLog.e("Unexpected Exception from preparer: %s", preparer.getClass().getName());
             CLog.e(e);
             return e;
+        } finally {
+            moduleInfo.setActiveDeviceIndex(0);
         }
     }
 
@@ -751,6 +743,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             // If disabled skip completely.
             return null;
         }
+        TfObjectTracker.countWithParents(preparer.getClass());
         CLog.d("Running setup multi preparer: %s", preparer.getClass().getSimpleName());
         try {
             // set the logger in case they need it.
@@ -778,7 +771,8 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     }
 
     /** Run all the tear down steps from preparers. */
-    private void runTearDown(Throwable exception) throws DeviceNotAvailableException {
+    private void runTearDown(TestInformation moduleInfo, Throwable exception)
+            throws DeviceNotAvailableException {
         // Tear down
         List<IMultiTargetPreparer> cleanerList = new ArrayList<>(mMultiPreparers);
         Collections.reverse(cleanerList);
@@ -813,30 +807,26 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             ListIterator<ITargetPreparer> itr = preparers.listIterator(preparers.size());
             while (itr.hasPrevious()) {
                 ITargetPreparer preparer = itr.previous();
-                if (preparer instanceof ITargetCleaner) {
-                    ITargetCleaner cleaner = (ITargetCleaner) preparer;
-                    // do not call the cleaner if it was disabled
-                    if (cleaner.isDisabled() || cleaner.isTearDownDisabled()) {
-                        CLog.d("%s has been disabled. skipping.", cleaner);
-                        continue;
-                    }
+                // do not call the cleaner if it was disabled
+                if (preparer.isDisabled() || preparer.isTearDownDisabled()) {
+                    CLog.d("%s has been disabled. skipping.", preparer);
+                    continue;
+                }
 
-                    RecoveryMode origMode = null;
-                    try {
-                        // If an exception was generated in setup with a DNAE do not attempt any
-                        // recovery again in case we hit the device not available again.
-                        if (exception != null && exception instanceof DeviceNotAvailableException) {
-                            origMode = device.getRecoveryMode();
-                            device.setRecoveryMode(RecoveryMode.NONE);
-                        }
-                        cleaner.tearDown(
-                                device,
-                                mModuleInvocationContext.getBuildInfo(deviceName),
-                                exception);
-                    } finally {
-                        if (origMode != null) {
-                            device.setRecoveryMode(origMode);
-                        }
+                RecoveryMode origMode = null;
+                try {
+                    // If an exception was generated in setup with a DNAE do not attempt any
+                    // recovery again in case we hit the device not available again.
+                    if (exception != null && exception instanceof DeviceNotAvailableException) {
+                        origMode = device.getRecoveryMode();
+                        device.setRecoveryMode(RecoveryMode.NONE);
+                    }
+                    moduleInfo.setActiveDeviceIndex(i);
+                    preparer.tearDown(moduleInfo, exception);
+                } finally {
+                    moduleInfo.setActiveDeviceIndex(0);
+                    if (origMode != null) {
+                        device.setRecoveryMode(origMode);
                     }
                 }
             }
@@ -978,11 +968,10 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 InvocationMetricKey.AUTO_RETRY_TIME, retryTimeMs);
     }
 
-    private Throwable runTargetPreparation(ITestLogger logger) {
+    private Throwable runTargetPreparation(TestInformation moduleInfo, ITestLogger logger) {
         Throwable preparationException = null;
         for (int i = 0; i < mModuleInvocationContext.getDeviceConfigNames().size(); i++) {
             String deviceName = mModuleInvocationContext.getDeviceConfigNames().get(i);
-            ITestDevice device = mModuleInvocationContext.getDevice(deviceName);
             if (i >= mPreparersPerDevice.size()) {
                 CLog.d(
                         "Main configuration has more devices than the module configuration. '%s' "
@@ -1000,12 +989,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 preparers = mPreparersPerDevice.get(key);
             }
             for (ITargetPreparer preparer : preparers) {
-                preparationException =
-                        runPreparerSetup(
-                                device,
-                                mModuleInvocationContext.getBuildInfo(deviceName),
-                                preparer,
-                                logger);
+                preparationException = runPreparerSetup(moduleInfo, preparer, logger, i);
                 if (preparationException != null) {
                     mIsFailedModule = true;
                     CLog.e("Some preparation step failed. failing the module %s", getId());
@@ -1027,9 +1011,38 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             CLog.d("Attempting to resolve dynamic files from %s", getId());
             moduleConfiguration.resolveDynamicOptions();
             return null;
-        } catch (RuntimeException | ConfigurationException e) {
+        } catch (RuntimeException | ConfigurationException | BuildRetrievalError e) {
             mIsFailedModule = true;
             return e;
+        }
+    }
+
+    /** Report a setup exception as a run failure and notify all the listeners. */
+    private void reportSetupFailure(
+            Throwable setupException,
+            ITestInvocationListener invocListener,
+            List<ITestInvocationListener> moduleListeners)
+            throws DeviceNotAvailableException {
+        List<ITestInvocationListener> allListeners = new ArrayList<>();
+        allListeners.add(invocListener);
+        if (moduleListeners != null) {
+            allListeners.addAll(moduleListeners);
+        }
+        // Report the early module failures to the moduleListeners too in order for them
+        // to know about it.
+        ITestInvocationListener forwarder = new ResultForwarder(allListeners);
+        // For reporting purpose we create a failure placeholder with the error stack
+        // similar to InitializationError of JUnit.
+        forwarder.testRunStarted(getId(), 1, 0, System.currentTimeMillis());
+        StringWriter sw = new StringWriter();
+        setupException.printStackTrace(new PrintWriter(sw));
+        forwarder.testRunFailed(sw.toString());
+        HashMap<String, Metric> metricsProto = new HashMap<>();
+        metricsProto.put(TEST_TIME, TfMetricProtoUtil.createSingleValue(0L, "milliseconds"));
+        forwarder.testRunEnded(0, metricsProto);
+        // If it was a not available exception rethrow it to signal the new device state.
+        if (setupException instanceof DeviceNotAvailableException) {
+            throw (DeviceNotAvailableException) setupException;
         }
     }
 }

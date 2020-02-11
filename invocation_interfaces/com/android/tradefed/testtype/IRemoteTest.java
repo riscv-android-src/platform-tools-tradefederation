@@ -16,6 +16,7 @@
 package com.android.tradefed.testtype;
 
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.result.ITestInvocationListener;
 
 /**
@@ -37,6 +38,28 @@ public interface IRemoteTest {
      *
      * @param listener the {@link ITestInvocationListener} of test results
      * @throws DeviceNotAvailableException
+     * @deprecated Use {@link #run(TestInformation, ITestInvocationListener)} instead.
      */
-    public void run(ITestInvocationListener listener) throws DeviceNotAvailableException;
+    @Deprecated
+    public default void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+        // Throw if not implemented: If the new interface is implemented this won't be called. If
+        // something is calling the old interface instead of new one, then it will throw and report
+        // the error.
+        throw new UnsupportedOperationException(
+                "run(ITestInvocationListener) is deprecated. You need to update to the new "
+                        + "run(TestInformation, ITestInvocationListener) interface.");
+    }
+
+    /**
+     * Runs the tests, and reports result to the listener.
+     *
+     * @param testInfo The {@link TestInformation} object containing useful information to run
+     *     tests.
+     * @param listener the {@link ITestInvocationListener} of test results
+     * @throws DeviceNotAvailableException
+     */
+    public default void run(TestInformation testInfo, ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
+        run(listener);
+    }
 }

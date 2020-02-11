@@ -16,6 +16,7 @@
 package com.android.tradefed.device;
 
 import com.android.ddmlib.IDevice;
+import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.device.TestDeviceOptions.InstanceType;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.CommandResult;
@@ -49,6 +50,8 @@ public class RemoteAndroidDevice extends TestDevice {
             Pattern.compile(ManagedTestDeviceFactory.IPADDRESS_PATTERN);
 
     private File mAdbConnectLogs = null;
+    private String mInitialSerial;
+    private String mInitialIpDevice;
 
     /**
      * Creates a {@link RemoteAndroidDevice}.
@@ -60,6 +63,10 @@ public class RemoteAndroidDevice extends TestDevice {
     public RemoteAndroidDevice(IDevice device, IDeviceStateMonitor stateMonitor,
             IDeviceMonitor allocationMonitor) {
         super(device, stateMonitor, allocationMonitor);
+        if (getIDevice() instanceof TcpDevice) {
+            mInitialIpDevice = ((TcpDevice) getIDevice()).getKnownDeviceIp();
+        }
+        mInitialSerial = getSerialNumber();
     }
 
     @Override
@@ -295,5 +302,31 @@ public class RemoteAndroidDevice extends TestDevice {
             }
         }
         return result;
+    }
+
+    @Override
+    public DeviceDescriptor getDeviceDescriptor() {
+        DeviceDescriptor descriptor = super.getDeviceDescriptor();
+        if (mInitialIpDevice != null) {
+            // Alter the display for the console.
+            descriptor =
+                    new DeviceDescriptor(
+                            descriptor,
+                            mInitialSerial,
+                            mInitialSerial + "[" + mInitialIpDevice + "]");
+        }
+        return descriptor;
+    }
+
+    /**
+     * Returns the initial associated ip to the device if any. Returns null if no known initial ip.
+     */
+    protected String getInitialIp() {
+        return mInitialIpDevice;
+    }
+
+    /** Returns the initial serial name of the device. */
+    protected String getInitialSerial() {
+        return mInitialSerial;
     }
 }

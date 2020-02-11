@@ -16,14 +16,18 @@
 package com.android.tradefed.invoker;
 
 import com.android.ddmlib.Log.LogLevel;
+import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.command.CommandRunner.ExitCode;
+import com.android.tradefed.command.CommandScheduler;
+import com.android.tradefed.command.ICommandScheduler.IScheduledInvocationListener;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
+import com.android.tradefed.device.FreeDeviceState;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.NativeDevice;
@@ -33,17 +37,23 @@ import com.android.tradefed.device.cloud.ManagedRemoteDevice;
 import com.android.tradefed.device.cloud.NestedRemoteDevice;
 import com.android.tradefed.device.cloud.RemoteAndroidVirtualDevice;
 import com.android.tradefed.guice.InvocationScope;
+import com.android.tradefed.invoker.logger.CurrentInvocation;
+import com.android.tradefed.invoker.logger.CurrentInvocation.InvocationInfo;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
+import com.android.tradefed.invoker.logger.TfObjectTracker;
 import com.android.tradefed.invoker.sandbox.ParentSandboxInvocationExecution;
 import com.android.tradefed.invoker.sandbox.SandboxedInvocationExecution;
+import com.android.tradefed.invoker.shard.LastShardDetector;
 import com.android.tradefed.invoker.shard.ShardBuildCloner;
+import com.android.tradefed.invoker.shard.ShardHelper;
 import com.android.tradefed.log.BaseLeveledLogOutput;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.ILogRegistry;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.log.StdoutLogger;
 import com.android.tradefed.postprocessor.IPostProcessor;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -60,6 +70,7 @@ import com.android.tradefed.targetprep.DeviceFailedToBootError;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IResumableTest;
+import com.android.tradefed.testtype.SubprocessTfLauncher;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.PrettyPrintDelimiter;
@@ -74,6 +85,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 
 /**
@@ -135,7 +147,9 @@ public class TestInvocation implements ITestInvocation {
 
     private String mStatus = "(not invoked)";
     private String mStopCause = null;
+    private Long mStopRequestTime = null;
     private boolean mTestStarted = false;
+    private List<IScheduledInvocationListener> mSchedulerListeners = new ArrayList<>();
 
     /**
      * A {@link ResultForwarder} for forwarding resumed invocations.
@@ -204,11 +218,11 @@ public class TestInvocation implements ITestInvocation {
      * Performs the invocation
      *
      * @param config the {@link IConfiguration}
-     * @param context the {@link IInvocationContext} to use.
+     * @param testInfo the {@link TestInformation} to use for the invocation.
      */
     private void performInvocation(
             IConfiguration config,
-            IInvocationContext context,
+            TestInformation testInfo,
             IInvocationExecution invocationPath,
             IRescheduler rescheduler,
             ITestInvocationListener listener,
@@ -223,6 +237,7 @@ public class TestInvocation implements ITestInvocation {
         Throwable exception = null;
         Throwable tearDownException = null;
         ITestDevice badDevice = null;
+        IInvocationContext context = testInfo.getContext();
 
         // Ensure that no unexpected attributes are added afterward
         ((InvocationContext) context).lockAttributes();
@@ -235,13 +250,15 @@ public class TestInvocation implements ITestInvocation {
                 }
             }
             // Then run the regular setup and run
-            prepareAndRun(config, context, invocationPath, listener);
+            prepareAndRun(config, testInfo, invocationPath, listener);
         } catch (BuildError e) {
             exception = e;
             CLog.w("Build failed on device '%s'. Reason: %s", e.getDeviceDescriptor(),
                     e.toString());
             bugreportName = BUILD_ERROR_BUGREPORT_NAME;
-            badDevice = context.getDeviceBySerial(e.getDeviceDescriptor().getSerial());
+            if (e.getDeviceDescriptor() != null) {
+                badDevice = context.getDeviceBySerial(e.getDeviceDescriptor().getSerial());
+            }
             if (e instanceof DeviceFailedToBootError) {
                 if (badDevice == null) {
                     context.setRecoveryModeForAllDevices(RecoveryMode.NONE);
@@ -255,7 +272,9 @@ public class TestInvocation implements ITestInvocation {
             CLog.e("Caught exception while running invocation");
             CLog.e(e);
             bugreportName = TARGET_SETUP_ERROR_BUGREPORT_NAME;
-            badDevice = context.getDeviceBySerial(e.getDeviceDescriptor().getSerial());
+            if (e.getDeviceDescriptor() != null) {
+                badDevice = context.getDeviceBySerial(e.getDeviceDescriptor().getSerial());
+            }
             reportFailure(e, listener, config, context, invocationPath);
         } catch (DeviceNotAvailableException e) {
             exception = e;
@@ -268,7 +287,7 @@ public class TestInvocation implements ITestInvocation {
                 // under certain cases it might still be possible to grab a bugreport
                 bugreportName = DEVICE_UNRESPONSIVE_BUGREPORT_NAME;
             }
-            resumed = resume(config, context, rescheduler, System.currentTimeMillis() - startTime);
+            resumed = resume(config, testInfo, rescheduler, System.currentTimeMillis() - startTime);
             if (!resumed) {
                 reportFailure(e, listener, config, context, invocationPath);
             } else {
@@ -326,7 +345,7 @@ public class TestInvocation implements ITestInvocation {
 
             mStatus = "tearing down";
             try {
-                invocationPath.doTeardown(context, config, listener, exception);
+                invocationPath.doTeardown(testInfo, config, listener, exception);
             } catch (Throwable e) {
                 tearDownException = e;
                 CLog.e("Exception when tearing down invocation: %s", tearDownException.toString());
@@ -342,6 +361,16 @@ public class TestInvocation implements ITestInvocation {
                 }
             }
             mStatus = "done running tests";
+            // Track the timestamp when we are done with devices
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.DEVICE_DONE_TIMESTAMP, System.currentTimeMillis());
+            if (config.getCommandOptions().earlyDeviceRelease()) {
+                Map<ITestDevice, FreeDeviceState> devicesStates =
+                        CommandScheduler.createReleaseMap(context, exception);
+                for (IScheduledInvocationListener scheduleListener : mSchedulerListeners) {
+                    scheduleListener.releaseDevices(context, devicesStates);
+                }
+            }
             try {
                 // Clean up host.
                 invocationPath.doCleanUp(context, config, exception);
@@ -356,6 +385,13 @@ public class TestInvocation implements ITestInvocation {
                                     mStopCause);
                     listener.invocationFailed(new RuntimeException(message));
                     PrettyPrintDelimiter.printStageDelimiter(message);
+                    if (mStopRequestTime != null) {
+                        // This is not 100% perfect since result reporting can still run a bit
+                        // longer, but this is our last opportunity to report it.
+                        long latency = System.currentTimeMillis() - mStopRequestTime;
+                        InvocationMetricLogger.addInvocationMetrics(
+                                InvocationMetricKey.SHUTDOWN_HARD_LATENCY, latency);
+                    }
                 }
                 reportHostLog(listener, config);
                 // If host_log is reported, remove the hook
@@ -379,6 +415,8 @@ public class TestInvocation implements ITestInvocation {
                     }
                 }
             } finally {
+                TfObjectTracker.clearTracking();
+                CurrentInvocation.clearInvocationInfos();
                 invocationPath.cleanUpBuilds(context, config);
             }
         }
@@ -393,17 +431,18 @@ public class TestInvocation implements ITestInvocation {
     /** Do setup and run the tests */
     private void prepareAndRun(
             IConfiguration config,
-            IInvocationContext context,
+            TestInformation testInfo,
             IInvocationExecution invocationPath,
             ITestInvocationListener listener)
             throws Throwable {
         getRunUtil().allowInterrupt(true);
-        logDeviceBatteryLevel(context, "initial -> setup");
-        invocationPath.doSetup(context, config, listener);
-        logDeviceBatteryLevel(context, "setup -> test");
+        logDeviceBatteryLevel(testInfo.getContext(), "initial -> setup");
+        // TODO: Use TestInformation in setup
+        invocationPath.doSetup(testInfo, config, listener);
+        logDeviceBatteryLevel(testInfo.getContext(), "setup -> test");
         mTestStarted = true;
-        invocationPath.runTests(context, config, listener);
-        logDeviceBatteryLevel(context, "after test");
+        invocationPath.runTests(testInfo, config, listener);
+        logDeviceBatteryLevel(testInfo.getContext(), "after test");
     }
 
     /**
@@ -422,14 +461,19 @@ public class TestInvocation implements ITestInvocation {
 
     /**
      * Attempt to reschedule the failed invocation to resume where it left off.
-     * <p/>
-     * @see IResumableTest
      *
+     * <p>
+     *
+     * @see IResumableTest
      * @param config
      * @return <code>true</code> if invocation was resumed successfully
      */
-    private boolean resume(IConfiguration config, IInvocationContext context,
-            IRescheduler rescheduler, long elapsedTime) {
+    private boolean resume(
+            IConfiguration config,
+            TestInformation testInfo,
+            IRescheduler rescheduler,
+            long elapsedTime) {
+        IInvocationContext context = testInfo.getContext();
         for (IRemoteTest test : config.getTests()) {
             if (test instanceof IResumableTest) {
                 IResumableTest resumeTest = (IResumableTest)test;
@@ -437,7 +481,7 @@ public class TestInvocation implements ITestInvocation {
                     // resume this config if any test is resumable
                     IConfiguration resumeConfig = config.clone();
                     // reuse the same build for the resumed invocation
-                    ShardBuildCloner.cloneBuildInfos(resumeConfig, resumeConfig, context);
+                    ShardBuildCloner.cloneBuildInfos(resumeConfig, resumeConfig, testInfo);
 
                     // create a result forwarder, to prevent sending two invocationStarted events
                     resumeConfig.setTestInvocationListener(new ResumeResultForwarder(
@@ -486,9 +530,12 @@ public class TestInvocation implements ITestInvocation {
                 if (config.getCommandOptions().getHostLogSuffix() != null) {
                     name += config.getCommandOptions().getHostLogSuffix();
                 }
-                listener.testLog(name, LogDataType.TEXT, globalLogSource);
+                listener.testLog(name, LogDataType.HOST_LOG, globalLogSource);
             } else {
-                CLog.i("Skip logging %s to a file with logger '%s'", name, logger);
+                // Only print the non-logging if we are not a stdout logger
+                if (!(logger instanceof StdoutLogger)) {
+                    CLog.i("Skip logging %s to a file with logger '%s'", name, logger);
+                }
             }
         }
         // once tradefed log is reported, all further log calls for this invocation can get lost
@@ -574,10 +621,10 @@ public class TestInvocation implements ITestInvocation {
     }
 
     /**
-     * Invoke {@link IInvocationExecution#fetchBuild(IInvocationContext, IConfiguration,
-     * IRescheduler, ITestInvocationListener)} and handles the output as well as failures.
+     * Invoke {@link IInvocationExecution#fetchBuild(TestInformation, IConfiguration, IRescheduler,
+     * ITestInvocationListener)} and handles the output as well as failures.
      *
-     * @param context the {@link IInvocationContext} of the invocation.
+     * @param testInfo the {@link TestInformation} of the invocation.
      * @param config the {@link IConfiguration} of this test run.
      * @param rescheduler the {@link IRescheduler}, for rescheduling portions of the invocation for
      *     execution on another resource(s)
@@ -587,7 +634,7 @@ public class TestInvocation implements ITestInvocation {
      * @throws DeviceNotAvailableException
      */
     private boolean invokeFetchBuild(
-            IInvocationContext context,
+            TestInformation testInfo,
             IConfiguration config,
             IRescheduler rescheduler,
             ITestInvocationListener listener,
@@ -596,7 +643,7 @@ public class TestInvocation implements ITestInvocation {
         Exception buildException = null;
         boolean res = false;
         try {
-            res = invocationPath.fetchBuild(context, config, rescheduler, listener);
+            res = invocationPath.fetchBuild(testInfo, config, rescheduler, listener);
             if (res) {
                 // Successful fetch of build.
                 return true;
@@ -610,10 +657,10 @@ public class TestInvocation implements ITestInvocation {
             buildException = e;
         }
         // Report an empty invocation, so this error is sent to listeners
-        startInvocation(config, context, listener);
+        startInvocation(config, testInfo.getContext(), listener);
         // Don't want to use #reportFailure, since that will call buildNotTested
         listener.invocationFailed(buildException);
-        for (ITestDevice device : context.getDevices()) {
+        for (ITestDevice device : testInfo.getContext().getDevices()) {
             invocationPath.reportLogs(device, listener, Stage.ERROR);
         }
         reportHostLog(listener, config);
@@ -646,7 +693,16 @@ public class TestInvocation implements ITestInvocation {
                 config.resolveDynamicOptions();
             }
             return true;
-        } catch (RuntimeException | ConfigurationException e) {
+        } catch (RuntimeException | BuildRetrievalError | ConfigurationException e) {
+            // In case of build not found issues.
+            mStatus = "(failed dynamic download)";
+            // Set the exit code to error
+            setExitCode(ExitCode.NO_BUILD, e);
+
+            // We don't have a reporting buildInfo at this point
+            IBuildInfo info = new BuildInfo();
+            context.addDeviceBuildInfo(context.getDeviceConfigNames().get(0), info);
+
             // Report an empty invocation, so this error is sent to listeners
             startInvocation(config, context, listener);
             // Don't want to use #reportFailure, since that will call buildNotTested
@@ -668,6 +724,36 @@ public class TestInvocation implements ITestInvocation {
             IRescheduler rescheduler,
             ITestInvocationListener... extraListeners)
             throws DeviceNotAvailableException, Throwable {
+        for (ITestInvocationListener listener : extraListeners) {
+            if (listener instanceof IScheduledInvocationListener) {
+                mSchedulerListeners.add((IScheduledInvocationListener) listener);
+            }
+        }
+        // Create the TestInformation for the invocation
+        // TODO: Use invocation-id in the workfolder name
+        Object sharedInfoObject =
+                config.getConfigurationObject(ShardHelper.SHARED_TEST_INFORMATION);
+        TestInformation sharedTestInfo = null;
+        TestInformation info = null;
+        if (sharedInfoObject != null) {
+            sharedTestInfo = (TestInformation) sharedInfoObject;
+            // During sharding we share everything except the invocation context
+            info = TestInformation.createModuleTestInfo(sharedTestInfo, context);
+        }
+        if (info == null) {
+            File mWorkFolder = FileUtil.createTempDir("tradefed-invocation-workfolder");
+            info =
+                    TestInformation.newBuilder()
+                            .setInvocationContext(context)
+                            .setDependenciesFolder(mWorkFolder)
+                            .build();
+        }
+        CurrentInvocation.addInvocationInfo(InvocationInfo.WORK_FOLDER, info.dependenciesFolder());
+
+        CleanUpInvocationFiles cleanUpThread = new CleanUpInvocationFiles(info, config);
+        Runtime.getRuntime().addShutdownHook(cleanUpThread);
+        registerExecutionFiles(info.executionFiles());
+
         List<ITestInvocationListener> allListeners =
                 new ArrayList<>(config.getTestInvocationListeners().size() + extraListeners.length);
         allListeners.addAll(config.getTestInvocationListeners());
@@ -678,7 +764,11 @@ public class TestInvocation implements ITestInvocation {
         IRetryDecision decision = config.getRetryDecision();
         ResultAggregator aggregator = null;
         decision.setInvocationContext(context);
-        if (decision.isAutoRetryEnabled()
+        // We don't need the aggregator in the subprocess because the parent will take care of it.
+        if (!config.getCommandOptions()
+                        .getInvocationData()
+                        .containsKey(SubprocessTfLauncher.SUBPROCESS_TAG_NAME)
+                && decision.isAutoRetryEnabled()
                 && decision.getMaxRetryCount() > 1
                 && !RetryStrategy.NO_RETRY.equals(decision.getRetryStrategy())) {
             CLog.d("Auto-retry enabled, using the ResultAggregator to handle multiple retries.");
@@ -720,6 +810,7 @@ public class TestInvocation implements ITestInvocation {
         // Seed our TF objects to the Guice scope
         scope.seed(IRescheduler.class, rescheduler);
         scope.seedConfiguration(config);
+        boolean sharding = false;
         try {
             ILeveledLogOutput leveledLogOutput = config.getLogOutput();
             leveledLogOutput.init();
@@ -756,10 +847,8 @@ public class TestInvocation implements ITestInvocation {
 
             long start = System.currentTimeMillis();
             boolean providerSuccess =
-                    invokeFetchBuild(context, config, rescheduler, listener, invocationPath);
+                    invokeFetchBuild(info, config, rescheduler, listener, invocationPath);
             long fetchBuildDuration = System.currentTimeMillis() - start;
-            context.addInvocationTimingMetric(IInvocationContext.TimingEvent.FETCH_BUILD,
-                    fetchBuildDuration);
             InvocationMetricLogger.addInvocationMetrics(
                     InvocationMetricKey.FETCH_BUILD, fetchBuildDuration);
             CLog.d("Fetch build duration: %s", TimeUtil.formatElapsedTime(fetchBuildDuration));
@@ -803,8 +892,7 @@ public class TestInvocation implements ITestInvocation {
                     }
                 }
 
-                boolean sharding =
-                        invocationPath.shardConfig(config, context, rescheduler, listener);
+                sharding = invocationPath.shardConfig(config, info, rescheduler, listener);
                 if (sharding) {
                     CLog.i(
                             "Invocation for %s has been sharded, rescheduling",
@@ -834,7 +922,7 @@ public class TestInvocation implements ITestInvocation {
                 return;
             }
 
-            performInvocation(config, context, invocationPath, rescheduler, listener, deviceInit);
+            performInvocation(config, info, invocationPath, rescheduler, listener, deviceInit);
             setExitCode(ExitCode.NO_ERROR, null);
         } catch (IOException e) {
             CLog.e(e);
@@ -842,7 +930,6 @@ public class TestInvocation implements ITestInvocation {
             scope.exit();
             // Ensure build infos are always cleaned up at the end of invocation.
             invocationPath.cleanUpBuilds(context, config);
-
             // ensure we always deregister the logger
             for (String deviceName : context.getDeviceConfigNames()) {
                 if (!(context.getDevice(deviceName).getIDevice() instanceof StubDevice)) {
@@ -855,6 +942,12 @@ public class TestInvocation implements ITestInvocation {
             getLogRegistry().unregisterLogger();
             config.getLogOutput().closeLog();
             config.cleanConfigurationData();
+
+            Runtime.getRuntime().removeShutdownHook(cleanUpThread);
+            if (!sharding) {
+                // If we are the parent shard, we do not delete the test information
+                deleteInvocationFiles(info, config);
+            }
         }
     }
 
@@ -862,6 +955,11 @@ public class TestInvocation implements ITestInvocation {
     @VisibleForTesting
     InvocationScope getInvocationScope() {
         return InvocationScope.getDefault();
+    }
+
+    @VisibleForTesting
+    public void registerExecutionFiles(ExecutionFiles executionFiles) {
+        CurrentInvocation.registerExecutionFiles(executionFiles);
     }
 
     /**
@@ -883,6 +981,9 @@ public class TestInvocation implements ITestInvocation {
     @Override
     public void notifyInvocationStopped(String message) {
         mStopCause = message;
+        if (mStopRequestTime != null) {
+            mStopRequestTime = System.currentTimeMillis();
+        }
     }
 
     /**
@@ -920,14 +1021,9 @@ public class TestInvocation implements ITestInvocation {
             if (log == null || !log.exists()) {
                 return;
             }
-            try {
-                if (FileUtil.readStringFromFile(log).isEmpty()) {
-                    CLog.d("executeShellCommandLog file was empty, skip logging.");
-                    return;
-                }
-            } catch (IOException e) {
-                // Ignored
-                CLog.e(e);
+            if (log.length() == 0) {
+                CLog.d("executeShellCommandLog file was empty, skip logging.");
+                return;
             }
             try (InputStreamSource source = new FileInputStreamSource(log)) {
                 logger.testLog(
@@ -970,6 +1066,24 @@ public class TestInvocation implements ITestInvocation {
         return testTag;
     }
 
+    /**
+     * Delete the invocation files if this is the last shard for local sharding or if we are not in
+     * a local sharding situation.
+     */
+    private void deleteInvocationFiles(TestInformation testInfo, IConfiguration config) {
+        Object obj = config.getConfigurationObject(ShardHelper.LAST_SHARD_DETECTOR);
+        if (obj != null) {
+            LastShardDetector lastShardDetector = (LastShardDetector) obj;
+            if (!lastShardDetector.isLastShardDone()) {
+                return;
+            }
+        }
+        // Delete the invocation work directory at the end
+        FileUtil.recursiveDelete(testInfo.dependenciesFolder());
+        // Delete all the execution files
+        testInfo.executionFiles().clearFiles();
+    }
+
     /** Helper Thread that ensures host_log is reported in case of killed JVM */
     private class ReportHostLog extends Thread {
 
@@ -985,6 +1099,23 @@ public class TestInvocation implements ITestInvocation {
         public void run() {
             // Report all the logs that always be reported anyway.
             reportHostLog(mListener, mConfiguration);
+        }
+    }
+
+    /** Helper Thread to ensure invocation files are deleted in case of killed JVM */
+    private class CleanUpInvocationFiles extends Thread {
+
+        private TestInformation mTestInfo;
+        private IConfiguration mConfig;
+
+        public CleanUpInvocationFiles(TestInformation currentInfo, IConfiguration config) {
+            mTestInfo = currentInfo;
+            mConfig = config;
+        }
+
+        @Override
+        public void run() {
+            deleteInvocationFiles(mTestInfo, mConfig);
         }
     }
 }

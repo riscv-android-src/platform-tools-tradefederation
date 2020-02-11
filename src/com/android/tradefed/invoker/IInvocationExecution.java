@@ -36,7 +36,7 @@ public interface IInvocationExecution {
     /**
      * Execute the build_provider step of the invocation.
      *
-     * @param context the {@link IInvocationContext} of the invocation.
+     * @param testInfo the {@link TestInformation} of the invocation.
      * @param config the {@link IConfiguration} of this test run.
      * @param rescheduler the {@link IRescheduler}, for rescheduling portions of the invocation for
      *     execution on another resource(s)
@@ -46,7 +46,7 @@ public interface IInvocationExecution {
      * @throws DeviceNotAvailableException
      */
     public default boolean fetchBuild(
-            IInvocationContext context,
+            TestInformation testInfo,
             IConfiguration config,
             IRescheduler rescheduler,
             ITestInvocationListener listener)
@@ -66,7 +66,7 @@ public interface IInvocationExecution {
      * Execute the target_preparer and multi_target_preparer setUp step. Does all the devices setup
      * required for the test to run.
      *
-     * @param context the {@link IInvocationContext} of the invocation.
+     * @param testInfo the {@link TestInformation} of the invocation.
      * @param config the {@link IConfiguration} of this test run.
      * @param logger the {@link ITestLogger} to report setup failures logs.
      * @throws TargetSetupError
@@ -74,7 +74,7 @@ public interface IInvocationExecution {
      * @throws DeviceNotAvailableException
      */
     public default void doSetup(
-            IInvocationContext context, IConfiguration config, final ITestLogger logger)
+            TestInformation testInfo, IConfiguration config, final ITestLogger logger)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {}
 
     /**
@@ -106,14 +106,14 @@ public interface IInvocationExecution {
      * Execute the target_preparer and multi_target_preparer teardown step. Does the devices tear
      * down associated with the setup.
      *
-     * @param context the {@link IInvocationContext} of the invocation.
+     * @param testInfo the {@link TestInformation} of the invocation.
      * @param config the {@link IConfiguration} of this test run.
      * @param logger the {@link ITestLogger} to report logs.
      * @param exception the original exception thrown by the test running.
      * @throws Throwable
      */
     public default void doTeardown(
-            IInvocationContext context,
+            TestInformation testInfo,
             IConfiguration config,
             ITestLogger logger,
             Throwable exception)
@@ -139,14 +139,14 @@ public interface IInvocationExecution {
      * {@link IShardHelper#shardConfig}.
      *
      * @param config the current {@link IConfiguration}.
-     * @param context the {@link IInvocationContext} holding the info of the tests.
+     * @param testInfo the {@link TestInformation} holding the info of the tests.
      * @param rescheduler the {@link IRescheduler}.
      * @param logger {@link ITestLogger} used to log file during sharding.
      * @return true if test was sharded. Otherwise return <code>false</code>
      */
     public default boolean shardConfig(
             IConfiguration config,
-            IInvocationContext context,
+            TestInformation testInfo,
             IRescheduler rescheduler,
             ITestLogger logger) {
         return false;
@@ -155,13 +155,13 @@ public interface IInvocationExecution {
     /**
      * Runs the test.
      *
-     * @param context the {@link IInvocationContext} to run tests on
+     * @param info the {@link TestInformation} to run tests with.
      * @param config the {@link IConfiguration} to run
      * @param listener the {@link ITestInvocationListener} of test results
      * @throws Throwable
      */
     public default void runTests(
-            IInvocationContext context, IConfiguration config, ITestInvocationListener listener)
+            TestInformation info, IConfiguration config, ITestInvocationListener listener)
             throws Throwable {}
 
     /**

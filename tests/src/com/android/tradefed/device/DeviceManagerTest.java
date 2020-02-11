@@ -30,6 +30,7 @@ import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.IGlobalConfiguration;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.IManagedTestDevice.DeviceEventResponse;
+import com.android.tradefed.host.HostOptions;
 import com.android.tradefed.host.IHostOptions;
 import com.android.tradefed.log.ILogRegistry.EventType;
 import com.android.tradefed.util.ArrayUtil;
@@ -196,6 +197,7 @@ public class DeviceManagerTest {
             }
         };
         mMockGlobalConfig = EasyMock.createNiceMock(IGlobalConfiguration.class);
+        EasyMock.expect(mMockGlobalConfig.getHostOptions()).andStubReturn(new HostOptions());
 
         EasyMock.expect(mMockIDevice.getSerialNumber()).andStubReturn(DEVICE_SERIAL);
         EasyMock.expect(mMockStateMonitor.getSerialNumber()).andStubReturn(DEVICE_SERIAL);
@@ -316,7 +318,9 @@ public class DeviceManagerTest {
     public void testAllocateDevice_match() {
         mDeviceSelections.addSerial(DEVICE_SERIAL);
         setCheckAvailableDeviceExpectations();
-        EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.ALLOCATE_REQUEST))
+        EasyMock.expect(
+                        mMockTestDevice.handleAllocationEvent(
+                                DeviceEvent.EXPLICIT_ALLOCATE_REQUEST))
                 .andReturn(new DeviceEventResponse(DeviceAllocationState.Allocated, true));
         replayMocks();
         DeviceManager manager = createDeviceManager(null, mMockIDevice);
@@ -335,7 +339,9 @@ public class DeviceManagerTest {
         EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.FORCE_AVAILABLE))
                 .andReturn(new DeviceEventResponse(DeviceAllocationState.Available, true));
         // Device get allocated
-        EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.ALLOCATE_REQUEST))
+        EasyMock.expect(
+                        mMockTestDevice.handleAllocationEvent(
+                                DeviceEvent.EXPLICIT_ALLOCATE_REQUEST))
                 .andReturn(new DeviceEventResponse(DeviceAllocationState.Allocated, true));
 
         mMockTestDevice.stopLogcat();
@@ -1177,6 +1183,7 @@ public class DeviceManagerTest {
         DeviceDescriptor descriptor =
                 new DeviceDescriptor(
                         "serial",
+                        null,
                         false,
                         DeviceState.ONLINE,
                         DeviceAllocationState.Available,

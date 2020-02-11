@@ -15,17 +15,20 @@
  */
 package com.android.tradefed.testtype;
 
-import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionSetter;
-import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.testtype.MetricTestCase.LogHolder;
+import com.android.tradefed.testtype.junit4.AfterClassWithInfo;
+import com.android.tradefed.testtype.junit4.BeforeClassWithInfo;
 import com.android.tradefed.testtype.junit4.CarryDnaeError;
+import com.android.tradefed.testtype.junit4.RunAftersWithInfo;
+import com.android.tradefed.testtype.junit4.RunBeforesWithInfo;
 import com.android.tradefed.testtype.junit4.RunNotifierWrapper;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
@@ -50,21 +53,13 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * JUnit4 test runner that also accommodate {@link IDeviceTest}. Should be specify above JUnit4 Test
- * with the RunWith annotation.
+ * JUnit4 test runner that also accommodates {@link IDeviceTest}. Should be specified above JUnit4
+ * Test with a RunWith annotation.
  */
 public class DeviceJUnit4ClassRunner extends BlockJUnit4ClassRunner
-        implements IDeviceTest,
-                IBuildReceiver,
-                IAbiReceiver,
-                ISetOptionReceiver,
-                IMultiDeviceTest,
-                IInvocationContextReceiver {
-    private ITestDevice mDevice;
-    private IBuildInfo mBuildInfo;
+        implements IAbiReceiver, ISetOptionReceiver, ITestInformationReceiver {
     private IAbi mAbi;
-    private IInvocationContext mContext;
-    private Map<ITestDevice, IBuildInfo> mDeviceInfos;
+    private TestInformation mTestInformation;
 
     /** Keep track of the list of downloaded files. */
     private List<File> mDownloadedFiles = new ArrayList<>();
@@ -83,26 +78,21 @@ public class DeviceJUnit4ClassRunner extends BlockJUnit4ClassRunner
     protected Object createTest() throws Exception {
         Object testObj = super.createTest();
         if (testObj instanceof IDeviceTest) {
-            if (mDevice == null) {
-                throw new IllegalArgumentException("Missing device");
-            }
-            ((IDeviceTest) testObj).setDevice(mDevice);
+            ((IDeviceTest) testObj).setDevice(mTestInformation.getDevice());
         }
         if (testObj instanceof IBuildReceiver) {
-            if (mBuildInfo == null) {
-                throw new IllegalArgumentException("Missing build information");
-            }
-            ((IBuildReceiver) testObj).setBuild(mBuildInfo);
+            ((IBuildReceiver) testObj).setBuild(mTestInformation.getBuildInfo());
         }
         // We are more flexible about abi information since not always available.
         if (testObj instanceof IAbiReceiver) {
             ((IAbiReceiver) testObj).setAbi(mAbi);
         }
-        if (testObj instanceof IMultiDeviceTest) {
-            ((IMultiDeviceTest) testObj).setDeviceInfos(mDeviceInfos);
-        }
         if (testObj instanceof IInvocationContextReceiver) {
-            ((IInvocationContextReceiver) testObj).setInvocationContext(mContext);
+            ((IInvocationContextReceiver) testObj)
+                    .setInvocationContext(mTestInformation.getContext());
+        }
+        if (testObj instanceof ITestInformationReceiver) {
+            ((ITestInformationReceiver) testObj).setTestInformation(mTestInformation);
         }
         // Set options of test object
         HostTest.setOptionToLoadedObject(testObj, mKeyValueOptions);
@@ -126,6 +116,28 @@ public class DeviceJUnit4ClassRunner extends BlockJUnit4ClassRunner
     }
 
     @Override
+    protected Statement withBeforeClasses(Statement statement) {
+        Statement s = super.withBeforeClasses(statement);
+
+        List<FrameworkMethod> beforesWithDevice =
+                getTestClass().getAnnotatedMethods(BeforeClassWithInfo.class);
+        return beforesWithDevice.isEmpty()
+                ? s
+                : new RunBeforesWithInfo(statement, beforesWithDevice, mTestInformation);
+    }
+
+    @Override
+    protected Statement withAfterClasses(Statement statement) {
+        Statement s = super.withAfterClasses(statement);
+
+        List<FrameworkMethod> aftersWithDevice =
+                getTestClass().getAnnotatedMethods(AfterClassWithInfo.class);
+        return aftersWithDevice.isEmpty()
+                ? s
+                : new RunAftersWithInfo(statement, aftersWithDevice, mTestInformation);
+    }
+
+    @Override
     public void run(RunNotifier notifier) {
         RunNotifierWrapper wrapper = new RunNotifierWrapper(notifier);
         super.run(wrapper);
@@ -133,16 +145,6 @@ public class DeviceJUnit4ClassRunner extends BlockJUnit4ClassRunner
         if (wrapper.getDeviceNotAvailableException() != null) {
             throw new CarryDnaeError(wrapper.getDeviceNotAvailableException());
         }
-    }
-
-    @Override
-    public void setDevice(ITestDevice device) {
-        mDevice = device;
-    }
-
-    @Override
-    public ITestDevice getDevice() {
-        return mDevice;
     }
 
     @Override
@@ -156,18 +158,13 @@ public class DeviceJUnit4ClassRunner extends BlockJUnit4ClassRunner
     }
 
     @Override
-    public void setBuild(IBuildInfo buildInfo) {
-        mBuildInfo = buildInfo;
+    public void setTestInformation(TestInformation testInformation) {
+        mTestInformation = testInformation;
     }
 
     @Override
-    public void setInvocationContext(IInvocationContext invocationContext) {
-        mContext = invocationContext;
-    }
-
-    @Override
-    public void setDeviceInfos(Map<ITestDevice, IBuildInfo> deviceInfos) {
-        mDeviceInfos = deviceInfos;
+    public TestInformation getTestInformation() {
+        return mTestInformation;
     }
 
     @VisibleForTesting
@@ -179,7 +176,7 @@ public class DeviceJUnit4ClassRunner extends BlockJUnit4ClassRunner
         try {
             OptionSetter setter = createOptionSetter(obj);
             return setter.validateRemoteFilePath();
-        } catch (ConfigurationException e) {
+        } catch (BuildRetrievalError | ConfigurationException e) {
             throw new RuntimeException(e);
         }
     }

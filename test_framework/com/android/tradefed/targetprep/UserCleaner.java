@@ -18,25 +18,25 @@ package com.android.tradefed.targetprep;
 
 import static com.google.common.base.MoreObjects.firstNonNull;
 
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 
-/** A {@link ITargetCleaner} that removes secondary users on teardown. */
+/** A {@link ITargetPreparer} that removes secondary users on teardown. */
 @OptionClass(alias = "user-cleaner")
-public class UserCleaner extends BaseTargetPreparer implements ITargetCleaner {
+public class UserCleaner extends BaseTargetPreparer {
 
     @Override
-    public void setUp(ITestDevice device, IBuildInfo buildInfo)
-            throws TargetSetupError, DeviceNotAvailableException {
+    public void setUp(TestInformation testInfo)
+            throws TargetSetupError, BuildError, DeviceNotAvailableException {
         // no-op
     }
 
     @Override
-    public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
-            throws DeviceNotAvailableException {
+    public void tearDown(TestInformation testInfo, Throwable e) throws DeviceNotAvailableException {
+        ITestDevice device = testInfo.getDevice();
         // treat current user as primary if no primary user found
         int ownerId = firstNonNull(device.getPrimaryUserId(), device.getCurrentUser());
         device.switchUser(ownerId);

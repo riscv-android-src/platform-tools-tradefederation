@@ -20,11 +20,13 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.testtype.Abi;
 import com.android.tradefed.util.FileUtil;
 
@@ -49,6 +51,7 @@ public class TestAppInstallSetupTest {
     private File fakeApk;
     private File mFakeBuildApk;
     private TestAppInstallSetup mPrep;
+    private TestInformation mTestInfo;
     private IDeviceBuildInfo mMockBuildInfo;
     private ITestDevice mMockTestDevice;
     private File mTestDir;
@@ -80,8 +83,7 @@ public class TestAppInstallSetupTest {
 
                     @Override
                     protected File getLocalPathForFilename(
-                            IBuildInfo buildInfo, String apkFileName, ITestDevice device)
-                            throws TargetSetupError {
+                            TestInformation testInfo, String apkFileName) throws TargetSetupError {
                         return fakeApk;
                     }
                 };
@@ -98,6 +100,11 @@ public class TestAppInstallSetupTest {
         mMockTestDevice = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(mMockTestDevice.getSerialNumber()).andStubReturn(SERIAL);
         EasyMock.expect(mMockTestDevice.getDeviceDescriptor()).andStubReturn(null);
+        EasyMock.expect(mMockTestDevice.isAppEnumerationSupported()).andStubReturn(false);
+        IInvocationContext context = new InvocationContext();
+        context.addAllocatedDevice("device", mMockTestDevice);
+        context.addDeviceBuildInfo("device", mMockBuildInfo);
+        mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
     }
 
     @After
@@ -115,7 +122,7 @@ public class TestAppInstallSetupTest {
                                 EasyMock.eq(mTestSplitApkFiles), EasyMock.eq(true)))
                 .andReturn(null);
         EasyMock.replay(mMockBuildInfo, mMockTestDevice);
-        mPrep.setUp(mMockTestDevice, mMockBuildInfo);
+        mPrep.setUp(mTestInfo);
         EasyMock.verify(mMockBuildInfo, mMockTestDevice);
     }
 
@@ -131,8 +138,7 @@ public class TestAppInstallSetupTest {
 
                     @Override
                     protected File getLocalPathForFilename(
-                            IBuildInfo buildInfo, String apkFileName, ITestDevice device)
-                            throws TargetSetupError {
+                            TestInformation testInfo, String apkFileName) throws TargetSetupError {
                         return fakeApk;
                     }
                 };
@@ -142,7 +148,7 @@ public class TestAppInstallSetupTest {
         EasyMock.expect(mMockTestDevice.installPackage(EasyMock.eq(fakeApk), EasyMock.eq(true)))
                 .andReturn(null);
         EasyMock.replay(mMockBuildInfo, mMockTestDevice);
-        mPrep.setUp(mMockTestDevice, mMockBuildInfo);
+        mPrep.setUp(mTestInfo);
         EasyMock.verify(mMockBuildInfo, mMockTestDevice);
     }
 
@@ -158,8 +164,7 @@ public class TestAppInstallSetupTest {
 
                     @Override
                     protected File getLocalPathForFilename(
-                            IBuildInfo buildInfo, String apkFileName, ITestDevice device)
-                            throws TargetSetupError {
+                            TestInformation testInfo, String apkFileName) throws TargetSetupError {
                         return fakeApk;
                     }
                 };
@@ -171,7 +176,7 @@ public class TestAppInstallSetupTest {
                                 EasyMock.eq(mTestSplitApkFiles), EasyMock.eq(true)))
                 .andReturn(null);
         EasyMock.replay(mMockBuildInfo, mMockTestDevice);
-        mPrep.setUp(mMockTestDevice, mMockBuildInfo);
+        mPrep.setUp(mTestInfo);
         EasyMock.verify(mMockBuildInfo, mMockTestDevice);
     }
 
@@ -190,7 +195,7 @@ public class TestAppInstallSetupTest {
                                 EasyMock.eq("--instant")))
                 .andReturn(null);
         EasyMock.replay(mMockBuildInfo, mMockTestDevice);
-        mPrep.setUp(mMockTestDevice, mMockBuildInfo);
+        mPrep.setUp(mTestInfo);
         EasyMock.verify(mMockBuildInfo, mMockTestDevice);
     }
 
@@ -217,7 +222,7 @@ public class TestAppInstallSetupTest {
                                 EasyMock.eq("--abi arm32")))
                 .andReturn(null);
         EasyMock.replay(mMockBuildInfo, mMockTestDevice);
-        mPrep.setUp(mMockTestDevice, mMockBuildInfo);
+        mPrep.setUp(mTestInfo);
         EasyMock.verify(mMockBuildInfo, mMockTestDevice);
     }
 
@@ -237,7 +242,26 @@ public class TestAppInstallSetupTest {
                                 EasyMock.eq(mTestSplitApkFiles), EasyMock.eq(true)))
                 .andReturn(null);
         EasyMock.replay(mMockBuildInfo, mMockTestDevice);
-        mPrep.setUp(mMockTestDevice, mMockBuildInfo);
+        mPrep.setUp(mTestInfo);
+        EasyMock.verify(mMockBuildInfo, mMockTestDevice);
+    }
+
+    @Test
+    public void testSetup_forceQueryable() throws Exception {
+        EasyMock.expect(mMockTestDevice.isAppEnumerationSupported()).andReturn(true);
+
+        OptionSetter setter = new OptionSetter(mPrep);
+
+        EasyMock.expect(mMockTestDevice.installPackage(
+                EasyMock.eq(fakeApk), EasyMock.eq(true), EasyMock.eq("--force-queryable")))
+                .andReturn(null);
+        EasyMock.expect(
+                mMockTestDevice.installPackages(
+                        EasyMock.eq(mTestSplitApkFiles), EasyMock.eq(true),
+                        EasyMock.eq("--force-queryable")))
+                .andReturn(null);
+        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
+        mPrep.setUp(mTestInfo);
         EasyMock.verify(mMockBuildInfo, mMockTestDevice);
     }
 
@@ -248,7 +272,7 @@ public class TestAppInstallSetupTest {
                 .andReturn(failure);
         EasyMock.replay(mMockBuildInfo, mMockTestDevice);
         try {
-            mPrep.setUp(mMockTestDevice, mMockBuildInfo);
+            mPrep.setUp(mTestInfo);
             fail("Expected TargetSetupError");
         } catch (TargetSetupError e) {
             String expected =
@@ -278,64 +302,68 @@ public class TestAppInstallSetupTest {
                                 EasyMock.eq(mTestSplitApkFiles), EasyMock.eq(true)))
                 .andReturn(null);
         EasyMock.replay(mMockBuildInfo, mMockTestDevice);
-        mPrep.setUp(mMockTestDevice, mMockBuildInfo);
+        mPrep.setUp(mTestInfo);
         EasyMock.verify(mMockBuildInfo, mMockTestDevice);
     }
 
     /**
-     * Test {@link TestAppInstallSetup#setUp(ITestDevice, IBuildInfo)} with a missing apk.
-     * TargetSetupError expected.
+     * Test {@link TestAppInstallSetup#setUp(TestInformation)} with a missing apk. TargetSetupError
+     * expected.
      */
     @Test
     public void testMissingApk() throws Exception {
         fakeApk = null; // Apk doesn't exist
-
+        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
         try {
-            mPrep.setUp(mMockTestDevice, mMockBuildInfo);
+            mPrep.setUp(mTestInfo);
             fail("TestAppInstallSetup#setUp() did not raise TargetSetupError with missing apk.");
         } catch (TargetSetupError e) {
             assertTrue(e.getMessage().contains("not found"));
         }
+        EasyMock.verify(mMockBuildInfo, mMockTestDevice);
     }
 
     /**
-     * Test {@link TestAppInstallSetup#setUp(ITestDevice, IBuildInfo)} with an unreadable apk.
+     * Test {@link TestAppInstallSetup#setUp(TestInformation)} with an unreadable apk.
      * TargetSetupError expected.
      */
     @Test
     public void testUnreadableApk() throws Exception {
         fakeApk = new File("/not/a/real/path"); // Apk cannot be read
-
+        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
         try {
-            mPrep.setUp(mMockTestDevice, mMockBuildInfo);
+            mPrep.setUp(mTestInfo);
             fail("TestAppInstallSetup#setUp() did not raise TargetSetupError with unreadable apk.");
         } catch (TargetSetupError e) {
             assertTrue(e.getMessage().contains("not read"));
         }
+        EasyMock.verify(mMockBuildInfo, mMockTestDevice);
     }
 
     /**
-     * Test {@link TestAppInstallSetup#setUp(ITestDevice, IBuildInfo)} with a missing apk and
+     * Test {@link TestAppInstallSetup#setUp(TestInformation)} with a missing apk and
      * ThrowIfNoFile=False. Silent skip expected.
      */
     @Test
     public void testMissingApk_silent() throws Exception {
         fakeApk = null; // Apk doesn't exist
         mSetter.setOptionValue("throw-if-not-found", "false");
-
-        mPrep.setUp(mMockTestDevice, mMockBuildInfo);
+        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
+        mPrep.setUp(mTestInfo);
+        EasyMock.verify(mMockBuildInfo, mMockTestDevice);
     }
 
     /**
-     * Test {@link TestAppInstallSetup#setUp(ITestDevice, IBuildInfo)} with an unreadable apk and
+     * Test {@link TestAppInstallSetup#setUp(TestInformation)} with an unreadable apk and
      * ThrowIfNoFile=False. Silent skip expected.
      */
     @Test
     public void testUnreadableApk_silent() throws Exception {
         fakeApk = new File("/not/a/real/path"); // Apk cannot be read
         mSetter.setOptionValue("throw-if-not-found", "false");
-
-        mPrep.setUp(mMockTestDevice, mMockBuildInfo);
+        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
+        mPrep.setUp(mTestInfo);
+        EasyMock.verify(mMockBuildInfo, mMockTestDevice);
     }
 
     /**
@@ -367,7 +395,7 @@ public class TestAppInstallSetupTest {
                 .andReturn(null);
 
         EasyMock.replay(mMockTestDevice, mMockBuildInfo);
-        mPrep.setUp(mMockTestDevice, mMockBuildInfo);
+        mPrep.setUp(mTestInfo);
         EasyMock.verify(mMockTestDevice, mMockBuildInfo);
     }
 
@@ -400,7 +428,7 @@ public class TestAppInstallSetupTest {
                 .andReturn(null);
 
         EasyMock.replay(mMockTestDevice, mMockBuildInfo);
-        mPrep.setUp(mMockTestDevice, mMockBuildInfo);
+        mPrep.setUp(mTestInfo);
         EasyMock.verify(mMockTestDevice, mMockBuildInfo);
     }
 }

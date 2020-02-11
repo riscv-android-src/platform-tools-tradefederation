@@ -16,25 +16,20 @@
 package com.android.tradefed.testtype.python;
 
 import com.android.annotations.VisibleForTesting;
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
-import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
-import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.ExecutionFiles.FilesKey;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.ResultForwarder;
-import com.android.tradefed.targetprep.adb.AdbStopServerPreparer;
-import com.android.tradefed.testtype.IBuildReceiver;
-import com.android.tradefed.testtype.IDeviceTest;
-import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.PythonUnitTestResultParser;
 import com.android.tradefed.util.CommandResult;
@@ -54,8 +49,7 @@ import java.util.Set;
 
 /** Host test meant to run a python binary file from the Android Build system (Soong) */
 @OptionClass(alias = "python-host")
-public class PythonBinaryHostTest
-        implements IRemoteTest, IDeviceTest, IBuildReceiver, IInvocationContextReceiver {
+public class PythonBinaryHostTest implements IRemoteTest {
 
     protected static final String ANDROID_SERIAL_VAR = "ANDROID_SERIAL";
     protected static final String PATH_VAR = "PATH";
@@ -95,34 +89,13 @@ public class PythonBinaryHostTest
     )
     private List<String> mTestOptions = new ArrayList<>();
 
-    private ITestDevice mDevice;
-    private IBuildInfo mBuildInfo;
-    private IInvocationContext mContext;
-
+    private TestInformation mTestInfo;
     private IRunUtil mRunUtil;
 
     @Override
-    public void setDevice(ITestDevice device) {
-        mDevice = device;
-    }
-
-    @Override
-    public ITestDevice getDevice() {
-        return mDevice;
-    }
-
-    @Override
-    public void setBuild(IBuildInfo buildInfo) {
-        mBuildInfo = buildInfo;
-    }
-
-    @Override
-    public void setInvocationContext(IInvocationContext invocationContext) {
-        mContext = invocationContext;
-    }
-
-    @Override
-    public final void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+    public final void run(TestInformation testInfo, ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
+        mTestInfo = testInfo;
         List<File> pythonFilesList = findParFiles();
         for (File pyFile : pythonFilesList) {
             if (!pyFile.exists()) {
@@ -132,14 +105,14 @@ public class PythonBinaryHostTest
                 continue;
             }
             pyFile.setExecutable(true);
-            runSinglePythonFile(listener, pyFile);
+            runSinglePythonFile(listener, testInfo, pyFile);
         }
     }
 
     private List<File> findParFiles() {
         File testsDir = null;
-        if (mBuildInfo instanceof IDeviceBuildInfo) {
-            testsDir = ((IDeviceBuildInfo) mBuildInfo).getTestsDir();
+        if (mTestInfo.getBuildInfo() instanceof IDeviceBuildInfo) {
+            testsDir = ((IDeviceBuildInfo) mTestInfo.getBuildInfo()).getTestsDir();
         }
         List<File> files = new ArrayList<>();
         for (String parFileName : mBinaryNames) {
@@ -160,21 +133,23 @@ public class PythonBinaryHostTest
         return files;
     }
 
-    private void runSinglePythonFile(ITestInvocationListener listener, File pyFile) {
+    private void runSinglePythonFile(
+            ITestInvocationListener listener, TestInformation testInfo, File pyFile) {
         List<String> commandLine = new ArrayList<>();
         commandLine.add(pyFile.getAbsolutePath());
         // If we have a physical device, pass it to the python test by serial
-        if (!(getDevice().getIDevice() instanceof StubDevice) && mInjectSerial) {
+        if (!(mTestInfo.getDevice().getIDevice() instanceof StubDevice) && mInjectSerial) {
             // TODO: support multi-device python tests?
             commandLine.add("-s");
-            commandLine.add(getDevice().getSerialNumber());
+            commandLine.add(mTestInfo.getDevice().getSerialNumber());
         }
 
         if (mInjectAndroidSerialVar) {
-            getRunUtil().setEnvVariable(ANDROID_SERIAL_VAR, getDevice().getSerialNumber());
+            getRunUtil()
+                    .setEnvVariable(ANDROID_SERIAL_VAR, mTestInfo.getDevice().getSerialNumber());
         }
 
-        File updatedAdb = mBuildInfo.getFile(AdbStopServerPreparer.ADB_BINARY_KEY);
+        File updatedAdb = testInfo.executionFiles().get(FilesKey.ADB_BINARY);
         if (updatedAdb == null) {
             String adbPath = getAdbPath();
             // Don't check if it's the adb on the $PATH
@@ -242,7 +217,7 @@ public class PythonBinaryHostTest
                 pythonParser.processNewLines(result.getStderr().split("\n"));
             } else {
                 try (SubprocessTestResultsParser parser =
-                        new SubprocessTestResultsParser(forwarder, mContext)) {
+                        new SubprocessTestResultsParser(forwarder, mTestInfo.getContext())) {
                     parser.parseFile(resultFile);
                 }
             }
