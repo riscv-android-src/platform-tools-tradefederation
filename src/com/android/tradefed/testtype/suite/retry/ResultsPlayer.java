@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.testtype.suite.retry;
 
+import com.android.annotations.VisibleForTesting;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
@@ -50,10 +51,16 @@ public final class ResultsPlayer implements IRemoteTest, IConfigurationReceiver 
 
     private Map<TestRunResult, ReplayModuleHolder> mModuleResult;
     private IConfiguration mConfiguration;
+    private boolean mCompleted;
 
     /** Ctor. */
     public ResultsPlayer() {
         mModuleResult = new LinkedHashMap<>();
+    }
+
+    @VisibleForTesting
+    public ResultsPlayer(boolean completed) {
+        mCompleted = completed;
     }
 
     @Override
@@ -115,6 +122,7 @@ public final class ResultsPlayer implements IRemoteTest, IConfigurationReceiver 
                 "Done replaying results in %s",
                 TimeUtil.formatElapsedTime(System.currentTimeMillis() - startReplay));
         mModuleResult.clear();
+        mCompleted = true;
     }
 
     /**
@@ -144,6 +152,11 @@ public final class ResultsPlayer implements IRemoteTest, IConfigurationReceiver 
     @Override
     public void setConfiguration(IConfiguration configuration) {
         mConfiguration = configuration;
+    }
+
+    /** Returns whether or not the ResultsReplayer is done replaying the results. */
+    public boolean completed() {
+        return mCompleted;
     }
 
     private void forwardTestResults(

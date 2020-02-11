@@ -189,4 +189,7 @@ public interface ICommandOptions {
 
     /** Whether or not to start extra instances in the remote VM in postsubmit. */
     public int getExtraRemotePostsubmitInstance();
+
+    /** Whether or not to release the device early when done with it. */
+    public boolean earlyDeviceRelease();
 }
