@@ -156,7 +156,7 @@ public class GceManagerTest {
         assertNull(result);
     }
 
-    /** Test {@link GceManager#buildGceCmd(File, IBuildInfo)}. */
+    /** Test {@link GceManager#buildGceCmd(File, IBuildInfo, String)}. */
     @Test
     public void testBuildGceCommand() throws IOException {
         IBuildInfo mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
@@ -192,7 +192,7 @@ public class GceManagerTest {
         EasyMock.verify(mMockBuildInfo);
     }
 
-    /** Test {@link GceManager#buildGceCmd(File, IBuildInfo)} with json key file set. */
+    /** Test {@link GceManager#buildGceCmd(File, IBuildInfo, String)} with json key file set. */
     @Test
     public void testBuildGceCommand_withServiceAccountJsonKeyFile() throws Exception {
         IBuildInfo mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
@@ -232,7 +232,7 @@ public class GceManagerTest {
         EasyMock.verify(mMockBuildInfo);
     }
 
-    /** Test {@link GceManager#buildGceCmd(File, IBuildInfo)}. */
+    /** Test {@link GceManager#buildGceCmd(File, IBuildInfo, String)}. */
     @Test
     public void testBuildGceCommandWithEmulatorBuild() throws Exception {
         IBuildInfo mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
@@ -281,7 +281,7 @@ public class GceManagerTest {
         EasyMock.verify(mMockBuildInfo);
     }
 
-    /** Test {@link GceManager#buildGceCmd(File, IBuildInfo)}. */
+    /** Test {@link GceManager#buildGceCmd(File, IBuildInfo, String)}. */
     @Test
     public void testBuildGceCommandWithGceDriverParam() throws Exception {
         IBuildInfo mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
@@ -360,7 +360,7 @@ public class GceManagerTest {
         EasyMock.verify(mMockRunUtil);
     }
 
-    /** Test {@link GceManager#buildGceCmd(File, IBuildInfo)}. */
+    /** Test {@link GceManager#buildGceCmd(File, IBuildInfo, String)}. */
     @Test
     public void testBuildGceCommandWithKernelBuild() throws Exception {
         IBuildInfo mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
@@ -914,5 +914,23 @@ public class GceManagerTest {
         mGceManager =
                 new GceManager(mMockDeviceDesc, mOptions, mMockBuildInfo, testResourceBuildInfos);
         Assert.assertEquals(configFile, mGceManager.getAvdConfigFile());
+    }
+
+    @Test
+    public void testUpdateTimeout() {
+        mOptions.getGceDriverParams().add("--boot-timeout");
+        mOptions.getGceDriverParams().add("900");
+        assertEquals(1800000L, mOptions.getGceCmdTimeout());
+        mGceManager = new GceManager(mMockDeviceDesc, mOptions, mMockBuildInfo, null);
+        assertEquals(1080000L, mOptions.getGceCmdTimeout());
+    }
+
+    @Test
+    public void testUpdateTimeout_noBootTimeout() {
+        mOptions.getGceDriverParams().add("--someargs");
+        mOptions.getGceDriverParams().add("900");
+        assertEquals(1800000L, mOptions.getGceCmdTimeout());
+        mGceManager = new GceManager(mMockDeviceDesc, mOptions, mMockBuildInfo, null);
+        assertEquals(1800000L, mOptions.getGceCmdTimeout());
     }
 }
