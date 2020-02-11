@@ -20,6 +20,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
@@ -305,6 +306,15 @@ public class SuiteModuleLoaderTest {
         assertEquals(1, stubTest.getExcludeFilters().size());
         assertEquals(
                 "NativeDnsAsyncTest#Async_Cancel", stubTest.getExcludeFilters().iterator().next());
+        // Ensure that appropriate metadata are set on the module config descriptor
+        ConfigurationDescriptor descriptor = instantModule.getConfigurationDescription();
+        assertEquals(
+                "instant_app",
+                descriptor
+                        .getAllMetaData()
+                        .getUniqueMap()
+                        .get(ConfigurationDescriptor.PARAMETER_KEY));
+        assertEquals("armeabi-v7a", descriptor.getAbi().getName());
     }
 
     /**

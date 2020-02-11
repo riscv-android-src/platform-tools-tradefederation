@@ -96,6 +96,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
      */
     public static final String MODULE_NAME = "module-name";
     public static final String MODULE_ABI = "module-abi";
+    public static final String MODULE_PARAMETERIZATION = "module-param";
     /**
      * Module ID the name that will be used to identify uniquely the module during testRunStart. It
      * will usually be a combination of MODULE_ABI + MODULE_NAME.
@@ -179,6 +180,15 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         if (configDescriptor.getModuleName() != null) {
             mModuleInvocationContext.addInvocationAttribute(
                     MODULE_NAME, configDescriptor.getModuleName());
+        }
+        String parameterization =
+                configDescriptor
+                        .getAllMetaData()
+                        .getUniqueMap()
+                        .get(ConfigurationDescriptor.PARAMETER_KEY);
+        if (parameterization != null) {
+            mModuleInvocationContext.addInvocationAttribute(
+                    MODULE_PARAMETERIZATION, parameterization);
         }
         // If there is no specific abi, module-id should be module-name
         mModuleInvocationContext.addInvocationAttribute(MODULE_ID, mId);
