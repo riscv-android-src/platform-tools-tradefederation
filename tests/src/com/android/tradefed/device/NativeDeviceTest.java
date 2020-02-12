@@ -3152,4 +3152,50 @@ public class NativeDeviceTest {
         EasyMock.verify(mMockIDevice);
     }
 
+    /** Test {@link NativeDevice#getLaunchApiLevel()} with ro.product.first_api_level being set. */
+    @Test
+    public void testGetLaunchApiLevel_w_first_api() throws DeviceNotAvailableException {
+        EasyMock.expect(mMockIDevice.getProperty(DeviceProperties.FIRST_API_LEVEL)).andReturn("23");
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        return 29;
+                    }
+                };
+        EasyMock.replay(mMockIDevice);
+        assertEquals(23, mTestDevice.getLaunchApiLevel());
+        EasyMock.verify(mMockIDevice);
+    }
+
+    /**
+     * Test {@link NativeDevice#getLaunchApiLevel()} without ro.product.first_api_level being set.
+     */
+    @Test
+    public void testGetLaunchApiLevel_wo_first_api() throws DeviceNotAvailableException {
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        return 29;
+                    }
+                };
+        assertEquals(29, mTestDevice.getLaunchApiLevel());
+    }
+
+    /** Test {@link NativeDevice#getLaunchApiLevel()} with NumberFormatException be asserted. */
+    @Test
+    public void testGetLaunchApiLevel_w_exception() throws DeviceNotAvailableException {
+        EasyMock.expect(mMockIDevice.getProperty(DeviceProperties.FIRST_API_LEVEL)).andReturn("R");
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        return 29;
+                    }
+                };
+        EasyMock.replay(mMockIDevice);
+        assertEquals(29, mTestDevice.getLaunchApiLevel());
+        EasyMock.verify(mMockIDevice);
+    }
 }

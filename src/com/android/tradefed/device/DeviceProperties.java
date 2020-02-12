@@ -54,4 +54,6 @@ public class DeviceProperties {
     public static final String BUILD_CODENAME = "ro.build.version.codename";
     /** property name for the build tags of the device */
     public static final String BUILD_TAGS = "ro.build.tags";
+    /** property name for the SDK version that initially shipped on the device. */
+    public static final String FIRST_API_LEVEL = "ro.product.first_api_level";
 }
