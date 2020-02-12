@@ -224,13 +224,14 @@ public class FileDownloadCache {
             FileLock fLock = mJvmLocks.get(remoteFilePath);
             if (fLock == null) {
                 File f = new File(mCacheRoot, convertPath(remoteFilePath));
-                try {
-                    if (f.exists()) {
+                // We can't lock a directory
+                if (f.exists() && !f.isDirectory()) {
+                    try {
                         fLock = FileChannel.open(f.toPath(), StandardOpenOption.WRITE).tryLock();
                         mJvmLocks.put(remoteFilePath, fLock);
+                    } catch (IOException e) {
+                        CLog.e(e);
                     }
-                } catch (IOException e) {
-                    CLog.e(e);
                 }
             }
             if (fLock == null) {
