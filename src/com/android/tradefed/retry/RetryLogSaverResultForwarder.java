@@ -15,7 +15,6 @@
  */
 package com.android.tradefed.retry;
 
-import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogSaverResultForwarder;
@@ -39,22 +38,12 @@ public class RetryLogSaverResultForwarder extends LogSaverResultForwarder {
 
     @Override
     public void testRunStarted(String runName, int testCount, int attemptNumber) {
-        if (attemptNumber != mAttemptNumber) {
-            CLog.w(
-                    "Test reported an attempt %s, while the suite is at attempt %s",
-                    attemptNumber, mAttemptNumber);
-        }
         // We enforce our attempt number
         super.testRunStarted(runName, testCount, mAttemptNumber);
     }
 
     @Override
     public void testRunStarted(String runName, int testCount, int attemptNumber, long startTime) {
-        if (attemptNumber != mAttemptNumber) {
-            CLog.w(
-                    "Test reported an attempt %s, while the suite is at attempt %s",
-                    attemptNumber, mAttemptNumber);
-        }
         // We enforce our attempt number
         super.testRunStarted(runName, testCount, mAttemptNumber, startTime);
     }
