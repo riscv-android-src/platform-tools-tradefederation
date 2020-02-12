@@ -34,6 +34,7 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.TfObjectTracker;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.invoker.shard.token.TokenProperty;
 import com.android.tradefed.log.ILogRegistry.EventType;
@@ -372,6 +373,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 if (test == null) {
                     return;
                 }
+                TfObjectTracker.countWithParents(test.getClass());
                 if (test instanceof IBuildReceiver) {
                     ((IBuildReceiver) test).setBuild(mBuild);
                 }
@@ -705,6 +707,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             // If disabled skip completely.
             return null;
         }
+        TfObjectTracker.countWithParents(preparer.getClass());
         CLog.d("Running setup preparer: %s", preparer.getClass().getSimpleName());
         try {
             // set the logger in case they need it.
@@ -740,6 +743,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             // If disabled skip completely.
             return null;
         }
+        TfObjectTracker.countWithParents(preparer.getClass());
         CLog.d("Running setup multi preparer: %s", preparer.getClass().getSimpleName());
         try {
             // set the logger in case they need it.

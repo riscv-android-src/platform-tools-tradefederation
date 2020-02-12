@@ -113,7 +113,7 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
             mRealDeviceList =
                     mContext.getDevices()
                             .stream()
-                            .filter(d -> (!(d.getIDevice() instanceof StubDevice)))
+                            .filter(d -> !(d.getIDevice() instanceof StubDevice))
                             .collect(Collectors.toList());
         }
         return mRealDeviceList;
@@ -298,7 +298,6 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
 
     @Override
     public final void testFailed(TestDescription test, String trace) {
-        mSkipTestCase = shouldSkip(test);
         if (!mSkipTestCase) {
             try {
                 onTestFail(mTestData, test);
@@ -312,7 +311,6 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
 
     @Override
     public final void testFailed(TestDescription test, FailureDescription failure) {
-        mSkipTestCase = shouldSkip(test);
         if (!mSkipTestCase) {
             try {
                 onTestFail(mTestData, test);
@@ -348,7 +346,6 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
 
     @Override
     public final void testAssumptionFailure(TestDescription test, String trace) {
-        mSkipTestCase = shouldSkip(test);
         if (!mSkipTestCase) {
             try {
                 onTestAssumptionFailure(mTestData, test);

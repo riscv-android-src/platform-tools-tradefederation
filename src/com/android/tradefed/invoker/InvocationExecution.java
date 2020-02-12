@@ -39,6 +39,7 @@ import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.invoker.ExecutionFiles.FilesKey;
 import com.android.tradefed.invoker.TestInvocation.Stage;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.TfObjectTracker;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.invoker.shard.IShardHelper;
 import com.android.tradefed.log.ITestLogger;
@@ -117,6 +118,7 @@ public class InvocationExecution implements IInvocationExecution {
                 ITestDevice device = testInfo.getContext().getDevice(deviceName);
                 IDeviceConfiguration deviceConfig = config.getDeviceConfigByName(deviceName);
                 IBuildProvider provider = deviceConfig.getBuildProvider();
+                TfObjectTracker.countWithParents(provider.getClass());
                 // Inject the context to the provider if it can receive it
                 if (provider instanceof IInvocationContextReceiver) {
                     ((IInvocationContextReceiver) provider)
@@ -225,6 +227,7 @@ public class InvocationExecution implements IInvocationExecution {
                         CLog.d("%s has been disabled. skipping.", preparer);
                         continue;
                     }
+                    TfObjectTracker.countWithParents(preparer.getClass());
                     if (preparer instanceof ITestLoggerReceiver) {
                         ((ITestLoggerReceiver) preparer).setTestLogger(listener);
                     }
@@ -312,6 +315,7 @@ public class InvocationExecution implements IInvocationExecution {
                 CLog.d("%s has been disabled. skipping.", multiPreparer);
                 continue;
             }
+            TfObjectTracker.countWithParents(multiPreparer.getClass());
             if (multiPreparer instanceof ITestLoggerReceiver) {
                 ((ITestLoggerReceiver) multiPreparer).setTestLogger(logger);
             }
@@ -489,6 +493,7 @@ public class InvocationExecution implements IInvocationExecution {
         TestInvocation.printStageDelimiter(Stage.TEST, false);
         try {
             for (IRemoteTest test : config.getTests()) {
+                TfObjectTracker.countWithParents(test.getClass());
                 // For compatibility of those receivers, they are assumed to be single device alloc.
                 if (test instanceof IDeviceTest) {
                     ((IDeviceTest) test).setDevice(info.getDevice());
@@ -687,6 +692,7 @@ public class InvocationExecution implements IInvocationExecution {
                 } else {
                     listenerWithCollectors =
                             collector.init(info.getContext(), listenerWithCollectors);
+                    TfObjectTracker.countWithParents(collector.getClass());
                 }
             }
             test.run(info, listenerWithCollectors);
