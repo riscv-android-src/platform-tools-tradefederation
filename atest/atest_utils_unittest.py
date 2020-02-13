@@ -404,5 +404,6 @@ class AtestUtilsUnittests(unittest.TestCase):
         self.assertEqual({'/a/b/test_fp4', '/a/b/test_fp3.java'},
                          atest_utils.get_modified_files(''))
 
+
 if __name__ == "__main__":
     unittest.main()
