@@ -80,6 +80,19 @@ public class TfObjectTrackerTest {
         assertNull(metrics.get(BaseTargetPreparer.class.getName()));
     }
 
+    private class TestObject extends BaseTargetPreparer {}
+
+    @Test
+    public void testInternalClass() throws Exception {
+        String uuid = UUID.randomUUID().toString();
+        String group = "unit-test-group-" + uuid;
+        ThreadGroup testGroup = new ThreadGroup(group);
+        Map<String, Long> metrics = logMetric(testGroup, true, TestObject.class);
+        assertEquals(1, metrics.size());
+        // The class itself is not tracked but the sub-classes are.
+        assertEquals(1, metrics.get(BaseTargetPreparer.class.getName()).longValue());
+    }
+
     private Map<String, Long> logMetric(
             ThreadGroup testGroup, boolean trackWithParents, Class<?> toTrack) throws Exception {
         TestRunnable runnable = new TestRunnable(toTrack, trackWithParents);
