@@ -23,6 +23,7 @@ import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.UniqueMultiMap;
 
 import java.io.Serializable;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -36,6 +37,7 @@ public interface IInvocationContext extends Serializable {
     /** Key used for storing associated invocation ID. */
     public static final String INVOCATION_ID = "invocation-id";
 
+    @Deprecated
     public enum TimingEvent {
         FETCH_BUILD,
         SETUP;
@@ -145,10 +147,16 @@ public interface IInvocationContext extends Serializable {
     public MultiMap<String, String> getAttributes();
 
     /** Add a invocation timing metric. */
-    public void addInvocationTimingMetric(TimingEvent timingEvent, Long durationMillis);
+    @Deprecated
+    public default void addInvocationTimingMetric(TimingEvent timingEvent, Long durationMillis) {
+        // Do nothing
+    }
 
     /** Returns the map containing the invocation timing metrics. */
-    public Map<TimingEvent, Long> getInvocationTimingMetrics();
+    @Deprecated
+    public default Map<TimingEvent, Long> getInvocationTimingMetrics() {
+        return new HashMap<>();
+    }
 
     /** Sets the descriptor associated with the test configuration that launched the invocation */
     public void setConfigurationDescriptor(ConfigurationDescriptor configurationDescriptor);

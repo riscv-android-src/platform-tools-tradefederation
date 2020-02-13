@@ -21,9 +21,9 @@ import com.android.ddmlib.IDevice;
  * A placeholder {@link IDevice} used by {@link DeviceManager} to allocate when {@link
  * DeviceSelectionOptions#localVirtualDeviceRequested()} is <code>true</code>
  */
-public class StubLocalAndroidVirtualDevice extends StubDevice {
+public class StubLocalAndroidVirtualDevice extends TcpDevice {
 
     public StubLocalAndroidVirtualDevice(String serial) {
-        super(serial, false);
+        super(serial);
     }
 }
