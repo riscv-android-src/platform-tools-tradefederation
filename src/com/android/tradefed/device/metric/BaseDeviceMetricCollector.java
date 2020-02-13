@@ -358,6 +358,19 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
     }
 
     @Override
+    public final void testAssumptionFailure(TestDescription test, FailureDescription failure) {
+        if (!mSkipTestCase) {
+            try {
+                onTestAssumptionFailure(mTestData, test);
+            } catch (Throwable t) {
+                // Prevent exception from messing up the status reporting.
+                CLog.e(t);
+            }
+        }
+        mForwarder.testAssumptionFailure(test, failure);
+    }
+
+    @Override
     public final void testIgnored(TestDescription test) {
         mForwarder.testIgnored(test);
     }

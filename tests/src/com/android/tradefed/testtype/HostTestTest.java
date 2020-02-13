@@ -1282,7 +1282,7 @@ public class HostTestTest extends TestCase {
                 new TestDescription(JUnit4TestClassAssume.class.getName(), "testPass5");
         mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
         mListener.testStarted(EasyMock.eq(test1));
-        mListener.testAssumptionFailure(EasyMock.eq(test1), EasyMock.anyObject());
+        mListener.testAssumptionFailure(EasyMock.eq(test1), (String) EasyMock.anyObject());
         mListener.testEnded(EasyMock.eq(test1), (HashMap<String, Metric>) EasyMock.anyObject());
         mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
         EasyMock.replay(mListener);
