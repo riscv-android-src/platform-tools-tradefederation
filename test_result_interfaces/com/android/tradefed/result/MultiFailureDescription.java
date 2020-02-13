@@ -76,11 +76,15 @@ public final class MultiFailureDescription extends FailureDescription {
             return null;
         }
         // Default to the first reported failure
-        return mFailures.get(0).getErrorMessage();
+        return toString();
     }
 
     @Override
     public String toString() {
+        // Fallback to Single failure type
+        if (mFailures.size() == 1) {
+            return mFailures.get(0).toString();
+        }
         StringBuilder sb =
                 new StringBuilder(String.format("There were %d failures:", mFailures.size()));
         for (FailureDescription f : mFailures) {
