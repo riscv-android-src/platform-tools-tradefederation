@@ -96,6 +96,10 @@ public class TfObjectTracker {
         if (!tracked) {
             return false;
         }
+        // Don't track internal classes for now but return true to track subclass if needed.
+        if (qualifiedName.contains("$")) {
+            return true;
+        }
         if (mPerGroupUsage.get(group) == null) {
             mPerGroupUsage.put(group, new ConcurrentHashMap<>());
         }
