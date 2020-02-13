@@ -452,7 +452,9 @@ public class TestRunResultTest {
         assertEquals("fake run", result.getName());
         assertTrue(result.isRunFailure());
         assertTrue(result.isRunComplete());
-        assertEquals("Second run failed.\n\nThird run failed.", result.getRunFailureMessage());
+        assertEquals(
+                "There were 2 failures:\n  Second run failed.\n  Third run failed.",
+                result.getRunFailureMessage());
     }
 
     /** Ensure that the merging logic among multiple testRunResults for one incomplete run. */
