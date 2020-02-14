@@ -219,6 +219,12 @@ public class ResultAggregator extends CollectingTestListener {
     }
 
     @Override
+    public void testRunFailed(FailureDescription failure) {
+        super.testRunFailed(failure);
+        // Don't forward here to the detailed forwarder in case we need to clear it.
+    }
+
+    @Override
     public void testStarted(TestDescription test, long startTime) {
         super.testStarted(test, startTime);
         mDetailedForwarder.testStarted(test, startTime);
@@ -313,7 +319,7 @@ public class ResultAggregator extends CollectingTestListener {
         for (TestRunResult runResult : mergedResults) {
             forwardTestResults(runResult.getTestResults(), mAggregatedForwarder);
             if (runResult.isRunFailure()) {
-                mAggregatedForwarder.testRunFailed(runResult.getRunFailureMessage());
+                mAggregatedForwarder.testRunFailed(runResult.getRunFailureDescription());
             }
         }
         // Provide a strong association of the run to its logs.
@@ -349,18 +355,19 @@ public class ResultAggregator extends CollectingTestListener {
             listener.testStarted(testEntry.getKey(), testEntry.getValue().getStartTime());
             switch (testEntry.getValue().getStatus()) {
                 case FAILURE:
-                    listener.testFailed(testEntry.getKey(), testEntry.getValue().getStackTrace());
+                    listener.testFailed(testEntry.getKey(), testEntry.getValue().getFailure());
                     break;
                 case ASSUMPTION_FAILURE:
                     listener.testAssumptionFailure(
-                            testEntry.getKey(), testEntry.getValue().getStackTrace());
+                            testEntry.getKey(), testEntry.getValue().getFailure());
                     break;
                 case IGNORED:
                     listener.testIgnored(testEntry.getKey());
                     break;
                 case INCOMPLETE:
                     listener.testFailed(
-                            testEntry.getKey(), "Test did not complete due to exception.");
+                            testEntry.getKey(),
+                            FailureDescription.create("Test did not complete due to exception."));
                     break;
                 default:
                     break;
@@ -391,7 +398,7 @@ public class ResultAggregator extends CollectingTestListener {
                 result.getName(), result.getExpectedTestCount(), 0, result.getStartTime());
         forwardTestResults(result.getTestResults(), listener);
         if (result.isRunFailure()) {
-            listener.testRunFailed(result.getRunFailureMessage());
+            listener.testRunFailed(result.getRunFailureDescription());
         }
         // Provide a strong association of the run to its logs.
         for (Entry<String, LogFile> logFile : result.getRunLoggedFiles().entrySet()) {
@@ -405,9 +412,12 @@ public class ResultAggregator extends CollectingTestListener {
     private void forwardDetailedFailure() {
         if (mDetailedRunResults != null) {
             if (mDetailedRunResults.isRunFailure() && mShouldReportFailure) {
-                // TODO: Convert to new failure interface
-                mDetailedForwarder.testRunFailed(
-                        new MultiFailureDescription(mAllDetailedFailures).toString());
+                if (mAllDetailedFailures.size() == 1) {
+                    mDetailedForwarder.testRunFailed(mAllDetailedFailures.get(0));
+                } else {
+                    mDetailedForwarder.testRunFailed(
+                            new MultiFailureDescription(mAllDetailedFailures));
+                }
             } else {
                 // Log the run failure that was cleared
                 List<String> invocationFailures = new ArrayList<>();
