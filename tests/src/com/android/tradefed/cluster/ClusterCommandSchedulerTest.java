@@ -53,6 +53,7 @@ import com.android.tradefed.result.ConsoleResultReporter;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.TestSummary;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.TargetSetupError;
@@ -625,6 +626,7 @@ public class ClusterCommandSchedulerTest {
         context.addDeviceBuildInfo("", mockBuildInfo);
         ClusterCommandScheduler.InvocationEventHandler handler =
                 mScheduler.new InvocationEventHandler(mockCommand);
+        mMockClusterOptions.setCollectEarlyTestSummary(true);
 
         mMockEventUploader.postEvent(
                 checkClusterCommandEvent(ClusterCommandEvent.Type.InvocationInitiated));
@@ -644,6 +646,10 @@ public class ClusterCommandSchedulerTest {
 
         EasyMock.replay(mMockEventUploader, mockBuildInfo, mockTestDevice);
         handler.invocationInitiated(context);
+        List<TestSummary> summaries = new ArrayList<>();
+        summaries.add(
+                new TestSummary(new TestSummary.TypedString("http://uri", TestSummary.Type.URI)));
+        handler.putEarlySummary(summaries);
         handler.invocationStarted(context);
         handler.testRunStarted("test run", 1);
         handler.testStarted(new TestDescription("class", CMD_LINE));
@@ -670,6 +676,9 @@ public class ClusterCommandSchedulerTest {
                 capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_FETCH_BUILD_TIME_MILLIS));
         assertEquals(
                 "200", capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_SETUP_TIME_MILLIS));
+        assertEquals(
+                "URI: http://uri\n",
+                capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_SUMMARY));
     }
 
     /** Test that the error count is the proper one. */
