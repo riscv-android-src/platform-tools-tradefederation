@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /** Container for a result of a single test. */
 public class TestResult {
@@ -165,13 +166,11 @@ public class TestResult {
             return false;
         }
         TestResult other = (TestResult) obj;
-        return equal(mMetrics, other.mMetrics)
-                && equal(mFailureDescription, other.mFailureDescription)
-                && equal(mStatus, other.mStatus);
-    }
-
-    private static boolean equal(Object a, Object b) {
-        return a == b || (a != null && a.equals(b));
+        return Objects.equals(mMetrics, other.mMetrics)
+                && Objects.equals(
+                        String.valueOf(mFailureDescription),
+                        String.valueOf(other.mFailureDescription))
+                && Objects.equals(mStatus, other.mStatus);
     }
 
     private void markFlaky() {
