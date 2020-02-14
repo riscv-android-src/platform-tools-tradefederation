@@ -277,23 +277,26 @@ public class TestRunResult {
         mTestResults.put(test, testResult);
     }
 
-    private void updateTestResult(TestDescription test, TestStatus status, String trace) {
+    private void updateTestResult(
+            TestDescription test, TestStatus status, FailureDescription failure) {
         TestResult r = mTestResults.get(test);
         if (r == null) {
             CLog.d("received test event without test start for %s", test);
             r = new TestResult();
         }
         r.setStatus(status);
-        r.setStackTrace(trace);
+        if (failure != null) {
+            r.setFailure(failure);
+        }
         addTestResult(test, r);
     }
 
     public void testFailed(TestDescription test, String trace) {
-        updateTestResult(test, TestStatus.FAILURE, trace);
+        updateTestResult(test, TestStatus.FAILURE, FailureDescription.create(trace));
     }
 
     public void testAssumptionFailure(TestDescription test, String trace) {
-        updateTestResult(test, TestStatus.ASSUMPTION_FAILURE, trace);
+        updateTestResult(test, TestStatus.ASSUMPTION_FAILURE, FailureDescription.create(trace));
     }
 
     public void testIgnored(TestDescription test) {
