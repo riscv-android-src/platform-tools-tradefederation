@@ -337,13 +337,21 @@ public class ClusterCommandScheduler extends CommandScheduler {
 
         /** {@inheritDoc} */
         @Override
+        public void putEarlySummary(List<TestSummary> summaries) {
+            if (getClusterOptions().shouldCollectEarlyTestSummary()) {
+                putSummary(summaries);
+            }
+        }
+
+        /** {@inheritDoc} */
+        @Override
         public void putSummary(List<TestSummary> summaries) {
-            final StringBuilder sb = new StringBuilder();
+            StringBuilder sb = new StringBuilder();
             for (final TestSummary summary : summaries) {
                 sb.append(summary.getSummary());
                 sb.append("\n");
             }
-            mSummary = sb.toString();
+            mSummary = mSummary == null ? sb.toString() : mSummary + sb.toString();
         }
 
         private ScheduledFuture<?> startHeartbeat() {
