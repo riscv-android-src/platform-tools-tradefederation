@@ -56,6 +56,10 @@ public final class NativeCodeCoverageListener extends ResultForwarder {
                     "find %s -name '*.gcda' | tar -cvzf %s -T -",
                     NATIVE_COVERAGE_DEVICE_PATH, COVERAGE_TAR_PATH);
 
+    // Deletes .gcda files in /data/misc/trace.
+    private static final String DELETE_COVERAGE_FILES_COMMAND =
+            String.format("find %s -name '*.gcda' -delete", NATIVE_COVERAGE_DEVICE_PATH);
+
     private final boolean mFlushCoverage;
     private final ITestDevice mDevice;
     private final NativeCodeCoverageFlusher mFlusher;
@@ -131,6 +135,9 @@ public final class NativeCodeCoverageListener extends ResultForwarder {
             try (FileInputStreamSource source = new FileInputStreamSource(coverageZip, true)) {
                 testLog(runName + "_native_runtime_coverage", LogDataType.NATIVE_COVERAGE, source);
             }
+
+            // Delete coverage files on the device.
+            mDevice.executeShellCommand(DELETE_COVERAGE_FILES_COMMAND);
         } catch (DeviceNotAvailableException | IOException e) {
             throw new RuntimeException(e);
         } finally {
