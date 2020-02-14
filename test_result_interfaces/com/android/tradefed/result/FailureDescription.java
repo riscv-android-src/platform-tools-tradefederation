@@ -80,4 +80,26 @@ public class FailureDescription {
         info.mFailureStatus = status;
         return info;
     }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ((mErrorMessage == null) ? 0 : mErrorMessage.hashCode());
+        result = prime * result + ((mFailureStatus == null) ? 0 : mFailureStatus.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null) return false;
+        if (getClass() != obj.getClass()) return false;
+        FailureDescription other = (FailureDescription) obj;
+        if (mErrorMessage == null) {
+            if (other.mErrorMessage != null) return false;
+        } else if (!mErrorMessage.equals(other.mErrorMessage)) return false;
+        if (mFailureStatus != other.mFailureStatus) return false;
+        return true;
+    }
 }
