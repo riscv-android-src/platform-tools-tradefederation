@@ -473,11 +473,11 @@ public class PerfettoGenericPostProcessorTest {
                         .anyMatch(
                                 e ->
                                         e.getKey().contains(key)
-                                                && (String.valueOf(value)
+                                                && String.valueOf(value)
                                                         .equals(
                                                                 e.getValue()
                                                                         .build()
                                                                         .getMeasurements()
-                                                                        .getSingleString()))));
+                                                                        .getSingleString())));
     }
 }
