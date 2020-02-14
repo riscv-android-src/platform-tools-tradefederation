@@ -166,7 +166,7 @@ public class TestResult {
         }
         TestResult other = (TestResult) obj;
         return equal(mMetrics, other.mMetrics)
-                && equal(mFailureDescription.toString(), other.mFailureDescription.toString())
+                && equal(mFailureDescription, other.mFailureDescription)
                 && equal(mStatus, other.mStatus);
     }
 
