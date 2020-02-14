@@ -34,12 +34,17 @@ public final class MultiFailureDescription extends FailureDescription {
 
     public MultiFailureDescription(List<FailureDescription> failures) {
         super();
-        mFailures.addAll(failures);
+        for (FailureDescription failure : failures) {
+            if (failure instanceof MultiFailureDescription) {
+                mFailures.addAll(((MultiFailureDescription) failure).getFailures());
+            } else {
+                mFailures.add(failure);
+            }
+        }
     }
 
     public MultiFailureDescription(FailureDescription... failures) {
-        super();
-        mFailures.addAll(Arrays.asList(failures));
+        this(Arrays.asList(failures));
     }
 
     /**
