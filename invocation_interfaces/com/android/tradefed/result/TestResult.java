@@ -33,7 +33,7 @@ public class TestResult {
     public static final String IS_FLAKY = "is_flaky";
 
     private TestStatus mStatus;
-    private String mStackTrace;
+    private FailureDescription mFailureDescription;
     private Map<String, String> mMetrics;
     private HashMap<String, Metric> mProtoMetrics;
     private Map<String, LogFile> mLoggedFiles;
@@ -59,7 +59,18 @@ public class TestResult {
      * #getStatus()} is {@link TestStatus#PASSED}.
      */
     public String getStackTrace() {
-        return mStackTrace;
+        if (mFailureDescription == null) {
+            return null;
+        }
+        return mFailureDescription.toString();
+    }
+
+    /**
+     * Get the associated {@link FailureDescription}. Should be <code>null</code> if {@link
+     * #getStatus()} is {@link TestStatus#PASSED}.
+     */
+    public FailureDescription getFailure() {
+        return mFailureDescription;
     }
 
     /** Get the associated test metrics. */
@@ -123,8 +134,13 @@ public class TestResult {
     }
 
     /** Set the stack trace. */
-    public void setStackTrace(String trace) {
-        mStackTrace = trace;
+    public void setStackTrace(String stackTrace) {
+        mFailureDescription = FailureDescription.create(stackTrace);
+    }
+
+    /** Set the stack trace. */
+    public void setFailure(FailureDescription failureDescription) {
+        mFailureDescription = failureDescription;
     }
 
     /** Sets the end time */
@@ -134,7 +150,7 @@ public class TestResult {
 
     @Override
     public int hashCode() {
-        return Arrays.hashCode(new Object[] {mMetrics, mStackTrace, mStatus});
+        return Arrays.hashCode(new Object[] {mMetrics, mFailureDescription, mStatus});
     }
 
     @Override
@@ -150,7 +166,7 @@ public class TestResult {
         }
         TestResult other = (TestResult) obj;
         return equal(mMetrics, other.mMetrics)
-                && equal(mStackTrace, other.mStackTrace)
+                && equal(mFailureDescription.toString(), other.mFailureDescription.toString())
                 && equal(mStatus, other.mStatus);
     }
 
@@ -186,7 +202,7 @@ public class TestResult {
         long earliestStartTime = Long.MAX_VALUE;
         long latestEndTime = Long.MIN_VALUE;
 
-        List<String> errorMsg = new ArrayList<>();
+        List<FailureDescription> errors = new ArrayList<>();
         int pass = 0;
         int fail = 0;
         int assumption_failure = 0;
@@ -205,18 +221,18 @@ public class TestResult {
                     break;
                 case FAILURE:
                     fail++;
-                    if (attempt.getStackTrace() != null) {
-                        errorMsg.add(attempt.getStackTrace());
+                    if (attempt.getFailure() != null) {
+                        errors.add(attempt.getFailure());
                     }
                     break;
                 case INCOMPLETE:
                     incomplete++;
-                    errorMsg.add("incomplete test case result.");
+                    errors.add(FailureDescription.create("incomplete test case result."));
                     break;
                 case ASSUMPTION_FAILURE:
                     assumption_failure++;
-                    if (attempt.getStackTrace() != null) {
-                        errorMsg.add(attempt.getStackTrace());
+                    if (attempt.getFailure() != null) {
+                        errors.add(attempt.getFailure());
                     }
                     break;
                 case IGNORED:
@@ -263,10 +279,12 @@ public class TestResult {
                 }
                 break;
         }
-        if (errorMsg.isEmpty()) {
-            mergedResult.mStackTrace = null;
+        if (errors.isEmpty()) {
+            mergedResult.mFailureDescription = null;
+        } else if (errors.size() == 1) {
+            mergedResult.mFailureDescription = errors.get(0);
         } else {
-            mergedResult.mStackTrace = String.join("\n\n", errorMsg);
+            mergedResult.mFailureDescription = new MultiFailureDescription(errors);
         }
         mergedResult.setStartTime(earliestStartTime);
         mergedResult.setEndTime(latestEndTime);

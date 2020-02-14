@@ -174,6 +174,16 @@ public interface ITestLifeCycleReceiver {
     public default void testAssumptionFailure(TestDescription test, String trace) {}
 
     /**
+     * Called when an atomic test flags that it assumes a condition that is false
+     *
+     * @param test identifies the test
+     * @param failure {@link FailureDescription} describing the failure and its context.
+     */
+    public default void testAssumptionFailure(TestDescription test, FailureDescription failure) {
+        testAssumptionFailure(test, failure.toString());
+    }
+
+    /**
      * Called when a test will not be run, generally because a test method is annotated with
      * org.junit.Ignore.
      *
