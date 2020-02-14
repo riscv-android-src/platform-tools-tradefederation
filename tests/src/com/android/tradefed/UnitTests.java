@@ -27,6 +27,7 @@ import com.android.tradefed.build.GCSTestResourceProviderTest;
 import com.android.tradefed.build.LocalDeviceBuildProviderTest;
 import com.android.tradefed.build.OtaZipfileBuildProviderTest;
 import com.android.tradefed.clearcut.ClearcutClientTest;
+import com.android.tradefed.cluster.ClusterCommandConfigBuilderTest;
 import com.android.tradefed.cluster.ClusterCommandEventTest;
 import com.android.tradefed.cluster.ClusterCommandLauncherTest;
 import com.android.tradefed.cluster.ClusterCommandSchedulerTest;
@@ -415,6 +416,7 @@ import org.junit.runners.Suite.SuiteClasses;
     ClearcutClientTest.class,
 
     // cluster
+    ClusterCommandConfigBuilderTest.class,
     ClusterCommandEventTest.class,
     ClusterCommandLauncherTest.class,
     ClusterCommandSchedulerTest.class,
