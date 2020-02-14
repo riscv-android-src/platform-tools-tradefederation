@@ -213,7 +213,8 @@ public class ResultAggregatorTest {
                 EasyMock.eq(test2),
                 EasyMock.anyLong(),
                 EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testRunFailed("run fail\n\nrun fail 2");
+        mDetailedListener.testRunFailed(
+                EasyMock.eq("There were 2 failures:\n  run fail\n  run fail 2"));
         mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
         mDetailedListener.testRunStarted(
                 EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(1), EasyMock.anyLong());
@@ -237,7 +238,7 @@ public class ResultAggregatorTest {
                 EasyMock.eq(test2),
                 EasyMock.anyLong(),
                 EasyMock.<HashMap<String, Metric>>anyObject());
-        mAggListener.testRunFailed(EasyMock.eq("run fail\n\nrun fail 2"));
+        mAggListener.testRunFailed(EasyMock.eq("There were 2 failures:\n  run fail\n  run fail 2"));
         mAggListener.testRunEnded(450L, new HashMap<String, Metric>());
 
         mAggListener.testModuleEnded();
@@ -479,7 +480,8 @@ public class ResultAggregatorTest {
                 EasyMock.eq(test2),
                 EasyMock.anyLong(),
                 EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testRunFailed(EasyMock.eq("I failed\n\nI failed 2"));
+        mDetailedListener.testRunFailed(
+                EasyMock.eq("There were 2 failures:\n  I failed\n  I failed 2"));
         mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
 
         // Aggregated listeners receives the aggregated results
@@ -495,7 +497,7 @@ public class ResultAggregatorTest {
                 EasyMock.eq(test2),
                 EasyMock.anyLong(),
                 EasyMock.<HashMap<String, Metric>>anyObject());
-        mAggListener.testRunFailed(EasyMock.eq("I failed\n\nI failed 2"));
+        mAggListener.testRunFailed(EasyMock.eq("There were 2 failures:\n  I failed\n  I failed 2"));
         mAggListener.testRunEnded(900L, new HashMap<String, Metric>());
 
         mAggListener.invocationEnded(500L);
@@ -567,7 +569,8 @@ public class ResultAggregatorTest {
                 EasyMock.eq(test2),
                 EasyMock.anyLong(),
                 EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testRunFailed(EasyMock.eq("I failed\n\nI failed 2"));
+        mDetailedListener.testRunFailed(
+                EasyMock.eq("There were 2 failures:\n  I failed\n  I failed 2"));
         mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
         mDetailedListener.testRunStarted(
                 EasyMock.eq("run2"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
@@ -591,7 +594,7 @@ public class ResultAggregatorTest {
                 EasyMock.eq(test2),
                 EasyMock.anyLong(),
                 EasyMock.<HashMap<String, Metric>>anyObject());
-        mAggListener.testRunFailed(EasyMock.eq("I failed\n\nI failed 2"));
+        mAggListener.testRunFailed(EasyMock.eq("There were 2 failures:\n  I failed\n  I failed 2"));
         mAggListener.testRunEnded(900L, new HashMap<String, Metric>());
         mAggListener.testRunStarted(
                 EasyMock.eq("run2"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
@@ -986,7 +989,8 @@ public class ResultAggregatorTest {
                 EasyMock.eq(test1),
                 EasyMock.anyLong(),
                 EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testRunFailed(EasyMock.eq("I failed\n\nI failed 2"));
+        mDetailedListener.testRunFailed(
+                EasyMock.eq("There were 2 failures:\n  I failed\n  I failed 2"));
         mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
 
         // Aggregated listeners receives the aggregated results for non-module
@@ -997,7 +1001,7 @@ public class ResultAggregatorTest {
                 EasyMock.eq(test1),
                 EasyMock.anyLong(),
                 EasyMock.<HashMap<String, Metric>>anyObject());
-        mAggListener.testRunFailed(EasyMock.eq("I failed\n\nI failed 2"));
+        mAggListener.testRunFailed(EasyMock.eq("There were 2 failures:\n  I failed\n  I failed 2"));
         mAggListener.testRunEnded(900L, new HashMap<String, Metric>());
 
         mAggListener.invocationEnded(500L);
@@ -1296,7 +1300,9 @@ public class ResultAggregatorTest {
 
         mAggregator.invocationEnded(500L);
         EasyMock.verify(mAggListener, mDetailedListener);
-        assertEquals("failed2\n\nfailed3", mAggregator.getInvocationMetricRunError());
+        assertEquals(
+                "There were 2 failures:\n  failed2\n  failed3",
+                mAggregator.getInvocationMetricRunError());
     }
 
     /**
