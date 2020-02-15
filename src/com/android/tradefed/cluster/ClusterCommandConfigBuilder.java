@@ -25,6 +25,7 @@ import com.android.tradefed.log.SimpleFileLogger;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.StringUtil;
+import com.android.tradefed.util.UniqueMultiMap;
 
 import java.io.File;
 import java.io.IOException;
@@ -278,6 +279,14 @@ public class ClusterCommandConfigBuilder {
         for (final TestResource resource : testResources) {
             config.injectOptionValue(
                     "cluster:test-resource", resource.getName(), resource.getUrl());
+        }
+
+        // Inject any extra options into the configuration
+        UniqueMultiMap<String, String> extraOptions = mCommand.getExtraOptions();
+        for (String key : extraOptions.keySet()) {
+            for (String value : extraOptions.get(key)) {
+                config.injectOptionValue(key, value);
+            }
         }
 
         File f = new File(mWorkDir, "command.xml");
