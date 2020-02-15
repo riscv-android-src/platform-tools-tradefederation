@@ -24,6 +24,7 @@ import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
@@ -112,7 +113,7 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
             mRealDeviceList =
                     mContext.getDevices()
                             .stream()
-                            .filter(d -> (!(d.getIDevice() instanceof StubDevice)))
+                            .filter(d -> !(d.getIDevice() instanceof StubDevice))
                             .collect(Collectors.toList());
         }
         return mRealDeviceList;
@@ -253,6 +254,11 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
     }
 
     @Override
+    public final void testRunFailed(FailureDescription failure) {
+        mForwarder.testRunFailed(failure);
+    }
+
+    @Override
     public final void testRunStopped(long elapsedTime) {
         mForwarder.testRunStopped(elapsedTime);
     }
@@ -292,7 +298,6 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
 
     @Override
     public final void testFailed(TestDescription test, String trace) {
-        mSkipTestCase = shouldSkip(test);
         if (!mSkipTestCase) {
             try {
                 onTestFail(mTestData, test);
@@ -302,6 +307,19 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
             }
         }
         mForwarder.testFailed(test, trace);
+    }
+
+    @Override
+    public final void testFailed(TestDescription test, FailureDescription failure) {
+        if (!mSkipTestCase) {
+            try {
+                onTestFail(mTestData, test);
+            } catch (Throwable t) {
+                // Prevent exception from messing up the status reporting.
+                CLog.e(t);
+            }
+        }
+        mForwarder.testFailed(test, failure);
     }
 
     @Override
@@ -328,7 +346,6 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
 
     @Override
     public final void testAssumptionFailure(TestDescription test, String trace) {
-        mSkipTestCase = shouldSkip(test);
         if (!mSkipTestCase) {
             try {
                 onTestAssumptionFailure(mTestData, test);
@@ -338,6 +355,19 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
             }
         }
         mForwarder.testAssumptionFailure(test, trace);
+    }
+
+    @Override
+    public final void testAssumptionFailure(TestDescription test, FailureDescription failure) {
+        if (!mSkipTestCase) {
+            try {
+                onTestAssumptionFailure(mTestData, test);
+            } catch (Throwable t) {
+                // Prevent exception from messing up the status reporting.
+                CLog.e(t);
+            }
+        }
+        mForwarder.testAssumptionFailure(test, failure);
     }
 
     @Override

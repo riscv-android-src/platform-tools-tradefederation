@@ -74,7 +74,8 @@ def get_user_type():
                       'is not found in git config.')
     try:
         hostname = socket.getfqdn()
-        if hostname and constants.INTERNAL_HOSTNAME in hostname:
+        if (hostname and
+                any([(x in hostname) for x in constants.INTERNAL_HOSTNAME])):
             return INTERNAL_USER
     except IOError:
         logging.debug('Unable to determine if this is an external run, '

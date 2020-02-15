@@ -60,7 +60,7 @@ public class TestRunResult {
     /** tracks if mStatusCounts is accurate, or if it needs to be recalculated */
     private boolean mIsCountDirty = true;
 
-    private String mRunFailureError = null;
+    private FailureDescription mRunFailureError = null;
 
     private boolean mAggregateMetrics = false;
 
@@ -206,6 +206,11 @@ public class TestRunResult {
 
     /** Return the run failure error message, <code>null</code> if run did not fail. */
     public String getRunFailureMessage() {
+        return mRunFailureError.getErrorMessage();
+    }
+
+    /** Returns the run failure descriptor, <code>null</code> if run did not fail. */
+    public FailureDescription getRunFailureDescription() {
         return mRunFailureError;
     }
 
@@ -272,23 +277,26 @@ public class TestRunResult {
         mTestResults.put(test, testResult);
     }
 
-    private void updateTestResult(TestDescription test, TestStatus status, String trace) {
+    private void updateTestResult(
+            TestDescription test, TestStatus status, FailureDescription failure) {
         TestResult r = mTestResults.get(test);
         if (r == null) {
             CLog.d("received test event without test start for %s", test);
             r = new TestResult();
         }
         r.setStatus(status);
-        r.setStackTrace(trace);
+        if (failure != null) {
+            r.setFailure(failure);
+        }
         addTestResult(test, r);
     }
 
     public void testFailed(TestDescription test, String trace) {
-        updateTestResult(test, TestStatus.FAILURE, trace);
+        updateTestResult(test, TestStatus.FAILURE, FailureDescription.create(trace));
     }
 
     public void testAssumptionFailure(TestDescription test, String trace) {
-        updateTestResult(test, TestStatus.ASSUMPTION_FAILURE, trace);
+        updateTestResult(test, TestStatus.ASSUMPTION_FAILURE, FailureDescription.create(trace));
     }
 
     public void testIgnored(TestDescription test) {
@@ -314,16 +322,30 @@ public class TestRunResult {
         mCurrentTestResult = null;
     }
 
+    // TODO: Remove when done updating
     public void testRunFailed(String errorMessage) {
         if (errorMessage == null) {
-            // Null as an error message is a reset.
-            errorMessage = "testRunFailed(null) was called.";
+            testRunFailed((FailureDescription) null);
+        } else {
+            testRunFailed(FailureDescription.create(errorMessage));
+        }
+    }
+
+    public void testRunFailed(FailureDescription failureDescription) {
+        if (failureDescription == null) {
+            failureDescription = FailureDescription.create("testRunFailed(null) was called.");
         }
 
         if (mRunFailureError != null) {
-            mRunFailureError += (ERROR_DIVIDER + errorMessage);
+            if (mRunFailureError instanceof MultiFailureDescription) {
+                ((MultiFailureDescription) mRunFailureError).addFailure(failureDescription);
+            } else {
+                MultiFailureDescription aggregatedFailure =
+                        new MultiFailureDescription(mRunFailureError, failureDescription);
+                mRunFailureError = aggregatedFailure;
+            }
         } else {
-            mRunFailureError = errorMessage;
+            mRunFailureError = failureDescription;
         }
     }
 
@@ -466,7 +488,7 @@ public class TestRunResult {
         boolean isAtLeastOneCompleted = false;
         boolean areAllCompleted = true;
         // Keep track of whether we have run failure or not
-        List<String> runErrors = new ArrayList<>();
+        List<FailureDescription> runErrors = new ArrayList<>();
         boolean atLeastOneFailure = false;
         boolean allFailure = true;
         // Keep track of elapsed time
@@ -486,7 +508,12 @@ public class TestRunResult {
             // Evaluate the run failures
             if (eachRunResult.isRunFailure()) {
                 atLeastOneFailure = true;
-                runErrors.add(eachRunResult.getRunFailureMessage());
+                FailureDescription currentFailure = eachRunResult.getRunFailureDescription();
+                if (currentFailure instanceof MultiFailureDescription) {
+                    runErrors.addAll(((MultiFailureDescription) currentFailure).getFailures());
+                } else {
+                    runErrors.add(currentFailure);
+                }
             } else {
                 allFailure = false;
             }
@@ -525,7 +552,7 @@ public class TestRunResult {
         // Evaluate the run error status based on strategy
         boolean isRunFailure = isRunFailed(atLeastOneFailure, allFailure, strategy);
         if (isRunFailure) {
-            finalRunResult.mRunFailureError = String.join("\n\n", runErrors);
+            finalRunResult.mRunFailureError = new MultiFailureDescription(runErrors);
         }
         // Evaluate run completion from all the attempts based on strategy
         finalRunResult.mIsRunComplete =

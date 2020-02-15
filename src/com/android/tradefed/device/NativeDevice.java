@@ -999,7 +999,7 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public boolean isAppEnumerationSupported() throws DeviceNotAvailableException {
-        return getApiLevel() > 29;
+        return checkApiLevelAgainstNextRelease(30);
     }
 
     /**
@@ -1150,7 +1150,7 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public File pullFileFromExternal(String remoteFilePath) throws DeviceNotAvailableException {
         String externalPath = getMountPoint(IDevice.MNT_EXTERNAL_STORAGE);
-        String fullPath = (new File(externalPath, remoteFilePath)).getPath();
+        String fullPath = new File(externalPath, remoteFilePath).getPath();
         return pullFile(fullPath);
     }
 
@@ -3915,6 +3915,22 @@ public class NativeDevice implements IManagedTestDevice {
             CLog.e(e);
             return UNKNOWN_API_LEVEL;
         }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public int getLaunchApiLevel() throws DeviceNotAvailableException {
+        try {
+            String prop = getProperty(DeviceProperties.FIRST_API_LEVEL);
+            return Integer.parseInt(prop);
+        } catch (NumberFormatException nfe) {
+            CLog.w(
+                    "Unable to get first launch API level from "
+                            + DeviceProperties.FIRST_API_LEVEL
+                            + ", falling back to getApiLevel().",
+                    nfe);
+        }
+        return getApiLevel();
     }
 
     @Override

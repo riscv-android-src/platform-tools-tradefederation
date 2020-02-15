@@ -34,6 +34,7 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.TfObjectTracker;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.invoker.shard.token.TokenProperty;
 import com.android.tradefed.log.ILogRegistry.EventType;
@@ -96,6 +97,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
      */
     public static final String MODULE_NAME = "module-name";
     public static final String MODULE_ABI = "module-abi";
+    public static final String MODULE_PARAMETERIZATION = "module-param";
     /**
      * Module ID the name that will be used to identify uniquely the module during testRunStart. It
      * will usually be a combination of MODULE_ABI + MODULE_NAME.
@@ -179,6 +181,15 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         if (configDescriptor.getModuleName() != null) {
             mModuleInvocationContext.addInvocationAttribute(
                     MODULE_NAME, configDescriptor.getModuleName());
+        }
+        String parameterization =
+                configDescriptor
+                        .getAllMetaData()
+                        .getUniqueMap()
+                        .get(ConfigurationDescriptor.PARAMETER_KEY);
+        if (parameterization != null) {
+            mModuleInvocationContext.addInvocationAttribute(
+                    MODULE_PARAMETERIZATION, parameterization);
         }
         // If there is no specific abi, module-id should be module-name
         mModuleInvocationContext.addInvocationAttribute(MODULE_ID, mId);
@@ -372,6 +383,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 if (test == null) {
                     return;
                 }
+                TfObjectTracker.countWithParents(test.getClass());
                 if (test instanceof IBuildReceiver) {
                     ((IBuildReceiver) test).setBuild(mBuild);
                 }
@@ -705,6 +717,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             // If disabled skip completely.
             return null;
         }
+        TfObjectTracker.countWithParents(preparer.getClass());
         CLog.d("Running setup preparer: %s", preparer.getClass().getSimpleName());
         try {
             // set the logger in case they need it.
@@ -740,6 +753,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             // If disabled skip completely.
             return null;
         }
+        TfObjectTracker.countWithParents(preparer.getClass());
         CLog.d("Running setup multi preparer: %s", preparer.getClass().getSimpleName());
         try {
             // set the logger in case they need it.

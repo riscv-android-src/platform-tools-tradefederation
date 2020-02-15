@@ -123,7 +123,7 @@ public class RebootReasonCollectorTest {
                                         entry.getKey().contains(RebootReasonCollector.METRIC_PREFIX)
                                                 && entry.getKey().contains("bootloader_reason")
                                                 && entry.getKey().contains("system_reason_1")
-                                                && (!entry.getKey().contains(DEVICE_SERIAL_1))
+                                                && !entry.getKey().contains(DEVICE_SERIAL_1)
                                                 && Integer.valueOf(
                                                                 entry.getValue()
                                                                         .getMeasurements()
@@ -138,7 +138,7 @@ public class RebootReasonCollectorTest {
                                         entry.getKey().contains(RebootReasonCollector.METRIC_PREFIX)
                                                 && entry.getKey().contains("bootloader_reason")
                                                 && entry.getKey().contains("system_reason_2")
-                                                && (!entry.getKey().contains(DEVICE_SERIAL_1))
+                                                && !entry.getKey().contains(DEVICE_SERIAL_1)
                                                 && Integer.valueOf(
                                                                 entry.getValue()
                                                                         .getMeasurements()

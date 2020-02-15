@@ -20,11 +20,14 @@ import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.command.CommandRunner.ExitCode;
+import com.android.tradefed.command.CommandScheduler;
+import com.android.tradefed.command.ICommandScheduler.IScheduledInvocationListener;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
+import com.android.tradefed.device.FreeDeviceState;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.NativeDevice;
@@ -38,6 +41,7 @@ import com.android.tradefed.invoker.logger.CurrentInvocation;
 import com.android.tradefed.invoker.logger.CurrentInvocation.InvocationInfo;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
+import com.android.tradefed.invoker.logger.TfObjectTracker;
 import com.android.tradefed.invoker.sandbox.ParentSandboxInvocationExecution;
 import com.android.tradefed.invoker.sandbox.SandboxedInvocationExecution;
 import com.android.tradefed.invoker.shard.LastShardDetector;
@@ -81,6 +85,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 
 /**
@@ -144,6 +149,7 @@ public class TestInvocation implements ITestInvocation {
     private String mStopCause = null;
     private Long mStopRequestTime = null;
     private boolean mTestStarted = false;
+    private List<IScheduledInvocationListener> mSchedulerListeners = new ArrayList<>();
 
     /**
      * A {@link ResultForwarder} for forwarding resumed invocations.
@@ -358,6 +364,13 @@ public class TestInvocation implements ITestInvocation {
             // Track the timestamp when we are done with devices
             InvocationMetricLogger.addInvocationMetrics(
                     InvocationMetricKey.DEVICE_DONE_TIMESTAMP, System.currentTimeMillis());
+            if (config.getCommandOptions().earlyDeviceRelease()) {
+                Map<ITestDevice, FreeDeviceState> devicesStates =
+                        CommandScheduler.createReleaseMap(context, exception);
+                for (IScheduledInvocationListener scheduleListener : mSchedulerListeners) {
+                    scheduleListener.releaseDevices(context, devicesStates);
+                }
+            }
             try {
                 // Clean up host.
                 invocationPath.doCleanUp(context, config, exception);
@@ -402,6 +415,7 @@ public class TestInvocation implements ITestInvocation {
                     }
                 }
             } finally {
+                TfObjectTracker.clearTracking();
                 CurrentInvocation.clearInvocationInfos();
                 invocationPath.cleanUpBuilds(context, config);
             }
@@ -710,6 +724,11 @@ public class TestInvocation implements ITestInvocation {
             IRescheduler rescheduler,
             ITestInvocationListener... extraListeners)
             throws DeviceNotAvailableException, Throwable {
+        for (ITestInvocationListener listener : extraListeners) {
+            if (listener instanceof IScheduledInvocationListener) {
+                mSchedulerListeners.add((IScheduledInvocationListener) listener);
+            }
+        }
         // Create the TestInformation for the invocation
         // TODO: Use invocation-id in the workfolder name
         Object sharedInfoObject =

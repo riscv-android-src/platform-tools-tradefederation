@@ -90,6 +90,11 @@ public class BaseRetryDecision implements IRetryDecision {
     }
 
     @Override
+    public boolean rebootAtLastAttempt() {
+        return mRebootAtLastRetry;
+    }
+
+    @Override
     public int getMaxRetryCount() {
         return mMaxRetryAttempts;
     }

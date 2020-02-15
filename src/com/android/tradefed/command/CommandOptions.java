@@ -196,6 +196,11 @@ public class CommandOptions implements ICommandOptions {
     )
     private String mHostLogSuffix = null;
 
+    @Option(
+            name = "early-device-release",
+            description = "Feature flag to release the device as soon as done with it.")
+    private boolean mEnableEarlyDeviceRelease = false;
+
     /**
      * Set the help mode for the config.
      * <p/>
@@ -499,5 +504,11 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public int getExtraRemotePostsubmitInstance() {
         return mExtraRemoteInstancePostsubmit;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean earlyDeviceRelease() {
+        return mEnableEarlyDeviceRelease;
     }
 }

@@ -170,7 +170,7 @@ def _get_cc_result(locatedb=None):
     """
     if not locatedb:
         locatedb = constants.LOCATE_CACHE
-    cc_grep_re = r'^\s*TEST(_P|_F)?\s*\([[:alnum:]]+,'
+    cc_grep_re = r'^\s*TEST(_P|_F)?\s*\(\w+,'
     if OSNAME == MACOSX:
         find_cmd = (r"locate -d {0} '*.cpp' '*.cc' | grep -i test "
                     "| xargs egrep -sH '{1}' || true")
@@ -214,12 +214,12 @@ def _index_testable_modules(index):
             logging.error('Failed in dumping %s', cache)
 
 def _index_cc_classes(output, index):
-    """Index Java classes.
+    """Index CC classes.
 
     The data structure is like:
     {
-      'FooTestCase': {'/path1/to/the/FooTestCase.java',
-                      '/path2/to/the/FooTestCase.kt'}
+      'FooTestCase': {'/path1/to/the/FooTestCase.cpp',
+                      '/path2/to/the/FooTestCase.cc'}
     }
 
     Args:
