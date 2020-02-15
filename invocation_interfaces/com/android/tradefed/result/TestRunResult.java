@@ -206,6 +206,9 @@ public class TestRunResult {
 
     /** Return the run failure error message, <code>null</code> if run did not fail. */
     public String getRunFailureMessage() {
+        if (mRunFailureError == null) {
+            return null;
+        }
         return mRunFailureError.getErrorMessage();
     }
 
