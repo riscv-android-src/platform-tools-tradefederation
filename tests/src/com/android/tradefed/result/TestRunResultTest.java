@@ -291,8 +291,10 @@ public class TestRunResultTest {
         assertEquals(TestStatus.FAILURE, test3Result.getStatus());
 
         assertEquals(null, test1Result.getStackTrace());
-        assertEquals("flaky 1\n\nflaky 2", test2Result.getStackTrace());
-        assertEquals("bad_code1\n\nbad_code2\n\nbad_code3", test3Result.getStackTrace());
+        assertEquals("There were 2 failures:\n  flaky 1\n  flaky 2", test2Result.getStackTrace());
+        assertEquals(
+                "There were 3 failures:\n  bad_code1\n  bad_code2\n  bad_code3",
+                test3Result.getStackTrace());
     }
 
     /** Ensure that the merging logic among multiple testRunResults for the same test is correct. */
@@ -342,7 +344,9 @@ public class TestRunResultTest {
         TestResult testResult = testRunResult.get(testcase);
         assertEquals(TestStatus.PASSED, testResult.getStatus());
 
-        assertEquals("Second run failed.\n\nFourth run failed.", testResult.getStackTrace());
+        assertEquals(
+                "There were 2 failures:\n  Second run failed.\n  Fourth run failed.",
+                testResult.getStackTrace());
     }
 
     /** Ensure that merge will raise exceptions if merge TestRunResult for different test. */
@@ -602,6 +606,8 @@ public class TestRunResultTest {
         TestResult testResult = testRunResult.get(testcase);
         assertEquals(TestStatus.PASSED, testResult.getStatus());
 
-        assertEquals("Second run failed.\n\nthird run failed.", testResult.getStackTrace());
+        assertEquals(
+                "There were 2 failures:\n  Second run failed.\n  third run failed.",
+                testResult.getStackTrace());
     }
 }

@@ -34,12 +34,17 @@ public final class MultiFailureDescription extends FailureDescription {
 
     public MultiFailureDescription(List<FailureDescription> failures) {
         super();
-        mFailures.addAll(failures);
+        for (FailureDescription failure : failures) {
+            if (failure instanceof MultiFailureDescription) {
+                mFailures.addAll(((MultiFailureDescription) failure).getFailures());
+            } else {
+                mFailures.add(failure);
+            }
+        }
     }
 
     public MultiFailureDescription(FailureDescription... failures) {
-        super();
-        mFailures.addAll(Arrays.asList(failures));
+        this(Arrays.asList(failures));
     }
 
     /**
@@ -91,5 +96,22 @@ public final class MultiFailureDescription extends FailureDescription {
             sb.append(String.format("\n  %s", f.toString()));
         }
         return sb.toString();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null) return false;
+        if (getClass() != obj.getClass()) return false;
+        MultiFailureDescription other = (MultiFailureDescription) obj;
+        if (other.mFailures.size() != this.mFailures.size()) {
+            return false;
+        }
+        for (int i = 0; i < this.mFailures.size(); i++) {
+            if (!this.mFailures.get(i).equals(other.mFailures.get(i))) {
+                return false;
+            }
+        }
+        return true;
     }
 }

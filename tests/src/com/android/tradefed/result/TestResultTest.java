@@ -69,7 +69,7 @@ public class TestResultTest {
         assertEquals(TestStatus.FAILURE, finalRes.getStatus());
         assertEquals(2, finalRes.getStartTime());
         assertEquals(7, finalRes.getEndTime());
-        assertEquals("failed\n\nfailed", finalRes.getStackTrace());
+        assertEquals("There were 2 failures:\n  failed\n  failed", finalRes.getStackTrace());
     }
 
     @Test

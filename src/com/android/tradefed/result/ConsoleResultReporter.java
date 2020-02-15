@@ -15,14 +15,16 @@
  */
 package com.android.tradefed.result;
 
-import com.android.ddmlib.Log;
-import com.android.ddmlib.Log.LogLevel;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
+import com.android.tradefed.invoker.IInvocationContext;
 
+import java.io.PrintStream;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -30,108 +32,118 @@ import java.util.Set;
 
 /**
  * Result reporter to print the test results to the console.
- * <p>
- * Prints each test run, each test case, and test metrics, test logs, and test file locations.
+ *
+ * <p>Prints each test run, each test case, and test metrics, test logs, and test file locations.
+ *
  * <p>
  */
 @OptionClass(alias = "console-result-reporter")
-public class ConsoleResultReporter extends CollectingTestListener implements ILogSaverListener {
+public class ConsoleResultReporter extends TestResultListener
+        implements ILogSaverListener, ITestInvocationListener {
 
-    @Option(name = "suppress-passed-tests", description = "For functional tests, ommit summary for "
-            + "passing tests, only print failed and ignored ones")
+    private static final SimpleDateFormat sTimeStampFormat = new SimpleDateFormat("HH:mm:ss");
+
+    @Option(
+            name = "suppress-passed-tests",
+            description =
+                    "For functional tests, ommit summary for "
+                            + "passing tests, only print failed and ignored ones")
     private boolean mSuppressPassedTest = false;
 
+    private final PrintStream mStream;
     private Set<LogFile> mLogFiles = new LinkedHashSet<>();
+    private String mTestTag;
+    private CountingTestResultListener mResultCountListener = new CountingTestResultListener();
 
-    /**
-     * {@inheritDoc}
-     */
+    public ConsoleResultReporter() {
+        this(System.out);
+    }
+
+    ConsoleResultReporter(PrintStream outputStream) {
+        mStream = outputStream;
+    }
+
+    @Override
+    public void invocationStarted(IInvocationContext context) {
+        mTestTag = context.getTestTag();
+    }
+
+    @Override
+    public void testResult(TestDescription test, TestResult result) {
+        mResultCountListener.testResult(test, result);
+        if (mSuppressPassedTest && result.getStatus() == TestStatus.PASSED) {
+            return;
+        }
+        print(getTestSummary(test, result));
+    }
+
+    @Override
+    public void testRunFailed(String errorMessage) {
+        print(String.format("%s: run failed: %s\n", mTestTag, errorMessage));
+    }
+
+    /** {@inheritDoc} */
     @Override
     public void invocationEnded(long elapsedTime) {
-        Log.logAndDisplay(LogLevel.INFO, this.getClass().getSimpleName(), getInvocationSummary());
+        int[] results = mResultCountListener.getResultCounts();
+        StringBuilder sb = new StringBuilder();
+        sb.append(mTestTag);
+        sb.append(" results: ");
+        sb.append(mResultCountListener.getTotalTests());
+        sb.append(" Tests ");
+        sb.append(results[TestStatus.PASSED.ordinal()]);
+        sb.append(" Passed ");
+        if (results[TestStatus.FAILURE.ordinal()] > 0) {
+            sb.append(results[TestStatus.FAILURE.ordinal()]);
+            sb.append(" Failed ");
+        }
+        if (results[TestStatus.IGNORED.ordinal()] > 0) {
+            sb.append(results[TestStatus.IGNORED.ordinal()]);
+            sb.append(" Ignored ");
+        }
+        if (results[TestStatus.ASSUMPTION_FAILURE.ordinal()] > 0) {
+            sb.append(results[TestStatus.ASSUMPTION_FAILURE.ordinal()]);
+            sb.append(" Assumption failures ");
+        }
+        if (results[TestStatus.INCOMPLETE.ordinal()] > 0) {
+            sb.append(results[TestStatus.INCOMPLETE.ordinal()]);
+            sb.append(" Incomplete");
+        }
+        sb.append("\r\n");
+        print(sb.toString());
     }
 
     /** {@inheritDoc} */
     @Override
     public void logAssociation(String dataName, LogFile logFile) {
-        super.logAssociation(dataName, logFile);
-        mLogFiles.add(logFile);
+        printLog(logFile);
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void testLogSaved(String dataName, LogDataType dataType, InputStreamSource dataStream,
-            LogFile logFile) {
-        mLogFiles.add(logFile);
+    public void testLogSaved(
+            String dataName, LogDataType dataType, InputStreamSource dataStream, LogFile logFile) {
+        printLog(logFile);
     }
 
-    /**
-     * Get the invocation summary as a string.
-     */
-    String getInvocationSummary() {
-        if (getMergedTestRunResults().isEmpty() && mLogFiles.isEmpty()) {
-            return "No test results\n";
+    private void printLog(LogFile logFile) {
+        if (mSuppressPassedTest && !mResultCountListener.hasFailedTests()) {
+            // all tests passed, skip logging
+            return;
         }
-
-        StringBuilder sb = new StringBuilder();
-        for (TestRunResult testRunResult : getMergedTestRunResults()) {
-            sb.append(getTestRunSummary(testRunResult));
-        }
-        if (!mLogFiles.isEmpty()) {
-            sb.append("Log Files:\n");
-            for (LogFile logFile : mLogFiles) {
-                final String url = logFile.getUrl();
-                sb.append(String.format("  %s\n", url != null ? url : logFile.getPath()));
-            }
-        }
-        return "Test results:\n" + sb.toString().trim() + "\n";
+        String logDesc = logFile.getUrl() == null ? logFile.getPath() : logFile.getUrl();
+        print("Log: " + logDesc + "\r\n");
     }
 
-    /**
-     * Get the test run summary as a string including run metrics.
-     */
-    String getTestRunSummary(TestRunResult testRunResult) {
+    /** Get the test summary as string including test metrics. */
+    static String getTestSummary(TestDescription testId, TestResult testResult) {
         StringBuilder sb = new StringBuilder();
-        sb.append(String.format("%s:", testRunResult.getName()));
-        if (testRunResult.getNumTests() > 0) {
-            sb.append(String.format(" %d Test%s, %d Passed, %d Failed, %d Ignored",
-                    testRunResult.getNumCompleteTests(),
-                    testRunResult.getNumCompleteTests() == 1 ? "" : "s", // Pluralize Test
-                    testRunResult.getNumTestsInState(TestStatus.PASSED),
-                    testRunResult.getNumAllFailedTests(),
-                    testRunResult.getNumTestsInState(TestStatus.IGNORED)));
-        } else if (testRunResult.getRunMetrics().size() == 0) {
-            sb.append(" No results");
-        }
-        sb.append("\n");
-        Map<TestDescription, TestResult> testResults = testRunResult.getTestResults();
-        for (Map.Entry<TestDescription, TestResult> entry : testResults.entrySet()) {
-            if (mSuppressPassedTest && TestStatus.PASSED.equals(entry.getValue().getStatus())) {
-                continue;
-            }
-            sb.append(getTestSummary(entry.getKey(), entry.getValue()));
-        }
-        Map<String, String> metrics = testRunResult.getRunMetrics();
-        if (metrics != null && !metrics.isEmpty()) {
-            List<String> metricKeys = new ArrayList<String>(metrics.keySet());
-            Collections.sort(metricKeys);
-            for (String metricKey : metricKeys) {
-                sb.append(String.format("  %s: %s\n", metricKey, metrics.get(metricKey)));
-            }
-        }
-        sb.append("\n");
-        return sb.toString();
-    }
-
-    /**
-     * Get the test summary as string including test metrics.
-     */
-    String getTestSummary(TestDescription testId, TestResult testResult) {
-        StringBuilder sb = new StringBuilder();
-        sb.append(String.format("  %s: %s (%dms)\n", testId.toString(), testResult.getStatus(),
-                testResult.getEndTime() - testResult.getStartTime()));
+        sb.append(
+                String.format(
+                        "  %s: %s (%dms)\n",
+                        testId.toString(),
+                        testResult.getStatus(),
+                        testResult.getEndTime() - testResult.getStartTime()));
         String stack = testResult.getStackTrace();
         if (stack != null && !stack.isEmpty()) {
             sb.append("  stack=\n");
@@ -150,5 +162,9 @@ public class ConsoleResultReporter extends CollectingTestListener implements ILo
         }
 
         return sb.toString();
+    }
+
+    private void print(String msg) {
+        mStream.print(sTimeStampFormat.format(new Date()) + " " + msg);
     }
 }

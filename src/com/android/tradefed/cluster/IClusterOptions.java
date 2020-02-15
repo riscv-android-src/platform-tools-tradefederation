@@ -76,4 +76,7 @@ public interface IClusterOptions {
 
     /** Get labels for the host. */
     public List<String> getLabels();
+
+    /** Returns whether scheduler should collect early test summary. */
+    public boolean shouldCollectEarlyTestSummary();
 }
