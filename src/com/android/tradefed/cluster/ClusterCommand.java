@@ -15,6 +15,8 @@
  */
 package com.android.tradefed.cluster;
 
+import com.android.tradefed.util.UniqueMultiMap;
+
 import com.google.common.base.Strings;
 import java.util.ArrayList;
 import java.util.List;
@@ -61,6 +63,8 @@ public class ClusterCommand {
     private final String mAttemptId;
     // Devices try to match the current command.
     private List<String> mTargetDeviceSerials = new ArrayList<>();
+    // Additional options to inject
+    private UniqueMultiMap<String, String> mExtraOptions = new UniqueMultiMap<>();
 
     public ClusterCommand(String commandId, String taskId, String cmdLine) {
         this(null, commandId, taskId, cmdLine, null, RequestType.UNMANAGED, null, null);
@@ -175,6 +179,11 @@ public class ClusterCommand {
         this.mTargetDeviceSerials = targetDeviceSerials;
     }
 
+    /** @return multimap of additional options to inject */
+    public UniqueMultiMap<String, String> getExtraOptions() {
+        return mExtraOptions;
+    }
+
     /**
      * Returns a shard count.
      *
@@ -219,6 +228,17 @@ public class ClusterCommand {
                 deviceSerials.add(jsonDeviceSerials.getString(j));
             }
             command.setTargetDeviceSerials(deviceSerials);
+        }
+        JSONArray extraOptions = json.optJSONArray("extra_options");
+        if (extraOptions != null) {
+            for (int i = 0; i < extraOptions.length(); i++) {
+                JSONObject entry = extraOptions.getJSONObject(i);
+                String key = entry.getString("key");
+                JSONArray values = entry.getJSONArray("values");
+                for (int j = 0; j < values.length(); j++) {
+                    command.mExtraOptions.put(key, values.getString(j));
+                }
+            }
         }
         return command;
     }

@@ -42,11 +42,17 @@ public class ClusterBuildProvider implements IBuildProvider {
     @Option(name = "test-resource", description = "Test resources", mandatory = true)
     private Map<String, String> mTestResources = new TreeMap<>();
 
+    @Option(name = "build-id", description = "Build ID")
+    private String mBuildId = IBuildInfo.UNKNOWN_BUILD_ID;
+
+    @Option(name = "build-target", description = "Build target name")
+    private String mBuildTarget = "stub";
+
     @Override
     public IBuildInfo getBuild() throws BuildRetrievalError {
         try {
             mRootDir.mkdirs();
-            final IBuildInfo buildInfo = new ClusterBuildInfo(mRootDir);
+            final IBuildInfo buildInfo = new ClusterBuildInfo(mRootDir, mBuildId, mBuildTarget);
             final TestResourceDownloader downloader = new TestResourceDownloader(mRootDir);
             for (final Entry<String, String> entry : mTestResources.entrySet()) {
                 final TestResource resource = new TestResource(entry.getKey(), entry.getValue());
