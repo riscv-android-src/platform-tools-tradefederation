@@ -19,15 +19,19 @@ import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 
 import java.io.PrintStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 /**
@@ -50,9 +54,16 @@ public class ConsoleResultReporter extends TestResultListener
                             + "passing tests, only print failed and ignored ones")
     private boolean mSuppressPassedTest = false;
 
+    @Option(
+            name = "display-failure-summary",
+            description = "Display all the failures at the very end for easier visualization.")
+    private boolean mDisplayFailureSummary = true;
+
     private final PrintStream mStream;
-    private Set<LogFile> mLogFiles = new LinkedHashSet<>();
+    private Set<LogFile> mLoggedFiles = new LinkedHashSet<>();
+    private Map<TestDescription, TestResult> mFailures = new LinkedHashMap<>();
     private String mTestTag;
+    private String mRunInProgress;
     private CountingTestResultListener mResultCountListener = new CountingTestResultListener();
 
     public ConsoleResultReporter() {
@@ -71,15 +82,30 @@ public class ConsoleResultReporter extends TestResultListener
     @Override
     public void testResult(TestDescription test, TestResult result) {
         mResultCountListener.testResult(test, result);
-        if (mSuppressPassedTest && result.getStatus() == TestStatus.PASSED) {
+        if (mSuppressPassedTest && TestStatus.PASSED.equals(result.getStatus())) {
             return;
+        }
+        if (mDisplayFailureSummary && TestStatus.FAILURE.equals(result.getStatus())) {
+            mFailures.put(test, result);
         }
         print(getTestSummary(test, result));
     }
 
     @Override
+    public void testRunStarted(String runName, int testCount, int attemptNumber, long startTime) {
+        super.testRunStarted(runName, testCount, attemptNumber, startTime);
+        mRunInProgress = runName;
+    }
+
+    @Override
     public void testRunFailed(String errorMessage) {
-        print(String.format("%s: run failed: %s\n", mTestTag, errorMessage));
+        print(String.format("%s: run failed: %s\n", mRunInProgress, errorMessage));
+    }
+
+    @Override
+    public void testRunEnded(long elapsedTimeMillis, HashMap<String, Metric> runMetrics) {
+        super.testRunEnded(elapsedTimeMillis, runMetrics);
+        mRunInProgress = null;
     }
 
     /** {@inheritDoc} */
@@ -87,10 +113,9 @@ public class ConsoleResultReporter extends TestResultListener
     public void invocationEnded(long elapsedTime) {
         int[] results = mResultCountListener.getResultCounts();
         StringBuilder sb = new StringBuilder();
-        sb.append(mTestTag);
-        sb.append(" results: ");
+        sb.append(String.format("\nResults summary for test-tag '%s': ", mTestTag));
         sb.append(mResultCountListener.getTotalTests());
-        sb.append(" Tests ");
+        sb.append(" Tests [");
         sb.append(results[TestStatus.PASSED.ordinal()]);
         sb.append(" Passed ");
         if (results[TestStatus.FAILURE.ordinal()] > 0) {
@@ -109,21 +134,30 @@ public class ConsoleResultReporter extends TestResultListener
             sb.append(results[TestStatus.INCOMPLETE.ordinal()]);
             sb.append(" Incomplete");
         }
-        sb.append("\r\n");
+        sb.append("]\r\n");
         print(sb.toString());
+        if (mDisplayFailureSummary) {
+            for (Entry<TestDescription, TestResult> entry : mFailures.entrySet()) {
+                print(getTestSummary(entry.getKey(), entry.getValue()));
+            }
+        }
+        // Print the logs
+        for (LogFile logFile : mLoggedFiles) {
+            printLog(logFile);
+        }
     }
 
     /** {@inheritDoc} */
     @Override
     public void logAssociation(String dataName, LogFile logFile) {
-        printLog(logFile);
+        mLoggedFiles.add(logFile);
     }
 
     /** {@inheritDoc} */
     @Override
     public void testLogSaved(
             String dataName, LogDataType dataType, InputStreamSource dataStream, LogFile logFile) {
-        printLog(logFile);
+        mLoggedFiles.add(logFile);
     }
 
     private void printLog(LogFile logFile) {
