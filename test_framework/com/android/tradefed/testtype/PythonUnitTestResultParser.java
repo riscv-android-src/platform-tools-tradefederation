@@ -205,7 +205,7 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
                         "Parser finished in unexpected state " + mCurrentParseState.toString());
             }
         } catch (PythonUnitTestParseException e) {
-            throw new RuntimeException("Failed to parse Python unittest result", e);
+            throw new RuntimeException(e.getMessage());
         }
     }
 

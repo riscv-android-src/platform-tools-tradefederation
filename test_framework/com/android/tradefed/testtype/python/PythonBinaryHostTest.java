@@ -26,10 +26,12 @@ import com.android.tradefed.invoker.ExecutionFiles.FilesKey;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.ResultForwarder;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.PythonUnitTestResultParser;
 import com.android.tradefed.util.CommandResult;
@@ -225,7 +227,10 @@ public class PythonBinaryHostTest implements IRemoteTest {
             reportFailure(
                     listener,
                     runName,
-                    String.format("Failed to parse the python logs: %s", e.getMessage()));
+                    String.format(
+                            "Failed to parse the python logs: %s. Please ensure that verbosity "
+                                    + "of output is high enough to be parsed.",
+                            e.getMessage()));
             CLog.e(e);
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -250,7 +255,9 @@ public class PythonBinaryHostTest implements IRemoteTest {
     private void reportFailure(
             ITestInvocationListener listener, String runName, String errorMessage) {
         listener.testRunStarted(runName, 0);
-        listener.testRunFailed(errorMessage);
+        FailureDescription description =
+                FailureDescription.create(errorMessage, FailureStatus.TEST_FAILURE);
+        listener.testRunFailed(description);
         listener.testRunEnded(0L, new HashMap<String, Metric>());
     }
 
