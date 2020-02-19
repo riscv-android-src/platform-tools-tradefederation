@@ -999,7 +999,7 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public boolean isAppEnumerationSupported() throws DeviceNotAvailableException {
-        return checkApiLevelAgainstNextRelease(30);
+        return false;
     }
 
     /**

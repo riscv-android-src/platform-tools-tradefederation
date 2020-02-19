@@ -133,6 +133,14 @@ public class TestDevice extends NativeDevice {
         super(device, stateMonitor, allocationMonitor);
     }
 
+    @Override
+    public boolean isAppEnumerationSupported() throws DeviceNotAvailableException {
+        if (!checkApiLevelAgainstNextRelease(30)) {
+            return false;
+        }
+        return hasFeature("android.software.app_enumeration");
+    }
+
     /**
      * Core implementation of package installation, with retries around
      * {@link IDevice#installPackage(String, boolean, String...)}
