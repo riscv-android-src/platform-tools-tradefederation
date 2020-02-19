@@ -102,12 +102,13 @@ message DebugInfo {
 // A Fail TestStatus can be associated with a more granular failure status that helps understanding
 // the context.
 enum FailureStatus {
+  UNSET = 0;
   // The test in progress was the reason for the failure.
-  TEST_FAILURE = 0;
+  TEST_FAILURE = 1;
   // A timeout condition on the operation in progress occurred.
-  TIMED_OUT = 1;
+  TIMED_OUT = 2;
   // The test in progress was cancelled.
-  CANCELLED = 2;
+  CANCELLED = 3;
   // A failure attributed to something not functioning properly.
   INFRA_FAILURE = 10;
   // System under test crashed and caused the test to fail.

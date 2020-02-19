@@ -27,7 +27,8 @@ public class FailureDescription {
     // The error message generated from the failure
     private String mErrorMessage;
     // Optional: The category of the failure
-    private @Nullable TestRecordProto.FailureStatus mFailureStatus;
+    private @Nullable TestRecordProto.FailureStatus mFailureStatus =
+            TestRecordProto.FailureStatus.UNSET;
 
     FailureDescription() {}
 
@@ -42,6 +43,9 @@ public class FailureDescription {
 
     /** Returns the FailureStatus associated with the failure. Can be null. */
     public @Nullable TestRecordProto.FailureStatus getFailureStatus() {
+        if (TestRecordProto.FailureStatus.UNSET.equals(mFailureStatus)) {
+            return null;
+        }
         return mFailureStatus;
     }
 
