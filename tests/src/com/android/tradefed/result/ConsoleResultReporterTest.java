@@ -17,10 +17,10 @@ package com.android.tradefed.result;
 
 import static org.mockito.Mockito.mock;
 
+import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.invoker.IInvocationContext;
-import com.android.ddmlib.testrunner.TestResult.TestStatus;
 
 import com.google.common.truth.Truth;
 
@@ -30,7 +30,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.io.PrintStream;
 
 /** Unit tests for {@link ConsoleResultReporterTest} */
@@ -41,7 +40,7 @@ public class ConsoleResultReporterTest {
     private ByteArrayOutputStream mOutput;
 
     @Before
-    public void setUp() throws IOException, ConfigurationException {
+    public void setUp() {
         mOutput = new ByteArrayOutputStream();
         mTest = new TestDescription("FooTest", "testFoo");
         mResultReporter = new ConsoleResultReporter(new PrintStream(mOutput, true));
@@ -49,7 +48,7 @@ public class ConsoleResultReporterTest {
     }
 
     @Test
-    public void testPassed() throws IOException {
+    public void testPassed() {
         mResultReporter.testResult(mTest, createTestResult(TestStatus.PASSED));
         Truth.assertThat(mOutput.toString()).contains("FooTest#testFoo");
     }
@@ -62,7 +61,7 @@ public class ConsoleResultReporterTest {
     }
 
     @Test
-    public void testFailed() throws IOException {
+    public void testFailed() {
         TestResult result = createTestResult(TestStatus.FAILURE);
         result.setStackTrace("this is a trace");
         mResultReporter.testResult(mTest, result);
@@ -83,10 +82,10 @@ public class ConsoleResultReporterTest {
     }
 
     @Test
-    public void testSummary() throws IOException {
+    public void testSummary() {
         mResultReporter.testResult(mTest, createTestResult(TestStatus.PASSED));
         mResultReporter.invocationEnded(0);
-        Truth.assertThat(mOutput.toString()).contains("results: 1 Tests 1 Passed");
+        Truth.assertThat(mOutput.toString()).contains("1 Tests [1 Passed ]");
     }
 
     private TestResult createTestResult(TestStatus status) {
