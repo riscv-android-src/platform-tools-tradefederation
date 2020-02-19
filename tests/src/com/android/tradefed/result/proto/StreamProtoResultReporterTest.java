@@ -22,6 +22,7 @@ import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogFile;
@@ -79,7 +80,7 @@ public class StreamProtoResultReporterTest {
             mMockListener.testEnded(test1, 10L, new HashMap<String, Metric>());
 
             mMockListener.testStarted(test2, 11L);
-            mMockListener.testFailed(test2, "I failed");
+            mMockListener.testFailed(test2, FailureDescription.create("I failed"));
             mMockListener.testEnded(
                     EasyMock.eq(test2),
                     EasyMock.anyLong(),
@@ -146,7 +147,7 @@ public class StreamProtoResultReporterTest {
             mMockListener.testEnded(test1, 10L, new HashMap<String, Metric>());
 
             mMockListener.testStarted(test2, 11L);
-            mMockListener.testFailed(test2, "I failed");
+            mMockListener.testFailed(test2, FailureDescription.create("I failed"));
             mMockListener.testEnded(
                     EasyMock.eq(test2),
                     EasyMock.anyLong(),

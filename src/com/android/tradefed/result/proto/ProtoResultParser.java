@@ -24,6 +24,7 @@ import com.android.tradefed.invoker.logger.TfObjectTracker;
 import com.android.tradefed.invoker.proto.InvocationContext.Context;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -354,8 +355,14 @@ public class ProtoResultParser {
     private void handleTestRunEnd(TestRecord runProto) {
         // If we find debugging information, the test run failed and we reflect it.
         if (runProto.hasDebugInfo()) {
-            mListener.testRunFailed(runProto.getDebugInfo().getErrorMessage());
-            log("Test run failure proto: %s", runProto.getDebugInfo().getErrorMessage());
+            FailureDescription description =
+                    FailureDescription.create(runProto.getDebugInfo().getErrorMessage());
+            if (!TestRecordProto.FailureStatus.UNSET.equals(
+                    runProto.getDebugInfo().getFailureStatus())) {
+                description.setFailureStatus(runProto.getDebugInfo().getFailureStatus());
+            }
+            mListener.testRunFailed(description);
+            log("Test run failure proto: %s", description.toString());
         }
         handleLogs(runProto);
         log("Test run ended proto: %s", runProto.getTestRecordId());
@@ -381,14 +388,23 @@ public class ProtoResultParser {
     private void handleTestCaseEnd(TestDescription description, TestRecord testcaseProto) {
         switch (testcaseProto.getStatus()) {
             case FAIL:
-                mListener.testFailed(description, testcaseProto.getDebugInfo().getErrorMessage());
-                log(
-                        "Test case failed proto: %s - %s",
-                        description.toString(), testcaseProto.getDebugInfo().getErrorMessage());
+                FailureDescription failure =
+                        FailureDescription.create(testcaseProto.getDebugInfo().getErrorMessage());
+                if (!TestRecordProto.FailureStatus.UNSET.equals(
+                        testcaseProto.getDebugInfo().getFailureStatus())) {
+                    failure.setFailureStatus(testcaseProto.getDebugInfo().getFailureStatus());
+                }
+                mListener.testFailed(description, failure);
+                log("Test case failed proto: %s - %s", description.toString(), failure.toString());
                 break;
             case ASSUMPTION_FAILURE:
-                mListener.testAssumptionFailure(
-                        description, testcaseProto.getDebugInfo().getTrace());
+                FailureDescription assumption =
+                        FailureDescription.create(testcaseProto.getDebugInfo().getErrorMessage());
+                if (!TestRecordProto.FailureStatus.UNSET.equals(
+                        testcaseProto.getDebugInfo().getFailureStatus())) {
+                    assumption.setFailureStatus(testcaseProto.getDebugInfo().getFailureStatus());
+                }
+                mListener.testAssumptionFailure(description, assumption);
                 log(
                         "Test case assumption failure proto: %s - %s",
                         description.toString(), testcaseProto.getDebugInfo().getTrace());
