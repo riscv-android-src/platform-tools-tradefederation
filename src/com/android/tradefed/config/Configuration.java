@@ -91,7 +91,6 @@ public class Configuration implements IConfiguration {
     public static final String CONFIGURATION_DESCRIPTION_TYPE_NAME = "config_desc";
     public static final String DEVICE_NAME = "device";
     public static final String DEVICE_METRICS_COLLECTOR_TYPE_NAME = "metrics_collector";
-    public static final String DEVICE_SIDE_SPEC_TYPE_NAME = "device_side_collector_spec";
     public static final String METRIC_POST_PROCESSOR_TYPE_NAME = "metric_post_processor";
     public static final String SANDBOX_TYPE_NAME = "sandbox";
     public static final String SANBOX_OPTIONS_TYPE_NAME = "sandbox_options";
@@ -1377,6 +1376,16 @@ public class Configuration implements IConfiguration {
                     serializer,
                     DEVICE_METRICS_COLLECTOR_TYPE_NAME,
                     collector,
+                    excludeFilters,
+                    printDeprecatedOptions,
+                    printUnchangedOptions);
+        }
+
+        for (IPostProcessor processor : getPostProcessors()) {
+            ConfigurationUtil.dumpClassToXml(
+                    serializer,
+                    METRIC_POST_PROCESSOR_TYPE_NAME,
+                    processor,
                     excludeFilters,
                     printDeprecatedOptions,
                     printUnchangedOptions);
