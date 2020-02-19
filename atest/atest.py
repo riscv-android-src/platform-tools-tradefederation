@@ -155,7 +155,13 @@ def make_test_run_dir():
     if not os.path.exists(constants.ATEST_RESULT_ROOT):
         os.makedirs(constants.ATEST_RESULT_ROOT)
     ctime = time.strftime(TEST_RUN_DIR_PREFIX, time.localtime())
-    return tempfile.mkdtemp(prefix='%s_' % ctime, dir=constants.ATEST_RESULT_ROOT)
+    test_result_dir = tempfile.mkdtemp(prefix='%s_' % ctime,
+                                       dir=constants.ATEST_RESULT_ROOT)
+    symlink = os.path.join(constants.ATEST_RESULT_ROOT, 'LATEST')
+    if os.path.exists(symlink):
+        os.remove(symlink)
+    os.symlink(test_result_dir, symlink)
+    return test_result_dir
 
 
 def get_extra_args(args):
