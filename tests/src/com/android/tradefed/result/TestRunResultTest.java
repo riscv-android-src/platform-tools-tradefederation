@@ -18,6 +18,7 @@ package com.android.tradefed.result;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
@@ -417,6 +418,9 @@ public class TestRunResultTest {
 
         assertTrue(result.getRunLoggedFiles().containsKey("run log"));
         assertEquals("path2", result.getRunLoggedFiles().get("run log").getPath());
+        assertFalse(result.isRunFailure());
+        assertNull(result.getRunFailureMessage());
+        assertNull(result.getRunFailureDescription());
     }
 
     /** Ensure that the merging logic among multiple testRunResults for run failures is correct. */
