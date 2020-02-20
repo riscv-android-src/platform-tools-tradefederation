@@ -55,6 +55,7 @@ import com.android.tradefed.device.metric.BaseDeviceMetricCollector;
 import com.android.tradefed.device.metric.DeviceMetricData;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.guice.InvocationScope;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.invoker.shard.IShardHelper;
 import com.android.tradefed.invoker.shard.ShardHelper;
 import com.android.tradefed.log.ILeveledLogOutput;
@@ -522,6 +523,27 @@ public class TestInvocationTest {
         } catch (IllegalArgumentException e) {
             // expected
         }
+        verifyMocks(test, mockRescheduler);
+        verifySummaryListener();
+    }
+
+    /**
+     * Test metrics SHUTDOWN_HARD_LATENCY is collected when the invocation is stopped/interrupted.
+     */
+    @Test
+    public void testInvoke_metricsCollectedWhenStopped() throws Throwable {
+        IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
+        test.run(EasyMock.anyObject(), EasyMock.anyObject());
+        mMockPreparer.tearDown(EasyMock.anyObject(), EasyMock.isNull());
+        setupMockStoppedListeners();
+        setupNormalInvoke(test);
+        EasyMock.replay(mockRescheduler);
+        mTestInvocation.notifyInvocationStopped("Stopped");
+        mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
+        assertTrue(
+                mStubInvocationMetadata
+                        .getAttributes()
+                        .containsKey(InvocationMetricKey.SHUTDOWN_HARD_LATENCY.toString()));
         verifyMocks(test, mockRescheduler);
         verifySummaryListener();
     }
@@ -1190,7 +1212,8 @@ public class TestInvocationTest {
             InvocationStatus status,
             Throwable throwable,
             boolean stubFailures,
-            boolean reportHostLog)
+            boolean reportHostLog,
+            boolean stopped)
             throws IOException {
         // invocationStarted
         mMockLogSaver.invocationStarted(mStubInvocationMetadata);
@@ -1292,6 +1315,11 @@ public class TestInvocationTest {
                     EasyMock.startsWith(LOGCAT_NAME_TEARDOWN),
                     EasyMock.eq(LogDataType.LOGCAT),
                     (InputStreamSource) EasyMock.anyObject());
+
+            if (stopped) {
+                mMockTestListener.invocationFailed((Throwable) EasyMock.anyObject());
+                mMockSummaryListener.invocationFailed((Throwable) EasyMock.anyObject());
+            }
         }
 
         EasyMock.expect(
@@ -1608,21 +1636,25 @@ public class TestInvocationTest {
     }
 
     private void setupMockSuccessListeners() throws IOException {
-        setupMockListeners(InvocationStatus.SUCCESS, null, false, true);
+        setupMockListeners(InvocationStatus.SUCCESS, null, false, true, false);
     }
 
     private void setupMockFailureListeners(Throwable throwable) throws IOException {
-        setupMockListeners(InvocationStatus.FAILED, throwable, false, true);
+        setupMockListeners(InvocationStatus.FAILED, throwable, false, true, false);
     }
 
     private void setupMockFailureListenersAny(Throwable throwable, boolean stubFailures)
             throws IOException {
-        setupMockListeners(InvocationStatus.FAILED, throwable, stubFailures, true);
+        setupMockListeners(InvocationStatus.FAILED, throwable, stubFailures, true, false);
     }
 
     private void setupMockFailureListeners(
             Throwable throwable, boolean stubFailures, boolean reportHostLog) throws IOException {
-        setupMockListeners(InvocationStatus.FAILED, throwable, stubFailures, reportHostLog);
+        setupMockListeners(InvocationStatus.FAILED, throwable, stubFailures, reportHostLog, false);
+    }
+
+    private void setupMockStoppedListeners() throws IOException {
+        setupMockListeners(InvocationStatus.SUCCESS, null, false, true, true);
     }
 
     private void verifySummaryListener() {
