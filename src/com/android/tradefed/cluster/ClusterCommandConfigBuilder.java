@@ -27,6 +27,8 @@ import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.StringUtil;
 import com.android.tradefed.util.UniqueMultiMap;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -153,6 +155,11 @@ public class ClusterCommandConfigBuilder {
         return configObj;
     }
 
+    @VisibleForTesting
+    IConfiguration initConfiguration() {
+        return new Configuration("Cluster Command " + mCommand.getCommandId(), "");
+    }
+
     /**
      * Builds a configuration file.
      *
@@ -164,7 +171,7 @@ public class ClusterCommandConfigBuilder {
         assert mTestResources != null;
         assert mWorkDir != null;
 
-        IConfiguration config = new Configuration("Cluster Command " + mCommand.getCommandId(), "");
+        IConfiguration config = initConfiguration();
         config.getCommandOptions().setTestTag(TEST_TAG);
         List<IDeviceConfiguration> deviceConfigs = new ArrayList<>();
         int index = 0;

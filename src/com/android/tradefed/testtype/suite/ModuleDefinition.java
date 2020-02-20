@@ -34,19 +34,21 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
-import com.android.tradefed.invoker.logger.TfObjectTracker;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
+import com.android.tradefed.invoker.logger.TfObjectTracker;
 import com.android.tradefed.invoker.shard.token.TokenProperty;
 import com.android.tradefed.log.ILogRegistry.EventType;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLoggerReceiver;
 import com.android.tradefed.result.LogFile;
+import com.android.tradefed.result.MultiFailureDescription;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
@@ -603,12 +605,12 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         }
         int numResults = 0;
         Map<String, LogFile> aggLogFiles = new LinkedHashMap<>();
-        List<String> runFailureMessages = new ArrayList<>();
+        List<FailureDescription> runFailureMessages = new ArrayList<>();
         for (TestRunResult runResult : listResults) {
             numResults += runResult.getTestResults().size();
             forwardTestResults(runResult.getTestResults(), listener);
             if (runResult.isRunFailure()) {
-                runFailureMessages.add(runResult.getRunFailureMessage());
+                runFailureMessages.add(runResult.getRunFailureDescription());
                 mIsFailedModule = true;
             }
             elapsedTime += runResult.getElapsedTime();
@@ -643,17 +645,22 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                     String.format(
                             "Module %s only ran %d out of %d expected tests.",
                             getId(), numResults, totalExpectedTests);
-            runFailureMessages.add(error);
+            runFailureMessages.add(FailureDescription.create(error));
             CLog.e(error);
             mIsFailedModule = true;
         }
 
         if (tearDownException != null) {
-            runFailureMessages.add(tearDownException.getMessage());
+            runFailureMessages.add(
+                    FailureDescription.create(StreamUtil.getStackTrace(tearDownException)));
         }
         // If there is any errors report them all at once
         if (!runFailureMessages.isEmpty()) {
-            listener.testRunFailed(String.join(TestRunResult.ERROR_DIVIDER, runFailureMessages));
+            if (runFailureMessages.size() == 1) {
+                listener.testRunFailed(runFailureMessages.get(0));
+            } else {
+                listener.testRunFailed(new MultiFailureDescription(runFailureMessages));
+            }
         }
 
         // Provide a strong association of the run to its logs.

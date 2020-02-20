@@ -23,6 +23,7 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.statsd.ConfigUtil;
 import com.android.tradefed.util.statsd.MetricUtil;
 import com.google.common.annotations.VisibleForTesting;
@@ -55,6 +56,8 @@ public class HostStatsdMetricCollector extends BaseDeviceMetricCollector {
      */
     private int mTestCount = 1;
 
+    private boolean mTestFailed = false;
+
     @Override
     public void onTestRunStart(DeviceMetricData runData) {
         if (mPerRun) {
@@ -72,19 +75,25 @@ public class HostStatsdMetricCollector extends BaseDeviceMetricCollector {
     }
 
     @Override
+    public void onTestFail(DeviceMetricData testData, TestDescription test) {
+        mTestFailed = true;
+    }
+
+    @Override
     public void onTestEnd(
             DeviceMetricData testData, final Map<String, Metric> currentTestCaseMetrics) {
         if (!mPerRun) {
-            stopCollection(testData);
-            mTestCount++;
+            stopCollection(testData, !mTestFailed);
         }
+        mTestCount++;
+        mTestFailed = false;
     }
 
     @Override
     public void onTestRunEnd(
             DeviceMetricData runData, final Map<String, Metric> currentRunMetrics) {
         if (mPerRun) {
-            stopCollection(runData);
+            stopCollection(runData, true);
         }
     }
 
@@ -133,7 +142,7 @@ public class HostStatsdMetricCollector extends BaseDeviceMetricCollector {
         }
     }
 
-    private void stopCollection(DeviceMetricData metricData) {
+    private void stopCollection(DeviceMetricData metricData, boolean reportResult) {
         for (ITestDevice device : getDevices()) {
             String serialNumber = device.getSerialNumber();
             if (mDeviceConfigIds.containsKey(serialNumber)) {
@@ -143,14 +152,16 @@ public class HostStatsdMetricCollector extends BaseDeviceMetricCollector {
                             "Retrieved stats report from device %s for config %d",
                             serialNumber, configId);
                     removeConfig(device, configId);
-                    String reportName =
-                            mPerRun
-                                    ? String.format("device_%s_stats_report", serialNumber)
-                                    : String.format(
-                                            "device_%s_stats_report_test_%d",
-                                            serialNumber, mTestCount);
-                    testLog(reportName, LogDataType.PB, dataStream);
-                    processStatsReport(device, dataStream, metricData);
+                    if (reportResult) {
+                        String reportName =
+                                mPerRun
+                                        ? String.format("device_%s_stats_report", serialNumber)
+                                        : String.format(
+                                                "device_%s_stats_report_test_%d",
+                                                serialNumber, mTestCount);
+                        testLog(reportName, LogDataType.PB, dataStream);
+                        processStatsReport(device, dataStream, metricData);
+                    }
                 } catch (DeviceNotAvailableException e) {
                     CLog.e("Device %s not available: %s", serialNumber, e);
                 }

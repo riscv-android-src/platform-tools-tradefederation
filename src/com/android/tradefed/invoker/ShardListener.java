@@ -232,7 +232,7 @@ public class ShardListener extends CollectingTestListener implements ISupportGra
                 runResult.getStartTime());
         forwardTestResults(runResult.getTestResults());
         if (runResult.isRunFailure()) {
-            mMasterListener.testRunFailed(runResult.getRunFailureMessage());
+            mMasterListener.testRunFailed(runResult.getRunFailureDescription());
         }
 
         // Provide a strong association of the run to its logs.
@@ -246,8 +246,8 @@ public class ShardListener extends CollectingTestListener implements ISupportGra
             mMasterListener.testStarted(testEntry.getKey(), testEntry.getValue().getStartTime());
             switch (testEntry.getValue().getStatus()) {
                 case FAILURE:
-                    mMasterListener.testFailed(testEntry.getKey(),
-                            testEntry.getValue().getStackTrace());
+                    mMasterListener.testFailed(
+                            testEntry.getKey(), testEntry.getValue().getFailure());
                     break;
                 case ASSUMPTION_FAILURE:
                     mMasterListener.testAssumptionFailure(testEntry.getKey(),

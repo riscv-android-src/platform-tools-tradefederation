@@ -15,49 +15,77 @@
  */
 package com.android.tradefed.cluster;
 
-import org.junit.Assert;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.json.JSONException;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+import java.util.List;
+
+/** Unit tests for {@link ClusterCommand}. */
 @RunWith(JUnit4.class)
-public final class ClusterCommandTest {
+public class ClusterCommandTest {
+    private static final String REQUEST_ID = "request_id";
+    private static final String COMMAND_ID = "command_id";
+    private static final String TASK_ID = "task_id";
+    private static final String COMMAND_LINE = "command_line";
+
     @Test
-    public void testFromJsonWithAssignedAttemptId() throws JSONException {
-        JSONObject json = new JSONObject();
-        json.put("request_id", "i123");
-        json.put("command_id", "c123");
-        json.put("task_id", "t123");
-        json.put("command_line", "command line");
-        json.put("attempt_id", "a123");
+    public void testFromJson_withAssignedAttemptId() throws JSONException {
+        JSONObject json = createCommandJson().put("attempt_id", "attempt_id");
 
         ClusterCommand command = ClusterCommand.fromJson(json);
 
-        Assert.assertEquals("i123", command.getRequestId());
-        Assert.assertEquals("c123", command.getCommandId());
-        Assert.assertEquals("t123", command.getTaskId());
-        Assert.assertEquals("command line", command.getCommandLine());
-        Assert.assertEquals("a123", command.getAttemptId());
+        assertEquals(REQUEST_ID, command.getRequestId());
+        assertEquals(COMMAND_ID, command.getCommandId());
+        assertEquals(TASK_ID, command.getTaskId());
+        assertEquals(COMMAND_LINE, command.getCommandLine());
+        assertEquals("attempt_id", command.getAttemptId());
     }
 
     @Test
-    public void testFromJsonWithoutAssignedAttemptId() throws JSONException {
-        JSONObject json = new JSONObject();
-        json.put("request_id", "i123");
-        json.put("command_id", "c123");
-        json.put("task_id", "t123");
-        json.put("command_line", "command line");
+    public void testFromJson_withoutAssignedAttemptId() throws JSONException {
+        JSONObject json = createCommandJson();
 
         ClusterCommand command = ClusterCommand.fromJson(json);
 
-        Assert.assertEquals("i123", command.getRequestId());
-        Assert.assertEquals("c123", command.getCommandId());
-        Assert.assertEquals("t123", command.getTaskId());
-        Assert.assertEquals("command line", command.getCommandLine());
+        assertEquals(REQUEST_ID, command.getRequestId());
+        assertEquals(COMMAND_ID, command.getCommandId());
+        assertEquals(TASK_ID, command.getTaskId());
+        assertEquals(COMMAND_LINE, command.getCommandLine());
         String UUIDPattern =
                 "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$";
-        Assert.assertTrue(command.getAttemptId().matches(UUIDPattern));
+        assertTrue(command.getAttemptId().matches(UUIDPattern));
+    }
+
+    @Test
+    public void testFromJson_extraOptions() throws JSONException {
+        JSONArray values = new JSONArray().put("hello").put("world");
+        JSONObject option = new JSONObject().put("key", "key").put("values", values);
+        JSONObject json = createCommandJson().put("extra_options", new JSONArray().put(option));
+
+        ClusterCommand command = ClusterCommand.fromJson(json);
+
+        assertEquals(REQUEST_ID, command.getRequestId());
+        assertEquals(COMMAND_ID, command.getCommandId());
+        assertEquals(TASK_ID, command.getTaskId());
+        assertEquals(COMMAND_LINE, command.getCommandLine());
+
+        assertEquals(1, command.getExtraOptions().size());
+        assertEquals(List.of("hello", "world"), command.getExtraOptions().get("key"));
+    }
+
+    /** Helper method to create a JSON command object with required fields. */
+    private static JSONObject createCommandJson() throws JSONException {
+        return new JSONObject()
+                .put("request_id", REQUEST_ID)
+                .put("command_id", COMMAND_ID)
+                .put("task_id", TASK_ID)
+                .put("command_line", COMMAND_LINE);
     }
 }
