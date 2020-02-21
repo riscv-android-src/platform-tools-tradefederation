@@ -227,6 +227,7 @@ public class HostTestTest extends TestCase {
     /**
      * Test class, we have to annotate with full org.junit.Test to avoid name collision in import.
      */
+    @MyAnnotation
     @RunWith(DeviceJUnit4ClassRunner.class)
     public static class Junit4TestLogClass {
 
@@ -359,6 +360,13 @@ public class HostTestTest extends TestCase {
         Junit4IgnoredClass.class,
     })
     public class Junit4SuiteClassWithIgnored {}
+
+    @RunWith(DeviceSuite.class)
+    @SuiteClasses({
+        Junit4TestClassWithIgnore.class,
+        Junit4TestLogClass.class,
+    })
+    public class Junit4SuiteClassWithAnnotation {}
 
     /**
      * JUnit4 runner that implements {@link ISetOptionReceiver} but does not actually have the
@@ -1443,6 +1451,26 @@ public class HostTestTest extends TestCase {
         EasyMock.verify(mListener);
     }
 
+    public void testRun_junit_suite_annotation() throws Exception {
+        mHostTest.setClassName(Junit4SuiteClassWithAnnotation.class.getName());
+        mHostTest.addExcludeAnnotation(MyAnnotation.class.getName());
+        TestDescription test1 =
+                new TestDescription(Junit4TestClassWithIgnore.class.getName(), "testPass5");
+        TestDescription test2 =
+                new TestDescription(Junit4TestClassWithIgnore.class.getName(), "testPass6");
+        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(2));
+        mListener.testStarted(EasyMock.eq(test1));
+        mListener.testEnded(EasyMock.eq(test1), (HashMap<String, Metric>) EasyMock.anyObject());
+        mListener.testStarted(EasyMock.eq(test2));
+        mListener.testIgnored(test2);
+        mListener.testEnded(EasyMock.eq(test2), (HashMap<String, Metric>) EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+        EasyMock.replay(mListener);
+        assertEquals(2, mHostTest.countTestCases());
+        mHostTest.run(mTestInfo, mListener);
+        EasyMock.verify(mListener);
+    }
+
     /**
      * Test success case for {@link HostTest#run(TestInformation, ITestInvocationListener)} with a
      * filtering and junit 4 handling.
@@ -2057,6 +2085,16 @@ public class HostTestTest extends TestCase {
         mListener.testLog(
                 EasyMock.eq("TEST2"), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
         mListener.testEnded(test2, new HashMap<String, Metric>());
+        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+        EasyMock.replay(mListener);
+        mHostTest.run(mTestInfo, mListener);
+        EasyMock.verify(mListener);
+    }
+
+    public void testRun_junit4style_excluded() throws Exception {
+        mHostTest.setClassName(Junit4TestLogClass.class.getName());
+        mHostTest.addExcludeAnnotation(MyAnnotation.class.getName());
+        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(0));
         mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
         EasyMock.replay(mListener);
         mHostTest.run(mTestInfo, mListener);
