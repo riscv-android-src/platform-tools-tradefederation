@@ -306,6 +306,7 @@ public class PerfettoPullerMetricCollectorTest {
         ArgumentCaptor<String[]> captor = ArgumentCaptor.forClass(String[].class);
         Mockito.verify(mPerfettoMetricCollector).runHostCommand(Mockito.anyLong(),
                 captor.capture(), Mockito.any(), Mockito.any());
+        Mockito.verify(mPerfettoMetricCollector).getCompressedFile(Mockito.any());
         List<String> args = Arrays.asList(captor.getValue());
         // Verifies all the overridden values are taken into account and trace processor
         // binary is given preference over trace processor shell name.
