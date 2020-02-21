@@ -148,6 +148,7 @@ public class GTestTest {
         final String testPath1 = String.format("%s/%s", nativeTestPath, test1);
         final String testPath2 = String.format("%s/%s", nativeTestPath, test2);
 
+
         MockFileUtil.setMockDirContents(mMockITestDevice, nativeTestPath, test1, test2);
         EasyMock.expect(mMockITestDevice.doesFileExist(nativeTestPath)).andReturn(true);
         EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath)).andReturn(true);
@@ -166,6 +167,42 @@ public class GTestTest {
                 EasyMock.anyLong(),
                 (TimeUnit) EasyMock.anyObject(),
                 EasyMock.anyInt());
+        mMockITestDevice.executeShellCommand(
+                EasyMock.contains(test2),
+                EasyMock.same(mMockReceiver),
+                EasyMock.anyLong(),
+                (TimeUnit) EasyMock.anyObject(),
+                EasyMock.anyInt());
+
+        replayMocks();
+
+        mGTest.run(mTestInfo, mMockInvocationListener);
+        verifyMocks();
+    }
+
+    @Test
+    public void testRunFilterAbiPath() throws DeviceNotAvailableException {
+        final String nativeTestPath = GTest.DEFAULT_NATIVETEST_PATH;
+        final String test1 = "arm/test1";
+        final String test2 = "arm64/test2";
+        final String testPath2 = String.format("%s/%s", nativeTestPath, test2);
+        MockFileUtil.setMockDirContents(mMockITestDevice, nativeTestPath, test1, test2);
+        mGTest.setAbi(new Abi("arm64-v8a", "64"));
+
+        EasyMock.expect(mMockITestDevice.doesFileExist(nativeTestPath)).andReturn(true);
+        EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath)).andReturn(true);
+        EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath + "/arm")).andReturn(true);
+
+        EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath + "/arm64")).andReturn(true);
+        EasyMock.expect(mMockITestDevice.isDirectory(testPath2)).andReturn(false);
+        // report the file as executable
+        EasyMock.expect(mMockITestDevice.isExecutable(testPath2)).andReturn(true);
+
+        String[] dirs = new String[] {"arm", "arm64"};
+        EasyMock.expect(mMockITestDevice.getChildren(nativeTestPath)).andReturn(dirs);
+        String[] testFiles = new String[] {"test2"};
+        EasyMock.expect(mMockITestDevice.getChildren(nativeTestPath + "/arm64"))
+                .andReturn(testFiles);
         mMockITestDevice.executeShellCommand(
                 EasyMock.contains(test2),
                 EasyMock.same(mMockReceiver),
