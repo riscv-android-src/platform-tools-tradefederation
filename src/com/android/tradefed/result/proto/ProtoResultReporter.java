@@ -426,6 +426,21 @@ public abstract class ProtoResultReporter
         testBuilder.setDebugInfo(debugBuilder.build());
     }
 
+    @Override
+    public final void testAssumptionFailure(TestDescription test, FailureDescription failure) {
+        TestRecord.Builder testBuilder = mLatestChild.peek();
+
+        testBuilder.setStatus(TestStatus.ASSUMPTION_FAILURE);
+        DebugInfo.Builder debugBuilder = DebugInfo.newBuilder();
+        // FIXME: extract the error message from the trace
+        debugBuilder.setErrorMessage(failure.toString());
+        debugBuilder.setTrace(failure.toString());
+        if (failure.getFailureStatus() != null) {
+            debugBuilder.setFailureStatus(failure.getFailureStatus());
+        }
+        testBuilder.setDebugInfo(debugBuilder.build());
+    }
+
     // log events
 
     @Override

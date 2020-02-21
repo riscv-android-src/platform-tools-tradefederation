@@ -991,7 +991,15 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public boolean isRuntimePermissionSupported() throws DeviceNotAvailableException {
-        return getApiLevel() > 22;
+        int apiLevel = getApiLevel();
+        boolean condition = apiLevel > 22;
+        if (!condition) {
+            CLog.w(
+                    "isRuntimePermissionSupported requires api level above 22, device reported "
+                            + "'%s'",
+                    apiLevel);
+        }
+        return condition;
     }
 
     /**
