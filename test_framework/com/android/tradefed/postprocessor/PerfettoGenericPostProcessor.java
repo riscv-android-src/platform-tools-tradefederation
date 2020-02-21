@@ -63,6 +63,7 @@ import perfetto.protos.PerfettoMergedMetrics.TraceMetrics;
  * keys. For example
  *
  * <p>"perfetto-indexed-list-field" - perfetto.protos.AndroidStartupMetric.Startup
+ * <p>"perfetto-prefix-key-field" - perfetto.protos.ProcessRenderInfo.process_name
  *
  * <p>android_startup-startup#1-package_name-com.calculator-to_first_frame-dur_ns: 300620342
  * android_startup-startup#2-package_name-com.nexuslauncher-to_first_frame-dur_ns: 49257713
@@ -88,6 +89,12 @@ public class PerfettoGenericPostProcessor extends BasePostProcessor {
             name = "perfetto-indexed-list-field",
             description = "List fields in perfetto proto metric file that has to be indexed.")
     private Set<String> mPerfettoIndexedListFields = new HashSet<>();
+
+    @Option(
+            name = "perfetto-prefix-key-field",
+            description = "String value field need to be prefixed with the all the other"
+                    + "numeric value field keys in the proto message.")
+    private Set<String> mPerfettoPrefixKeyFields = new HashSet<>();
 
     @Option(
             name = "perfetto-include-all-metrics",
@@ -250,12 +257,20 @@ public class PerfettoGenericPostProcessor extends BasePostProcessor {
      * <p><android_startup-startup#1-package_name-com.calculator-to_first_frame-dur_ns: 300620342
      * android_startup-startup#2-package_name-com.nexuslauncher-to_first_frame-dur_ns: 49257713
      * android_startup-startup#3-package_name-com.calculator-to_first_frame-dur_ns: 261382005
+     *
+     * <p>"perfetto-prefix-key-field" - perfetto.protos.ProcessRenderInfo.process_name
+     * android_hwui_metric-process_info-process_name-system_server-cache_miss_avg
+     *
      */
     private Map<String, Metric.Builder> convertPerfettoProtoMessage(Message reportMessage) {
         Map<FieldDescriptor, Object> fields = reportMessage.getAllFields();
         Map<String, Metric.Builder> convertedMetrics = new HashMap<String, Metric.Builder>();
         List<String> keyPrefixes = new ArrayList<String>();
 
+        // Keys that will be used to prefix the other keys in the same proto message.
+        List<String> keyPrefixOtherFields = new ArrayList<>();
+
+        // TODO(b/15014555): Cleanup the parsing logic.
         for (Entry<FieldDescriptor, Object> entry : fields.entrySet()) {
             if (!(entry.getValue() instanceof Message) && !(entry.getValue() instanceof List)) {
                 if (isNumeric(entry.getValue().toString())) {
@@ -282,9 +297,27 @@ public class PerfettoGenericPostProcessor extends BasePostProcessor {
                                     METRIC_SEP,
                                     entry.getKey().getName().toString(),
                                     entry.getValue().toString()));
+                    if (mPerfettoPrefixKeyFields.contains(entry.getKey().toString())) {
+                        keyPrefixOtherFields.add(String.format("%s-%s",
+                                entry.getKey().getName().toString(), entry.getValue().toString()));
+                    }
                 }
             }
         }
+
+        // Add prefix key to all the keys in current proto message which has numeric values.
+        Map<String, Metric.Builder> additionalConvertedMetrics =
+                new HashMap<String, Metric.Builder>();
+        for (String prefix : keyPrefixOtherFields) {
+            for (Map.Entry<String, Metric.Builder> currentMetric : convertedMetrics.entrySet()) {
+                additionalConvertedMetrics.put(String.format("%s-%s", prefix,
+                        currentMetric.getKey()), currentMetric.getValue());
+            }
+        }
+
+        // Not cleaning up the other metrics without prefix fields.
+        convertedMetrics.putAll(additionalConvertedMetrics);
+
 
         // Recursively expand the proto messages and repeated fields(i.e list).
         // Recursion when there are no messages or list with in the current message.
