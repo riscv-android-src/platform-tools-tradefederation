@@ -88,7 +88,13 @@ public class ResultAggregatorTest {
 
     @Test
     public void testForwarding() {
+        LogFile test1Log = new LogFile("test1", "url", LogDataType.TEXT);
+        LogFile test2LogBefore = new LogFile("test2-before", "url", LogDataType.TEXT);
+        LogFile test2LogAfter = new LogFile("test2-after", "url", LogDataType.TEXT);
+        LogFile testRun1LogBefore = new LogFile("test-run1-before", "url", LogDataType.TEXT);
+        LogFile testRun1LogAfter = new LogFile("test-run1-after", "url", LogDataType.TEXT);
         LogFile beforeEnd = new LogFile("path", "url", LogDataType.TEXT);
+        LogFile betweenAttemptsLog = new LogFile("between-attempts", "url", LogDataType.TEXT);
         TestDescription test1 = new TestDescription("classname", "test1");
         TestDescription test2 = new TestDescription("classname", "test2");
         ILogSaver logger = EasyMock.createMock(ILogSaver.class);
@@ -110,17 +116,23 @@ public class ResultAggregatorTest {
         mDetailedListener.testRunStarted(
                 EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
         mDetailedListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
+        mDetailedListener.logAssociation("test1-log", test1Log);
         mDetailedListener.testEnded(
                 EasyMock.eq(test1),
                 EasyMock.anyLong(),
                 EasyMock.<HashMap<String, Metric>>anyObject());
         mDetailedListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
         mDetailedListener.testFailed(test2, "I failed. retry me.");
+        mDetailedListener.logAssociation("test2-before-log", test2LogBefore);
+        mDetailedListener.logAssociation("test2-after-log", test2LogAfter);
         mDetailedListener.testEnded(
                 EasyMock.eq(test2),
                 EasyMock.anyLong(),
                 EasyMock.<HashMap<String, Metric>>anyObject());
+        mDetailedListener.logAssociation("test-run1-before-log", testRun1LogBefore);
+        mDetailedListener.logAssociation("test-run1-after-log", testRun1LogAfter);
         mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
+        mDetailedListener.logAssociation("between-attempts", betweenAttemptsLog);
         mDetailedListener.testRunStarted(
                 EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(1), EasyMock.anyLong());
         mDetailedListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
@@ -134,16 +146,22 @@ public class ResultAggregatorTest {
         mAggListener.testRunStarted(
                 EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
         mAggListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
+        mAggListener.logAssociation("test1-log", test1Log);
         mAggListener.testEnded(
                 EasyMock.eq(test1),
                 EasyMock.anyLong(),
                 EasyMock.<HashMap<String, Metric>>anyObject());
         mAggListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
+        mAggListener.logAssociation("test2-before-log", test2LogBefore);
+        mAggListener.logAssociation("test2-after-log", test2LogAfter);
         mAggListener.testEnded(
                 EasyMock.eq(test2),
                 EasyMock.anyLong(),
                 EasyMock.<HashMap<String, Metric>>anyObject());
+        mAggListener.logAssociation("test-run1-before-log", testRun1LogBefore);
+        mAggListener.logAssociation("test-run1-after-log", testRun1LogAfter);
         mAggListener.testRunEnded(450L, new HashMap<String, Metric>());
+        mAggListener.logAssociation("between-attempts", betweenAttemptsLog);
 
         mAggListener.testModuleEnded();
         mDetailedListener.testModuleEnded();
@@ -163,12 +181,18 @@ public class ResultAggregatorTest {
         // Attempt 1
         mAggregator.testRunStarted("run1", 2, 0);
         mAggregator.testStarted(test1);
+        mAggregator.logAssociation("test1-log", test1Log);
         mAggregator.testEnded(test1, new HashMap<String, Metric>());
         mAggregator.testStarted(test2);
+        mAggregator.logAssociation("test2-before-log", test2LogBefore);
         mAggregator.testFailed(test2, "I failed. retry me.");
+        mAggregator.logAssociation("test2-after-log", test2LogAfter);
         mAggregator.testEnded(test2, new HashMap<String, Metric>());
+        mAggregator.logAssociation("test-run1-before-log", testRun1LogBefore);
         mAggregator.testRunFailed("run fail");
+        mAggregator.logAssociation("test-run1-after-log", testRun1LogAfter);
         mAggregator.testRunEnded(450L, new HashMap<String, Metric>());
+        mAggregator.logAssociation("between-attempts", betweenAttemptsLog);
         // Attempt 2
         mAggregator.testRunStarted("run1", 2, 1);
         mAggregator.testStarted(test2);
