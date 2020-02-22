@@ -321,12 +321,12 @@ public class ResultAggregator extends CollectingTestListener {
             if (runResult.isRunFailure()) {
                 mAggregatedForwarder.testRunFailed(runResult.getRunFailureDescription());
             }
+            // Provide a strong association of the run to its logs.
+            for (Entry<String, LogFile> logFile : runResult.getRunLoggedFiles().entrySet()) {
+                mAggregatedForwarder.logAssociation(logFile.getKey(), logFile.getValue());
+            }
         }
-        // Provide a strong association of the run to its logs.
-        for (Entry<String, LogFile> logFile :
-                getCurrentRunResults().getRunLoggedFiles().entrySet()) {
-            mAggregatedForwarder.logAssociation(logFile.getKey(), logFile.getValue());
-        }
+
         mAggregatedForwarder.testRunEnded(
                 getCurrentRunResults().getElapsedTime(),
                 getCurrentRunResults().getRunProtoMetrics());
