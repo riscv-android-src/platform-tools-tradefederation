@@ -24,8 +24,10 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -188,7 +190,13 @@ public class PythonBinaryHostTestTest {
                     EasyMock.anyObject());
             // Report a failure if we cannot parse the logs
             mMockListener.testRunStarted(binary.getName(), 0);
-            mMockListener.testRunFailed((String) EasyMock.anyObject());
+            FailureDescription failure =
+                    FailureDescription.create(
+                            "Failed to parse the python logs: Parser finished in unexpected "
+                                    + "state TEST_CASE. Please ensure that verbosity of output "
+                                    + "is high enough to be parsed.");
+            failure.setFailureStatus(FailureStatus.TEST_FAILURE);
+            mMockListener.testRunFailed(failure);
             mMockListener.testRunEnded(
                     EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
