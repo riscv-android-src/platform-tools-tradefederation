@@ -29,6 +29,7 @@ import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.coverage.CoverageOptions;
+import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.NativeCodeCoverageFlusher;
 
@@ -45,7 +46,7 @@ import java.util.concurrent.TimeUnit;
 
 /** A Test that runs a native test package on given device. */
 @OptionClass(alias = "gtest")
-public class GTest extends GTestBase implements IDeviceTest {
+public class GTest extends GTestBase implements IDeviceTest, IAbiReceiver {
 
     static final String DEFAULT_NATIVETEST_PATH = "/data/nativetest";
 
@@ -88,6 +89,15 @@ public class GTest extends GTestBase implements IDeviceTest {
     )
     private boolean mCoverageClearBeforeTest = true;
 
+    @Option(
+            name = "filter-non-matching-abi-folders",
+            description =
+                    "If an abi specific hierarchy seem to exists, only run the parts that "
+                            + "match abi under test.")
+    private boolean mFilterAbiFolders = true;
+
+    private IAbi mAbi;
+
     // Max characters allowed for executing GTest via command line
     private static final int GTEST_CMD_CHAR_LIMIT = 1000;
     /**
@@ -104,6 +114,16 @@ public class GTest extends GTestBase implements IDeviceTest {
     @Override
     public ITestDevice getDevice() {
         return mDevice;
+    }
+
+    @Override
+    public void setAbi(IAbi abi) {
+        mAbi = abi;
+    }
+
+    @Override
+    public IAbi getAbi() {
+        return mAbi;
     }
 
     @Override
@@ -158,6 +178,9 @@ public class GTest extends GTestBase implements IDeviceTest {
             String root, ITestDevice testDevice, ITestInvocationListener listener)
             throws DeviceNotAvailableException {
         if (testDevice.isDirectory(root)) {
+            if (!shouldRunFolder(root)) {
+                return;
+            }
             // recursively run tests in all subdirectories
             for (String child : testDevice.getChildren(root)) {
                 doRunAllTestsInSubdirectory(root + "/" + child, testDevice, listener);
@@ -176,6 +199,27 @@ public class GTest extends GTestBase implements IDeviceTest {
                 runTest(testDevice, resultParser, root, flags);
             }
         }
+    }
+
+    /**
+     * Decide to filter out a folder subpath based on whether or not we should enforce the current
+     * abi under test.
+     */
+    boolean shouldRunFolder(String path) {
+        if (!mFilterAbiFolders) {
+            return true;
+        }
+        if (mAbi == null) {
+            return true;
+        }
+        String fileName = getFileName(path);
+        if (!AbiUtils.getArchSupported().contains(fileName)) {
+            return true;
+        }
+        if (fileName.equals(AbiUtils.getArchForAbi(mAbi.getName()))) {
+            return true;
+        }
+        return false;
     }
 
     String getFileName(String fullPath) {
