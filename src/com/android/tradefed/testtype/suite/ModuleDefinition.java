@@ -21,6 +21,7 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -1018,7 +1019,9 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         return null;
     }
 
-    /** Handle calling the {@link IConfiguration#resolveDynamicOptions()}. */
+    /**
+     * Handle calling the {@link IConfiguration#resolveDynamicOptions(DynamicRemoteFileResolver)}.
+     */
     private Exception invokeRemoteDynamic(IConfiguration moduleConfiguration) {
         if (!mEnableDynamicDownload) {
             return null;
@@ -1026,7 +1029,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         // TODO: Add elapsed time tracking
         try {
             CLog.d("Attempting to resolve dynamic files from %s", getId());
-            moduleConfiguration.resolveDynamicOptions();
+            moduleConfiguration.resolveDynamicOptions(new DynamicRemoteFileResolver());
             return null;
         } catch (RuntimeException | ConfigurationException | BuildRetrievalError e) {
             mIsFailedModule = true;
