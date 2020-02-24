@@ -188,7 +188,7 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
      *
      * @param testInfos A {@code Set<TestInfo>} containing multiple test options.
      * @param configPath A {@code String} of configuration path.
-     * @return The {@link List<IRemoteTest>} that are injected with the test options.
+     * @return The {@link List} that are injected with the test options.
      */
     @VisibleForTesting
     List<IRemoteTest> createIndividualTests(Set<TestInfo> testInfos, String configPath) {
