@@ -67,6 +67,7 @@ TEST = ('Run the tests. WARNING: Many test configs force cleanup of device '
 TEST_MAPPING = 'Run tests defined in TEST_MAPPING files.'
 TF_TEMPLATE = ('Add extra tradefed template for ATest suite, '
                'e.g. atest <test> --tf-template <template_key>=<template_path>')
+SHARDING = 'Option to specify sharding count. The default value is 2'
 UPDATE_CMD_MAPPING = ('Update the test command of input tests. Warning: result '
                       'will be saved under tools/tradefederation/core/atest/test_data.')
 USER_TYPE = 'Run test with specific user type, e.g. atest <test> --user-type secondary_user'
@@ -120,6 +121,9 @@ class AtestArgParser(argparse.ArgumentParser):
         self.add_argument('-m', constants.REBUILD_MODULE_INFO_FLAG,
                           action='store_true', help=REBUILD_MODULE_INFO)
         self.add_argument('-s', '--serial', help=SERIAL)
+        self.add_argument('--sharding', nargs='?', const=2,
+                          type=_positive_int, default=0,
+                          help=SHARDING)
         self.add_argument('-t', '--test', action='append_const', dest='steps',
                           const=constants.TEST_STEP, help=TEST)
         self.add_argument('-w', '--wait-for-debugger', action='store_true',
@@ -240,6 +244,7 @@ def print_epilog_text():
                                          RERUN_UNTIL_FAILURE=RERUN_UNTIL_FAILURE,
                                          RETRY_ANY_FAILURE=RETRY_ANY_FAILURE,
                                          SERIAL=SERIAL,
+                                         SHARDING=SHARDING,
                                          TEST=TEST,
                                          TEST_MAPPING=TEST_MAPPING,
                                          TF_TEMPLATE=TF_TEMPLATE,
@@ -286,6 +291,9 @@ OPTIONS
 
         -s, --serial
             {SERIAL}
+            
+        --sharding
+          {SHARDING}
 
         -t, --test
             {TEST} (default)
