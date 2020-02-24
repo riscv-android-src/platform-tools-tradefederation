@@ -348,6 +348,10 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                 args_to_append.append('--serial')
                 args_to_append.append(extra_args[arg])
                 continue
+            if constants.SHARDING == arg:
+                args_to_append.append('--shard-count')
+                args_to_append.append(str(extra_args[arg]))
+                continue
             if constants.DISABLE_TEARDOWN == arg:
                 args_to_append.append('--disable-teardown')
                 continue
