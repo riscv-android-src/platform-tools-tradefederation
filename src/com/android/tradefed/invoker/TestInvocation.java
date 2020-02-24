@@ -892,7 +892,15 @@ public class TestInvocation implements ITestInvocation {
                     }
                 }
 
-                sharding = invocationPath.shardConfig(config, info, rescheduler, listener);
+                try {
+                    sharding = invocationPath.shardConfig(config, info, rescheduler, listener);
+                } catch (RuntimeException unexpected) {
+                    if (deviceInit) {
+                        // If we did an early setup, do the tear down.
+                        invocationPath.runDevicePostInvocationTearDown(context, config, null);
+                    }
+                    throw unexpected;
+                }
                 if (sharding) {
                     CLog.i(
                             "Invocation for %s has been sharded, rescheduling",
