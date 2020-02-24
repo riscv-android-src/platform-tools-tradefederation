@@ -42,11 +42,13 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.BugreportCollector;
 import com.android.tradefed.result.CollectingTestListener;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogcatCrashResultForwarder;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.result.ddmlib.DefaultRemoteAndroidTestRunner;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.retry.RetryStrategy;
 import com.android.tradefed.testtype.coverage.CoverageOptions;
@@ -1069,15 +1071,17 @@ public class InstrumentationTest
                     @Override
                     public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
                         if (!mDuplicateTests.isEmpty() && !mDisableDuplicateCheck) {
-                            String errorMessage =
-                                    String.format(
-                                            "The following tests ran more than once: %s. Check "
-                                                    + "your run configuration, you might be "
-                                                    + "including the same test class several "
-                                                    + "times.",
-                                            mDuplicateTests);
-                            CLog.e(errorMessage);
-                            super.testRunFailed(errorMessage);
+                            FailureDescription error =
+                                    FailureDescription.create(
+                                            String.format(
+                                                    "The following tests ran more than once: %s. Check "
+                                                            + "your run configuration, you might be "
+                                                            + "including the same test class several "
+                                                            + "times.",
+                                                    mDuplicateTests));
+                            error.setFailureStatus(FailureStatus.TEST_FAILURE);
+                            CLog.e("%s", error);
+                            super.testRunFailed(error);
                         }
                         super.testRunEnded(elapsedTime, runMetrics);
                     }

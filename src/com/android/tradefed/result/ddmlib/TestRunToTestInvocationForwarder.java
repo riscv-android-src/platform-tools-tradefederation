@@ -18,8 +18,10 @@ package com.android.tradefed.result.ddmlib;
 import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestLifeCycleReceiver;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import com.google.common.collect.ImmutableSet;
@@ -178,9 +180,11 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
 
     @Override
     public void testRunFailed(String failure) {
+        FailureDescription failureDescription = FailureDescription.create(failure);
+        failureDescription.setFailureStatus(FailureStatus.TEST_FAILURE);
         for (ITestLifeCycleReceiver listener : mListeners) {
             try {
-                listener.testRunFailed(failure);
+                listener.testRunFailed(failureDescription);
             } catch (RuntimeException any) {
                 CLog.e(
                         "RuntimeException when invoking %s#testRunFailed",
