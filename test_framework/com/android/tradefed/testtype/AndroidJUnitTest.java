@@ -26,7 +26,9 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.ListInstrumentationParser;
 
@@ -468,7 +470,9 @@ public class AndroidJUnitTest extends InstrumentationTest
 
     private void reportEarlyFailure(ITestInvocationListener listener, String errorMessage) {
         listener.testRunStarted("AndroidJUnitTest_setupError", 0);
-        listener.testRunFailed(errorMessage);
+        FailureDescription failure = FailureDescription.create(errorMessage);
+        failure.setFailureStatus(FailureStatus.INFRA_FAILURE);
+        listener.testRunFailed(failure);
         listener.testRunEnded(0, new HashMap<String, Metric>());
     }
 
