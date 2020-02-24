@@ -66,7 +66,6 @@ public class GeneralTestsConfigValidation implements IBuildReceiver {
                             "com.android.compatibility.testtype.LibcoreTest",
                             "com.drawelements.deqp.runner.DeqpTestRunner",
                             // Tradefed runners
-                            "com.android.tradefed.testtype.InstrumentationTest",
                             "com.android.tradefed.testtype.AndroidJUnitTest",
                             "com.android.tradefed.testtype.HostTest",
                             "com.android.tradefed.testtype.GTest",
@@ -106,18 +105,9 @@ public class GeneralTestsConfigValidation implements IBuildReceiver {
                 ValidateSuiteConfigHelper.validateConfig(c);
 
                 ensureApkUninstalled(configName, c.getTargetPreparers());
+                // Check that all the tests runners are well supported.
+                checkRunners(c.getTests());
 
-                for (IRemoteTest test : c.getTests()) {
-                    // Check that all the tests runners are well supported.
-                    if (!SUPPORTED_TEST_RUNNERS.contains(test.getClass().getCanonicalName())) {
-                        throw new ConfigurationException(
-                                String.format(
-                                        "testtype %s is not officially supported in general-tests. "
-                                                + "The supported ones are: %s",
-                                        test.getClass().getCanonicalName(),
-                                        SUPPORTED_TEST_RUNNERS));
-                    }
-                }
                 // Add more checks if necessary
             } catch (ConfigurationException e) {
                 errors.add(String.format("\t%s: %s", configName, e.getMessage()));
@@ -140,6 +130,19 @@ public class GeneralTestsConfigValidation implements IBuildReceiver {
                     throw new ConfigurationException(
                             String.format("Config: %s should set cleanup-apks=true.", config));
                 }
+            }
+        }
+    }
+
+    public static void checkRunners(List<IRemoteTest> tests) throws ConfigurationException {
+        for (IRemoteTest test : tests) {
+            // Check that all the tests runners are well supported.
+            if (!SUPPORTED_TEST_RUNNERS.contains(test.getClass().getCanonicalName())) {
+                throw new ConfigurationException(
+                        String.format(
+                                "testtype %s is not officially supported in general-tests. "
+                                        + "The supported ones are: %s",
+                                test.getClass().getCanonicalName(), SUPPORTED_TEST_RUNNERS));
             }
         }
     }
