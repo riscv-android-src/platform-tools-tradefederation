@@ -581,7 +581,7 @@ public class ConfigurationTest extends TestCase {
 
         // No exception for download is thrown because no download occurred.
         mConfig.validateOptions();
-        mConfig.resolveDynamicOptions();
+        mConfig.resolveDynamicOptions(new DynamicRemoteFileResolver());
         // Dynamic file is not resolved.
         assertEquals(fakeConfigFile, deviceOptions.getAvdConfigFile());
     }
