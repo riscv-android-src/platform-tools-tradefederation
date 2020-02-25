@@ -142,6 +142,7 @@ public class ClusterCommandScheduler extends CommandScheduler {
         private final ClusterCommand mCommandTask;
         private Set<String> mDeviceSerials = new HashSet<>();
         private String mSummary;
+        private Set<String> processedSummaries = new HashSet<>();
         private String mError;
         private File mWorkDir;
         private InvocationStatus mInvocationStatus;
@@ -348,8 +349,12 @@ public class ClusterCommandScheduler extends CommandScheduler {
         public void putSummary(List<TestSummary> summaries) {
             StringBuilder sb = new StringBuilder();
             for (final TestSummary summary : summaries) {
-                sb.append(summary.getSummary());
-                sb.append("\n");
+                String summaryString = summary.getSummary().toString();
+                if (!processedSummaries.contains(summaryString)) {
+                    processedSummaries.add(summaryString);
+                    sb.append(summaryString);
+                    sb.append("\n");
+                }
             }
             mSummary = mSummary == null ? sb.toString() : mSummary + sb.toString();
         }

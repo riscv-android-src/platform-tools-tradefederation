@@ -650,6 +650,7 @@ public class ClusterCommandSchedulerTest {
         summaries.add(
                 new TestSummary(new TestSummary.TypedString("http://uri", TestSummary.Type.URI)));
         handler.putEarlySummary(summaries);
+        handler.putSummary(summaries);
         handler.invocationStarted(context);
         handler.testRunStarted("test run", 1);
         handler.testStarted(new TestDescription("class", CMD_LINE));
