@@ -66,10 +66,13 @@ public class GeneralTestsConfigValidation implements IBuildReceiver {
                             "com.android.compatibility.testtype.LibcoreTest",
                             "com.drawelements.deqp.runner.DeqpTestRunner",
                             // Tradefed runners
+                            "com.android.tradefed.testtype.UiAutomatorTest",
+                            "com.android.tradefed.testtype.InstrumentationTest",
                             "com.android.tradefed.testtype.AndroidJUnitTest",
                             "com.android.tradefed.testtype.HostTest",
                             "com.android.tradefed.testtype.GTest",
                             "com.android.tradefed.testtype.HostGTest",
+                            "com.android.tradefed.testtype.GoogleBenchmarkTest",
                             "com.android.tradefed.testtype.IsolatedHostTest",
                             "com.android.tradefed.testtype.python.PythonBinaryHostTest",
                             "com.android.tradefed.testtype.binary.ExecutableHostTest",
@@ -77,7 +80,8 @@ public class GeneralTestsConfigValidation implements IBuildReceiver {
                             "com.android.tradefed.testtype.rust.RustBinaryTest",
                             "com.android.tradefed.testtype.StubTest",
                             // Others
-                            "com.google.android.deviceconfig.RebootTest"));
+                            "com.google.android.deviceconfig.RebootTest",
+                            "com.android.game.qualification.testtype.GameQualificationHostsideController"));
 
     @Override
     public void setBuild(IBuildInfo buildInfo) {
