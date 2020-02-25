@@ -23,6 +23,7 @@ import com.android.tradefed.command.CommandRunner.ExitCode;
 import com.android.tradefed.command.CommandScheduler;
 import com.android.tradefed.command.ICommandScheduler.IScheduledInvocationListener;
 import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -690,7 +691,7 @@ public class TestInvocation implements ITestInvocation {
         try {
             // Don't resolve for remote invocation, wait until we are inside the remote.
             if (!RunMode.REMOTE_INVOCATION.equals(mode)) {
-                config.resolveDynamicOptions();
+                config.resolveDynamicOptions(new DynamicRemoteFileResolver());
             }
             return true;
         } catch (RuntimeException | BuildRetrievalError | ConfigurationException e) {

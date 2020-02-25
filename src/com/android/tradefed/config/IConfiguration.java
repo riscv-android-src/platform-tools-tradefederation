@@ -502,10 +502,12 @@ public interface IConfiguration {
      * Resolve options of {@link File} pointing to a remote location. This requires {@link
      * #cleanConfigurationData()} to be called to clean up the files.
      *
+     * @param resolver the {@link DynamicRemoteFileResolver} to resolve the files
      * @throws BuildRetrievalError
      * @throws ConfigurationException
      */
-    public void resolveDynamicOptions() throws ConfigurationException, BuildRetrievalError;
+    public void resolveDynamicOptions(DynamicRemoteFileResolver resolver)
+            throws ConfigurationException, BuildRetrievalError;
 
     /** Delete any files that was downloaded to resolved Option fields of remote files. */
     public void cleanConfigurationData();

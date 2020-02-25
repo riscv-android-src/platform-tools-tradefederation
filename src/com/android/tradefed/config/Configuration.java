@@ -1158,7 +1158,8 @@ public class Configuration implements IConfiguration {
 
     /** {@inheritDoc} */
     @Override
-    public void resolveDynamicOptions() throws ConfigurationException, BuildRetrievalError {
+    public void resolveDynamicOptions(DynamicRemoteFileResolver resolver)
+            throws ConfigurationException, BuildRetrievalError {
         // Resolve regardless of sharding if we are in remote environment because we know that's
         // where the execution will occur.
         if (!isRemoteEnvironment()) {
@@ -1172,7 +1173,7 @@ public class Configuration implements IConfiguration {
         ArgsOptionParser argsParser = new ArgsOptionParser(getAllConfigurationObjects());
         CLog.d("Resolve and download remote files from @Option");
         // Setup and validate the GCS File paths
-        mRemoteFiles.addAll(argsParser.validateRemoteFilePath());
+        mRemoteFiles.addAll(argsParser.validateRemoteFilePath(resolver));
     }
 
     /** Returns whether or not the environment of TF is a remote invocation. */

@@ -18,6 +18,7 @@ package com.android.tradefed.testtype;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
@@ -1231,14 +1232,14 @@ public class HostTest
     }
 
     @VisibleForTesting
-    OptionSetter createOptionSetter(Object obj) throws ConfigurationException {
-        return new OptionSetter(obj);
+    DynamicRemoteFileResolver createResolver() {
+        return new DynamicRemoteFileResolver();
     }
 
     private Set<File> resolveRemoteFileForObject(Object obj) {
         try {
-            OptionSetter setter = createOptionSetter(obj);
-            return setter.validateRemoteFilePath();
+            OptionSetter setter = new OptionSetter(obj);
+            return setter.validateRemoteFilePath(createResolver());
         } catch (BuildRetrievalError | ConfigurationException e) {
             throw new RuntimeException(e);
         }
