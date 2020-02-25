@@ -110,7 +110,7 @@ public class GeneralTestsConfigValidation implements IBuildReceiver {
 
                 ensureApkUninstalled(configName, c.getTargetPreparers());
                 // Check that all the tests runners are well supported.
-                checkRunners(c.getTests());
+                checkRunners(c.getTests(), "general-tests");
 
                 // Add more checks if necessary
             } catch (ConfigurationException e) {
@@ -138,15 +138,16 @@ public class GeneralTestsConfigValidation implements IBuildReceiver {
         }
     }
 
-    public static void checkRunners(List<IRemoteTest> tests) throws ConfigurationException {
+    public static void checkRunners(List<IRemoteTest> tests, String name)
+            throws ConfigurationException {
         for (IRemoteTest test : tests) {
             // Check that all the tests runners are well supported.
             if (!SUPPORTED_TEST_RUNNERS.contains(test.getClass().getCanonicalName())) {
                 throw new ConfigurationException(
                         String.format(
-                                "testtype %s is not officially supported in general-tests. "
+                                "testtype %s is not officially supported in %s. "
                                         + "The supported ones are: %s",
-                                test.getClass().getCanonicalName(), SUPPORTED_TEST_RUNNERS));
+                                test.getClass().getCanonicalName(), name, SUPPORTED_TEST_RUNNERS));
             }
         }
     }
