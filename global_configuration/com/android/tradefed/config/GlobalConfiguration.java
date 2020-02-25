@@ -769,7 +769,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
         // Setup and validate the GCS File paths, they will be deleted when TF ends
         List<File> remoteFiles = new ArrayList<>();
         try {
-            remoteFiles.addAll(argsParser.validateRemoteFilePath());
+            remoteFiles.addAll(argsParser.validateRemoteFilePath(new DynamicRemoteFileResolver()));
         } catch (BuildRetrievalError e) {
             throw new ConfigurationException(e.getMessage(), e);
         }
