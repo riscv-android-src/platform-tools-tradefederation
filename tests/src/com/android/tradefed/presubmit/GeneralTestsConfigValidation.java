@@ -80,8 +80,7 @@ public class GeneralTestsConfigValidation implements IBuildReceiver {
                             "com.android.tradefed.testtype.rust.RustBinaryTest",
                             "com.android.tradefed.testtype.StubTest",
                             // Others
-                            "com.google.android.deviceconfig.RebootTest",
-                            "com.android.game.qualification.testtype.GameQualificationHostsideController"));
+                            "com.google.android.deviceconfig.RebootTest"));
 
     @Override
     public void setBuild(IBuildInfo buildInfo) {
