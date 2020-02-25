@@ -564,29 +564,24 @@ public class HostTestTest extends TestCase {
         }
 
         @Override
-        OptionSetter createOptionSetter(Object obj) throws ConfigurationException {
-            return new OptionSetter(obj) {
-                @Override
-                protected DynamicRemoteFileResolver createResolver() {
-                    DynamicRemoteFileResolver mResolver =
-                            new DynamicRemoteFileResolver() {
-                                @Override
-                                protected IRemoteFileResolver getResolver(String protocol) {
-                                    if (GcsRemoteFileResolver.PROTOCOL.equals(protocol)) {
-                                        return mRemoteFileResolver;
-                                    }
-                                    return null;
-                                }
+        protected DynamicRemoteFileResolver createResolver() {
+            DynamicRemoteFileResolver mResolver =
+                    new DynamicRemoteFileResolver() {
+                        @Override
+                        protected IRemoteFileResolver getResolver(String protocol) {
+                            if (GcsRemoteFileResolver.PROTOCOL.equals(protocol)) {
+                                return mRemoteFileResolver;
+                            }
+                            return null;
+                        }
 
-                                @Override
-                                protected boolean updateProtocols() {
-                                    // Do not set the static variable
-                                    return false;
-                                }
-                            };
-                    return mResolver;
-                }
-            };
+                        @Override
+                        protected boolean updateProtocols() {
+                            // Do not set the static variable
+                            return false;
+                        }
+                    };
+            return mResolver;
         }
     }
 
