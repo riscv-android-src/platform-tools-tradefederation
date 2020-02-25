@@ -21,6 +21,7 @@ import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
+import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IGlobalConfiguration;
@@ -226,7 +227,7 @@ public class ShardHelper implements IShardHelper {
     protected void validateOptions(IConfiguration config)
             throws ConfigurationException, BuildRetrievalError {
         config.validateOptions();
-        config.resolveDynamicOptions();
+        config.resolveDynamicOptions(new DynamicRemoteFileResolver());
     }
 
     /**
