@@ -3007,10 +3007,12 @@ public class TestDeviceTest extends TestCase {
     }
 
     /**
-     * Test that {@link TestDevice#getCurrentUser()} returns null when output is not expected
+     * Test that {@link TestDevice#getCurrentUser()} returns INVALID_USER_ID when output is not
+     * expected.
+     *
      * @throws Exception
      */
-    public void testGetCurrentUser_null() throws Exception {
+    public void testGetCurrentUser_invalid() throws Exception {
         mTestDevice = new TestableTestDevice() {
             @Override
             public String executeShellCommand(String command) throws DeviceNotAvailableException {
@@ -3025,12 +3027,8 @@ public class TestDeviceTest extends TestCase {
                 return "N\n";
             }
         };
-        try {
-            mTestDevice.getCurrentUser();
-            fail("Should have thrown an exception.");
-        } catch (DeviceRuntimeException expected) {
-            // Expected
-        }
+        int res = mTestDevice.getCurrentUser();
+        assertEquals(NativeDevice.INVALID_USER_ID, res);
     }
 
     /**
@@ -3374,6 +3372,127 @@ public class TestDeviceTest extends TestCase {
             }
         };
         assertFalse(mTestDevice.switchUser(10, 100));
+    }
+
+    /** Unit test for {@link TestDevice#switchUser(int)} for post API 30. */
+    public void testSwitchUser_api30() throws Exception {
+        mTestDevice =
+                new TestableTestDevice() {
+                    int ret = 0;
+
+                    @Override
+                    public int getCurrentUser() throws DeviceNotAvailableException {
+                        return ret;
+                    }
+
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        RunUtil.getDefault().sleep(100);
+                        ret = 10;
+                        return "";
+                    }
+
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        return 30;
+                    }
+
+                    @Override
+                    public String getProperty(String name) throws DeviceNotAvailableException {
+                        return "R\n";
+                    }
+                };
+        assertTrue(mTestDevice.switchUser(10));
+    }
+
+    /** Unit test for {@link TestDevice#switchUser(int)} when user switch with a short delay. */
+    public void testSwitchUser_delay_api30() throws Exception {
+        mTestDevice =
+                new TestableTestDevice() {
+                    int ret = 0;
+
+                    @Override
+                    public int getCurrentUser() throws DeviceNotAvailableException {
+                        return ret;
+                    }
+
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        RunUtil.getDefault().sleep(100);
+                        if (!started) {
+                            started = true;
+                            test.setDaemon(true);
+                            test.setName(getClass().getCanonicalName() + "#testSwitchUser_delay");
+                            test.start();
+                        }
+                        return "";
+                    }
+
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        return 30;
+                    }
+
+                    @Override
+                    public String getProperty(String name) throws DeviceNotAvailableException {
+                        return "R\n";
+                    }
+
+                    @Override
+                    protected long getCheckNewUserSleep() {
+                        return 100;
+                    }
+
+                    boolean started = false;
+                    Thread test =
+                            new Thread(
+                                    new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            RunUtil.getDefault().sleep(100);
+                                            ret = 10;
+                                        }
+                                    });
+                };
+        assertTrue(mTestDevice.switchUser(10));
+    }
+
+    /** Unit test for {@link TestDevice#switchUser(int)} when user switch with a short delay. */
+    public void testSwitchUser_error_api30() throws Exception {
+        mTestDevice =
+                new TestableTestDevice() {
+                    int ret = 0;
+
+                    @Override
+                    public int getCurrentUser() throws DeviceNotAvailableException {
+                        return ret;
+                    }
+
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        RunUtil.getDefault().sleep(100);
+                        return "Error:";
+                    }
+
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        return 30;
+                    }
+
+                    @Override
+                    public String getProperty(String name) throws DeviceNotAvailableException {
+                        return "R\n";
+                    }
+
+                    @Override
+                    protected long getCheckNewUserSleep() {
+                        return 100;
+                    }
+                };
+        assertFalse(mTestDevice.switchUser(10));
     }
 
     /**
