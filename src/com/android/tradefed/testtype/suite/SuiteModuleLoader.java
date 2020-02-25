@@ -21,6 +21,7 @@ import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.ConfigurationUtil;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
+import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.config.OptionDef;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.targetprep.ITargetPreparer;
@@ -618,14 +619,15 @@ public class SuiteModuleLoader {
         config.injectOptionValues(optionsToInject);
 
         // Set target preparers
-        List<ITargetPreparer> preparers = config.getTargetPreparers();
-        for (ITargetPreparer preparer : preparers) {
-            String className = preparer.getClass().getName();
-            if (mTestOrPreparerOptions.containsKey(className)) {
-                config.injectOptionValues(mTestOrPreparerOptions.get(className));
-            }
-            if (preparer instanceof IAbiReceiver) {
-                ((IAbiReceiver) preparer).setAbi(abi);
+        for (IDeviceConfiguration holder : config.getDeviceConfig()) {
+            for (ITargetPreparer preparer : holder.getTargetPreparers()) {
+                String className = preparer.getClass().getName();
+                if (mTestOrPreparerOptions.containsKey(className)) {
+                    config.injectOptionValues(mTestOrPreparerOptions.get(className));
+                }
+                if (preparer instanceof IAbiReceiver) {
+                    ((IAbiReceiver) preparer).setAbi(abi);
+                }
             }
         }
 
