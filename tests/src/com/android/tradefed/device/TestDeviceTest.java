@@ -381,11 +381,12 @@ public class TestDeviceTest extends TestCase {
      * product type property
      */
     public void testGetProductType_adbWithRetry() throws Exception {
-        EasyMock.expect(mMockIDevice.getProperty(DeviceProperties.BOARD)).andReturn(null);
-        EasyMock.expect(mMockIDevice.getProperty(DeviceProperties.HARDWARE)).andReturn(null);
+        setGetPropertyExpectation(DeviceProperties.BOARD, null);
+        setGetPropertyExpectation(DeviceProperties.HARDWARE, null);
+
         final String expectedOutput = "nexusone";
         injectSystemProperty(DeviceProperties.BOARD, expectedOutput);
-        EasyMock.replay(mMockIDevice);
+        EasyMock.replay(mMockIDevice, mMockRunUtil);
         assertEquals(expectedOutput, mTestDevice.getProductType());
     }
 
@@ -394,10 +395,10 @@ public class TestDeviceTest extends TestCase {
      * type directly still fails.
      */
     public void testGetProductType_adbFail() throws Exception {
-        EasyMock.expect(mMockIDevice.getProperty(EasyMock.<String>anyObject())).andStubReturn(null);
+        setGetPropertyExpectation(DeviceProperties.HARDWARE, null).anyTimes();
         injectSystemProperty(DeviceProperties.BOARD, null).times(3);
         EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.ONLINE).times(2);
-        EasyMock.replay(mMockIDevice);
+        EasyMock.replay(mMockIDevice, mMockRunUtil);
         try {
             mTestDevice.getProductType();
             fail("DeviceNotAvailableException not thrown");
@@ -415,7 +416,7 @@ public class TestDeviceTest extends TestCase {
         final String expectedOutput = "nexusone";
         injectSystemProperty(DeviceProperties.BOARD, "");
         injectSystemProperty(DeviceProperties.HARDWARE, expectedOutput);
-        EasyMock.replay(mMockIDevice);
+        EasyMock.replay(mMockIDevice, mMockRunUtil);
         assertEquals(expectedOutput, mTestDevice.getProductType());
     }
 
@@ -1191,7 +1192,7 @@ public class TestDeviceTest extends TestCase {
      */
     private void setEncryptedUnsupportedExpectations() throws Exception {
         setEnableAdbRootExpectations();
-        EasyMock.expect(mMockIDevice.getProperty("ro.crypto.state")).andReturn("unsupported");
+        setGetPropertyExpectation("ro.crypto.state", "unsupported");
     }
 
     /**
@@ -1199,7 +1200,7 @@ public class TestDeviceTest extends TestCase {
      */
     private void setEncryptedSupported() throws Exception {
         setEnableAdbRootExpectations();
-        EasyMock.expect(mMockIDevice.getProperty("ro.crypto.state")).andReturn("encrypted");
+        setGetPropertyExpectation("ro.crypto.state", "encrypted");
     }
 
     /**
@@ -1372,14 +1373,14 @@ public class TestDeviceTest extends TestCase {
      * Convenience method for setting up mMockIDevice to not support runtime permission
      */
     private void setMockIDeviceRuntimePermissionNotSupported() {
-        injectSystemProperty("ro.build.version.sdk", "22");
+        setGetPropertyExpectation("ro.build.version.sdk", "22");
     }
 
     /**
      * Convenience method for setting up mMockIDevice to support runtime permission
      */
     private void setMockIDeviceRuntimePermissionSupported() {
-        injectSystemProperty("ro.build.version.sdk", "23");
+        setGetPropertyExpectation("ro.build.version.sdk", "23");
     }
 
     /**
@@ -2102,9 +2103,9 @@ public class TestDeviceTest extends TestCase {
      * @return preset {@link IExpectationSetters} returned by {@link EasyMock} where further
      *     expectations can be added
      */
-    private IExpectationSetters<String> injectSystemProperty(
+    private IExpectationSetters<CommandResult> injectSystemProperty(
             final String property, final String value) {
-        return EasyMock.expect(mMockIDevice.getProperty(property)).andReturn(value);
+        return setGetPropertyExpectation(property, value);
     }
 
     /**
@@ -4351,10 +4352,10 @@ public class TestDeviceTest extends TestCase {
                         return true;
                     }
                 };
-        EasyMock.expect(mMockIDevice.getProperty("ro.crypto.state")).andReturn("encrypted");
-        EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+        setGetPropertyExpectation("ro.crypto.state", "encrypted");
+        EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor, mMockRunUtil);
         assertTrue(mTestDevice.isEncryptionSupported());
-        EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+        EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor, mMockRunUtil);
     }
 
     /** Test that the output of cryptfs does not allow for encryption. */
@@ -4371,10 +4372,10 @@ public class TestDeviceTest extends TestCase {
                         return true;
                     }
                 };
-        EasyMock.expect(mMockIDevice.getProperty("ro.crypto.state")).andReturn("unsupported");
-        EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+        setGetPropertyExpectation("ro.crypto.state", "unsupported");
+        EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor, mMockRunUtil);
         assertFalse(mTestDevice.isEncryptionSupported());
-        EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+        EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor, mMockRunUtil);
     }
 
     /** Test when getting the heapdump is successful. */
@@ -4523,7 +4524,7 @@ public class TestDeviceTest extends TestCase {
         verifyMocks();
     }
 
-    /** Test for {@link TestDevice#getScreenshot(int)}. */
+    /** Test for {@link TestDevice#getScreenshot(long)}. */
     public void testScreenshotByDisplay() throws Exception {
         mTestDevice =
                 new TestableTestDevice() {
@@ -4716,5 +4717,23 @@ public class TestDeviceTest extends TestCase {
         } finally {
             FileUtil.deleteFile(tmpFile);
         }
+    }
+
+    private IExpectationSetters<CommandResult> setGetPropertyExpectation(
+            String property, String value) {
+        CommandResult stubResult = new CommandResult(CommandStatus.SUCCESS);
+        stubResult.setStdout(value);
+        return EasyMock.expect(
+                        mMockRunUtil.runTimedCmd(
+                                EasyMock.anyLong(),
+                                (OutputStream) EasyMock.isNull(),
+                                EasyMock.isNull(),
+                                EasyMock.eq("adb"),
+                                EasyMock.eq("-s"),
+                                EasyMock.eq("serial"),
+                                EasyMock.eq("shell"),
+                                EasyMock.eq("getprop"),
+                                EasyMock.eq(property)))
+                .andReturn(stubResult);
     }
 }
