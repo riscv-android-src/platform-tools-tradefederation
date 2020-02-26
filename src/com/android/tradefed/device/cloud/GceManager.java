@@ -436,6 +436,9 @@ public class GceManager {
      */
     public static File getNestedDeviceSshBugreportz(
             GceAvdInfo gceAvd, TestDeviceOptions options, IRunUtil runUtil) throws IOException {
+        if (gceAvd == null || gceAvd.hostAndPort() == null) {
+            return null;
+        }
         String output = "";
         // Retry a couple of time because adb might not be started for that user.
         // FIXME: See if we can use vsoc-01 directly to avoid this
