@@ -43,6 +43,7 @@ import com.android.tradefed.result.TestSummary;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.QuotationAwareTokenizer;
+import com.android.tradefed.util.StreamUtil;
 
 import com.google.common.primitives.Ints;
 
@@ -260,7 +261,7 @@ public class ClusterCommandScheduler extends CommandScheduler {
         public void invocationFailed(Throwable cause) {
             super.invocationFailed(cause);
 
-            mError = cause.toString();
+            mError = StreamUtil.getStackTrace(cause);
         }
 
         /** {@inheritDoc} */
