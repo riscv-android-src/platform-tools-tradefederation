@@ -113,4 +113,6 @@ enum FailureStatus {
   INFRA_FAILURE = 10;
   // System under test crashed and caused the test to fail.
   SYSTEM_UNDER_TEST_CRASHED = 20;
+  // The test was expected to run but did not.
+  NOT_EXECUTED = 30;
 }
