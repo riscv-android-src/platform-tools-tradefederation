@@ -77,7 +77,7 @@ public class DeviceTestsConfigValidation implements IBuildReceiver {
                 // from AndroidTest.xml
                 ValidateSuiteConfigHelper.validateConfig(c);
                 // Check that all the tests runners are well supported.
-                GeneralTestsConfigValidation.checkRunners(c.getTests());
+                GeneralTestsConfigValidation.checkRunners(c.getTests(), "device-tests");
                 // Add more checks if necessary
             } catch (ConfigurationException e) {
                 errors.add(String.format("\t%s: %s", config.getName(), e.getMessage()));
