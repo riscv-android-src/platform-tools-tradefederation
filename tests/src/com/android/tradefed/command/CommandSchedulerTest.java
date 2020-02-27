@@ -757,7 +757,7 @@ public class CommandSchedulerTest {
     public void testDeviceReleased_unavailable() throws Throwable {
         String[] args = new String[] {"test"};
         mMockManager.setNumDevicesCustom(1, TestDeviceState.NOT_AVAILABLE, IDevice.class);
-        assert(mMockManager.getQueueOfAvailableDeviceSize() == 1);
+        assertEquals(1, mMockManager.getQueueOfAvailableDeviceSize());
         setCreateConfigExpectations(args, 1);
         setExpectedInvokeCalls(1);
         mMockConfiguration.validateOptions();
@@ -850,7 +850,7 @@ public class CommandSchedulerTest {
     public void testDeviceRecoveryState() throws Throwable {
         String[] args = new String[] {"test"};
         mMockManager.setNumDevicesCustomRealNoRecovery(1, IDevice.class);
-        assert(mMockManager.getQueueOfAvailableDeviceSize() == 1);
+        assertEquals(1, mMockManager.getQueueOfAvailableDeviceSize());
         setCreateConfigExpectations(args, 1);
         setExpectedInvokeCalls(1);
         mMockConfiguration.validateOptions();
@@ -870,7 +870,7 @@ public class CommandSchedulerTest {
     public void testDevice_unresponsive() throws Throwable {
         String[] args = new String[] {"test"};
         mMockManager.setNumDevicesUnresponsive(1);
-        assert(mMockManager.getQueueOfAvailableDeviceSize() == 1);
+        assertEquals(1, mMockManager.getQueueOfAvailableDeviceSize());
         setCreateConfigExpectations(args, 1);
         setExpectedInvokeCalls(1);
         mMockConfiguration.validateOptions();
