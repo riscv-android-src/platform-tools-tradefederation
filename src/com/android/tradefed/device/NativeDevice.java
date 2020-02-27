@@ -441,7 +441,7 @@ public class NativeDevice implements IManagedTestDevice {
      */
     protected String internalGetProperty(String propName, String fastbootVar, String description)
             throws DeviceNotAvailableException, UnsupportedOperationException {
-        String propValue = getIDevice().getProperty(propName);
+        String propValue = getProperty(propName);
         if (propValue != null) {
             return propValue;
         } else if (TestDeviceState.FASTBOOT.equals(getDeviceState()) &&
@@ -470,7 +470,18 @@ public class NativeDevice implements IManagedTestDevice {
             CLog.d("Device %s is not online cannot get property %s.", getSerialNumber(), name);
             return null;
         }
-        return getIDevice().getProperty(name);
+        String cmd = String.format("getprop %s", name);
+        CommandResult result = executeShellV2Command(cmd);
+        if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
+            CLog.e(
+                    "Failed to run '%s' returning null. stdout: %s\nstderr: %s\nexit code: %s",
+                    cmd, result.getStdout(), result.getStderr(), result.getExitCode());
+            return null;
+        }
+        if (result.getStdout() == null) {
+            return null;
+        }
+        return result.getStdout().trim();
     }
 
     /** {@inheritDoc} */
