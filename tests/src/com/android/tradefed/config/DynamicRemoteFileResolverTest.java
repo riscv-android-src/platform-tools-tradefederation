@@ -466,6 +466,7 @@ public class DynamicRemoteFileResolverTest {
         queryArgs.put("partial_download_dir", "/tmp");
         queryArgs.put("include_filters", "test1;test2");
         queryArgs.put("exclude_filters", "[.]config");
+        mMockResolver.setPrimaryDevice(null);
         EasyMock.expect(
                         mMockResolver.resolveRemoteFiles(
                                 EasyMock.eq(new File("gs:/fake/path")),
@@ -489,6 +490,7 @@ public class DynamicRemoteFileResolverTest {
         queryArgs.put("include_filters", "test1;test2");
         queryArgs.put("exclude_filters", "[.]config");
         queryArgs.put("optional", "true");
+        mMockResolver.setPrimaryDevice(null);
         EasyMock.expect(
                         mMockResolver.resolveRemoteFiles(
                                 EasyMock.eq(new File("gs:/fake/path?optional=true")),

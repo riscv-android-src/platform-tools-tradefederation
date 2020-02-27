@@ -97,7 +97,7 @@ public class ShardHelperTest {
                     }
 
                     @Override
-                    protected void validateOptions(IConfiguration config)
+                    protected void validateOptions(TestInformation testInfo, IConfiguration config)
                             throws ConfigurationException {
                         // Skip to avoid call to global configuration
                     }
@@ -341,7 +341,7 @@ public class ShardHelperTest {
                     }
 
                     @Override
-                    protected void validateOptions(IConfiguration config)
+                    protected void validateOptions(TestInformation testInfo, IConfiguration config)
                             throws ConfigurationException {
                         // Skip to avoid call to global configuration
                     }

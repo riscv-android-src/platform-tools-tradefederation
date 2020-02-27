@@ -670,7 +670,8 @@ public class TestInvocation implements ITestInvocation {
     }
 
     /**
-     * Invoke {@link IConfiguration#resolveDynamicOptions()} to resolve the dynamic files.
+     * Invoke {@link IConfiguration#resolveDynamicOptions(DynamicRemoteFileResolver)} to resolve the
+     * dynamic files.
      *
      * @param context the {@link IInvocationContext} of the invocation.
      * @param config the {@link IConfiguration} of this test run.
@@ -691,7 +692,9 @@ public class TestInvocation implements ITestInvocation {
         try {
             // Don't resolve for remote invocation, wait until we are inside the remote.
             if (!RunMode.REMOTE_INVOCATION.equals(mode)) {
-                config.resolveDynamicOptions(new DynamicRemoteFileResolver());
+                DynamicRemoteFileResolver resolver = new DynamicRemoteFileResolver();
+                resolver.setDevice(context.getDevices().get(0));
+                config.resolveDynamicOptions(resolver);
             }
             return true;
         } catch (RuntimeException | BuildRetrievalError | ConfigurationException e) {
