@@ -926,6 +926,18 @@ public class GceManagerTest {
     }
 
     @Test
+    public void testUpdateTimeout_multiBootTimeout() {
+        mOptions.getGceDriverParams().add("--boot-timeout");
+        mOptions.getGceDriverParams().add("900");
+        mOptions.getGceDriverParams().add("--boot-timeout");
+        mOptions.getGceDriverParams().add("450");
+        assertEquals(1800000L, mOptions.getGceCmdTimeout());
+        mGceManager = new GceManager(mMockDeviceDesc, mOptions, mMockBuildInfo, null);
+        // The last specified boot-timeout is used.
+        assertEquals(630000L, mOptions.getGceCmdTimeout());
+    }
+
+    @Test
     public void testUpdateTimeout_noBootTimeout() {
         mOptions.getGceDriverParams().add("--someargs");
         mOptions.getGceDriverParams().add("900");
