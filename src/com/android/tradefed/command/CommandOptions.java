@@ -150,11 +150,11 @@ public class CommandOptions implements ICommandOptions {
     )
     private boolean mUseRemoteSandbox = false;
 
+    @Deprecated
     @Option(
-        name = "parallel-remote-setup",
-        description =
-                "For remote sharded invocation, whether or not to attempt the setup in parallel."
-    )
+            name = "parallel-remote-setup",
+            description =
+                    "For remote sharded invocation, whether or not to attempt the setup in parallel.")
     private boolean mUseParallelRemoteSetup = false;
 
     @Option(
@@ -163,12 +163,12 @@ public class CommandOptions implements ICommandOptions {
     )
     private boolean mReportModuleProgression = false;
 
+    @Deprecated
     @Option(
-        name = "extra-postsubmit-remote-instance",
-        description =
-                "Option that allows to run more instances in the remote VM in postsubmit. "
-                        + "Used for experimentation."
-    )
+            name = "extra-postsubmit-remote-instance",
+            description =
+                    "Option that allows to run more instances in the remote VM in postsubmit. "
+                            + "Used for experimentation.")
     private int mExtraRemoteInstancePostsubmit = 0;
 
     @Option(
