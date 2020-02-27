@@ -56,13 +56,6 @@ public class ExecutableHostTest extends ExecutableBaseTest {
     private static final String LOG_STDERR_TAG = "-binary-stderr-";
 
     @Option(
-        name = "per-binary-timeout",
-        isTimeVal = true,
-        description = "Timeout applied to each binary for their execution."
-    )
-    private long mTimeoutPerBinaryMs = 5 * 60 * 1000L;
-
-    @Option(
         name = "relative-path-execution",
         description =
                 "Some scripts assume a relative location to their tests file, this allows to"
@@ -135,7 +128,7 @@ public class ExecutableHostTest extends ExecutableBaseTest {
                 FileOutputStream stderrStream = new FileOutputStream(stderr); ) {
             CommandResult res =
                     runUtil.runTimedCmd(
-                            mTimeoutPerBinaryMs,
+                            getTimeoutPerBinaryMs(),
                             stdoutStream,
                             stderrStream,
                             command.toArray(new String[0]));
