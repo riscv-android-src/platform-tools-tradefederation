@@ -2866,7 +2866,7 @@ public class NativeDeviceTest {
     @Test
     public void testGetLogcatSince() throws Exception {
         long date = 1512990942000L; // 2017-12-11 03:15:42.015
-        EasyMock.expect(mMockIDevice.getProperty("ro.build.version.sdk")).andReturn("23");
+        setGetPropertyExpectation("ro.build.version.sdk", "23");
 
         SimpleDateFormat format = new SimpleDateFormat("MM-dd HH:mm:ss.mmm");
         String dateFormatted = format.format(new Date(date));
@@ -2881,8 +2881,7 @@ public class NativeDeviceTest {
 
     @Test
     public void testGetProductVariant() throws Exception {
-        EasyMock.expect(mMockIDevice.getProperty(DeviceProperties.VARIANT)).andReturn("variant");
-
+        setGetPropertyExpectation(DeviceProperties.VARIANT, "variant");
         EasyMock.replay(mMockIDevice);
         assertEquals("variant", mTestDevice.getProductVariant());
         EasyMock.verify(mMockIDevice);
@@ -3155,7 +3154,7 @@ public class NativeDeviceTest {
     /** Test {@link NativeDevice#getLaunchApiLevel()} with ro.product.first_api_level being set. */
     @Test
     public void testGetLaunchApiLevel_w_first_api() throws DeviceNotAvailableException {
-        EasyMock.expect(mMockIDevice.getProperty(DeviceProperties.FIRST_API_LEVEL)).andReturn("23");
+        setGetPropertyExpectation(DeviceProperties.FIRST_API_LEVEL, "23");
         mTestDevice =
                 new TestableAndroidNativeDevice() {
                     @Override
@@ -3173,20 +3172,7 @@ public class NativeDeviceTest {
      */
     @Test
     public void testGetLaunchApiLevel_wo_first_api() throws DeviceNotAvailableException {
-        mTestDevice =
-                new TestableAndroidNativeDevice() {
-                    @Override
-                    public int getApiLevel() throws DeviceNotAvailableException {
-                        return 29;
-                    }
-                };
-        assertEquals(29, mTestDevice.getLaunchApiLevel());
-    }
-
-    /** Test {@link NativeDevice#getLaunchApiLevel()} with NumberFormatException be asserted. */
-    @Test
-    public void testGetLaunchApiLevel_w_exception() throws DeviceNotAvailableException {
-        EasyMock.expect(mMockIDevice.getProperty(DeviceProperties.FIRST_API_LEVEL)).andReturn("R");
+        setGetPropertyExpectation(DeviceProperties.FIRST_API_LEVEL, null);
         mTestDevice =
                 new TestableAndroidNativeDevice() {
                     @Override
@@ -3197,5 +3183,39 @@ public class NativeDeviceTest {
         EasyMock.replay(mMockIDevice);
         assertEquals(29, mTestDevice.getLaunchApiLevel());
         EasyMock.verify(mMockIDevice);
+    }
+
+    /** Test {@link NativeDevice#getLaunchApiLevel()} with NumberFormatException be asserted. */
+    @Test
+    public void testGetLaunchApiLevel_w_exception() throws DeviceNotAvailableException {
+        setGetPropertyExpectation(DeviceProperties.FIRST_API_LEVEL, "R");
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        return 29;
+                    }
+                };
+        EasyMock.replay(mMockIDevice);
+        assertEquals(29, mTestDevice.getLaunchApiLevel());
+        EasyMock.verify(mMockIDevice);
+    }
+
+    private void setGetPropertyExpectation(String property, String value) {
+        CommandResult stubResult = new CommandResult(CommandStatus.SUCCESS);
+        stubResult.setStdout(value);
+        EasyMock.expect(
+                        mMockRunUtil.runTimedCmd(
+                                EasyMock.anyLong(),
+                                (OutputStream) EasyMock.isNull(),
+                                EasyMock.isNull(),
+                                EasyMock.eq("adb"),
+                                EasyMock.eq("-s"),
+                                EasyMock.eq("serial"),
+                                EasyMock.eq("shell"),
+                                EasyMock.eq("getprop"),
+                                EasyMock.eq(property)))
+                .andReturn(stubResult);
+        EasyMock.replay(mMockRunUtil);
     }
 }

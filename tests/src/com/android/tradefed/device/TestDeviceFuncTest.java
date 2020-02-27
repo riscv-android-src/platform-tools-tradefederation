@@ -832,9 +832,9 @@ public class TestDeviceFuncTest implements IDeviceTest {
     /** Test that {@link TestDevice#getProperty(String)} works for volatile properties. */
     @Test
     public void testGetProperty_volatile() throws Exception {
-        getDevice().executeShellCommand("setprop prop.test 0");
+        getDevice().setProperty("prop.test", "0");
         assertEquals("0", getDevice().getProperty("prop.test"));
-        getDevice().executeShellCommand("setprop prop.test 1");
+        getDevice().setProperty("prop.test", "1");
         assertEquals("1", getDevice().getProperty("prop.test"));
     }
 
