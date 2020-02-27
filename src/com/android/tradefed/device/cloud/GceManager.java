@@ -94,7 +94,7 @@ public class GceManager {
         if (!deviceOptions.allowGceCmdTimeoutOverride()) {
             return;
         }
-        int index = deviceOptions.getGceDriverParams().indexOf("--boot-timeout");
+        int index = deviceOptions.getGceDriverParams().lastIndexOf("--boot-timeout");
         if (index != -1 && deviceOptions.getGceDriverParams().size() > index + 1) {
             String driverTimeoutStringSec = deviceOptions.getGceDriverParams().get(index + 1);
             try {
