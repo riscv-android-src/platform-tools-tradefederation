@@ -547,6 +547,7 @@ public class ProtoResultParser {
                     }
                 }
             }
+            attributes.remove(TfObjectTracker.TF_OBJECTS_TRACKING_KEY);
         }
         receiverContext.addInvocationAttributes(attributes);
     }
