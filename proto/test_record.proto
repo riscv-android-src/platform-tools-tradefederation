@@ -97,6 +97,9 @@ message DebugInfo {
 
   // A more detailed failure status description.
   FailureStatus failure_status = 3;
+
+  // Optional context to the failure
+  DebugInfoContext debug_info_context = 4;
 }
 
 // A Fail TestStatus can be associated with a more granular failure status that helps understanding
@@ -115,4 +118,13 @@ enum FailureStatus {
   SYSTEM_UNDER_TEST_CRASHED = 20;
   // The test was expected to run but did not.
   NOT_EXECUTED = 30;
+}
+
+// A context to DebugInfo that allows to optionally specify some debugging context.
+message DebugInfoContext {
+  // Category of the action that was in progress during the failure
+  string action_in_progress = 1;
+
+  // A free-formed text that can help debugging the issue at hand.
+  string debug_help_message = 10;
 }
