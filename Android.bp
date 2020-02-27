@@ -46,6 +46,7 @@ java_defaults {
       "-Xep:SizeGreaterThanOrEqualsZero:ERROR",
       "-Xep:TryFailThrowable:ERROR",
       "-Xep:UnnecessaryParentheses:ERROR",
+      "-Xep:UseCorrectAssertInTests:ERROR",
     ],
   },
 }
