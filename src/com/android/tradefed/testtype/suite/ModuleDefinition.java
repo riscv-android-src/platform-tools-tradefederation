@@ -399,6 +399,10 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                             .setInvocationContext(mModuleInvocationContext);
                 }
                 mInternalTestConfiguration = new Configuration("tmp-download", "tmp-download");
+                mInternalTestConfiguration
+                        .getCommandOptions()
+                        .getDynamicDownloadArgs()
+                        .putAll(mModuleConfiguration.getCommandOptions().getDynamicDownloadArgs());
                 // We do it before the official set, otherwise the IConfiguration will not be the
                 // right one.
                 mInternalTestConfiguration.setTest(test);
@@ -958,6 +962,10 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         mEnableDynamicDownload = enableDynamicDownload;
     }
 
+    public void addDynamicDownloadArgs(Map<String, String> extraArgs) {
+        mModuleConfiguration.getCommandOptions().getDynamicDownloadArgs().putAll(extraArgs);
+    }
+
     /**
      * Allow to load a module_controller object to tune how should a particular module run.
      *
@@ -1036,6 +1044,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             CLog.d("Attempting to resolve dynamic files from %s", getId());
             DynamicRemoteFileResolver resolver = new DynamicRemoteFileResolver();
             resolver.setDevice(device);
+            resolver.addExtraArgs(moduleConfiguration.getCommandOptions().getDynamicDownloadArgs());
             moduleConfiguration.resolveDynamicOptions(resolver);
             return null;
         } catch (RuntimeException | ConfigurationException | BuildRetrievalError e) {

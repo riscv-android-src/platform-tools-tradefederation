@@ -19,6 +19,7 @@ package com.android.tradefed.command;
 import com.android.tradefed.device.metric.AutoLogCollector;
 import com.android.tradefed.util.UniqueMultiMap;
 
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -192,4 +193,7 @@ public interface ICommandOptions {
 
     /** Whether or not to release the device early when done with it. */
     public boolean earlyDeviceRelease();
+
+    /** Returns the map of args to pass to the dynamic download query. */
+    public Map<String, String> getDynamicDownloadArgs();
 }
