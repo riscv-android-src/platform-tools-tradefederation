@@ -24,8 +24,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -97,6 +99,10 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
     private long mTotalElapsedTime;
     private int mTotalTestCount;
     private String mCurrentTestCaseString = null;
+
+    // Filters used for parsing test methods.
+    private Set<String> mIncludeFilters = new LinkedHashSet<>();
+    private Set<String> mExcludeFilters = new LinkedHashSet<>();
 
     // General state
     private Collection<ITestInvocationListener> mListeners = new ArrayList<>();
@@ -177,9 +183,23 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
      */
     public PythonUnitTestResultParser(
             Collection<ITestInvocationListener> listeners, String runName) {
+        this(listeners, runName, new LinkedHashSet<>(), new LinkedHashSet<>());
+    }
+
+    /**
+     * Create a new {@link PythonUnitTestResultParser} that reports to the given {@link
+     * ITestInvocationListener}s, with specified include and exclude filters.
+     */
+    public PythonUnitTestResultParser(
+            Collection<ITestInvocationListener> listeners,
+            String runName,
+            Set<String> includeFilters,
+            Set<String> excludeFilters) {
         mListeners.addAll(listeners);
         mRunName = runName;
         mTestResultCache = new HashMap<>();
+        mIncludeFilters = includeFilters;
+        mExcludeFilters = excludeFilters;
     }
 
     /**
@@ -359,7 +379,11 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
     /** Record a non-failure test case. */
     private void reportNonFailureTestResult() throws PythonUnitTestParseException {
         TestDescription testId = new TestDescription(mCurrentTestClass, mCurrentTestName);
-        if (PATTERN_TEST_SUCCESS.matcher(mCurrentTestStatus).matches()) {
+
+        if (shouldSkipCurrentTest()) {
+            // Force to skip any test not listed in include filters, or listed in exclude filters.
+            mTestResultCache.put(testId, SKIPPED_ENTRY);
+        } else if (PATTERN_TEST_SUCCESS.matcher(mCurrentTestStatus).matches()) {
             mTestResultCache.put(testId, null);
         } else if (PATTERN_TEST_SKIPPED.matcher(mCurrentTestStatus).matches()) {
             mTestResultCache.put(testId, SKIPPED_ENTRY);
@@ -375,7 +399,34 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
     /** Record a failed test case and its traceback message. */
     private void reportFailureTestResult() {
         TestDescription testId = new TestDescription(mCurrentTestClass, mCurrentTestName);
-        mTestResultCache.put(testId, mCurrentTraceback.toString());
+        if (shouldSkipCurrentTest()) {
+            mTestResultCache.put(testId, SKIPPED_ENTRY);
+        } else {
+            mTestResultCache.put(testId, mCurrentTraceback.toString());
+        }
+    }
+
+    /**
+     * Check if current test should be skipped.
+     *
+     * @return true if the test should be skipped.
+     */
+    private boolean shouldSkipCurrentTest() {
+        // Force to skip any test not listed in include filters, or listed in exclude filters.
+        // exclude filters have highest priority.
+        if (mExcludeFilters.contains(mCurrentTestClass + "#" + mCurrentTestName)
+                || mExcludeFilters.contains(mCurrentTestClass)) {
+            return true;
+        }
+        if (!mIncludeFilters.isEmpty()) {
+            if (mIncludeFilters.contains(mCurrentTestClass + "#" + mCurrentTestName)
+                    || mIncludeFilters.contains(mCurrentTestClass)) {
+                return false;
+            } else {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
