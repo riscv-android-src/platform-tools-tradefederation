@@ -24,6 +24,7 @@ import com.android.tradefed.invoker.logger.TfObjectTracker;
 import com.android.tradefed.invoker.proto.InvocationContext.Context;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.ActionInProgress;
 import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ILogSaverListener;
@@ -34,6 +35,7 @@ import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.proto.LogFileProto.LogFileInfo;
 import com.android.tradefed.result.proto.TestRecordProto.ChildReference;
+import com.android.tradefed.result.proto.TestRecordProto.DebugInfo;
 import com.android.tradefed.result.proto.TestRecordProto.TestRecord;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
 import com.android.tradefed.util.MultiMap;
@@ -355,14 +357,17 @@ public class ProtoResultParser {
     private void handleTestRunEnd(TestRecord runProto) {
         // If we find debugging information, the test run failed and we reflect it.
         if (runProto.hasDebugInfo()) {
-            FailureDescription description =
-                    FailureDescription.create(runProto.getDebugInfo().getErrorMessage());
+            DebugInfo debugInfo = runProto.getDebugInfo();
+            FailureDescription failure = FailureDescription.create(debugInfo.getErrorMessage());
             if (!TestRecordProto.FailureStatus.UNSET.equals(
                     runProto.getDebugInfo().getFailureStatus())) {
-                description.setFailureStatus(runProto.getDebugInfo().getFailureStatus());
+                failure.setFailureStatus(debugInfo.getFailureStatus());
             }
-            mListener.testRunFailed(description);
-            log("Test run failure proto: %s", description.toString());
+
+            parseDebugInfoContext(debugInfo, failure);
+
+            mListener.testRunFailed(failure);
+            log("Test run failure proto: %s", failure.toString());
         }
         handleLogs(runProto);
         log("Test run ended proto: %s", runProto.getTestRecordId());
@@ -386,6 +391,7 @@ public class ProtoResultParser {
     }
 
     private void handleTestCaseEnd(TestDescription description, TestRecord testcaseProto) {
+        DebugInfo debugInfo = testcaseProto.getDebugInfo();
         switch (testcaseProto.getStatus()) {
             case FAIL:
                 FailureDescription failure =
@@ -394,6 +400,9 @@ public class ProtoResultParser {
                         testcaseProto.getDebugInfo().getFailureStatus())) {
                     failure.setFailureStatus(testcaseProto.getDebugInfo().getFailureStatus());
                 }
+
+                parseDebugInfoContext(debugInfo, failure);
+
                 mListener.testFailed(description, failure);
                 log("Test case failed proto: %s - %s", description.toString(), failure.toString());
                 break;
@@ -404,6 +413,9 @@ public class ProtoResultParser {
                         testcaseProto.getDebugInfo().getFailureStatus())) {
                     assumption.setFailureStatus(testcaseProto.getDebugInfo().getFailureStatus());
                 }
+
+                parseDebugInfoContext(debugInfo, assumption);
+
                 mListener.testAssumptionFailure(description, assumption);
                 log(
                         "Test case assumption failure proto: %s - %s",
@@ -554,6 +566,25 @@ public class ProtoResultParser {
     private void log(String format, Object... obj) {
         if (!mQuietParsing) {
             CLog.d(format, obj);
+        }
+    }
+
+    private void parseDebugInfoContext(DebugInfo debugInfo, FailureDescription failure) {
+        if (!debugInfo.hasDebugInfoContext()) {
+            return;
+        }
+        if (!Strings.isNullOrEmpty(debugInfo.getDebugInfoContext().getActionInProgress())) {
+            try {
+                ActionInProgress value =
+                        ActionInProgress.valueOf(
+                                debugInfo.getDebugInfoContext().getActionInProgress());
+                failure.setActionInProgress(value);
+            } catch (IllegalArgumentException parseError) {
+                CLog.e(parseError);
+            }
+        }
+        if (!Strings.isNullOrEmpty(debugInfo.getDebugInfoContext().getDebugHelpMessage())) {
+            failure.setDebugHelpMessage(debugInfo.getDebugInfoContext().getDebugHelpMessage());
         }
     }
 }

@@ -29,6 +29,10 @@ public class FailureDescription {
     // Optional: The category of the failure
     private @Nullable TestRecordProto.FailureStatus mFailureStatus =
             TestRecordProto.FailureStatus.UNSET;
+    // Optional: Context of the action in progress during the failure
+    private @Nullable ActionInProgress mActionInProgress = null;
+    // Optional: A free-formed text that help debugging the failure
+    private @Nullable String mDebugHelpMessage = null;
 
     FailureDescription() {}
 
@@ -47,6 +51,28 @@ public class FailureDescription {
             return null;
         }
         return mFailureStatus;
+    }
+
+    /** Sets the action in progress during the failure. */
+    public FailureDescription setActionInProgress(ActionInProgress action) {
+        mActionInProgress = action;
+        return this;
+    }
+
+    /** Returns the action in progress during the failure. Can be null. */
+    public @Nullable ActionInProgress getActionInProgress() {
+        return mActionInProgress;
+    }
+
+    /** Sets the debug help message for the failure. */
+    public FailureDescription setDebugHelpMessage(String message) {
+        mDebugHelpMessage = message;
+        return this;
+    }
+
+    /** Returns the debug help message. Can be null. */
+    public @Nullable String getDebugHelpMessage() {
+        return mDebugHelpMessage;
     }
 
     /** Returns the error message associated with the failure. */
@@ -89,6 +115,8 @@ public class FailureDescription {
     public int hashCode() {
         final int prime = 31;
         int result = 1;
+        result = prime * result + ((mActionInProgress == null) ? 0 : mActionInProgress.hashCode());
+        result = prime * result + ((mDebugHelpMessage == null) ? 0 : mDebugHelpMessage.hashCode());
         result = prime * result + ((mErrorMessage == null) ? 0 : mErrorMessage.hashCode());
         result = prime * result + ((mFailureStatus == null) ? 0 : mFailureStatus.hashCode());
         return result;
@@ -100,6 +128,10 @@ public class FailureDescription {
         if (obj == null) return false;
         if (getClass() != obj.getClass()) return false;
         FailureDescription other = (FailureDescription) obj;
+        if (mActionInProgress != other.mActionInProgress) return false;
+        if (mDebugHelpMessage == null) {
+            if (other.mDebugHelpMessage != null) return false;
+        } else if (!mDebugHelpMessage.equals(other.mDebugHelpMessage)) return false;
         if (mErrorMessage == null) {
             if (other.mErrorMessage != null) return false;
         } else if (!mErrorMessage.equals(other.mErrorMessage)) return false;
