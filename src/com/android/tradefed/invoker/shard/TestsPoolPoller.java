@@ -204,7 +204,9 @@ public final class TestsPoolPoller
                     // ensures that the object is fine before running it.
                     validationConfig.setTest(test);
                     validationConfig.validateOptions();
-                    validationConfig.resolveDynamicOptions(new DynamicRemoteFileResolver());
+                    DynamicRemoteFileResolver resolver = new DynamicRemoteFileResolver();
+                    resolver.setDevice(info.getDevice());
+                    validationConfig.resolveDynamicOptions(resolver);
                     // Set the configuration after the validation, otherwise we override the config
                     // available to the test.
                     if (test instanceof IConfigurationReceiver) {

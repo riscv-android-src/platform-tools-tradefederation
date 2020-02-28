@@ -23,6 +23,7 @@ import com.android.tradefed.config.remote.HttpRemoteFileResolver;
 import com.android.tradefed.config.remote.HttpsRemoteFileResolver;
 import com.android.tradefed.config.remote.IRemoteFileResolver;
 import com.android.tradefed.config.remote.LocalFileResolver;
+import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.MultiMap;
@@ -73,10 +74,16 @@ public class DynamicRemoteFileResolver {
     public static final String OPTIONAL_KEY = "optional";
 
     private Map<String, OptionFieldsForName> mOptionMap;
+    private ITestDevice mDevice;
 
     /** Sets the map of options coming from {@link OptionSetter} */
     public void setOptionMap(Map<String, OptionFieldsForName> optionMap) {
         mOptionMap = optionMap;
+    }
+
+    /** Sets the device under tests */
+    public void setDevice(ITestDevice device) {
+        mDevice = device;
     }
 
     /**
@@ -260,6 +267,7 @@ public class DynamicRemoteFileResolver {
         }
         // Downloaded individual files should be saved to destDir, return value is not needed.
         try {
+            resolver.setPrimaryDevice(mDevice);
             resolver.resolveRemoteFiles(new File(remoteZipFilePath), queryArgs);
         } catch (BuildRetrievalError e) {
             if (isOptional(queryArgs)) {
