@@ -1233,7 +1233,9 @@ public class HostTest
 
     @VisibleForTesting
     DynamicRemoteFileResolver createResolver() {
-        return new DynamicRemoteFileResolver();
+        DynamicRemoteFileResolver resolver = new DynamicRemoteFileResolver();
+        resolver.setDevice(mDevice);
+        return resolver;
     }
 
     private Set<File> resolveRemoteFileForObject(Object obj) {
