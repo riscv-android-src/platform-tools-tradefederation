@@ -28,12 +28,14 @@ import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.proto.LogFileProto.LogFileInfo;
 import com.android.tradefed.result.proto.TestRecordProto.ChildReference;
 import com.android.tradefed.result.proto.TestRecordProto.DebugInfo;
+import com.android.tradefed.result.proto.TestRecordProto.DebugInfoContext;
 import com.android.tradefed.result.proto.TestRecordProto.TestRecord;
 import com.android.tradefed.result.proto.TestRecordProto.TestStatus;
 import com.android.tradefed.result.retry.ISupportGranularResults;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
 import com.android.tradefed.util.StreamUtil;
 
+import com.google.common.base.Strings;
 import com.google.protobuf.Any;
 import com.google.protobuf.Timestamp;
 
@@ -301,6 +303,15 @@ public abstract class ProtoResultReporter
         if (failure.getFailureStatus() != null) {
             debugBuilder.setFailureStatus(failure.getFailureStatus());
         }
+        DebugInfoContext.Builder debugContext = DebugInfoContext.newBuilder();
+        if (failure.getActionInProgress() != null) {
+            debugContext.setActionInProgress(failure.getActionInProgress().toString());
+        }
+        if (!Strings.isNullOrEmpty(failure.getDebugHelpMessage())) {
+            debugContext.setDebugHelpMessage(failure.getDebugHelpMessage());
+        }
+        debugBuilder.setDebugInfoContext(debugContext.build());
+
         if (TestStatus.UNKNOWN.equals(current.getStatus())) {
             current.setDebugInfo(debugBuilder.build());
         } else {
@@ -405,6 +416,15 @@ public abstract class ProtoResultReporter
         if (failure.getFailureStatus() != null) {
             debugBuilder.setFailureStatus(failure.getFailureStatus());
         }
+        DebugInfoContext.Builder debugContext = DebugInfoContext.newBuilder();
+        if (failure.getActionInProgress() != null) {
+            debugContext.setActionInProgress(failure.getActionInProgress().toString());
+        }
+        if (!Strings.isNullOrEmpty(failure.getDebugHelpMessage())) {
+            debugContext.setDebugHelpMessage(failure.getDebugHelpMessage());
+        }
+        debugBuilder.setDebugInfoContext(debugContext.build());
+
         testBuilder.setDebugInfo(debugBuilder.build());
     }
 

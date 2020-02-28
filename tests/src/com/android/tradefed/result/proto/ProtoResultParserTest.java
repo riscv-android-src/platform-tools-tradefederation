@@ -24,6 +24,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.ActionInProgress;
 import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.LogDataType;
@@ -361,7 +362,9 @@ public class ProtoResultParserTest {
 
         mMockListener.testRunFailed(
                 FailureDescription.create("run failure")
-                        .setFailureStatus(FailureStatus.INFRA_FAILURE));
+                        .setFailureStatus(FailureStatus.INFRA_FAILURE)
+                        .setActionInProgress(ActionInProgress.INSTALL_APK)
+                        .setDebugHelpMessage("help message"));
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
@@ -376,7 +379,9 @@ public class ProtoResultParserTest {
         // test run failed inside a test
         mFinalTestParser.testRunFailed(
                 FailureDescription.create("run failure")
-                        .setFailureStatus(FailureStatus.INFRA_FAILURE));
+                        .setFailureStatus(FailureStatus.INFRA_FAILURE)
+                        .setActionInProgress(ActionInProgress.INSTALL_APK)
+                        .setDebugHelpMessage("help message"));
 
         mFinalTestParser.testEnded(test1, 10L, new HashMap<String, Metric>());
 
