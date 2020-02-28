@@ -990,7 +990,7 @@ public class TestInvocation implements ITestInvocation {
     @Override
     public void notifyInvocationStopped(String message) {
         mStopCause = message;
-        if (mStopRequestTime != null) {
+        if (mStopRequestTime == null) {
             mStopRequestTime = System.currentTimeMillis();
         }
     }
