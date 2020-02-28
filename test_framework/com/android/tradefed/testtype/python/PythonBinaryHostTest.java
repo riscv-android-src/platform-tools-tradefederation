@@ -33,6 +33,7 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.ITestFilterReceiver;
 import com.android.tradefed.testtype.PythonUnitTestResultParser;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
@@ -44,20 +45,31 @@ import com.android.tradefed.util.SubprocessTestResultsParser;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-/** Host test meant to run a python binary file from the Android Build system (Soong) */
+/**
+ * Host test meant to run a python binary file from the Android Build system (Soong)
+ *
+ * <p>The test runner supports include-filter and exclude-filter. Note that exclude-filter works by
+ * ignoring the test result, instead of skipping the actual test. The tests specified in the
+ * exclude-filter will still be executed.
+ */
 @OptionClass(alias = "python-host")
-public class PythonBinaryHostTest implements IRemoteTest {
+public class PythonBinaryHostTest implements IRemoteTest, ITestFilterReceiver {
 
     protected static final String ANDROID_SERIAL_VAR = "ANDROID_SERIAL";
     protected static final String PATH_VAR = "PATH";
     protected static final long PATH_TIMEOUT_MS = 60000L;
 
     private static final String PYTHON_LOG_STDERR_FORMAT = "%s-stderr";
+
+    private Set<String> mIncludeFilters = new LinkedHashSet<>();
+    private Set<String> mExcludeFilters = new LinkedHashSet<>();
 
     @Option(name = "par-file-name", description = "The binary names inside the build info to run.")
     private Set<String> mBinaryNames = new HashSet<>();
@@ -93,6 +105,54 @@ public class PythonBinaryHostTest implements IRemoteTest {
 
     private TestInformation mTestInfo;
     private IRunUtil mRunUtil;
+
+    /** {@inheritDoc} */
+    @Override
+    public void addIncludeFilter(String filter) {
+        mIncludeFilters.add(filter);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void addExcludeFilter(String filter) {
+        mExcludeFilters.add(filter);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void addAllIncludeFilters(Set<String> filters) {
+        mIncludeFilters.addAll(filters);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void addAllExcludeFilters(Set<String> filters) {
+        mExcludeFilters.addAll(filters);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void clearIncludeFilters() {
+        mIncludeFilters.clear();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void clearExcludeFilters() {
+        mExcludeFilters.clear();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Set<String> getIncludeFilters() {
+        return mIncludeFilters;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Set<String> getExcludeFilters() {
+        return mExcludeFilters;
+    }
 
     @Override
     public final void run(TestInformation testInfo, ITestInvocationListener listener)
@@ -215,9 +275,19 @@ public class PythonBinaryHostTest implements IRemoteTest {
             if (!result.getStderr().contains("TEST_RUN_STARTED")) {
                 // Attempt to parse the pure python output
                 PythonUnitTestResultParser pythonParser =
-                        new PythonUnitTestResultParser(forwarder, "python-run");
+                        new PythonUnitTestResultParser(
+                                Arrays.asList(forwarder),
+                                "python-run",
+                                mIncludeFilters,
+                                mExcludeFilters);
                 pythonParser.processNewLines(result.getStderr().split("\n"));
             } else {
+                if (!mIncludeFilters.isEmpty() || !mExcludeFilters.isEmpty()) {
+                    throw new RuntimeException(
+                            "Non-unittest python test does not support using filters in "
+                                    + "PythonBinaryHostTest. Please use test runner "
+                                    + "ExecutableHostTest instead.");
+                }
                 try (SubprocessTestResultsParser parser =
                         new SubprocessTestResultsParser(forwarder, mTestInfo.getContext())) {
                     parser.parseFile(resultFile);
