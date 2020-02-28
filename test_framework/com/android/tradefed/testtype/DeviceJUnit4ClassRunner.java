@@ -170,7 +170,11 @@ public class DeviceJUnit4ClassRunner extends BlockJUnit4ClassRunner
 
     @VisibleForTesting
     DynamicRemoteFileResolver createResolver() {
-        return new DynamicRemoteFileResolver();
+        DynamicRemoteFileResolver resolver = new DynamicRemoteFileResolver();
+        if (mTestInformation != null) {
+            resolver.setDevice(mTestInformation.getDevice());
+        }
+        return resolver;
     }
 
     private Set<File> resolveRemoteFileForObject(Object obj) {

@@ -22,10 +22,12 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import com.android.tradefed.build.BuildInfo;
+import com.android.tradefed.build.StubBuildProvider;
 import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
+import com.android.tradefed.config.DeviceConfigurationHolder;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -72,6 +74,7 @@ public class StrictShardHelperTest {
         mHelper = new StrictShardHelper();
         mConfig = new Configuration("fake_sharding_config", "desc");
         mContext = new InvocationContext();
+        mContext.addAllocatedDevice("default", Mockito.mock(ITestDevice.class));
         mContext.addDeviceBuildInfo("default", new BuildInfo());
         mTestInfo = TestInformation.newBuilder().setInvocationContext(mContext).build();
         mRescheduler = Mockito.mock(IRescheduler.class);
@@ -82,6 +85,9 @@ public class StrictShardHelperTest {
     /** Test sharding using Tradefed internal algorithm. */
     @Test
     public void testShardConfig_internal() throws Exception {
+        DeviceConfigurationHolder holder = new DeviceConfigurationHolder("default");
+        holder.addSpecificConfig(new StubBuildProvider());
+        mConfig.setDeviceConfig(holder);
         CommandOptions options = new CommandOptions();
         OptionSetter setter = new OptionSetter(options);
         setter.setOptionValue("shard-count", "5");
