@@ -16,6 +16,7 @@
 
 package com.android.tradefed.testtype;
 
+import static com.android.tradefed.testtype.coverage.CoverageOptions.Toolchain.CLANG;
 import static com.android.tradefed.testtype.coverage.CoverageOptions.Toolchain.GCOV;
 import static com.android.tradefed.testtype.coverage.CoverageOptions.Toolchain.JACOCO;
 
@@ -49,7 +50,6 @@ import com.android.tradefed.result.ddmlib.DefaultRemoteAndroidTestRunner;
 import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.retry.RetryStrategy;
 import com.android.tradefed.testtype.coverage.CoverageOptions;
-import com.android.tradefed.testtype.coverage.CoverageOptions.Toolchain;
 import com.android.tradefed.util.AbiFormatter;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.JavaCodeCoverageFlusher;
@@ -902,20 +902,22 @@ public class InstrumentationTest
         if (!mIsRerun) {
             listener = addBugreportListenerIfEnabled(listener);
             listener = addJavaCoverageListenerIfEnabled(listener);
-            listener = addNativeCoverageListenerIfEnabled(listener);
+            listener = addGcovCoverageListenerIfEnabled(listener);
+            listener = addClangCoverageListenerIfEnabled(listener);
 
             // Clear coverage measurements on the device before running.
             if (mConfiguration != null
                     && mConfiguration.getCoverageOptions().isCoverageFlushEnabled()) {
                 CoverageOptions options = mConfiguration.getCoverageOptions();
 
-                if (options.getCoverageToolchains().contains(Toolchain.GCOV)) {
+                if (options.getCoverageToolchains().contains(GCOV)
+                        || options.getCoverageToolchains().contains(CLANG)) {
                     NativeCodeCoverageFlusher flusher =
                             new NativeCodeCoverageFlusher(mDevice, options.getCoverageProcesses());
                     flusher.resetCoverage();
                 }
 
-                if (options.getCoverageToolchains().contains(Toolchain.JACOCO)) {
+                if (options.getCoverageToolchains().contains(JACOCO)) {
                     JavaCodeCoverageFlusher flusher =
                             new JavaCodeCoverageFlusher(mDevice, options.getCoverageProcesses());
                     flusher.resetCoverage();
@@ -995,10 +997,10 @@ public class InstrumentationTest
     }
 
     /**
-     * Returns a listener that will collect native coverage measurements, or the original {@code
+     * Returns a listener that will collect gcov coverage measurements, or the original {@code
      * listener} if this feature is disabled.
      */
-    ITestInvocationListener addNativeCoverageListenerIfEnabled(ITestInvocationListener listener) {
+    ITestInvocationListener addGcovCoverageListenerIfEnabled(ITestInvocationListener listener) {
         if (mConfiguration == null) {
             return listener;
         }
@@ -1008,6 +1010,24 @@ public class InstrumentationTest
                     new NativeCodeCoverageListener(
                             getDevice(), mConfiguration.getCoverageOptions(), listener);
             return mNativeCoverageListener;
+        }
+        return listener;
+    }
+
+    /**
+     * Returns a listener that will collect Clang coverage measurements, or the original {@code
+     * listener} if this feature is disabled.
+     */
+    ITestInvocationListener addClangCoverageListenerIfEnabled(ITestInvocationListener listener) {
+        if (mConfiguration == null) {
+            return listener;
+        }
+        if (mConfiguration.getCoverageOptions().isCoverageEnabled()
+                && mConfiguration.getCoverageOptions().getCoverageToolchains().contains(CLANG)) {
+            ClangCodeCoverageListener clangListener =
+                    new ClangCodeCoverageListener(getDevice(), listener);
+            clangListener.setConfiguration(mConfiguration);
+            return clangListener;
         }
         return listener;
     }

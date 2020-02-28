@@ -16,6 +16,7 @@
 
 package com.android.tradefed.testtype;
 
+import static com.android.tradefed.testtype.coverage.CoverageOptions.Toolchain.CLANG;
 import static com.android.tradefed.testtype.coverage.CoverageOptions.Toolchain.GCOV;
 
 import com.android.ddmlib.FileListingService;
@@ -426,6 +427,7 @@ public class GTest extends GTestBase implements IDeviceTest {
         }
         // Insert the coverage listener if code coverage collection is enabled.
         listener = addNativeCoverageListenerIfEnabled(listener);
+        listener = addClangCoverageListenerIfEnabled(listener);
         NativeCodeCoverageFlusher flusher =
                 new NativeCodeCoverageFlusher(mDevice, getCoverageOptions().getCoverageProcesses());
 
@@ -466,6 +468,26 @@ public class GTest extends GTestBase implements IDeviceTest {
 
         if (options.isCoverageEnabled() && options.getCoverageToolchains().contains(GCOV)) {
             return new NativeCodeCoverageListener(mDevice, options, listener);
+        }
+        return listener;
+    }
+
+    /**
+     * Adds a listener to pull Clang code coverage measurements from the device after the test is
+     * complete if coverage is enabled, otherwise returns the same listener.
+     *
+     * @param listener the current chain of listeners
+     * @return a native coverage listener if coverage is enabled, otherwise the original listener
+     */
+    private ITestInvocationListener addClangCoverageListenerIfEnabled(
+            ITestInvocationListener listener) {
+        CoverageOptions options = getCoverageOptions();
+
+        if (options.isCoverageEnabled() && options.getCoverageToolchains().contains(CLANG)) {
+            ClangCodeCoverageListener clangListener =
+                    new ClangCodeCoverageListener(mDevice, listener);
+            clangListener.setConfiguration(getConfiguration());
+            return clangListener;
         }
         return listener;
     }
