@@ -357,7 +357,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         Throwable preparationException = null;
         DeviceNotAvailableException runException = null;
         // Resolve dynamic files except for the IRemotTest ones
-        preparationException = invokeRemoteDynamic(mModuleConfiguration);
+        preparationException = invokeRemoteDynamic(moduleInfo.getDevice(), mModuleConfiguration);
         // Setup
         long prepStartTime = getCurrentTime();
         if (preparationException == null) {
@@ -426,7 +426,8 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                                 maxRunLimit);
                 retriableTest.setCollectTestsOnly(mCollectTestsOnly);
                 // Resolve the dynamic options for that one test.
-                preparationException = invokeRemoteDynamic(mInternalTestConfiguration);
+                preparationException =
+                        invokeRemoteDynamic(moduleInfo.getDevice(), mInternalTestConfiguration);
                 if (preparationException != null) {
                     reportSetupFailure(preparationException, listener, moduleLevelListeners);
                     return;
@@ -1026,14 +1027,16 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     /**
      * Handle calling the {@link IConfiguration#resolveDynamicOptions(DynamicRemoteFileResolver)}.
      */
-    private Exception invokeRemoteDynamic(IConfiguration moduleConfiguration) {
+    private Exception invokeRemoteDynamic(ITestDevice device, IConfiguration moduleConfiguration) {
         if (!mEnableDynamicDownload) {
             return null;
         }
         // TODO: Add elapsed time tracking
         try {
             CLog.d("Attempting to resolve dynamic files from %s", getId());
-            moduleConfiguration.resolveDynamicOptions(new DynamicRemoteFileResolver());
+            DynamicRemoteFileResolver resolver = new DynamicRemoteFileResolver();
+            resolver.setDevice(device);
+            moduleConfiguration.resolveDynamicOptions(resolver);
             return null;
         } catch (RuntimeException | ConfigurationException | BuildRetrievalError e) {
             mIsFailedModule = true;

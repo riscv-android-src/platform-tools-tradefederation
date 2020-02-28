@@ -196,7 +196,7 @@ public class ShardHelper implements IShardHelper {
             IRescheduler rescheduler,
             ShardMasterResultForwarder resultCollector,
             int index) {
-        cloneConfigObject(config, shardConfig);
+        cloneConfigObject(testInfo, config, shardConfig);
         ShardBuildCloner.cloneBuildInfos(config, shardConfig, testInfo);
 
         shardConfig.setTestInvocationListeners(
@@ -224,16 +224,19 @@ public class ShardHelper implements IShardHelper {
 
     /** Runs the {@link IConfiguration#validateOptions()} on the config. */
     @VisibleForTesting
-    protected void validateOptions(IConfiguration config)
+    protected void validateOptions(TestInformation testInfo, IConfiguration config)
             throws ConfigurationException, BuildRetrievalError {
         config.validateOptions();
-        config.resolveDynamicOptions(new DynamicRemoteFileResolver());
+        DynamicRemoteFileResolver resolver = new DynamicRemoteFileResolver();
+        resolver.setDevice(testInfo.getDevice());
+        config.resolveDynamicOptions(resolver);
     }
 
     /**
      * Helper to clone {@link ISystemStatusChecker}s from the original config to the clonedConfig.
      */
-    private void cloneConfigObject(IConfiguration oriConfig, IConfiguration clonedConfig) {
+    private void cloneConfigObject(
+            TestInformation testInfo, IConfiguration oriConfig, IConfiguration clonedConfig) {
         IKeyStoreClient client = null;
         try {
             client = getGlobalConfiguration().getKeyStoreFactory().createKeyStoreClient();
@@ -261,7 +264,7 @@ public class ShardHelper implements IShardHelper {
                     .getConfigurationDescription()
                     .addMetadata(ConfigurationDescriptor.LOCAL_SHARDED_KEY, "true");
             // Validate and download the dynamic options
-            validateOptions(clonedConfig);
+            validateOptions(testInfo, clonedConfig);
         } catch (ConfigurationException | BuildRetrievalError e) {
             throw new RuntimeException(
                     String.format("failed to deep copy a configuration: %s", e.getMessage()), e);
