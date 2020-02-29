@@ -1265,7 +1265,7 @@ public class TestDevice extends NativeDevice {
     public boolean removeUser(int userId) throws DeviceNotAvailableException {
         final String output = executeShellCommand(String.format("pm remove-user %s", userId));
         if (output.startsWith("Error")) {
-            CLog.e("Failed to remove user: %s", output);
+            CLog.e("Failed to remove user %d on device %s: %s", userId, getSerialNumber(), output);
             return false;
         }
         return true;
