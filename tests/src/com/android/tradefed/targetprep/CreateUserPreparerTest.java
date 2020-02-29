@@ -23,6 +23,7 @@ import static org.mockito.Mockito.verify;
 
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.NativeDevice;
+import com.android.tradefed.device.UserInfo;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
@@ -32,6 +33,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.mockito.Mockito;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /** Unit tests for {@link CreateUserPreparer}. */
 @RunWith(JUnit4.class)
@@ -76,6 +80,52 @@ public class CreateUserPreparerTest {
         mPreparer.tearDown(mTestInfo, null);
         verify(mMockDevice, never()).removeUser(Mockito.anyInt());
         verify(mMockDevice, never()).switchUser(Mockito.anyInt());
+    }
+
+    @Test
+    public void testSetUp_maxUsersReached() throws Exception {
+        Map<Integer, UserInfo> existingUsers =
+                new HashMap<Integer, UserInfo>() {
+                    {
+                        put(
+                                0,
+                                new UserInfo(
+                                        /* id= */ 0,
+                                        /* userName= */ null,
+                                        /* flags= */ 0x00000013,
+                                        /* isRunning= */ true));
+                        put(
+                                11,
+                                new UserInfo(
+                                        /* id= */ 11,
+                                        "tf_created_user",
+                                        /* flags= */ 0,
+                                        /* isRunning= */ true));
+                        put(
+                                13,
+                                new UserInfo(
+                                        /* id= */ 13,
+                                        "tf_created_user",
+                                        /* flags= */ 0,
+                                        /* isRunning= */ false));
+                    }
+                };
+
+        doReturn(3).when(mMockDevice).getMaxNumberOfUsersSupported();
+        doReturn(existingUsers).when(mMockDevice).getUserInfos();
+        doThrow(new IllegalStateException("failed to create"))
+                .when(mMockDevice)
+                .createUser(Mockito.any());
+
+        try {
+            mPreparer.setUp(mTestInfo);
+            fail("Should have thrown an exception.");
+        } catch (TargetSetupError expected) {
+            // Expected
+        }
+        // verify that it removed the existing tradefed users.
+        verify(mMockDevice).removeUser(11);
+        verify(mMockDevice).removeUser(13);
     }
 
     @Test
