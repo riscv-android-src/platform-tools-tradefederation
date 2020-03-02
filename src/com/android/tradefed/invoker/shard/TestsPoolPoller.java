@@ -205,6 +205,8 @@ public final class TestsPoolPoller
                     validationConfig.setTest(test);
                     validationConfig.validateOptions();
                     DynamicRemoteFileResolver resolver = new DynamicRemoteFileResolver();
+                    resolver.addExtraArgs(
+                            validationConfig.getCommandOptions().getDynamicDownloadArgs());
                     resolver.setDevice(info.getDevice());
                     validationConfig.resolveDynamicOptions(resolver);
                     // Set the configuration after the validation, otherwise we override the config
