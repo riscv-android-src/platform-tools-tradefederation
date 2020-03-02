@@ -19,14 +19,12 @@ import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.invoker.IInvocationContext;
-import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 
 import java.io.PrintStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -88,12 +86,12 @@ public class ConsoleResultReporter extends TestResultListener
         if (mDisplayFailureSummary && TestStatus.FAILURE.equals(result.getStatus())) {
             mFailures.put(test, result);
         }
-        print(getTestSummary(test, result));
+        print(getTestSummary(mTestTag, test, result));
     }
 
     @Override
-    public void testRunStarted(String runName, int testCount, int attemptNumber, long startTime) {
-        super.testRunStarted(runName, testCount, attemptNumber, startTime);
+    public void testRunStarted(String runName, int testCount) {
+        super.testRunStarted(runName, testCount);
         mRunInProgress = runName;
     }
 
@@ -103,8 +101,22 @@ public class ConsoleResultReporter extends TestResultListener
     }
 
     @Override
-    public void testRunEnded(long elapsedTimeMillis, HashMap<String, Metric> runMetrics) {
-        super.testRunEnded(elapsedTimeMillis, runMetrics);
+    public void testRunEnded(long elapsedTimeMillis, Map<String, String> metrics) {
+        super.testRunEnded(elapsedTimeMillis, metrics);
+        if (metrics != null && !metrics.isEmpty()) {
+            String tag = mTestTag != null ? mTestTag : "unknown";
+            String runName = mRunInProgress != null ? mRunInProgress : "unknown";
+            StringBuilder sb = new StringBuilder(tag);
+            sb.append(": ");
+            sb.append(runName);
+            sb.append(": ");
+            List<String> metricKeys = new ArrayList<String>(metrics.keySet());
+            Collections.sort(metricKeys);
+            for (String metricKey : metricKeys) {
+                sb.append(String.format("%s=%s\n", metricKey, metrics.get(metricKey)));
+            }
+            print(sb.toString());
+        }
         mRunInProgress = null;
     }
 
@@ -134,11 +146,11 @@ public class ConsoleResultReporter extends TestResultListener
             sb.append(results[TestStatus.INCOMPLETE.ordinal()]);
             sb.append(" Incomplete");
         }
-        sb.append("]\r\n");
+        sb.append("\r\n");
         print(sb.toString());
         if (mDisplayFailureSummary) {
             for (Entry<TestDescription, TestResult> entry : mFailures.entrySet()) {
-                print(getTestSummary(entry.getKey(), entry.getValue()));
+                print(getTestSummary(mTestTag, entry.getKey(), entry.getValue()));
             }
         }
         // Print the logs
@@ -170,11 +182,12 @@ public class ConsoleResultReporter extends TestResultListener
     }
 
     /** Get the test summary as string including test metrics. */
-    static String getTestSummary(TestDescription testId, TestResult testResult) {
+    static String getTestSummary(String testTag, TestDescription testId, TestResult testResult) {
         StringBuilder sb = new StringBuilder();
         sb.append(
                 String.format(
-                        "  %s: %s (%dms)\n",
+                        "%s: %s: %s (%dms)\n",
+                        testTag,
                         testId.toString(),
                         testResult.getStatus(),
                         testResult.getEndTime() - testResult.getStartTime()));
