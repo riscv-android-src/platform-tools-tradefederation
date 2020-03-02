@@ -19,6 +19,8 @@ import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.DynamicRemoteFileResolver;
+import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
@@ -95,7 +97,8 @@ public class HostTest
                 IBuildReceiver,
                 IAbiReceiver,
                 IShardableTest,
-                IRuntimeHintProvider {
+                IRuntimeHintProvider,
+                IConfigurationReceiver {
 
     @Option(name = "class", description = "The JUnit test classes to run, in the format "
             + "<package>.<class>. eg. \"com.android.foo.Bar\". This field can be repeated.",
@@ -165,6 +168,7 @@ public class HostTest
     )
     private boolean mEnableHostDeviceLogs = true;
 
+    private IConfiguration mConfig;
     private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
     private IAbi mAbi;
@@ -191,6 +195,11 @@ public class HostTest
 
     public void setTestInformation(TestInformation testInfo) {
         mTestInfo = testInfo;
+    }
+
+    @Override
+    public void setConfiguration(IConfiguration configuration) {
+        mConfig = configuration;
     }
 
     /**
@@ -1235,6 +1244,7 @@ public class HostTest
     DynamicRemoteFileResolver createResolver() {
         DynamicRemoteFileResolver resolver = new DynamicRemoteFileResolver();
         resolver.setDevice(mDevice);
+        resolver.addExtraArgs(mConfig.getCommandOptions().getDynamicDownloadArgs());
         return resolver;
     }
 
