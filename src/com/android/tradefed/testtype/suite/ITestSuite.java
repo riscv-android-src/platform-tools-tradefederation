@@ -466,6 +466,8 @@ public abstract class ITestSuite
         // Ignore config file as it's part of config zip artifact that's staged already.
         List<String> excludeFilters = Arrays.asList("[.]config$");
         mDynamicResolver.setDevice(device);
+        mDynamicResolver.addExtraArgs(
+                mMainConfiguration.getCommandOptions().getDynamicDownloadArgs());
         for (File remoteFile : mBuildInfo.getRemoteFiles()) {
             try {
                 mDynamicResolver.resolvePartialDownloadZip(
@@ -778,6 +780,8 @@ public abstract class ITestSuite
         module.setRetryDecision(decision);
 
         module.setEnableDynamicDownload(mEnableDynamicDownload);
+        module.addDynamicDownloadArgs(
+                mMainConfiguration.getCommandOptions().getDynamicDownloadArgs());
         // Actually run the module
         module.run(
                 moduleInfo,
