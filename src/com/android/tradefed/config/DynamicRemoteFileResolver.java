@@ -74,6 +74,8 @@ public class DynamicRemoteFileResolver {
     public static final String OPTIONAL_KEY = "optional";
 
     private Map<String, OptionFieldsForName> mOptionMap;
+    // Populated from {@link ICommandOptions#getDynamicDownloadArgs()}
+    private Map<String, String> mExtraArgs = new LinkedHashMap<>();
     private ITestDevice mDevice;
 
     /** Sets the map of options coming from {@link OptionSetter} */
@@ -84,6 +86,11 @@ public class DynamicRemoteFileResolver {
     /** Sets the device under tests */
     public void setDevice(ITestDevice device) {
         mDevice = device;
+    }
+
+    /** Add extra args for the query. */
+    public void addExtraArgs(Map<String, String> extraArgs) {
+        mExtraArgs.putAll(extraArgs);
     }
 
     /**
@@ -357,6 +364,8 @@ public class DynamicRemoteFileResolver {
                 CLog.d(
                         "Considering option '%s' with path: '%s' for download.",
                         option.name(), path);
+                // Overrides query args
+                query.putAll(mExtraArgs);
                 return resolver.resolveRemoteFiles(fileToResolve, query);
             } catch (BuildRetrievalError e) {
                 if (isOptional(query)) {
