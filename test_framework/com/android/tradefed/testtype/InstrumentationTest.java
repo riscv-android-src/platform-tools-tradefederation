@@ -79,7 +79,7 @@ import java.util.concurrent.TimeUnit;
 @OptionClass(alias = "instrumentation")
 public class InstrumentationTest
         implements IDeviceTest,
-                IResumableTest,
+                IRemoteTest,
                 ITestCollector,
                 IAbiReceiver,
                 IConfigurationReceiver,
@@ -199,12 +199,6 @@ public class InstrumentationTest
             "there is _no feedback mechanism_ between the test runner and the bugreport " +
             "collector, so use the EACH setting with due caution.")
     private BugreportCollector.Freq mBugreportFrequency = null;
-
-    @Option(
-        name = "bugreport-on-run-failure",
-        description = "Take a bugreport if the instrumentation finish with a run failure"
-    )
-    private boolean mBugreportOnRunFailure = false;
 
     @Option(
         name = "rerun-from-file",
@@ -527,19 +521,6 @@ public class InstrumentationTest
     /** Sets whether this is a test rerun. Reruns do not create new listeners or merge coverage. */
     void setIsRerun(boolean isRerun) {
         mIsRerun = isRerun;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean isResumable() {
-        // hack to not resume if tests were never run
-        // TODO: fix this properly in TestInvocation
-        if (mTestsToRun == null) {
-            return false;
-        }
-        return mIsResumeMode;
     }
 
     /**
@@ -1088,18 +1069,6 @@ public class InstrumentationTest
                 });
         TestRunResult testRun = testTracker.getCurrentRunResults();
         if (testRun.isRunFailure() || !testRun.getCompletedTests().containsAll(expectedTests)) {
-            if (mBugreportOnRunFailure) {
-                // Capture a bugreport to help with the failure.
-                String name = (mTestClassName != null) ? mTestClassName : mPackageName;
-                boolean res =
-                        mDevice.logBugreport(
-                                String.format("bugreport-on-run-failure-%s", name), listener);
-                if (!res) {
-                    CLog.e(
-                            "Failed to capture a bugreport for the run failure of '%s'",
-                            testRun.getName());
-                }
-            }
             // Don't re-run any completed tests, unless this is a coverage run.
             if (mConfiguration != null
                     && !mConfiguration.getCoverageOptions().isCoverageEnabled()) {

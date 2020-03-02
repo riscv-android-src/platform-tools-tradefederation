@@ -352,8 +352,6 @@ public class InstrumentationTestTest {
     /** Test the rerun mode when first test run fails. */
     @Test
     public void testRun_rerun() throws Exception {
-        OptionSetter setter = new OptionSetter(mInstrumentationTest);
-        setter.setOptionValue("bugreport-on-run-failure", "true");
         mInstrumentationTest.setRerunMode(true);
 
         // Mock collected tests
@@ -403,9 +401,7 @@ public class InstrumentationTestTest {
         inOrder.verify(mMockListener).testEnded(eq(TEST1), anyLong(), eq(EMPTY_STRING_MAP));
         inOrder.verify(mMockListener).testRunFailed(RUN_ERROR_MSG);
         inOrder.verify(mMockListener).testRunEnded(1, EMPTY_STRING_MAP);
-        // Expect a bugreport since there was a failure.
-        inOrder.verify(mMockTestDevice)
-                .logBugreport("bugreport-on-run-failure-com.foo", mMockListener);
+
         inOrder.verify(mMockListener).testRunStarted(TEST_PACKAGE_VALUE, 0, 1);
         inOrder.verify(mMockListener).testStarted(eq(TEST2), anyLong());
         inOrder.verify(mMockListener).testEnded(eq(TEST2), anyLong(), eq(EMPTY_STRING_MAP));
