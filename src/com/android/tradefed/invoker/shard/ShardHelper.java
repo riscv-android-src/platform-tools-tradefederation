@@ -229,6 +229,7 @@ public class ShardHelper implements IShardHelper {
         config.validateOptions();
         DynamicRemoteFileResolver resolver = new DynamicRemoteFileResolver();
         resolver.setDevice(testInfo.getDevice());
+        resolver.addExtraArgs(config.getCommandOptions().getDynamicDownloadArgs());
         config.resolveDynamicOptions(resolver);
     }
 
