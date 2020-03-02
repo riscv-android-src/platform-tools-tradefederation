@@ -694,6 +694,7 @@ public class TestInvocation implements ITestInvocation {
             if (!RunMode.REMOTE_INVOCATION.equals(mode)) {
                 DynamicRemoteFileResolver resolver = new DynamicRemoteFileResolver();
                 resolver.setDevice(context.getDevices().get(0));
+                resolver.addExtraArgs(config.getCommandOptions().getDynamicDownloadArgs());
                 config.resolveDynamicOptions(resolver);
             }
             return true;
