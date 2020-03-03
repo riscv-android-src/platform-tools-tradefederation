@@ -118,9 +118,6 @@ public class PerfettoGenericPostProcessorTest {
         Map<String, Metric.Builder> parsedMetrics =
                 mProcessor.processRunMetricsAndLogs(new HashMap<>(), testLogs);
 
-        assertTrue(
-                "Number of metrics parsed filter regex match is incorrect.",
-                parsedMetrics.size() == 32);
         assertMetricsContain(parsedMetrics, "android_startup-startup-1-startup_id", 1);
         assertMetricsContain(
                 parsedMetrics,
@@ -146,9 +143,12 @@ public class PerfettoGenericPostProcessorTest {
                         perfettoMetricProtoFile.getAbsolutePath(), "some.url", LogDataType.TEXTPB));
         Map<String, Metric.Builder> parsedMetrics =
                 mProcessor.processRunMetricsAndLogs(new HashMap<>(), testLogs);
-        assertTrue(
-                "Number of metrics parsed without indexing is incorrect.",
-                parsedMetrics.size() == 109);
+        // Test for non startup metrics exists.
+        assertMetricsContain(
+                parsedMetrics,
+                "android_mem-process_metrics-process_name-"
+                        + ".dataservices-total_counters-anon_rss-min",
+                27938816);
     }
 
     /** Test that the post processor can parse reports from test metrics. */
@@ -208,9 +208,6 @@ public class PerfettoGenericPostProcessorTest {
                         perfettoMetricProtoFile.getAbsolutePath(), "some.url", LogDataType.TEXTPB));
         Map<String, Metric.Builder> parsedMetrics =
                 mProcessor.processRunMetricsAndLogs(new HashMap<>(), testLogs);
-        assertTrue(
-                "Number of metrics parsed without indexing is incorrect.",
-                parsedMetrics.size() == 77);
         assertMetricsContain(parsedMetrics, "android_startup-startup-startup_id", 2);
         assertMetricsContain(
                 parsedMetrics,
@@ -237,8 +234,6 @@ public class PerfettoGenericPostProcessorTest {
         Map<String, Metric.Builder> parsedMetrics =
                 mProcessor.processRunMetricsAndLogs(new HashMap<>(), testLogs);
 
-        assertTrue(
-                "Number of metrics parsed with indexing is incorrect.", parsedMetrics.size() == 109);
         assertMetricsContain(parsedMetrics, "android_startup-startup-1-startup_id", 1);
         assertMetricsContain(
                 parsedMetrics,
@@ -396,7 +391,6 @@ public class PerfettoGenericPostProcessorTest {
                         + "      time_choreographer {\n"
                         + "        dur_ns: 15314324\n"
                         + "      }\n"
-                        + "      other_process_to_activity_cpu_ratio: 6.9345600857535672\n"
                         + "    }\n"
                         + "    activity_hosting_process_count: 1\n"
                         + "  }\n"
@@ -423,7 +417,6 @@ public class PerfettoGenericPostProcessorTest {
                         + "      time_choreographer {\n"
                         + "        dur_ns: 13705366\n"
                         + "      }\n"
-                        + "      other_process_to_activity_cpu_ratio: 12.956123015968883\n"
                         + "    }\n"
                         + "    activity_hosting_process_count: 1\n"
                         + "  }\n"
