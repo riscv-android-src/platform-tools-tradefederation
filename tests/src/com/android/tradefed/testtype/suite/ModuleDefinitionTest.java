@@ -610,12 +610,15 @@ public class ModuleDefinitionTest {
         mMockPrep.tearDown(EasyMock.eq(mModuleInfo), EasyMock.isNull());
         mMockListener.testRunStarted(
                 EasyMock.eq(MODULE_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
-        mMockListener.testRunFailed(EasyMock.contains(exceptionMessage));
+        Capture<FailureDescription> captured = new Capture<>();
+        mMockListener.testRunFailed(EasyMock.capture(captured));
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         replayMocks();
         mModule.run(mModuleInfo, mMockListener);
         verifyMocks();
+
+        assertTrue(captured.getValue().getErrorMessage().contains(exceptionMessage));
     }
 
     /**
@@ -651,12 +654,15 @@ public class ModuleDefinitionTest {
         mMockPrep.tearDown(EasyMock.eq(mModuleInfo), EasyMock.isNull());
         mMockListener.testRunStarted(
                 EasyMock.eq(MODULE_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
-        mMockListener.testRunFailed(EasyMock.contains(exceptionMessage));
+        Capture<FailureDescription> captured = new Capture<>();
+        mMockListener.testRunFailed(EasyMock.capture(captured));
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         replayMocks();
         mModule.run(mModuleInfo, mMockListener);
         verifyMocks();
+
+        assertTrue(captured.getValue().getErrorMessage().contains(exceptionMessage));
     }
 
     @Test
@@ -689,12 +695,15 @@ public class ModuleDefinitionTest {
         mMockPrep.tearDown(EasyMock.eq(mModuleInfo), EasyMock.isNull());
         mMockListener.testRunStarted(
                 EasyMock.eq(MODULE_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
-        mMockListener.testRunFailed(EasyMock.contains(exceptionMessage));
+        Capture<FailureDescription> captured = new Capture<>();
+        mMockListener.testRunFailed(EasyMock.capture(captured));
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         replayMocks();
         mModule.run(mModuleInfo, mMockListener);
         verifyMocks();
+
+        assertTrue(captured.getValue().getErrorMessage().contains(exceptionMessage));
     }
 
     /**
@@ -733,13 +742,15 @@ public class ModuleDefinitionTest {
         mMockPrep.tearDown(EasyMock.eq(mModuleInfo), EasyMock.isNull());
         mMockListener.testRunStarted(
                 EasyMock.eq(MODULE_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
-        mMockListener.testRunFailed(EasyMock.contains(exceptionMessage));
+        Capture<FailureDescription> captured1 = new Capture<>();
+        mMockListener.testRunFailed(EasyMock.capture(captured1));
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         // Ensure that module listeners receive the callbacks too.
         mockModuleListener.testRunStarted(
                 EasyMock.eq(MODULE_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
-        mockModuleListener.testRunFailed(EasyMock.contains(exceptionMessage));
+        Capture<FailureDescription> captured2 = new Capture<>();
+        mockModuleListener.testRunFailed(EasyMock.capture(captured2));
         mockModuleListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
@@ -748,6 +759,9 @@ public class ModuleDefinitionTest {
         mModule.run(mModuleInfo, mMockListener, Arrays.asList(mockModuleListener), null);
         verifyMocks();
         EasyMock.verify(mockModuleListener);
+
+        assertTrue(captured1.getValue().getErrorMessage().contains(exceptionMessage));
+        assertTrue(captured2.getValue().getErrorMessage().contains(exceptionMessage));
     }
 
     /** Test that {@link ModuleDefinition#run(TestInformation, ITestInvocationListener)} */
@@ -781,7 +795,8 @@ public class ModuleDefinitionTest {
                         .build();
         mMockListener.testRunStarted(
                 EasyMock.eq(MODULE_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
-        mMockListener.testRunFailed(EasyMock.contains(exceptionMessage));
+        Capture<FailureDescription> captured = new Capture<>();
+        mMockListener.testRunFailed(EasyMock.capture(captured));
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         replayMocks();
@@ -793,6 +808,8 @@ public class ModuleDefinitionTest {
             assertEquals(exceptionMessage, expected.getMessage());
         }
         verifyMocks();
+
+        assertTrue(captured.getValue().getErrorMessage().contains(exceptionMessage));
     }
 
     /**
