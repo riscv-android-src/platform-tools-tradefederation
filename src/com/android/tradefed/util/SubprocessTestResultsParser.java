@@ -583,7 +583,6 @@ public class SubprocessTestResultsParser implements Closeable {
                         InvocationMetricLogger.addInvocationMetrics(key, val);
                     }
                 }
-                infos.get(0).addBuildAttributes(attributes);
                 if (attributes.containsKey(TfObjectTracker.TF_OBJECTS_TRACKING_KEY)) {
                     String val = attributes.get(TfObjectTracker.TF_OBJECTS_TRACKING_KEY);
                     for (String pair : Splitter.on(",").split(val)) {
@@ -598,7 +597,9 @@ public class SubprocessTestResultsParser implements Closeable {
                             continue;
                         }
                     }
+                    attributes.remove(TfObjectTracker.TF_OBJECTS_TRACKING_KEY);
                 }
+                infos.get(0).addBuildAttributes(attributes);
             }
         }
     }
