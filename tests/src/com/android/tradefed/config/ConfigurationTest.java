@@ -15,6 +15,8 @@
  */
 package com.android.tradefed.config;
 
+import static org.junit.Assert.assertNotEquals;
+
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildProvider;
@@ -45,6 +47,7 @@ import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -729,5 +732,22 @@ public class ConfigurationTest extends TestCase {
         assertTrue(
                 withOption.contains(
                         "<option name=\"auto-collect\" value=\"LOGCAT_ON_FAILURE\" />"));
+    }
+
+    public void testDeepClone() throws Exception {
+        Configuration original =
+                (Configuration)
+                        ConfigurationFactory.getInstance()
+                                .createConfigurationFromArgs(
+                                        new String[] {"instrumentations"}, null, null);
+        IConfiguration copy =
+                original.partialDeepClone(
+                        Arrays.asList(Configuration.DEVICE_NAME, Configuration.TEST_TYPE_NAME),
+                        null);
+        assertNotEquals(original.getTargetPreparers().get(0), copy.getTargetPreparers().get(0));
+        assertNotEquals(
+                original.getDeviceConfig().get(0).getTargetPreparers().get(0),
+                copy.getDeviceConfig().get(0).getTargetPreparers().get(0));
+        assertNotEquals(original.getTests().get(0), copy.getTests().get(0));
     }
 }
