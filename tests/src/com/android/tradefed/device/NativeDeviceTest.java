@@ -155,30 +155,26 @@ public class NativeDeviceTest {
      * boolean, String...)}.
      */
     @Test
-    public void testInstallPackages_exception() {
+    public void testInstallPackages_exception() throws Exception {
         try {
             mTestDevice.installPackage(new File(""), false);
-        } catch (UnsupportedOperationException onse) {
-            return;
-        } catch (DeviceNotAvailableException e) {
-            fail("installPackage should have thrown an Unsupported exception, not dnae");
+            fail("installPackage should have thrown an exception");
+        } catch (UnsupportedOperationException expected) {
+            // Expected
         }
-        fail("installPackage should have thrown an exception");
     }
 
     /**
      * Test return exception for package installation {@link NativeDevice#uninstallPackage(String)}.
      */
     @Test
-    public void testUninstallPackages_exception() {
+    public void testUninstallPackages_exception() throws Exception {
         try {
             mTestDevice.uninstallPackage("");
-        } catch (UnsupportedOperationException onse) {
-            return;
-        } catch (DeviceNotAvailableException e) {
-            fail("uninstallPackage should have thrown an Unsupported exception, not dnae");
+            fail("uninstallPackageForUser should have thrown an exception");
+        } catch (UnsupportedOperationException expected) {
+            // Expected
         }
-        fail("uninstallPackageForUser should have thrown an exception");
     }
 
     /**
@@ -186,15 +182,13 @@ public class NativeDeviceTest {
      * boolean, boolean, String...)}.
      */
     @Test
-    public void testInstallPackagesBool_exception() {
+    public void testInstallPackagesBool_exception() throws Exception {
         try {
             mTestDevice.installPackage(new File(""), false, false);
-        } catch (UnsupportedOperationException onse) {
-            return;
-        } catch (DeviceNotAvailableException e) {
-            fail("installPackage should have thrown an Unsupported exception, not dnae");
+            fail("installPackage should have thrown an exception");
+        } catch (UnsupportedOperationException expected) {
+            // Expected
         }
-        fail("installPackage should have thrown an exception");
     }
 
     /**
@@ -202,15 +196,13 @@ public class NativeDeviceTest {
      * NativeDevice#installPackageForUser(File, boolean, int, String...)}.
      */
     @Test
-    public void testInstallPackagesForUser_exception() {
+    public void testInstallPackagesForUser_exception() throws Exception {
         try {
             mTestDevice.installPackageForUser(new File(""), false, 0);
-        } catch (UnsupportedOperationException onse) {
-            return;
-        } catch (DeviceNotAvailableException e) {
-            fail("installPackageForUser should have thrown an Unsupported exception, not dnae");
+            fail("installPackageForUser should have thrown an exception");
+        } catch (UnsupportedOperationException expected) {
+            // Expected
         }
-        fail("installPackageForUser should have thrown an exception");
     }
 
     /**
@@ -218,15 +210,13 @@ public class NativeDeviceTest {
      * NativeDevice#installPackageForUser(File, boolean, boolean, int, String...)}.
      */
     @Test
-    public void testInstallPackagesForUserWithPermission_exception() {
+    public void testInstallPackagesForUserWithPermission_exception() throws Exception {
         try {
             mTestDevice.installPackageForUser(new File(""), false, false, 0);
-        } catch (UnsupportedOperationException onse) {
-            return;
-        } catch (DeviceNotAvailableException e) {
-            fail("installPackageForUser should have thrown an Unsupported exception, not dnae");
+            fail("installPackageForUser should have thrown an exception");
+        } catch (UnsupportedOperationException expected) {
+            // Expected
         }
-        fail("installPackageForUser should have thrown an exception");
     }
 
     /** Unit test for {@link NativeDevice#getInstalledPackageNames()}. */
@@ -234,10 +224,10 @@ public class NativeDeviceTest {
     public void testGetInstalledPackageNames_exception() throws Exception {
         try {
             mTestDevice.getInstalledPackageNames();
-        } catch (UnsupportedOperationException onse) {
-            return;
+            fail("getInstalledPackageNames should have thrown an exception");
+        } catch (UnsupportedOperationException expected) {
+            // Expected
         }
-        fail("getInstalledPackageNames should have thrown an exception");
     }
 
     /** Unit test for {@link NativeDevice#getActiveApexes()}. */
@@ -925,8 +915,6 @@ public class NativeDeviceTest {
         EasyMock.replay(mMockWifi, mMockIDevice, mMockRunUtil);
         try {
             mTestDevice.reconnectToWifiNetwork();
-        } catch (NetworkNotAvailableException nnae) {
-            fail("reconnectToWifiNetwork() should not have thrown an exception.");
         } finally {
             EasyMock.verify(mMockWifi, mMockIDevice, mMockRunUtil);
         }
