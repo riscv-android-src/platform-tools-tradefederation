@@ -1473,32 +1473,33 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
     Map<String, ITestDevice> allocateDevices(IConfiguration config, IDeviceManager manager) {
         Map<String, ITestDevice> devices = new LinkedHashMap<String, ITestDevice>();
         ITestDevice device = null;
+        if (config.getDeviceConfig().isEmpty()) {
+            return null;
+        }
         synchronized(this) {
-            if (!config.getDeviceConfig().isEmpty()) {
-                for (IDeviceConfiguration deviceConfig : config.getDeviceConfig()) {
-                    device =
-                            manager.allocateDevice(
-                                    deviceConfig.getDeviceRequirements(), deviceConfig.isFake());
-                    if (device != null) {
-                        devices.put(deviceConfig.getDeviceName(), device);
-                    } else {
-                        // If one of the several device cannot be allocated, we de-allocate
-                        // all the previous one.
-                        for (ITestDevice allocatedDevice : devices.values()) {
-                            FreeDeviceState deviceState = FreeDeviceState.AVAILABLE;
-                            if (allocatedDevice.getIDevice() instanceof StubDevice) {
-                                deviceState = FreeDeviceState.AVAILABLE;
-                            } else if (!TestDeviceState.ONLINE.equals(
-                                    allocatedDevice.getDeviceState())) {
-                                // If the device is offline at the end of the test
-                                deviceState = FreeDeviceState.UNAVAILABLE;
-                            }
-                            manager.freeDevice(allocatedDevice, deviceState);
+            for (IDeviceConfiguration deviceConfig : config.getDeviceConfig()) {
+                device =
+                        manager.allocateDevice(
+                                deviceConfig.getDeviceRequirements(), deviceConfig.isFake());
+                if (device != null) {
+                    devices.put(deviceConfig.getDeviceName(), device);
+                } else {
+                    // If one of the several device cannot be allocated, we de-allocate
+                    // all the previous one.
+                    for (ITestDevice allocatedDevice : devices.values()) {
+                        FreeDeviceState deviceState = FreeDeviceState.AVAILABLE;
+                        if (allocatedDevice.getIDevice() instanceof StubDevice) {
+                            deviceState = FreeDeviceState.AVAILABLE;
+                        } else if (!TestDeviceState.ONLINE.equals(
+                                allocatedDevice.getDeviceState())) {
+                            // If the device is offline at the end of the test
+                            deviceState = FreeDeviceState.UNAVAILABLE;
                         }
-                        // Could not allocate all devices
-                        devices.clear();
-                        break;
+                        manager.freeDevice(allocatedDevice, deviceState);
                     }
+                    // Could not allocate all devices
+                    devices.clear();
+                    break;
                 }
             }
             return devices;

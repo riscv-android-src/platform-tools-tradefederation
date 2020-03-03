@@ -703,6 +703,24 @@ public class Configuration implements IConfiguration {
         return clone;
     }
 
+    @Override
+    public IConfiguration partialDeepClone(List<String> objectToDeepClone, IKeyStoreClient client)
+            throws ConfigurationException {
+        Configuration clonedConfig = this.clone();
+        IConfiguration deepCopy =
+                ConfigurationFactory.getInstance()
+                        .createConfigurationFromArgs(
+                                QuotationAwareTokenizer.tokenizeLine(this.getCommandLine()),
+                                null,
+                                client);
+        for (String objType : objectToDeepClone) {
+            // TODO: Might need to handle internal device objects
+            clonedConfig.setConfigurationObjectList(
+                    objType, deepCopy.getConfigurationObjectList(objType));
+        }
+        return clonedConfig;
+    }
+
     private void addToDefaultDeviceConfig(Object obj) {
         try {
             getDeviceConfigByName(ConfigurationDef.DEFAULT_DEVICE_NAME).addSpecificConfig(obj);
