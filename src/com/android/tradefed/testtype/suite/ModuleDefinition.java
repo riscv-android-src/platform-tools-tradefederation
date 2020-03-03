@@ -75,8 +75,6 @@ import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import com.google.common.annotations.VisibleForTesting;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -1070,9 +1068,10 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         // For reporting purpose we create a failure placeholder with the error stack
         // similar to InitializationError of JUnit.
         forwarder.testRunStarted(getId(), 1, 0, System.currentTimeMillis());
-        StringWriter sw = new StringWriter();
-        setupException.printStackTrace(new PrintWriter(sw));
-        forwarder.testRunFailed(sw.toString());
+        FailureDescription failureDescription =
+                FailureDescription.create(StreamUtil.getStackTrace(setupException));
+        failureDescription.setFailureStatus(FailureStatus.TEST_FAILURE);
+        forwarder.testRunFailed(failureDescription);
         HashMap<String, Metric> metricsProto = new HashMap<>();
         metricsProto.put(TEST_TIME, TfMetricProtoUtil.createSingleValue(0L, "milliseconds"));
         forwarder.testRunEnded(0, metricsProto);
