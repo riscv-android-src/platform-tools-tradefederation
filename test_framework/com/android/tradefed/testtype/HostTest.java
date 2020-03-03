@@ -875,7 +875,7 @@ public class HostTest
                 File file = getJarFile(jarName, mTestInfo);
                 jarFile = new JarFile(file);
                 Enumeration<JarEntry> e = jarFile.entries();
-                URL[] urls = {new URL(String.format("jar:file:%s!/", file.getAbsolutePath()))};
+                URL[] urls = {file.toURI().toURL()};
                 URLClassLoader cl = URLClassLoader.newInstance(urls);
 
                 while (e.hasMoreElements()) {
