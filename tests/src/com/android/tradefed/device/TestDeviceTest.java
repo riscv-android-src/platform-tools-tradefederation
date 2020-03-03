@@ -3805,11 +3805,8 @@ public class TestDeviceTest extends TestCase {
                 return 22;
             }
         };
-        try {
-            mTestDevice.setSetting(0, "system", "screen_brightness", "75");
-        } catch (IllegalArgumentException e) {
-            fail("putSettings should not have thrown an exception.");
-        }
+        // Make sure it doesn't throw
+        mTestDevice.setSetting(0, "system", "screen_brightness", "75");
     }
 
     /**
@@ -3823,11 +3820,8 @@ public class TestDeviceTest extends TestCase {
                 return 22;
             }
         };
-        try {
-            mTestDevice.setSetting("system", "screen_brightness", "75");
-        } catch (IllegalArgumentException e) {
-            fail("putSettings should not have thrown an exception.");
-        }
+        // Make sure it doesn't throw
+        mTestDevice.setSetting("system", "screen_brightness", "75");
     }
 
     /**
