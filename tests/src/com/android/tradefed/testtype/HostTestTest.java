@@ -31,6 +31,7 @@ import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
@@ -2265,7 +2266,8 @@ public class HostTestTest extends TestCase {
         setter.setOptionValue("class", "i.cannot.be.resolved");
 
         mListener.testRunStarted(HostTestTest.class.getName() + ".TestableHostTest", 0);
-        mListener.testRunFailed("Could not load Test class i.cannot.be.resolved");
+        Capture<FailureDescription> captured = new Capture<>();
+        mListener.testRunFailed(EasyMock.capture(captured));
         mListener.testRunEnded(0L, new HashMap<String, Metric>());
 
         EasyMock.replay(mListener);
@@ -2276,6 +2278,10 @@ public class HostTestTest extends TestCase {
             // expected
         }
         EasyMock.verify(mListener);
+        assertTrue(
+                captured.getValue()
+                        .getErrorMessage()
+                        .contains("Could not load Test class i.cannot.be.resolved"));
     }
 
     /**
