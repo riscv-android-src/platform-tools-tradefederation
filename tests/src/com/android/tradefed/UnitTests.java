@@ -573,6 +573,7 @@ import org.junit.runners.Suite.SuiteClasses;
 
     // invoker.sandbox
     ParentSandboxInvocationExecutionTest.class,
+    SandboxedInvocationExecutionTest.class,
 
     // lite
     DryRunnerTest.class,
