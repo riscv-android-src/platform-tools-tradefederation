@@ -162,7 +162,8 @@ public class CommandOptions implements ICommandOptions {
     @Option(
             name = "replicate-parent-setup",
             description =
-                    "For remote sharded invocation, whether or not to replicate parent setup on all devices.")
+                    "For remote sharded invocation, whether or not to replicate parent setup on "
+                            + "all devices.")
     private boolean mReplicateParentSetup = false;
 
     @Option(
@@ -513,6 +514,12 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public boolean shouldUseReplicateSetup() {
         return mReplicateParentSetup;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setReplicateSetup(boolean replicate) {
+        mReplicateParentSetup = replicate;
     }
 
     /** {@inheritDoc} */
