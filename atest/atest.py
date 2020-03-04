@@ -155,7 +155,13 @@ def make_test_run_dir():
     if not os.path.exists(constants.ATEST_RESULT_ROOT):
         os.makedirs(constants.ATEST_RESULT_ROOT)
     ctime = time.strftime(TEST_RUN_DIR_PREFIX, time.localtime())
-    return tempfile.mkdtemp(prefix='%s_' % ctime, dir=constants.ATEST_RESULT_ROOT)
+    test_result_dir = tempfile.mkdtemp(prefix='%s_' % ctime,
+                                       dir=constants.ATEST_RESULT_ROOT)
+    symlink = os.path.join(constants.ATEST_RESULT_ROOT, 'LATEST')
+    if os.path.exists(symlink):
+        os.remove(symlink)
+    os.symlink(test_result_dir, symlink)
+    return test_result_dir
 
 
 def get_extra_args(args):
@@ -189,6 +195,7 @@ def get_extra_args(args):
                 'rerun_until_failure': constants.RERUN_UNTIL_FAILURE,
                 'retry_any_failure': constants.RETRY_ANY_FAILURE,
                 'serial': constants.SERIAL,
+                'sharding': constants.SHARDING,
                 'tf_template': constants.TF_TEMPLATE,
                 'user_type': constants.USER_TYPE}
     not_match = [k for k in arg_maps if k not in vars(args)]
@@ -648,10 +655,9 @@ def main(argv, results_dir):
         # Build the deps-license to generate dependencies data in
         # module-info.json.
         build_targets.add(constants.DEPS_LICENSE)
-        build_env = dict(constants.ATEST_BUILD_ENV)
         # The environment variables PROJ_PATH and DEP_PATH are necessary for the
         # deps-license.
-        build_env.update(constants.DEPS_LICENSE_ENV)
+        build_env = dict(constants.DEPS_LICENSE_ENV)
         build_start = time.time()
         success = atest_utils.build(build_targets, verbose=args.verbose,
                                     env_vars=build_env)

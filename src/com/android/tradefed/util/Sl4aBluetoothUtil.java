@@ -50,9 +50,6 @@ public class Sl4aBluetoothUtil {
     @VisibleForTesting
     static final String BT_SNOOP_LOG_CMD = "setprop persist.bluetooth.btsnooplogmode %s";
 
-    /** A singleton for the utility class */
-    private static Sl4aBluetoothUtil sUtil;
-
     /** Holding mappings from device serial number to the {@link Sl4aClient} of the device */
     private Map<String, Sl4aClient> mSl4aClients = new HashMap<>();
 
@@ -199,20 +196,9 @@ public class Sl4aBluetoothUtil {
         }
     }
 
-    public static Sl4aBluetoothUtil getInstance() {
-        if (sUtil == null) {
-            sUtil = new Sl4aBluetoothUtil();
-        }
-        return sUtil;
-    }
-
-    @VisibleForTesting
-    static Sl4aBluetoothUtil createInstance() {
-        return new Sl4aBluetoothUtil();
-    }
-
     /**
-     * Start SL4A client with the given device and SL4A apk file
+     * Explicitly start SL4A client with the given device and SL4A apk file. Normally this method is
+     * not required, because SL4A connection will always be established before actual operations.
      *
      * @param device the device to be connected using SL4A
      * @param sl4aApkFile the optional SL4A apk to install and use.
@@ -231,6 +217,7 @@ public class Sl4aBluetoothUtil {
         for (Map.Entry<String, Sl4aClient> entry : mSl4aClients.entrySet()) {
             entry.getValue().close();
         }
+        mSl4aClients.clear();
     }
 
     @VisibleForTesting

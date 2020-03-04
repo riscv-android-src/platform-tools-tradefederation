@@ -19,6 +19,7 @@ import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.CollectingTestListener;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
@@ -83,6 +84,13 @@ public class ModuleListener extends CollectingTestListener {
     public void testRunFailed(String errorMessage) {
         CLog.d("ModuleListener.testRunFailed(%s)", errorMessage);
         super.testRunFailed(errorMessage);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void testRunFailed(FailureDescription failure) {
+        CLog.d("ModuleListener.testRunFailed(%s)", failure.toString());
+        super.testRunFailed(failure);
     }
 
     /** {@inheritDoc} */

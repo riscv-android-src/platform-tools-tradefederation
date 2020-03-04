@@ -16,6 +16,7 @@
 package com.android.tradefed.config.remote;
 
 import com.android.tradefed.build.BuildRetrievalError;
+import com.android.tradefed.device.ITestDevice;
 
 import java.io.File;
 import java.util.Map;
@@ -55,4 +56,14 @@ public interface IRemoteFileResolver {
 
     /** Returns the associated protocol supported for download. */
     public @Nonnull String getSupportedProtocol();
+
+    /**
+     * Optional way for the implementation to receive an {@ink ITestDevice} representation of the
+     * device under tests.
+     *
+     * @param device The {@link ITestDevice} of the current invocation.
+     */
+    public default void setPrimaryDevice(ITestDevice device) {
+        // Do nothing by default
+    }
 }

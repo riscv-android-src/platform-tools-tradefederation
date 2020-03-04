@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.device.metric;
 
+import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
@@ -32,6 +33,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.TestDescription;
 
 import org.junit.Before;
@@ -47,6 +49,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -58,7 +61,7 @@ public class HostStatsdMetricCollectorTest {
 
     @Mock private IInvocationContext mContext;
     @Mock private ITestInvocationListener mListener;
-    @Spy private HostStatsdMetricCollector mCollector;
+    @Spy private TestHostStatsdMetricCollector mCollector;
     @Rule public TemporaryFolder mFolder = new TemporaryFolder();
 
     private TestDescription mTest = new TestDescription("Foo", "Bar");
@@ -98,6 +101,31 @@ public class HostStatsdMetricCollectorTest {
             verify(mCollector, times(2)).pushBinaryStatsConfig(eq(device), any(File.class));
             verify(mCollector, times(2)).getReportByteStream(eq(device), anyLong());
             verify(mCollector, times(2)).removeConfig(eq(device), anyLong());
+            assertEquals(2, mCollector.numberOfReportsProcessed(device));
+        }
+    }
+
+    /** Test the behavior of collector when actual test failed */
+    @Test
+    public void testCollect_testFail()
+            throws IOException, DeviceNotAvailableException, ConfigurationException {
+        OptionSetter options = new OptionSetter(mCollector);
+        options.setOptionValue("per-run", "false");
+
+        mCollector.init(mContext, mListener);
+        mCollector.testRunStarted("collect-metrics", 2);
+        mCollector.testStarted(mTest);
+        mCollector.testFailed(mTest, "Test Failed");
+        mCollector.testEnded(mTest, mMetrics);
+        mCollector.testStarted(mTest);
+        mCollector.testEnded(mTest, mMetrics);
+        mCollector.testRunEnded(0L, mMetrics);
+
+        for (ITestDevice device : mDevices) {
+            verify(mCollector, times(2)).pushBinaryStatsConfig(eq(device), any(File.class));
+            verify(mCollector, times(2)).getReportByteStream(eq(device), anyLong());
+            verify(mCollector, times(2)).removeConfig(eq(device), anyLong());
+            assertEquals(1, mCollector.numberOfReportsProcessed(device));
         }
     }
 
@@ -116,6 +144,7 @@ public class HostStatsdMetricCollectorTest {
             verify(mCollector).pushBinaryStatsConfig(eq(device), any(File.class));
             verify(mCollector).getReportByteStream(eq(device), anyLong());
             verify(mCollector).removeConfig(eq(device), anyLong());
+            assertEquals(1, mCollector.numberOfReportsProcessed(device));
         }
     }
 
@@ -123,5 +152,21 @@ public class HostStatsdMetricCollectorTest {
         ITestDevice device = mock(ITestDevice.class);
         when(device.getSerialNumber()).thenReturn(serial);
         return device;
+    }
+
+    private static class TestHostStatsdMetricCollector extends HostStatsdMetricCollector {
+
+        private Map<ITestDevice, Integer> reportsPerDevice = new HashMap<>();
+
+        int numberOfReportsProcessed(ITestDevice device) {
+            return reportsPerDevice.get(device);
+        }
+
+        @Override
+        protected void processStatsReport(
+                ITestDevice device, InputStreamSource dataStream, DeviceMetricData runData) {
+            reportsPerDevice.computeIfPresent(device, (k, v) -> v + 1);
+            reportsPerDevice.putIfAbsent(device, 1);
+        }
     }
 }

@@ -27,6 +27,7 @@ import com.android.tradefed.build.GCSTestResourceProviderTest;
 import com.android.tradefed.build.LocalDeviceBuildProviderTest;
 import com.android.tradefed.build.OtaZipfileBuildProviderTest;
 import com.android.tradefed.clearcut.ClearcutClientTest;
+import com.android.tradefed.cluster.ClusterCommandConfigBuilderTest;
 import com.android.tradefed.cluster.ClusterCommandEventTest;
 import com.android.tradefed.cluster.ClusterCommandLauncherTest;
 import com.android.tradefed.cluster.ClusterCommandSchedulerTest;
@@ -159,6 +160,7 @@ import com.android.tradefed.result.ATestFileSystemLogSaverTest;
 import com.android.tradefed.result.BugreportCollectorTest;
 import com.android.tradefed.result.CollectingTestListenerTest;
 import com.android.tradefed.result.ConsoleResultReporterTest;
+import com.android.tradefed.result.CountingTestResultListenerTest;
 import com.android.tradefed.result.DeviceFileReporterTest;
 import com.android.tradefed.result.DeviceUnavailEmailResultReporterTest;
 import com.android.tradefed.result.EmailResultReporterTest;
@@ -174,10 +176,12 @@ import com.android.tradefed.result.LogFileSaverTest;
 import com.android.tradefed.result.LogcatCrashResultForwarderTest;
 import com.android.tradefed.result.MetricsXMLResultReporterTest;
 import com.android.tradefed.result.MultiFailureDescriptionTest;
+import com.android.tradefed.result.PassingTestFileReporterTest;
 import com.android.tradefed.result.SnapshotInputStreamSourceTest;
 import com.android.tradefed.result.SubprocessResultsReporterTest;
 import com.android.tradefed.result.TestDescriptionTest;
 import com.android.tradefed.result.TestFailureEmailResultReporterTest;
+import com.android.tradefed.result.TestResultListenerTest;
 import com.android.tradefed.result.TestResultTest;
 import com.android.tradefed.result.TestRunResultTest;
 import com.android.tradefed.result.TestSummaryTest;
@@ -234,6 +238,7 @@ import com.android.tradefed.targetprep.RunHostCommandTargetPreparerTest;
 import com.android.tradefed.targetprep.StopServicesSetupTest;
 import com.android.tradefed.targetprep.SwitchUserTargetPreparerTest;
 import com.android.tradefed.targetprep.SystemUpdaterDeviceFlasherTest;
+import com.android.tradefed.targetprep.TargetSetupErrorTest;
 import com.android.tradefed.targetprep.TestAppInstallSetupTest;
 import com.android.tradefed.targetprep.TestFilePushSetupTest;
 import com.android.tradefed.targetprep.UserCleanerTest;
@@ -412,6 +417,7 @@ import org.junit.runners.Suite.SuiteClasses;
     ClearcutClientTest.class,
 
     // cluster
+    ClusterCommandConfigBuilderTest.class,
     ClusterCommandEventTest.class,
     ClusterCommandLauncherTest.class,
     ClusterCommandSchedulerTest.class,
@@ -592,6 +598,7 @@ import org.junit.runners.Suite.SuiteClasses;
     BugreportCollectorTest.class,
     CollectingTestListenerTest.class,
     ConsoleResultReporterTest.class,
+    CountingTestResultListenerTest.class,
     DeviceFileReporterTest.class,
     DeviceUnavailEmailResultReporterTest.class,
     EmailResultReporterTest.class,
@@ -611,6 +618,8 @@ import org.junit.runners.Suite.SuiteClasses;
     SubprocessResultsReporterTest.class,
     TestDescriptionTest.class,
     TestFailureEmailResultReporterTest.class,
+    PassingTestFileReporterTest.class,
+    TestResultListenerTest.class,
     TestResultTest.class,
     TestRunResultTest.class,
     TestSummaryTest.class,
@@ -662,6 +671,7 @@ import org.junit.runners.Suite.SuiteClasses;
     RunHostCommandTargetPreparerTest.class,
     StopServicesSetupTest.class,
     SystemUpdaterDeviceFlasherTest.class,
+    TargetSetupErrorTest.class,
     TestAppInstallSetupTest.class,
     TestFilePushSetupTest.class,
     SwitchUserTargetPreparerTest.class,

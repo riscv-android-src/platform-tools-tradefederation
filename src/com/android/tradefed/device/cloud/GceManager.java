@@ -90,6 +90,27 @@ public class GceManager {
         mDeviceOptions = deviceOptions;
         mBuildInfo = buildInfo;
         mTestResourceBuildInfos = testResourceBuildInfos;
+
+        if (!deviceOptions.allowGceCmdTimeoutOverride()) {
+            return;
+        }
+        int index = deviceOptions.getGceDriverParams().lastIndexOf("--boot-timeout");
+        if (index != -1 && deviceOptions.getGceDriverParams().size() > index + 1) {
+            String driverTimeoutStringSec = deviceOptions.getGceDriverParams().get(index + 1);
+            try {
+                // Add some extra time on top of Acloud: acloud boot the device then we expect
+                // the Tradefed online check to take a bit of time, use 3min as a safe overhead
+                long driverTimeoutMs =
+                        Long.parseLong(driverTimeoutStringSec) * 1000 + 3 * 60 * 1000;
+                long gceCmdTimeoutMs = deviceOptions.getGceCmdTimeout();
+                deviceOptions.setGceCmdTimeout(driverTimeoutMs);
+                CLog.i(
+                        "Replacing --gce-boot-timeout %s by --boot-timeout %s.",
+                        gceCmdTimeoutMs, driverTimeoutMs);
+            } catch (NumberFormatException e) {
+                CLog.e(e);
+            }
+        }
     }
 
     /**
@@ -415,6 +436,9 @@ public class GceManager {
      */
     public static File getNestedDeviceSshBugreportz(
             GceAvdInfo gceAvd, TestDeviceOptions options, IRunUtil runUtil) throws IOException {
+        if (gceAvd == null || gceAvd.hostAndPort() == null) {
+            return null;
+        }
         String output = "";
         // Retry a couple of time because adb might not be started for that user.
         // FIXME: See if we can use vsoc-01 directly to avoid this

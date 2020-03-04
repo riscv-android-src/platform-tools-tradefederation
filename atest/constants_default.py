@@ -40,6 +40,7 @@ POST_PATCH_ITERATIONS = 'POST_PATCH_ITERATIONS'
 PRE_PATCH_FOLDER = 'PRE_PATCH_FOLDER'
 POST_PATCH_FOLDER = 'POST_PATCH_FOLDER'
 SERIAL = 'SERIAL'
+SHARDING = 'SHARDING'
 ALL_ABI = 'ALL_ABI'
 HOST = 'HOST'
 CUSTOM_ARGS = 'CUSTOM_ARGS'
@@ -88,6 +89,7 @@ ANDROID_OUT = 'OUT'
 ANDROID_OUT_DIR = 'OUT_DIR'
 ANDROID_HOST_OUT = 'ANDROID_HOST_OUT'
 ANDROID_PRODUCT_OUT = 'ANDROID_PRODUCT_OUT'
+USER_FROM_TOOL = 'USER_FROM_TOOL'
 
 # Test Info data keys
 # Value of include-filter option.
@@ -153,7 +155,7 @@ METRICS_URL = 'http://asuite-218222.appspot.com/atest/metrics'
 EXTERNAL = 'EXTERNAL_RUN'
 INTERNAL = 'INTERNAL_RUN'
 INTERNAL_EMAIL = '@google.com'
-INTERNAL_HOSTNAME = '.google.com'
+INTERNAL_HOSTNAME = ['.google.com', 'c.googlers.com']
 CONTENT_LICENSES_URL = 'https://source.android.com/setup/start/licenses'
 CONTRIBUTOR_AGREEMENT_URL = {
     'INTERNAL': 'https://cla.developers.google.com/',

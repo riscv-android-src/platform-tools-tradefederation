@@ -133,6 +133,14 @@ public class TestDevice extends NativeDevice {
         super(device, stateMonitor, allocationMonitor);
     }
 
+    @Override
+    public boolean isAppEnumerationSupported() throws DeviceNotAvailableException {
+        if (!checkApiLevelAgainstNextRelease(30)) {
+            return false;
+        }
+        return hasFeature("android.software.app_enumeration");
+    }
+
     /**
      * Core implementation of package installation, with retries around
      * {@link IDevice#installPackage(String, boolean, String...)}
@@ -1257,7 +1265,7 @@ public class TestDevice extends NativeDevice {
     public boolean removeUser(int userId) throws DeviceNotAvailableException {
         final String output = executeShellCommand(String.format("pm remove-user %s", userId));
         if (output.startsWith("Error")) {
-            CLog.e("Failed to remove user: %s", output);
+            CLog.e("Failed to remove user %d on device %s: %s", userId, getSerialNumber(), output);
             return false;
         }
         return true;
@@ -1360,20 +1368,20 @@ public class TestDevice extends NativeDevice {
 
     /** {@inheritDoc} */
     @Override
-    public int getCurrentUser() throws DeviceNotAvailableException, DeviceRuntimeException {
+    public int getCurrentUser() throws DeviceNotAvailableException {
         checkApiLevelAgainstNextRelease("get-current-user", API_LEVEL_GET_CURRENT_USER);
         final String output = executeShellCommand("am get-current-user");
         try {
             int userId = Integer.parseInt(output.trim());
-            if (userId < 0) {
-                throw new DeviceRuntimeException(
-                        String.format(
-                                "Invalid user id '%s' was returned for get-current-user", userId));
+            if (userId >= 0) {
+                return userId;
             }
-            return userId;
+            CLog.e("Invalid user id '%s' was returned for get-current-user", userId);
         } catch (NumberFormatException e) {
-            throw new DeviceRuntimeException(e);
+            CLog.e("Invalid string was returned for get-current-user: %s.", output);
+            CLog.e(e);
         }
+        return INVALID_USER_ID;
     }
 
     private Matcher findUserInfo(String pmListUsersOutput) {
@@ -1469,9 +1477,15 @@ public class TestDevice extends NativeDevice {
             CLog.w("Already running as user id: %s. Nothing to be done.", userId);
             return true;
         }
+
+        String switchCommand =
+                checkApiLevelAgainstNextRelease(30)
+                        ? String.format("am switch-user -w %d", userId)
+                        : String.format("am switch-user %d", userId);
+
         resetContentProviderSetup();
-        executeShellCommand(String.format("am switch-user %d", userId));
         long initialTime = getHostCurrentTime();
+        executeShellCommand(switchCommand);
         while (getHostCurrentTime() - initialTime <= timeout) {
             if (userId == getCurrentUser()) {
                 // disable keyguard if option is true
@@ -1479,7 +1493,7 @@ public class TestDevice extends NativeDevice {
                 return true;
             }
             RunUtil.getDefault().sleep(getCheckNewUserSleep());
-            executeShellCommand(String.format("am switch-user %d", userId));
+            executeShellCommand(String.format(switchCommand));
         }
         CLog.e("User did not switch in the given %d timeout", timeout);
         return false;

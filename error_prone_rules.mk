@@ -40,5 +40,7 @@ LOCAL_ERROR_PRONE_FLAGS:= -XDandroidCompatible=false \
                           -Xep:ReturnValueIgnored:ERROR \
                           -Xep:SelfEquals:ERROR \
                           -Xep:SizeGreaterThanOrEqualsZero:ERROR \
-                          -Xep:TryFailThrowable:ERROR
+                          -Xep:TryFailThrowable:ERROR \
+                          -Xep:UnnecessaryParentheses:ERROR \
+                          -Xep:UseCorrectAssertInTests:ERROR
 

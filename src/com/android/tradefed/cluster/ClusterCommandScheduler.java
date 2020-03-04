@@ -43,6 +43,7 @@ import com.android.tradefed.result.TestSummary;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.QuotationAwareTokenizer;
+import com.android.tradefed.util.StreamUtil;
 
 import com.google.common.primitives.Ints;
 
@@ -142,6 +143,7 @@ public class ClusterCommandScheduler extends CommandScheduler {
         private final ClusterCommand mCommandTask;
         private Set<String> mDeviceSerials = new HashSet<>();
         private String mSummary;
+        private Set<String> processedSummaries = new HashSet<>();
         private String mError;
         private File mWorkDir;
         private InvocationStatus mInvocationStatus;
@@ -259,7 +261,7 @@ public class ClusterCommandScheduler extends CommandScheduler {
         public void invocationFailed(Throwable cause) {
             super.invocationFailed(cause);
 
-            mError = cause.toString();
+            mError = StreamUtil.getStackTrace(cause);
         }
 
         /** {@inheritDoc} */
@@ -337,13 +339,25 @@ public class ClusterCommandScheduler extends CommandScheduler {
 
         /** {@inheritDoc} */
         @Override
-        public void putSummary(List<TestSummary> summaries) {
-            final StringBuilder sb = new StringBuilder();
-            for (final TestSummary summary : summaries) {
-                sb.append(summary.getSummary());
-                sb.append("\n");
+        public void putEarlySummary(List<TestSummary> summaries) {
+            if (getClusterOptions().shouldCollectEarlyTestSummary()) {
+                putSummary(summaries);
             }
-            mSummary = sb.toString();
+        }
+
+        /** {@inheritDoc} */
+        @Override
+        public void putSummary(List<TestSummary> summaries) {
+            StringBuilder sb = new StringBuilder();
+            for (final TestSummary summary : summaries) {
+                String summaryString = summary.getSummary().toString();
+                if (!processedSummaries.contains(summaryString)) {
+                    processedSummaries.add(summaryString);
+                    sb.append(summaryString);
+                    sb.append("\n");
+                }
+            }
+            mSummary = mSummary == null ? sb.toString() : mSummary + sb.toString();
         }
 
         private ScheduledFuture<?> startHeartbeat() {

@@ -23,7 +23,9 @@ import com.android.tradefed.device.metric.AutoLogCollector;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.UniqueMultiMap;
 
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -150,11 +152,11 @@ public class CommandOptions implements ICommandOptions {
     )
     private boolean mUseRemoteSandbox = false;
 
+    @Deprecated
     @Option(
-        name = "parallel-remote-setup",
-        description =
-                "For remote sharded invocation, whether or not to attempt the setup in parallel."
-    )
+            name = "parallel-remote-setup",
+            description =
+                    "For remote sharded invocation, whether or not to attempt the setup in parallel.")
     private boolean mUseParallelRemoteSetup = false;
 
     @Option(
@@ -163,12 +165,12 @@ public class CommandOptions implements ICommandOptions {
     )
     private boolean mReportModuleProgression = false;
 
+    @Deprecated
     @Option(
-        name = "extra-postsubmit-remote-instance",
-        description =
-                "Option that allows to run more instances in the remote VM in postsubmit. "
-                        + "Used for experimentation."
-    )
+            name = "extra-postsubmit-remote-instance",
+            description =
+                    "Option that allows to run more instances in the remote VM in postsubmit. "
+                            + "Used for experimentation.")
     private int mExtraRemoteInstancePostsubmit = 0;
 
     @Option(
@@ -200,6 +202,13 @@ public class CommandOptions implements ICommandOptions {
             name = "early-device-release",
             description = "Feature flag to release the device as soon as done with it.")
     private boolean mEnableEarlyDeviceRelease = false;
+
+    @Option(
+            name = "dynamic-download-args",
+            description =
+                    "Extra args passed to the IRemoteFileResolver interface for dynamic download "
+                            + "in the queryArgs.")
+    private Map<String, String> mDynamicDownloadArgs = new LinkedHashMap<>();
 
     /**
      * Set the help mode for the config.
@@ -510,5 +519,11 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public boolean earlyDeviceRelease() {
         return mEnableEarlyDeviceRelease;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Map<String, String> getDynamicDownloadArgs() {
+        return mDynamicDownloadArgs;
     }
 }
