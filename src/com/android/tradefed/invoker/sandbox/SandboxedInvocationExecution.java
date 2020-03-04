@@ -19,6 +19,7 @@ import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IBuildProvider;
+import com.android.tradefed.build.VersionedFile;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -111,6 +112,15 @@ public class SandboxedInvocationExecution extends InvocationExecution {
             File hostDir = primaryBuild.getFile(BuildInfoFileKey.HOST_LINKED_DIR);
             if (hostDir != null) {
                 execFiles.put(FilesKey.HOST_TESTS_DIRECTORY, hostDir, true);
+            }
+        }
+        // Link the remaining buildInfo files.
+        for (String key : primaryBuild.getVersionedFileKeys()) {
+            VersionedFile versionedFile = primaryBuild.getVersionedFile(key);
+            if (versionedFile != null
+                    && versionedFile.getFile().exists()
+                    && !execFiles.containsKey(key)) {
+                execFiles.put(key, versionedFile.getFile());
             }
         }
     }
