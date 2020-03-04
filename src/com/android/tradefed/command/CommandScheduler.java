@@ -28,6 +28,7 @@ import com.android.tradefed.command.remote.IRemoteClient;
 import com.android.tradefed.command.remote.RemoteClient;
 import com.android.tradefed.command.remote.RemoteException;
 import com.android.tradefed.command.remote.RemoteManager;
+import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
@@ -1476,6 +1477,8 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         if (config.getDeviceConfig().isEmpty()) {
             return null;
         }
+        // If we need to replicate the setup on all devices
+        replicatedSetup(config);
         synchronized(this) {
             for (IDeviceConfiguration deviceConfig : config.getDeviceConfig()) {
                 device =
@@ -1503,6 +1506,36 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 }
             }
             return devices;
+        }
+    }
+
+    private void replicatedSetup(IConfiguration config) {
+        if (!config.getCommandOptions().shouldUseReplicateSetup()) {
+            return;
+        }
+        if (config.getDeviceConfig().size() != 1) {
+            return;
+        }
+        Integer shardCount = config.getCommandOptions().getShardCount();
+        Integer shardIndex = config.getCommandOptions().getShardIndex();
+        if (shardCount == null || shardIndex != null) {
+            return;
+        }
+        try {
+            List<IDeviceConfiguration> currentConfigs = config.getDeviceConfig();
+            for (int i = 0; i < shardCount - 1; i++) {
+                IConfiguration deepCopy =
+                        config.partialDeepClone(
+                                Arrays.asList(Configuration.DEVICE_NAME), getKeyStoreClient());
+                String newName = String.format("expanded-%s", i);
+                IDeviceConfiguration newDeviceConfig =
+                        deepCopy.getDeviceConfig().get(0).clone(newName);
+                currentConfigs.add(newDeviceConfig);
+            }
+            config.setDeviceConfigList(currentConfigs);
+        } catch (ConfigurationException e) {
+            CLog.e("Failed replicated setup configuration:");
+            CLog.e(e);
         }
     }
 

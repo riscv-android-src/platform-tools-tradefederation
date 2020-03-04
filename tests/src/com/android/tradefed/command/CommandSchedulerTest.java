@@ -27,6 +27,7 @@ import com.android.tradefed.command.CommandFileParser.CommandLine;
 import com.android.tradefed.command.CommandScheduler.CommandTracker;
 import com.android.tradefed.command.CommandScheduler.CommandTrackerIdComparator;
 import com.android.tradefed.command.ICommandScheduler.IScheduledInvocationListener;
+import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
@@ -983,6 +984,33 @@ public class CommandSchedulerTest {
         Map<String, ITestDevice> devices = mScheduler.allocateDevices(
                 mMockConfiguration, mMockManager);
         assertEquals(1, devices.size());
+        mScheduler.shutdown();
+    }
+
+    @Test
+    public void testAllocateDevices_replicated() throws Exception {
+        String[] args = new String[] {"foo", "test"};
+        mMockManager.setNumDevices(3);
+        setCreateConfigExpectations(args, 1);
+        OptionSetter setter = new OptionSetter(mCommandOptions);
+        setter.setOptionValue("replicate-parent-setup", "true");
+        mCommandOptions.setShardCount(3);
+        mMockConfiguration.validateOptions();
+        for (int i = 0; i < 2; i++) {
+            IConfiguration configReplicat = new Configuration("test", "test");
+            configReplicat.setDeviceConfig(new DeviceConfigurationHolder("serial"));
+            EasyMock.expect(
+                            mMockConfiguration.partialDeepClone(
+                                    Arrays.asList(Configuration.DEVICE_NAME), mMockKeyStoreClient))
+                    .andReturn(configReplicat);
+        }
+        mMockConfiguration.setDeviceConfigList(EasyMock.anyObject());
+        replayMocks();
+        mScheduler.start();
+        Map<String, ITestDevice> devices =
+                mScheduler.allocateDevices(mMockConfiguration, mMockManager);
+        // With replicated setup, all devices get allocated.
+        assertEquals(3, devices.size());
         mScheduler.shutdown();
     }
 

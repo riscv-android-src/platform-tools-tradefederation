@@ -160,6 +160,12 @@ public class CommandOptions implements ICommandOptions {
     private boolean mUseParallelRemoteSetup = false;
 
     @Option(
+            name = "replicate-parent-setup",
+            description =
+                    "For remote sharded invocation, whether or not to replicate parent setup on all devices.")
+    private boolean mReplicateParentSetup = false;
+
+    @Option(
         name = "report-module-progression",
         description = "For remote invocation, whether or not to report progress at module level."
     )
@@ -501,6 +507,12 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public boolean shouldUseParallelRemoteSetup() {
         return mUseParallelRemoteSetup;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean shouldUseReplicateSetup() {
+        return mReplicateParentSetup;
     }
 
     /** {@inheritDoc} */
