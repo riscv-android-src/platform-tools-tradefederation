@@ -51,6 +51,7 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.ProcessBuilder.Redirect;
 import java.security.GeneralSecurityException;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -162,6 +163,16 @@ public class GceManager {
             reportFile = FileUtil.createTempFile("gce_avd_driver", ".json");
             List<String> gceArgs = buildGceCmd(reportFile, mBuildInfo, ipDevice);
 
+            long driverTimeoutMs = getTestDeviceOptions().getGceCmdTimeout();
+            if (!getTestDeviceOptions().allowGceCmdTimeoutOverride()) {
+                long driverTimeoutSec =
+                        Duration.ofMillis(driverTimeoutMs - 3 * 60 * 1000).toSeconds();
+                // --boot-timeout takes a value in seconds
+                gceArgs.add("--boot-timeout");
+                gceArgs.add(Long.toString(driverTimeoutSec));
+                driverTimeoutMs = driverTimeoutSec * 1000;
+            }
+
             CLog.i("Launching GCE with %s", gceArgs.toString());
             CommandResult cmd =
                     getRunUtil()
@@ -178,8 +189,8 @@ public class GceManager {
             if (CommandStatus.TIMED_OUT.equals(cmd.getStatus())) {
                 String errors =
                         String.format(
-                                "acloud errors: timeout after %dms, " + "acloud did not return",
-                                getTestDeviceOptions().getGceCmdTimeout());
+                                "acloud errors: timeout after %dms, acloud did not return",
+                                driverTimeoutMs);
                 if (instanceName != null) {
                     // If we managed to parse the instance name, report the boot failure so it
                     // can be shutdown.
