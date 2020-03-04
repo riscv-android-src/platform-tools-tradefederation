@@ -441,7 +441,7 @@ public class NativeDevice implements IManagedTestDevice {
      */
     protected String internalGetProperty(String propName, String fastbootVar, String description)
             throws DeviceNotAvailableException, UnsupportedOperationException {
-        String propValue = getIDevice().getProperty(propName);
+        String propValue = getProperty(propName);
         if (propValue != null) {
             return propValue;
         } else if (TestDeviceState.FASTBOOT.equals(getDeviceState()) &&
@@ -470,7 +470,18 @@ public class NativeDevice implements IManagedTestDevice {
             CLog.d("Device %s is not online cannot get property %s.", getSerialNumber(), name);
             return null;
         }
-        return getIDevice().getProperty(name);
+        String cmd = String.format("getprop %s", name);
+        CommandResult result = executeShellV2Command(cmd);
+        if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
+            CLog.e(
+                    "Failed to run '%s' returning null. stdout: %s\nstderr: %s\nexit code: %s",
+                    cmd, result.getStdout(), result.getStderr(), result.getExitCode());
+            return null;
+        }
+        if (result.getStdout() == null) {
+            return null;
+        }
+        return result.getStdout().trim();
     }
 
     /** {@inheritDoc} */
@@ -991,7 +1002,15 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public boolean isRuntimePermissionSupported() throws DeviceNotAvailableException {
-        return getApiLevel() > 22;
+        int apiLevel = getApiLevel();
+        boolean condition = apiLevel > 22;
+        if (!condition) {
+            CLog.w(
+                    "isRuntimePermissionSupported requires api level above 22, device reported "
+                            + "'%s'",
+                    apiLevel);
+        }
+        return condition;
     }
 
     /**
@@ -999,7 +1018,7 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public boolean isAppEnumerationSupported() throws DeviceNotAvailableException {
-        return getApiLevel() > 29;
+        return false;
     }
 
     /**
@@ -1150,7 +1169,7 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public File pullFileFromExternal(String remoteFilePath) throws DeviceNotAvailableException {
         String externalPath = getMountPoint(IDevice.MNT_EXTERNAL_STORAGE);
-        String fullPath = (new File(externalPath, remoteFilePath)).getPath();
+        String fullPath = new File(externalPath, remoteFilePath).getPath();
         return pullFile(fullPath);
     }
 
@@ -3915,6 +3934,22 @@ public class NativeDevice implements IManagedTestDevice {
             CLog.e(e);
             return UNKNOWN_API_LEVEL;
         }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public int getLaunchApiLevel() throws DeviceNotAvailableException {
+        try {
+            String prop = getProperty(DeviceProperties.FIRST_API_LEVEL);
+            return Integer.parseInt(prop);
+        } catch (NumberFormatException nfe) {
+            CLog.w(
+                    "Unable to get first launch API level from "
+                            + DeviceProperties.FIRST_API_LEVEL
+                            + ", falling back to getApiLevel().",
+                    nfe);
+        }
+        return getApiLevel();
     }
 
     @Override

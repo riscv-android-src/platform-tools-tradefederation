@@ -252,6 +252,10 @@ public class TestFilterHelper {
             throw new IllegalArgumentException(String.format("Could not load Test class %s",
                     classObj), e);
         }
+        // If class is explicitly annotated to be excluded, exclude it.
+        if (isExcluded(Arrays.asList(classObj.getAnnotations()))) {
+            return false;
+        }
         String packageName = classObj.getPackage().getName();
 
         String className = desc.getClassName();

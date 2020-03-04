@@ -69,6 +69,11 @@ public class NestedRemoteDeviceTest {
                     public TestDeviceOptions getOptions() {
                         return options;
                     }
+
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        return 23;
+                    }
                 };
     }
 

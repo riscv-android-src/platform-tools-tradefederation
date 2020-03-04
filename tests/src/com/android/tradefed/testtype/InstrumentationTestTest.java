@@ -50,11 +50,13 @@ import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.CollectingTestListener;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLifeCycleReceiver;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.testtype.coverage.CoverageOptions;
 import com.android.tradefed.testtype.suite.GranularRetriableTestWrapperTest.CalledMetricCollector;
 import com.android.tradefed.util.ListInstrumentationParser;
@@ -452,11 +454,13 @@ public class InstrumentationTestTest {
         inOrder.verify(mMockListener).testEnded(eq(TEST1), anyLong(), eq(EMPTY_STRING_MAP));
         inOrder.verify(mMockListener).testStarted(eq(TEST1), anyLong());
         inOrder.verify(mMockListener).testEnded(eq(TEST1), anyLong(), eq(EMPTY_STRING_MAP));
-        inOrder.verify(mMockListener)
-                .testRunFailed(
+        FailureDescription failure =
+                FailureDescription.create(
                         "The following tests ran more than once: [Test#test1]. Check your run "
                                 + "configuration, you might be including the same test class "
                                 + "several times.");
+        failure.setFailureStatus(FailureStatus.TEST_FAILURE);
+        inOrder.verify(mMockListener).testRunFailed(failure);
         inOrder.verify(mMockListener).testRunEnded(1, EMPTY_STRING_MAP);
         inOrder.verifyNoMoreInteractions();
     }

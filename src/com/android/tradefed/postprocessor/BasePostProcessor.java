@@ -272,6 +272,11 @@ public abstract class BasePostProcessor implements IPostProcessor {
     }
 
     @Override
+    public final void testAssumptionFailure(TestDescription test, FailureDescription failure) {
+        mForwarder.testAssumptionFailure(test, failure);
+    }
+
+    @Override
     public final void testIgnored(TestDescription test) {
         mForwarder.testIgnored(test);
     }

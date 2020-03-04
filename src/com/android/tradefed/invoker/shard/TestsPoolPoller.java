@@ -20,6 +20,7 @@ import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -203,7 +204,11 @@ public final class TestsPoolPoller
                     // ensures that the object is fine before running it.
                     validationConfig.setTest(test);
                     validationConfig.validateOptions();
-                    validationConfig.resolveDynamicOptions();
+                    DynamicRemoteFileResolver resolver = new DynamicRemoteFileResolver();
+                    resolver.addExtraArgs(
+                            validationConfig.getCommandOptions().getDynamicDownloadArgs());
+                    resolver.setDevice(info.getDevice());
+                    validationConfig.resolveDynamicOptions(resolver);
                     // Set the configuration after the validation, otherwise we override the config
                     // available to the test.
                     if (test instanceof IConfigurationReceiver) {

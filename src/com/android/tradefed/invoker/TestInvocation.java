@@ -23,6 +23,7 @@ import com.android.tradefed.command.CommandRunner.ExitCode;
 import com.android.tradefed.command.CommandScheduler;
 import com.android.tradefed.command.ICommandScheduler.IScheduledInvocationListener;
 import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -669,7 +670,8 @@ public class TestInvocation implements ITestInvocation {
     }
 
     /**
-     * Invoke {@link IConfiguration#resolveDynamicOptions()} to resolve the dynamic files.
+     * Invoke {@link IConfiguration#resolveDynamicOptions(DynamicRemoteFileResolver)} to resolve the
+     * dynamic files.
      *
      * @param context the {@link IInvocationContext} of the invocation.
      * @param config the {@link IConfiguration} of this test run.
@@ -690,7 +692,10 @@ public class TestInvocation implements ITestInvocation {
         try {
             // Don't resolve for remote invocation, wait until we are inside the remote.
             if (!RunMode.REMOTE_INVOCATION.equals(mode)) {
-                config.resolveDynamicOptions();
+                DynamicRemoteFileResolver resolver = new DynamicRemoteFileResolver();
+                resolver.setDevice(context.getDevices().get(0));
+                resolver.addExtraArgs(config.getCommandOptions().getDynamicDownloadArgs());
+                config.resolveDynamicOptions(resolver);
             }
             return true;
         } catch (RuntimeException | BuildRetrievalError | ConfigurationException e) {
@@ -892,7 +897,15 @@ public class TestInvocation implements ITestInvocation {
                     }
                 }
 
-                sharding = invocationPath.shardConfig(config, info, rescheduler, listener);
+                try {
+                    sharding = invocationPath.shardConfig(config, info, rescheduler, listener);
+                } catch (RuntimeException unexpected) {
+                    if (deviceInit) {
+                        // If we did an early setup, do the tear down.
+                        invocationPath.runDevicePostInvocationTearDown(context, config, null);
+                    }
+                    throw unexpected;
+                }
                 if (sharding) {
                     CLog.i(
                             "Invocation for %s has been sharded, rescheduling",
@@ -981,7 +994,7 @@ public class TestInvocation implements ITestInvocation {
     @Override
     public void notifyInvocationStopped(String message) {
         mStopCause = message;
-        if (mStopRequestTime != null) {
+        if (mStopRequestTime == null) {
             mStopRequestTime = System.currentTimeMillis();
         }
     }

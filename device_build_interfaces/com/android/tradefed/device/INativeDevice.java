@@ -1278,6 +1278,14 @@ public interface INativeDevice {
     public int getApiLevel() throws DeviceNotAvailableException;
 
     /**
+     * Get the device's first launched API Level. Defaults to {@link #UNKNOWN_API_LEVEL}.
+     *
+     * @return an integer indicating the first launched API Level of device
+     * @throws DeviceNotAvailableException
+     */
+    public int getLaunchApiLevel() throws DeviceNotAvailableException;
+
+    /**
      * Check whether or not a feature is currently supported given a minimally supported level. This
      * method takes into account unreleased features yet, before API level is raised.
      *

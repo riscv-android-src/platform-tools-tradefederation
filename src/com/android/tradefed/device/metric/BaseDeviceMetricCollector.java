@@ -113,7 +113,7 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
             mRealDeviceList =
                     mContext.getDevices()
                             .stream()
-                            .filter(d -> (!(d.getIDevice() instanceof StubDevice)))
+                            .filter(d -> !(d.getIDevice() instanceof StubDevice))
                             .collect(Collectors.toList());
         }
         return mRealDeviceList;
@@ -355,6 +355,19 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
             }
         }
         mForwarder.testAssumptionFailure(test, trace);
+    }
+
+    @Override
+    public final void testAssumptionFailure(TestDescription test, FailureDescription failure) {
+        if (!mSkipTestCase) {
+            try {
+                onTestAssumptionFailure(mTestData, test);
+            } catch (Throwable t) {
+                // Prevent exception from messing up the status reporting.
+                CLog.e(t);
+            }
+        }
+        mForwarder.testAssumptionFailure(test, failure);
     }
 
     @Override

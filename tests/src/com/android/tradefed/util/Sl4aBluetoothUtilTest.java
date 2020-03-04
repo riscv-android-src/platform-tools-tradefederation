@@ -82,7 +82,7 @@ public class Sl4aBluetoothUtilTest {
     @Mock private Sl4aClient mSecondaryClient;
     @Mock private Sl4aEventDispatcher mEventDispatcher;
 
-    private Sl4aBluetoothUtil mBluetoothUtil = Sl4aBluetoothUtil.createInstance();
+    private Sl4aBluetoothUtil mBluetoothUtil = new Sl4aBluetoothUtil();
 
     @Before
     public void setup() {

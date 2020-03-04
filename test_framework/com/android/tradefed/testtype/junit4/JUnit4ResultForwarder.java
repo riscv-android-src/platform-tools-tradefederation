@@ -143,7 +143,19 @@ public class JUnit4ResultForwarder extends RunListener {
         } else {
             MultipleFailureException multiException =
                     new MultipleFailureException(mTestCaseFailures);
-            mListener.testFailed(testid, StreamUtil.getStackTrace(multiException));
+            mListener.testFailed(testid, getMultiFailureStack(multiException));
         }
+    }
+
+    private String getMultiFailureStack(MultipleFailureException multiException) {
+        StringBuilder sb =
+                new StringBuilder(
+                        String.format(
+                                "MultipleFailureException, There were %d errors:",
+                                multiException.getFailures().size()));
+        for (Throwable e : multiException.getFailures()) {
+            sb.append(String.format("\n  %s", StreamUtil.getStackTrace(e)));
+        }
+        return sb.toString();
     }
 }

@@ -446,7 +446,7 @@ public abstract class ITestSuite
         if (mBuildInfo != null
                 && mBuildInfo.getRemoteFiles() != null
                 && mBuildInfo.getRemoteFiles().size() > 0) {
-            stageTestArtifacts(moduleNames);
+            stageTestArtifacts(mDevice, moduleNames);
         }
 
         runConfig.clear();
@@ -454,7 +454,7 @@ public abstract class ITestSuite
     }
 
     /** Helper to download all artifacts for the given modules. */
-    private void stageTestArtifacts(Set<String> modules) {
+    private void stageTestArtifacts(ITestDevice device, Set<String> modules) {
         CLog.i(String.format("Start to stage test artifacts for %d modules.", modules.size()));
         long startTime = System.currentTimeMillis();
         // Include the file if its path contains a folder name matching any of the module.
@@ -465,6 +465,9 @@ public abstract class ITestSuite
         List<String> includeFilters = Arrays.asList(moduleRegex);
         // Ignore config file as it's part of config zip artifact that's staged already.
         List<String> excludeFilters = Arrays.asList("[.]config$");
+        mDynamicResolver.setDevice(device);
+        mDynamicResolver.addExtraArgs(
+                mMainConfiguration.getCommandOptions().getDynamicDownloadArgs());
         for (File remoteFile : mBuildInfo.getRemoteFiles()) {
             try {
                 mDynamicResolver.resolvePartialDownloadZip(
@@ -777,6 +780,8 @@ public abstract class ITestSuite
         module.setRetryDecision(decision);
 
         module.setEnableDynamicDownload(mEnableDynamicDownload);
+        module.addDynamicDownloadArgs(
+                mMainConfiguration.getCommandOptions().getDynamicDownloadArgs());
         // Actually run the module
         module.run(
                 moduleInfo,

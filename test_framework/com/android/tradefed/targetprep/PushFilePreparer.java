@@ -86,6 +86,16 @@ public class PushFilePreparer extends BaseTargetPreparer
     )
     private Map<File, String> mPushFileSpecs = new LinkedHashMap<>();
 
+    @Option(
+            name = "backup-file",
+            description =
+                    "A key/value pair, the with key specifying a device file path to be backed up, "
+                            + "and the value a device file path indicating where to save the file. "
+                            + "During tear-down, the values will be executed in reverse, "
+                            + "restoring the backup file location to the initial location. "
+                            + "May be repeated.")
+    private Map<String, String> mBackupFileSpecs = new LinkedHashMap<>();
+
     @Option(name="post-push", description=
             "A command to run on the device (with `adb shell (yourcommand)`) after all pushes " +
             "have been attempted.  Will not be run if a push fails with abort-on-push-failure " +
@@ -271,6 +281,12 @@ public class PushFilePreparer extends BaseTargetPreparer
             device.remountVendorWritable();
         }
 
+        // Backup files
+        for (Map.Entry entry : mBackupFileSpecs.entrySet()) {
+            device.executeShellCommand(
+                    "mv \"" + entry.getKey() + "\" \"" + entry.getValue() + "\"");
+        }
+
         Map<String, File> remoteToLocalMapping = new HashMap<>();
         for (String pushspec : mPushSpecs) {
             String[] pair = pushspec.split("->");
@@ -318,6 +334,11 @@ public class PushFilePreparer extends BaseTargetPreparer
             }
             for (String devicePath : mFilesPushed) {
                 device.deleteFile(devicePath);
+            }
+            // Restore files
+            for (Map.Entry entry : mBackupFileSpecs.entrySet()) {
+                device.executeShellCommand(
+                        "mv \"" + entry.getValue() + "\" \"" + entry.getKey() + "\"");
             }
         }
     }

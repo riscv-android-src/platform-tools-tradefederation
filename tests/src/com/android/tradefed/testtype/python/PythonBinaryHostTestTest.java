@@ -24,8 +24,11 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -111,7 +114,166 @@ public class PythonBinaryHostTestTest {
                     EasyMock.eq(LogDataType.TEXT),
                     EasyMock.anyObject());
             EasyMock.expect(mMockDevice.getIDevice()).andReturn(new StubDevice("serial"));
-            
+
+            EasyMock.replay(mMockRunUtil, mMockBuildInfo, mMockListener, mMockDevice);
+            mTest.run(mTestInfo, mMockListener);
+            EasyMock.verify(mMockRunUtil, mMockBuildInfo, mMockListener, mMockDevice);
+        } finally {
+            FileUtil.deleteFile(binary);
+        }
+    }
+
+    /** Test that when running a non-unittest python binary with any filter, the test shall fail. */
+    @Test
+    public void testRun_failWithIncludeFilters() throws Exception {
+        File binary = FileUtil.createTempFile("python-dir", "");
+        try {
+            OptionSetter setter = new OptionSetter(mTest);
+            setter.setOptionValue("python-binaries", binary.getAbsolutePath());
+            mTest.addIncludeFilter("test1");
+
+            expectedAdbPath(mFakeAdb);
+
+            CommandResult res = new CommandResult();
+            res.setStatus(CommandStatus.SUCCESS);
+            res.setStderr("TEST_RUN_STARTED {\"testCount\": 5, \"runName\": \"TestSuite\"}");
+            EasyMock.expect(
+                            mMockRunUtil.runTimedCmd(
+                                    EasyMock.anyLong(), EasyMock.eq(binary.getAbsolutePath())))
+                    .andReturn(res);
+            mMockListener.testRunStarted(EasyMock.eq(binary.getName()), EasyMock.eq(0));
+            mMockListener.testRunFailed((FailureDescription) EasyMock.anyObject());
+            mMockListener.testRunEnded(
+                    EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
+            mMockListener.testLog(
+                    EasyMock.eq(binary.getName() + "-stderr"),
+                    EasyMock.eq(LogDataType.TEXT),
+                    EasyMock.anyObject());
+            EasyMock.expect(mMockDevice.getIDevice()).andReturn(new StubDevice("serial"));
+
+            EasyMock.replay(mMockRunUtil, mMockBuildInfo, mMockListener, mMockDevice);
+            mTest.run(mTestInfo, mMockListener);
+            EasyMock.verify(mMockRunUtil, mMockBuildInfo, mMockListener, mMockDevice);
+        } finally {
+            FileUtil.deleteFile(binary);
+        }
+    }
+
+    /**
+     * Test that when running a python binary with include filters, the output is parsed to obtain
+     * results.
+     */
+    @Test
+    public void testRun_withIncludeFilters() throws Exception {
+        File binary = FileUtil.createTempFile("python-dir", "");
+        try {
+            OptionSetter setter = new OptionSetter(mTest);
+            setter.setOptionValue("python-binaries", binary.getAbsolutePath());
+            mTest.addIncludeFilter("__main__.Class1#test_1");
+
+            expectedAdbPath(mFakeAdb);
+
+            CommandResult res = new CommandResult();
+            res.setStatus(CommandStatus.SUCCESS);
+            res.setStderr(
+                    "test_1 (__main__.Class1)\n"
+                            + "run first test. ... ok\n"
+                            + "test_2 (__main__.Class1)\n"
+                            + "run second test. ... ok\n"
+                            + "test_3 (__main__.Class1)\n"
+                            + "run third test. ... ok\n"
+                            + "----------------------------------------------------------------------\n"
+                            + "Ran 3 tests in 1s");
+            EasyMock.expect(
+                            mMockRunUtil.runTimedCmd(
+                                    EasyMock.anyLong(), EasyMock.eq(binary.getAbsolutePath())))
+                    .andReturn(res);
+            // 3 tests are started and ended.
+            for (int i = 0; i < 3; i++) {
+                mMockListener.testStarted(
+                        EasyMock.<TestDescription>anyObject(), EasyMock.anyLong());
+                mMockListener.testEnded(
+                        EasyMock.<TestDescription>anyObject(),
+                        EasyMock.anyLong(),
+                        EasyMock.<HashMap<String, Metric>>anyObject());
+            }
+            // 2 tests are ignored.
+            mMockListener.testIgnored(EasyMock.<TestDescription>anyObject());
+            mMockListener.testIgnored(EasyMock.<TestDescription>anyObject());
+            mMockListener.testRunStarted(
+                    EasyMock.eq(binary.getName()),
+                    EasyMock.eq(3),
+                    EasyMock.eq(0),
+                    EasyMock.anyLong());
+            mMockListener.testRunEnded(
+                    EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
+            mMockListener.testLog(
+                    EasyMock.eq(binary.getName() + "-stderr"),
+                    EasyMock.eq(LogDataType.TEXT),
+                    EasyMock.anyObject());
+            EasyMock.expect(mMockDevice.getIDevice()).andReturn(new StubDevice("serial"));
+
+            EasyMock.replay(mMockRunUtil, mMockBuildInfo, mMockListener, mMockDevice);
+            mTest.run(mTestInfo, mMockListener);
+            EasyMock.verify(mMockRunUtil, mMockBuildInfo, mMockListener, mMockDevice);
+        } finally {
+            FileUtil.deleteFile(binary);
+        }
+    }
+
+    /**
+     * Test that when running a python binary with exclude filters, the output is parsed to obtain
+     * results.
+     */
+    @Test
+    public void testRun_withExcludeFilters() throws Exception {
+        File binary = FileUtil.createTempFile("python-dir", "");
+        try {
+            OptionSetter setter = new OptionSetter(mTest);
+            setter.setOptionValue("python-binaries", binary.getAbsolutePath());
+            mTest.addExcludeFilter("__main__.Class1#test_1");
+
+            expectedAdbPath(mFakeAdb);
+
+            CommandResult res = new CommandResult();
+            res.setStatus(CommandStatus.SUCCESS);
+            res.setStderr(
+                    "test_1 (__main__.Class1)\n"
+                            + "run first test. ... ok\n"
+                            + "test_2 (__main__.Class1)\n"
+                            + "run second test. ... ok\n"
+                            + "test_3 (__main__.Class1)\n"
+                            + "run third test. ... ok\n"
+                            + "----------------------------------------------------------------------\n"
+                            + "Ran 3 tests in 1s");
+            EasyMock.expect(
+                            mMockRunUtil.runTimedCmd(
+                                    EasyMock.anyLong(), EasyMock.eq(binary.getAbsolutePath())))
+                    .andReturn(res);
+            // 3 tests are started and ended.
+            for (int i = 0; i < 3; i++) {
+                mMockListener.testStarted(
+                        EasyMock.<TestDescription>anyObject(), EasyMock.anyLong());
+                mMockListener.testEnded(
+                        EasyMock.<TestDescription>anyObject(),
+                        EasyMock.anyLong(),
+                        EasyMock.<HashMap<String, Metric>>anyObject());
+            }
+            // 1 test is ignored.
+            mMockListener.testIgnored(EasyMock.<TestDescription>anyObject());
+            mMockListener.testRunStarted(
+                    EasyMock.eq(binary.getName()),
+                    EasyMock.eq(3),
+                    EasyMock.eq(0),
+                    EasyMock.anyLong());
+            mMockListener.testRunEnded(
+                    EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
+            mMockListener.testLog(
+                    EasyMock.eq(binary.getName() + "-stderr"),
+                    EasyMock.eq(LogDataType.TEXT),
+                    EasyMock.anyObject());
+            EasyMock.expect(mMockDevice.getIDevice()).andReturn(new StubDevice("serial"));
+
             EasyMock.replay(mMockRunUtil, mMockBuildInfo, mMockListener, mMockDevice);
             mTest.run(mTestInfo, mMockListener);
             EasyMock.verify(mMockRunUtil, mMockBuildInfo, mMockListener, mMockDevice);
@@ -188,7 +350,13 @@ public class PythonBinaryHostTestTest {
                     EasyMock.anyObject());
             // Report a failure if we cannot parse the logs
             mMockListener.testRunStarted(binary.getName(), 0);
-            mMockListener.testRunFailed((String) EasyMock.anyObject());
+            FailureDescription failure =
+                    FailureDescription.create(
+                            "Failed to parse the python logs: Parser finished in unexpected "
+                                    + "state TEST_CASE. Please ensure that verbosity of output "
+                                    + "is high enough to be parsed.");
+            failure.setFailureStatus(FailureStatus.TEST_FAILURE);
+            mMockListener.testRunFailed(failure);
             mMockListener.testRunEnded(
                     EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 

@@ -20,10 +20,11 @@ import com.android.ddmlib.IDevice;
 import com.android.ddmlib.IDevice.DeviceState;
 import com.android.tradefed.device.DeviceAllocationState;
 
-/**
- * A class containing information describing a device under test.
- */
-public class DeviceDescriptor {
+import java.io.Serializable;
+
+/** A class containing information describing a device under test. */
+public class DeviceDescriptor implements Serializable {
+    private static final long serialVersionUID = 1L;
 
     private final String mSerial;
     private final String mDisplaySerial;

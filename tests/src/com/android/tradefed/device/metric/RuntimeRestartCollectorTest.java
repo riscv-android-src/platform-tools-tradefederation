@@ -519,14 +519,14 @@ public class RuntimeRestartCollectorTest {
                         .anyMatch(
                                 key ->
                                         (key.contains(DEVICE_SERIAL_1)
-                                                && (!key.contains(DEVICE_SERIAL_2)))));
+                                                && !key.contains(DEVICE_SERIAL_2))));
         Assert.assertTrue(
                 countMetricKeys
                         .stream()
                         .anyMatch(
                                 key ->
                                         (key.contains(DEVICE_SERIAL_2)
-                                                && (!key.contains(DEVICE_SERIAL_1)))));
+                                                && !key.contains(DEVICE_SERIAL_1))));
     }
 
     /** Helper method to get count from metrics. */

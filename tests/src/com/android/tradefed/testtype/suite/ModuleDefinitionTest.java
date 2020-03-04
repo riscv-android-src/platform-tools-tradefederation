@@ -41,12 +41,14 @@ import com.android.tradefed.invoker.shard.token.TokenProperty;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.CollectingTestListener;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.LogSaverResultForwarder;
+import com.android.tradefed.result.MultiFailureDescription;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestRunResult;
@@ -66,6 +68,7 @@ import com.android.tradefed.testtype.suite.module.BaseModuleController;
 import com.android.tradefed.testtype.suite.module.IModuleController;
 import com.android.tradefed.testtype.suite.module.TestFailureModuleController;
 
+import org.easymock.Capture;
 import org.easymock.EasyMock;
 import org.junit.Assert;
 import org.junit.Before;
@@ -399,15 +402,18 @@ public class ModuleDefinitionTest {
         EasyMock.expect(mMockPrep.isTearDownDisabled()).andStubReturn(false);
         mMockPrep.tearDown(EasyMock.eq(mModuleInfo), EasyMock.isNull());
         // Exception thrown during tear down do not bubble up to invocation.
-        EasyMock.expectLastCall().andThrow(new RuntimeException("teardown failed"));
+        RuntimeException exception = new RuntimeException("teardown failed");
+        EasyMock.expectLastCall().andThrow(exception);
         mMockListener.testRunStarted(
                 EasyMock.eq(MODULE_NAME), EasyMock.eq(0), EasyMock.eq(0), EasyMock.anyLong());
-        mMockListener.testRunFailed("teardown failed");
+        Capture<FailureDescription> captured = new Capture<>();
+        mMockListener.testRunFailed(EasyMock.capture(captured));
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         replayMocks();
         mModule.run(mModuleInfo, mMockListener);
         verifyMocks();
+        assertTrue(captured.getValue().getErrorMessage().contains("teardown failed"));
     }
 
     /**
@@ -443,7 +449,8 @@ public class ModuleDefinitionTest {
         EasyMock.expect(mMockPrep.isTearDownDisabled()).andStubReturn(false);
         mMockPrep.tearDown(EasyMock.eq(mModuleInfo), EasyMock.isNull());
         // Exception thrown during tear down do not bubble up to invocation.
-        EasyMock.expectLastCall().andThrow(new RuntimeException("teardown failed"));
+        RuntimeException exception = new RuntimeException("teardown failed");
+        EasyMock.expectLastCall().andThrow(exception);
         mMockListener.testRunStarted(
                 EasyMock.eq(MODULE_NAME),
                 EasyMock.eq(testCount),
@@ -457,11 +464,8 @@ public class ModuleDefinitionTest {
                     EasyMock.<HashMap<String, Metric>>anyObject());
         }
         mMockListener.testFailed(EasyMock.anyObject(), (String) EasyMock.anyObject());
-        String aggError =
-                "unresponsive\n====Next Error====\n"
-                        + "Module fakeName only ran 1 out of 4 expected tests.\n====Next "
-                        + "Error====\nteardown failed";
-        mMockListener.testRunFailed(aggError);
+        Capture<FailureDescription> captured = new Capture<>();
+        mMockListener.testRunFailed(EasyMock.capture(captured));
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
@@ -486,7 +490,15 @@ public class ModuleDefinitionTest {
         List<TestRunResult> res = errorChecker.getTestRunAttempts(MODULE_NAME);
         assertEquals(1, res.size());
         assertTrue(res.get(0).isRunFailure());
-        assertEquals(aggError, res.get(0).getRunFailureMessage());
+        assertTrue(
+                res.get(0)
+                        .getRunFailureDescription()
+                        .getErrorMessage()
+                        .contains(
+                                "There were 3 failures:\n  unresponsive\n  "
+                                        + "Module fakeName only ran 1 out of 4 expected tests.\n  "
+                                        + "java.lang.RuntimeException: teardown failed"));
+        assertTrue(captured.getValue() instanceof MultiFailureDescription);
     }
 
     /** Test that Module definition properly parse tokens out of the configuration description. */
@@ -598,12 +610,15 @@ public class ModuleDefinitionTest {
         mMockPrep.tearDown(EasyMock.eq(mModuleInfo), EasyMock.isNull());
         mMockListener.testRunStarted(
                 EasyMock.eq(MODULE_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
-        mMockListener.testRunFailed(EasyMock.contains(exceptionMessage));
+        Capture<FailureDescription> captured = new Capture<>();
+        mMockListener.testRunFailed(EasyMock.capture(captured));
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         replayMocks();
         mModule.run(mModuleInfo, mMockListener);
         verifyMocks();
+
+        assertTrue(captured.getValue().getErrorMessage().contains(exceptionMessage));
     }
 
     /**
@@ -639,12 +654,15 @@ public class ModuleDefinitionTest {
         mMockPrep.tearDown(EasyMock.eq(mModuleInfo), EasyMock.isNull());
         mMockListener.testRunStarted(
                 EasyMock.eq(MODULE_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
-        mMockListener.testRunFailed(EasyMock.contains(exceptionMessage));
+        Capture<FailureDescription> captured = new Capture<>();
+        mMockListener.testRunFailed(EasyMock.capture(captured));
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         replayMocks();
         mModule.run(mModuleInfo, mMockListener);
         verifyMocks();
+
+        assertTrue(captured.getValue().getErrorMessage().contains(exceptionMessage));
     }
 
     @Test
@@ -677,12 +695,15 @@ public class ModuleDefinitionTest {
         mMockPrep.tearDown(EasyMock.eq(mModuleInfo), EasyMock.isNull());
         mMockListener.testRunStarted(
                 EasyMock.eq(MODULE_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
-        mMockListener.testRunFailed(EasyMock.contains(exceptionMessage));
+        Capture<FailureDescription> captured = new Capture<>();
+        mMockListener.testRunFailed(EasyMock.capture(captured));
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         replayMocks();
         mModule.run(mModuleInfo, mMockListener);
         verifyMocks();
+
+        assertTrue(captured.getValue().getErrorMessage().contains(exceptionMessage));
     }
 
     /**
@@ -721,13 +742,15 @@ public class ModuleDefinitionTest {
         mMockPrep.tearDown(EasyMock.eq(mModuleInfo), EasyMock.isNull());
         mMockListener.testRunStarted(
                 EasyMock.eq(MODULE_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
-        mMockListener.testRunFailed(EasyMock.contains(exceptionMessage));
+        Capture<FailureDescription> captured1 = new Capture<>();
+        mMockListener.testRunFailed(EasyMock.capture(captured1));
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         // Ensure that module listeners receive the callbacks too.
         mockModuleListener.testRunStarted(
                 EasyMock.eq(MODULE_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
-        mockModuleListener.testRunFailed(EasyMock.contains(exceptionMessage));
+        Capture<FailureDescription> captured2 = new Capture<>();
+        mockModuleListener.testRunFailed(EasyMock.capture(captured2));
         mockModuleListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
@@ -736,6 +759,9 @@ public class ModuleDefinitionTest {
         mModule.run(mModuleInfo, mMockListener, Arrays.asList(mockModuleListener), null);
         verifyMocks();
         EasyMock.verify(mockModuleListener);
+
+        assertTrue(captured1.getValue().getErrorMessage().contains(exceptionMessage));
+        assertTrue(captured2.getValue().getErrorMessage().contains(exceptionMessage));
     }
 
     /** Test that {@link ModuleDefinition#run(TestInformation, ITestInvocationListener)} */
@@ -769,7 +795,8 @@ public class ModuleDefinitionTest {
                         .build();
         mMockListener.testRunStarted(
                 EasyMock.eq(MODULE_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
-        mMockListener.testRunFailed(EasyMock.contains(exceptionMessage));
+        Capture<FailureDescription> captured = new Capture<>();
+        mMockListener.testRunFailed(EasyMock.capture(captured));
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         replayMocks();
@@ -781,6 +808,8 @@ public class ModuleDefinitionTest {
             assertEquals(exceptionMessage, expected.getMessage());
         }
         verifyMocks();
+
+        assertTrue(captured.getValue().getErrorMessage().contains(exceptionMessage));
     }
 
     /**
@@ -878,7 +907,7 @@ public class ModuleDefinitionTest {
                     EasyMock.<HashMap<String, Metric>>anyObject());
         }
         mMockListener.testFailed(EasyMock.anyObject(), (String) EasyMock.anyObject());
-        mMockListener.testRunFailed((String) EasyMock.anyObject());
+        mMockListener.testRunFailed((FailureDescription) EasyMock.anyObject());
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         // Recovery is disabled during tearDown
@@ -940,7 +969,7 @@ public class ModuleDefinitionTest {
                     EasyMock.<HashMap<String, Metric>>anyObject());
         }
         mMockListener.testFailed(EasyMock.anyObject(), (String) EasyMock.anyObject());
-        mMockListener.testRunFailed((String) EasyMock.anyObject());
+        mMockListener.testRunFailed((FailureDescription) EasyMock.anyObject());
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
@@ -1284,10 +1313,12 @@ public class ModuleDefinitionTest {
                     EasyMock.<HashMap<String, Metric>>anyObject());
         }
         mMockListener.testFailed(EasyMock.anyObject(), (String) EasyMock.anyObject());
-        mMockListener.testRunFailed(
-                "unresponsive"
-                        + TestRunResult.ERROR_DIVIDER
-                        + "Module fakeName only ran 1 out of 4 expected tests.");
+        MultiFailureDescription issues =
+                new MultiFailureDescription(
+                        FailureDescription.create("unresponsive"),
+                        FailureDescription.create(
+                                "Module fakeName only ran 1 out of 4 expected tests."));
+        mMockListener.testRunFailed(issues);
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
@@ -1471,13 +1502,15 @@ public class ModuleDefinitionTest {
 
         mMockListener.testRunStarted(
                 EasyMock.eq("fakeName"), EasyMock.eq(0), EasyMock.eq(0), EasyMock.anyLong());
-        mMockListener.testRunFailed(EasyMock.contains("early failure!"));
+        Capture<FailureDescription> captured = new Capture<>();
+        mMockListener.testRunFailed(EasyMock.capture(captured));
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
         replayMocks();
         mModule.run(mModuleInfo, mMockListener);
         verifyMocks();
+        assertTrue(captured.getValue().getErrorMessage().contains("early failure!"));
     }
 
     /** Test retry and reporting all the different attempts. */

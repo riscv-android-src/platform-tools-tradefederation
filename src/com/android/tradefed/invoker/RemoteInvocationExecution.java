@@ -34,12 +34,8 @@ import com.android.tradefed.device.DeviceSelectionOptions;
 import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.device.cloud.GceAvdInfo;
 import com.android.tradefed.device.cloud.GceManager;
-import com.android.tradefed.device.cloud.LaunchCvdHelper;
 import com.android.tradefed.device.cloud.ManagedRemoteDevice;
-import com.android.tradefed.device.cloud.MultiUserSetupUtil;
 import com.android.tradefed.device.cloud.RemoteFileUtil;
-import com.android.tradefed.invoker.logger.InvocationMetricLogger;
-import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.FileInputStreamSource;
@@ -69,7 +65,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
-import java.util.concurrent.Semaphore;
 
 /** Implementation of {@link InvocationExecution} that drives a remote execution. */
 public class RemoteInvocationExecution extends InvocationExecution {
@@ -91,7 +86,6 @@ public class RemoteInvocationExecution extends InvocationExecution {
 
     private static final int MAX_CONNECTION_REFUSED_COUNT = 3;
     private static final int MAX_PUSH_TF_ATTEMPTS = 3;
-    private static final int MAX_WORKER_THREAD = 1;
     private static final String TRADEFED_EARLY_TERMINATION =
             "Remote Tradefed might have terminated early.\nRemote Stderr:\n%s";
 
@@ -99,9 +93,6 @@ public class RemoteInvocationExecution extends InvocationExecution {
     private String mRemoteAdbPath = null;
     private ProtoResultParser mProtoParser = null;
     private String mRemoteConsoleStdErr = null;
-
-    // Track the threads that are starting remote devices
-    private List<StartDeviceThread> mParallelSetupThreads = null;
 
     @Override
     public boolean fetchBuild(
@@ -138,45 +129,6 @@ public class RemoteInvocationExecution extends InvocationExecution {
 
         TestDeviceOptions options = device.getOptions();
         String mainRemoteDir = getRemoteMainDir(options);
-        // Handle sharding
-        if (config.getCommandOptions().getShardCount() != null
-                && config.getCommandOptions().getShardIndex() == null) {
-            if (config.getCommandOptions().getShardCount() > 1) {
-                int instanceCount = config.getCommandOptions().getShardCount();
-                if (!info.getBuildInfo().getBuildId().startsWith("P")) {
-                    instanceCount += config.getCommandOptions().getExtraRemotePostsubmitInstance();
-                    config.getCommandOptions().setShardCount(instanceCount);
-                }
-                boolean parallel = config.getCommandOptions().shouldUseParallelRemoteSetup();
-                // For each device after the first one we need to start a new device.
-                if (!parallel) {
-                    long startTime = System.currentTimeMillis();
-                    for (int i = 2; i < instanceCount + 1; i++) {
-                        boolean res = startDevice(listener, i, gceInfo, options, runUtil, null);
-                        if (!res) {
-                            return;
-                        }
-                    }
-                    // Log the overhead to start the device
-                    long elapsedTime = System.currentTimeMillis() - startTime;
-                    InvocationMetricLogger.addInvocationMetrics(
-                            InvocationMetricKey.SHARDING_DEVICE_SETUP_TIME, elapsedTime);
-                } else {
-                    // Parallel setup of devices
-                    Semaphore token = new Semaphore(MAX_WORKER_THREAD);
-                    mParallelSetupThreads = new ArrayList<>();
-                    for (int i = 2; i < instanceCount + 1; i++) {
-                        StartDeviceThread sdt =
-                                new StartDeviceThread(
-                                        listener, i, gceInfo, options, runUtil, token);
-                        mParallelSetupThreads.add(sdt);
-                        sdt.start();
-                    }
-                }
-
-            }
-        }
-
         mRemoteAdbPath = String.format("/home/%s/bin/adb", options.getInstanceUser());
         // Select the TF version that should be pushed to the remote VM
         File tfToPush = getLocalTradefedPath(listener, options.getRemoteTf());
@@ -306,28 +258,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
             ITestLogger logger,
             Throwable exception)
             throws Throwable {
-        try {
-            List<StartDeviceThread> interrupted = new ArrayList<>();
-            if (mParallelSetupThreads != null) {
-                for (StartDeviceThread t : mParallelSetupThreads) {
-                    if (t.isAlive()) {
-                        t.interrupt();
-                        interrupted.add(t);
-                    }
-                }
-
-                try {
-                    for (StartDeviceThread t : interrupted) {
-                        t.join(JOIN_CLEAN_TIMEOUT_MS);
-                    }
-                } catch (InterruptedException e) {
-                    CLog.e(e);
-                }
-            }
-        } finally {
-            // Only run device post invocation teardown
             super.runDevicePostInvocationTearDown(testInfo.getContext(), config, exception);
-        }
     }
 
     @Override
@@ -704,138 +635,6 @@ public class RemoteInvocationExecution extends InvocationExecution {
             mProtoParser.processFinalizedProto(TestRecordProtoUtil.readFromFile(resultFile));
         } finally {
             FileUtil.deleteFile(resultFile);
-        }
-    }
-
-    /**
-     * Method that handles starting an extra Android Virtual Device inside a given remote VM.
-     *
-     * @param listener The invocation {@link ITestInvocationListener}.
-     * @param userId The username id to associate the device with.
-     * @param info The {@link GceAvdInfo} describing the remote VM.
-     * @param options The {@link TestDeviceOptions} of the virtual device.
-     * @param runUtil A {@link IRunUtil} to run host commands
-     * @return True if the device is started successfully, false otherwise.
-     */
-    private boolean startDevice(
-            ITestInvocationListener listener,
-            int userId,
-            GceAvdInfo info,
-            TestDeviceOptions options,
-            IRunUtil runUtil,
-            Semaphore token)
-            throws InterruptedException {
-        String useridString = MultiUserSetupUtil.getUserNumber(userId);
-        String username = String.format("vsoc-%s", useridString);
-        CommandResult userSetup =
-                MultiUserSetupUtil.prepareRemoteUser(
-                        username, info, options, runUtil, NEW_USER_TIMEOUT);
-        if (userSetup != null) {
-            String errorMsg = String.format("Failed to setup user: %s", userSetup.getStderr());
-            CLog.e(errorMsg);
-            listener.invocationFailed(new RuntimeException(errorMsg));
-            return false;
-        }
-
-        CommandResult homeDirSetup =
-                MultiUserSetupUtil.prepareRemoteHomeDir(
-                        options.getInstanceUser(),
-                        username,
-                        info,
-                        options,
-                        runUtil,
-                        SETUP_REMOTE_DIR_TIMEOUT);
-        if (homeDirSetup != null) {
-            String errorMsg =
-                    String.format("Failed to setup home dir: %s", homeDirSetup.getStderr());
-            CLog.e(errorMsg);
-            listener.invocationFailed(new RuntimeException(errorMsg));
-            return false;
-        }
-
-        // Create the cvd user if missing
-        CommandResult cvdSetup =
-                MultiUserSetupUtil.addExtraCvdUser(
-                        userId, info, options, runUtil, NEW_USER_TIMEOUT);
-        if (cvdSetup != null) {
-            String errorMsg = String.format("Failed to setup user: %s", cvdSetup.getStderr());
-            CLog.e(errorMsg);
-            listener.invocationFailed(new RuntimeException(errorMsg));
-            return false;
-        }
-
-        List<String> startCommand = LaunchCvdHelper.createSimpleDeviceCommand(username, true);
-        if (token != null) {
-            token.acquire();
-        }
-        CommandResult startDeviceRes = null;
-        try {
-            startDeviceRes =
-                    GceManager.remoteSshCommandExecution(
-                            info,
-                            options,
-                            runUtil,
-                            LAUNCH_EXTRA_DEVICE,
-                            String.join(" ", startCommand));
-        } finally {
-            if (token != null) {
-                token.release();
-            }
-        }
-        if (!CommandStatus.SUCCESS.equals(startDeviceRes.getStatus())) {
-            String errorMsg =
-                    String.format("Failed to start %s: %s", username, startDeviceRes.getStderr());
-            CLog.e(errorMsg);
-            listener.invocationFailed(new RuntimeException(errorMsg));
-            return false;
-        }
-        return true;
-    }
-
-    /** Thread class that allows to start a device asynchronously. */
-    private class StartDeviceThread extends Thread {
-
-        private ITestInvocationListener mListener;
-        private int mUserId;
-        private GceAvdInfo mInfo;
-        private TestDeviceOptions mOptions;
-        private IRunUtil mRunUtil;
-        private Semaphore mToken;
-
-        public StartDeviceThread(
-                ITestInvocationListener listener,
-                int userId,
-                GceAvdInfo info,
-                TestDeviceOptions options,
-                IRunUtil runUtil,
-                Semaphore token) {
-            super();
-            setDaemon(true);
-            setName(String.format("start-device-thread-vsoc-%s", userId));
-            mListener = listener;
-            mUserId = userId;
-            mInfo = info;
-            mOptions = options;
-            mRunUtil = runUtil;
-            mToken = token;
-        }
-
-        @Override
-        public void run() {
-            long startTime = System.currentTimeMillis();
-            boolean success = false;
-            try {
-                success = startDevice(mListener, mUserId, mInfo, mOptions, mRunUtil, mToken);
-            } catch (InterruptedException e) {
-                CLog.e(e);
-            }
-            if (!success) {
-                CLog.e("Failed to start device for vsoc-%s.", mUserId);
-            }
-            // Log the overhead to start the device
-            long elapsedTime = System.currentTimeMillis() - startTime;
-            InvocationMetricLogger.addInvocationMetrics(
-                    InvocationMetricKey.SHARDING_DEVICE_SETUP_TIME, elapsedTime);
         }
     }
 }
