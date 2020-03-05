@@ -1485,18 +1485,24 @@ public class TestDevice extends NativeDevice {
 
         resetContentProviderSetup();
         long initialTime = getHostCurrentTime();
-        executeShellCommand(switchCommand);
-        while (getHostCurrentTime() - initialTime <= timeout) {
-            if (userId == getCurrentUser()) {
-                // disable keyguard if option is true
-                prePostBootSetup();
-                return true;
-            }
+        String output = executeShellCommand(switchCommand);
+        boolean success = userId == getCurrentUser();
+
+        while (!success && (getHostCurrentTime() - initialTime <= timeout)) {
+            // retry
             RunUtil.getDefault().sleep(getCheckNewUserSleep());
-            executeShellCommand(String.format(switchCommand));
+            output = executeShellCommand(String.format(switchCommand));
+            success = userId == getCurrentUser();
         }
-        CLog.e("User did not switch in the given %d timeout", timeout);
-        return false;
+
+        CLog.d("switchUser took %d ms", getHostCurrentTime() - initialTime);
+        if (success) {
+            prePostBootSetup();
+            return true;
+        } else {
+            CLog.e("User did not switch in the given %d timeout: %s", timeout, output);
+            return false;
+        }
     }
 
     /**
