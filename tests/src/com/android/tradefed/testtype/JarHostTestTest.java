@@ -29,12 +29,14 @@ import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner.TestMetrics;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
+import org.easymock.Capture;
 import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Before;
@@ -276,9 +278,8 @@ public class JarHostTestTest {
         mTest.setBuild(new BuildInfo());
 
         mListener.testRunStarted(HostTest.class.getName(), 0);
-        mListener.testRunFailed(
-                "java.io.FileNotFoundException: "
-                        + "Could not find an artifact file associated with thisjardoesnotexistatall.jar");
+        Capture<FailureDescription> captured = new Capture<>();
+        mListener.testRunFailed(EasyMock.capture(captured));
         mListener.testRunEnded(0L, new HashMap<String, Metric>());
 
         EasyMock.replay(mListener);
@@ -289,10 +290,18 @@ public class JarHostTestTest {
             // expected
             assertEquals(
                     "java.io.FileNotFoundException: "
-                            + "Could not find an artifact file associated with thisjardoesnotexistatall.jar",
+                            + "Could not find an artifact file associated with "
+                            + "thisjardoesnotexistatall.jar",
                     expected.getMessage());
         }
         EasyMock.verify(mListener);
+        assertTrue(
+                captured.getValue()
+                        .getErrorMessage()
+                        .contains(
+                                "java.io.FileNotFoundException: "
+                                        + "Could not find an artifact file associated with "
+                                        + "thisjardoesnotexistatall.jar"));
     }
 
     /** Test that metrics from tests in JarHost are reported and accounted for. */
