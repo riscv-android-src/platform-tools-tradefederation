@@ -34,13 +34,13 @@ import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.MultiMap;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -78,13 +78,12 @@ public class PushFilePreparer extends BaseTargetPreparer
     private Collection<String> mPushSpecs = new ArrayList<>();
 
     @Option(
-        name = "push-file",
-        description =
-                "A push-spec, specifying the local file to the path where it should be pushed on "
-                        + "device. May be repeated. If multiple files are configured to be pushed "
-                        + "to the same remote path, the latest one will be pushed."
-    )
-    private Map<File, String> mPushFileSpecs = new LinkedHashMap<>();
+            name = "push-file",
+            description =
+                    "A push-spec, specifying the local file to the path where it should be pushed on "
+                            + "device. May be repeated. If multiple files are configured to be pushed "
+                            + "to the same remote path, the latest one will be pushed.")
+    private MultiMap<File, String> mPushFileSpecs = new MultiMap<>();
 
     @Option(
             name = "backup-file",
@@ -282,12 +281,12 @@ public class PushFilePreparer extends BaseTargetPreparer
         }
 
         // Backup files
-        for (Map.Entry entry : mBackupFileSpecs.entrySet()) {
+        for (Map.Entry<String, String> entry : mBackupFileSpecs.entrySet()) {
             device.executeShellCommand(
                     "mv \"" + entry.getKey() + "\" \"" + entry.getValue() + "\"");
         }
 
-        Map<String, File> remoteToLocalMapping = new HashMap<>();
+        Map<String, File> remoteToLocalMapping = new LinkedHashMap<>();
         for (String pushspec : mPushSpecs) {
             String[] pair = pushspec.split("->");
             if (pair.length != 2) {
@@ -298,7 +297,9 @@ public class PushFilePreparer extends BaseTargetPreparer
         }
         // Push the file structure
         for (File local : mPushFileSpecs.keySet()) {
-            remoteToLocalMapping.put(mPushFileSpecs.get(local), local);
+            for (String remoteLocation : mPushFileSpecs.get(local)) {
+                remoteToLocalMapping.put(remoteLocation, local);
+            }
         }
 
         for (String remotePath : remoteToLocalMapping.keySet()) {
@@ -336,7 +337,7 @@ public class PushFilePreparer extends BaseTargetPreparer
                 device.deleteFile(devicePath);
             }
             // Restore files
-            for (Map.Entry entry : mBackupFileSpecs.entrySet()) {
+            for (Map.Entry<String, String> entry : mBackupFileSpecs.entrySet()) {
                 device.executeShellCommand(
                         "mv \"" + entry.getValue() + "\" \"" + entry.getKey() + "\"");
             }
