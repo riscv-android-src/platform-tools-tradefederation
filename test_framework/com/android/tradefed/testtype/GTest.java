@@ -46,7 +46,7 @@ import java.util.concurrent.TimeUnit;
 
 /** A Test that runs a native test package on given device. */
 @OptionClass(alias = "gtest")
-public class GTest extends GTestBase implements IDeviceTest, IAbiReceiver {
+public class GTest extends GTestBase implements IDeviceTest {
 
     static final String DEFAULT_NATIVETEST_PATH = "/data/nativetest";
 
@@ -96,8 +96,6 @@ public class GTest extends GTestBase implements IDeviceTest, IAbiReceiver {
                             + "match abi under test.")
     private boolean mFilterAbiFolders = true;
 
-    private IAbi mAbi;
-
     // Max characters allowed for executing GTest via command line
     private static final int GTEST_CMD_CHAR_LIMIT = 1000;
     /**
@@ -114,16 +112,6 @@ public class GTest extends GTestBase implements IDeviceTest, IAbiReceiver {
     @Override
     public ITestDevice getDevice() {
         return mDevice;
-    }
-
-    @Override
-    public void setAbi(IAbi abi) {
-        mAbi = abi;
-    }
-
-    @Override
-    public IAbi getAbi() {
-        return mAbi;
     }
 
     @Override
@@ -209,14 +197,14 @@ public class GTest extends GTestBase implements IDeviceTest, IAbiReceiver {
         if (!mFilterAbiFolders) {
             return true;
         }
-        if (mAbi == null) {
+        if (getAbi() == null) {
             return true;
         }
         String fileName = getFileName(path);
         if (!AbiUtils.getArchSupported().contains(fileName)) {
             return true;
         }
-        if (fileName.equals(AbiUtils.getArchForAbi(mAbi.getName()))) {
+        if (fileName.equals(AbiUtils.getArchForAbi(getAbi().getName()))) {
             return true;
         }
         return false;
