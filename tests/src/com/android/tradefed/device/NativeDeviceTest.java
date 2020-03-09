@@ -2401,6 +2401,27 @@ public class NativeDeviceTest {
         EasyMock.verify(mMockIDevice);
     }
 
+    @Test
+    public void testGetProperty_noOutput() throws Exception {
+        CommandResult res = new CommandResult(CommandStatus.SUCCESS);
+        res.setStdout("\n");
+        EasyMock.expect(
+                        mMockRunUtil.runTimedCmd(
+                                100,
+                                (OutputStream) null,
+                                null,
+                                "adb",
+                                "-s",
+                                "serial",
+                                "shell",
+                                "getprop",
+                                "test"))
+                .andReturn(res);
+        EasyMock.replay(mMockRunUtil, mMockIDevice);
+        assertNull(mTestDevice.getProperty("test"));
+        EasyMock.verify(mMockRunUtil, mMockIDevice);
+    }
+
     /** Test get boot history */
     @Test
     public void testGetBootHistory() throws Exception {
