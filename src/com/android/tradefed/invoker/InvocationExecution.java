@@ -39,8 +39,8 @@ import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.invoker.ExecutionFiles.FilesKey;
 import com.android.tradefed.invoker.TestInvocation.Stage;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
-import com.android.tradefed.invoker.logger.TfObjectTracker;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
+import com.android.tradefed.invoker.logger.TfObjectTracker;
 import com.android.tradefed.invoker.shard.IShardHelper;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -110,13 +110,19 @@ public class InvocationExecution implements IInvocationExecution {
             ITestInvocationListener listener)
             throws DeviceNotAvailableException, BuildRetrievalError {
         String currentDeviceName = null;
+        IBuildInfo buildReplicat = null;
         try {
             // TODO: evaluate fetching build in parallel
-            for (String deviceName : testInfo.getContext().getDeviceConfigNames()) {
-                currentDeviceName = deviceName;
+            for (int i = 0; i < testInfo.getContext().getDeviceConfigNames().size(); i++) {
+                currentDeviceName = testInfo.getContext().getDeviceConfigNames().get(i);
+                if (buildReplicat != null) {
+                    // TODO: evaluate if cloning the build is needed
+                    testInfo.getContext().addDeviceBuildInfo(currentDeviceName, buildReplicat);
+                    continue;
+                }
                 IBuildInfo info = null;
-                ITestDevice device = testInfo.getContext().getDevice(deviceName);
-                IDeviceConfiguration deviceConfig = config.getDeviceConfigByName(deviceName);
+                ITestDevice device = testInfo.getContext().getDevice(currentDeviceName);
+                IDeviceConfiguration deviceConfig = config.getDeviceConfigByName(currentDeviceName);
                 IBuildProvider provider = deviceConfig.getBuildProvider();
                 TfObjectTracker.countWithParents(provider.getClass());
                 // Inject the context to the provider if it can receive it
@@ -133,7 +139,7 @@ public class InvocationExecution implements IInvocationExecution {
                 }
                 if (info != null) {
                     info.setDeviceSerial(device.getSerialNumber());
-                    testInfo.getContext().addDeviceBuildInfo(deviceName, info);
+                    testInfo.getContext().addDeviceBuildInfo(currentDeviceName, info);
                     device.setRecovery(deviceConfig.getDeviceRecovery());
                 } else {
                     CLog.logAndDisplay(
@@ -149,6 +155,10 @@ public class InvocationExecution implements IInvocationExecution {
                 updateBuild(info, config);
                 linkExternalDirs(info, testInfo);
                 info.setTestResourceBuild(config.isDeviceConfiguredFake(currentDeviceName));
+
+                if (config.getCommandOptions().shouldUseReplicateSetup()) {
+                    buildReplicat = info;
+                }
             }
         } catch (BuildRetrievalError e) {
             CLog.e(e);

@@ -563,6 +563,11 @@ public class RemoteInvocationExecution extends InvocationExecution {
             }
         }
 
+        if (config.getCommandOptions().getShardCount() != null
+                && config.getCommandOptions().getShardIndex() == null) {
+            config.getCommandOptions().setReplicateSetup(true);
+        }
+
         // Unset remote-tf-version to avoid re-downloading from remote VM.
         OptionSetter deviceOptions =
                 new OptionSetter(config.getDeviceConfig().get(0).getDeviceOptions());
