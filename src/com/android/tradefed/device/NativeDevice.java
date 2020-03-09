@@ -478,7 +478,7 @@ public class NativeDevice implements IManagedTestDevice {
                     cmd, result.getStdout(), result.getStderr(), result.getExitCode());
             return null;
         }
-        if (result.getStdout() == null) {
+        if (result.getStdout() == null || result.getStdout().trim().isEmpty()) {
             return null;
         }
         return result.getStdout().trim();
