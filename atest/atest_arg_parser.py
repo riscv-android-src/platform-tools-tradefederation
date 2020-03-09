@@ -60,6 +60,7 @@ RERUN_UNTIL_FAILURE = ('Rerun all tests until a failure occurs or the max '
 RETRY_ANY_FAILURE = ('Rerun failed tests until passed or the max iteration '
                      'is reached. (10 by default)')
 SERIAL = 'The device to run the test on.'
+SHARDING = 'Option to specify sharding count. The default value is 2'
 TEST = ('Run the tests. WARNING: Many test configs force cleanup of device '
         'after test run. In this case, "-d" must be used in previous test run to '
         'disable cleanup for "-t" to work. Otherwise, device will need to be '
@@ -67,7 +68,7 @@ TEST = ('Run the tests. WARNING: Many test configs force cleanup of device '
 TEST_MAPPING = 'Run tests defined in TEST_MAPPING files.'
 TF_TEMPLATE = ('Add extra tradefed template for ATest suite, '
                'e.g. atest <test> --tf-template <template_key>=<template_path>')
-SHARDING = 'Option to specify sharding count. The default value is 2'
+TF_DEBUG = 'Enable tradefed debug mode with a specify port. Default value is 10888.'
 UPDATE_CMD_MAPPING = ('Update the test command of input tests. Warning: result '
                       'will be saved under tools/tradefederation/core/atest/test_data.')
 USER_TYPE = 'Run test with specific user type, e.g. atest <test> --user-type secondary_user'
@@ -94,7 +95,6 @@ def _positive_int(value):
         return converted_value
     except ValueError:
         raise argparse.ArgumentTypeError(err_msg)
-
 
 class AtestArgParser(argparse.ArgumentParser):
     """Atest wrapper of ArgumentParser."""
@@ -180,6 +180,11 @@ class AtestArgParser(argparse.ArgumentParser):
         self.add_argument('-y', '--verify-cmd-mapping', action='store_true',
                           help=VERIFY_CMD_MAPPING)
 
+        # Options for Tradefed debug mode.
+        self.add_argument('-D', '--tf-debug', nargs='?', const=10888,
+                          type=_positive_int, default=0,
+                          help=TF_DEBUG)
+
         # Options for Tradefed customization related.
         self.add_argument('--tf-template', action='append',
                           help=TF_TEMPLATE)
@@ -247,6 +252,7 @@ def print_epilog_text():
                                          SHARDING=SHARDING,
                                          TEST=TEST,
                                          TEST_MAPPING=TEST_MAPPING,
+                                         TF_DEBUG=TF_DEBUG,
                                          TF_TEMPLATE=TF_TEMPLATE,
                                          USER_TYPE=USER_TYPE,
                                          UPDATE_CMD_MAPPING=UPDATE_CMD_MAPPING,
@@ -279,6 +285,9 @@ OPTIONS
 
         -d, --disable-teardown
             {DISABLE_TEARDOWN}
+
+        -D --tf-debug
+            {TF_DEBUG}
 
         --host
             {HOST}

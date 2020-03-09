@@ -148,7 +148,8 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         ret_code = constants.EXIT_CODE_SUCCESS
         for _ in range(iterations):
             run_cmds = self.generate_run_commands(test_infos, extra_args)
-            subproc = self.run(run_cmds[0], output_to_stdout=True)
+            subproc = self.run(run_cmds[0], output_to_stdout=True,
+                               env_vars=self.generate_env_vars(extra_args))
             ret_code |= self.wait_for_subprocess(subproc)
         return ret_code
 
@@ -169,7 +170,8 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             server = self._start_socket_server()
             run_cmds = self.generate_run_commands(test_infos, extra_args,
                                                   server.getsockname()[1])
-            subproc = self.run(run_cmds[0], output_to_stdout=self.is_verbose)
+            subproc = self.run(run_cmds[0], output_to_stdout=self.is_verbose,
+                               env_vars=self.generate_env_vars(extra_args))
             self.handle_subprocess(subproc, partial(self._start_monitor,
                                                     server,
                                                     subproc,
@@ -277,6 +279,15 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         logging.debug('Socket server started on port %s',
                       server.getsockname()[1])
         return server
+
+    def generate_env_vars(self, extra_args):
+        """Convert extra args into env vars."""
+        env_vars = os.environ.copy()
+        debug_port = extra_args.get(constants.TF_DEBUG, '')
+        if debug_port:
+            env_vars['TF_DEBUG'] = 'true'
+            env_vars['TF_DEBUG_PORT'] = str(debug_port)
+        return env_vars
 
     def host_env_check(self):
         """Check that host env has everything we need.
@@ -401,6 +412,9 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                 continue
             if constants.COLLECT_TESTS_ONLY == arg:
                 args_to_append.append('--collect-tests-only')
+                continue
+            if constants.TF_DEBUG == arg:
+                print("Please attach process to your IDE...")
                 continue
             args_not_supported.append(arg)
         return args_to_append, args_not_supported

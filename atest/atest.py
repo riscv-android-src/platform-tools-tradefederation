@@ -196,6 +196,7 @@ def get_extra_args(args):
                 'retry_any_failure': constants.RETRY_ANY_FAILURE,
                 'serial': constants.SERIAL,
                 'sharding': constants.SHARDING,
+                'tf_debug': constants.TF_DEBUG,
                 'tf_template': constants.TF_TEMPLATE,
                 'user_type': constants.USER_TYPE}
     not_match = [k for k in arg_maps if k not in vars(args)]
