@@ -98,19 +98,19 @@ public class SandboxedInvocationExecution extends InvocationExecution {
         ExecutionFiles execFiles = testInfo.executionFiles();
         if (execFiles.get(FilesKey.TESTS_DIRECTORY) == null) {
             File testsDir = primaryBuild.getFile(BuildInfoFileKey.TESTDIR_IMAGE);
-            if (testsDir != null) {
+            if (testsDir != null && testsDir.exists()) {
                 execFiles.put(FilesKey.TESTS_DIRECTORY, testsDir);
             }
         }
         if (execFiles.get(FilesKey.TARGET_TESTS_DIRECTORY) == null) {
             File targetDir = primaryBuild.getFile(BuildInfoFileKey.TARGET_LINKED_DIR);
-            if (targetDir != null) {
+            if (targetDir != null && targetDir.exists()) {
                 execFiles.put(FilesKey.TARGET_TESTS_DIRECTORY, targetDir, true);
             }
         }
         if (execFiles.get(FilesKey.HOST_TESTS_DIRECTORY) == null) {
             File hostDir = primaryBuild.getFile(BuildInfoFileKey.HOST_LINKED_DIR);
-            if (hostDir != null) {
+            if (hostDir != null && hostDir.exists()) {
                 execFiles.put(FilesKey.HOST_TESTS_DIRECTORY, hostDir, true);
             }
         }
