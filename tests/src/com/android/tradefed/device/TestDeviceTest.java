@@ -3474,7 +3474,6 @@ public class TestDeviceTest extends TestCase {
                     @Override
                     public String executeShellCommand(String command)
                             throws DeviceNotAvailableException {
-                        RunUtil.getDefault().sleep(100);
                         return "Error:";
                     }
 
@@ -3493,7 +3492,7 @@ public class TestDeviceTest extends TestCase {
                         return 100;
                     }
                 };
-        assertFalse(mTestDevice.switchUser(10));
+        assertFalse(mTestDevice.switchUser(10, /* timeout= */ 300));
     }
 
     /**
