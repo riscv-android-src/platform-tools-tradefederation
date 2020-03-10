@@ -188,7 +188,7 @@ public class BaseHostJUnit4TestTest {
             test.runDeviceTests("com.package", "testClass");
         } catch (AssumptionViolatedException e) {
             // Ensure that the Assume logic in the test does not make a false pass for the unit test
-            fail("Should not have thrown an Assume exception.");
+            throw new RuntimeException("Should not have thrown an Assume exception.", e);
         }
         EasyMock.verify(mMockBuild, mMockDevice);
     }
@@ -266,7 +266,7 @@ public class BaseHostJUnit4TestTest {
             test.runDeviceTests("com.package", "testClass");
         } catch (AssumptionViolatedException e) {
             // Ensure that the Assume logic in the test does not make a false pass for the unit test
-            fail("Should not have thrown an Assume exception.");
+            throw new RuntimeException("Should not have thrown an Assume exception.", e);
         }
         EasyMock.verify(mMockBuild, mMockDevice);
         // Verify that the runner options were properly set.
@@ -295,7 +295,7 @@ public class BaseHostJUnit4TestTest {
             test.runDeviceTests("com.package", "class", 0, null);
         } catch (AssumptionViolatedException e) {
             // Ensure that the Assume logic in the test does not make a false pass for the unit test
-            fail("Should not have thrown an Assume exception.");
+            throw new RuntimeException("Should not have thrown an Assume exception.", e);
         }
         EasyMock.verify(mMockBuild, mMockDevice);
     }
@@ -331,7 +331,7 @@ public class BaseHostJUnit4TestTest {
                             .addInstrumentationArg("test2", "value2"));
         } catch (AssumptionViolatedException e) {
             // Ensure that the Assume logic in the test does not make a false pass for the unit test
-            fail("Should not have thrown an Assume exception.");
+            throw new RuntimeException("Should not have thrown an Assume exception.", e);
         }
         // Our args are translated to the runner
         Mockito.verify(mockRunner).addInstrumentationArg("test", "value");
@@ -360,7 +360,7 @@ public class BaseHostJUnit4TestTest {
             test.runDeviceTests("com.package", "class");
         } catch (AssumptionViolatedException e) {
             // Ensure that the Assume logic in the test does not make a false pass for the unit test
-            fail("Should not have thrown an Assume exception.");
+            throw new RuntimeException("Should not have thrown an Assume exception.", e);
         } catch (AssertionError expected) {
             assertTrue(expected.getMessage().contains("instrumentation crashed"));
         }
