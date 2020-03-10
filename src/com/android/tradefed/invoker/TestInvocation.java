@@ -418,7 +418,6 @@ public class TestInvocation implements ITestInvocation {
             } finally {
                 TfObjectTracker.clearTracking();
                 CurrentInvocation.clearInvocationInfos();
-                invocationPath.cleanUpBuilds(context, config);
             }
         }
         if (tearDownException != null) {
@@ -949,6 +948,10 @@ public class TestInvocation implements ITestInvocation {
                     context.getDevice(deviceName).stopLogcat();
                 }
             }
+            if (!sharding) {
+                // If we are the parent shard, we do not delete the test information
+                deleteInvocationFiles(info, config);
+            }
             // save remaining logs contents to global log
             getLogRegistry().dumpToGlobalLog(config.getLogOutput());
             // Ensure log is unregistered and closed
@@ -957,10 +960,6 @@ public class TestInvocation implements ITestInvocation {
             config.cleanConfigurationData();
 
             Runtime.getRuntime().removeShutdownHook(cleanUpThread);
-            if (!sharding) {
-                // If we are the parent shard, we do not delete the test information
-                deleteInvocationFiles(info, config);
-            }
         }
     }
 
