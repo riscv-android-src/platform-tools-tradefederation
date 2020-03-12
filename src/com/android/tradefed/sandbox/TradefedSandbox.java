@@ -148,6 +148,9 @@ public class TradefedSandbox implements ISandbox {
         try (InputStreamSource configFile = new FileInputStreamSource(mSerializedConfiguration)) {
             logger.testLog("sandbox-config", LogDataType.XML, configFile);
         }
+        try (InputStreamSource contextFile = new FileInputStreamSource(mSerializedContext)) {
+            logger.testLog("sandbox-context", LogDataType.PB, contextFile);
+        }
 
         boolean joinResult = false;
         long waitTime = getSandboxOptions(config).getWaitForEventsTimeout();
