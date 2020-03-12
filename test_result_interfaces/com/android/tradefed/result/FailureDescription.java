@@ -75,6 +75,11 @@ public class FailureDescription {
         return mDebugHelpMessage;
     }
 
+    /** Sets the error message. */
+    public void setErrorMessage(String errorMessage) {
+        mErrorMessage = errorMessage;
+    }
+
     /** Returns the error message associated with the failure. */
     public String getErrorMessage() {
         return mErrorMessage;
