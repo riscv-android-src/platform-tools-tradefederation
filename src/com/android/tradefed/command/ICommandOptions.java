@@ -185,6 +185,12 @@ public interface ICommandOptions {
     /** Whether or not to attempt parallel setup of the remote devices. */
     public boolean shouldUseParallelRemoteSetup();
 
+    /** Whether or not to use replicated setup for all the remote devices. */
+    public boolean shouldUseReplicateSetup();
+
+    /** Set whether or not to use replicated setup. */
+    public void setReplicateSetup(boolean replicate);
+
     /** Whether or not to report progression of remote invocation at module level. */
     public boolean shouldReportModuleProgression();
 

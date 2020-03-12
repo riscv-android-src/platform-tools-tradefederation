@@ -3474,7 +3474,6 @@ public class TestDeviceTest extends TestCase {
                     @Override
                     public String executeShellCommand(String command)
                             throws DeviceNotAvailableException {
-                        RunUtil.getDefault().sleep(100);
                         return "Error:";
                     }
 
@@ -3493,7 +3492,7 @@ public class TestDeviceTest extends TestCase {
                         return 100;
                     }
                 };
-        assertFalse(mTestDevice.switchUser(10));
+        assertFalse(mTestDevice.switchUser(10, /* timeout= */ 300));
     }
 
     /**
@@ -4183,7 +4182,13 @@ public class TestDeviceTest extends TestCase {
             Assert.assertEquals(3000, testImage.data.length);
             result = mTestDevice.compressRawImage(testImage, "JPEG", true);
             // Size after compressing as JPEG
-            Assert.assertEquals(1041, result.length);
+            if (result.length != 1041 && result.length != 851) {
+                fail(
+                        String.format(
+                                "Should have compress the length as expected, got %s, "
+                                        + "expected 851 or 1041",
+                                result.length));
+            }
         } finally {
             if (testImage != null) {
                 testImage.data = null;

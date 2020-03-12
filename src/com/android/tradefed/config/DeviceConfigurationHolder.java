@@ -194,7 +194,12 @@ public class DeviceConfigurationHolder implements IDeviceConfiguration {
      */
     @Override
     public IDeviceConfiguration clone() {
-        IDeviceConfiguration newDeviceConfig = new DeviceConfigurationHolder(getDeviceName());
+        return clone(getDeviceName());
+    }
+
+    @Override
+    public IDeviceConfiguration clone(String newName) {
+        IDeviceConfiguration newDeviceConfig = new DeviceConfigurationHolder(newName);
         for (Object obj : getAllObjects()) {
             try {
                 newDeviceConfig.addSpecificConfig(obj);

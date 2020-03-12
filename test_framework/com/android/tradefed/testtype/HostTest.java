@@ -31,9 +31,11 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.testtype.host.PrettyTestEventLogger;
 import com.android.tradefed.testtype.junit4.CarryDnaeError;
 import com.android.tradefed.testtype.junit4.JUnit4ResultForwarder;
@@ -505,16 +507,22 @@ public class HostTest
             List<Class<?>> classes = getClasses();
             if (!mSkipTestClassCheck) {
                 if (classes.isEmpty()) {
-                    throw new IllegalArgumentException("Missing Test class name");
+                    throw new IllegalArgumentException("No '--class' option was specified.");
                 }
             }
             if (mMethodName != null && classes.size() > 1) {
-                throw new IllegalArgumentException("Method name given with multiple test classes");
+                throw new IllegalArgumentException(
+                        String.format(
+                                "'--method' only supports one '--class' name. Multiple were "
+                                        + "given: '%s'",
+                                classes));
             }
         } catch (IllegalArgumentException e) {
-            // TODO: If possible in some cases, carry the name of the failed class in the run start
             listener.testRunStarted(this.getClass().getCanonicalName(), 0);
-            listener.testRunFailed(e.getMessage());
+            FailureDescription failureDescription =
+                    FailureDescription.create(StreamUtil.getStackTrace(e));
+            failureDescription.setFailureStatus(FailureStatus.TEST_FAILURE);
+            listener.testRunFailed(failureDescription);
             listener.testRunEnded(0L, new HashMap<String, Metric>());
             throw e;
         }
@@ -875,7 +883,7 @@ public class HostTest
                 File file = getJarFile(jarName, mTestInfo);
                 jarFile = new JarFile(file);
                 Enumeration<JarEntry> e = jarFile.entries();
-                URL[] urls = {new URL(String.format("jar:file:%s!/", file.getAbsolutePath()))};
+                URL[] urls = {file.toURI().toURL()};
                 URLClassLoader cl = URLClassLoader.newInstance(urls);
 
                 while (e.hasMoreElements()) {
