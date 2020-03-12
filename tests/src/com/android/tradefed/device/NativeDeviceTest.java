@@ -2534,8 +2534,8 @@ public class NativeDeviceTest {
         assertFalse(spy.deviceSoftRestartedSince(1559091923000L, TimeUnit.MILLISECONDS));
         assertFalse(spy.deviceSoftRestartedSince(1559091922L, TimeUnit.SECONDS));
         assertFalse(spy.deviceSoftRestartedSince(1559091922000L, TimeUnit.MILLISECONDS));
-        assertTrue(spy.deviceSoftRestartedSince(1559091921L, TimeUnit.SECONDS));
-        assertTrue(spy.deviceSoftRestartedSince(1559091921000L, TimeUnit.MILLISECONDS));
+        assertTrue(spy.deviceSoftRestartedSince(1559091920L, TimeUnit.SECONDS));
+        assertTrue(spy.deviceSoftRestartedSince(1559091920000L, TimeUnit.MILLISECONDS));
         EasyMock.verify(mMockIDevice);
     }
 

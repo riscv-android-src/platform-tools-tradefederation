@@ -4652,8 +4652,10 @@ public class NativeDevice implements IManagedTestDevice {
         }
 
         // The system_server process started at or before utcEpochTime, there is no soft-restart
-        if (currSystemServerProcess.getStartTime()
-                <= TimeUnit.SECONDS.convert(utcEpochTime, timeUnit)) {
+        if (Math.abs(
+                        currSystemServerProcess.getStartTime()
+                                - TimeUnit.SECONDS.convert(utcEpochTime, timeUnit))
+                <= 1) {
             return false;
         }
 
