@@ -721,6 +721,7 @@ public class TestInvocationTest {
                                 EasyMock.eq(LogDataType.HOST_LOG),
                                 (InputStream) EasyMock.anyObject()))
                 .andReturn(new LogFile(PATH, URL, LogDataType.HOST_LOG));
+
         resumeListener.testLog(
                 EasyMock.startsWith(LOGCAT_NAME_SETUP),
                 EasyMock.eq(LogDataType.LOGCAT),
@@ -740,6 +741,7 @@ public class TestInvocationTest {
 
         // just return same build and logger for simplicity
         EasyMock.expect(mMockBuildInfo.clone()).andReturn(mMockBuildInfo);
+        EasyMock.expect(mMockBuildInfo.getVersionedFileKeys()).andReturn(new HashSet<>());
         EasyMock.expect(mMockLogger.clone()).andReturn(mMockLogger);
         IRescheduler mockRescheduler = EasyMock.createMock(IRescheduler.class);
         Capture<IConfiguration> capturedConfig = new Capture<IConfiguration>();
@@ -747,7 +749,7 @@ public class TestInvocationTest {
                 .andReturn(Boolean.TRUE);
         // When resuming the original build provider is still going to handle the clean up.
         mMockBuildProvider.cleanUp(mMockBuildInfo);
-        EasyMock.expectLastCall().times(4);
+        EasyMock.expectLastCall().times(2);
         mMockDevice.clearLastConnectedWifiNetwork();
         mMockDevice.stopLogcat();
 
@@ -1010,7 +1012,6 @@ public class TestInvocationTest {
         EasyMock.expect(mMockLogger.getLog()).andReturn(EMPTY_STREAM_SOURCE);
         mMockBuildInfo.setDeviceSerial(SERIAL);
         mMockBuildProvider.cleanUp(mMockBuildInfo);
-        EasyMock.expectLastCall().times(2);
         setupMockSuccessListeners();
         EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
         mMockBuildInfo.addBuildAttribute("command_line_args", "run empty");
@@ -1043,7 +1044,6 @@ public class TestInvocationTest {
         EasyMock.expect(mMockLogger.getLog()).andReturn(EMPTY_STREAM_SOURCE);
         mMockBuildInfo.setDeviceSerial(SERIAL);
         mMockBuildProvider.cleanUp(mMockBuildInfo);
-        EasyMock.expectLastCall().times(2);
         setupMockSuccessListeners();
         EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
         mMockBuildInfo.addBuildAttribute("command_line_args", "run empty");
@@ -1073,7 +1073,6 @@ public class TestInvocationTest {
         EasyMock.expect(mMockLogger.getLog()).andReturn(EMPTY_STREAM_SOURCE);
         mMockBuildInfo.setDeviceSerial(SERIAL);
         mMockBuildProvider.cleanUp(mMockBuildInfo);
-        EasyMock.expectLastCall().times(2);
         setupMockSuccessListeners();
         EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
         mMockBuildInfo.addBuildAttribute("command_line_args", "run empty");
@@ -1127,7 +1126,6 @@ public class TestInvocationTest {
         EasyMock.expect(mockProvider.getBuild(mMockDevice)).andReturn(mMockBuildInfo);
         EasyMock.expectLastCall().anyTimes();
         mockProvider.cleanUp(mMockBuildInfo);
-        EasyMock.expectLastCall().times(2);
         mMockLogRegistry.dumpToGlobalLog(mMockLogger);
         mMockLogRegistry.unregisterLogger();
         mMockLogger.closeLog();
@@ -1627,6 +1625,9 @@ public class TestInvocationTest {
         mMockSummaryListener.invocationStarted((IInvocationContext)EasyMock.anyObject());
         EasyMock.expectLastCall();
         EasyMock.expect(mMockBuildInfo.clone()).andReturn(mMockBuildInfo).times(numShard);
+        EasyMock.expect(mMockBuildInfo.getVersionedFileKeys())
+                .andReturn(new HashSet<>())
+                .times(numShard);
         EasyMock.expect(mockRescheduler.scheduleConfig(EasyMock.anyObject()))
                 .andReturn(true).times(numShard);
         mMockBuildInfo.setDeviceSerial(SERIAL);

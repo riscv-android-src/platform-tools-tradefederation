@@ -180,6 +180,9 @@ class ModuleFinder(test_finder_base.TestFinderBase):
             config_file = os.path.join(self.root_dir, rel_config)
             targets = test_finder_utils.get_targets_from_xml(config_file,
                                                              self.module_info)
+        if constants.VTS_CORE_SUITE in self.module_info.get_module_info(
+                module_name).get(constants.MODULE_COMPATIBILITY_SUITES, []):
+            targets.add(constants.VTS_CORE_TF_MODULE)
         for module_path in self.module_info.get_paths(module_name):
             mod_dir = module_path.replace('/', '-')
             targets.add(_MODULES_IN % mod_dir)
