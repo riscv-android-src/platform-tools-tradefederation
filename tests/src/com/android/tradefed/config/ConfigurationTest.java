@@ -744,6 +744,9 @@ public class ConfigurationTest extends TestCase {
                 original.partialDeepClone(
                         Arrays.asList(Configuration.DEVICE_NAME, Configuration.TEST_TYPE_NAME),
                         null);
+        assertNotEquals(
+                original.getDeviceConfigByName(ConfigurationDef.DEFAULT_DEVICE_NAME),
+                copy.getDeviceConfigByName(ConfigurationDef.DEFAULT_DEVICE_NAME));
         assertNotEquals(original.getTargetPreparers().get(0), copy.getTargetPreparers().get(0));
         assertNotEquals(
                 original.getDeviceConfig().get(0).getTargetPreparers().get(0),
