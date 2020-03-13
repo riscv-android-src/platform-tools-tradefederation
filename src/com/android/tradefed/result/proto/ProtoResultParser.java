@@ -236,9 +236,10 @@ public class ProtoResultParser {
         if (!anyDescription.is(Context.class)) {
             throw new RuntimeException("Expected Any description of type Context");
         }
-        IInvocationContext receivedProto;
+        IInvocationContext receivedContext;
         try {
-            receivedProto = InvocationContext.fromProto(anyDescription.unpack(Context.class));
+            receivedContext = InvocationContext.fromProto(anyDescription.unpack(Context.class));
+            mergeInvocationContext(mMainContext, receivedContext);
         } catch (InvalidProtocolBufferException e) {
             throw new RuntimeException(e);
         }
@@ -249,7 +250,7 @@ public class ProtoResultParser {
             return;
         }
         // Only report invocation start if enabled
-        mListener.invocationStarted(receivedProto);
+        mListener.invocationStarted(receivedContext);
     }
 
     private void handleInvocationEnded(TestRecord endInvocationProto) {

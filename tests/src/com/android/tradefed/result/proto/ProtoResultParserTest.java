@@ -16,6 +16,7 @@
 package com.android.tradefed.result.proto;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.config.ConfigurationDef;
@@ -170,7 +171,18 @@ public class ProtoResultParserTest {
 
         EasyMock.replay(mMockListener);
         // Invocation start
+        mInvocationContext.getBuildInfos().get(0).addBuildAttribute("early_key", "build_value");
+        mInvocationContext.addInvocationAttribute("early_context_key", "context_value");
         mTestParser.invocationStarted(mInvocationContext);
+        // Check early context
+        IInvocationContext context = mMainInvocationContext;
+        assertFalse(context.getBuildInfos().get(0).getBuildAttributes().containsKey(TEST_KEY));
+        assertFalse(context.getAttributes().containsKey(CONTEXT_TEST_KEY));
+        assertEquals(
+                "build_value",
+                context.getBuildInfos().get(0).getBuildAttributes().get("early_key"));
+        assertEquals("context_value", context.getAttributes().get("early_context_key").get(0));
+
         // Run modules
         mTestParser.testModuleStarted(createModuleContext("arm64 module1"));
         mTestParser.testRunStarted("run1", 2);
@@ -208,11 +220,14 @@ public class ProtoResultParserTest {
         assertEquals(logFile.getType(), capturedFile.getType());
         assertEquals(logFile.getSize(), capturedFile.getSize());
 
-        // Check Context
-        IInvocationContext context = mMainInvocationContext;
+        // Check Context at the end
         assertEquals(
                 "build_value", context.getBuildInfos().get(0).getBuildAttributes().get(TEST_KEY));
         assertEquals("context_value", context.getAttributes().get(CONTEXT_TEST_KEY).get(0));
+        assertEquals(
+                "build_value",
+                context.getBuildInfos().get(0).getBuildAttributes().get("early_key"));
+        assertEquals("context_value", context.getAttributes().get("early_context_key").get(0));
     }
 
     /** Test that a run failure occurring inside a test case pair is handled properly. */
