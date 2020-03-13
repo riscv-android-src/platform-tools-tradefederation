@@ -325,6 +325,11 @@ public class GceManagerTest {
     /** Ensure exception is thrown after a timeout from the acloud command. */
     @Test
     public void testStartGce_timeout() throws Exception {
+        mOptions.getGceDriverParams().add("--boot-timeout");
+        mOptions.getGceDriverParams().add("900");
+        OptionSetter setter = new OptionSetter(mOptions);
+        // Boot-time on Acloud params will be overridden by TF option.
+        setter.setOptionValue("allow-gce-boot-timeout-override", "false");
         mGceManager =
                 new GceManager(mMockDeviceDesc, mOptions, mMockBuildInfo, null) {
                     @Override
@@ -341,13 +346,16 @@ public class GceManagerTest {
                     }
                 };
         final String expectedException =
-                "acloud errors: timeout after 1800000ms, " + "acloud did not return null";
+                "acloud errors: timeout after 1620000ms, acloud did not return null";
         CommandResult cmd = new CommandResult();
         cmd.setStatus(CommandStatus.TIMED_OUT);
         cmd.setStdout("output err");
         EasyMock.expect(
                         mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(), (String[]) EasyMock.anyObject()))
+                                EasyMock.eq(1800000L),
+                                EasyMock.anyObject(),
+                                EasyMock.eq("--boot-timeout"),
+                                EasyMock.eq("1620")))
                 .andReturn(cmd);
         EasyMock.replay(mMockRunUtil);
         doReturn(null).when(mMockDeviceDesc).toString();
