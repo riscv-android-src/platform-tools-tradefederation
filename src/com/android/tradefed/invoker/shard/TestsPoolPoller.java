@@ -267,14 +267,7 @@ public final class TestsPoolPoller
         try {
             if (device instanceof NestedRemoteDevice) {
                 // If it's not the last device, reset it.
-                if (((NestedRemoteDevice) device)
-                        .resetVirtualDevice(
-                                logger, mTestInfo.getBuildInfo(), /* Collect the logs */ true)) {
-                    CLog.d("Successful virtual device reset.");
-                    return;
-                }
-                // Original exception will be thrown below
-                CLog.e("Virtual device %s reset failed.", device.getSerialNumber());
+                // TODO: Attempt reset when fixed
             } else if (mTracker.getCount() > 1) {
                 CLog.d(
                         "Wait %s for device to maybe come back online.",
