@@ -35,6 +35,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -91,7 +92,7 @@ public class DeviceSetup extends BaseTargetPreparer {
     protected String mWifiPsk = null;
 
     @Option(name = "wifi-ssid-to-psk", description = "A map of wifi SSIDs to passwords.")
-    protected Map<String, String> mWifiSsidToPsk = new HashMap<>();
+    protected Map<String, String> mWifiSsidToPsk = new LinkedHashMap<>();
 
     @Option(name = "wifi-watchdog",
             description = "Turn wifi watchdog on or off")
