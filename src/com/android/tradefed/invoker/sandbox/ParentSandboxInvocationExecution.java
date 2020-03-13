@@ -17,6 +17,7 @@ package com.android.tradefed.invoker.sandbox;
 
 import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.build.BuildRetrievalError;
+import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
@@ -24,6 +25,7 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.cloud.GceManager;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.InvocationExecution;
@@ -107,7 +109,24 @@ public class ParentSandboxInvocationExecution extends InvocationExecution {
             TestInformation info, IConfiguration config, ITestInvocationListener listener)
             throws Throwable {
         // If the invocation is sandboxed run as a sandbox instead.
-        SandboxInvocationRunner.prepareAndRun(info, config, listener);
+        boolean success = SandboxInvocationRunner.prepareAndRun(info, config, listener);
+        if (!success) {
+            String instanceName = null;
+            boolean cleaned = false;
+            for (IBuildInfo build : info.getContext().getBuildInfos()) {
+                if (build.getBuildAttributes().get(GceManager.GCE_INSTANCE_NAME_KEY) != null) {
+                    instanceName = build.getBuildAttributes().get(GceManager.GCE_INSTANCE_NAME_KEY);
+                }
+                if (build.getBuildAttributes().get(GceManager.GCE_INSTANCE_CLEANED_KEY) != null) {
+                    cleaned = true;
+                }
+            }
+            if (instanceName == null || cleaned) {
+                return;
+            }
+            // TODO: Clean the instance.
+            CLog.w("Instance was not cleaned in sandbox subprocess, cleaning it now.");
+        }
     }
 
     @Override
