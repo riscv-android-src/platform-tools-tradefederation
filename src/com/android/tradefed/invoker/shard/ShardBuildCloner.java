@@ -21,6 +21,7 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.VersionedFile;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.invoker.ExecutionFiles;
 import com.android.tradefed.invoker.ExecutionFiles.FilesKey;
 import com.android.tradefed.invoker.IInvocationContext;
@@ -50,13 +51,18 @@ public class ShardBuildCloner {
                 primaryClone = toBuild;
             }
             try {
-                toConfig.getDeviceConfigByName(deviceName)
-                        .addSpecificConfig(
-                                new ExistingBuildProvider(
-                                        toBuild,
-                                        fromConfig
-                                                .getDeviceConfigByName(deviceName)
-                                                .getBuildProvider()));
+                IDeviceConfiguration deviceConfig = toConfig.getDeviceConfigByName(deviceName);
+                if (deviceConfig == null) {
+                    throw new RuntimeException(
+                            String.format(
+                                    "Configuration doesn't have device '%s' while context "
+                                            + "does [%s].",
+                                    deviceName, context.getDeviceConfigNames()));
+                }
+                deviceConfig.addSpecificConfig(
+                        new ExistingBuildProvider(
+                                toBuild,
+                                fromConfig.getDeviceConfigByName(deviceName).getBuildProvider()));
             } catch (ConfigurationException e) {
                 // Should never happen, no action taken
                 CLog.e(e);
