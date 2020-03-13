@@ -36,8 +36,12 @@ import java.util.regex.Pattern;
 /** Run the tests associated with the invocation in the sandbox. */
 public class SandboxInvocationRunner {
 
-    /** Do setup and run the tests */
-    public static void prepareAndRun(
+    /**
+     * Do setup and run the tests.
+     *
+     * @return True if the invocation is successful. False otherwise.
+     */
+    public static boolean prepareAndRun(
             TestInformation info, IConfiguration config, ITestInvocationListener listener)
             throws Throwable {
         // TODO: refactor TestInvocation to be more modular in the sandbox handling
@@ -61,10 +65,12 @@ public class SandboxInvocationRunner {
                         "Sandbox finished with status: %s and exit code: %s",
                         result.getStatus(), result.getExitCode());
                 handleStderrException(result.getExitCode(), result.getStderr());
+                return false;
             }
         } finally {
             sandbox.tearDown();
         }
+        return true;
     }
 
     /** Attempt to extract a proper exception from stderr, if not stick to RuntimeException. */
