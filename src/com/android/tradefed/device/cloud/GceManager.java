@@ -58,6 +58,9 @@ import java.util.regex.Pattern;
 
 /** Helper that manages the GCE calls to start/stop and collect logs from GCE. */
 public class GceManager {
+    public static final String GCE_INSTANCE_NAME_KEY = "gce-instance-name";
+    public static final String GCE_INSTANCE_CLEANED_KEY = "gce-instance-clean-called";
+
     private static final long BUGREPORT_TIMEOUT = 15 * 60 * 1000L;
     private static final long REMOTE_FILE_OP_TIMEOUT = 10 * 60 * 1000L;
     private static final Pattern BUGREPORTZ_RESPONSE_PATTERN = Pattern.compile("(OK:)(.*)");
@@ -171,7 +174,7 @@ public class GceManager {
             CLog.i("GCE driver stderr: %s", cmd.getStderr());
             String instanceName = extractInstanceName(cmd.getStderr());
             if (instanceName != null) {
-                mBuildInfo.addBuildAttribute("gce-instance-name", instanceName);
+                mBuildInfo.addBuildAttribute(GCE_INSTANCE_NAME_KEY, instanceName);
             } else {
                 CLog.w("Could not extract an instance name for the gce device.");
             }
@@ -389,6 +392,7 @@ public class GceManager {
             CLog.e("failed to create log file for GCE Teardown");
             CLog.e(e);
         } finally {
+            mBuildInfo.addBuildAttribute(GCE_INSTANCE_CLEANED_KEY, "true");
             FileUtil.deleteFile(f);
             mGceAvdInfo = null;
         }
