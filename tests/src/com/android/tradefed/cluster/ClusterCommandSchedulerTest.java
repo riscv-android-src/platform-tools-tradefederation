@@ -907,7 +907,7 @@ public class ClusterCommandSchedulerTest {
         }
 
         @Override
-        public boolean stopInvocation(int invocationId) {
+        public boolean stopInvocation(int invocationId, String cause) {
             return (stopInvocationCalled = true);
         }
 

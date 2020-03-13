@@ -1840,15 +1840,16 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         return false;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public synchronized boolean stopInvocation(int invocationId) {
+    public synchronized boolean stopInvocation(int invocationId, String cause) {
         // TODO: make invocationID part of InvocationContext
         for (InvocationThread thread : mInvocationThreadMap.values()) {
             if (thread.mCmd.getCommandTracker().mId == invocationId) {
-                thread.stopInvocation("User requested stopping invocation " + invocationId);
+                if (cause == null) {
+                    cause = "User requested stopping invocation " + invocationId;
+                }
+                thread.stopInvocation(cause);
                 return true;
             }
         }
