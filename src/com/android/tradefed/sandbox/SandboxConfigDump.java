@@ -88,6 +88,8 @@ public class SandboxConfigDump {
             if (DumpCmd.RUN_CONFIG.equals(cmd) || DumpCmd.TEST_MODE.equals(cmd)) {
                 config.getCommandOptions().setShouldUseSandboxing(false);
                 config.getConfigurationDescription().setSandboxed(true);
+                // Don't use replication in the sandbox
+                config.getCommandOptions().setReplicateSetup(false);
                 // Set the reporter
                 ITestInvocationListener reporter = null;
                 if (getSandboxOptions(config).shouldUseProtoReporter()) {
