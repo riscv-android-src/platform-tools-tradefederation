@@ -354,58 +354,78 @@ public class GceManager {
             CLog.d("No instance to shutdown.");
             return false;
         }
-        List<String> gceArgs =
-                ArrayUtil.list(getTestDeviceOptions().getAvdDriverBinary().getAbsolutePath());
+        try {
+            boolean res =
+                    AcloudShutdown(
+                            getTestDeviceOptions(), getRunUtil(), mGceAvdInfo.instanceName());
+            if (res) {
+                mBuildInfo.addBuildAttribute(GCE_INSTANCE_CLEANED_KEY, "true");
+            }
+            return res;
+        } finally {
+            mGceAvdInfo = null;
+        }
+    }
+
+    /**
+     * Actual Acloud run to shutdown the virtual device.
+     *
+     * @param options The {@link TestDeviceOptions} for the Acloud options
+     * @param runUtil The {@link IRunUtil} to run Acloud
+     * @param instanceName The instance to shutdown.
+     * @return True if successful
+     */
+    public static boolean AcloudShutdown(
+            TestDeviceOptions options, IRunUtil runUtil, String instanceName) {
+        List<String> gceArgs = ArrayUtil.list(options.getAvdDriverBinary().getAbsolutePath());
         gceArgs.add("delete");
         // Add extra args.
         File f = null;
         File config = null;
         try {
-            config = FileUtil.createTempFile(getAvdConfigFile().getName(), "config");
+            config = FileUtil.createTempFile(options.getAvdConfigFile().getName(), "config");
             gceArgs.add("--instance_names");
-            gceArgs.add(mGceAvdInfo.instanceName());
+            gceArgs.add(instanceName);
             gceArgs.add("--config_file");
             // Copy the config in case it comes from a dynamic file. In order to ensure Acloud has
             // the file until it's done with it.
-            FileUtil.copyFile(getAvdConfigFile(), config);
+            FileUtil.copyFile(options.getAvdConfigFile(), config);
             gceArgs.add(config.getAbsolutePath());
-            if (getTestDeviceOptions().getServiceAccountJsonKeyFile() != null) {
+            if (options.getServiceAccountJsonKeyFile() != null) {
                 gceArgs.add("--service_account_json_private_key_path");
-                gceArgs.add(
-                        getTestDeviceOptions().getServiceAccountJsonKeyFile().getAbsolutePath());
+                gceArgs.add(options.getServiceAccountJsonKeyFile().getAbsolutePath());
             }
             f = FileUtil.createTempFile("gce_avd_driver", ".json");
             gceArgs.add("--report_file");
             gceArgs.add(f.getAbsolutePath());
             CLog.i("Tear down of GCE with %s", gceArgs.toString());
-            if (getTestDeviceOptions().waitForGceTearDown()) {
+            if (options.waitForGceTearDown()) {
                 CommandResult cmd =
-                        getRunUtil()
-                                .runTimedCmd(
-                                        getTestDeviceOptions().getGceCmdTimeout(),
-                                        gceArgs.toArray(new String[gceArgs.size()]));
+                        runUtil.runTimedCmd(
+                                options.getGceCmdTimeout(),
+                                gceArgs.toArray(new String[gceArgs.size()]));
                 FileUtil.deleteFile(config);
                 if (!CommandStatus.SUCCESS.equals(cmd.getStatus())) {
                     CLog.w(
                             "Failed to tear down GCE %s with the following arg: %s."
                                     + "\nstdout:%s\nstderr:%s",
-                            mGceAvdInfo.instanceName(), gceArgs, cmd.getStdout(), cmd.getStderr());
+                            instanceName, gceArgs, cmd.getStdout(), cmd.getStderr());
                     return false;
                 }
             } else {
                 // Discard the output so the process is not linked to the parent and doesn't die
                 // if the JVM exit.
-                Process p = getRunUtil().runCmdInBackground(Redirect.DISCARD, gceArgs);
+                Process p = runUtil.runCmdInBackground(Redirect.DISCARD, gceArgs);
                 AcloudDeleteCleaner cleaner = new AcloudDeleteCleaner(p, config);
                 cleaner.start();
             }
-        } catch (IOException e) {
+        } catch (IOException | RuntimeException e) {
             CLog.e("failed to create log file for GCE Teardown");
             CLog.e(e);
+            FileUtil.deleteFile(config);
+            return false;
         } finally {
-            mBuildInfo.addBuildAttribute(GCE_INSTANCE_CLEANED_KEY, "true");
             FileUtil.deleteFile(f);
-            mGceAvdInfo = null;
         }
         return true;
     }
@@ -723,7 +743,7 @@ public class GceManager {
      * Thread that helps cleaning the copied config when the process is done. This ensures acloud is
      * not missing its config until its done.
      */
-    private class AcloudDeleteCleaner extends Thread {
+    private static class AcloudDeleteCleaner extends Thread {
         private Process mProcess;
         private File mConfigFile;
 
