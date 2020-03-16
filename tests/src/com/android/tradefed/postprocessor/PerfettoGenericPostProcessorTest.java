@@ -16,6 +16,7 @@
 
 package com.android.tradefed.postprocessor;
 
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.MockitoAnnotations.initMocks;
 
@@ -66,6 +67,7 @@ public class PerfettoGenericPostProcessorTest {
     private static final String KEY_PREFIX_OPTION = "perfetto-prefix-key-field";
     private static final String REGEX_OPTION_VALUE = "perfetto-metric-filter-regex";
     private static final String ALL_METRICS_OPTION = "perfetto-include-all-metrics";
+    private static final String REPLACE_REGEX_OPTION = "perfetto-metric-replace-prefix";
     private static final String FILE_FORMAT_OPTION = "trace-processor-output-format";
 
     File perfettoMetricProtoFile = null;
@@ -122,6 +124,38 @@ public class PerfettoGenericPostProcessorTest {
         assertMetricsContain(
                 parsedMetrics,
                 "android_startup-startup-1-package_name-com.google."
+                        + "android.apps.nexuslauncher-to_first_frame-dur_ns",
+                36175473);
+    }
+
+    /**
+     * Test metrics are filtered correctly when filter regex are passed and
+     * prefix are replaced with the given string.
+     */
+    @Test
+    public void testMetricsFilterWithRegExAndReplacePrefix()
+            throws ConfigurationException, IOException {
+        setupPerfettoMetricFile(METRIC_FILE_FORMAT.text, true);
+        mOptionSetter.setOptionValue(PREFIX_OPTION, PREFIX_OPTION_VALUE);
+        mOptionSetter.setOptionValue(INDEX_OPTION, "perfetto.protos.AndroidStartupMetric.startup");
+        mOptionSetter.setOptionValue(REGEX_OPTION_VALUE, "android_startup-startup-1.*");
+        mOptionSetter.setOptionValue(REPLACE_REGEX_OPTION, "android_startup-startup-1",
+                "newprefix");
+
+        Map<String, LogFile> testLogs = new HashMap<>();
+        testLogs.put(
+                PREFIX_OPTION_VALUE,
+                new LogFile(
+                        perfettoMetricProtoFile.getAbsolutePath(), "some.url", LogDataType.TEXTPB));
+        Map<String, Metric.Builder> parsedMetrics = mProcessor
+                .processRunMetricsAndLogs(new HashMap<>(), testLogs);
+
+        assertFalse("Metric key not expected but found",
+                parsedMetrics.containsKey("android_startup-startup-1-startup_id"));
+        assertMetricsContain(parsedMetrics, "newprefix-startup_id", 1);
+        assertMetricsContain(
+                parsedMetrics,
+                "newprefix-package_name-com.google."
                         + "android.apps.nexuslauncher-to_first_frame-dur_ns",
                 36175473);
     }
