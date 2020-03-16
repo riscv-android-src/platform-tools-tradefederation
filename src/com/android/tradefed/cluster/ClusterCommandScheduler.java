@@ -381,13 +381,18 @@ public class ClusterCommandScheduler extends CommandScheduler {
                                                 mCommandTask.getRequestId(),
                                                 mCommandTask.getCommandId());
                         if (ClusterCommand.State.CANCELED.equals(status)) {
-                            CLog.w(
-                                    "Cluster marked command %s %s as canceled, stopping invocation",
-                                    mCommandTask.getRequestId(), mCommandTask.getCommandId());
+                            // TODO: retrieve cancel reason from TFC.
+                            String cause =
+                                    String.format(
+                                            "Command (requestId=%s, commandId=%s) has been marked"
+                                                    + " canceled by the cluster",
+                                            mCommandTask.getRequestId(),
+                                            mCommandTask.getCommandId());
+                            CLog.w("Stop invocation due to: %s", cause);
                             Optional.ofNullable(getInvocationContext())
                                     .map(IInvocationContext::getInvocationId)
                                     .map(Ints::tryParse)
-                                    .ifPresent(ClusterCommandScheduler.this::stopInvocation);
+                                    .ifPresent(invocationId -> stopInvocation(invocationId, cause));
                         }
                     }
 
