@@ -43,6 +43,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -128,6 +129,11 @@ public class PerfettoGenericPostProcessor extends BasePostProcessor {
                     "True if the metric is final and shouldn't be processed any more,"
                             + " false if the metric can be handled by another post-processor.")
     private boolean mProcessedMetric = true;
+
+    @Option(name = "perfetto-metric-replace-prefix", description = "Replace the prefix in metrics"
+            + "from the metric proto file. Key is the prefix to look for in the metric"
+            + "keys parsed and value is be the replacement string.")
+    private Map<String, String> mReplacePrefixMap = new LinkedHashMap<String, String>();
 
     // Matches 1.73, 1.73E+2
     private Pattern mNumberWithExponentPattern =
@@ -215,6 +221,7 @@ public class PerfettoGenericPostProcessor extends BasePostProcessor {
                         TextFormat.merge(bufferedReader, builder);
                         parsedMetrics.putAll(
                                 filterMetrics(convertPerfettoProtoMessage(builder.build())));
+                        replacePrefix(parsedMetrics);
                         break;
                     case binary:
                         TraceMetrics metricProto = null;
@@ -222,6 +229,7 @@ public class PerfettoGenericPostProcessor extends BasePostProcessor {
                                 .parseFrom(new FileInputStream(perfettoMetricFile));
                         parsedMetrics
                                 .putAll(filterMetrics(convertPerfettoProtoMessage(metricProto)));
+                        replacePrefix(parsedMetrics);
                         break;
                     case json:
                         CLog.w("JSON perfetto metric file processing not supported.");
@@ -238,6 +246,36 @@ public class PerfettoGenericPostProcessor extends BasePostProcessor {
             }
         }
         return parsedMetrics;
+    }
+
+    /**
+     * Replace the prefix in the metric key parsed from the proto file with the given string.
+     *
+     * @param processPerfettoMetrics metrics parsed from the perfetto proto file.
+     */
+    private void replacePrefix(Map<String, Metric.Builder> processPerfettoMetrics) {
+        if (mReplacePrefixMap.isEmpty()) {
+            return;
+        }
+        Map<String, Metric.Builder> finalMetrics = new HashMap<String, Metric.Builder>();
+        for (Map.Entry<String, Metric.Builder> metric : processPerfettoMetrics.entrySet()) {
+            boolean isReplaced = false;
+            for (Map.Entry<String, String> replaceEntry : mReplacePrefixMap.entrySet()) {
+                if (metric.getKey().startsWith(replaceEntry.getKey())) {
+                    String newKey = metric.getKey().replaceFirst(replaceEntry.getKey(),
+                            replaceEntry.getValue());
+                    finalMetrics.put(newKey, metric.getValue());
+                    isReplaced = true;
+                    break;
+                }
+            }
+            // If key is not replaced put the original key and value in the final metrics.
+            if (!isReplaced) {
+                finalMetrics.put(metric.getKey(), metric.getValue());
+            }
+        }
+        processPerfettoMetrics.clear();
+        processPerfettoMetrics.putAll(finalMetrics);
     }
 
     /**
