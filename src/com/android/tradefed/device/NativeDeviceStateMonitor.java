@@ -284,6 +284,9 @@ public class NativeDeviceStateMonitor implements IDeviceStateMonitor {
         CLog.i("Waiting %d ms for device %s external store", waitTime, getSerialNumber());
         long startTime = System.currentTimeMillis();
         int counter = 1;
+        // TODO(b/151119210): Remove this 'retryOnPermissionDenied' workaround when we figure out
+        // what causes "Permission denied" to be returned incorrectly.
+        int retryOnPermissionDenied = 1;
         while (System.currentTimeMillis() - startTime < waitTime) {
             final CollectingOutputReceiver receiver = createOutputReceiver();
             final CollectingOutputReceiver bitBucket = new CollectingOutputReceiver();
@@ -312,7 +315,8 @@ public class NativeDeviceStateMonitor implements IDeviceStateMonitor {
                     CLog.v("%s returned %s", checkCmd, output);
                     if (output.contains(testString)) {
                         return true;
-                    } else if (output.contains(PERM_DENIED_ERROR_PATTERN)) {
+                    } else if (output.contains(PERM_DENIED_ERROR_PATTERN)
+                            && --retryOnPermissionDenied < 0) {
                         CLog.w("Device %s mount check returned Permision Denied, "
                                 + "issue with mounting.", getSerialNumber());
                         return false;
