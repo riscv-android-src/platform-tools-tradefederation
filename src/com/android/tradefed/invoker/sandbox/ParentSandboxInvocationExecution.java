@@ -25,6 +25,7 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.device.cloud.GceManager;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.IRescheduler;
@@ -38,6 +39,8 @@ import com.android.tradefed.sandbox.SandboxInvocationRunner;
 import com.android.tradefed.sandbox.SandboxOptions;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.TargetSetupError;
+import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.RunUtil;
 
 /**
  * Version of {@link InvocationExecution} for the parent invocation special actions when running a
@@ -109,23 +112,35 @@ public class ParentSandboxInvocationExecution extends InvocationExecution {
             TestInformation info, IConfiguration config, ITestInvocationListener listener)
             throws Throwable {
         // If the invocation is sandboxed run as a sandbox instead.
-        boolean success = SandboxInvocationRunner.prepareAndRun(info, config, listener);
-        if (!success) {
-            String instanceName = null;
-            boolean cleaned = false;
-            for (IBuildInfo build : info.getContext().getBuildInfos()) {
-                if (build.getBuildAttributes().get(GceManager.GCE_INSTANCE_NAME_KEY) != null) {
-                    instanceName = build.getBuildAttributes().get(GceManager.GCE_INSTANCE_NAME_KEY);
+        boolean success = false;
+        try {
+            success = prepareAndRunSandbox(info, config, listener);
+        } finally {
+            if (!success) {
+                String instanceName = null;
+                boolean cleaned = false;
+                for (IBuildInfo build : info.getContext().getBuildInfos()) {
+                    if (build.getBuildAttributes().get(GceManager.GCE_INSTANCE_NAME_KEY) != null) {
+                        instanceName =
+                                build.getBuildAttributes().get(GceManager.GCE_INSTANCE_NAME_KEY);
+                    }
+                    if (build.getBuildAttributes().get(GceManager.GCE_INSTANCE_CLEANED_KEY)
+                            != null) {
+                        cleaned = true;
+                    }
                 }
-                if (build.getBuildAttributes().get(GceManager.GCE_INSTANCE_CLEANED_KEY) != null) {
-                    cleaned = true;
+                if (instanceName == null || cleaned) {
+                    return;
+                }
+                // TODO: Handle other devices if needed.
+                TestDeviceOptions options = config.getDeviceConfig().get(0).getDeviceOptions();
+                CLog.w("Instance was not cleaned in sandbox subprocess, cleaning it now.");
+                boolean res = GceManager.AcloudShutdown(options, getRunUtil(), instanceName);
+                if (res) {
+                    info.getBuildInfo()
+                            .addBuildAttribute(GceManager.GCE_INSTANCE_CLEANED_KEY, "true");
                 }
             }
-            if (instanceName == null || cleaned) {
-                return;
-            }
-            // TODO: Clean the instance.
-            CLog.w("Instance was not cleaned in sandbox subprocess, cleaning it now.");
         }
     }
 
@@ -142,6 +157,19 @@ public class ParentSandboxInvocationExecution extends InvocationExecution {
     @VisibleForTesting
     protected IConfigurationFactory getFactory() {
         return ConfigurationFactory.getInstance();
+    }
+
+    @VisibleForTesting
+    protected IRunUtil getRunUtil() {
+        return RunUtil.getDefault();
+    }
+
+    /** Returns the result status of running the sandbox. */
+    @VisibleForTesting
+    protected boolean prepareAndRunSandbox(
+            TestInformation info, IConfiguration config, ITestInvocationListener listener)
+            throws Throwable {
+        return SandboxInvocationRunner.prepareAndRun(info, config, listener);
     }
 
     private IConfiguration getParentTargetConfig(IConfiguration config) throws TargetSetupError {
