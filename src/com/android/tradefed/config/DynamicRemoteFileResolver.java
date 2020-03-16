@@ -290,18 +290,6 @@ public class DynamicRemoteFileResolver {
     @VisibleForTesting
     protected IRemoteFileResolver getResolver(String protocol) {
         if (updateProtocols()) {
-            // TODO: Remove and clean up the global configuration specification.
-            IGlobalConfiguration globalConfig = getGlobalConfig();
-            Object o = globalConfig.getConfigurationObject(DYNAMIC_RESOLVER);
-            if (o != null) {
-                if (o instanceof IRemoteFileResolver) {
-                    IRemoteFileResolver resolver = (IRemoteFileResolver) o;
-                    CLog.d("Adding %s to supported remote file resolver", resolver);
-                    PROTOCOL_SUPPORT.put(resolver.getSupportedProtocol(), resolver);
-                } else {
-                    CLog.e("%s is not of type IRemoteFileResolver", o);
-                }
-            }
             // Use the service loader to find all the implementations.
             ServiceLoader<IRemoteFileResolver> serviceLoader =
                     ServiceLoader.load(IRemoteFileResolver.class);
