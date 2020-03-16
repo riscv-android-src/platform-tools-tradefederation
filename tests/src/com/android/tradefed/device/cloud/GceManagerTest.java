@@ -593,6 +593,11 @@ public class GceManagerTest {
         EasyMock.replay(mMockRunUtil);
         mGceManager.shutdownGce();
         EasyMock.verify(mMockRunUtil);
+        // Attributes are marked when successful
+        assertTrue(
+                mMockBuildInfo
+                        .getBuildAttributes()
+                        .containsKey(GceManager.GCE_INSTANCE_CLEANED_KEY));
     }
 
     @Test
