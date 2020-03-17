@@ -415,6 +415,8 @@ public class GceManagerTest {
      */
     @Test
     public void testStartGce() throws Exception {
+        OptionSetter setter = new OptionSetter(mOptions);
+        setter.setOptionValue("allow-gce-boot-timeout-override", "true");
         mGceManager =
                 new GceManager(mMockDeviceDesc, mOptions, mMockBuildInfo, null) {
                     @Override
@@ -470,6 +472,8 @@ public class GceManagerTest {
      */
     @Test
     public void testStartGce_failed() throws Exception {
+        OptionSetter setter = new OptionSetter(mOptions);
+        setter.setOptionValue("allow-gce-boot-timeout-override", "true");
         mGceManager =
                 new GceManager(mMockDeviceDesc, mOptions, mMockBuildInfo, null) {
                     @Override
@@ -510,6 +514,8 @@ public class GceManagerTest {
      */
     @Test
     public void testStartGce_bootFail() throws Exception {
+        OptionSetter setter = new OptionSetter(mOptions);
+        setter.setOptionValue("allow-gce-boot-timeout-override", "true");
         mGceManager =
                 new GceManager(mMockDeviceDesc, mOptions, mMockBuildInfo, null) {
                     @Override
@@ -843,6 +849,8 @@ public class GceManagerTest {
      */
     @Test
     public void testStartGce_timeoutAndClean() throws Exception {
+        OptionSetter setter = new OptionSetter(mOptions);
+        setter.setOptionValue("allow-gce-boot-timeout-override", "true");
         DeviceDescriptor desc = null;
         mGceManager =
                 new GceManager(desc, mOptions, mMockBuildInfo, null) {
@@ -930,7 +938,9 @@ public class GceManagerTest {
     }
 
     @Test
-    public void testUpdateTimeout() {
+    public void testUpdateTimeout() throws Exception {
+        OptionSetter setter = new OptionSetter(mOptions);
+        setter.setOptionValue("allow-gce-boot-timeout-override", "true");
         mOptions.getGceDriverParams().add("--boot-timeout");
         mOptions.getGceDriverParams().add("900");
         assertEquals(1800000L, mOptions.getGceCmdTimeout());
@@ -939,7 +949,9 @@ public class GceManagerTest {
     }
 
     @Test
-    public void testUpdateTimeout_multiBootTimeout() {
+    public void testUpdateTimeout_multiBootTimeout() throws Exception {
+        OptionSetter setter = new OptionSetter(mOptions);
+        setter.setOptionValue("allow-gce-boot-timeout-override", "true");
         mOptions.getGceDriverParams().add("--boot-timeout");
         mOptions.getGceDriverParams().add("900");
         mOptions.getGceDriverParams().add("--boot-timeout");
@@ -951,7 +963,9 @@ public class GceManagerTest {
     }
 
     @Test
-    public void testUpdateTimeout_noBootTimeout() {
+    public void testUpdateTimeout_noBootTimeout() throws Exception {
+        OptionSetter setter = new OptionSetter(mOptions);
+        setter.setOptionValue("allow-gce-boot-timeout-override", "true");
         mOptions.getGceDriverParams().add("--someargs");
         mOptions.getGceDriverParams().add("900");
         assertEquals(1800000L, mOptions.getGceCmdTimeout());
