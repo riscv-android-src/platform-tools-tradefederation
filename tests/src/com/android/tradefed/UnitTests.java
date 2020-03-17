@@ -372,6 +372,7 @@ import com.android.tradefed.util.TimeValTest;
 import com.android.tradefed.util.VersionParserTest;
 import com.android.tradefed.util.ZipUtil2Test;
 import com.android.tradefed.util.ZipUtilTest;
+import com.android.tradefed.util.executor.ParallelDeviceExecutorTest;
 import com.android.tradefed.util.hostmetric.AbstractHostMonitorTest;
 import com.android.tradefed.util.hostmetric.HeapHostMonitorTest;
 import com.android.tradefed.util.keystore.JSONFileKeyStoreClientTest;
@@ -854,6 +855,9 @@ import org.junit.runners.Suite.SuiteClasses;
     VersionParserTest.class,
     ZipUtilTest.class,
     ZipUtil2Test.class,
+
+    // util/executor
+    ParallelDeviceExecutorTest.class,
 
     // util/hostmetric
     AbstractHostMonitorTest.class,
