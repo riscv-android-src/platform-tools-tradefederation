@@ -30,6 +30,7 @@ public final class SandboxOptions {
     public static final String CHILD_GLOBAL_CONFIG = "sub-global-config";
     public static final String PARENT_PREPARER_CONFIG = "parent-preparer-config";
     public static final String WAIT_FOR_EVENTS_TIMEOUT = "wait-for-events";
+    public static final String ENABLE_DEBUG_THREAD = "sandbox-debug-thread";
     public static final String EXTRA_BRANCH_TARGET = "extra-branch-target";
     public static final String EXTRA_BUILD_ID_TARGET = "extra-build-id-target";
 
@@ -75,6 +76,11 @@ public final class SandboxOptions {
                         + "sandbox is done running."
     )
     private long mWaitForEventsTimeoutMs = 30000L;
+
+    @Option(
+            name = ENABLE_DEBUG_THREAD,
+            description = "Whether or not to enable a debug thread for sandbox.")
+    private boolean mEnableDebugThread = false;
 
     @Option(
             name = EXTRA_BRANCH_TARGET,
@@ -126,6 +132,11 @@ public final class SandboxOptions {
      */
     public long getWaitForEventsTimeout() {
         return mWaitForEventsTimeoutMs;
+    }
+
+    /** Enable a debug thread. */
+    public boolean shouldEnableDebugThread() {
+        return mEnableDebugThread;
     }
 
     /**
