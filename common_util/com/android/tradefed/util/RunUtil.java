@@ -798,16 +798,18 @@ public class RunUtil implements IRunUtil {
         if (src == null) {
             return null;
         }
-        Thread t = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    StreamUtil.copyStreams(src, dest);
-                } catch (IOException e) {
-                    CLog.e("Failed to read input stream.");
-                }
-            }
-        });
+        Thread t =
+                new Thread(
+                        new Runnable() {
+                            @Override
+                            public void run() {
+                                try {
+                                    StreamUtil.copyStreams(src, dest);
+                                } catch (IOException e) {
+                                    CLog.e("Failed to read input stream %s.", name);
+                                }
+                            }
+                        });
         t.setName(name);
         t.start();
         return t;
