@@ -1024,6 +1024,7 @@ public class InstrumentationTest
         mDevice.runInstrumentationTests(
                 mRunner,
                 // Use a crash forwarder to get stacks from logcat when crashing.
+                // TODO: Refactor all the internals into a real class
                 new LogcatCrashResultForwarder(getDevice(), listener, testTracker) {
                     private Set<TestDescription> mTests = new HashSet<>();
                     private Set<TestDescription> mDuplicateTests = new HashSet<>();
@@ -1050,6 +1051,20 @@ public class InstrumentationTest
                     }
 
                     @Override
+                    public void testRunFailed(FailureDescription error) {
+                        if (error.getErrorMessage().startsWith("Test run failed to complete")) {
+                            Set<TestDescription> expected = new LinkedHashSet<>(expectedTests);
+                            expected.removeAll(mTests);
+                            String helpMessage =
+                                    String.format("The following tests didn't run: %s", expected);
+                            error.setDebugHelpMessage(helpMessage);
+                            // TODO: Based on device crash, change that status.
+                            error.setFailureStatus(FailureStatus.TEST_FAILURE);
+                        }
+                        super.testRunFailed(error);
+                    }
+
+                    @Override
                     public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
                         if (!mDuplicateTests.isEmpty() && !mDisableDuplicateCheck) {
                             FailureDescription error =
@@ -1061,7 +1076,6 @@ public class InstrumentationTest
                                                             + "times.",
                                                     mDuplicateTests));
                             error.setFailureStatus(FailureStatus.TEST_FAILURE);
-                            CLog.e("%s", error);
                             super.testRunFailed(error);
                         }
                         super.testRunEnded(elapsedTime, runMetrics);
