@@ -78,6 +78,7 @@ import com.android.tradefed.util.PrettyPrintDelimiter;
 import com.android.tradefed.util.RunInterruptedException;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.TimeUtil;
+import com.android.tradefed.util.executor.ParallelDeviceExecutor;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -88,6 +89,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Default implementation of {@link ITestInvocation}.
@@ -333,9 +336,20 @@ public class TestInvocation implements ITestInvocation {
             }
             if (bugreportName != null) {
                 if (badDevice == null) {
+                    ParallelDeviceExecutor<Boolean> executor =
+                            new ParallelDeviceExecutor<>(context.getDevices());
+                    List<Callable<Boolean>> callableTasks = new ArrayList<>();
+                    final String reportName = bugreportName;
                     for (ITestDevice device : context.getDevices()) {
-                        takeBugreport(device, listener, bugreportName);
+                        Callable<Boolean> callableTask =
+                                () -> {
+                                    takeBugreport(device, listener, reportName);
+                                    return true;
+                                };
+                        callableTasks.add(callableTask);
                     }
+                    // Capture the bugreports best effort, ignore the results.
+                    executor.invokeAll(callableTasks, 5, TimeUnit.MINUTES);
                 } else {
                     // If we have identified a faulty device only take the bugreport on it.
                     takeBugreport(badDevice, listener, bugreportName);
