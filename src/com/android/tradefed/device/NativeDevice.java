@@ -219,6 +219,9 @@ public class NativeDevice implements IManagedTestDevice {
 
     private File mExecuteShellCommandLogs = null;
 
+    private DeviceDescriptor mCachedDeviceDescriptor = null;
+    private final Object mCacheLock = new Object();
+
     /**
      * Interface for a generic device communication attempt.
      */
@@ -4449,6 +4452,24 @@ public class NativeDevice implements IManagedTestDevice {
             }
         } catch (DeviceNotAvailableException e) {
             throw new RuntimeException("Device became unavailable while checking API level", e);
+        }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public DeviceDescriptor getCachedDeviceDescriptor() {
+        synchronized (mCacheLock) {
+            if (DeviceAllocationState.Allocated.equals(getAllocationState())) {
+                if (mCachedDeviceDescriptor == null) {
+                    // Create the cache the very first time when it's allocated.
+                    mCachedDeviceDescriptor = getDeviceDescriptor();
+                    return mCachedDeviceDescriptor;
+                }
+                return mCachedDeviceDescriptor;
+            }
+            // If device is not allocated, just return current information
+            mCachedDeviceDescriptor = null;
+            return getDeviceDescriptor();
         }
     }
 
