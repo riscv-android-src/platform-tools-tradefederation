@@ -155,8 +155,9 @@ public class ResultAggregator extends CollectingTestListener {
             mPureRunResultForAgg.clear();
         }
 
+        // Reset the reporting since we start a new module
+        mShouldReportFailure = true;
         if (mDetailedRunResults != null) {
-            mShouldReportFailure = true;
             forwardDetailedFailure();
         }
 
@@ -309,7 +310,6 @@ public class ResultAggregator extends CollectingTestListener {
             expectedTestCount += result.getExpectedTestCount();
             resultNames.add(result.getName());
         }
-
         // Forward all the results aggregated
         mAggregatedForwarder.testRunStarted(
                 getCurrentRunResults().getName(),
