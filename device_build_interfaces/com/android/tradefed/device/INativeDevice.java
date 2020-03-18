@@ -1447,6 +1447,12 @@ public interface INativeDevice {
     public DeviceDescriptor getDeviceDescriptor();
 
     /**
+     * Returns a cached {@link DeviceDescriptor} if the device is allocated, otherwise returns the
+     * current {@link DeviceDescriptor}.
+     */
+    public DeviceDescriptor getCachedDeviceDescriptor();
+
+    /**
      * Helper method runs the "pidof" and "stat" command and returns {@link ProcessInfo} object with
      * PID and process start time of the given process.
      *
