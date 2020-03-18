@@ -212,6 +212,9 @@ public class TradefedSandbox implements ISandbox {
         mRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
         mRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
         // TODO: add handling of setting and creating the subprocess global configuration
+        if (getSandboxOptions(config).shouldEnableDebugThread()) {
+            mRunUtil.setEnvVariable(TradefedSandboxRunner.DEBUG_THREAD_KEY, "true");
+        }
 
         try {
             mRootFolder =
