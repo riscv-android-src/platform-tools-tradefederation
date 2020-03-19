@@ -324,32 +324,25 @@ public class RemoteInvocationExecution extends InvocationExecution {
                             currentInvocationListener, configFile, info, options, runUtil, config);
         } finally {
             // Fetch the logs for debugging
-            File stdoutFile =
-                    RemoteFileUtil.fetchRemoteFile(
+            File stdout =
+                    fetchRemoteAndLogFile(
+                            currentInvocationListener,
+                            STDOUT_FILE,
+                            STDOUT_FILE,
                             info,
                             options,
-                            runUtil,
-                            PULL_RESULT_TIMEOUT,
-                            mRemoteTradefedDir + STDOUT_FILE);
-            if (stdoutFile != null) {
-                try (InputStreamSource source = new FileInputStreamSource(stdoutFile, true)) {
-                    currentInvocationListener.testLog(STDOUT_FILE, LogDataType.TEXT, source);
-                }
-            }
-
-            File stderrFile =
-                    RemoteFileUtil.fetchRemoteFile(
+                            runUtil);
+            FileUtil.recursiveDelete(stdout);
+            File stderr =
+                    fetchRemoteAndLogFile(
+                            currentInvocationListener,
+                            STDERR_FILE,
+                            STDERR_FILE,
                             info,
                             options,
-                            runUtil,
-                            PULL_RESULT_TIMEOUT,
-                            mRemoteTradefedDir + STDERR_FILE);
-            if (stderrFile != null) {
-                mRemoteConsoleStdErr = FileUtil.readStringFromFile(stderrFile);
-                try (InputStreamSource source = new FileInputStreamSource(stderrFile, true)) {
-                    currentInvocationListener.testLog(STDERR_FILE, LogDataType.TEXT, source);
-                }
-            }
+                            runUtil);
+            mRemoteConsoleStdErr = FileUtil.readStringFromFile(stderr);
+            FileUtil.recursiveDelete(stderr);
         }
 
         // If not result in progress are reported, parse the full results at the end.
@@ -390,6 +383,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
         boolean stillRunning = true;
         int errorConnectCount = 0;
         int currentIndex = 0;
+        long currentTimeOnProto = 0L;
         while (stillRunning) {
             if (config.getCommandOptions().shouldReportModuleProgression()) {
                 File resultFile =
@@ -401,6 +395,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
                                 mRemoteTradefedDir + PROTO_RESULT_NAME + currentIndex);
                 if (resultFile != null) {
                     currentIndex++;
+                    currentTimeOnProto = System.currentTimeMillis();
                     try {
                         mProtoParser.processFileProto(resultFile);
                     } finally {
@@ -410,6 +405,19 @@ public class RemoteInvocationExecution extends InvocationExecution {
                     // sleep next time we don't find a file to process on the remote.
                     continue;
                 }
+            }
+            if (System.currentTimeMillis() - currentTimeOnProto > 7200000) { // 2 hours
+                // If we are stuck on waiting the same proto for over 2 hours, collect some logs
+                File stdout =
+                        fetchRemoteAndLogFile(
+                                currentInvocationListener,
+                                STDOUT_FILE,
+                                STDOUT_FILE + "-early",
+                                info,
+                                options,
+                                runUtil);
+                FileUtil.recursiveDelete(stdout);
+                currentTimeOnProto = System.currentTimeMillis();
             }
 
             CommandResult psRes =
@@ -462,7 +470,11 @@ public class RemoteInvocationExecution extends InvocationExecution {
                                 mRemoteTradefedDir + PROTO_RESULT_NAME + currentIndex);
                 if (resultFile != null) {
                     currentIndex++;
-                    mProtoParser.processFileProto(resultFile);
+                    try {
+                        mProtoParser.processFileProto(resultFile);
+                    } finally {
+                        FileUtil.deleteFile(resultFile);
+                    }
                 }
             } while (resultFile != null);
         }
@@ -641,5 +653,23 @@ public class RemoteInvocationExecution extends InvocationExecution {
         } finally {
             FileUtil.deleteFile(resultFile);
         }
+    }
+
+    private File fetchRemoteAndLogFile(
+            ITestLogger logger,
+            String fileName,
+            String logName,
+            GceAvdInfo info,
+            TestDeviceOptions options,
+            IRunUtil runUtil) {
+        File file =
+                RemoteFileUtil.fetchRemoteFile(
+                        info, options, runUtil, PULL_RESULT_TIMEOUT, mRemoteTradefedDir + fileName);
+        if (file != null) {
+            try (InputStreamSource source = new FileInputStreamSource(file, false)) {
+                logger.testLog(logName, LogDataType.TEXT, source);
+            }
+        }
+        return file;
     }
 }
