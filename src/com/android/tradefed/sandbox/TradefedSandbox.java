@@ -58,6 +58,7 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.Set;
 
 /**
@@ -100,6 +101,7 @@ public class TradefedSandbox implements ISandbox {
         } catch (IOException e) {
             CLog.e(e);
         }
+        mCmdArgs.addAll(getSandboxOptions(config).getJavaOptions());
         mCmdArgs.add("-cp");
         mCmdArgs.add(createClasspath(mRootFolder));
         mCmdArgs.add(TradefedSandboxRunner.class.getCanonicalName());
@@ -214,6 +216,10 @@ public class TradefedSandbox implements ISandbox {
         // TODO: add handling of setting and creating the subprocess global configuration
         if (getSandboxOptions(config).shouldEnableDebugThread()) {
             mRunUtil.setEnvVariable(TradefedSandboxRunner.DEBUG_THREAD_KEY, "true");
+        }
+        for (Entry<String, String> envEntry :
+                getSandboxOptions(config).getEnvVariables().entrySet()) {
+            mRunUtil.setEnvVariable(envEntry.getKey(), envEntry.getValue());
         }
 
         try {
