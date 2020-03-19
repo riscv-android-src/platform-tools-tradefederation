@@ -19,6 +19,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import com.android.tradefed.command.remote.DeviceDescriptor;
+import com.android.tradefed.device.DeviceAllocationState;
+import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.SerializationUtil;
 
@@ -42,6 +44,38 @@ public class TargetSetupErrorTest {
             Object o = SerializationUtil.deserialize(s, true);
             assertTrue(o instanceof TargetSetupError);
             assertEquals("reason [null null:null null]", ((TargetSetupError) o).getMessage());
+        } finally {
+            FileUtil.deleteFile(s);
+        }
+    }
+
+    @Test
+    public void testSerialization_withIDevice() throws Exception {
+        DeviceDescriptor descriptor =
+                new DeviceDescriptor(
+                        "serial",
+                        true,
+                        DeviceAllocationState.Allocated,
+                        "product",
+                        "productVariant",
+                        "sdkVersion",
+                        "buildId",
+                        "batteryLevel",
+                        StubDevice.class.getName(),
+                        "macAddress",
+                        "simState",
+                        "simOperator",
+                        new StubDevice("serial"));
+        TargetSetupError exception = new TargetSetupError("reason", descriptor);
+        File s = SerializationUtil.serialize(exception);
+        try {
+            assertTrue(s.exists());
+            assertTrue(s.isFile());
+            Object o = SerializationUtil.deserialize(s, true);
+            assertTrue(o instanceof TargetSetupError);
+            assertEquals(
+                    "reason [serial product:productVariant buildId]",
+                    ((TargetSetupError) o).getMessage());
         } finally {
             FileUtil.deleteFile(s);
         }
