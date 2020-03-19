@@ -19,6 +19,10 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 /** Class that can receive and provide options to a {@link ISandbox}. */
 @OptionClass(alias = "sandbox", global_namespace = true)
@@ -33,6 +37,8 @@ public final class SandboxOptions {
     public static final String ENABLE_DEBUG_THREAD = "sandbox-debug-thread";
     public static final String EXTRA_BRANCH_TARGET = "extra-branch-target";
     public static final String EXTRA_BUILD_ID_TARGET = "extra-build-id-target";
+    private static final String SANDBOX_JAVA_OPTIONS = "sandbox-java-options";
+    private static final String SANDBOX_ENV_VARIABLE_OPTIONS = "sandbox-env-variable";
 
     @Option(
         name = TF_LOCATION,
@@ -96,6 +102,16 @@ public final class SandboxOptions {
                             + "current target build-id.")
     private String mExtraBuildIdTarget = null;
 
+    @Option(
+            name = SANDBOX_JAVA_OPTIONS,
+            description = "Pass options for the java process of the sandbox.")
+    private List<String> mSandboxJavaOptions = new ArrayList<>();
+
+    @Option(
+            name = SANDBOX_ENV_VARIABLE_OPTIONS,
+            description = "Pass environment variable and its value to the sandbox process.")
+    private Map<String, String> mSandboxEnvVariable = new LinkedHashMap<>();
+
     /**
      * Returns the provided directories containing the Trade Federation version to use for
      * sandboxing the run.
@@ -153,5 +169,15 @@ public final class SandboxOptions {
      */
     public String getExtraBuildIdTarget() {
         return mExtraBuildIdTarget;
+    }
+
+    /** The list of options to pass the java process of the sandbox. */
+    public List<String> getJavaOptions() {
+        return mSandboxJavaOptions;
+    }
+
+    /** The map of environment variable to pass to the java process of the sandbox. */
+    public Map<String, String> getEnvVariables() {
+        return mSandboxEnvVariable;
     }
 }
