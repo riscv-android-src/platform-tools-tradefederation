@@ -528,10 +528,6 @@ public class NativeDevice implements IManagedTestDevice {
         if (propKey == null || propValue == null) {
             throw new IllegalArgumentException("set property key or value cannot be null.");
         }
-        if (!isAdbRoot()) {
-            CLog.e("setProperty requires adb root = true.");
-            return false;
-        }
         String setPropCmd = String.format("\"setprop %s '%s'\"", propKey, propValue);
         CommandResult result = executeShellV2Command(setPropCmd);
         if (CommandStatus.SUCCESS.equals(result.getStatus())) {
