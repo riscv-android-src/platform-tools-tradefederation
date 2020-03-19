@@ -59,6 +59,18 @@ def preparation_time(start_time):
     return PREPARE_END_TIME - start_time if PREPARE_END_TIME else None
 
 
+def symlink_latest_result(test_result_dir):
+    """Make the symbolic link to latest result.
+
+    Args:
+        test_result_dir: A string of the dir path.
+    """
+    symlink = os.path.join(constants.ATEST_RESULT_ROOT, 'LATEST')
+    if os.path.exists(symlink) or os.path.islink(symlink):
+        os.remove(symlink)
+    os.symlink(test_result_dir, symlink)
+
+
 class AtestExecutionInfo(object):
     """Class that stores the whole test progress information in JSON format.
 
@@ -127,6 +139,7 @@ class AtestExecutionInfo(object):
             self.result_file.write(AtestExecutionInfo.
                                    _generate_execution_detail(self.args))
             self.result_file.close()
+            symlink_latest_result(self.work_dir)
         main_module = sys.modules.get(_MAIN_MODULE_KEY)
         main_exit_code = getattr(main_module, _EXIT_CODE_ATTR,
                                  constants.EXIT_CODE_ERROR)

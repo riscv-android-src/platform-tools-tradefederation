@@ -157,10 +157,6 @@ def make_test_run_dir():
     ctime = time.strftime(TEST_RUN_DIR_PREFIX, time.localtime())
     test_result_dir = tempfile.mkdtemp(prefix='%s_' % ctime,
                                        dir=constants.ATEST_RESULT_ROOT)
-    symlink = os.path.join(constants.ATEST_RESULT_ROOT, 'LATEST')
-    if os.path.exists(symlink):
-        os.remove(symlink)
-    os.symlink(test_result_dir, symlink)
     return test_result_dir
 
 
