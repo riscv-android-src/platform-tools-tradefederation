@@ -185,6 +185,8 @@ public class TradefedSandboxRunner {
                     try (PrintStream ps = new PrintStream(dumpStack)) {
                         dumpStacks(ps);
                     }
+
+                    printMemoryMessage();
                 }
             } catch (IOException e) {
                 System.err.println(e);
@@ -210,5 +212,15 @@ public class TradefedSandboxRunner {
     private void printLine(String output, PrintStream pw) {
         pw.print(output);
         pw.println();
+    }
+
+    private void printMemoryMessage() {
+        long diff = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+        System.out.println(
+                String.format(
+                        "=====\nTotal: %s, Free: %s, Diff: %s\n=====",
+                        Runtime.getRuntime().totalMemory(),
+                        Runtime.getRuntime().freeMemory(),
+                        diff));
     }
 }
