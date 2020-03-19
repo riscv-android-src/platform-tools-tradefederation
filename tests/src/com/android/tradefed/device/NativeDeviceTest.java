@@ -3028,21 +3028,6 @@ public class NativeDeviceTest {
         EasyMock.verify(mMockRunUtil, mMockIDevice);
     }
 
-    /** Unit test for {@link INativeDevice#setProperty(String, String)}. */
-    @Test
-    public void testSetProperty_notRoot() throws DeviceNotAvailableException {
-        mTestDevice =
-                new TestableAndroidNativeDevice() {
-                    @Override
-                    public boolean isAdbRoot() throws DeviceNotAvailableException {
-                        return false;
-                    }
-                };
-        EasyMock.replay(mMockRunUtil, mMockIDevice);
-        assertFalse(mTestDevice.setProperty("test", "value"));
-        EasyMock.verify(mMockRunUtil, mMockIDevice);
-    }
-
     /**
      * Verifies that {@link INativeDevice#isExecutable(String)} recognizes regular executable file
      *
