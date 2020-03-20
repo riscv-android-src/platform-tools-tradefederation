@@ -36,7 +36,6 @@ import static org.mockito.Mockito.verify;
 
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
-import com.android.ddmlib.testrunner.InstrumentationResultParser;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationException;
@@ -45,15 +44,19 @@ import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.metric.IMetricCollector;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.CollectingTestListener;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLifeCycleReceiver;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.testtype.coverage.CoverageOptions;
 import com.android.tradefed.testtype.suite.GranularRetriableTestWrapperTest.CalledMetricCollector;
 import com.android.tradefed.util.ListInstrumentationParser;
@@ -100,6 +103,7 @@ public class InstrumentationTestTest {
 
     // The configuration objects.
     private IConfiguration mConfig = null;
+    private TestInformation mTestInfo = null;
     private CoverageOptions mCoverageOptions = null;
     private OptionSetter mCoverageOptionsSetter = null;
 
@@ -156,6 +160,8 @@ public class InstrumentationTestTest {
 
         mConfig.setCoverageOptions(mCoverageOptions);
         mInstrumentationTest.setConfiguration(mConfig);
+        IInvocationContext context = new InvocationContext();
+        mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
     }
 
     /** Test normal run scenario. */
@@ -178,7 +184,7 @@ public class InstrumentationTestTest {
                 .runInstrumentationTests(
                         any(IRemoteAndroidTestRunner.class), any(ITestInvocationListener.class));
 
-        mInstrumentationTest.run(mMockListener);
+        mInstrumentationTest.run(mTestInfo, mMockListener);
 
         InOrder inOrder = Mockito.inOrder(mInstrumentationTest, mMockTestDevice, mMockListener);
         ArgumentCaptor<IRemoteAndroidTestRunner> runner =
@@ -200,7 +206,7 @@ public class InstrumentationTestTest {
         mInstrumentationTest.setAbi(mock(IAbi.class));
         mInstrumentationTest.setForceAbi("test");
         try {
-            mInstrumentationTest.run(mMockListener);
+            mInstrumentationTest.run(mTestInfo, mMockListener);
             fail("Should have thrown an exception");
         } catch (IllegalArgumentException e) {
             // expected
@@ -313,7 +319,7 @@ public class InstrumentationTestTest {
         mInstrumentationTest.setDevice(null);
 
         try {
-            mInstrumentationTest.run(mMockListener);
+            mInstrumentationTest.run(mTestInfo, mMockListener);
             fail("IllegalArgumentException not thrown");
         } catch (IllegalArgumentException e) {
             // expected
@@ -337,17 +343,78 @@ public class InstrumentationTestTest {
                 .runInstrumentationTests(
                         any(IRemoteAndroidTestRunner.class), any(ITestLifeCycleReceiver.class));
 
-        mInstrumentationTest.run(mMockListener);
+        mInstrumentationTest.run(mTestInfo, mMockListener);
 
         // note: expect run to not be reported
         Mockito.verifyNoMoreInteractions(mMockListener);
     }
 
+    @Test
+    public void testRun_betterFailure() throws Exception {
+        mInstrumentationTest.setRerunMode(true);
+
+        // Mock collected tests
+        RunInstrumentationTestsAnswer collected =
+                (runner, listener) -> {
+                    // perform call back on listener to show run of two tests
+                    listener.testRunStarted(TEST_PACKAGE_VALUE, 2);
+                    listener.testStarted(TEST1);
+                    listener.testEnded(TEST1, EMPTY_STRING_MAP);
+                    listener.testStarted(TEST2);
+                    listener.testEnded(TEST2, EMPTY_STRING_MAP);
+                    listener.testRunEnded(1, EMPTY_STRING_MAP);
+                    return true;
+                };
+        RunInstrumentationTestsAnswer partialRun =
+                (runner, listener) -> {
+                    // perform call back on listener to show run failed - only one test
+                    listener.testRunStarted(TEST_PACKAGE_VALUE, 2);
+                    listener.testStarted(TEST1);
+                    listener.testEnded(TEST1, EMPTY_STRING_MAP);
+                    listener.testRunFailed("Test run failed to complete");
+                    listener.testRunEnded(1, EMPTY_STRING_MAP);
+                    return true;
+                };
+        RunInstrumentationTestsAnswer rerun =
+                (runner, listener) -> {
+                    // perform call back on listeners to show run remaining test was run
+                    listener.testRunStarted(TEST_PACKAGE_VALUE, 1);
+                    listener.testStarted(TEST2);
+                    listener.testEnded(TEST2, EMPTY_STRING_MAP);
+                    listener.testRunEnded(1, EMPTY_STRING_MAP);
+                    return true;
+                };
+
+        doAnswer(collected)
+                .doAnswer(partialRun)
+                .doAnswer(rerun)
+                .when(mMockTestDevice)
+                .runInstrumentationTests(
+                        any(IRemoteAndroidTestRunner.class), any(ITestLifeCycleReceiver.class));
+
+        mInstrumentationTest.run(mTestInfo, mMockListener);
+
+        InOrder inOrder = Mockito.inOrder(mMockListener, mMockTestDevice);
+        inOrder.verify(mMockListener).testRunStarted(TEST_PACKAGE_VALUE, 2);
+        inOrder.verify(mMockListener).testStarted(eq(TEST1), anyLong());
+        inOrder.verify(mMockListener).testEnded(eq(TEST1), anyLong(), eq(EMPTY_STRING_MAP));
+        FailureDescription error1 =
+                FailureDescription.create(
+                        "Test run failed to complete", FailureStatus.TEST_FAILURE);
+        error1.setDebugHelpMessage("The following tests didn't run: [Test#test2]");
+        inOrder.verify(mMockListener).testRunFailed(error1);
+        inOrder.verify(mMockListener).testRunEnded(1, EMPTY_STRING_MAP);
+
+        inOrder.verify(mMockListener).testRunStarted(TEST_PACKAGE_VALUE, 0, 1);
+        inOrder.verify(mMockListener).testStarted(eq(TEST2), anyLong());
+        inOrder.verify(mMockListener).testEnded(eq(TEST2), anyLong(), eq(EMPTY_STRING_MAP));
+        inOrder.verify(mMockListener).testRunEnded(1, EMPTY_STRING_MAP);
+        inOrder.verifyNoMoreInteractions();
+    }
+
     /** Test the rerun mode when first test run fails. */
     @Test
     public void testRun_rerun() throws Exception {
-        OptionSetter setter = new OptionSetter(mInstrumentationTest);
-        setter.setOptionValue("bugreport-on-run-failure", "true");
         mInstrumentationTest.setRerunMode(true);
 
         // Mock collected tests
@@ -389,17 +456,17 @@ public class InstrumentationTestTest {
                 .runInstrumentationTests(
                         any(IRemoteAndroidTestRunner.class), any(ITestLifeCycleReceiver.class));
 
-        mInstrumentationTest.run(mMockListener);
+        mInstrumentationTest.run(mTestInfo, mMockListener);
 
         InOrder inOrder = Mockito.inOrder(mMockListener, mMockTestDevice);
         inOrder.verify(mMockListener).testRunStarted(TEST_PACKAGE_VALUE, 2);
         inOrder.verify(mMockListener).testStarted(eq(TEST1), anyLong());
         inOrder.verify(mMockListener).testEnded(eq(TEST1), anyLong(), eq(EMPTY_STRING_MAP));
-        inOrder.verify(mMockListener).testRunFailed(RUN_ERROR_MSG);
+        inOrder.verify(mMockListener)
+                .testRunFailed(
+                        FailureDescription.create(RUN_ERROR_MSG, FailureStatus.TEST_FAILURE));
         inOrder.verify(mMockListener).testRunEnded(1, EMPTY_STRING_MAP);
-        // Expect a bugreport since there was a failure.
-        inOrder.verify(mMockTestDevice)
-                .logBugreport("bugreport-on-run-failure-com.foo", mMockListener);
+
         inOrder.verify(mMockListener).testRunStarted(TEST_PACKAGE_VALUE, 0, 1);
         inOrder.verify(mMockListener).testStarted(eq(TEST2), anyLong());
         inOrder.verify(mMockListener).testEnded(eq(TEST2), anyLong(), eq(EMPTY_STRING_MAP));
@@ -440,7 +507,7 @@ public class InstrumentationTestTest {
                 .runInstrumentationTests(
                         any(IRemoteAndroidTestRunner.class), any(ITestLifeCycleReceiver.class));
 
-        mInstrumentationTest.run(mMockListener);
+        mInstrumentationTest.run(mTestInfo, mMockListener);
 
         InOrder inOrder = Mockito.inOrder(mMockListener, mMockTestDevice);
         inOrder.verify(mMockListener).testRunStarted(TEST_PACKAGE_VALUE, 2);
@@ -448,11 +515,13 @@ public class InstrumentationTestTest {
         inOrder.verify(mMockListener).testEnded(eq(TEST1), anyLong(), eq(EMPTY_STRING_MAP));
         inOrder.verify(mMockListener).testStarted(eq(TEST1), anyLong());
         inOrder.verify(mMockListener).testEnded(eq(TEST1), anyLong(), eq(EMPTY_STRING_MAP));
-        inOrder.verify(mMockListener)
-                .testRunFailed(
+        FailureDescription failure =
+                FailureDescription.create(
                         "The following tests ran more than once: [Test#test1]. Check your run "
                                 + "configuration, you might be including the same test class "
                                 + "several times.");
+        failure.setFailureStatus(FailureStatus.TEST_FAILURE);
+        inOrder.verify(mMockListener).testRunFailed(failure);
         inOrder.verify(mMockListener).testRunEnded(1, EMPTY_STRING_MAP);
         inOrder.verifyNoMoreInteractions();
     }
@@ -491,7 +560,7 @@ public class InstrumentationTestTest {
 
         OptionSetter setter = new OptionSetter(mInstrumentationTest);
         setter.setOptionValue("disable-duplicate-test-check", "true");
-        mInstrumentationTest.run(mMockListener);
+        mInstrumentationTest.run(mTestInfo, mMockListener);
 
         InOrder inOrder = Mockito.inOrder(mMockListener, mMockTestDevice);
         inOrder.verify(mMockListener).testRunStarted(TEST_PACKAGE_VALUE, 2);
@@ -557,7 +626,7 @@ public class InstrumentationTestTest {
                         any(IRemoteAndroidTestRunner.class), any(ITestLifeCycleReceiver.class));
 
         CollectingTestListener listener = new CollectingTestListener();
-        mInstrumentationTest.run(listener);
+        mInstrumentationTest.run(mTestInfo, listener);
 
         assertEquals(3, listener.getExpectedTests());
         assertEquals(3, listener.getNumTotalTests());
@@ -624,7 +693,7 @@ public class InstrumentationTestTest {
                 .runInstrumentationTests(
                         any(IRemoteAndroidTestRunner.class), any(ITestLifeCycleReceiver.class));
 
-        mInstrumentationTest.run(mMockListener);
+        mInstrumentationTest.run(mTestInfo, mMockListener);
 
         verify(mInstrumentationTest).getTestReRunner(testCaptor.capture());
         assertThat(testCaptor.getValue()).containsExactlyElementsIn(expectedTests);
@@ -633,7 +702,9 @@ public class InstrumentationTestTest {
         inOrder.verify(mMockListener).testRunStarted(TEST_PACKAGE_VALUE, 2);
         inOrder.verify(mMockListener).testStarted(eq(TEST1), anyLong());
         inOrder.verify(mMockListener).testEnded(eq(TEST1), anyLong(), eq(EMPTY_STRING_MAP));
-        inOrder.verify(mMockListener).testRunFailed(RUN_ERROR_MSG);
+        inOrder.verify(mMockListener)
+                .testRunFailed(
+                        FailureDescription.create(RUN_ERROR_MSG, FailureStatus.TEST_FAILURE));
         inOrder.verify(mMockListener).testRunEnded(1, EMPTY_STRING_MAP);
         inOrder.verify(mMockListener).testRunStarted(TEST_PACKAGE_VALUE, 0, 1);
         inOrder.verify(mMockListener).testStarted(eq(TEST1), anyLong());
@@ -674,7 +745,7 @@ public class InstrumentationTestTest {
         doReturn(true).when(mMockTestDevice).enableAdbRoot();
         doReturn("").when(mMockTestDevice).executeShellCommand(anyString());
 
-        mInstrumentationTest.run(mMockListener);
+        mInstrumentationTest.run(mTestInfo, mMockListener);
 
         InOrder inOrder = Mockito.inOrder(mMockListener);
         inOrder.verify(mMockListener).testRunStarted(TEST_PACKAGE_VALUE, 2);
@@ -734,13 +805,15 @@ public class InstrumentationTestTest {
                 .runInstrumentationTests(
                         any(IRemoteAndroidTestRunner.class), any(ITestInvocationListener.class));
 
-        mInstrumentationTest.run(mMockListener);
+        mInstrumentationTest.run(mTestInfo, mMockListener);
 
         InOrder inOrder = Mockito.inOrder(mMockListener, mMockTestDevice);
         inOrder.verify(mMockListener).testRunStarted(TEST_PACKAGE_VALUE, 2);
         inOrder.verify(mMockListener).testStarted(eq(TEST1), anyLong());
         inOrder.verify(mMockListener).testEnded(eq(TEST1), anyLong(), eq(EMPTY_STRING_MAP));
-        inOrder.verify(mMockListener).testRunFailed(RUN_ERROR_MSG);
+        inOrder.verify(mMockListener)
+                .testRunFailed(
+                        FailureDescription.create(RUN_ERROR_MSG, FailureStatus.TEST_FAILURE));
         inOrder.verify(mMockListener).testRunEnded(1, EMPTY_STRING_MAP);
         inOrder.verify(mMockTestDevice).reboot();
         inOrder.verify(mMockListener).testRunStarted(TEST_PACKAGE_VALUE, 0, 1);
@@ -793,18 +866,20 @@ public class InstrumentationTestTest {
                         any(IRemoteAndroidTestRunner.class), any(ITestLifeCycleReceiver.class));
 
         try {
-            mInstrumentationTest.run(mMockListener);
+            mInstrumentationTest.run(mTestInfo, mMockListener);
             fail("DeviceNotAvailableException not thrown");
         } catch (DeviceNotAvailableException e) {
             // expected
         }
-        mInstrumentationTest.run(mMockListener);
+        mInstrumentationTest.run(mTestInfo, mMockListener);
 
         InOrder inOrder = Mockito.inOrder(mMockListener);
         inOrder.verify(mMockListener).testRunStarted(TEST_PACKAGE_VALUE, 2);
         inOrder.verify(mMockListener).testStarted(eq(TEST1), anyLong());
         inOrder.verify(mMockListener).testEnded(eq(TEST1), anyLong(), eq(EMPTY_STRING_MAP));
-        inOrder.verify(mMockListener).testRunFailed(RUN_ERROR_MSG);
+        inOrder.verify(mMockListener)
+                .testRunFailed(
+                        FailureDescription.create(RUN_ERROR_MSG, FailureStatus.TEST_FAILURE));
         inOrder.verify(mMockListener).testRunEnded(1, EMPTY_STRING_MAP);
         inOrder.verify(mMockListener).testRunStarted(TEST_PACKAGE_VALUE, 1);
         inOrder.verify(mMockListener).testStarted(eq(TEST2), anyLong());
@@ -821,7 +896,7 @@ public class InstrumentationTestTest {
         mInstrumentationTest.setTestTimeout(-2);
 
         try {
-            mInstrumentationTest.run(mMockListener);
+            mInstrumentationTest.run(mTestInfo, mMockListener);
             fail("IllegalArgumentException not thrown");
         } catch (IllegalArgumentException e) {
             // expected
@@ -834,7 +909,7 @@ public class InstrumentationTestTest {
         mInstrumentationTest.setTestSize("foo");
 
         try {
-            mInstrumentationTest.run(mMockListener);
+            mInstrumentationTest.run(mTestInfo, mMockListener);
             fail("IllegalArgumentException not thrown");
         } catch (IllegalArgumentException e) {
             // expected
@@ -886,68 +961,11 @@ public class InstrumentationTestTest {
         mInstrumentationTest.setPackageName("noMatchPackage");
         mInstrumentationTest.setRunnerName(null);
         try {
-            mInstrumentationTest.run(mMockListener);
+            mInstrumentationTest.run(mTestInfo, mMockListener);
             fail("Should have thrown an exception.");
         } catch (IllegalArgumentException e) {
             // expected
         }
-    }
-
-    /**
-     * Test for {@link InstrumentationTest#collectTestsAndRetry(IRemoteAndroidTestRunner,
-     * ITestInvocationListener)} when the collection fails.
-     */
-    @Test
-    public void testCollectTestsAndRetry_Failure() throws DeviceNotAvailableException {
-        RunInstrumentationTestsAnswer collected =
-                (runner, listener) -> {
-                    listener.testRunStarted(TEST_PACKAGE_VALUE, 0);
-                    listener.testRunFailed(InstrumentationResultParser.INVALID_OUTPUT_ERR_MSG);
-                    listener.testRunEnded(1, EMPTY_STRING_MAP);
-                    return true;
-                };
-
-        doAnswer(collected)
-                .when(mMockTestDevice)
-                .runInstrumentationTests(
-                        any(IRemoteAndroidTestRunner.class), any(ITestLifeCycleReceiver.class));
-
-        mInstrumentationTest.setEnforceFormat(true);
-
-        try {
-            mInstrumentationTest.collectTestsAndRetry(mock(IRemoteAndroidTestRunner.class), null);
-            fail("Should have thrown an exception");
-        } catch (RuntimeException e) {
-            // expected.
-        }
-    }
-
-    /**
-     * Test for {@link InstrumentationTest#collectTestsAndRetry(IRemoteAndroidTestRunner,
-     * ITestInvocationListener)} when the tests collection fails but we do not enforce the format,
-     * so we don't throw an exception.
-     */
-    @Test
-    public void testCollectTestsAndRetry_notEnforced() throws DeviceNotAvailableException {
-        RunInstrumentationTestsAnswer collected =
-                (runner, listener) -> {
-                    listener.testRunStarted(TEST_PACKAGE_VALUE, 0);
-                    listener.testRunFailed(InstrumentationResultParser.INVALID_OUTPUT_ERR_MSG);
-                    listener.testRunEnded(1, EMPTY_STRING_MAP);
-                    return true;
-                };
-
-        doAnswer(collected)
-                .when(mMockTestDevice)
-                .runInstrumentationTests(
-                        any(IRemoteAndroidTestRunner.class), any(ITestLifeCycleReceiver.class));
-
-        mInstrumentationTest.setEnforceFormat(false);
-
-        Collection<TestDescription> result =
-                mInstrumentationTest.collectTestsAndRetry(
-                        mock(IRemoteAndroidTestRunner.class), null);
-        assertThat(result).isNull();
     }
 
     /**
@@ -988,13 +1006,16 @@ public class InstrumentationTestTest {
                 .runInstrumentationTests(
                         any(IRemoteAndroidTestRunner.class), any(ITestLifeCycleReceiver.class));
 
-        mInstrumentationTest.run(mMockListener);
+        mInstrumentationTest.run(mTestInfo, mMockListener);
 
         // The reported number of tests is the one from the collected output
         InOrder inOrder = Mockito.inOrder(mMockListener);
         inOrder.verify(mMockListener).testRunStarted("fakeName", 5);
         inOrder.verify(mMockListener)
-                .testRunFailed("Instrumentation run failed due to 'Process crashed.'");
+                .testRunFailed(
+                        FailureDescription.create(
+                                "Instrumentation run failed due to 'Process crashed.'",
+                                FailureStatus.TEST_FAILURE));
         inOrder.verify(mMockListener).testRunEnded(1, EMPTY_STRING_MAP);
     }
 
@@ -1041,7 +1062,7 @@ public class InstrumentationTestTest {
         InputStreamSource source = new ByteArrayInputStreamSource("".getBytes());
         doReturn(source).when(mMockTestDevice).getLogcatSince(anyLong());
 
-        mInstrumentationTest.run(mMockListener);
+        mInstrumentationTest.run(mTestInfo, mMockListener);
 
         // Ensure no rerunner is requested since there is no more tests.
         verify(mInstrumentationTest, times(0)).getTestReRunner(any());
@@ -1054,7 +1075,10 @@ public class InstrumentationTestTest {
                 .testFailed(tid, "Instrumentation run failed due to 'Process crashed.'");
         inOrder.verify(mMockListener).testEnded(tid, 15L, EMPTY_STRING_MAP);
         inOrder.verify(mMockListener)
-                .testRunFailed("Instrumentation run failed due to 'Process crashed.'");
+                .testRunFailed(
+                        FailureDescription.create(
+                                "Instrumentation run failed due to 'Process crashed.'",
+                                FailureStatus.TEST_FAILURE));
         inOrder.verify(mMockListener).testRunEnded(1, EMPTY_STRING_MAP);
     }
 
@@ -1112,9 +1136,8 @@ public class InstrumentationTestTest {
         notCalledCollector.mName = "not-called";
         collectors.add(notCalledCollector);
         collectors.add(calledCollector);
-        mInstrumentationTest.setInvocationContext(new InvocationContext());
         mInstrumentationTest.setMetricCollectors(collectors);
-        mInstrumentationTest.run(mMockListener);
+        mInstrumentationTest.run(mTestInfo, mMockListener);
 
         InOrder inOrder = Mockito.inOrder(mInstrumentationTest, mMockTestDevice, mMockListener);
         ArgumentCaptor<IRemoteAndroidTestRunner> runner =

@@ -20,6 +20,7 @@ import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -108,18 +109,19 @@ public class ManagedRemoteDevice extends TestDevice implements ITestLoggerReceiv
             }
 
             if (mGceAvd != null) {
-                // attempt to get a bugreport if Gce Avd is a failure
-                if (!GceStatus.SUCCESS.equals(mGceAvd.getStatus())) {
-                    // Get a bugreport via ssh
-                    getSshBugreport();
+                if (mGceAvd.hostAndPort() != null) {
+                    // attempt to get a bugreport if Gce Avd is a failure
+                    if (!GceStatus.SUCCESS.equals(mGceAvd.getStatus())) {
+                        // Get a bugreport via ssh
+                        getSshBugreport();
+                    }
+                    // Log the serial output of the instance.
+                    getGceHandler().logSerialOutput(mGceAvd, mTestLogger);
+
+                    // Fetch remote files
+                    CommonLogRemoteFileUtil.fetchCommonFiles(
+                            mTestLogger, mGceAvd, getOptions(), getRunUtil());
                 }
-                // Log the serial output of the instance.
-                getGceHandler().logSerialOutput(mGceAvd, mTestLogger);
-
-                // Fetch remote files
-                CommonLogRemoteFileUtil.fetchCommonFiles(
-                        mTestLogger, mGceAvd, getOptions(), getRunUtil());
-
                 // Cleanup GCE first to make sure ssh tunnel has nowhere to go.
                 if (!getOptions().shouldSkipTearDown()) {
                     getGceHandler().shutdownGce();
@@ -220,7 +222,7 @@ public class ManagedRemoteDevice extends TestDevice implements ITestLoggerReceiv
             mValidationConfig = new Configuration("validation", "validation");
             mValidationConfig.setDeviceOptions(mCopiedOptions);
             try {
-                mValidationConfig.resolveDynamicOptions();
+                mValidationConfig.resolveDynamicOptions(new DynamicRemoteFileResolver());
             } catch (BuildRetrievalError | ConfigurationException e) {
                 throw new RuntimeException(e);
             }

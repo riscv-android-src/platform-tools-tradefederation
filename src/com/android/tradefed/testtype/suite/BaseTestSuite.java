@@ -102,12 +102,11 @@ public class BaseTestSuite extends ITestSuite {
     private List<String> mModuleArgs = new ArrayList<>();
 
     @Option(
-        name = TEST_ARG_OPTION,
-        description =
-                "the arguments to pass to a test. The expected format is"
-                        + "\"<test-class>:<arg-name>:[<arg-key>:=]<arg-value>\"",
-        importance = Importance.ALWAYS
-    )
+            name = TEST_ARG_OPTION,
+            description =
+                    "The arguments to pass to a test or its preparers. The expected format is"
+                            + "\"<test-class>:<arg-name>:[<arg-key>:=]<arg-value>\"",
+            importance = Importance.ALWAYS)
     private List<String> mTestArgs = new ArrayList<>();
 
     @Option(
@@ -255,7 +254,7 @@ public class BaseTestSuite extends ITestSuite {
             if (mForceParameter != null && !mEnableParameter) {
                 throw new IllegalArgumentException(
                         "'module-parameter' option was specified without "
-                                + "'enable-optional-parameterization'");
+                                + "'enable-parameterized-modules'");
             }
             if (mEnableOptionalParameter && !mEnableParameter) {
                 throw new IllegalArgumentException(
@@ -307,7 +306,9 @@ public class BaseTestSuite extends ITestSuite {
         LinkedHashMap<String, IConfiguration> loadedConfigs = new LinkedHashMap<>();
         // Load and return directly the specific config files.
         if (!mConfigPaths.isEmpty()) {
-            CLog.d("Loading the specified configs and skip loading from the resources.");
+            CLog.d(
+                    "Loading the specified configs path '%s' and skip loading from the resources.",
+                    mConfigPaths);
             return getModuleLoader().loadConfigsFromSpecifiedPaths(mConfigPaths, abis, suiteTag);
         }
 

@@ -238,6 +238,14 @@ class AtestUtilsUnittests(unittest.TestCase):
         mock_output.return_value = 'test@google.com'
         self.assertFalse(atest_utils.is_external_run())
 
+        mock_output.return_value = 'test@other.com'
+        mock_hostname.return_value = 'c.googlers.com'
+        self.assertFalse(atest_utils.is_external_run())
+
+        mock_output.return_value = 'test@other.com'
+        mock_hostname.return_value = 'a.googlers.com'
+        self.assertTrue(atest_utils.is_external_run())
+
         mock_output.side_effect = OSError()
         self.assertTrue(atest_utils.is_external_run())
 
@@ -381,6 +389,21 @@ class AtestUtilsUnittests(unittest.TestCase):
         with mock.patch.dict('os.environ', os_environ_mock, clear=True):
             expected_cmd = ['../../build/soong/soong_ui.bash', '--make-mode']
             self.assertEqual(expected_cmd, atest_utils.get_build_cmd())
+
+    @mock.patch('subprocess.check_output')
+    def test_get_modified_files(self, mock_co):
+        """Test method get_modified_files"""
+        mock_co.side_effect = ['/a/b/',
+                               '\n',
+                               'test_fp1.java\nc/test_fp2.java']
+        self.assertEqual({'/a/b/test_fp1.java', '/a/b/c/test_fp2.java'},
+                         atest_utils.get_modified_files(''))
+        mock_co.side_effect = ['/a/b/',
+                               'test_fp4',
+                               '/test_fp3.java']
+        self.assertEqual({'/a/b/test_fp4', '/a/b/test_fp3.java'},
+                         atest_utils.get_modified_files(''))
+
 
 if __name__ == "__main__":
     unittest.main()

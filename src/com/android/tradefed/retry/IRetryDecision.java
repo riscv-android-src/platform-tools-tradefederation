@@ -34,6 +34,9 @@ public interface IRetryDecision {
     /** The {@link com.android.tradefed.retry.RetryStrategy} used during auto-retry. */
     public RetryStrategy getRetryStrategy();
 
+    /** Whether or not to reboot the device before the last attempt. */
+    public boolean rebootAtLastAttempt();
+
     /** The maximum number of attempts during auto-retry. */
     public int getMaxRetryCount();
 

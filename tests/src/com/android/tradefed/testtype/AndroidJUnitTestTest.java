@@ -30,9 +30,14 @@ import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.guice.InvocationScope;
+import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLifeCycleReceiver;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.util.FileUtil;
 
 import org.easymock.EasyMock;
@@ -67,6 +72,7 @@ public class AndroidJUnitTestTest {
     private ITestDevice mMockTestDevice;
     private IRemoteAndroidTestRunner mMockRemoteRunner;
     private ITestInvocationListener mMockListener;
+    private TestInformation mTestInfo;
 
     // Guice scope
     private InvocationScope mScope;
@@ -106,6 +112,8 @@ public class AndroidJUnitTestTest {
                 Long.toString(SHELL_TIMEOUT));
         mMockRemoteRunner.addInstrumentationArg(
                 AndroidJUnitTest.NEW_RUN_LISTENER_ORDER_KEY, "true");
+        IInvocationContext context = new InvocationContext();
+        mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
     }
 
     @After
@@ -122,7 +130,7 @@ public class AndroidJUnitTestTest {
         setRunTestExpectations();
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
         mAndroidJUnitTest.addIncludeFilter(TEST1.toString());
-        mAndroidJUnitTest.run(mMockListener);
+        mAndroidJUnitTest.run(mTestInfo, mMockListener);
         EasyMock.verify(mMockRemoteRunner, mMockTestDevice);
     }
 
@@ -134,7 +142,7 @@ public class AndroidJUnitTestTest {
         setRunTestExpectations();
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
         mAndroidJUnitTest.addExcludeFilter(TEST1.toString());
-        mAndroidJUnitTest.run(mMockListener);
+        mAndroidJUnitTest.run(mTestInfo, mMockListener);
         EasyMock.verify(mMockRemoteRunner, mMockTestDevice);
     }
 
@@ -148,7 +156,7 @@ public class AndroidJUnitTestTest {
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
         mAndroidJUnitTest.addIncludeFilter(TEST1.getClassName());
         mAndroidJUnitTest.addExcludeFilter(TEST2.toString());
-        mAndroidJUnitTest.run(mMockListener);
+        mAndroidJUnitTest.run(mTestInfo, mMockListener);
         EasyMock.verify(mMockRemoteRunner, mMockTestDevice);
     }
 
@@ -160,7 +168,7 @@ public class AndroidJUnitTestTest {
         setRunTestExpectations();
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
         mAndroidJUnitTest.addIncludeFilter("com.android.test");
-        mAndroidJUnitTest.run(mMockListener);
+        mAndroidJUnitTest.run(mTestInfo, mMockListener);
         EasyMock.verify(mMockRemoteRunner, mMockTestDevice);
     }
 
@@ -172,7 +180,7 @@ public class AndroidJUnitTestTest {
         setRunTestExpectations();
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
         mAndroidJUnitTest.addExcludeFilter("com.android.not");
-        mAndroidJUnitTest.run(mMockListener);
+        mAndroidJUnitTest.run(mTestInfo, mMockListener);
         EasyMock.verify(mMockRemoteRunner, mMockTestDevice);
     }
 
@@ -186,7 +194,7 @@ public class AndroidJUnitTestTest {
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
         mAndroidJUnitTest.addIncludeFilter("com.android.test");
         mAndroidJUnitTest.addExcludeFilter("com.android.not");
-        mAndroidJUnitTest.run(mMockListener);
+        mAndroidJUnitTest.run(mTestInfo, mMockListener);
         EasyMock.verify(mMockRemoteRunner, mMockTestDevice);
     }
 
@@ -198,7 +206,7 @@ public class AndroidJUnitTestTest {
         setRunTestExpectations();
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
         mAndroidJUnitTest.addIncludeFilter(".*testName$");
-        mAndroidJUnitTest.run(mMockListener);
+        mAndroidJUnitTest.run(mTestInfo, mMockListener);
         EasyMock.verify(mMockRemoteRunner, mMockTestDevice);
     }
 
@@ -211,7 +219,7 @@ public class AndroidJUnitTestTest {
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice);
         mAndroidJUnitTest.addIncludeFilter(".*test2");
         mAndroidJUnitTest.addIncludeFilter(".*testName$");
-        mAndroidJUnitTest.run(mMockListener);
+        mAndroidJUnitTest.run(mTestInfo, mMockListener);
         EasyMock.verify(mMockRemoteRunner, mMockTestDevice);
     }
 
@@ -223,7 +231,7 @@ public class AndroidJUnitTestTest {
         // regex with unbalanced parenthesis.
         mAndroidJUnitTest.addIncludeFilter("(testName");
         try {
-            mAndroidJUnitTest.run(mMockListener);
+            mAndroidJUnitTest.run(mTestInfo, mMockListener);
         } catch (RuntimeException expected) {
             //expected.
             return;
@@ -245,7 +253,7 @@ public class AndroidJUnitTestTest {
         mAndroidJUnitTest.addExcludeFilter(TEST2.toString());
         mAndroidJUnitTest.addIncludeFilter("com.android.test");
         mAndroidJUnitTest.addExcludeFilter("com.android.not");
-        mAndroidJUnitTest.run(mMockListener);
+        mAndroidJUnitTest.run(mTestInfo, mMockListener);
         EasyMock.verify(mMockRemoteRunner, mMockTestDevice);
     }
 
@@ -267,7 +275,7 @@ public class AndroidJUnitTestTest {
         FileUtil.writeToFile(TEST1.toString(), tmpFile);
         try {
             mAndroidJUnitTest.setIncludeTestFile(tmpFile);
-            mAndroidJUnitTest.run(mMockListener);
+            mAndroidJUnitTest.run(mTestInfo, mMockListener);
             EasyMock.verify(mMockRemoteRunner, mMockTestDevice);
         } finally {
             FileUtil.deleteFile(tmpFile);
@@ -293,7 +301,7 @@ public class AndroidJUnitTestTest {
         FileUtil.writeToFile(TEST1.toString(), tmpFile);
         try {
             mAndroidJUnitTest.setExcludeTestFile(tmpFile);
-            mAndroidJUnitTest.run(mMockListener);
+            mAndroidJUnitTest.run(mTestInfo, mMockListener);
             EasyMock.verify(mMockRemoteRunner, mMockTestDevice);
         } finally {
             FileUtil.deleteFile(tmpFile);
@@ -330,7 +338,7 @@ public class AndroidJUnitTestTest {
             mAndroidJUnitTest.addExcludeFilter(TEST2.toString());
             mAndroidJUnitTest.setIncludeTestFile(tmpFileInclude);
             mAndroidJUnitTest.setExcludeTestFile(tmpFileExclude);
-            mAndroidJUnitTest.run(mMockListener);
+            mAndroidJUnitTest.run(mTestInfo, mMockListener);
             EasyMock.verify(mMockRemoteRunner, mMockTestDevice);
         } finally {
             FileUtil.deleteFile(tmpFileInclude);
@@ -351,7 +359,9 @@ public class AndroidJUnitTestTest {
                 .andThrow(new DeviceNotAvailableException("failed to push", "device1"));
 
         mMockListener.testRunStarted(EasyMock.anyObject(), EasyMock.eq(0));
-        mMockListener.testRunFailed("failed to push");
+        FailureDescription failure = FailureDescription.create("failed to push");
+        failure.setFailureStatus(FailureStatus.INFRA_FAILURE);
+        mMockListener.testRunFailed(failure);
         mMockListener.testRunEnded(0, new HashMap<String, Metric>());
 
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice, mMockListener);
@@ -364,7 +374,7 @@ public class AndroidJUnitTestTest {
             mAndroidJUnitTest.addExcludeFilter(TEST2.toString());
             mAndroidJUnitTest.setIncludeTestFile(tmpFileInclude);
             mAndroidJUnitTest.setExcludeTestFile(tmpFileExclude);
-            mAndroidJUnitTest.run(mMockListener);
+            mAndroidJUnitTest.run(mTestInfo, mMockListener);
             fail("Should have thrown an exception.");
         } catch (DeviceNotAvailableException expected) {
             //expected
@@ -402,7 +412,7 @@ public class AndroidJUnitTestTest {
             OptionSetter setter = new OptionSetter(mAndroidJUnitTest);
             setter.setOptionValue("test-file-include-filter", tmpFileInclude.getAbsolutePath());
             setter.setOptionValue("test-file-exclude-filter", tmpFileExclude.getAbsolutePath());
-            mAndroidJUnitTest.run(mMockListener);
+            mAndroidJUnitTest.run(mTestInfo, mMockListener);
             EasyMock.verify(mMockRemoteRunner, mMockTestDevice);
         } finally {
             FileUtil.deleteFile(tmpFileInclude);

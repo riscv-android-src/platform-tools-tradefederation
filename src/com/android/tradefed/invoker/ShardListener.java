@@ -20,6 +20,7 @@ import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.CollectingTestListener;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
@@ -152,6 +153,17 @@ public class ShardListener extends CollectingTestListener implements ISupportGra
 
     /** {@inheritDoc} */
     @Override
+    public void testRunFailed(FailureDescription failure) {
+        super.testRunFailed(failure);
+        CLog.logAndDisplay(
+                LogLevel.ERROR,
+                "FAILED: %s failed with message: %s",
+                getCurrentRunResults().getName(),
+                failure.toString());
+    }
+
+    /** {@inheritDoc} */
+    @Override
     public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
         super.testRunEnded(elapsedTime, runMetrics);
         CLog.logAndDisplay(
@@ -220,7 +232,7 @@ public class ShardListener extends CollectingTestListener implements ISupportGra
                 runResult.getStartTime());
         forwardTestResults(runResult.getTestResults());
         if (runResult.isRunFailure()) {
-            mMasterListener.testRunFailed(runResult.getRunFailureMessage());
+            mMasterListener.testRunFailed(runResult.getRunFailureDescription());
         }
 
         // Provide a strong association of the run to its logs.
@@ -234,8 +246,8 @@ public class ShardListener extends CollectingTestListener implements ISupportGra
             mMasterListener.testStarted(testEntry.getKey(), testEntry.getValue().getStartTime());
             switch (testEntry.getValue().getStatus()) {
                 case FAILURE:
-                    mMasterListener.testFailed(testEntry.getKey(),
-                            testEntry.getValue().getStackTrace());
+                    mMasterListener.testFailed(
+                            testEntry.getKey(), testEntry.getValue().getFailure());
                     break;
                 case ASSUMPTION_FAILURE:
                     mMasterListener.testAssumptionFailure(testEntry.getKey(),

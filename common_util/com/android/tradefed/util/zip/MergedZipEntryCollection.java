@@ -86,7 +86,7 @@ public class MergedZipEntryCollection {
                                 + HEADER_SIZE
                                 + entry.getCompressedSize()
                                 - group.get(0).getLocalHeaderOffset();
-                double gapPercentage = (double) (newGap) / totalSize;
+                double gapPercentage = (double) newGap / totalSize;
                 if (endOffset < entry.getLocalHeaderOffset() - MAX_GAP
                         && MAX_GAP_PERCENTAGE < gapPercentage) {
                     collections.add(new MergedZipEntryCollection(group));

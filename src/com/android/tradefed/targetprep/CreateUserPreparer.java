@@ -15,11 +15,15 @@
  */
 package com.android.tradefed.targetprep;
 
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.TestDevice;
+import com.android.tradefed.device.UserInfo;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
+
+import java.util.ArrayList;
+import java.util.Map;
 
 /** Target preparer for creating user and cleaning it up at the end. */
 public class CreateUserPreparer extends BaseTargetPreparer {
@@ -30,19 +34,23 @@ public class CreateUserPreparer extends BaseTargetPreparer {
     private Integer mCreatedUserId = null;
 
     @Override
-    public void setUp(ITestDevice device, IBuildInfo buildInfo)
+    public void setUp(TestInformation testInfo)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
+        ITestDevice device = testInfo.getDevice();
         mOriginalUser = device.getCurrentUser();
         if (mOriginalUser == TestDevice.INVALID_USER_ID) {
             mOriginalUser = null;
             throw new TargetSetupError(
                     "Failed to get the current user.", device.getDeviceDescriptor());
         }
+
+        cleanupOldUsersIfLimitReached(device);
         try {
             mCreatedUserId = device.createUser(TF_CREATED_USER);
         } catch (IllegalStateException e) {
             throw new TargetSetupError("Failed to create user.", e, device.getDeviceDescriptor());
         }
+
         if (!device.startUser(mCreatedUserId, true)) {
             throw new TargetSetupError(
                     String.format("Failed to start to user '%s'", mCreatedUserId),
@@ -58,8 +66,7 @@ public class CreateUserPreparer extends BaseTargetPreparer {
     }
 
     @Override
-    public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
-            throws DeviceNotAvailableException {
+    public void tearDown(TestInformation testInfo, Throwable e) throws DeviceNotAvailableException {
         if (mCreatedUserId == null) {
             return;
         }
@@ -70,13 +77,35 @@ public class CreateUserPreparer extends BaseTargetPreparer {
             CLog.d("Skipping teardown due to dnae: %s", e.getMessage());
             return;
         }
+        ITestDevice device = testInfo.getDevice();
         if (!device.switchUser(mOriginalUser)) {
             CLog.e("Failed to switch back to original user '%s'", mOriginalUser);
         }
-        if (!device.removeUser(mCreatedUserId)) {
-            CLog.e(
-                    "Failed to delete user %s on device %s",
-                    mCreatedUserId, device.getSerialNumber());
+        device.removeUser(mCreatedUserId);
+    }
+
+    private void cleanupOldUsersIfLimitReached(ITestDevice device)
+            throws DeviceNotAvailableException {
+        ArrayList<Integer> tfCreatedUsers = new ArrayList<>();
+        int existingUsersCount = 0;
+        for (Map.Entry<Integer, UserInfo> entry : device.getUserInfos().entrySet()) {
+            UserInfo userInfo = entry.getValue();
+            String userName = userInfo.userName();
+
+            if (!userInfo.isGuest()) {
+                // Guest users don't fall under the quota.
+                existingUsersCount++;
+            }
+            if (userName != null && userName.equals(TF_CREATED_USER)) {
+                tfCreatedUsers.add(entry.getKey());
+            }
+        }
+
+        if (existingUsersCount >= device.getMaxNumberOfUsersSupported()) {
+            // Reached the maximum number of users allowed. Remove stale users to free up space.
+            for (int userId : tfCreatedUsers) {
+                device.removeUser(userId);
+            }
         }
     }
 }

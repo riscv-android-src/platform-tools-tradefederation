@@ -23,6 +23,7 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FileInputStreamSource;
@@ -311,7 +312,7 @@ public abstract class SubprocessTfLauncher
 
     /** {@inheritDoc} */
     @Override
-    public void run(ITestInvocationListener listener) {
+    public void run(TestInformation testInfo, ITestInvocationListener listener) {
         preRun();
         addInvocationData();
 

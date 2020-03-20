@@ -124,7 +124,7 @@ public class RetryReschedulerTest {
                 mRescheduledConfiguration,
                 mMockCommandOptions,
                 mMockRequirements);
-        mTest.run(null);
+        mTest.run(null, null);
         EasyMock.verify(
                 mMockRescheduler,
                 mMockLoader,
@@ -169,7 +169,7 @@ public class RetryReschedulerTest {
                 mRescheduledConfiguration,
                 mMockCommandOptions,
                 mMockRequirements);
-        mTest.run(null);
+        mTest.run(null, null);
         EasyMock.verify(
                 mMockRescheduler,
                 mMockLoader,
@@ -206,7 +206,7 @@ public class RetryReschedulerTest {
                 mMockFactory,
                 mRescheduledConfiguration,
                 mMockCommandOptions);
-        mTest.run(null);
+        mTest.run(null, null);
         EasyMock.verify(
                 mMockRescheduler,
                 mMockLoader,
@@ -245,7 +245,7 @@ public class RetryReschedulerTest {
                 mMockFactory,
                 mRescheduledConfiguration,
                 mMockCommandOptions);
-        mTest.run(null);
+        mTest.run(null, null);
         EasyMock.verify(
                 mMockRescheduler,
                 mMockLoader,
@@ -284,7 +284,7 @@ public class RetryReschedulerTest {
                 mMockFactory,
                 mRescheduledConfiguration,
                 mMockCommandOptions);
-        mTest.run(null);
+        mTest.run(null, null);
         EasyMock.verify(
                 mMockRescheduler,
                 mMockLoader,
@@ -329,7 +329,7 @@ public class RetryReschedulerTest {
                 mMockFactory,
                 mRescheduledConfiguration,
                 mMockCommandOptions);
-        mTest.run(null);
+        mTest.run(null, null);
         EasyMock.verify(
                 mMockRescheduler,
                 mMockLoader,
@@ -368,7 +368,7 @@ public class RetryReschedulerTest {
                 mMockFactory,
                 mRescheduledConfiguration,
                 mMockCommandOptions);
-        mTest.run(null);
+        mTest.run(null, null);
         EasyMock.verify(
                 mMockRescheduler,
                 mMockLoader,
@@ -411,7 +411,7 @@ public class RetryReschedulerTest {
                 mMockFactory,
                 mRescheduledConfiguration,
                 mMockCommandOptions);
-        mTest.run(null);
+        mTest.run(null, null);
         EasyMock.verify(
                 mMockRescheduler,
                 mMockLoader,
@@ -452,7 +452,7 @@ public class RetryReschedulerTest {
                 mMockFactory,
                 mRescheduledConfiguration,
                 mMockCommandOptions);
-        mTest.run(null);
+        mTest.run(null, null);
         EasyMock.verify(
                 mMockRescheduler,
                 mMockLoader,
@@ -490,7 +490,7 @@ public class RetryReschedulerTest {
                 mMockFactory,
                 mRescheduledConfiguration,
                 mMockCommandOptions);
-        mTest.run(null);
+        mTest.run(null, null);
         EasyMock.verify(
                 mMockRescheduler,
                 mMockLoader,
@@ -539,7 +539,7 @@ public class RetryReschedulerTest {
                 mMockFactory,
                 mRescheduledConfiguration,
                 mMockCommandOptions);
-        mTest.run(null);
+        mTest.run(null, null);
         EasyMock.verify(
                 mMockRescheduler,
                 mMockLoader,

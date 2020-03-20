@@ -15,6 +15,8 @@
  */
 package com.android.tradefed.config;
 
+import static org.junit.Assert.assertNotEquals;
+
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildProvider;
@@ -25,6 +27,7 @@ import com.android.tradefed.device.IDeviceRecovery;
 import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TextResultReporter;
@@ -44,6 +47,7 @@ import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -245,7 +249,9 @@ public class ConfigurationTest extends TestCase {
      */
     public void testGetTests() throws DeviceNotAvailableException {
         // check that the default test is present and doesn't blow up
-        mConfig.getTests().get(0).run(new TextResultReporter());
+        mConfig.getTests()
+                .get(0)
+                .run(TestInformation.newBuilder().build(), new TextResultReporter());
         IRemoteTest test1 = EasyMock.createMock(IRemoteTest.class);
         mConfig.setTest(test1);
         assertEquals(test1, mConfig.getTests().get(0));
@@ -578,7 +584,7 @@ public class ConfigurationTest extends TestCase {
 
         // No exception for download is thrown because no download occurred.
         mConfig.validateOptions();
-        mConfig.resolveDynamicOptions();
+        mConfig.resolveDynamicOptions(new DynamicRemoteFileResolver());
         // Dynamic file is not resolved.
         assertEquals(fakeConfigFile, deviceOptions.getAvdConfigFile());
     }
@@ -726,5 +732,25 @@ public class ConfigurationTest extends TestCase {
         assertTrue(
                 withOption.contains(
                         "<option name=\"auto-collect\" value=\"LOGCAT_ON_FAILURE\" />"));
+    }
+
+    public void testDeepClone() throws Exception {
+        Configuration original =
+                (Configuration)
+                        ConfigurationFactory.getInstance()
+                                .createConfigurationFromArgs(
+                                        new String[] {"instrumentations"}, null, null);
+        IConfiguration copy =
+                original.partialDeepClone(
+                        Arrays.asList(Configuration.DEVICE_NAME, Configuration.TEST_TYPE_NAME),
+                        null);
+        assertNotEquals(
+                original.getDeviceConfigByName(ConfigurationDef.DEFAULT_DEVICE_NAME),
+                copy.getDeviceConfigByName(ConfigurationDef.DEFAULT_DEVICE_NAME));
+        assertNotEquals(original.getTargetPreparers().get(0), copy.getTargetPreparers().get(0));
+        assertNotEquals(
+                original.getDeviceConfig().get(0).getTargetPreparers().get(0),
+                copy.getDeviceConfig().get(0).getTargetPreparers().get(0));
+        assertNotEquals(original.getTests().get(0), copy.getTests().get(0));
     }
 }

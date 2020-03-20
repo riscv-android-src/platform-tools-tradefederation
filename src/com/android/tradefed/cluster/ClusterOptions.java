@@ -126,6 +126,11 @@ public class ClusterOptions implements IClusterOptions {
     @Option(name = "lab-name", description = "The name of the lab the host belong to.")
     private String mLabName;
 
+    @Option(
+            name = "collect-early-test-summary",
+            description = "Collect early test summary from ITestSummaryListener to scheduler.")
+    private boolean mCollectEarlyTestSummary = false;
+
     /** {@inheritDoc} */
     @Override
     public String getServiceUrl() {
@@ -234,6 +239,15 @@ public class ClusterOptions implements IClusterOptions {
         mCheckFlashingPermitsOnLease = checkFlashingPermitsLease;
     }
 
+    /**
+     * Set whether the scheduler should collect early test summary.
+     *
+     * <p>Exposed for testing.
+     */
+    void setCollectEarlyTestSummary(boolean collectEarlyTestSummary) {
+        mCollectEarlyTestSummary = collectEarlyTestSummary;
+    }
+
     /** {@inheritDoc} */
     @Override
     public long getInvocationHeartbeatInterval() {
@@ -296,5 +310,11 @@ public class ClusterOptions implements IClusterOptions {
     @Override
     public String getLabName() {
         return mLabName;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean shouldCollectEarlyTestSummary() {
+        return mCollectEarlyTestSummary;
     }
 }

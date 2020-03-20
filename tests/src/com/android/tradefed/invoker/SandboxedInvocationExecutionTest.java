@@ -15,6 +15,8 @@
  */
 package com.android.tradefed.invoker;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
@@ -22,6 +24,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 
 import com.android.tradefed.build.BuildInfo;
+import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.command.CommandRunner.ExitCode;
@@ -33,6 +36,7 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.guice.InvocationScope;
+import com.android.tradefed.invoker.ExecutionFiles.FilesKey;
 import com.android.tradefed.invoker.sandbox.SandboxedInvocationExecution;
 import com.android.tradefed.log.ILogRegistry;
 import com.android.tradefed.log.ITestLogger;
@@ -47,6 +51,7 @@ import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
+import com.android.tradefed.util.FileUtil;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -56,6 +61,7 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
+import java.io.File;
 import java.util.Arrays;
 
 /** Unit tests for {@link SandboxedInvocationExecution}. */
@@ -77,6 +83,8 @@ public class SandboxedInvocationExecutionTest {
     private IConfiguration mConfig;
     private IInvocationContext mContext;
     private InvocationExecution mSpyExec;
+    private SandboxedInvocationExecution mExecution;
+    private TestInformation mTestInfo;
 
     @Before
     public void setUp() throws Exception {
@@ -115,11 +123,15 @@ public class SandboxedInvocationExecutionTest {
                     }
                 };
         mConfig = new Configuration("test", "test");
+        mConfig.getConfigurationDescription().setSandboxed(true);
         mContext = new InvocationContext();
         mContext.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
         mContext.addDeviceBuildInfo(ConfigurationDef.DEFAULT_DEVICE_NAME, new BuildInfo());
 
         doReturn(new ByteArrayInputStreamSource("".getBytes())).when(mMockDevice).getLogcat();
+
+        mExecution = new SandboxedInvocationExecution();
+        mTestInfo = TestInformation.newBuilder().setInvocationContext(mContext).build();
     }
 
     /** Interface to test the build provider receiving the context */
@@ -179,7 +191,7 @@ public class SandboxedInvocationExecutionTest {
                             @Override
                             public boolean shardConfig(
                                     IConfiguration config,
-                                    IInvocationContext context,
+                                    TestInformation testInfo,
                                     IRescheduler rescheduler,
                                     ITestLogger logger) {
                                 // Ensure that sharding is not called against a sandbox
@@ -379,5 +391,33 @@ public class SandboxedInvocationExecutionTest {
         // down
         Mockito.verify(mMockDevice).preInvocationSetup(any(), any());
         Mockito.verify(mMockDevice).postInvocationTearDown(exception);
+    }
+
+    @Test
+    public void testBackFill() throws Exception {
+        IBuildInfo info = new BuildInfo();
+        File buildFile = FileUtil.createTempFile("sandboxedfile", "test");
+        info.setFile(BuildInfoFileKey.HOST_LINKED_DIR, buildFile, "1");
+        File tmpFile = FileUtil.createTempFile("sandboxedTest", "test");
+        try {
+            info.setFile("random-key", tmpFile, "1");
+            mContext.addDeviceBuildInfo(ConfigurationDef.DEFAULT_DEVICE_NAME, info);
+            assertEquals(0, mTestInfo.executionFiles().getAll().size());
+            mExecution.fetchBuild(mTestInfo, mConfig, null, null);
+            // After fetchBuild, the TestInformation is filled
+            assertEquals(3, mTestInfo.executionFiles().getAll().size());
+            assertTrue(mTestInfo.executionFiles().containsKey("random-key"));
+            assertTrue(
+                    mTestInfo
+                            .executionFiles()
+                            .containsKey(FilesKey.HOST_TESTS_DIRECTORY.toString()));
+            assertTrue(
+                    mTestInfo
+                            .executionFiles()
+                            .containsKey(BuildInfoFileKey.HOST_LINKED_DIR.toString()));
+        } finally {
+            FileUtil.deleteFile(tmpFile);
+            FileUtil.deleteFile(buildFile);
+        }
     }
 }

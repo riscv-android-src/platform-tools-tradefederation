@@ -19,6 +19,9 @@ import com.android.ddmlib.IDevice;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 
 import org.easymock.EasyMock;
 import org.junit.Before;
@@ -34,6 +37,7 @@ public class RootTargetPreparerTest {
     private ITestDevice mMockDevice;
     private IDevice mMockIDevice;
     private IBuildInfo mMockBuildInfo;
+    private TestInformation mTestInfo;
 
     @Before
     public void setUp() {
@@ -42,6 +46,10 @@ public class RootTargetPreparerTest {
         mMockIDevice = EasyMock.createMock(IDevice.class);
         EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(mMockIDevice);
         mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
+        IInvocationContext context = new InvocationContext();
+        context.addAllocatedDevice("device", mMockDevice);
+        context.addDeviceBuildInfo("device", mMockBuildInfo);
+        mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
     }
 
     @Test
@@ -49,8 +57,8 @@ public class RootTargetPreparerTest {
         EasyMock.expect(mMockDevice.isAdbRoot()).andReturn(true).once();
         EasyMock.replay(mMockDevice, mMockBuildInfo);
 
-        mRootTargetPreparer.setUp(mMockDevice, mMockBuildInfo);
-        mRootTargetPreparer.tearDown(mMockDevice, mMockBuildInfo, null);
+        mRootTargetPreparer.setUp(mTestInfo);
+        mRootTargetPreparer.tearDown(mTestInfo, null);
         EasyMock.verify(mMockDevice, mMockBuildInfo);
     }
 
@@ -61,8 +69,8 @@ public class RootTargetPreparerTest {
         EasyMock.expect(mMockDevice.disableAdbRoot()).andReturn(true).once();
         EasyMock.replay(mMockDevice, mMockBuildInfo);
 
-        mRootTargetPreparer.setUp(mMockDevice, mMockBuildInfo);
-        mRootTargetPreparer.tearDown(mMockDevice, mMockBuildInfo, null);
+        mRootTargetPreparer.setUp(mTestInfo);
+        mRootTargetPreparer.tearDown(mTestInfo, null);
         EasyMock.verify(mMockDevice, mMockBuildInfo);
     }
 
@@ -73,7 +81,7 @@ public class RootTargetPreparerTest {
         EasyMock.expect(mMockDevice.getDeviceDescriptor()).andReturn(null).once();
         EasyMock.replay(mMockDevice, mMockBuildInfo);
 
-        mRootTargetPreparer.setUp(mMockDevice, mMockBuildInfo);
+        mRootTargetPreparer.setUp(mTestInfo);
     }
 
     @Test
@@ -86,8 +94,8 @@ public class RootTargetPreparerTest {
         EasyMock.expect(mMockDevice.enableAdbRoot()).andReturn(true).once();
         EasyMock.replay(mMockDevice, mMockBuildInfo);
 
-        mRootTargetPreparer.setUp(mMockDevice, mMockBuildInfo);
-        mRootTargetPreparer.tearDown(mMockDevice, mMockBuildInfo, null);
+        mRootTargetPreparer.setUp(mTestInfo);
+        mRootTargetPreparer.tearDown(mTestInfo, null);
         EasyMock.verify(mMockDevice, mMockBuildInfo);
     }
 
@@ -99,8 +107,8 @@ public class RootTargetPreparerTest {
         EasyMock.expect(mMockDevice.isAdbRoot()).andReturn(false).once();
         EasyMock.replay(mMockDevice, mMockBuildInfo);
 
-        mRootTargetPreparer.setUp(mMockDevice, mMockBuildInfo);
-        mRootTargetPreparer.tearDown(mMockDevice, mMockBuildInfo, null);
+        mRootTargetPreparer.setUp(mTestInfo);
+        mRootTargetPreparer.tearDown(mTestInfo, null);
         EasyMock.verify(mMockDevice, mMockBuildInfo);
     }
 
@@ -114,6 +122,6 @@ public class RootTargetPreparerTest {
         EasyMock.expect(mMockDevice.getDeviceDescriptor()).andReturn(null).once();
         EasyMock.replay(mMockDevice, mMockBuildInfo);
 
-        mRootTargetPreparer.setUp(mMockDevice, mMockBuildInfo);
+        mRootTargetPreparer.setUp(mTestInfo);
     }
 }

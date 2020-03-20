@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.postprocessor;
 
+import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Measurements;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.LogFile;
@@ -38,6 +39,7 @@ import java.util.stream.Collectors;
  *
  * <p>It parses metrics from single string as currently metrics are passed this way.
  */
+@OptionClass(alias = "aggregate-post-processor")
 public class AggregatePostProcessor extends BasePostProcessor {
     private static final String STATS_KEY_MIN = "min";
     private static final String STATS_KEY_MAX = "max";

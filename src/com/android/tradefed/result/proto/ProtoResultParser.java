@@ -20,9 +20,12 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
+import com.android.tradefed.invoker.logger.TfObjectTracker;
 import com.android.tradefed.invoker.proto.InvocationContext.Context;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.ActionInProgress;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -32,11 +35,13 @@ import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.proto.LogFileProto.LogFileInfo;
 import com.android.tradefed.result.proto.TestRecordProto.ChildReference;
+import com.android.tradefed.result.proto.TestRecordProto.DebugInfo;
 import com.android.tradefed.result.proto.TestRecordProto.TestRecord;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.proto.TestRecordProtoUtil;
 
+import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.protobuf.Any;
 import com.google.protobuf.InvalidProtocolBufferException;
@@ -231,9 +236,10 @@ public class ProtoResultParser {
         if (!anyDescription.is(Context.class)) {
             throw new RuntimeException("Expected Any description of type Context");
         }
-        IInvocationContext receivedProto;
+        IInvocationContext receivedContext;
         try {
-            receivedProto = InvocationContext.fromProto(anyDescription.unpack(Context.class));
+            receivedContext = InvocationContext.fromProto(anyDescription.unpack(Context.class));
+            mergeInvocationContext(mMainContext, receivedContext);
         } catch (InvalidProtocolBufferException e) {
             throw new RuntimeException(e);
         }
@@ -244,7 +250,7 @@ public class ProtoResultParser {
             return;
         }
         // Only report invocation start if enabled
-        mListener.invocationStarted(receivedProto);
+        mListener.invocationStarted(receivedContext);
     }
 
     private void handleInvocationEnded(TestRecord endInvocationProto) {
@@ -352,8 +358,17 @@ public class ProtoResultParser {
     private void handleTestRunEnd(TestRecord runProto) {
         // If we find debugging information, the test run failed and we reflect it.
         if (runProto.hasDebugInfo()) {
-            mListener.testRunFailed(runProto.getDebugInfo().getErrorMessage());
-            log("Test run failure proto: %s", runProto.getDebugInfo().getErrorMessage());
+            DebugInfo debugInfo = runProto.getDebugInfo();
+            FailureDescription failure = FailureDescription.create(debugInfo.getErrorMessage());
+            if (!TestRecordProto.FailureStatus.UNSET.equals(
+                    runProto.getDebugInfo().getFailureStatus())) {
+                failure.setFailureStatus(debugInfo.getFailureStatus());
+            }
+
+            parseDebugInfoContext(debugInfo, failure);
+
+            mListener.testRunFailed(failure);
+            log("Test run failure proto: %s", failure.toString());
         }
         handleLogs(runProto);
         log("Test run ended proto: %s", runProto.getTestRecordId());
@@ -377,16 +392,32 @@ public class ProtoResultParser {
     }
 
     private void handleTestCaseEnd(TestDescription description, TestRecord testcaseProto) {
+        DebugInfo debugInfo = testcaseProto.getDebugInfo();
         switch (testcaseProto.getStatus()) {
             case FAIL:
-                mListener.testFailed(description, testcaseProto.getDebugInfo().getErrorMessage());
-                log(
-                        "Test case failed proto: %s - %s",
-                        description.toString(), testcaseProto.getDebugInfo().getErrorMessage());
+                FailureDescription failure =
+                        FailureDescription.create(testcaseProto.getDebugInfo().getErrorMessage());
+                if (!TestRecordProto.FailureStatus.UNSET.equals(
+                        testcaseProto.getDebugInfo().getFailureStatus())) {
+                    failure.setFailureStatus(testcaseProto.getDebugInfo().getFailureStatus());
+                }
+
+                parseDebugInfoContext(debugInfo, failure);
+
+                mListener.testFailed(description, failure);
+                log("Test case failed proto: %s - %s", description.toString(), failure.toString());
                 break;
             case ASSUMPTION_FAILURE:
-                mListener.testAssumptionFailure(
-                        description, testcaseProto.getDebugInfo().getTrace());
+                FailureDescription assumption =
+                        FailureDescription.create(testcaseProto.getDebugInfo().getErrorMessage());
+                if (!TestRecordProto.FailureStatus.UNSET.equals(
+                        testcaseProto.getDebugInfo().getFailureStatus())) {
+                    assumption.setFailureStatus(testcaseProto.getDebugInfo().getFailureStatus());
+                }
+
+                parseDebugInfoContext(debugInfo, assumption);
+
+                mListener.testAssumptionFailure(description, assumption);
                 log(
                         "Test case assumption failure proto: %s - %s",
                         description.toString(), testcaseProto.getDebugInfo().getTrace());
@@ -513,12 +544,49 @@ public class ProtoResultParser {
                 }
             }
         }
+        if (attributes.containsKey(TfObjectTracker.TF_OBJECTS_TRACKING_KEY)) {
+            List<String> values = attributes.get(TfObjectTracker.TF_OBJECTS_TRACKING_KEY);
+            for (String val : values) {
+                for (String pair : Splitter.on(",").split(val)) {
+                    if (!pair.contains("=")) {
+                        continue;
+                    }
+                    String[] pairSplit = pair.split("=");
+                    try {
+                        TfObjectTracker.directCount(pairSplit[0], Long.parseLong(pairSplit[1]));
+                    } catch (NumberFormatException e) {
+                        CLog.e(e);
+                        continue;
+                    }
+                }
+            }
+            attributes.remove(TfObjectTracker.TF_OBJECTS_TRACKING_KEY);
+        }
         receiverContext.addInvocationAttributes(attributes);
     }
 
     private void log(String format, Object... obj) {
         if (!mQuietParsing) {
             CLog.d(format, obj);
+        }
+    }
+
+    private void parseDebugInfoContext(DebugInfo debugInfo, FailureDescription failure) {
+        if (!debugInfo.hasDebugInfoContext()) {
+            return;
+        }
+        if (!Strings.isNullOrEmpty(debugInfo.getDebugInfoContext().getActionInProgress())) {
+            try {
+                ActionInProgress value =
+                        ActionInProgress.valueOf(
+                                debugInfo.getDebugInfoContext().getActionInProgress());
+                failure.setActionInProgress(value);
+            } catch (IllegalArgumentException parseError) {
+                CLog.e(parseError);
+            }
+        }
+        if (!Strings.isNullOrEmpty(debugInfo.getDebugInfoContext().getDebugHelpMessage())) {
+            failure.setDebugHelpMessage(debugInfo.getDebugInfoContext().getDebugHelpMessage());
         }
     }
 }

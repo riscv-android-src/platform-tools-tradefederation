@@ -44,6 +44,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
+import javax.annotation.Nullable;
+
 /**
  * Provides an reliable and slightly higher level API to a ddmlib {@link IDevice}.
  * <p/>
@@ -121,6 +123,16 @@ public interface INativeDevice {
      * @throws DeviceNotAvailableException
      */
     public boolean setProperty(String propKey, String propValue) throws DeviceNotAvailableException;
+
+    /**
+     * Retrieve the given fastboot variable value from the device.
+     *
+     * @param variableName the variable name
+     * @return the property value or <code>null</code> if it does not exist
+     * @throws DeviceNotAvailableException, UnsupportedOperationException
+     */
+    public String getFastbootVariable(String variableName)
+            throws DeviceNotAvailableException, UnsupportedOperationException;
 
     /**
      * Convenience method to get the bootloader version of this device.
@@ -567,6 +579,13 @@ public interface INativeDevice {
     public boolean isRuntimePermissionSupported() throws DeviceNotAvailableException;
 
     /**
+     * Check whether platform on device supports app enumeration
+     * @return True if app enumeration is supported, false otherwise
+     * @throws DeviceNotAvailableException
+     */
+    public boolean isAppEnumerationSupported() throws DeviceNotAvailableException;
+
+    /**
      * Retrieves a file off device.
      *
      * @param remoteFilePath the absolute path to file on device.
@@ -911,6 +930,28 @@ public interface INativeDevice {
     public void reboot() throws DeviceNotAvailableException;
 
     /**
+     * Reboots the device into adb mode with given {@code reason} to be persisted across reboot.
+     *
+     * <p>Blocks until device becomes available.
+     *
+     * <p>Last reboot reason can be obtained by querying {@code sys.boot.reason} propety.
+     *
+     * @param reason a reason for this reboot, or {@code null} if no reason is specified.
+     * @throws DeviceNotAvailableException if device is not available after reboot
+     */
+    public void reboot(@Nullable String reason) throws DeviceNotAvailableException;
+
+    /**
+     * Reboots the device into fastbootd mode.
+     *
+     * <p>Blocks until device is in fastbootd mode.
+     *
+     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
+     *     recovered.
+     */
+    public void rebootIntoFastbootd() throws DeviceNotAvailableException;
+
+    /**
      * Reboots only userspace part of device.
      *
      * <p>Blocks until device becomes available.
@@ -941,11 +982,30 @@ public interface INativeDevice {
     public void rebootIntoSideload() throws DeviceNotAvailableException;
 
     /**
+     * Reboots the device into adb sideload mode (note that this is a special mode under recovery)
+     *
+     * <p>Blocks until device enters sideload mode
+     *
+     * @param autoReboot whether to automatically reboot the device after sideload
+     * @throws DeviceNotAvailableException if device is not in sideload after reboot
+     */
+    public void rebootIntoSideload(boolean autoReboot) throws DeviceNotAvailableException;
+
+    /**
      * An alternate to {@link #reboot()} that only blocks until device is online ie visible to adb.
      *
      * @throws DeviceNotAvailableException if device is not available after reboot
      */
     public void rebootUntilOnline() throws DeviceNotAvailableException;
+
+    /**
+     * An alternate to {@link #reboot()} that only blocks until device is online ie visible to adb.
+     *
+     * @param reason a reason for this reboot, or {@code null} if no reason is specified.
+     * @throws DeviceNotAvailableException if device is not available after reboot
+     * @see #reboot(String)
+     */
+    public void rebootUntilOnline(@Nullable String reason) throws DeviceNotAvailableException;
 
     /**
      * An alternate to {@link #rebootUserspace()} ()} that only blocks until device is online ie
@@ -1218,6 +1278,14 @@ public interface INativeDevice {
     public int getApiLevel() throws DeviceNotAvailableException;
 
     /**
+     * Get the device's first launched API Level. Defaults to {@link #UNKNOWN_API_LEVEL}.
+     *
+     * @return an integer indicating the first launched API Level of device
+     * @throws DeviceNotAvailableException
+     */
+    public int getLaunchApiLevel() throws DeviceNotAvailableException;
+
+    /**
      * Check whether or not a feature is currently supported given a minimally supported level. This
      * method takes into account unreleased features yet, before API level is raised.
      *
@@ -1377,6 +1445,12 @@ public interface INativeDevice {
      * passing the actual device object.
      */
     public DeviceDescriptor getDeviceDescriptor();
+
+    /**
+     * Returns a cached {@link DeviceDescriptor} if the device is allocated, otherwise returns the
+     * current {@link DeviceDescriptor}.
+     */
+    public DeviceDescriptor getCachedDeviceDescriptor();
 
     /**
      * Helper method runs the "pidof" and "stat" command and returns {@link ProcessInfo} object with

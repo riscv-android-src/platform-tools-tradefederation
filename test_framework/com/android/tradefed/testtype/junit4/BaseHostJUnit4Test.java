@@ -26,6 +26,7 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestLifeCycleReceiver;
@@ -33,13 +34,12 @@ import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.result.ddmlib.DefaultRemoteAndroidTestRunner;
+import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.targetprep.suite.SuiteApkInstaller;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IAbiReceiver;
-import com.android.tradefed.testtype.IBuildReceiver;
-import com.android.tradefed.testtype.IDeviceTest;
-import com.android.tradefed.testtype.IInvocationContextReceiver;
+import com.android.tradefed.testtype.ITestInformationReceiver;
 import com.android.tradefed.util.ListInstrumentationParser;
 import com.android.tradefed.util.ListInstrumentationParser.InstrumentationTarget;
 
@@ -60,37 +60,33 @@ import java.util.stream.Collectors;
  * Should be the single source of truth to run instrumentation tests from host side in order to
  * avoid duplicated utility and base class.
  */
-public abstract class BaseHostJUnit4Test
-        implements IAbiReceiver, IBuildReceiver, IDeviceTest, IInvocationContextReceiver {
+public abstract class BaseHostJUnit4Test implements IAbiReceiver, ITestInformationReceiver {
 
     static final long DEFAULT_TEST_TIMEOUT_MS = 10 * 60 * 1000L;
     private static final long DEFAULT_MAX_TIMEOUT_TO_OUTPUT_MS = 10 * 60 * 1000L; // 10min
     private static final Map<String, String> DEFAULT_INSTRUMENTATION_ARGS = new HashMap<>();
 
-    private ITestDevice mDevice;
-    private IBuildInfo mBuild;
     private IAbi mAbi;
-    private IInvocationContext mContext;
+    private TestInformation mTestInfo;
     private Map<SuiteApkInstaller, ITestDevice> mInstallers = new LinkedHashMap<>();
     private TestRunResult mLatestInstruRes;
 
-    @Override
-    public final void setDevice(ITestDevice device) {
-        mDevice = device;
-    }
-
-    @Override
     public final ITestDevice getDevice() {
-        return mDevice;
-    }
-
-    @Override
-    public final void setBuild(IBuildInfo buildInfo) {
-        mBuild = buildInfo;
+        return mTestInfo.getDevice();
     }
 
     public final IBuildInfo getBuild() {
-        return mBuild;
+        return mTestInfo.getBuildInfo();
+    }
+
+    @Override
+    public final void setTestInformation(TestInformation testInformation) {
+        mTestInfo = testInformation;
+    }
+
+    @Override
+    public TestInformation getTestInformation() {
+        return mTestInfo;
     }
 
     @Override
@@ -103,17 +99,12 @@ public abstract class BaseHostJUnit4Test
         return mAbi;
     }
 
-    @Override
-    public final void setInvocationContext(IInvocationContext invocationContext) {
-        mContext = invocationContext;
-    }
-
     public final IInvocationContext getInvocationContext() {
-        return mContext;
+        return mTestInfo.getContext();
     }
 
     public final List<ITestDevice> getListDevices() {
-        return mContext.getDevices();
+        return mTestInfo.getContext().getDevices();
     }
 
     /**
@@ -124,8 +115,7 @@ public abstract class BaseHostJUnit4Test
     public final void autoTearDown() throws DeviceNotAvailableException {
         mLatestInstruRes = null;
         for (SuiteApkInstaller installer : mInstallers.keySet()) {
-            ITestDevice device = mInstallers.get(installer);
-            installer.tearDown(device, mContext.getBuildInfo(device), null);
+            installer.tearDown(mTestInfo, null);
         }
         mInstallers.clear();
     }
@@ -162,7 +152,13 @@ public abstract class BaseHostJUnit4Test
         for (String option : options) {
             installer.addInstallArg(option);
         }
-        installer.setUp(device, mContext.getBuildInfo(device));
+        try {
+            installer.setUp(mTestInfo);
+        } catch (BuildError e) {
+            // For some reason we forgot the BuildError part of the interface so it's hard to add
+            // it now
+            throw new TargetSetupError(e.getMessage(), e, device.getDeviceDescriptor());
+        }
     }
 
     /**
@@ -207,7 +203,13 @@ public abstract class BaseHostJUnit4Test
         for (String option : options) {
             installer.addInstallArg(option);
         }
-        installer.setUp(device, mContext.getBuildInfo(device));
+        try {
+            installer.setUp(mTestInfo);
+        } catch (BuildError e) {
+            // For some reason we forgot the BuildError part of the interface so it's hard to add
+            // it now
+            throw new TargetSetupError(e.getMessage(), e, device.getDeviceDescriptor());
+        }
     }
 
     /**

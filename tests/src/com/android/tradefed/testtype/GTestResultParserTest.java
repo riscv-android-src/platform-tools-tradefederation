@@ -15,10 +15,14 @@
  */
 package com.android.tradefed.testtype;
 
+import static org.junit.Assert.assertTrue;
+
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 
+import org.easymock.Capture;
 import org.easymock.EasyMock;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -318,10 +322,8 @@ public class GTestResultParserTest extends GTestParserTestBase {
         ITestInvocationListener mockRunListener =
                 EasyMock.createMock(ITestInvocationListener.class);
         mockRunListener.testRunStarted(TEST_MODULE_NAME, 0);
-        mockRunListener.testRunFailed(
-                "module did not report any run:\nCANNOT LINK EXECUTABLE "
-                        + "\"/data/installd_cache_test\": "
-                        + "library \"liblogwrap.so\" not found");
+        Capture<FailureDescription> captured = new Capture<>();
+        mockRunListener.testRunFailed(EasyMock.capture(captured));
         mockRunListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         EasyMock.replay(mockRunListener);
@@ -329,6 +331,13 @@ public class GTestResultParserTest extends GTestParserTestBase {
         resultParser.processNewLines(contents);
         resultParser.flush();
         EasyMock.verify(mockRunListener);
+        assertTrue(
+                captured.getValue()
+                        .getErrorMessage()
+                        .contains(
+                                "module did not report any run:\nCANNOT LINK EXECUTABLE "
+                                        + "\"/data/installd_cache_test\": "
+                                        + "library \"liblogwrap.so\" not found"));
     }
 
     /**
@@ -341,9 +350,8 @@ public class GTestResultParserTest extends GTestParserTestBase {
         ITestInvocationListener mockRunListener =
                 EasyMock.createMock(ITestInvocationListener.class);
         mockRunListener.testRunStarted(TEST_MODULE_NAME, 0);
-        mockRunListener.testRunFailed(
-                EasyMock.contains(
-                        "module did not report any run:\nfailed to read section .testzipdata"));
+        Capture<FailureDescription> captured = new Capture<>();
+        mockRunListener.testRunFailed(EasyMock.capture(captured));
         mockRunListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         EasyMock.replay(mockRunListener);
@@ -351,6 +359,11 @@ public class GTestResultParserTest extends GTestParserTestBase {
         resultParser.processNewLines(contents);
         resultParser.flush();
         EasyMock.verify(mockRunListener);
+        assertTrue(
+                captured.getValue()
+                        .getErrorMessage()
+                        .contains(
+                                "module did not report any run:\nfailed to read section .testzipdata"));
     }
 
     /** Tests the parser for a simple test run output with 11 tests where some are skipped. */

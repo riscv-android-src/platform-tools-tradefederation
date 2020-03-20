@@ -19,8 +19,10 @@ import com.android.ddmlib.IShellOutputReceiver;
 import com.android.ddmlib.MultiLineReceiver;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -727,7 +729,7 @@ public class GTestResultParser extends MultiLineReceiver {
         String testRunStackTrace = "";
 
         // Report that the last known test failed
-        if ((mCurrentTestResult != null) && (mCurrentTestResult.isComplete())) {
+        if ((mCurrentTestResult != null) && mCurrentTestResult.isComplete()) {
             // current test results are cleared out after every complete test run,
             // if it's not null, assume the last test caused this and report as a test failure
             TestDescription testId =
@@ -748,8 +750,10 @@ public class GTestResultParser extends MultiLineReceiver {
             clearCurrentTestResult();
         }
         // Report the test run failed
+        FailureDescription error = FailureDescription.create(errorMsg);
+        error.setFailureStatus(FailureStatus.TEST_FAILURE);
         for (ITestInvocationListener listener : mTestListeners) {
-            listener.testRunFailed(errorMsg);
+            listener.testRunFailed(error);
             listener.testRunEnded(mTotalRunTime, getRunMetrics());
         }
     }
@@ -769,11 +773,17 @@ public class GTestResultParser extends MultiLineReceiver {
             for (ITestInvocationListener listener : mTestListeners) {
                 listener.testRunStarted(mTestRunName, 0);
                 listener.testRunFailed(
-                        String.format(
-                                "%s did not report any run:\n%s",
-                                mTestRunName, String.join("\n", mTrackLogsBeforeRunStart)));
+                        createFailure(
+                                String.format(
+                                        "%s did not report any run:\n%s",
+                                        mTestRunName,
+                                        String.join("\n", mTrackLogsBeforeRunStart))));
                 listener.testRunEnded(0L, new HashMap<String, Metric>());
             }
         }
+    }
+
+    private FailureDescription createFailure(String message) {
+        return FailureDescription.create(message, FailureStatus.TEST_FAILURE);
     }
 }

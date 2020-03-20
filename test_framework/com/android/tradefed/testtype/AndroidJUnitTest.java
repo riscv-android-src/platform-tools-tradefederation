@@ -23,9 +23,12 @@ import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.ListInstrumentationParser;
 
@@ -305,11 +308,10 @@ public class AndroidJUnitTest extends InstrumentationTest
         mExcludeAnnotation.clear();
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void run(final ITestInvocationListener listener) throws DeviceNotAvailableException {
+    public void run(TestInformation testInfo, final ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
         if (getDevice() == null) {
             throw new IllegalArgumentException("Device has not been set");
         }
@@ -334,7 +336,7 @@ public class AndroidJUnitTest extends InstrumentationTest
             CLog.i("%s is not shardable.", getRunnerName());
             return;
         }
-        super.run(listener);
+        super.run(testInfo, listener);
         if (pushedFile) {
             // Remove the directory where the files where pushed
             removeTestFilterDir();
@@ -468,7 +470,9 @@ public class AndroidJUnitTest extends InstrumentationTest
 
     private void reportEarlyFailure(ITestInvocationListener listener, String errorMessage) {
         listener.testRunStarted("AndroidJUnitTest_setupError", 0);
-        listener.testRunFailed(errorMessage);
+        FailureDescription failure = FailureDescription.create(errorMessage);
+        failure.setFailureStatus(FailureStatus.INFRA_FAILURE);
+        listener.testRunFailed(failure);
         listener.testRunEnded(0, new HashMap<String, Metric>());
     }
 

@@ -67,7 +67,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
     _LOG_ARGS = ('--logcat-on-failure --atest-log-file-path={log_path} '
                  '--no-enable-granular-attempts')
     _RUN_CMD = ('{exe} {template} --template:map '
-                'test=atest {log_args} {args}')
+                'test=atest {tf_customize_template} {log_args} {args}')
     _BUILD_REQ = {'tradefed-core'}
     _RERUN_OPTION_GROUP = [constants.ITERATIONS,
                            constants.RERUN_UNTIL_FAILURE,
@@ -83,6 +83,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         log_args = {'log_path': self.log_path}
         self.run_cmd_dict = {'exe': self.EXECUTABLE,
                              'template': self._TF_TEMPLATE,
+                             'tf_customize_template': '',
                              'args': '',
                              'log_args': self._LOG_ARGS.format(**log_args)}
         self.is_verbose = logging.getLogger().isEnabledFor(logging.DEBUG)
@@ -147,7 +148,8 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         ret_code = constants.EXIT_CODE_SUCCESS
         for _ in range(iterations):
             run_cmds = self.generate_run_commands(test_infos, extra_args)
-            subproc = self.run(run_cmds[0], output_to_stdout=True)
+            subproc = self.run(run_cmds[0], output_to_stdout=True,
+                               env_vars=self.generate_env_vars(extra_args))
             ret_code |= self.wait_for_subprocess(subproc)
         return ret_code
 
@@ -168,7 +170,8 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             server = self._start_socket_server()
             run_cmds = self.generate_run_commands(test_infos, extra_args,
                                                   server.getsockname()[1])
-            subproc = self.run(run_cmds[0], output_to_stdout=self.is_verbose)
+            subproc = self.run(run_cmds[0], output_to_stdout=self.is_verbose,
+                               env_vars=self.generate_env_vars(extra_args))
             self.handle_subprocess(subproc, partial(self._start_monitor,
                                                     server,
                                                     subproc,
@@ -277,6 +280,15 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                       server.getsockname()[1])
         return server
 
+    def generate_env_vars(self, extra_args):
+        """Convert extra args into env vars."""
+        env_vars = os.environ.copy()
+        debug_port = extra_args.get(constants.TF_DEBUG, '')
+        if debug_port:
+            env_vars['TF_DEBUG'] = 'true'
+            env_vars['TF_DEBUG_PORT'] = str(debug_port)
+        return env_vars
+
     def host_env_check(self):
         """Check that host env has everything we need.
 
@@ -347,6 +359,10 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                 args_to_append.append('--serial')
                 args_to_append.append(extra_args[arg])
                 continue
+            if constants.SHARDING == arg:
+                args_to_append.append('--shard-count')
+                args_to_append.append(str(extra_args[arg]))
+                continue
             if constants.DISABLE_TEARDOWN == arg:
                 args_to_append.append('--disable-teardown')
                 continue
@@ -375,6 +391,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                 args_to_append.append('--enable-optional-parameterization')
                 args_to_append.append('--module-parameter')
                 args_to_append.append(extra_args[arg])
+                continue
             if constants.ITERATIONS == arg:
                 args_to_append.append('--retry-strategy')
                 args_to_append.append(constants.ITERATIONS)
@@ -392,6 +409,12 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                 args_to_append.append(constants.RETRY_ANY_FAILURE)
                 args_to_append.append('--max-testcase-run-count')
                 args_to_append.append(str(extra_args[arg]))
+                continue
+            if constants.COLLECT_TESTS_ONLY == arg:
+                args_to_append.append('--collect-tests-only')
+                continue
+            if constants.TF_DEBUG == arg:
+                print("Please attach process to your IDE...")
                 continue
             args_not_supported.append(arg)
         return args_to_append, args_not_supported
@@ -437,7 +460,10 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         if metrics_folder:
             test_args.extend(['--metrics-folder', metrics_folder])
             logging.info('Saved metrics in: %s', metrics_folder)
-        log_level = 'VERBOSE' if self.is_verbose else 'WARN'
+        log_level = 'WARN'
+        if self.is_verbose:
+            log_level = 'VERBOSE'
+            test_args.extend(['--log-level-display', log_level])
         test_args.extend(['--log-level', log_level])
 
         args_to_add, args_not_supported = self._parse_extra_args(extra_args)
@@ -455,8 +481,13 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
             logging.info('%s does not support the following args %s',
                          self.EXECUTABLE, args_not_supported)
 
-        test_args.extend(atest_utils.get_result_server_args())
+        # Only need to check one TestInfo to determine if the tests are
+        # configured in TEST_MAPPING.
+        for_test_mapping = test_infos and test_infos[0].from_test_mapping
+        test_args.extend(atest_utils.get_result_server_args(for_test_mapping))
         self.run_cmd_dict['args'] = ' '.join(test_args)
+        self.run_cmd_dict['tf_customize_template'] = (
+            self._extract_customize_tf_templates(extra_args))
         return [self._RUN_CMD.format(**self.run_cmd_dict)]
 
     def _flatten_test_infos(self, test_infos):
@@ -565,10 +596,6 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         if not test_infos:
             return []
 
-        # Only need to check one TestInfo to determine if the tests are
-        # configured in TEST_MAPPING.
-        if test_infos[0].from_test_mapping:
-            args.extend(constants.TEST_MAPPING_RESULT_SERVER_ARGS)
         test_infos = self._flatten_test_infos(test_infos)
         # In order to do dry-run verification, sort it to make each run has the
         # same result
@@ -623,3 +650,14 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
                              for arg in extra_args
                              if arg in self._RERUN_OPTION_GROUP]
         return ' '.join(extracted_options)
+
+    def _extract_customize_tf_templates(self, extra_args):
+        """Extract tradefed template options to a string for output.
+
+        Args:
+            extra_args: Dict of extra args for test runners to use.
+
+        Returns: A string of tradefed template options.
+        """
+        return ''.join(['--template:map %s '
+                        % x for x in extra_args.get(constants.TF_TEMPLATE, [])])

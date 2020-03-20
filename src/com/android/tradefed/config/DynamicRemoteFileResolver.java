@@ -23,6 +23,7 @@ import com.android.tradefed.config.remote.HttpRemoteFileResolver;
 import com.android.tradefed.config.remote.HttpsRemoteFileResolver;
 import com.android.tradefed.config.remote.IRemoteFileResolver;
 import com.android.tradefed.config.remote.LocalFileResolver;
+import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.MultiMap;
@@ -42,6 +43,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -50,6 +52,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *
  * <p>For example: gs://bucket/path/file.txt will be resolved by downloading the file from the GCS
  * bucket.
+ *
+ * <p>New protocols should be added to META_INF/services.
  */
 public class DynamicRemoteFileResolver {
 
@@ -70,10 +74,23 @@ public class DynamicRemoteFileResolver {
     public static final String OPTIONAL_KEY = "optional";
 
     private Map<String, OptionFieldsForName> mOptionMap;
+    // Populated from {@link ICommandOptions#getDynamicDownloadArgs()}
+    private Map<String, String> mExtraArgs = new LinkedHashMap<>();
+    private ITestDevice mDevice;
 
     /** Sets the map of options coming from {@link OptionSetter} */
     public void setOptionMap(Map<String, OptionFieldsForName> optionMap) {
         mOptionMap = optionMap;
+    }
+
+    /** Sets the device under tests */
+    public void setDevice(ITestDevice device) {
+        mDevice = device;
+    }
+
+    /** Add extra args for the query. */
+    public void addExtraArgs(Map<String, String> extraArgs) {
+        mExtraArgs.putAll(extraArgs);
     }
 
     /**
@@ -257,7 +274,8 @@ public class DynamicRemoteFileResolver {
         }
         // Downloaded individual files should be saved to destDir, return value is not needed.
         try {
-            resolver.resolveRemoteFiles(new File(remoteZipFilePath), null, queryArgs);
+            resolver.setPrimaryDevice(mDevice);
+            resolver.resolveRemoteFiles(new File(remoteZipFilePath), queryArgs);
         } catch (BuildRetrievalError e) {
             if (isOptional(queryArgs)) {
                 CLog.d(
@@ -272,16 +290,11 @@ public class DynamicRemoteFileResolver {
     @VisibleForTesting
     protected IRemoteFileResolver getResolver(String protocol) {
         if (updateProtocols()) {
-            IGlobalConfiguration globalConfig = getGlobalConfig();
-            Object o = globalConfig.getConfigurationObject(DYNAMIC_RESOLVER);
-            if (o != null) {
-                if (o instanceof IRemoteFileResolver) {
-                    IRemoteFileResolver resolver = (IRemoteFileResolver) o;
-                    CLog.d("Adding %s to supported remote file resolver", resolver);
-                    PROTOCOL_SUPPORT.put(resolver.getSupportedProtocol(), resolver);
-                } else {
-                    CLog.e("%s is not of type IRemoteFileResolver", o);
-                }
+            // Use the service loader to find all the implementations.
+            ServiceLoader<IRemoteFileResolver> serviceLoader =
+                    ServiceLoader.load(IRemoteFileResolver.class);
+            for (IRemoteFileResolver resolver : serviceLoader) {
+                PROTOCOL_SUPPORT.putIfAbsent(resolver.getSupportedProtocol(), resolver);
             }
         }
         return PROTOCOL_SUPPORT.get(protocol);
@@ -339,7 +352,9 @@ public class DynamicRemoteFileResolver {
                 CLog.d(
                         "Considering option '%s' with path: '%s' for download.",
                         option.name(), path);
-                return resolver.resolveRemoteFiles(fileToResolve, option, query);
+                // Overrides query args
+                query.putAll(mExtraArgs);
+                return resolver.resolveRemoteFiles(fileToResolve, query);
             } catch (BuildRetrievalError e) {
                 if (isOptional(query)) {
                     CLog.d(

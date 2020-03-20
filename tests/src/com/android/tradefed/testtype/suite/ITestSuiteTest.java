@@ -54,10 +54,12 @@ import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Measurements;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.MultiFailureDescription;
 import com.android.tradefed.result.TestDescription;
-import com.android.tradefed.result.TestRunResult;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.retry.BaseRetryDecision;
 import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
@@ -682,9 +684,10 @@ public class ITestSuiteTest {
                 EasyMock.eq(TEST_CONFIG_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         EasyMock.expectLastCall().times(1);
         mMockListener.testRunFailed(
-                "unresponsive"
-                        + TestRunResult.ERROR_DIVIDER
-                        + "Module test only ran 0 out of 1 expected tests.");
+                new MultiFailureDescription(
+                        FailureDescription.create("unresponsive"),
+                        FailureDescription.create(
+                                "Module test only ran 0 out of 1 expected tests.")));
         EasyMock.expect(
                         mMockDevice.logBugreport(
                                 EasyMock.eq("module-test-failure-SERIAL-bugreport"),
@@ -744,9 +747,11 @@ public class ITestSuiteTest {
                 EasyMock.eq(TEST_CONFIG_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         EasyMock.expectLastCall().times(1);
         mMockListener.testRunFailed(
-                "Run in progress was not completed due to: I failed"
-                        + TestRunResult.ERROR_DIVIDER
-                        + "Module test only ran 0 out of 1 expected tests.");
+                new MultiFailureDescription(
+                        FailureDescription.create(
+                                "Run in progress was not completed due to: I failed"),
+                        FailureDescription.create(
+                                "Module test only ran 0 out of 1 expected tests.")));
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         EasyMock.expectLastCall().times(1);
@@ -754,7 +759,10 @@ public class ITestSuiteTest {
         // The module that didn't run is reported too.
         mMockListener.testRunStarted(
                 EasyMock.eq("NOT_RUN"), EasyMock.eq(0), EasyMock.eq(0), EasyMock.anyLong());
-        mMockListener.testRunFailed("Module did not run due to device not available.");
+        mMockListener.testRunFailed(
+                FailureDescription.create(
+                        "Module did not run due to device not available.",
+                        FailureStatus.NOT_EXECUTED));
         mMockListener.testRunEnded(0L, new HashMap<String, Metric>());
 
         mMockListener.testModuleEnded();
@@ -810,7 +818,7 @@ public class ITestSuiteTest {
         mMockListener.testRunStarted(
                 EasyMock.eq(TEST_CONFIG_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         EasyMock.expectLastCall().times(1);
-        Capture<String> captured = new Capture<>();
+        Capture<FailureDescription> captured = new Capture<>();
         mMockListener.testRunFailed(EasyMock.capture(captured));
         EasyMock.expect(
                         mMockDevice.logBugreport(
@@ -824,12 +832,12 @@ public class ITestSuiteTest {
         replayMocks();
         mTestSuite.run(mTestInfo, mMockListener);
         verifyMocks();
-        String exception = captured.getValue();
-        assertTrue(exception.contains("runtime"));
+        FailureDescription exception = captured.getValue();
+        assertTrue(exception.getErrorMessage().contains("runtime"));
         assertTrue(
-                exception.contains(
-                        TestRunResult.ERROR_DIVIDER
-                                + "Module test only ran 0 out of 1 expected tests."));
+                exception
+                        .getErrorMessage()
+                        .contains("Module test only ran 0 out of 1 expected tests."));
     }
 
     /**
@@ -840,9 +848,8 @@ public class ITestSuiteTest {
     @Test
     public void testShardModules_notShardable() {
         mTestSuite = new TestSuiteImpl(5);
-        mTestSuite.setBuild(mMockBuildInfo);
         mTestSuite.setConfiguration(mStubMainConfiguration);
-        Collection<IRemoteTest> tests = mTestSuite.split(3);
+        Collection<IRemoteTest> tests = mTestSuite.split(3, mTestInfo);
         assertEquals(5, tests.size());
         for (IRemoteTest test : tests) {
             assertTrue(test instanceof TestSuiteImpl);
@@ -852,7 +859,7 @@ public class ITestSuiteTest {
     /** Test that when splitting a single non-splitable test we end up with only one IRemoteTest. */
     @Test
     public void testGetTestShard_onlyOneTest() {
-        Collection<IRemoteTest> tests = mTestSuite.split(2);
+        Collection<IRemoteTest> tests = mTestSuite.split(2, mTestInfo);
         assertEquals(1, tests.size());
         for (IRemoteTest test : tests) {
             assertTrue(test instanceof TestSuiteImpl);
@@ -865,9 +872,8 @@ public class ITestSuiteTest {
         // default runtime hint is 0, it is only meant to be used for sharding.
         assertEquals(0l, mTestSuite.getRuntimeHint());
         mTestSuite = new TestSuiteImpl(5);
-        mTestSuite.setBuild(mMockBuildInfo);
         mTestSuite.setConfiguration(mStubMainConfiguration);
-        Collection<IRemoteTest> tests = mTestSuite.split(3);
+        Collection<IRemoteTest> tests = mTestSuite.split(3, mTestInfo);
         for (IRemoteTest test : tests) {
             assertTrue(test instanceof TestSuiteImpl);
             // once sharded modules from the shard start reporting their runtime.
@@ -1821,7 +1827,8 @@ public class ITestSuiteTest {
         mMockListener.testModuleStarted(EasyMock.anyObject());
         mMockListener.testRunStarted(
                 EasyMock.eq(TEST_CONFIG_NAME), EasyMock.eq(0), EasyMock.eq(0), EasyMock.anyLong());
-        mMockListener.testRunFailed("Injected message");
+        mMockListener.testRunFailed(
+                FailureDescription.create("Injected message", FailureStatus.NOT_EXECUTED));
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         mMockListener.testModuleEnded();
@@ -1848,9 +1855,12 @@ public class ITestSuiteTest {
         mMockListener.testModuleStarted(EasyMock.anyObject());
         mMockListener.testRunStarted(
                 EasyMock.eq("in-progress"), EasyMock.eq(0), EasyMock.eq(0), EasyMock.anyLong());
-        mMockListener.testRunFailed(
-                "Module in-progress was interrupted after starting. Results might not be "
-                        + "accurate or complete.");
+        FailureDescription error =
+                FailureDescription.create(
+                                "Module in-progress was interrupted after starting. Results might not be "
+                                        + "accurate or complete.")
+                        .setFailureStatus(FailureStatus.NOT_EXECUTED);
+        mMockListener.testRunFailed(error);
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         mMockListener.testModuleEnded();
@@ -1858,7 +1868,8 @@ public class ITestSuiteTest {
         mMockListener.testModuleStarted(EasyMock.anyObject());
         mMockListener.testRunStarted(
                 EasyMock.eq(TEST_CONFIG_NAME), EasyMock.eq(0), EasyMock.eq(0), EasyMock.anyLong());
-        mMockListener.testRunFailed("Injected message");
+        mMockListener.testRunFailed(
+                FailureDescription.create("Injected message", FailureStatus.NOT_EXECUTED));
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         mMockListener.testModuleEnded();

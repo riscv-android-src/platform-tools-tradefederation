@@ -117,7 +117,7 @@ public class DebugHostLogOnFailureCollectorTest {
                 .testRunStarted(
                         Mockito.eq("runName"), Mockito.eq(1), Mockito.eq(0), Mockito.anyLong());
         Mockito.verify(mMockListener).testStarted(Mockito.eq(test), Mockito.anyLong());
-        Mockito.verify(mMockListener).testFailed(Mockito.eq(test), Mockito.any());
+        Mockito.verify(mMockListener).testFailed(Mockito.eq(test), (String) Mockito.any());
         Mockito.verify(mMockListener)
                 .testLog(
                         Mockito.eq("class#test-debug-hostlog-on-failure"),
@@ -152,7 +152,7 @@ public class DebugHostLogOnFailureCollectorTest {
                 .testRunStarted(
                         Mockito.eq("runName"), Mockito.eq(1), Mockito.eq(0), Mockito.anyLong());
         Mockito.verify(mMockListener).testStarted(Mockito.eq(test), Mockito.anyLong());
-        Mockito.verify(mMockListener).testFailed(Mockito.eq(test), Mockito.any());
+        Mockito.verify(mMockListener).testFailed(Mockito.eq(test), (String) Mockito.any());
         // No file is logged
         Mockito.verify(mMockListener, never())
                 .testLog(

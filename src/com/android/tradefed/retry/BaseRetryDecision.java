@@ -39,7 +39,7 @@ import java.util.stream.Collectors;
  */
 public class BaseRetryDecision implements IRetryDecision {
 
-    private static final int ABORT_MAX_FAILURES = 50;
+    private static final int ABORT_MAX_FAILURES = 75;
 
     @Option(
         name = "reboot-at-last-retry",
@@ -87,6 +87,11 @@ public class BaseRetryDecision implements IRetryDecision {
     @Override
     public RetryStrategy getRetryStrategy() {
         return mRetryStrategy;
+    }
+
+    @Override
+    public boolean rebootAtLastAttempt() {
+        return mRebootAtLastRetry;
     }
 
     @Override
@@ -248,7 +253,7 @@ public class BaseRetryDecision implements IRetryDecision {
         // Return all the non-stub device (the one we can actually do some recovery against)
         return listDevices
                 .stream()
-                .filter(d -> (!(d.getIDevice() instanceof StubDevice)))
+                .filter(d -> !(d.getIDevice() instanceof StubDevice))
                 .collect(Collectors.toList());
     }
 

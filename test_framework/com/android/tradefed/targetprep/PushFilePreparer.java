@@ -26,6 +26,7 @@ import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IAbiReceiver;
@@ -33,13 +34,13 @@ import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.MultiMap;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -77,13 +78,22 @@ public class PushFilePreparer extends BaseTargetPreparer
     private Collection<String> mPushSpecs = new ArrayList<>();
 
     @Option(
-        name = "push-file",
-        description =
-                "A push-spec, specifying the local file to the path where it should be pushed on "
-                        + "device. May be repeated. If multiple files are configured to be pushed "
-                        + "to the same remote path, the latest one will be pushed."
-    )
-    private Map<File, String> mPushFileSpecs = new LinkedHashMap<>();
+            name = "push-file",
+            description =
+                    "A push-spec, specifying the local file to the path where it should be pushed on "
+                            + "device. May be repeated. If multiple files are configured to be pushed "
+                            + "to the same remote path, the latest one will be pushed.")
+    private MultiMap<File, String> mPushFileSpecs = new MultiMap<>();
+
+    @Option(
+            name = "backup-file",
+            description =
+                    "A key/value pair, the with key specifying a device file path to be backed up, "
+                            + "and the value a device file path indicating where to save the file. "
+                            + "During tear-down, the values will be executed in reverse, "
+                            + "restoring the backup file location to the initial location. "
+                            + "May be repeated.")
+    private Map<String, String> mBackupFileSpecs = new LinkedHashMap<>();
 
     @Option(name="post-push", description=
             "A command to run on the device (with `adb shell (yourcommand)`) after all pushes " +
@@ -257,13 +267,12 @@ public class PushFilePreparer extends BaseTargetPreparer
         return src;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError, BuildError,
-            DeviceNotAvailableException {
+    public void setUp(TestInformation testInfo)
+            throws TargetSetupError, BuildError, DeviceNotAvailableException {
         mFilesPushed = new HashSet<>();
+        ITestDevice device = testInfo.getDevice();
         if (mRemountSystem) {
             device.remountSystemWritable();
         }
@@ -271,7 +280,13 @@ public class PushFilePreparer extends BaseTargetPreparer
             device.remountVendorWritable();
         }
 
-        Map<String, File> remoteToLocalMapping = new HashMap<>();
+        // Backup files
+        for (Map.Entry<String, String> entry : mBackupFileSpecs.entrySet()) {
+            device.executeShellCommand(
+                    "mv \"" + entry.getKey() + "\" \"" + entry.getValue() + "\"");
+        }
+
+        Map<String, File> remoteToLocalMapping = new LinkedHashMap<>();
         for (String pushspec : mPushSpecs) {
             String[] pair = pushspec.split("->");
             if (pair.length != 2) {
@@ -282,7 +297,9 @@ public class PushFilePreparer extends BaseTargetPreparer
         }
         // Push the file structure
         for (File local : mPushFileSpecs.keySet()) {
-            remoteToLocalMapping.put(mPushFileSpecs.get(local), local);
+            for (String remoteLocation : mPushFileSpecs.get(local)) {
+                remoteToLocalMapping.put(remoteLocation, local);
+            }
         }
 
         for (String remotePath : remoteToLocalMapping.keySet()) {
@@ -292,7 +309,7 @@ public class PushFilePreparer extends BaseTargetPreparer
                     String.format(
                             "Trying to push local '%s' to remote '%s'",
                             local.getPath(), remotePath));
-            evaluatePushingPair(device, buildInfo, local, remotePath);
+            evaluatePushingPair(device, testInfo.getBuildInfo(), local, remotePath);
         }
 
         for (String command : mPostPushCommands) {
@@ -305,12 +322,10 @@ public class PushFilePreparer extends BaseTargetPreparer
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
-            throws DeviceNotAvailableException {
+    public void tearDown(TestInformation testInfo, Throwable e) throws DeviceNotAvailableException {
+        ITestDevice device = testInfo.getDevice();
         if (!(e instanceof DeviceNotAvailableException) && mCleanup && mFilesPushed != null) {
             if (mRemountSystem) {
                 device.remountSystemWritable();
@@ -320,6 +335,11 @@ public class PushFilePreparer extends BaseTargetPreparer
             }
             for (String devicePath : mFilesPushed) {
                 device.deleteFile(devicePath);
+            }
+            // Restore files
+            for (Map.Entry<String, String> entry : mBackupFileSpecs.entrySet()) {
+                device.executeShellCommand(
+                        "mv \"" + entry.getValue() + "\" \"" + entry.getKey() + "\"");
             }
         }
     }

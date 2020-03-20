@@ -57,6 +57,7 @@ import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.ITestInvocation;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInvocation;
+import com.android.tradefed.invoker.shard.ParentShardReplicate;
 import com.android.tradefed.log.ILogRegistry.EventType;
 import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -465,6 +466,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             IScheduledInvocationListener {
 
         private final IDeviceManager mDeviceManager;
+        private boolean mDeviceReleased = false;
 
         FreeDeviceHandler(IDeviceManager deviceManager,
                 IScheduledInvocationListener... listeners) {
@@ -473,12 +475,11 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         }
 
         @Override
-        public void invocationComplete(IInvocationContext context,
-                Map<ITestDevice, FreeDeviceState> devicesStates) {
-            for (ITestInvocationListener listener : getListeners()) {
-                ((IScheduledInvocationListener) listener).invocationComplete(context, devicesStates);
+        public void releaseDevices(
+                IInvocationContext context, Map<ITestDevice, FreeDeviceState> devicesStates) {
+            if (mDeviceReleased) {
+                return;
             }
-
             for (ITestDevice device : context.getDevices()) {
                 mDeviceManager.freeDevice(device, devicesStates.get(device));
                 remoteFreeDevice(device);
@@ -487,6 +488,17 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                     ((IManagedTestDevice)device).setFastbootPath(mDeviceManager.getFastbootPath());
                 }
             }
+            mDeviceReleased = true;
+        }
+
+        @Override
+        public void invocationComplete(
+                IInvocationContext context, Map<ITestDevice, FreeDeviceState> devicesStates) {
+            for (ITestInvocationListener listener : getListeners()) {
+                ((IScheduledInvocationListener) listener)
+                        .invocationComplete(context, devicesStates);
+            }
+            releaseDevices(context, devicesStates);
         }
     }
 
@@ -516,11 +528,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
     }
 
     private class InvocationThread extends Thread {
-        /**
-         * time to wait for device adb shell responsive connection before declaring it unavailable
-         * for the next iteration of testing.
-         */
-        private static final long CHECK_WAIT_DEVICE_AVAIL_MS = 30 * 1000;
+
         private static final int EXPECTED_THREAD_COUNT = 1;
         private static final String INVOC_END_EVENT_ID_KEY = "id";
         private static final String INVOC_END_EVENT_ELAPSED_KEY = "elapsed-time";
@@ -554,10 +562,6 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
         @Override
         public void run() {
-            Map<ITestDevice, FreeDeviceState> deviceStates = new HashMap<>();
-            for (ITestDevice device : mInvocationContext.getDevices()) {
-                deviceStates.put(device, FreeDeviceState.AVAILABLE);
-            }
             mStartTime = System.currentTimeMillis();
             ITestInvocation instance = getInvocation();
             IConfiguration config = mCmd.getConfiguration();
@@ -571,6 +575,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 }
             }
 
+            Exception trackDeviceException = null;
             try {
                 // Copy the command options invocation attributes to the invocation if it has not
                 // been already done.
@@ -589,17 +594,11 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                         new Rescheduler(mCmd.getCommandTracker()), mListeners);
             } catch (DeviceUnresponsiveException e) {
                 CLog.w("Device %s is unresponsive. Reason: %s", e.getSerial(), e.getMessage());
-                ITestDevice badDevice = mInvocationContext.getDeviceBySerial(e.getSerial());
-                if (badDevice != null) {
-                    deviceStates.put(badDevice, FreeDeviceState.UNRESPONSIVE);
-                }
+                trackDeviceException = e;
                 setLastInvocationExitCode(ExitCode.DEVICE_UNRESPONSIVE, e);
             } catch (DeviceNotAvailableException e) {
                 CLog.w("Device %s is not available. Reason: %s", e.getSerial(), e.getMessage());
-                ITestDevice badDevice = mInvocationContext.getDeviceBySerial(e.getSerial());
-                if (badDevice != null) {
-                    deviceStates.put(badDevice, FreeDeviceState.UNAVAILABLE);
-                }
+                trackDeviceException = e;
                 setLastInvocationExitCode(ExitCode.DEVICE_UNAVAILABLE, e);
             } catch (FatalHostError e) {
                 CLog.wtf(String.format("Fatal error occurred: %s, shutting down", e.getMessage()),
@@ -620,24 +619,11 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 // remove invocation thread first so another invocation can be started on device
                 // when freed
                 removeInvocationThread(this);
-                for (ITestDevice device : mInvocationContext.getDevices()) {
-                    if (device.getIDevice() instanceof StubDevice) {
-                        // Never release stub and Tcp devices, otherwise they will disappear
-                        // during deallocation since they are only placeholder.
-                        deviceStates.put(device, FreeDeviceState.AVAILABLE);
-                    } else if (!TestDeviceState.ONLINE.equals(device.getDeviceState())) {
-                        // If the device is offline at the end of the test
-                        deviceStates.put(device, FreeDeviceState.UNAVAILABLE);
-                    } else if (!isDeviceResponsive(device)) {
-                        // If device cannot pass basic shell responsiveness test.
-                        deviceStates.put(device, FreeDeviceState.UNAVAILABLE);
-                    }
-                    // Reset the recovery mode at the end of the invocation.
-                    device.setRecoveryMode(RecoveryMode.AVAILABLE);
-                }
 
                 checkStrayThreads();
 
+                Map<ITestDevice, FreeDeviceState> deviceStates =
+                        createReleaseMap(mInvocationContext, trackDeviceException);
                 for (final IScheduledInvocationListener listener : mListeners) {
                     try {
                         listener.invocationComplete(mInvocationContext, deviceStates);
@@ -695,11 +681,6 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 args.put(key, context.getAttributes().get(key).get(0));
             }
             logEvent(EventType.INVOCATION_END, args);
-        }
-
-        /** Basic responsiveness check at the end of an invocation. */
-        private boolean isDeviceResponsive(ITestDevice device) {
-            return device.waitForDeviceShell(CHECK_WAIT_DEVICE_AVAIL_MS);
         }
 
         ITestInvocation getInvocation() {
@@ -798,6 +779,48 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 }
             }
         }
+    }
+
+    /** Create a map of the devices state so they can be released appropriately. */
+    public static Map<ITestDevice, FreeDeviceState> createReleaseMap(
+            IInvocationContext context, Throwable e) {
+        Map<ITestDevice, FreeDeviceState> deviceStates = new HashMap<>();
+        for (ITestDevice device : context.getDevices()) {
+            deviceStates.put(device, FreeDeviceState.AVAILABLE);
+        }
+
+        if (e != null) {
+            if (e instanceof DeviceUnresponsiveException) {
+                ITestDevice badDevice =
+                        context.getDeviceBySerial(((DeviceUnresponsiveException) e).getSerial());
+                if (badDevice != null) {
+                    deviceStates.put(badDevice, FreeDeviceState.UNRESPONSIVE);
+                }
+            } else if (e instanceof DeviceNotAvailableException) {
+                ITestDevice badDevice =
+                        context.getDeviceBySerial(((DeviceNotAvailableException) e).getSerial());
+                if (badDevice != null) {
+                    deviceStates.put(badDevice, FreeDeviceState.UNAVAILABLE);
+                }
+            }
+        }
+
+        for (ITestDevice device : context.getDevices()) {
+            if (device.getIDevice() instanceof StubDevice) {
+                // Never release stub and Tcp devices, otherwise they will disappear
+                // during deallocation since they are only placeholder.
+                deviceStates.put(device, FreeDeviceState.AVAILABLE);
+            } else if (!TestDeviceState.ONLINE.equals(device.getDeviceState())) {
+                // If the device is offline at the end of the test
+                deviceStates.put(device, FreeDeviceState.UNAVAILABLE);
+            } else if (!device.waitForDeviceShell(30000)) {
+                // If device cannot pass basic shell responsiveness test.
+                deviceStates.put(device, FreeDeviceState.UNAVAILABLE);
+            }
+            // Reset the recovery mode at the end of the invocation.
+            device.setRecoveryMode(RecoveryMode.AVAILABLE);
+        }
+        return deviceStates;
     }
 
     /**
@@ -1451,32 +1474,35 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
     Map<String, ITestDevice> allocateDevices(IConfiguration config, IDeviceManager manager) {
         Map<String, ITestDevice> devices = new LinkedHashMap<String, ITestDevice>();
         ITestDevice device = null;
+        if (config.getDeviceConfig().isEmpty()) {
+            return null;
+        }
+        // If we need to replicate the setup on all devices
+        ParentShardReplicate.replicatedSetup(config, getKeyStoreClient());
         synchronized(this) {
-            if (!config.getDeviceConfig().isEmpty()) {
-                for (IDeviceConfiguration deviceConfig : config.getDeviceConfig()) {
-                    device =
-                            manager.allocateDevice(
-                                    deviceConfig.getDeviceRequirements(), deviceConfig.isFake());
-                    if (device != null) {
-                        devices.put(deviceConfig.getDeviceName(), device);
-                    } else {
-                        // If one of the several device cannot be allocated, we de-allocate
-                        // all the previous one.
-                        for (ITestDevice allocatedDevice : devices.values()) {
-                            FreeDeviceState deviceState = FreeDeviceState.AVAILABLE;
-                            if (allocatedDevice.getIDevice() instanceof StubDevice) {
-                                deviceState = FreeDeviceState.AVAILABLE;
-                            } else if (!TestDeviceState.ONLINE.equals(
-                                    allocatedDevice.getDeviceState())) {
-                                // If the device is offline at the end of the test
-                                deviceState = FreeDeviceState.UNAVAILABLE;
-                            }
-                            manager.freeDevice(allocatedDevice, deviceState);
+            for (IDeviceConfiguration deviceConfig : config.getDeviceConfig()) {
+                device =
+                        manager.allocateDevice(
+                                deviceConfig.getDeviceRequirements(), deviceConfig.isFake());
+                if (device != null) {
+                    devices.put(deviceConfig.getDeviceName(), device);
+                } else {
+                    // If one of the several device cannot be allocated, we de-allocate
+                    // all the previous one.
+                    for (ITestDevice allocatedDevice : devices.values()) {
+                        FreeDeviceState deviceState = FreeDeviceState.AVAILABLE;
+                        if (allocatedDevice.getIDevice() instanceof StubDevice) {
+                            deviceState = FreeDeviceState.AVAILABLE;
+                        } else if (!TestDeviceState.ONLINE.equals(
+                                allocatedDevice.getDeviceState())) {
+                            // If the device is offline at the end of the test
+                            deviceState = FreeDeviceState.UNAVAILABLE;
                         }
-                        // Could not allocate all devices
-                        devices.clear();
-                        break;
+                        manager.freeDevice(allocatedDevice, deviceState);
                     }
+                    // Could not allocate all devices
+                    devices.clear();
+                    break;
                 }
             }
             return devices;
@@ -1818,15 +1844,16 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         return false;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public synchronized boolean stopInvocation(int invocationId) {
+    public synchronized boolean stopInvocation(int invocationId, String cause) {
         // TODO: make invocationID part of InvocationContext
         for (InvocationThread thread : mInvocationThreadMap.values()) {
             if (thread.mCmd.getCommandTracker().mId == invocationId) {
-                thread.stopInvocation("User requested stopping invocation " + invocationId);
+                if (cause == null) {
+                    cause = "User requested stopping invocation " + invocationId;
+                }
+                thread.stopInvocation(cause);
                 return true;
             }
         }

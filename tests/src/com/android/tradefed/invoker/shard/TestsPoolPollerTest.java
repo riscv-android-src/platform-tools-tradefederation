@@ -22,6 +22,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import com.android.ddmlib.Log.LogLevel;
+import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.OptionSetter;
@@ -36,8 +37,10 @@ import com.android.tradefed.invoker.shard.token.ITokenRequest;
 import com.android.tradefed.log.ILogRegistry;
 import com.android.tradefed.log.ILogRegistry.EventType;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IReportNotExecuted;
 import com.android.tradefed.testtype.StubTest;
@@ -77,6 +80,7 @@ public class TestsPoolPollerTest {
         mMetricCollectors = new ArrayList<>();
         IInvocationContext context = new InvocationContext();
         context.addAllocatedDevice("device", mDevice);
+        context.addDeviceBuildInfo("device", new BuildInfo());
         mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
     }
 
@@ -262,7 +266,7 @@ public class TestsPoolPollerTest {
         // Add tests that from a suite that can report their not executed tests.
         int numTests = 5;
         ITestSuite suite = new TestSuiteImpl(numTests);
-        testsList.addAll(suite.split(3));
+        testsList.addAll(suite.split(3, mTestInfo));
         CountDownLatch tracker = new CountDownLatch(1);
         TestsPoolPoller poller = new TestsPoolPoller(testsList, tracker);
         poller.setMetricCollectors(mMetricCollectors);
@@ -290,7 +294,10 @@ public class TestsPoolPollerTest {
                 .testRunStarted(
                         Mockito.eq("test4"), Mockito.eq(0), Mockito.eq(0), Mockito.anyLong());
         Mockito.verify(mListener, Mockito.times(5))
-                .testRunFailed(IReportNotExecuted.NOT_EXECUTED_FAILURE);
+                .testRunFailed(
+                        FailureDescription.create(
+                                IReportNotExecuted.NOT_EXECUTED_FAILURE,
+                                FailureStatus.NOT_EXECUTED));
         Mockito.verify(mListener, Mockito.times(5))
                 .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
         assertEquals(0, tracker.getCount());

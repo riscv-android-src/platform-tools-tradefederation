@@ -24,11 +24,14 @@ import com.android.tradefed.config.proto.ConfigurationDescription.Metadata;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.TfObjectTracker;
 import com.android.tradefed.invoker.proto.InvocationContext.Context;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.testtype.suite.ITestSuite;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.UniqueMultiMap;
+
+import com.google.common.base.Joiner;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -51,7 +54,6 @@ public class InvocationContext implements IInvocationContext {
     private Map<String, IBuildInfo> mNameAndBuildinfoMap;
     private final UniqueMultiMap<String, String> mInvocationAttributes =
             new UniqueMultiMap<String, String>();
-    private Map<IInvocationContext.TimingEvent, Long> mInvocationTimingMetrics;
     /** Invocation test-tag **/
     private String mTestTag;
     /** configuration descriptor */
@@ -70,7 +72,6 @@ public class InvocationContext implements IInvocationContext {
      * Creates a {@link BuildInfo} using default attribute values.
      */
     public InvocationContext() {
-        mInvocationTimingMetrics = new LinkedHashMap<>();
         mAllocatedDeviceAndBuildMap = new LinkedHashMap<ITestDevice, IBuildInfo>();
         // Use LinkedHashMap to ensure key ordering by insertion order
         mNameAndDeviceMap = new LinkedHashMap<String, ITestDevice>();
@@ -229,22 +230,6 @@ public class InvocationContext implements IInvocationContext {
         return copy;
     }
 
-
-    /** {@inheritDoc} */
-    @Override
-    public Map<IInvocationContext.TimingEvent, Long> getInvocationTimingMetrics() {
-        return mInvocationTimingMetrics;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void addInvocationTimingMetric(IInvocationContext.TimingEvent timingEvent,
-            Long durationMillis) {
-        mInvocationTimingMetrics.put(timingEvent, durationMillis);
-    }
-
     /**
      * {@inheritDoc}
      */
@@ -350,6 +335,11 @@ public class InvocationContext implements IInvocationContext {
         if (!metrics.isEmpty()) {
             mInvocationAttributes.putAll(new MultiMap<>(metrics));
         }
+        Map<String, Long> usage = TfObjectTracker.getUsage();
+        if (!usage.isEmpty()) {
+            mInvocationAttributes.put(
+                    TfObjectTracker.TF_OBJECTS_TRACKING_KEY, Joiner.on(",").join(usage.entrySet()));
+        }
     }
 
     /** {@inheritDoc} */
@@ -375,10 +365,6 @@ public class InvocationContext implements IInvocationContext {
         // now we are a "live" object again, so let's init the transient field
         mAllocatedDeviceAndBuildMap = new LinkedHashMap<ITestDevice, IBuildInfo>();
         mNameAndDeviceMap = new LinkedHashMap<String, ITestDevice>();
-        // For compatibility, when parent TF does not have the invocation timing yet.
-        if (mInvocationTimingMetrics == null) {
-            mInvocationTimingMetrics = new LinkedHashMap<>();
-        }
     }
 
     /** {@inheritDoc} */

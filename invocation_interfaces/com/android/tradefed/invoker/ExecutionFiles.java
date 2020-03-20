@@ -15,22 +15,36 @@
  */
 package com.android.tradefed.invoker;
 
+import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.util.FileUtil;
+
 import com.google.common.collect.ImmutableMap;
 
 import java.io.File;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 
-/** Files generated during the execution of a test or invocation that need to be carried */
+/**
+ * Files dependencies generated during the execution of a test or invocation that need to be carried
+ * for testing. This object is shared by all the invocation (tests, modules, etc.).
+ */
 public class ExecutionFiles {
 
     /** Enumeration of known standard key for the map. */
     public static enum FilesKey {
-        ADB_BINARY
+        ADB_BINARY,
+        // Describes the directory containing the build target tests artifacts.
+        TESTS_DIRECTORY,
+        // Sub-directory of TESTS_DIRECTORY that contains target artifacts
+        TARGET_TESTS_DIRECTORY,
+        // Sub-directory of TESTS_DIRECTORY that contains host-side artifacts
+        HOST_TESTS_DIRECTORY
     }
 
-    private final ConcurrentMap<String, File> mProperties = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, File> mFiles = new ConcurrentHashMap<>();
+    private final ConcurrentSkipListSet<String> mShouldNotDelete = new ConcurrentSkipListSet<>();
 
     // Package private to avoid new instantiation.
     ExecutionFiles() {}
@@ -45,11 +59,11 @@ public class ExecutionFiles {
      * @see ConcurrentMap
      */
     public File put(String key, File value) {
-        return mProperties.put(key, value);
+        return mFiles.put(key, value);
     }
 
     /**
-     * Variation of {@link #put(FilesKey, File)} with a known key.
+     * Variation of {@link #put(String, File)} with a known key.
      *
      * @param key key with which the specified value is to be associated
      * @param value value to be associated with the specified key
@@ -57,7 +71,30 @@ public class ExecutionFiles {
      *     mapping for {@code key}.
      */
     public File put(FilesKey key, File value) {
-        return mProperties.put(key.toString(), value);
+        return mFiles.put(key.toString(), value);
+    }
+
+    /**
+     * Variation of {@link #put(FilesKey, File)} with option to prevent the file from being deleted
+     * at the end of the invocation.
+     *
+     * @param key key with which the specified value is to be associated
+     * @param value value to be associated with the specified key
+     * @param shouldNotDelete prevent the file from being deleted at the end of invocation.
+     * @return the previous value associated with {@code key}, or {@code null} if there was no
+     *     mapping for {@code key}.
+     */
+    public File put(FilesKey key, File value, boolean shouldNotDelete) {
+        File f = mFiles.put(key.toString(), value);
+        if (shouldNotDelete) {
+            mShouldNotDelete.add(key.toString());
+        } else {
+            mShouldNotDelete.remove(key.toString());
+        }
+        if (f != null) {
+            CLog.w("Replaced key '%s' with value '%s' by '%s'", key, f, value);
+        }
+        return f;
     }
 
     /**
@@ -70,7 +107,7 @@ public class ExecutionFiles {
      *     mapping for the key.
      */
     public File putIfAbsent(String key, File value) {
-        return mProperties.putIfAbsent(key, value);
+        return mFiles.putIfAbsent(key, value);
     }
 
     /**
@@ -80,13 +117,13 @@ public class ExecutionFiles {
      * @return The final mapping
      */
     public ExecutionFiles putAll(Map<String, File> properties) {
-        mProperties.putAll(properties);
+        mFiles.putAll(properties);
         return this;
     }
 
     /** Returns whether or not the map of properties is empty. */
     public boolean isEmpty() {
-        return mProperties.isEmpty();
+        return mFiles.isEmpty();
     }
 
     /**
@@ -98,7 +135,7 @@ public class ExecutionFiles {
      *     no mapping for the key
      */
     public File get(String key) {
-        return mProperties.get(key);
+        return mFiles.get(key);
     }
 
     /**
@@ -109,7 +146,7 @@ public class ExecutionFiles {
      *     no mapping for the key
      */
     public File get(FilesKey key) {
-        return mProperties.get(key.toString());
+        return mFiles.get(key.toString());
     }
 
     /**
@@ -119,12 +156,12 @@ public class ExecutionFiles {
      * @return {@code true} if this map contains a mapping for the specified key
      */
     public boolean containsKey(String key) {
-        return mProperties.containsKey(key);
+        return mFiles.containsKey(key);
     }
 
     /** Returns all the properties in a copy of the map */
     public ImmutableMap<String, File> getAll() {
-        return ImmutableMap.copyOf(mProperties);
+        return ImmutableMap.copyOf(mFiles);
     }
 
     /**
@@ -135,6 +172,17 @@ public class ExecutionFiles {
      *     mapping for {@code key}.
      */
     public File remove(String key) {
-        return mProperties.remove(key);
+        return mFiles.remove(key);
+    }
+
+    /** Delete all the files that are tracked and not marked as 'should not delete'. */
+    public void clearFiles() {
+        for (String key : mFiles.keySet()) {
+            if (mShouldNotDelete.contains(key)) {
+                continue;
+            }
+            FileUtil.recursiveDelete(mFiles.get(key));
+            mFiles.remove(key);
+        }
     }
 }

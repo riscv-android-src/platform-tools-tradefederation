@@ -38,7 +38,6 @@ import org.junit.runners.JUnit4;
 import org.mockito.Mockito;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -59,11 +58,12 @@ public class AppSetupTest {
     private List<VersionedFile> mApps;
 
     @Before
-    public void setUp() throws IOException {
+    public void setUp() throws Exception {
         mAppSetup = new AppSetup();
         mMockDevice = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn(SERIAL);
         EasyMock.expect(mMockDevice.getDeviceDescriptor()).andStubReturn(null);
+        EasyMock.expect(mMockDevice.isAppEnumerationSupported()).andStubReturn(false);
         mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
         mMockAaptParser = Mockito.mock(AaptParser.class);
         mApps = new ArrayList<>();

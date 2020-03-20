@@ -26,6 +26,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.cluster.ClusterCommand.RequestType;
+import com.android.tradefed.cluster.ClusterCommandScheduler.InvocationEventHandler;
 import com.android.tradefed.command.CommandScheduler;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.Configuration;
@@ -45,26 +47,26 @@ import com.android.tradefed.device.NoDeviceException;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ConsoleResultReporter;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.TestSummary;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner.TestLogData;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.IRestApiHelper;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.ZipUtil;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
 import com.android.tradefed.util.keystore.StubKeyStoreClient;
 
-import com.android.tradefed.cluster.ClusterCommand.RequestType;
-import com.android.tradefed.cluster.ClusterCommandScheduler.InvocationEventHandler;
-import com.android.tradefed.util.IRestApiHelper;
 import com.google.api.client.http.GenericUrl;
 import com.google.api.client.http.HttpRequestFactory;
 import com.google.api.client.http.HttpResponse;
@@ -87,7 +89,6 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.io.ByteArrayInputStream;
@@ -99,11 +100,11 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.UUID;
 import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
 import java.util.TreeMap;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 /** Unit tests for {@link ClusterCommandScheduler}. */
@@ -138,7 +139,7 @@ public class ClusterCommandSchedulerTest {
 
     // Explicitly define this, so we can mock it
     private static interface ICommandEventUploader
-            extends IClusterEventUploader<ClusterCommandEvent> {};
+            extends IClusterEventUploader<ClusterCommandEvent> {}
 
     @Before
     public void setUp() throws Exception {
@@ -625,6 +626,7 @@ public class ClusterCommandSchedulerTest {
         context.addDeviceBuildInfo("", mockBuildInfo);
         ClusterCommandScheduler.InvocationEventHandler handler =
                 mScheduler.new InvocationEventHandler(mockCommand);
+        mMockClusterOptions.setCollectEarlyTestSummary(true);
 
         mMockEventUploader.postEvent(
                 checkClusterCommandEvent(ClusterCommandEvent.Type.InvocationInitiated));
@@ -644,6 +646,11 @@ public class ClusterCommandSchedulerTest {
 
         EasyMock.replay(mMockEventUploader, mockBuildInfo, mockTestDevice);
         handler.invocationInitiated(context);
+        List<TestSummary> summaries = new ArrayList<>();
+        summaries.add(
+                new TestSummary(new TestSummary.TypedString("http://uri", TestSummary.Type.URI)));
+        handler.putEarlySummary(summaries);
+        handler.putSummary(summaries);
         handler.invocationStarted(context);
         handler.testRunStarted("test run", 1);
         handler.testStarted(new TestDescription("class", CMD_LINE));
@@ -651,8 +658,8 @@ public class ClusterCommandSchedulerTest {
         handler.testRunEnded(10L, new HashMap<String, Metric>());
         handler.invocationEnded(100L);
         context.addAllocatedDevice(DEVICE_SERIAL, mockTestDevice);
-        context.addInvocationTimingMetric(IInvocationContext.TimingEvent.FETCH_BUILD, 100L);
-        context.addInvocationTimingMetric(IInvocationContext.TimingEvent.SETUP, 200L);
+        context.addInvocationAttribute(InvocationMetricKey.FETCH_BUILD.toString(), "100");
+        context.addInvocationAttribute(InvocationMetricKey.SETUP.toString(), "200");
         Map<ITestDevice, FreeDeviceState> releaseMap = new HashMap<>();
         releaseMap.put(mockTestDevice, FreeDeviceState.AVAILABLE);
         handler.invocationComplete(context, releaseMap);
@@ -664,10 +671,15 @@ public class ClusterCommandSchedulerTest {
         assertEquals(
                 "0", capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_FAILED_TEST_COUNT));
         assertEquals(
+                "1", capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_PASSED_TEST_COUNT));
+        assertEquals(
                 "100",
                 capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_FETCH_BUILD_TIME_MILLIS));
         assertEquals(
                 "200", capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_SETUP_TIME_MILLIS));
+        assertEquals(
+                "URI: http://uri\n",
+                capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_SUMMARY));
     }
 
     /** Test that the error count is the proper one. */
@@ -732,6 +744,8 @@ public class ClusterCommandSchedulerTest {
         // We only count test failure and not assumption failures.
         assertEquals(
                 "2", capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_FAILED_TEST_COUNT));
+        assertEquals(
+                "0", capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_PASSED_TEST_COUNT));
         assertEquals(
                 "1",
                 capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_FAILED_TEST_RUN_COUNT));
@@ -894,7 +908,7 @@ public class ClusterCommandSchedulerTest {
         }
 
         @Override
-        public boolean stopInvocation(int invocationId) {
+        public boolean stopInvocation(int invocationId, String cause) {
             return (stopInvocationCalled = true);
         }
 

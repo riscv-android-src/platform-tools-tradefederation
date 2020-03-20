@@ -446,7 +446,7 @@ public abstract class ITestSuite
         if (mBuildInfo != null
                 && mBuildInfo.getRemoteFiles() != null
                 && mBuildInfo.getRemoteFiles().size() > 0) {
-            stageTestArtifacts(moduleNames);
+            stageTestArtifacts(mDevice, moduleNames);
         }
 
         runConfig.clear();
@@ -454,7 +454,7 @@ public abstract class ITestSuite
     }
 
     /** Helper to download all artifacts for the given modules. */
-    private void stageTestArtifacts(Set<String> modules) {
+    private void stageTestArtifacts(ITestDevice device, Set<String> modules) {
         CLog.i(String.format("Start to stage test artifacts for %d modules.", modules.size()));
         long startTime = System.currentTimeMillis();
         // Include the file if its path contains a folder name matching any of the module.
@@ -465,6 +465,9 @@ public abstract class ITestSuite
         List<String> includeFilters = Arrays.asList(moduleRegex);
         // Ignore config file as it's part of config zip artifact that's staged already.
         List<String> excludeFilters = Arrays.asList("[.]config$");
+        mDynamicResolver.setDevice(device);
+        mDynamicResolver.addExtraArgs(
+                mMainConfiguration.getCommandOptions().getDynamicDownloadArgs());
         for (File remoteFile : mBuildInfo.getRemoteFiles()) {
             try {
                 mDynamicResolver.resolvePartialDownloadZip(
@@ -777,6 +780,8 @@ public abstract class ITestSuite
         module.setRetryDecision(decision);
 
         module.setEnableDynamicDownload(mEnableDynamicDownload);
+        module.addDynamicDownloadArgs(
+                mMainConfiguration.getCommandOptions().getDynamicDownloadArgs());
         // Actually run the module
         module.run(
                 moduleInfo,
@@ -916,11 +921,16 @@ public abstract class ITestSuite
 
     /** {@inheritDoc} */
     @Override
-    public Collection<IRemoteTest> split(int shardCountHint) {
-        if (shardCountHint <= 1 || mIsSharded) {
+    public Collection<IRemoteTest> split(Integer shardCountHint, TestInformation testInfo) {
+        if (shardCountHint == null || shardCountHint <= 1 || mIsSharded) {
             // cannot shard or already sharded
             return null;
         }
+        // TODO: Replace by relying on testInfo directly
+        setBuild(testInfo.getBuildInfo());
+        setDevice(testInfo.getDevice());
+        setInvocationContext(testInfo.getContext());
+
         mIsSplitting = true;
         try {
             LinkedHashMap<String, IConfiguration> runConfig = loadAndFilter();
@@ -928,12 +938,13 @@ public abstract class ITestSuite
                 CLog.i("No config were loaded. Nothing to run.");
                 return null;
             }
-            injectInfo(runConfig);
+            injectInfo(runConfig, testInfo);
 
             // We split individual tests on double the shardCountHint to provide better average.
             // The test pool mechanism prevent this from creating too much overhead.
             List<ModuleDefinition> splitModules =
                     ModuleSplitter.splitConfiguration(
+                            testInfo,
                             runConfig,
                             shardCountHint,
                             mShouldMakeDynamicModule,
@@ -968,17 +979,18 @@ public abstract class ITestSuite
      * Inject {@link ITestDevice} and {@link IBuildInfo} to the {@link IRemoteTest}s in the config
      * before sharding since they may be needed.
      */
-    private void injectInfo(LinkedHashMap<String, IConfiguration> runConfig) {
+    private void injectInfo(
+            LinkedHashMap<String, IConfiguration> runConfig, TestInformation testInfo) {
         for (IConfiguration config : runConfig.values()) {
             for (IRemoteTest test : config.getTests()) {
                 if (test instanceof IBuildReceiver) {
-                    ((IBuildReceiver) test).setBuild(mBuildInfo);
+                    ((IBuildReceiver) test).setBuild(testInfo.getBuildInfo());
                 }
                 if (test instanceof IDeviceTest) {
-                    ((IDeviceTest) test).setDevice(mDevice);
+                    ((IDeviceTest) test).setDevice(testInfo.getDevice());
                 }
                 if (test instanceof IInvocationContextReceiver) {
-                    ((IInvocationContextReceiver) test).setInvocationContext(mContext);
+                    ((IInvocationContextReceiver) test).setInvocationContext(testInfo.getContext());
                 }
                 if (test instanceof ITestCollector) {
                     ((ITestCollector) test).setCollectTestsOnly(mCollectTestsOnly);

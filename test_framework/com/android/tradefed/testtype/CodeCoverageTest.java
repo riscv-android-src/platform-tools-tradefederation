@@ -19,6 +19,7 @@ package com.android.tradefed.testtype;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.FileInputStreamSource;
@@ -49,7 +50,8 @@ public class CodeCoverageTest extends InstrumentationTest {
     public static final String COVERAGE_REMOTE_FILE_LABEL = "coverageFilePath";
 
     @Override
-    public void run(final ITestInvocationListener listener) throws DeviceNotAvailableException {
+    public void run(TestInformation testInfo, final ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
         // Disable rerun mode, we want to stop the tests as soon as we fail.
         super.setRerunMode(false);
         // Force generation of emma coverage file to true and set up coverage
@@ -62,7 +64,7 @@ public class CodeCoverageTest extends InstrumentationTest {
         CollectingTestListener testCoverageFile = new CollectingTestListener();
 
         // Run instrumentation tests.
-        super.run(new ResultForwarder(listener, testCoverageFile));
+        super.run(testInfo, new ResultForwarder(listener, testCoverageFile));
 
         // If coverage file path was not set explicitly before test run, fetch
         // it from the

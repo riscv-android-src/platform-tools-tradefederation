@@ -16,15 +16,15 @@
 
 package com.android.tradefed.targetprep;
 
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.TestInformation;
 
 /** Target preparer that reboots the device. */
 @OptionClass(alias = "reboot-preparer")
-public class RebootTargetPreparer extends BaseTargetPreparer {
+public final class RebootTargetPreparer extends BaseTargetPreparer {
 
     @Option(name = "pre-reboot", description = "Reboot the device during setUp.")
     private boolean mPreReboot = true;
@@ -33,17 +33,18 @@ public class RebootTargetPreparer extends BaseTargetPreparer {
     private boolean mPostReboot = false;
 
     @Override
-    public void setUp(ITestDevice device, IBuildInfo buildInfo)
+    public void setUp(TestInformation testInfo)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
         if (mPreReboot) {
+            ITestDevice device = testInfo.getDevice();
             device.reboot();
         }
     }
 
     @Override
-    public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
-            throws DeviceNotAvailableException {
+    public void tearDown(TestInformation testInfo, Throwable e) throws DeviceNotAvailableException {
         if (mPostReboot) {
+            ITestDevice device = testInfo.getDevice();
             device.reboot();
         }
     }

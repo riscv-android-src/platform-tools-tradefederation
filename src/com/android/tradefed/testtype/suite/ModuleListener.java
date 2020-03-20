@@ -19,6 +19,7 @@ import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.CollectingTestListener;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
@@ -87,6 +88,13 @@ public class ModuleListener extends CollectingTestListener {
 
     /** {@inheritDoc} */
     @Override
+    public void testRunFailed(FailureDescription failure) {
+        CLog.d("ModuleListener.testRunFailed(%s)", failure.toString());
+        super.testRunFailed(failure);
+    }
+
+    /** {@inheritDoc} */
+    @Override
     public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
         super.testRunEnded(elapsedTime, runMetrics);
         mRunInProgress = false;
@@ -111,15 +119,20 @@ public class ModuleListener extends CollectingTestListener {
     }
 
     /** Helper to log the test passed if it didn't fail. */
-    private void logTestPassed(String testName) {
+    private void logTestPassed(TestDescription testName) {
         if (!mTestFailed && !mCollectTestsOnly) {
+            String runName = "";
+            // Only print the run name in addition to test case fully qualified if different.
+            if (!testName.getClassName().startsWith(getCurrentRunResults().getName())) {
+                runName = getCurrentRunResults().getName() + " ";
+            }
+            String runAndTestCase = String.format("%s%s", runName, testName.toString());
             CLog.logAndDisplay(
                     LogLevel.INFO,
-                    "[%d/%d] %s %s pass",
+                    "[%d/%d] %s pass",
                     mTestsRan,
                     getExpectedTests(),
-                    getCurrentRunResults().getName(),
-                    testName);
+                    runAndTestCase);
         }
         mTestsRan++;
     }
@@ -133,7 +146,7 @@ public class ModuleListener extends CollectingTestListener {
     /** {@inheritDoc} */
     @Override
     public void testEnded(TestDescription test, long endTime, HashMap<String, Metric> testMetrics) {
-        logTestPassed(test.toString());
+        logTestPassed(test);
         super.testEnded(test, endTime, testMetrics);
     }
 

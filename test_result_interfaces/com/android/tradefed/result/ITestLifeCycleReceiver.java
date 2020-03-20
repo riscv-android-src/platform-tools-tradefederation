@@ -88,6 +88,15 @@ public interface ITestLifeCycleReceiver {
     public default void testRunFailed(String errorMessage) {}
 
     /**
+     * Reports test run failed to complete due to a failure described by {@link FailureDescription}.
+     *
+     * @param failure {@link FailureDescription} describing the failure and its context.
+     */
+    public default void testRunFailed(FailureDescription failure) {
+        testRunFailed(failure.toString());
+    }
+
+    /**
      * Reports end of test run.
      *
      * @param elapsedTimeMillis device reported elapsed time, in milliseconds
@@ -145,12 +154,34 @@ public interface ITestLifeCycleReceiver {
     public default void testFailed(TestDescription test, String trace) {}
 
     /**
+     * Reports the failure of a individual test case.
+     *
+     * <p>Will be called between testStarted and testEnded.
+     *
+     * @param test identifies the test
+     * @param failure {@link FailureDescription} describing the failure and its context.
+     */
+    public default void testFailed(TestDescription test, FailureDescription failure) {
+        testFailed(test, failure.toString());
+    }
+
+    /**
      * Called when an atomic test flags that it assumes a condition that is false
      *
      * @param test identifies the test
      * @param trace stack trace of failure
      */
     public default void testAssumptionFailure(TestDescription test, String trace) {}
+
+    /**
+     * Called when an atomic test flags that it assumes a condition that is false
+     *
+     * @param test identifies the test
+     * @param failure {@link FailureDescription} describing the failure and its context.
+     */
+    public default void testAssumptionFailure(TestDescription test, FailureDescription failure) {
+        testAssumptionFailure(test, failure.toString());
+    }
 
     /**
      * Called when a test will not be run, generally because a test method is annotated with
