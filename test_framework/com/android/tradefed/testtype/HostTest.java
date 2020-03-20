@@ -17,8 +17,10 @@ package com.android.tradefed.testtype;
 
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
-import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.DynamicRemoteFileResolver;
+import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
@@ -29,16 +31,17 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.testtype.host.PrettyTestEventLogger;
 import com.android.tradefed.testtype.junit4.CarryDnaeError;
 import com.android.tradefed.testtype.junit4.JUnit4ResultForwarder;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.JUnit4TestFilter;
 import com.android.tradefed.util.StreamUtil;
-import com.android.tradefed.util.SystemUtil.EnvVariable;
 import com.android.tradefed.util.TestFilterHelper;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -96,7 +99,8 @@ public class HostTest
                 IBuildReceiver,
                 IAbiReceiver,
                 IShardableTest,
-                IRuntimeHintProvider {
+                IRuntimeHintProvider,
+                IConfigurationReceiver {
 
     @Option(name = "class", description = "The JUnit test classes to run, in the format "
             + "<package>.<class>. eg. \"com.android.foo.Bar\". This field can be repeated.",
@@ -166,6 +170,7 @@ public class HostTest
     )
     private boolean mEnableHostDeviceLogs = true;
 
+    private IConfiguration mConfig;
     private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
     private IAbi mAbi;
@@ -181,7 +186,6 @@ public class HostTest
 
     private static final String EXCLUDE_NO_TEST_FAILURE = "org.junit.runner.manipulation.Filter";
     private static final String TEST_FULL_NAME_FORMAT = "%s#%s";
-    private static final String ROOT_DIR = "ROOT_DIR";
 
     /** Track the downloaded files. */
     private List<File> mDownloadedFiles = new ArrayList<>();
@@ -189,6 +193,15 @@ public class HostTest
     public HostTest() {
         mFilterHelper = new TestFilterHelper(new ArrayList<String>(), new ArrayList<String>(),
                 mIncludeAnnotations, mExcludeAnnotations);
+    }
+
+    public void setTestInformation(TestInformation testInfo) {
+        mTestInfo = testInfo;
+    }
+
+    @Override
+    public void setConfiguration(IConfiguration configuration) {
+        mConfig = configuration;
     }
 
     /**
@@ -465,6 +478,9 @@ public class HostTest
         if (testObj instanceof IInvocationContextReceiver) {
             ((IInvocationContextReceiver) testObj).setInvocationContext(mTestInfo.getContext());
         }
+        if (testObj instanceof ITestInformationReceiver) {
+            ((ITestInformationReceiver) testObj).setTestInformation(mTestInfo);
+        }
         // managed runner should have the same set-option to pass option too.
         if (testObj instanceof ISetOptionReceiver) {
             try {
@@ -491,16 +507,22 @@ public class HostTest
             List<Class<?>> classes = getClasses();
             if (!mSkipTestClassCheck) {
                 if (classes.isEmpty()) {
-                    throw new IllegalArgumentException("Missing Test class name");
+                    throw new IllegalArgumentException("No '--class' option was specified.");
                 }
             }
             if (mMethodName != null && classes.size() > 1) {
-                throw new IllegalArgumentException("Method name given with multiple test classes");
+                throw new IllegalArgumentException(
+                        String.format(
+                                "'--method' only supports one '--class' name. Multiple were "
+                                        + "given: '%s'",
+                                classes));
             }
         } catch (IllegalArgumentException e) {
-            // TODO: If possible in some cases, carry the name of the failed class in the run start
             listener.testRunStarted(this.getClass().getCanonicalName(), 0);
-            listener.testRunFailed(e.getMessage());
+            FailureDescription failureDescription =
+                    FailureDescription.create(StreamUtil.getStackTrace(e));
+            failureDescription.setFailureStatus(FailureStatus.TEST_FAILURE);
+            listener.testRunFailed(failureDescription);
             listener.testRunEnded(0L, new HashMap<String, Metric>());
             throw e;
         }
@@ -858,10 +880,10 @@ public class HostTest
         for (String jarName : mJars) {
             JarFile jarFile = null;
             try {
-                File file = getJarFile(jarName, getBuild());
+                File file = getJarFile(jarName, mTestInfo);
                 jarFile = new JarFile(file);
                 Enumeration<JarEntry> e = jarFile.entries();
-                URL[] urls = {new URL(String.format("jar:file:%s!/", file.getAbsolutePath()))};
+                URL[] urls = {file.toURI().toURL()};
                 URLClassLoader cl = URLClassLoader.newInstance(urls);
 
                 while (e.hasMoreElements()) {
@@ -1100,14 +1122,16 @@ public class HostTest
         }
     }
 
-    /**
-     * We split by individual by either test class or method.
-     */
+    /** We split by individual by either test class or method. */
     @Override
-    public Collection<IRemoteTest> split(int shardCount) {
+    public Collection<IRemoteTest> split(Integer shardCount, TestInformation testInfo) {
+        if (shardCount == null) {
+            return null;
+        }
         if (shardCount < 1) {
             throw new IllegalArgumentException("Must have at least 1 shard");
         }
+        mTestInfo = testInfo;
         List<IRemoteTest> listTests = new ArrayList<>();
         List<Class<?>> classes = getClasses();
         if (classes.isEmpty()) {
@@ -1219,60 +1243,25 @@ public class HostTest
      * find our jar.
      */
     @VisibleForTesting
-    protected File getJarFile(String jarName, IBuildInfo buildInfo) throws FileNotFoundException {
-        File jarFile = null;
-        // Check env variable
-        String testcasesPath = System.getenv(EnvVariable.ANDROID_HOST_OUT_TESTCASES.toString());
-        if (testcasesPath != null) {
-            File testCasesFile = new File(testcasesPath);
-            jarFile = searchJarFile(testCasesFile, jarName);
-        }
-        if (jarFile != null) {
-            return jarFile;
-        }
-
-        // Check tests dir
-        if (buildInfo instanceof IDeviceBuildInfo) {
-            IDeviceBuildInfo deviceBuildInfo = (IDeviceBuildInfo) buildInfo;
-            File testDir = deviceBuildInfo.getTestsDir();
-            jarFile = searchJarFile(testDir, jarName);
-        }
-        if (jarFile != null) {
-            return jarFile;
-        }
-
-        // Check ROOT_DIR
-        if (buildInfo.getBuildAttributes().get(ROOT_DIR) != null) {
-            jarFile =
-                    searchJarFile(new File(buildInfo.getBuildAttributes().get(ROOT_DIR)), jarName);
-        }
-        if (jarFile != null) {
-            return jarFile;
-        }
-        throw new FileNotFoundException(String.format("Could not find jar: %s", jarName));
+    protected File getJarFile(String jarName, TestInformation testInfo)
+            throws FileNotFoundException {
+        return testInfo.getDependencyFile(jarName, /* target first*/ false);
     }
 
     @VisibleForTesting
-    OptionSetter createOptionSetter(Object obj) throws ConfigurationException {
-        return new OptionSetter(obj);
+    DynamicRemoteFileResolver createResolver() {
+        DynamicRemoteFileResolver resolver = new DynamicRemoteFileResolver();
+        resolver.setDevice(mDevice);
+        resolver.addExtraArgs(mConfig.getCommandOptions().getDynamicDownloadArgs());
+        return resolver;
     }
 
     private Set<File> resolveRemoteFileForObject(Object obj) {
         try {
-            OptionSetter setter = createOptionSetter(obj);
-            return setter.validateRemoteFilePath();
+            OptionSetter setter = new OptionSetter(obj);
+            return setter.validateRemoteFilePath(createResolver());
         } catch (BuildRetrievalError | ConfigurationException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    private File searchJarFile(File baseSearchFile, String jarName) {
-        if (baseSearchFile != null && baseSearchFile.isDirectory()) {
-            File jarFile = FileUtil.findFile(baseSearchFile, jarName);
-            if (jarFile != null && jarFile.isFile()) {
-                return jarFile;
-            }
-        }
-        return null;
     }
 }

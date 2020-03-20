@@ -36,9 +36,11 @@ import com.android.tradefed.device.metric.AutoLogCollector;
 import com.android.tradefed.device.metric.CollectorHelper;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
+import com.android.tradefed.invoker.ExecutionFiles.FilesKey;
 import com.android.tradefed.invoker.TestInvocation.Stage;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
+import com.android.tradefed.invoker.logger.TfObjectTracker;
 import com.android.tradefed.invoker.shard.IShardHelper;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -108,20 +110,26 @@ public class InvocationExecution implements IInvocationExecution {
             ITestInvocationListener listener)
             throws DeviceNotAvailableException, BuildRetrievalError {
         String currentDeviceName = null;
+        IBuildInfo buildReplicat = null;
         try {
             // TODO: evaluate fetching build in parallel
-            for (String deviceName : testInfo.getContext().getDeviceConfigNames()) {
-                currentDeviceName = deviceName;
+            for (int i = 0; i < testInfo.getContext().getDeviceConfigNames().size(); i++) {
+                currentDeviceName = testInfo.getContext().getDeviceConfigNames().get(i);
+                if (buildReplicat != null) {
+                    // TODO: evaluate if cloning the build is needed
+                    testInfo.getContext().addDeviceBuildInfo(currentDeviceName, buildReplicat);
+                    continue;
+                }
                 IBuildInfo info = null;
-                ITestDevice device = testInfo.getContext().getDevice(deviceName);
-                IDeviceConfiguration deviceConfig = config.getDeviceConfigByName(deviceName);
+                ITestDevice device = testInfo.getContext().getDevice(currentDeviceName);
+                IDeviceConfiguration deviceConfig = config.getDeviceConfigByName(currentDeviceName);
                 IBuildProvider provider = deviceConfig.getBuildProvider();
+                TfObjectTracker.countWithParents(provider.getClass());
                 // Inject the context to the provider if it can receive it
                 if (provider instanceof IInvocationContextReceiver) {
                     ((IInvocationContextReceiver) provider)
                             .setInvocationContext(testInfo.getContext());
                 }
-                provider.setWorkingDirectory(testInfo.dependenciesFolder());
                 // Get the build
                 if (provider instanceof IDeviceBuildProvider) {
                     // Download a device build if the provider can handle it.
@@ -131,7 +139,7 @@ public class InvocationExecution implements IInvocationExecution {
                 }
                 if (info != null) {
                     info.setDeviceSerial(device.getSerialNumber());
-                    testInfo.getContext().addDeviceBuildInfo(deviceName, info);
+                    testInfo.getContext().addDeviceBuildInfo(currentDeviceName, info);
                     device.setRecovery(deviceConfig.getDeviceRecovery());
                 } else {
                     CLog.logAndDisplay(
@@ -145,7 +153,12 @@ public class InvocationExecution implements IInvocationExecution {
                 }
                 // TODO: remove build update when reporting is done on context
                 updateBuild(info, config);
+                linkExternalDirs(info, testInfo);
                 info.setTestResourceBuild(config.isDeviceConfiguredFake(currentDeviceName));
+
+                if (config.getCommandOptions().shouldUseReplicateSetup()) {
+                    buildReplicat = info;
+                }
             }
         } catch (BuildRetrievalError e) {
             CLog.e(e);
@@ -182,10 +195,10 @@ public class InvocationExecution implements IInvocationExecution {
     @Override
     public boolean shardConfig(
             IConfiguration config,
-            IInvocationContext context,
+            TestInformation testInfo,
             IRescheduler rescheduler,
             ITestLogger logger) {
-        return createShardHelper().shardConfig(config, context, rescheduler, logger);
+        return createShardHelper().shardConfig(config, testInfo, rescheduler, logger);
     }
 
     /** Create an return the {@link IShardHelper} to be used. */
@@ -203,11 +216,12 @@ public class InvocationExecution implements IInvocationExecution {
             runMultiTargetPreparers(
                     config.getMultiPreTargetPreparers(),
                     listener,
-                    testInfo.getContext(),
+                    testInfo,
                     "multi pre target preparer setup");
 
             // TODO: evaluate doing device setup in parallel
             mTrackTargetPreparers = new HashMap<>();
+            int index = 0;
             for (String deviceName : testInfo.getContext().getDeviceConfigNames()) {
                 mTrackTargetPreparers.put(deviceName, new HashSet<>());
                 ITestDevice device = testInfo.getContext().getDevice(deviceName);
@@ -223,32 +237,37 @@ public class InvocationExecution implements IInvocationExecution {
                         CLog.d("%s has been disabled. skipping.", preparer);
                         continue;
                     }
+                    TfObjectTracker.countWithParents(preparer.getClass());
                     if (preparer instanceof ITestLoggerReceiver) {
                         ((ITestLoggerReceiver) preparer).setTestLogger(listener);
                     }
                     CLog.d(
                             "starting preparer '%s' on device: '%s'",
                             preparer, device.getSerialNumber());
-                    preparer.setUp(testInfo);
+                    try {
+                        testInfo.setActiveDeviceIndex(index);
+                        preparer.setUp(testInfo);
+                    } finally {
+                        testInfo.setActiveDeviceIndex(0);
+                    }
                     mTrackTargetPreparers.get(deviceName).add(preparer);
                     CLog.d(
                             "done with preparer '%s' on device: '%s'",
                             preparer, device.getSerialNumber());
                 }
                 CLog.d("Done with setup of device: '%s'", device.getSerialNumber());
+                index++;
             }
             // After all the individual setup, make the multi-devices setup
             runMultiTargetPreparers(
                     config.getMultiTargetPreparers(),
                     listener,
-                    testInfo.getContext(),
+                    testInfo,
                     "multi target preparer setup");
         } finally {
             // Note: These metrics are handled in a try in case of a kernel reset or device issue.
             // Setup timing metric. It does not include flashing time on boot tests.
             long setupDuration = System.currentTimeMillis() - start;
-            testInfo.getContext()
-                    .addInvocationTimingMetric(IInvocationContext.TimingEvent.SETUP, setupDuration);
             InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.SETUP, setupDuration);
             CLog.d("Setup duration: %s'", TimeUtil.formatElapsedTime(setupDuration));
             // Upload the setup logcat after setup is complete.
@@ -294,7 +313,7 @@ public class InvocationExecution implements IInvocationExecution {
     private void runMultiTargetPreparers(
             List<IMultiTargetPreparer> multiPreparers,
             ITestLogger logger,
-            IInvocationContext context,
+            TestInformation testInfo,
             String description)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
         if (mTrackMultiPreparers == null) {
@@ -306,11 +325,12 @@ public class InvocationExecution implements IInvocationExecution {
                 CLog.d("%s has been disabled. skipping.", multiPreparer);
                 continue;
             }
+            TfObjectTracker.countWithParents(multiPreparer.getClass());
             if (multiPreparer instanceof ITestLoggerReceiver) {
                 ((ITestLoggerReceiver) multiPreparer).setTestLogger(logger);
             }
             CLog.d("Starting %s '%s'", description, multiPreparer);
-            multiPreparer.setUp(context);
+            multiPreparer.setUp(testInfo);
             mTrackMultiPreparers.add(multiPreparer);
             CLog.d("done with %s '%s'", description, multiPreparer);
         }
@@ -319,7 +339,7 @@ public class InvocationExecution implements IInvocationExecution {
     /** Runs the {@link IMultiTargetPreparer} specified tearDown. */
     private Throwable runMultiTargetPreparersTearDown(
             List<IMultiTargetPreparer> multiPreparers,
-            IInvocationContext context,
+            TestInformation testInfo,
             ITestLogger logger,
             Throwable throwable,
             String description)
@@ -343,7 +363,7 @@ public class InvocationExecution implements IInvocationExecution {
             }
             CLog.d("Starting %s '%s'", description, multipreparer);
             try {
-                multipreparer.tearDown(context, throwable);
+                multipreparer.tearDown(testInfo, throwable);
             } catch (Throwable t) {
                 // We catch it and rethrow later to allow each multi_targetprep to be attempted.
                 // Only the first one will be thrown but all should be logged.
@@ -373,12 +393,13 @@ public class InvocationExecution implements IInvocationExecution {
         deferredThrowable =
                 runMultiTargetPreparersTearDown(
                         multiPreparers,
-                        context,
+                        testInfo,
                         logger,
                         exception,
                         "multi target preparer teardown");
 
         // Clear wifi settings, to prevent wifi errors from interfering with teardown process.
+        int deviceIndex = 0;
         for (String deviceName : context.getDeviceConfigNames()) {
             ITestDevice device = context.getDevice(deviceName);
             device.clearLastConnectedWifiNetwork();
@@ -407,6 +428,7 @@ public class InvocationExecution implements IInvocationExecution {
                     CLog.d(
                             "starting tearDown '%s' on device: '%s'",
                             preparer, device.getSerialNumber());
+                    testInfo.setActiveDeviceIndex(deviceIndex);
                     preparer.tearDown(testInfo, exception);
                     CLog.d(
                             "done with tearDown '%s' on device: '%s'",
@@ -419,8 +441,11 @@ public class InvocationExecution implements IInvocationExecution {
                     if (deferredThrowable == null) {
                         deferredThrowable = e;
                     }
+                } finally {
+                    testInfo.setActiveDeviceIndex(0);
                 }
             }
+            deviceIndex++;
         }
 
         // Extra tear down step for the device
@@ -431,7 +456,7 @@ public class InvocationExecution implements IInvocationExecution {
         Throwable preTargetTearDownException =
                 runMultiTargetPreparersTearDown(
                         multiPrePreparers,
-                        context,
+                        testInfo,
                         logger,
                         exception,
                         "multi pre target preparer teardown");
@@ -478,6 +503,7 @@ public class InvocationExecution implements IInvocationExecution {
         TestInvocation.printStageDelimiter(Stage.TEST, false);
         try {
             for (IRemoteTest test : config.getTests()) {
+                TfObjectTracker.countWithParents(test.getClass());
                 // For compatibility of those receivers, they are assumed to be single device alloc.
                 if (test instanceof IDeviceTest) {
                     ((IDeviceTest) test).setDevice(info.getDevice());
@@ -646,27 +672,6 @@ public class InvocationExecution implements IInvocationExecution {
                     "shard_index", config.getCommandOptions().getShardIndex().toString());
         }
         setTestTag(info, config);
-
-        if (info.getProperties().contains(BuildInfoProperties.DO_NOT_LINK_TESTS_DIR)) {
-            CLog.d("Skip linking external directory as FileProperty was set.");
-            return;
-        }
-        // Load environment tests dir.
-        if (info instanceof IDeviceBuildInfo) {
-            File testsDir = ((IDeviceBuildInfo) info).getTestsDir();
-            if (testsDir != null && testsDir.exists()) {
-                handleLinkingExternalDirs(
-                        (IDeviceBuildInfo) info,
-                        testsDir,
-                        EnvVariable.ANDROID_TARGET_OUT_TESTCASES,
-                        BuildInfoFileKey.TARGET_LINKED_DIR.getFileKey());
-                handleLinkingExternalDirs(
-                        (IDeviceBuildInfo) info,
-                        testsDir,
-                        EnvVariable.ANDROID_HOST_OUT_TESTCASES,
-                        BuildInfoFileKey.HOST_LINKED_DIR.getFileKey());
-            }
-        }
     }
 
     private void runTest(
@@ -697,6 +702,7 @@ public class InvocationExecution implements IInvocationExecution {
                 } else {
                     listenerWithCollectors =
                             collector.init(info.getContext(), listenerWithCollectors);
+                    TfObjectTracker.countWithParents(collector.getClass());
                 }
             }
             test.run(info, listenerWithCollectors);
@@ -722,18 +728,50 @@ public class InvocationExecution implements IInvocationExecution {
     }
 
     private void addRetryTime(long retryTimeMs) {
-        long totalRetryMs = retryTimeMs;
-        String retryTime =
-                InvocationMetricLogger.getInvocationMetrics()
-                        .get(InvocationMetricKey.AUTO_RETRY_TIME.toString());
-        if (retryTime != null) {
-            totalRetryMs += Long.parseLong(retryTime) + retryTimeMs;
-        }
+        // InvocationMetricLogger automatically adds the auto retry time.
         InvocationMetricLogger.addInvocationMetrics(
-                InvocationMetricKey.AUTO_RETRY_TIME, Long.toString(totalRetryMs));
+                InvocationMetricKey.AUTO_RETRY_TIME, retryTimeMs);
     }
 
-    private void handleLinkingExternalDirs(
+    private void linkExternalDirs(IBuildInfo info, TestInformation testInfo) {
+        if (info.getProperties().contains(BuildInfoProperties.DO_NOT_LINK_TESTS_DIR)) {
+            CLog.d("Skip linking external directory as FileProperty was set.");
+            return;
+        }
+        // Load environment tests dir.
+        if (info instanceof IDeviceBuildInfo) {
+            // TODO: Use tests directory from TestInformation instead.
+            File testsDir = ((IDeviceBuildInfo) info).getTestsDir();
+            if (testsDir != null && testsDir.exists()) {
+                if (testInfo.executionFiles().get(FilesKey.TARGET_TESTS_DIRECTORY) == null) {
+                    File targetTestCases =
+                            handleLinkingExternalDirs(
+                                    (IDeviceBuildInfo) info,
+                                    testsDir,
+                                    EnvVariable.ANDROID_TARGET_OUT_TESTCASES,
+                                    BuildInfoFileKey.TARGET_LINKED_DIR.getFileKey());
+                    if (targetTestCases != null) {
+                        testInfo.executionFiles()
+                                .put(FilesKey.TARGET_TESTS_DIRECTORY, targetTestCases, true);
+                    }
+                }
+                if (testInfo.executionFiles().get(FilesKey.HOST_TESTS_DIRECTORY) == null) {
+                    File hostTestCases =
+                            handleLinkingExternalDirs(
+                                    (IDeviceBuildInfo) info,
+                                    testsDir,
+                                    EnvVariable.ANDROID_HOST_OUT_TESTCASES,
+                                    BuildInfoFileKey.HOST_LINKED_DIR.getFileKey());
+                    if (hostTestCases != null) {
+                        testInfo.executionFiles()
+                                .put(FilesKey.HOST_TESTS_DIRECTORY, hostTestCases, true);
+                    }
+                }
+            }
+        }
+    }
+
+    private File handleLinkingExternalDirs(
             IDeviceBuildInfo info, File testsDir, EnvVariable var, String baseName) {
         File externalDir = getExternalTestCasesDirs(var);
         if (externalDir == null) {
@@ -746,8 +784,9 @@ public class InvocationExecution implements IInvocationExecution {
                         varDir,
                         /** version */
                         "v1");
+                return varDir;
             }
-            return;
+            return null;
         }
         try {
             // Avoid conflict by creating a randomized name for the arriving symlink file.
@@ -762,10 +801,12 @@ public class InvocationExecution implements IInvocationExecution {
                     "v1");
             // Ensure we always delete the linking, no matter how the JVM exits.
             subDir.deleteOnExit();
+            return subDir;
         } catch (IOException e) {
             CLog.e("Failed to load external test dir %s. Ignoring it.", externalDir);
             CLog.e(e);
         }
+        return null;
     }
 
     /** Populate the shared resources directory for all non-resource build */
@@ -775,14 +816,8 @@ public class InvocationExecution implements IInvocationExecution {
             return;
         }
         try {
-            File resourcesDir = null;
             for (IBuildInfo info : infos) {
                 if (info.isTestResourceBuild()) {
-                    if (resourcesDir == null) {
-                        resourcesDir =
-                                FileUtil.createTempDir(
-                                        "invocation-resources-dir", testInfo.dependenciesFolder());
-                    }
                     // Create a reception sub-folder for each build info resource to avoid mixing
                     String name =
                             String.format(
@@ -790,7 +825,7 @@ public class InvocationExecution implements IInvocationExecution {
                                     info.getBuildBranch(),
                                     info.getBuildId(),
                                     info.getBuildFlavor());
-                    File buildDir = FileUtil.createTempDir(name, resourcesDir);
+                    File buildDir = FileUtil.createTempDir(name, testInfo.dependenciesFolder());
                     for (BuildInfoFileKey key : BuildInfoKey.SHARED_KEY) {
                         File f = info.getFile(key);
                         if (f == null) {
@@ -799,16 +834,6 @@ public class InvocationExecution implements IInvocationExecution {
                         File subDir = new File(buildDir, f.getName());
                         FileUtil.symlinkFile(f, subDir);
                     }
-                }
-            }
-            if (resourcesDir == null) {
-                return;
-            }
-            // Only set the shared dir on real build if it exists.
-            CLog.d("Creating shared resources directory.");
-            for (IBuildInfo info : infos) {
-                if (!info.isTestResourceBuild()) {
-                    info.setFile(BuildInfoFileKey.SHARED_RESOURCE_DIR, resourcesDir, "v1");
                 }
             }
         } catch (IOException e) {

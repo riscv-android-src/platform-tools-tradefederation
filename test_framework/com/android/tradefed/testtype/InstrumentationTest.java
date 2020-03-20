@@ -26,7 +26,6 @@ import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner.TestSize;
-import com.android.ddmlib.testrunner.InstrumentationResultParser;
 import com.android.ddmlib.testrunner.RemoteAndroidTestRunner;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
@@ -38,16 +37,18 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
-import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.BugreportCollector;
 import com.android.tradefed.result.CollectingTestListener;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogcatCrashResultForwarder;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.result.ddmlib.DefaultRemoteAndroidTestRunner;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.retry.RetryStrategy;
 import com.android.tradefed.testtype.coverage.CoverageOptions;
@@ -78,11 +79,10 @@ import java.util.concurrent.TimeUnit;
 @OptionClass(alias = "instrumentation")
 public class InstrumentationTest
         implements IDeviceTest,
-                IResumableTest,
+                IRemoteTest,
                 ITestCollector,
                 IAbiReceiver,
                 IConfigurationReceiver,
-                IInvocationContextReceiver,
                 IMetricCollectorReceiver {
 
     private static final String LOG_TAG = "InstrumentationTest";
@@ -201,12 +201,6 @@ public class InstrumentationTest
     private BugreportCollector.Freq mBugreportFrequency = null;
 
     @Option(
-        name = "bugreport-on-run-failure",
-        description = "Take a bugreport if the instrumentation finish with a run failure"
-    )
-    private boolean mBugreportOnRunFailure = false;
-
-    @Option(
         name = "rerun-from-file",
         description =
                 "Use test file instead of separate adb commands for each test "
@@ -274,10 +268,10 @@ public class InstrumentationTest
     )
     private boolean mMergeCoverageMeasurements = false;
 
+    @Deprecated
     @Option(
-        name = "enforce-ajur-format",
-        description = "Whether or not enforcing the AJUR instrumentation output format"
-    )
+            name = "enforce-ajur-format",
+            description = "Whether or not enforcing the AJUR instrumentation output format")
     private boolean mShouldEnforceFormat = false;
 
     @Option(
@@ -340,7 +334,6 @@ public class InstrumentationTest
     private boolean mIsRerun = false;
 
     private IConfiguration mConfiguration = null;
-    private IInvocationContext mContext;
     private List<IMetricCollector> mCollectors = new ArrayList<>();
 
     /** {@inheritDoc} */
@@ -531,19 +524,6 @@ public class InstrumentationTest
     }
 
     /**
-     * {@inheritDoc}
-     */
-    @Override
-    public boolean isResumable() {
-        // hack to not resume if tests were never run
-        // TODO: fix this properly in TestInvocation
-        if (mTestsToRun == null) {
-            return false;
-        }
-        return mIsResumeMode;
-    }
-
-    /**
      * Optionally, set the rerun mode.
      */
     public void setRerunMode(boolean rerun) {
@@ -694,8 +674,7 @@ public class InstrumentationTest
         String runOptions = "";
         // hidden-api-checks flag only exists in P and after.
         // Using a temp variable to consolidate the dynamic checks
-        int apiLevel = (!mHiddenApiChecks) || (!mWindowAnimation)
-                ? getDevice().getApiLevel() : 0;
+        int apiLevel = !mHiddenApiChecks || !mWindowAnimation ? getDevice().getApiLevel() : 0;
         if (!mHiddenApiChecks && apiLevel >= 28) {
             runOptions += "--no-hidden-api-checks ";
         }
@@ -725,7 +704,6 @@ public class InstrumentationTest
             runner.setRunOptions(runOptions);
         }
 
-        runner.setEnforceTimeStamp(mShouldEnforceFormat);
         return runner;
     }
 
@@ -794,11 +772,10 @@ public class InstrumentationTest
         return intersection.iterator().next();
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void run(final ITestInvocationListener listener) throws DeviceNotAvailableException {
+    public void run(TestInformation testInfo, final ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
         checkArgument(mDevice != null, "Device has not been set.");
         checkArgument(mPackageName != null, "Package name has not been set.");
         // Install the apk before checking the runner
@@ -823,7 +800,7 @@ public class InstrumentationTest
         mRunner = createRemoteAndroidTestRunner(mPackageName, mRunnerName, mDevice.getIDevice());
         setRunnerArgs(mRunner);
 
-        doTestRun(listener);
+        doTestRun(testInfo, listener);
         if (mInstallFile != null) {
             mDevice.uninstallPackage(mPackageName);
         }
@@ -885,7 +862,8 @@ public class InstrumentationTest
      * @param listener the test result listener
      * @throws DeviceNotAvailableException if device stops communicating
      */
-    private void doTestRun(ITestInvocationListener listener) throws DeviceNotAvailableException {
+    private void doTestRun(TestInformation testInfo, ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
         // If this is a dry-run, just collect the tests and return
         if (mCollectTestsOnly) {
             checkState(
@@ -949,7 +927,7 @@ public class InstrumentationTest
                     CLog.d(
                             "Initializing %s for instrumentation.",
                             collector.getClass().getCanonicalName());
-                    listener = collector.init(mContext, listener);
+                    listener = collector.init(testInfo.getContext(), listener);
                 }
             }
         }
@@ -963,7 +941,7 @@ public class InstrumentationTest
             // Failed to collect the tests or collection is off. Just try to run them all.
             mDevice.runInstrumentationTests(mRunner, listener);
         } else if (!testsToRun.isEmpty()) {
-            runWithRerun(listener, testsToRun);
+            runWithRerun(testInfo, listener, testsToRun);
         } else {
             CLog.i("No tests expected for %s, skipping", mPackageName);
         }
@@ -1038,12 +1016,15 @@ public class InstrumentationTest
      * @param expectedTests the full set of expected tests in this run.
      */
     private void runWithRerun(
-            final ITestInvocationListener listener, Collection<TestDescription> expectedTests)
+            TestInformation testInfo,
+            final ITestInvocationListener listener,
+            Collection<TestDescription> expectedTests)
             throws DeviceNotAvailableException {
         CollectingTestListener testTracker = new CollectingTestListener();
         mDevice.runInstrumentationTests(
                 mRunner,
                 // Use a crash forwarder to get stacks from logcat when crashing.
+                // TODO: Refactor all the internals into a real class
                 new LogcatCrashResultForwarder(getDevice(), listener, testTracker) {
                     private Set<TestDescription> mTests = new HashSet<>();
                     private Set<TestDescription> mDuplicateTests = new HashSet<>();
@@ -1070,35 +1051,38 @@ public class InstrumentationTest
                     }
 
                     @Override
+                    public void testRunFailed(FailureDescription error) {
+                        if (error.getErrorMessage().startsWith("Test run failed to complete")) {
+                            Set<TestDescription> expected = new LinkedHashSet<>(expectedTests);
+                            expected.removeAll(mTests);
+                            String helpMessage =
+                                    String.format("The following tests didn't run: %s", expected);
+                            error.setDebugHelpMessage(helpMessage);
+                            // TODO: Based on device crash, change that status.
+                            error.setFailureStatus(FailureStatus.TEST_FAILURE);
+                        }
+                        super.testRunFailed(error);
+                    }
+
+                    @Override
                     public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
                         if (!mDuplicateTests.isEmpty() && !mDisableDuplicateCheck) {
-                            String errorMessage =
-                                    String.format(
-                                            "The following tests ran more than once: %s. Check "
-                                                    + "your run configuration, you might be "
-                                                    + "including the same test class several "
-                                                    + "times.",
-                                            mDuplicateTests);
-                            CLog.e(errorMessage);
-                            super.testRunFailed(errorMessage);
+                            FailureDescription error =
+                                    FailureDescription.create(
+                                            String.format(
+                                                    "The following tests ran more than once: %s. Check "
+                                                            + "your run configuration, you might be "
+                                                            + "including the same test class several "
+                                                            + "times.",
+                                                    mDuplicateTests));
+                            error.setFailureStatus(FailureStatus.TEST_FAILURE);
+                            super.testRunFailed(error);
                         }
                         super.testRunEnded(elapsedTime, runMetrics);
                     }
                 });
         TestRunResult testRun = testTracker.getCurrentRunResults();
         if (testRun.isRunFailure() || !testRun.getCompletedTests().containsAll(expectedTests)) {
-            if (mBugreportOnRunFailure) {
-                // Capture a bugreport to help with the failure.
-                String name = (mTestClassName != null) ? mTestClassName : mPackageName;
-                boolean res =
-                        mDevice.logBugreport(
-                                String.format("bugreport-on-run-failure-%s", name), listener);
-                if (!res) {
-                    CLog.e(
-                            "Failed to capture a bugreport for the run failure of '%s'",
-                            testRun.getName());
-                }
-            }
             // Don't re-run any completed tests, unless this is a coverage run.
             if (mConfiguration != null
                     && !mConfiguration.getCoverageOptions().isCoverageEnabled()) {
@@ -1112,7 +1096,7 @@ public class InstrumentationTest
                     return;
                 }
             }
-            rerunTests(expectedTests, listener);
+            rerunTests(expectedTests, testInfo, listener);
         }
     }
 
@@ -1123,7 +1107,9 @@ public class InstrumentationTest
      * @throws DeviceNotAvailableException
      */
     private void rerunTests(
-            Collection<TestDescription> expectedTests, final ITestInvocationListener listener)
+            Collection<TestDescription> expectedTests,
+            TestInformation testInfo,
+            final ITestInvocationListener listener)
             throws DeviceNotAvailableException {
         if (expectedTests.isEmpty()) {
             CLog.d("No tests to re-run, all tests executed at least once.");
@@ -1148,7 +1134,7 @@ public class InstrumentationTest
             mNativeCoverageListener.setCollectOnTestEnd(false);
         }
 
-        testReRunner.run(listener);
+        testReRunner.run(testInfo, listener);
 
         if (mNativeCoverageListener != null) {
             mNativeCoverageListener.setCollectOnTestEnd(true);
@@ -1237,11 +1223,6 @@ public class InstrumentationTest
                 CLog.w("Run failure %s when collecting tests to run for %s on device %s.",
                         runResults.getRunFailureMessage(), mPackageName,
                         mDevice.getSerialNumber());
-                if (mShouldEnforceFormat
-                        && InstrumentationResultParser.INVALID_OUTPUT_ERR_MSG.equals(
-                                runResults.getRunFailureMessage())) {
-                    throw new RuntimeException(InstrumentationResultParser.INVALID_OUTPUT_ERR_MSG);
-                }
                 return null;
             } else {
                 // success!
@@ -1280,11 +1261,6 @@ public class InstrumentationTest
     @Override
     public IAbi getAbi() {
         return mAbi;
-    }
-
-    @Override
-    public void setInvocationContext(IInvocationContext invocationContext) {
-        mContext = invocationContext;
     }
 
     @Override

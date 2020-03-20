@@ -23,6 +23,7 @@ import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.device.ILogcatReceiver;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.NullDevice;
+import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -95,6 +96,7 @@ public class LogcatOnFailureCollectorTest {
 
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("serial");
         EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(EasyMock.createMock(IDevice.class));
+        EasyMock.expect(mMockDevice.getDeviceState()).andStubReturn(TestDeviceState.ONLINE);
 
         EasyMock.expect(mNullMockDevice.getIDevice()).andStubReturn(new NullDevice("null-dev"));
     }
@@ -109,7 +111,7 @@ public class LogcatOnFailureCollectorTest {
                 EasyMock.eq("runName"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         TestDescription test = new TestDescription("class", "test");
         mMockListener.testStarted(EasyMock.eq(test), EasyMock.anyLong());
-        mMockListener.testFailed(EasyMock.eq(test), EasyMock.anyObject());
+        mMockListener.testFailed(EasyMock.eq(test), (String) EasyMock.anyObject());
         mMockListener.testEnded(
                 EasyMock.eq(test),
                 EasyMock.anyLong(),
@@ -150,7 +152,7 @@ public class LogcatOnFailureCollectorTest {
                 EasyMock.eq("runName"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         TestDescription test = new TestDescription("class", "test");
         mMockListener.testStarted(EasyMock.eq(test), EasyMock.anyLong());
-        mMockListener.testFailed(EasyMock.eq(test), EasyMock.anyObject());
+        mMockListener.testFailed(EasyMock.eq(test), (String) EasyMock.anyObject());
         mMockListener.testEnded(
                 EasyMock.eq(test),
                 EasyMock.anyLong(),
@@ -199,7 +201,7 @@ public class LogcatOnFailureCollectorTest {
         TestDescription test = new TestDescription("class", "test");
         TestDescription test2 = new TestDescription("class2", "test2");
         mMockListener.testStarted(EasyMock.eq(test), EasyMock.anyLong());
-        mMockListener.testFailed(EasyMock.eq(test), EasyMock.anyObject());
+        mMockListener.testFailed(EasyMock.eq(test), (String) EasyMock.anyObject());
         mMockListener.testEnded(
                 EasyMock.eq(test),
                 EasyMock.anyLong(),
@@ -219,7 +221,7 @@ public class LogcatOnFailureCollectorTest {
         mMockListener.testRunStarted(
                 EasyMock.eq("runName2"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         mMockListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mMockListener.testFailed(EasyMock.eq(test2), EasyMock.anyObject());
+        mMockListener.testFailed(EasyMock.eq(test2), (String) EasyMock.anyObject());
         mMockListener.testEnded(
                 EasyMock.eq(test2),
                 EasyMock.anyLong(),

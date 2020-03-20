@@ -1176,10 +1176,8 @@ public class DeviceManagerTest {
         assertEquals(0, manager.getDeviceList().size());
     }
 
-    /**
-     * Helper to set the expectation when a {@link DeviceDescriptor} is expected.
-     */
-    private void setDeviceDescriptorExpectation() {
+    /** Helper to set the expectation when a {@link DeviceDescriptor} is expected. */
+    private void setDeviceDescriptorExpectation(boolean cached) {
         DeviceDescriptor descriptor =
                 new DeviceDescriptor(
                         "serial",
@@ -1198,14 +1196,18 @@ public class DeviceManagerTest {
                         SIM_OPERATOR,
                         false,
                         null);
-        EasyMock.expect(mMockTestDevice.getDeviceDescriptor()).andReturn(descriptor);
+        if (cached) {
+            EasyMock.expect(mMockTestDevice.getCachedDeviceDescriptor()).andReturn(descriptor);
+        } else {
+            EasyMock.expect(mMockTestDevice.getDeviceDescriptor()).andReturn(descriptor);
+        }
     }
 
     /** Test that {@link DeviceManager#listAllDevices()} returns a list with all devices. */
     @Test
     public void testListAllDevices() throws Exception {
         setCheckAvailableDeviceExpectations();
-        setDeviceDescriptorExpectation();
+        setDeviceDescriptorExpectation(true);
         replayMocks();
         DeviceManager manager = createDeviceManager(null, mMockIDevice);
         List<DeviceDescriptor> res = manager.listAllDevices();
@@ -1224,7 +1226,7 @@ public class DeviceManagerTest {
     @Test
     public void testGetDeviceDescriptor() throws Exception {
         setCheckAvailableDeviceExpectations();
-        setDeviceDescriptorExpectation();
+        setDeviceDescriptorExpectation(false);
         replayMocks();
         DeviceManager manager = createDeviceManager(null, mMockIDevice);
         DeviceDescriptor res = manager.getDeviceDescriptor(mMockIDevice.getSerialNumber());
@@ -1256,7 +1258,7 @@ public class DeviceManagerTest {
     @Test
     public void testDisplayDevicesInfo() throws Exception {
         setCheckAvailableDeviceExpectations();
-        setDeviceDescriptorExpectation();
+        setDeviceDescriptorExpectation(true);
         replayMocks();
         DeviceManager manager = createDeviceManager(null, mMockIDevice);
         ByteArrayOutputStream out = new ByteArrayOutputStream();

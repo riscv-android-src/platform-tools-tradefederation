@@ -16,12 +16,16 @@
 package com.android.tradefed.build;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import com.android.tradefed.util.CommandResult;
+import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 
 import org.easymock.EasyMock;
@@ -201,7 +205,8 @@ public class FileDownloadCacheTest {
         // now be sneaky and delete the cachedFile, so copy will fail
         File cachedFile = mCache.getCachedFile(REMOTE_PATH);
         assertNotNull(cachedFile);
-        cachedFile.delete();
+        boolean res = cachedFile.delete();
+        assertTrue(res);
         File file = null;
         try {
             EasyMock.reset(mMockDownloader);
@@ -277,6 +282,7 @@ public class FileDownloadCacheTest {
         File cacheDir = FileUtil.createTempDir("cache-unittest");
         File subDir = FileUtil.createTempDir("subdir", cacheDir);
         File file = FileUtil.createTempFile("test-cache-file", ".txt", subDir);
+        FileUtil.writeToFile("test", file);
         File cacheFile = null;
         try {
             mCache = new FileDownloadCache(cacheDir);
@@ -344,6 +350,11 @@ public class FileDownloadCacheTest {
             if (relativePaths == null || relativePaths.size() == 0) {
                 String contents = StreamUtil.getStringFromStream(new FileInputStream(fileCopy));
                 assertEquals(DOWNLOADED_CONTENTS, contents);
+                FileUtil.chmodGroupRWX(fileCopy);
+                CommandResult res =
+                        RunUtil.getDefault().runTimedCmd(60000, fileCopy.getAbsolutePath());
+                assertNotEquals(
+                        "File should not be busy.", CommandStatus.EXCEPTION, res.getStatus());
             } else {
                 assertTrue(fileCopy.isDirectory());
                 for (String relativePath : relativePaths) {

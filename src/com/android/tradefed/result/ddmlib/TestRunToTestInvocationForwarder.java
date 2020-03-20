@@ -18,8 +18,10 @@ package com.android.tradefed.result.ddmlib;
 import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestLifeCycleReceiver;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import com.google.common.collect.ImmutableSet;
@@ -71,25 +73,6 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
         for (ITestLifeCycleReceiver listener : mListeners) {
             try {
                 listener.testStarted(TestDescription.createFromTestIdentifier(testId));
-            } catch (RuntimeException any) {
-                CLog.e(
-                        "RuntimeException when invoking %s#testStarted",
-                        listener.getClass().getName());
-                CLog.e(any);
-            }
-        }
-    }
-
-    @Override
-    public void testStarted(TestIdentifier testId, long startTime) {
-        if (INVALID_METHODS.contains(testId.getTestName())) {
-            mNullMethod = testId;
-            return;
-        }
-        mNullMethod = null;
-        for (ITestLifeCycleReceiver listener : mListeners) {
-            try {
-                listener.testStarted(TestDescription.createFromTestIdentifier(testId), startTime);
             } catch (RuntimeException any) {
                 CLog.e(
                         "RuntimeException when invoking %s#testStarted",
@@ -179,29 +162,6 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
     }
 
     @Override
-    public void testEnded(TestIdentifier testId, long endTime, Map<String, String> testMetrics) {
-        for (ITestLifeCycleReceiver listener : mListeners) {
-            if (mNullMethod != null && mNullMethod.equals(testId)) {
-                listener.testRunFailed(
-                        String.format(
-                                ERROR_MESSAGE_FORMAT, mNullMethod.getTestName(), mNullMethod));
-                continue;
-            }
-            try {
-                listener.testEnded(
-                        TestDescription.createFromTestIdentifier(testId),
-                        endTime,
-                        TfMetricProtoUtil.upgradeConvert(testMetrics));
-            } catch (RuntimeException any) {
-                CLog.e(
-                        "RuntimeException when invoking %s#testEnded",
-                        listener.getClass().getName());
-                CLog.e(any);
-            }
-        }
-    }
-
-    @Override
     public void testRunEnded(long elapsedTime, Map<String, String> runMetrics) {
         if (mStartTime != null) {
             elapsedTime = System.currentTimeMillis() - mStartTime;
@@ -220,9 +180,11 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
 
     @Override
     public void testRunFailed(String failure) {
+        FailureDescription failureDescription = FailureDescription.create(failure);
+        failureDescription.setFailureStatus(FailureStatus.TEST_FAILURE);
         for (ITestLifeCycleReceiver listener : mListeners) {
             try {
-                listener.testRunFailed(failure);
+                listener.testRunFailed(failureDescription);
             } catch (RuntimeException any) {
                 CLog.e(
                         "RuntimeException when invoking %s#testRunFailed",

@@ -94,6 +94,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.annotation.Nullable;
 import javax.annotation.concurrent.GuardedBy;
 
 /**
@@ -218,6 +219,9 @@ public class NativeDevice implements IManagedTestDevice {
 
     private File mExecuteShellCommandLogs = null;
 
+    private DeviceDescriptor mCachedDeviceDescriptor = null;
+    private final Object mCacheLock = new Object();
+
     /**
      * Interface for a generic device communication attempt.
      */
@@ -322,15 +326,17 @@ public class NativeDevice implements IManagedTestDevice {
     /** {@link DeviceAction} for rebooting a device. */
     protected class RebootDeviceAction implements DeviceAction {
 
-        private final String mInto;
+        private final RebootMode mRebootMode;
+        @Nullable private final String mReason;
 
-        RebootDeviceAction(String into) {
-            mInto = into;
+        RebootDeviceAction(RebootMode rebootMode, @Nullable String reason) {
+            mRebootMode = rebootMode;
+            mReason = reason;
         }
 
         @Override
         public boolean run() throws TimeoutException, IOException, AdbCommandRejectedException {
-            getIDevice().reboot(mInto);
+            getIDevice().reboot(mRebootMode.formatRebootCommand(mReason));
             return true;
         }
     }
@@ -438,7 +444,7 @@ public class NativeDevice implements IManagedTestDevice {
      */
     protected String internalGetProperty(String propName, String fastbootVar, String description)
             throws DeviceNotAvailableException, UnsupportedOperationException {
-        String propValue = getIDevice().getProperty(propName);
+        String propValue = getProperty(propName);
         if (propValue != null) {
             return propValue;
         } else if (TestDeviceState.FASTBOOT.equals(getDeviceState()) &&
@@ -467,7 +473,18 @@ public class NativeDevice implements IManagedTestDevice {
             CLog.d("Device %s is not online cannot get property %s.", getSerialNumber(), name);
             return null;
         }
-        return getIDevice().getProperty(name);
+        String cmd = String.format("getprop %s", name);
+        CommandResult result = executeShellV2Command(cmd);
+        if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
+            CLog.e(
+                    "Failed to run '%s' returning null. stdout: %s\nstderr: %s\nexit code: %s",
+                    cmd, result.getStdout(), result.getStderr(), result.getExitCode());
+            return null;
+        }
+        if (result.getStdout() == null || result.getStdout().trim().isEmpty()) {
+            return null;
+        }
+        return result.getStdout().trim();
     }
 
     /** {@inheritDoc} */
@@ -511,16 +528,14 @@ public class NativeDevice implements IManagedTestDevice {
         if (propKey == null || propValue == null) {
             throw new IllegalArgumentException("set property key or value cannot be null.");
         }
-        if (!isAdbRoot()) {
-            CLog.e("setProperty requires adb root = true.");
-            return false;
-        }
-        CommandResult result =
-                executeShellV2Command(String.format("setprop \"%s\" \"%s\"", propKey, propValue));
+        String setPropCmd = String.format("\"setprop %s '%s'\"", propKey, propValue);
+        CommandResult result = executeShellV2Command(setPropCmd);
         if (CommandStatus.SUCCESS.equals(result.getStatus())) {
             return true;
         }
-        CLog.e("Something went wrong went setting property %s: %s", propKey, result.getStderr());
+        CLog.e(
+                "Something went wrong went setting property %s (command: %s): %s",
+                propKey, setPropCmd, result.getStderr());
         return false;
     }
 
@@ -627,7 +642,9 @@ public class NativeDevice implements IManagedTestDevice {
         return prop;
     }
 
-    private String getFastbootVariable(String variableName)
+    /** {@inheritDoc} */
+    @Override
+    public String getFastbootVariable(String variableName)
             throws DeviceNotAvailableException, UnsupportedOperationException {
         CommandResult result = executeFastbootCommand("getvar", variableName);
         if (result.getStatus() == CommandStatus.SUCCESS) {
@@ -984,7 +1001,23 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public boolean isRuntimePermissionSupported() throws DeviceNotAvailableException {
-        return getApiLevel() > 22;
+        int apiLevel = getApiLevel();
+        boolean condition = apiLevel > 22;
+        if (!condition) {
+            CLog.w(
+                    "isRuntimePermissionSupported requires api level above 22, device reported "
+                            + "'%s'",
+                    apiLevel);
+        }
+        return condition;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isAppEnumerationSupported() throws DeviceNotAvailableException {
+        return false;
     }
 
     /**
@@ -1135,7 +1168,7 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public File pullFileFromExternal(String remoteFilePath) throws DeviceNotAvailableException {
         String externalPath = getMountPoint(IDevice.MNT_EXTERNAL_STORAGE);
-        String fullPath = (new File(externalPath, remoteFilePath)).getPath();
+        String fullPath = new File(externalPath, remoteFilePath).getPath();
         return pullFile(fullPath);
     }
 
@@ -2890,20 +2923,43 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public void rebootIntoBootloader()
             throws DeviceNotAvailableException, UnsupportedOperationException {
+        rebootIntoFastbootInternal(true);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void rebootIntoFastbootd()
+            throws DeviceNotAvailableException, UnsupportedOperationException {
+        rebootIntoFastbootInternal(false);
+    }
+
+    /**
+     * Reboots the device into bootloader or fastbootd mode.
+     *
+     * @param isBootloader: true to boot the device into bootloader mode, false to boot the device
+     *     into fastbootd mode.
+     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
+     *     recovered.
+     */
+    private void rebootIntoFastbootInternal(boolean isBootloader)
+            throws DeviceNotAvailableException {
+        final RebootMode mode =
+                isBootloader ? RebootMode.REBOOT_INTO_BOOTLOADER : RebootMode.REBOOT_INTO_FASTBOOT;
         if (!mFastbootEnabled) {
             throw new UnsupportedOperationException(
-                    "Fastboot is not available and cannot reboot into bootloader");
+                    String.format("Fastboot is not available and cannot reboot into %s", mode));
         }
         // If we go to bootloader, it's probably for flashing so ensure we re-check the provider
         mShouldSkipContentProviderSetup = false;
-        CLog.i("Rebooting device %s in state %s into bootloader", getSerialNumber(),
-                getDeviceState());
+        CLog.i(
+                "Rebooting device %s in state %s into %s",
+                getSerialNumber(), getDeviceState(), mode);
         if (TestDeviceState.FASTBOOT.equals(getDeviceState())) {
             CLog.i("device %s already in fastboot. Rebooting anyway", getSerialNumber());
-            executeFastbootCommand("reboot-bootloader");
+            executeFastbootCommand(String.format("reboot-%s", mode));
         } else {
-            CLog.i("Booting device %s into bootloader", getSerialNumber());
-            doAdbRebootBootloader();
+            CLog.i("Booting device %s into %s", getSerialNumber(), mode);
+            doAdbReboot(mode, null);
         }
         if (!mStateMonitor.waitForDeviceBootloader(mOptions.getFastbootTimeout())) {
             recoverDeviceFromBootloader();
@@ -2911,7 +2967,7 @@ public class NativeDevice implements IManagedTestDevice {
     }
 
     private void doAdbRebootBootloader() throws DeviceNotAvailableException {
-        doAdbReboot("bootloader");
+        doAdbReboot(RebootMode.REBOOT_INTO_BOOTLOADER, null);
     }
 
     /**
@@ -2919,7 +2975,13 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public void reboot() throws DeviceNotAvailableException {
-        rebootUntilOnline();
+        reboot(null);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void reboot(@Nullable String reason) throws DeviceNotAvailableException {
+        rebootUntilOnline(reason);
 
         RecoveryMode cachedRecoveryMode = getRecoveryMode();
         setRecoveryMode(RecoveryMode.ONLINE);
@@ -2963,12 +3025,15 @@ public class NativeDevice implements IManagedTestDevice {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public void rebootUntilOnline() throws DeviceNotAvailableException {
-        doReboot(null);
+        rebootUntilOnline(null);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void rebootUntilOnline(@Nullable String reason) throws DeviceNotAvailableException {
+        doReboot(RebootMode.REBOOT_FULL, reason);
         RecoveryMode cachedRecoveryMode = getRecoveryMode();
         setRecoveryMode(RecoveryMode.ONLINE);
         waitForDeviceOnline();
@@ -2978,7 +3043,7 @@ public class NativeDevice implements IManagedTestDevice {
 
     @Override
     public void rebootUserspaceUntilOnline() throws DeviceNotAvailableException {
-        doReboot("userspace");
+        doReboot(RebootMode.REBOOT_USERSPACE, null);
         RecoveryMode cachedRecoveryMode = getRecoveryMode();
         setRecoveryMode(RecoveryMode.ONLINE);
         waitForDeviceOnline();
@@ -2996,7 +3061,7 @@ public class NativeDevice implements IManagedTestDevice {
                     "Rebooting to userspace first.", getSerialNumber());
             rebootUntilOnline();
         }
-        doAdbReboot("recovery");
+        doAdbReboot(RebootMode.REBOOT_INTO_RECOVERY, null);
         if (!waitForDeviceInRecovery(mOptions.getAdbRecoveryTimeout())) {
             recoverDeviceInRecovery();
         }
@@ -3006,6 +3071,11 @@ public class NativeDevice implements IManagedTestDevice {
     /** {@inheritDoc} */
     @Override
     public void rebootIntoSideload() throws DeviceNotAvailableException {
+        rebootIntoSideload(false);
+    }
+    /** {@inheritDoc} */
+    @Override
+    public void rebootIntoSideload(boolean autoReboot) throws DeviceNotAvailableException {
         if (TestDeviceState.FASTBOOT == getDeviceState()) {
             CLog.w(
                     "device %s in fastboot when requesting boot to sideload. "
@@ -3013,7 +3083,13 @@ public class NativeDevice implements IManagedTestDevice {
                     getSerialNumber());
             rebootUntilOnline();
         }
-        doAdbReboot("sideload");
+        final RebootMode rebootMode;
+        if (autoReboot) {
+            rebootMode = RebootMode.REBOOT_INTO_SIDELOAD_AUTO_REBOOT;
+        } else {
+            rebootMode = RebootMode.REBOOT_INTO_SIDELOAD;
+        }
+        doAdbReboot(rebootMode, null);
         if (!waitForDeviceInSideload(mOptions.getAdbRecoveryTimeout())) {
             // using recovery mode because sideload is a sub-mode under recovery
             recoverDeviceInRecovery();
@@ -3025,18 +3101,55 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public void nonBlockingReboot() throws DeviceNotAvailableException {
-        doReboot(null);
+        doReboot(RebootMode.REBOOT_FULL, null);
+    }
+
+    /**
+     * A mode of a reboot.
+     *
+     * <p>Source of truth for available modes is defined in init.
+     */
+    @VisibleForTesting
+    protected enum RebootMode {
+        REBOOT_FULL(""),
+        REBOOT_USERSPACE("userspace"),
+        REBOOT_INTO_FASTBOOT("fastboot"),
+        REBOOT_INTO_BOOTLOADER("bootloader"),
+        REBOOT_INTO_SIDELOAD("sideload"),
+        REBOOT_INTO_SIDELOAD_AUTO_REBOOT("sideload-auto-reboot"),
+        REBOOT_INTO_RECOVERY("recovery");
+
+        private final String mRebootTarget;
+
+        RebootMode(String rebootTarget) {
+            mRebootTarget = rebootTarget;
+        }
+
+        @Nullable
+        String formatRebootCommand(@Nullable String reason) {
+            if (this == REBOOT_FULL) {
+                return Strings.isNullOrEmpty(reason) ? null : reason;
+            } else {
+                return Strings.isNullOrEmpty(reason) ? mRebootTarget : mRebootTarget + "," + reason;
+            }
+        }
+
+        @Override
+        public String toString() {
+            return mRebootTarget;
+        }
     }
 
     /**
      * Trigger a reboot of the device, offers no guarantee of the device state after the call.
      *
-     * @param into mode to reboot into, e.g. "recovery,userspace"
+     * @param rebootMode a mode of this reboot
+     * @param reason reason for this reboot
      * @throws DeviceNotAvailableException
      * @throws UnsupportedOperationException
      */
     @VisibleForTesting
-    void doReboot(final String into)
+    void doReboot(RebootMode rebootMode, @Nullable final String reason)
             throws DeviceNotAvailableException, UnsupportedOperationException {
         // Track Tradefed reboot time
         mLastTradefedRebootTime = System.currentTimeMillis();
@@ -3049,12 +3162,14 @@ public class NativeDevice implements IManagedTestDevice {
                 CLog.i("Device reboot disabled by options, skipped.");
                 return;
             }
-            if (into == null) {
-                CLog.i("Rebooting device %s", getSerialNumber());
+            if (reason == null) {
+                CLog.i("Rebooting device %s mode: %s", getSerialNumber(), rebootMode);
             } else {
-                CLog.i("Rebooting device %s into %s", getSerialNumber(), into);
+                CLog.i(
+                        "Rebooting device %s mode: %s reason: %s",
+                        getSerialNumber(), rebootMode, reason);
             }
-            doAdbReboot(into);
+            doAdbReboot(rebootMode, reason);
             // Check if device shows as unavailable (as expected after reboot).
             boolean notAvailable = waitForDeviceNotAvailable(DEFAULT_UNAVAILABLE_TIMEOUT);
             if (notAvailable) {
@@ -3079,24 +3194,26 @@ public class NativeDevice implements IManagedTestDevice {
     /**
      * Perform a adb reboot.
      *
-     * @param into the bootloader name to reboot into, or <code>null</code> to just reboot the
-     *            device.
+     * @param rebootMode a mode of this reboot.
+     * @param reason for this reboot.
      * @throws DeviceNotAvailableException
      */
-    protected void doAdbReboot(final String into) throws DeviceNotAvailableException {
-        DeviceAction rebootAction = createRebootDeviceAction(into);
+    protected void doAdbReboot(RebootMode rebootMode, @Nullable final String reason)
+            throws DeviceNotAvailableException {
+        DeviceAction rebootAction = createRebootDeviceAction(rebootMode, reason);
         performDeviceAction("reboot", rebootAction, MAX_RETRY_ATTEMPTS);
     }
 
     /**
      * Create a {@link RebootDeviceAction} to be used when performing a reboot action.
      *
-     * @param into the bootloader name to reboot into, or <code>null</code> to just reboot the
-     *     device.
+     * @param rebootMode a mode of this reboot.
+     * @param reason for this reboot.
      * @return the created {@link RebootDeviceAction}.
      */
-    protected RebootDeviceAction createRebootDeviceAction(final String into) {
-        return new RebootDeviceAction(into);
+    protected RebootDeviceAction createRebootDeviceAction(
+            RebootMode rebootMode, @Nullable final String reason) {
+        return new RebootDeviceAction(rebootMode, reason);
     }
 
     protected void waitForDeviceNotAvailable(String operationDesc, long time) {
@@ -3818,6 +3935,22 @@ public class NativeDevice implements IManagedTestDevice {
         }
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public int getLaunchApiLevel() throws DeviceNotAvailableException {
+        try {
+            String prop = getProperty(DeviceProperties.FIRST_API_LEVEL);
+            return Integer.parseInt(prop);
+        } catch (NumberFormatException nfe) {
+            CLog.w(
+                    "Unable to get first launch API level from "
+                            + DeviceProperties.FIRST_API_LEVEL
+                            + ", falling back to getApiLevel().",
+                    nfe);
+        }
+        return getApiLevel();
+    }
+
     @Override
     public IDeviceStateMonitor getMonitor() {
         return mStateMonitor;
@@ -4318,6 +4451,24 @@ public class NativeDevice implements IManagedTestDevice {
         }
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public DeviceDescriptor getCachedDeviceDescriptor() {
+        synchronized (mCacheLock) {
+            if (DeviceAllocationState.Allocated.equals(getAllocationState())) {
+                if (mCachedDeviceDescriptor == null) {
+                    // Create the cache the very first time when it's allocated.
+                    mCachedDeviceDescriptor = getDeviceDescriptor();
+                    return mCachedDeviceDescriptor;
+                }
+                return mCachedDeviceDescriptor;
+            }
+            // If device is not allocated, just return current information
+            mCachedDeviceDescriptor = null;
+            return getDeviceDescriptor();
+        }
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -4330,6 +4481,8 @@ public class NativeDevice implements IManagedTestDevice {
             if (idevice instanceof NullDevice) {
                 isTemporary = ((NullDevice) idevice).isTemporary();
             }
+            // All the operations to create the descriptor need to be safe (should not trigger any
+            // device side effects like recovery)
             return new DeviceDescriptor(
                     idevice.getSerialNumber(),
                     null,
@@ -4381,11 +4534,18 @@ public class NativeDevice implements IManagedTestDevice {
 
     /** Return the process start time since epoch for the given pid string */
     private long getProcessStartTimeByPid(String pidString) throws DeviceNotAvailableException {
-        String output = executeShellCommand("stat -c%Z /proc/" + pidString);
+        String output = executeShellCommand(String.format("ps -p %s -o stime=", pidString));
         if (output != null && !output.trim().isEmpty()) {
+            output = output.trim();
+            String dateInSecond = executeShellCommand("date -d\"" + output + "\" +%s");
+            if (Strings.isNullOrEmpty(dateInSecond)) {
+                return -1L;
+            }
             try {
-                return Long.parseLong(output.trim());
+                return Long.parseLong(dateInSecond.trim());
             } catch (NumberFormatException e) {
+                CLog.e("Failed to parse the start time for process:");
+                CLog.e(e);
                 return -1L;
             }
         }
@@ -4439,7 +4599,7 @@ public class NativeDevice implements IManagedTestDevice {
         long utcEpochTimeSec = TimeUnit.SECONDS.convert(utcEpochTime, timeUnit);
         Map<Long, String> bootHistory = new LinkedHashMap<Long, String>();
         for (Map.Entry<Long, String> entry : getBootHistory().entrySet()) {
-            if (entry.getKey() > utcEpochTimeSec) {
+            if (entry.getKey() >= utcEpochTimeSec) {
                 bootHistory.put(entry.getKey(), entry.getValue());
             }
         }
@@ -4509,8 +4669,10 @@ public class NativeDevice implements IManagedTestDevice {
         }
 
         // The system_server process started at or before utcEpochTime, there is no soft-restart
-        if (currSystemServerProcess.getStartTime()
-                <= TimeUnit.SECONDS.convert(utcEpochTime, timeUnit)) {
+        if (Math.abs(
+                        currSystemServerProcess.getStartTime()
+                                - TimeUnit.SECONDS.convert(utcEpochTime, timeUnit))
+                <= 1) {
             return false;
         }
 
@@ -4539,10 +4701,15 @@ public class NativeDevice implements IManagedTestDevice {
             return true;
         }
 
-
+        // Compare the start time with a 1 seconds accuracy due to how the date is computed
         if (currSystemServerProcess.getPid() == prevSystemServerProcess.getPid()
-                && currSystemServerProcess.getStartTime()
-                        == prevSystemServerProcess.getStartTime()) {
+                && Math.abs(
+                                currSystemServerProcess.getStartTime()
+                                        - prevSystemServerProcess.getStartTime())
+                        <= 1) {
+            CLog.e(
+                    "current system_server: %s different from prev system_server: %s",
+                    currSystemServerProcess, prevSystemServerProcess);
             return false;
         }
 
@@ -4603,25 +4770,15 @@ public class NativeDevice implements IManagedTestDevice {
     /** {@inheritDoc} */
     @Override
     public String getSimState() {
-        try {
-            return getProperty(SIM_STATE_PROP);
-        } catch (DeviceNotAvailableException e) {
-            CLog.w("Failed to query SIM state for %s", mIDevice.getSerialNumber());
-            CLog.w(e);
-            return null;
-        }
+        // Use ddmlib getProperty directly to avoid possible recovery path
+        return getIDevice().getProperty(SIM_STATE_PROP);
     }
 
     /** {@inheritDoc} */
     @Override
     public String getSimOperator() {
-        try {
-            return getProperty(SIM_OPERATOR_PROP);
-        } catch (DeviceNotAvailableException e) {
-            CLog.w("Failed to query SIM operator for %s", mIDevice.getSerialNumber());
-            CLog.w(e);
-            return null;
-        }
+        // Use ddmlib getProperty directly to avoid possible recovery path
+        return getIDevice().getProperty(SIM_OPERATOR_PROP);
     }
 
     /** {@inheritDoc} */
@@ -4702,6 +4859,9 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public Integer getBattery() {
         if (getIDevice() instanceof StubDevice) {
+            return null;
+        }
+        if (TestDeviceState.FASTBOOT.equals(getDeviceState())) {
             return null;
         }
         try {

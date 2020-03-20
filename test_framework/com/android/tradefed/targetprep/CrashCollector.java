@@ -23,6 +23,7 @@ import com.android.tradefed.device.BackgroundDeviceAction;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.LargeOutputReceiver;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestLoggerReceiver;
@@ -72,12 +73,12 @@ public class CrashCollector extends TestFilePushSetup implements ITestLoggerRece
         return false;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void setUp(ITestDevice device, IBuildInfo buildInfo)
+    public void setUp(TestInformation testInfo)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
+        ITestDevice device = testInfo.getDevice();
+        IBuildInfo buildInfo = testInfo.getBuildInfo();
         boolean shouldDisable = shouldDisable(device, buildInfo);
         if (shouldDisable) {
             CLog.i("Crash collector disabled.");
@@ -106,12 +107,9 @@ public class CrashCollector extends TestFilePushSetup implements ITestLoggerRece
         mCrashCollector.start();
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
-            throws DeviceNotAvailableException {
+    public void tearDown(TestInformation testInfo, Throwable e) throws DeviceNotAvailableException {
         if (mCrashCollector != null) {
             mCrashCollector.cancel();
         }

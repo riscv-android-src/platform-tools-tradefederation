@@ -133,32 +133,35 @@ public interface ITestDevice extends INativeDevice {
      *
      * @param packageFile the apk file to install
      * @param reinstall <code>true</code> if a reinstall should be performed
-     * @param extraArgs optional extra arguments to pass. See 'adb shell pm install --help' for
-     *            available options.
+     * @param extraArgs optional extra arguments to pass. See 'adb shell pm -h' for available
+     *     options.
      * @return a {@link String} with an error code, or <code>null</code> if success.
      * @throws DeviceNotAvailableException if connection with device is lost and cannot be
-     *             recovered.
+     *     recovered.
      */
     public String installPackage(File packageFile, boolean reinstall, String... extraArgs)
             throws DeviceNotAvailableException;
 
     /**
      * Install an Android package on device.
+     *
      * <p>Note: Only use cases that requires explicit control of granting runtime permission at
      * install time should call this function.
+     *
      * @param packageFile the apk file to install
      * @param reinstall <code>true</code> if a reinstall should be performed
      * @param grantPermissions if all runtime permissions should be granted at install time
-     * @param extraArgs optional extra arguments to pass. See 'adb shell pm install --help' for
-     *            available options.
+     * @param extraArgs optional extra arguments to pass. See 'adb shell pm -h' for available
+     *     options.
      * @return a {@link String} with an error code, or <code>null</code> if success.
      * @throws DeviceNotAvailableException if connection with device is lost and cannot be
-     *             recovered.
+     *     recovered.
      * @throws UnsupportedOperationException if runtime permission is not supported by the platform
-     *         on device.
+     *     on device.
      */
-    public String installPackage(File packageFile, boolean reinstall, boolean grantPermissions,
-            String... extraArgs) throws DeviceNotAvailableException;
+    public String installPackage(
+            File packageFile, boolean reinstall, boolean grantPermissions, String... extraArgs)
+            throws DeviceNotAvailableException;
 
     /**
      * Install an Android package on device for a given user.
@@ -166,34 +169,41 @@ public interface ITestDevice extends INativeDevice {
      * @param packageFile the apk file to install
      * @param reinstall <code>true</code> if a reinstall should be performed
      * @param userId the integer user id to install for.
-     * @param extraArgs optional extra arguments to pass. See 'adb shell pm install --help' for
-     *            available options.
+     * @param extraArgs optional extra arguments to pass. See 'adb shell pm -h' for available
+     *     options.
      * @return a {@link String} with an error code, or <code>null</code> if success.
      * @throws DeviceNotAvailableException if connection with device is lost and cannot be
-     *             recovered.
+     *     recovered.
      */
-    public String installPackageForUser(File packageFile, boolean reinstall, int userId,
-            String... extraArgs) throws DeviceNotAvailableException;
+    public String installPackageForUser(
+            File packageFile, boolean reinstall, int userId, String... extraArgs)
+            throws DeviceNotAvailableException;
 
     /**
      * Install an Android package on device for a given user.
+     *
      * <p>Note: Only use cases that requires explicit control of granting runtime permission at
      * install time should call this function.
+     *
      * @param packageFile the apk file to install
      * @param reinstall <code>true</code> if a reinstall should be performed
      * @param grantPermissions if all runtime permissions should be granted at install time
      * @param userId the integer user id to install for.
-     * @param extraArgs optional extra arguments to pass. See 'adb shell pm install --help' for
-     *            available options.
+     * @param extraArgs optional extra arguments to pass. See 'adb shell pm -h' for available
+     *     options.
      * @return a {@link String} with an error code, or <code>null</code> if success.
      * @throws DeviceNotAvailableException if connection with device is lost and cannot be
-     *             recovered.
+     *     recovered.
      * @throws UnsupportedOperationException if runtime permission is not supported by the platform
-     *         on device.
+     *     on device.
      */
-    public String installPackageForUser(File packageFile, boolean reinstall,
-            boolean grantPermissions, int userId, String... extraArgs)
-                    throws DeviceNotAvailableException;
+    public String installPackageForUser(
+            File packageFile,
+            boolean reinstall,
+            boolean grantPermissions,
+            int userId,
+            String... extraArgs)
+            throws DeviceNotAvailableException;
 
     /**
      * Uninstall an Android package from device.
@@ -201,19 +211,19 @@ public interface ITestDevice extends INativeDevice {
      * @param packageName the Android package to uninstall
      * @return a {@link String} with an error code, or <code>null</code> if success.
      * @throws DeviceNotAvailableException if connection with device is lost and cannot be
-     *             recovered.
+     *     recovered.
      */
     public String uninstallPackage(String packageName) throws DeviceNotAvailableException;
 
     /**
      * Install an Android application made of several APK files (one main and extra split packages).
-     * See "https://developer.android.com/studio/build/configure-apk-splits" on how to split
-     * apk to several files.
+     * See "https://developer.android.com/studio/build/configure-apk-splits" on how to split apk to
+     * several files.
      *
      * @param packageFiles the local apk files
      * @param reinstall <code>true</code> if a reinstall should be performed
-     * @param extraArgs optional extra arguments to pass. See 'adb shell pm install --help' for
-     *     available options.
+     * @param extraArgs optional extra arguments to pass. See 'adb shell pm -h' for available
+     *     options.
      * @return a {@link String} with an error code, or <code>null</code> if success.
      * @throws DeviceNotAvailableException if connection with device is lost and cannot be
      *     recovered.
@@ -238,8 +248,8 @@ public interface ITestDevice extends INativeDevice {
      * @param packageFiles the remote apk file paths to install
      * @param reinstall <code>true</code> if a reinstall should be performed
      * @param grantPermissions if all runtime permissions should be granted at install time
-     * @param extraArgs optional extra arguments to pass. See 'adb shell pm install --help' for
-     *     available options.
+     * @param extraArgs optional extra arguments to pass. See 'adb shell pm -h' for available
+     *     options.
      * @return a {@link String} with an error code, or <code>null</code> if success.
      * @throws DeviceNotAvailableException if connection with device is lost and cannot be
      *     recovered.
@@ -263,8 +273,8 @@ public interface ITestDevice extends INativeDevice {
      * @param packageFiles the local apk files
      * @param reinstall <code>true</code> if a reinstall should be performed
      * @param userId the integer user id to install for.
-     * @param extraArgs optional extra arguments to pass. See 'adb shell pm install --help' for
-     *     available options.
+     * @param extraArgs optional extra arguments to pass. See 'adb shell pm -h' for available
+     *     options.
      * @return a {@link String} with an error code, or <code>null</code> if success.
      * @throws DeviceNotAvailableException if connection with device is lost and cannot be
      *     recovered.
@@ -289,8 +299,8 @@ public interface ITestDevice extends INativeDevice {
      * @param reinstall <code>true</code> if a reinstall should be performed
      * @param grantPermissions if all runtime permissions should be granted at install time
      * @param userId the integer user id to install for.
-     * @param extraArgs optional extra arguments to pass. See 'adb shell pm install --help' for
-     *     available options.
+     * @param extraArgs optional extra arguments to pass. See 'adb shell pm -h' for available
+     *     options.
      * @return a {@link String} with an error code, or <code>null</code> if success.
      * @throws DeviceNotAvailableException if connection with device is lost and cannot be
      *     recovered.
@@ -319,8 +329,8 @@ public interface ITestDevice extends INativeDevice {
      * @param remoteApkPaths the remote apk file paths
      * @param reinstall <code>true</code> if a reinstall should be performed
      * @param grantPermissions if all runtime permissions should be granted at install time
-     * @param extraArgs optional extra arguments to pass. See 'adb shell pm install --help' for
-     *     available options.
+     * @param extraArgs optional extra arguments to pass. See 'adb shell pm -h' for available
+     *     options.
      * @return a {@link String} with an error code, or <code>null</code> if success.
      * @throws DeviceNotAvailableException if connection with device is lost and cannot be
      *     recovered.
@@ -344,8 +354,8 @@ public interface ITestDevice extends INativeDevice {
      *
      * @param remoteApkPaths the remote apk file paths
      * @param reinstall <code>true</code> if a reinstall should be performed
-     * @param extraArgs optional extra arguments to pass. See 'adb shell pm install --help' for
-     *     available options.
+     * @param extraArgs optional extra arguments to pass. See 'adb shell pm -h' for available
+     *     options.
      * @return a {@link String} with an error code, or <code>null</code> if success.
      * @throws DeviceNotAvailableException if connection with device is lost and cannot be
      *     recovered.
@@ -755,11 +765,11 @@ public interface ITestDevice extends INativeDevice {
     public Integer getPrimaryUserId() throws DeviceNotAvailableException;
 
     /**
-     * Return the id of the current running user.
+     * Return the id of the current running user. In case of error, return -10000.
      *
      * @throws DeviceNotAvailableException
      */
-    public int getCurrentUser() throws DeviceNotAvailableException, DeviceRuntimeException;
+    public int getCurrentUser() throws DeviceNotAvailableException;
 
     /**
      * Find and return the flags of a given user.

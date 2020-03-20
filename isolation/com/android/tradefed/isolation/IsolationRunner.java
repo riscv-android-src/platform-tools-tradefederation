@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.isolation;
 
+import com.android.tradefed.lite.DryRunner;
 import com.android.tradefed.lite.HostUtils;
 
 import org.apache.commons.cli.CommandLine;
@@ -24,6 +25,7 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
+import org.junit.internal.runners.ErrorReportingRunner;
 import org.junit.runner.JUnitCore;
 import org.junit.runner.Request;
 import org.junit.runner.Runner;
@@ -33,6 +35,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.HashSet;
 import java.util.List;
 
 /**
@@ -112,19 +115,30 @@ public final class IsolationRunner {
         List<Class<?>> klasses = this.getClasses(params);
 
         for (Class<?> klass : klasses) {
-            JUnitCore runnerCore = new JUnitCore();
+            System.out.println("Running class: " + klass);
             IsolationResultForwarder list = new IsolationResultForwarder(output);
+            JUnitCore runnerCore = new JUnitCore();
             runnerCore.addListener(list);
 
             Request req = Request.aClass(klass);
-            Runner checkRunner = req.getRunner();
             if (params.hasFilter()) {
-                System.out.println(params.getFilter().toString());
-                checkRunner = req.filterWith(new IsolationFilter(params.getFilter())).getRunner();
+                req = req.filterWith(new IsolationFilter(params.getFilter()));
             }
-            if (params.getDryRun()) {
-                HostUtils.fakeExecution(checkRunner.getDescription(), list);
+
+            if (req.getRunner() instanceof ErrorReportingRunner) {
+                // TODO(b/147610871): Handle ErrorReportingRunner errors in the IsolationRunner
+                // There needs to be an error of some sort here, but right now I
+                // don't have a way to report an error for a single test class.
+                System.err.println(
+                        String.format("Found ErrorRunner when trying to run class: %s", klass));
             } else {
+                Runner checkRunner;
+                if (params.getDryRun()) {
+                    checkRunner = new DryRunner(req.getRunner().getDescription());
+                } else {
+                    checkRunner = req.getRunner();
+                }
+
                 runnerCore.run(checkRunner);
             }
         }
@@ -136,8 +150,13 @@ public final class IsolationRunner {
     }
 
     private List<Class<?>> getClasses(TestParameters params) {
-        return HostUtils.getJUnit4Classes(
-                params.getTestClassesList(), params.getTestJarAbsPathsList());
+        System.out.println("Excluded paths:");
+        params.getExcludePathsList().stream().forEach(path -> System.out.println(path));
+        return HostUtils.getJUnitClasses(
+                new HashSet<>(params.getTestClassesList()),
+                new HashSet<>(params.getTestJarAbsPathsList()),
+                params.getExcludePathsList(),
+                this.getClass().getClassLoader());
     }
 
     private static final class RunnerConfig {
@@ -153,19 +172,19 @@ public final class IsolationRunner {
             if (port > 0) {
                 mPort = port;
             } else {
-                mPort = this.DEFAULT_PORT;
+                mPort = RunnerConfig.DEFAULT_PORT;
             }
 
             if (address != null) {
                 mAddress = address;
             } else {
-                mAddress = this.DEFAULT_ADDRESS;
+                mAddress = RunnerConfig.DEFAULT_ADDRESS;
             }
 
             if (timeout > 0) {
                 mTimeout = timeout;
             } else {
-                mTimeout = this.DEFAULT_TIMEOUT;
+                mTimeout = RunnerConfig.DEFAULT_TIMEOUT;
             }
         }
 

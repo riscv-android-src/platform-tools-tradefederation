@@ -1031,7 +1031,7 @@ public class DeviceManager implements IDeviceManager {
             if (d == null) {
                 continue;
             }
-            DeviceDescriptor desc = d.getDeviceDescriptor();
+            DeviceDescriptor desc = d.getCachedDeviceDescriptor();
             if (desc != null) {
                 serialStates.add(desc);
             }

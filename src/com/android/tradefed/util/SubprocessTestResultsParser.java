@@ -18,6 +18,7 @@ package com.android.tradefed.util;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.TfObjectTracker;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.FileInputStreamSource;
@@ -42,6 +43,7 @@ import com.android.tradefed.util.SubprocessEventHelper.TestRunStartedEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.TestStartedEventInfo;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
+import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 
 import org.json.JSONException;
@@ -580,6 +582,22 @@ public class SubprocessTestResultsParser implements Closeable {
                     } else {
                         InvocationMetricLogger.addInvocationMetrics(key, val);
                     }
+                }
+                if (attributes.containsKey(TfObjectTracker.TF_OBJECTS_TRACKING_KEY)) {
+                    String val = attributes.get(TfObjectTracker.TF_OBJECTS_TRACKING_KEY);
+                    for (String pair : Splitter.on(",").split(val)) {
+                        if (!pair.contains("=")) {
+                            continue;
+                        }
+                        String[] pairSplit = pair.split("=");
+                        try {
+                            TfObjectTracker.directCount(pairSplit[0], Long.parseLong(pairSplit[1]));
+                        } catch (NumberFormatException e) {
+                            CLog.e(e);
+                            continue;
+                        }
+                    }
+                    attributes.remove(TfObjectTracker.TF_OBJECTS_TRACKING_KEY);
                 }
                 infos.get(0).addBuildAttributes(attributes);
             }

@@ -39,10 +39,10 @@ final class IsolationFilter extends Filter {
             Collection<String> excludeFilters,
             Collection<String> includeAnnotations,
             Collection<String> excludeAnnotations) {
-        mIncludeFilters = new HashSet(includeFilters);
-        mExcludeFilters = new HashSet(excludeFilters);
-        mIncludeAnnotations = new HashSet(includeAnnotations);
-        mExcludeAnnotations = new HashSet(excludeAnnotations);
+        mIncludeFilters = new HashSet<String>(includeFilters);
+        mExcludeFilters = new HashSet<String>(excludeFilters);
+        mIncludeAnnotations = new HashSet<String>(includeAnnotations);
+        mExcludeAnnotations = new HashSet<String>(excludeAnnotations);
     }
 
     public IsolationFilter(FilterSpec filter) {

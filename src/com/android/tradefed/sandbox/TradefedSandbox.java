@@ -58,6 +58,7 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.Set;
 
 /**
@@ -72,6 +73,7 @@ public class TradefedSandbox implements ISandbox {
     private File mStderrFile = null;
     private OutputStream mStdout = null;
     private FileOutputStream mStderr = null;
+    private File mHeapDump = null;
 
     private File mSandboxTmpFolder = null;
     private File mRootFolder = null;
@@ -91,6 +93,15 @@ public class TradefedSandbox implements ISandbox {
         mCmdArgs.add(SystemUtil.getRunningJavaBinaryPath().getAbsolutePath());
         mCmdArgs.add(String.format("-Djava.io.tmpdir=%s", mSandboxTmpFolder.getAbsolutePath()));
         mCmdArgs.add(String.format("-DTF_JAR_DIR=%s", mRootFolder.getAbsolutePath()));
+        // Setup heap dump collection
+        try {
+            mHeapDump = FileUtil.createTempDir("heap-dump");
+            mCmdArgs.add("-XX:+HeapDumpOnOutOfMemoryError");
+            mCmdArgs.add(String.format("-XX:HeapDumpPath=%s", mHeapDump.getAbsolutePath()));
+        } catch (IOException e) {
+            CLog.e(e);
+        }
+        mCmdArgs.addAll(getSandboxOptions(config).getJavaOptions());
         mCmdArgs.add("-cp");
         mCmdArgs.add(createClasspath(mRootFolder));
         mCmdArgs.add(TradefedSandboxRunner.class.getCanonicalName());
@@ -121,6 +132,8 @@ public class TradefedSandbox implements ISandbox {
         try (InputStreamSource sourceStdErr = new FileInputStreamSource(mStderrFile)) {
             logger.testLog("sandbox-stderr", LogDataType.TEXT, sourceStdErr);
         }
+        // Collect heap dump if any
+        logAndCleanHeapDump(mHeapDump, logger);
 
         boolean failedStatus = false;
         String stderrText;
@@ -136,6 +149,9 @@ public class TradefedSandbox implements ISandbox {
         // Log the configuration used to run
         try (InputStreamSource configFile = new FileInputStreamSource(mSerializedConfiguration)) {
             logger.testLog("sandbox-config", LogDataType.XML, configFile);
+        }
+        try (InputStreamSource contextFile = new FileInputStreamSource(mSerializedContext)) {
+            logger.testLog("sandbox-context", LogDataType.PB, contextFile);
         }
 
         boolean joinResult = false;
@@ -198,6 +214,13 @@ public class TradefedSandbox implements ISandbox {
         mRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
         mRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
         // TODO: add handling of setting and creating the subprocess global configuration
+        if (getSandboxOptions(config).shouldEnableDebugThread()) {
+            mRunUtil.setEnvVariable(TradefedSandboxRunner.DEBUG_THREAD_KEY, "true");
+        }
+        for (Entry<String, String> envEntry :
+                getSandboxOptions(config).getEnvVariables().entrySet()) {
+            mRunUtil.setEnvVariable(envEntry.getKey(), envEntry.getValue());
+        }
 
         try {
             mRootFolder =
@@ -451,6 +474,20 @@ public class TradefedSandbox implements ISandbox {
             return null;
         } finally {
             StreamUtil.close(pw);
+        }
+    }
+
+    private void logAndCleanHeapDump(File heapDumpDir, ITestLogger logger) {
+        try {
+            if (heapDumpDir != null && heapDumpDir.listFiles().length != 0) {
+                for (File f : heapDumpDir.listFiles()) {
+                    FileInputStreamSource fileInput = new FileInputStreamSource(f);
+                    logger.testLog(f.getName(), LogDataType.HPROF, fileInput);
+                    StreamUtil.cancel(fileInput);
+                }
+            }
+        } finally {
+            FileUtil.recursiveDelete(heapDumpDir);
         }
     }
 }

@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.testtype.suite.retry;
 
+import com.android.annotations.VisibleForTesting;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
@@ -22,6 +23,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -29,7 +31,6 @@ import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
-import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.TimeUtil;
 
@@ -41,29 +42,34 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 /** Special runner that replays the results given to it. */
-public final class ResultsPlayer
-        implements IRemoteTest, IInvocationContextReceiver, IConfigurationReceiver {
+public final class ResultsPlayer implements IRemoteTest, IConfigurationReceiver {
 
     private class ReplayModuleHolder {
         public IInvocationContext mModuleContext;
         public List<Entry<TestDescription, TestResult>> mResults = new ArrayList<>();
     }
 
-    private IInvocationContext mContext;
     private Map<TestRunResult, ReplayModuleHolder> mModuleResult;
     private IConfiguration mConfiguration;
+    private boolean mCompleted;
 
     /** Ctor. */
     public ResultsPlayer() {
         mModuleResult = new LinkedHashMap<>();
     }
 
+    @VisibleForTesting
+    public ResultsPlayer(boolean completed) {
+        mCompleted = completed;
+    }
+
     @Override
-    public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+    public void run(TestInformation testInfo, ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
         // Very first thing of the retry is to check whether all devices are available, this avoids
         // use wasting time replaying result for an invocation that will fail right after during
         // the re-run.
-        for (ITestDevice device : mContext.getDevices()) {
+        for (ITestDevice device : testInfo.getContext().getDevices()) {
             if (device.getIDevice() instanceof StubDevice) {
                 continue;
             }
@@ -83,9 +89,11 @@ public final class ResultsPlayer
 
             IInvocationContext moduleContext = holder.mModuleContext;
             if (moduleContext != null) {
-                for (String deviceName : mContext.getDeviceConfigNames()) {
-                    moduleContext.addAllocatedDevice(deviceName, mContext.getDevice(deviceName));
-                    moduleContext.addDeviceBuildInfo(deviceName, mContext.getBuildInfo(deviceName));
+                for (String deviceName : testInfo.getContext().getDeviceConfigNames()) {
+                    moduleContext.addAllocatedDevice(
+                            deviceName, testInfo.getContext().getDevice(deviceName));
+                    moduleContext.addDeviceBuildInfo(
+                            deviceName, testInfo.getContext().getBuildInfo(deviceName));
                 }
                 listener.testModuleStarted(moduleContext);
             }
@@ -114,6 +122,7 @@ public final class ResultsPlayer
                 "Done replaying results in %s",
                 TimeUtil.formatElapsedTime(System.currentTimeMillis() - startReplay));
         mModuleResult.clear();
+        mCompleted = true;
     }
 
     /**
@@ -141,14 +150,13 @@ public final class ResultsPlayer
 
     /** {@inheritDoc} */
     @Override
-    public void setInvocationContext(IInvocationContext invocationContext) {
-        mContext = invocationContext;
-    }
-
-    /** {@inheritDoc} */
-    @Override
     public void setConfiguration(IConfiguration configuration) {
         mConfiguration = configuration;
+    }
+
+    /** Returns whether or not the ResultsReplayer is done replaying the results. */
+    public boolean completed() {
+        return mCompleted;
     }
 
     private void forwardTestResults(

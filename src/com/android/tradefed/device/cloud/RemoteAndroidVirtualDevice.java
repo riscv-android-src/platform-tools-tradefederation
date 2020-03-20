@@ -179,21 +179,24 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
             }
 
             if (mGceAvd != null) {
-                // attempt to get a bugreport if Gce Avd is a failure
-                if (!GceStatus.SUCCESS.equals(mGceAvd.getStatus())) {
-                    // Get a bugreport via ssh
-                    getSshBugreport();
+                // Host and port can be null in case of acloud timeout
+                if (mGceAvd.hostAndPort() != null) {
+                    // attempt to get a bugreport if Gce Avd is a failure
+                    if (!GceStatus.SUCCESS.equals(mGceAvd.getStatus())) {
+                        // Get a bugreport via ssh
+                        getSshBugreport();
+                    }
+                    // Log the serial output of the instance.
+                    getGceHandler().logSerialOutput(mGceAvd, mTestLogger);
+
+                    // Fetch remote files
+                    CommonLogRemoteFileUtil.fetchCommonFiles(
+                            mTestLogger, mGceAvd, getOptions(), getRunUtil());
+
+                    // Fetch all tombstones if any.
+                    CommonLogRemoteFileUtil.fetchTombstones(
+                            mTestLogger, mGceAvd, getOptions(), getRunUtil());
                 }
-                // Log the serial output of the instance.
-                getGceHandler().logSerialOutput(mGceAvd, mTestLogger);
-
-                // Fetch remote files
-                CommonLogRemoteFileUtil.fetchCommonFiles(
-                        mTestLogger, mGceAvd, getOptions(), getRunUtil());
-
-                // Fetch all tombstones if any.
-                CommonLogRemoteFileUtil.fetchTombstones(
-                        mTestLogger, mGceAvd, getOptions(), getRunUtil());
 
                 // Cleanup GCE first to make sure ssh tunnel has nowhere to go.
                 if (!getOptions().shouldSkipTearDown()) {
@@ -332,10 +335,11 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
     }
 
     @Override
-    protected void doAdbReboot(String into) throws DeviceNotAvailableException {
+    protected void doAdbReboot(RebootMode rebootMode, @Nullable final String reason)
+            throws DeviceNotAvailableException {
         // We catch that adb reboot is called to expect it from the tunnel.
         getGceSshMonitor().isAdbRebootCalled(true);
-        super.doAdbReboot(into);
+        super.doAdbReboot(rebootMode, reason);
         // We allow a little time for instance to reboot and be reachable.
         getRunUtil().sleep(WAIT_AFTER_REBOOT);
         // after the reboot we wait for tunnel to be online and device to be reconnected

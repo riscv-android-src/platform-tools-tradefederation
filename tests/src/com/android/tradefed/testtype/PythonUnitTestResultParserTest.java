@@ -45,6 +45,8 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.Vector;
 
 /** Unit tests for {@link PythonUnitTestResultParser}. */
@@ -497,16 +499,16 @@ public class PythonUnitTestResultParserTest {
 
         mMockListener.testFailed(
                 EasyMock.eq(new TestDescription("__main__.DisconnectionTest", "test_disconnect")),
-                EasyMock.anyObject());
+                (String) EasyMock.anyObject());
         mMockListener.testFailed(
                 EasyMock.eq(new TestDescription("__main__.EmulatorTest", "test_emulator_connect")),
-                EasyMock.anyObject());
+                (String) EasyMock.anyObject());
         mMockListener.testIgnored(
                 EasyMock.eq(new TestDescription("__main__.PowerTest", "test_resume_usb_kick")));
         // Multi-line error
         mMockListener.testFailed(
                 EasyMock.eq(new TestDescription("__main__.ServerTest", "test_handle_inheritance")),
-                EasyMock.anyObject());
+                (String) EasyMock.anyObject());
 
         mMockListener.testRunEnded(10314, new HashMap<String, Metric>());
         replay(mMockListener);
@@ -550,11 +552,104 @@ public class PythonUnitTestResultParserTest {
 
         mMockListener.testFailed(
                 EasyMock.eq(new TestDescription("__main__.ConnectionTest", "test_reconnect")),
-                EasyMock.anyObject());
+                (String) EasyMock.anyObject());
         mMockListener.testIgnored(
                 EasyMock.eq(new TestDescription("__main__.PowerTest", "test_resume_usb_kick")));
 
         mMockListener.testRunEnded(27353, new HashMap<String, Metric>());
+        replay(mMockListener);
+        mParser.processNewLines(contents);
+        verify(mMockListener);
+    }
+
+    @Test
+    public void testParseTestResults_withIncludeFilters() {
+        Set<String> includeFilters = new LinkedHashSet<>();
+        Set<String> excludeFilters = new LinkedHashSet<>();
+        includeFilters.add("__main__.ConnectionTest#test_connect_ipv4_ipv6");
+        includeFilters.add("__main__.EmulatorTest");
+        mParser =
+                new PythonUnitTestResultParser(
+                        ArrayUtil.list(mMockListener), "test", includeFilters, excludeFilters);
+
+        String[] contents = readInFile(PYTHON_OUTPUT_FILE_1);
+
+        mMockListener.testRunStarted("test", 11);
+        for (int i = 0; i < 11; i++) {
+            mMockListener.testStarted(EasyMock.anyObject());
+            mMockListener.testEnded(
+                    EasyMock.anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
+        }
+
+        mMockListener.testFailed(
+                EasyMock.eq(new TestDescription("__main__.EmulatorTest", "test_emulator_connect")),
+                (String) EasyMock.anyObject());
+        // Passed/failed tests are ignored due to include-filter setting.
+        mMockListener.testIgnored(
+                EasyMock.eq(new TestDescription("__main__.CommandlineTest", "test_help")));
+        mMockListener.testIgnored(
+                EasyMock.eq(
+                        new TestDescription(
+                                "__main__.CommandlineTest", "test_tcpip_error_messages")));
+        mMockListener.testIgnored(
+                EasyMock.eq(new TestDescription("__main__.CommandlineTest", "test_version")));
+        mMockListener.testIgnored(
+                EasyMock.eq(
+                        new TestDescription("__main__.ConnectionTest", "test_already_connected")));
+        mMockListener.testIgnored(
+                EasyMock.eq(new TestDescription("__main__.ConnectionTest", "test_reconnect")));
+        mMockListener.testIgnored(
+                EasyMock.eq(new TestDescription("__main__.DisconnectionTest", "test_disconnect")));
+        mMockListener.testIgnored(
+                EasyMock.eq(new TestDescription("__main__.PowerTest", "test_resume_usb_kick")));
+        mMockListener.testIgnored(
+                EasyMock.eq(new TestDescription("__main__.ServerTest", "test_handle_inheritance")));
+
+        mMockListener.testRunEnded(10314, new HashMap<String, Metric>());
+        replay(mMockListener);
+        mParser.processNewLines(contents);
+        verify(mMockListener);
+    }
+
+    @Test
+    public void testParseTestResults_withExcludeFilters() {
+        Set<String> includeFilters = new LinkedHashSet<>();
+        Set<String> excludeFilters = new LinkedHashSet<>();
+        excludeFilters.add("__main__.ConnectionTest#test_connect_ipv4_ipv6");
+        excludeFilters.add("__main__.EmulatorTest");
+        mParser =
+                new PythonUnitTestResultParser(
+                        ArrayUtil.list(mMockListener), "test", includeFilters, excludeFilters);
+
+        String[] contents = readInFile(PYTHON_OUTPUT_FILE_1);
+
+        mMockListener.testRunStarted("test", 11);
+        for (int i = 0; i < 11; i++) {
+            mMockListener.testStarted(EasyMock.anyObject());
+            mMockListener.testEnded(
+                    EasyMock.anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
+        }
+
+        // Passed/failed tests are ignored due to exclude-filter setting.
+        mMockListener.testIgnored(
+                EasyMock.eq(
+                        new TestDescription("__main__.ConnectionTest", "test_connect_ipv4_ipv6")));
+        mMockListener.testIgnored(
+                EasyMock.eq(new TestDescription("__main__.EmulatorTest", "test_emu_kill")));
+        mMockListener.testIgnored(
+                EasyMock.eq(new TestDescription("__main__.EmulatorTest", "test_emulator_connect")));
+
+        mMockListener.testIgnored(
+                EasyMock.eq(new TestDescription("__main__.PowerTest", "test_resume_usb_kick")));
+
+        mMockListener.testFailed(
+                EasyMock.eq(new TestDescription("__main__.DisconnectionTest", "test_disconnect")),
+                (String) EasyMock.anyObject());
+        mMockListener.testFailed(
+                EasyMock.eq(new TestDescription("__main__.ServerTest", "test_handle_inheritance")),
+                (String) EasyMock.anyObject());
+
+        mMockListener.testRunEnded(10314, new HashMap<String, Metric>());
         replay(mMockListener);
         mParser.processNewLines(contents);
         verify(mMockListener);

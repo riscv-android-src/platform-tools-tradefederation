@@ -36,8 +36,12 @@ import java.util.regex.Pattern;
 /** Run the tests associated with the invocation in the sandbox. */
 public class SandboxInvocationRunner {
 
-    /** Do setup and run the tests */
-    public static void prepareAndRun(
+    /**
+     * Do setup and run the tests.
+     *
+     * @return True if the invocation is successful. False otherwise.
+     */
+    public static boolean prepareAndRun(
             TestInformation info, IConfiguration config, ITestInvocationListener listener)
             throws Throwable {
         // TODO: refactor TestInvocation to be more modular in the sandbox handling
@@ -57,15 +61,20 @@ public class SandboxInvocationRunner {
         try {
             CommandResult result = sandbox.run(config, listener);
             if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
-                handleStderrException(result.getStderr());
+                CLog.e(
+                        "Sandbox finished with status: %s and exit code: %s",
+                        result.getStatus(), result.getExitCode());
+                handleStderrException(result.getExitCode(), result.getStderr());
+                return false;
             }
         } finally {
             sandbox.tearDown();
         }
+        return true;
     }
 
     /** Attempt to extract a proper exception from stderr, if not stick to RuntimeException. */
-    private static void handleStderrException(String stderr) throws Throwable {
+    private static void handleStderrException(Integer exitCode, String stderr) throws Throwable {
         Pattern pattern =
                 Pattern.compile(String.format(".*%s.*", TradefedSandboxRunner.EXCEPTION_KEY));
         for (String line : stderr.split("\n")) {
@@ -85,6 +94,9 @@ public class SandboxInvocationRunner {
                 }
             }
         }
+        stderr =
+                String.format(
+                        "Sandbox finished with error exit code: %s.\nStderr: %s", exitCode, stderr);
         throw new RuntimeException(stderr);
     }
 }

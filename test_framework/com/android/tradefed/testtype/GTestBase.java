@@ -46,7 +46,8 @@ public abstract class GTestBase
                 ITestFilterReceiver,
                 IRuntimeHintProvider,
                 ITestCollector,
-                IShardableTest {
+                IShardableTest,
+                IAbiReceiver {
 
     private static final List<String> DEFAULT_FILE_EXCLUDE_FILTERS = new ArrayList<>();
 
@@ -177,6 +178,17 @@ public abstract class GTestBase
     private boolean mIsSharded = false;
 
     private IConfiguration mConfiguration = null;
+    private IAbi mAbi;
+
+    @Override
+    public void setAbi(IAbi abi) {
+        mAbi = abi;
+    }
+
+    @Override
+    public IAbi getAbi() {
+        return mAbi;
+    }
 
     /** {@inheritDoc} */
     @Override
@@ -628,6 +640,7 @@ public abstract class GTestBase
             shard.mIsSharded = true;
             // We approximate the runtime of each shard to be equal since we can't know.
             shard.mRuntimeHint = mRuntimeHint / shardCount;
+            shard.mAbi = mAbi;
         } catch (InstantiationException
                 | IllegalAccessException
                 | InvocationTargetException

@@ -23,8 +23,8 @@ import java.io.File;
 /** A {@link IBuildInfo} class for builds piped from TFC. */
 public class ClusterBuildInfo extends FolderBuildInfo {
 
-    public ClusterBuildInfo(final File rootDir) {
-        super();
+    public ClusterBuildInfo(File rootDir, String buildId, String buildName) {
+        super(buildId, buildName);
         setRootDir(rootDir);
     }
 }

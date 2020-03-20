@@ -16,8 +16,6 @@
 package com.android.tradefed.invoker;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.doThrow;
@@ -25,7 +23,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
+import com.android.tradefed.build.BuildInfo;
+import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.build.StubBuildProvider;
@@ -47,12 +46,16 @@ import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLoggerReceiver;
 import com.android.tradefed.result.LogSaverResultForwarder;
+import com.android.tradefed.targetprep.BaseTargetPreparer;
+import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.IHostCleaner;
 import com.android.tradefed.targetprep.ITargetCleaner;
 import com.android.tradefed.targetprep.ITargetPreparer;
+import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.suite.TestSuiteStub;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IDisableable;
 
 import org.easymock.EasyMock;
@@ -336,29 +339,29 @@ public class InvocationExecutionTest {
         // Pre multi preparers are always called before.
         InOrder inOrder = Mockito.inOrder(stub1, stub2, stub3, stub4, cleaner);
         inOrder.verify(stub1).isDisabled();
-        inOrder.verify(stub1).setUp(mContext);
+        inOrder.verify(stub1).setUp(testInfo);
         inOrder.verify(stub2).isDisabled();
-        inOrder.verify(stub2).setUp(mContext);
+        inOrder.verify(stub2).setUp(testInfo);
 
         inOrder.verify(cleaner).setUp(Mockito.any());
 
         inOrder.verify(stub3).isDisabled();
-        inOrder.verify(stub3).setUp(mContext);
+        inOrder.verify(stub3).setUp(testInfo);
         inOrder.verify(stub4).isDisabled();
-        inOrder.verify(stub4).setUp(mContext);
+        inOrder.verify(stub4).setUp(testInfo);
 
         // tear down
         inOrder.verify(stub4).isDisabled();
-        inOrder.verify(stub4).tearDown(mContext, null);
+        inOrder.verify(stub4).tearDown(testInfo, null);
         inOrder.verify(stub3).isDisabled();
-        inOrder.verify(stub3).tearDown(mContext, null);
+        inOrder.verify(stub3).tearDown(testInfo, null);
 
         inOrder.verify(cleaner).tearDown(Mockito.any(), Mockito.any());
 
         inOrder.verify(stub2).isDisabled();
-        inOrder.verify(stub2).tearDown(mContext, null);
+        inOrder.verify(stub2).tearDown(testInfo, null);
         inOrder.verify(stub1).isDisabled();
-        inOrder.verify(stub1).tearDown(mContext, null);
+        inOrder.verify(stub1).tearDown(testInfo, null);
     }
 
     /** Ensure that during tear down the original exception is kept. */
@@ -385,27 +388,72 @@ public class InvocationExecutionTest {
 
         InOrder inOrder = Mockito.inOrder(stub1, stub2, stub3, stub4, cleaner);
         inOrder.verify(stub1).isDisabled();
-        inOrder.verify(stub1).setUp(mContext);
+        inOrder.verify(stub1).setUp(testInfo);
         inOrder.verify(stub2).isDisabled();
-        inOrder.verify(stub2).setUp(mContext);
+        inOrder.verify(stub2).setUp(testInfo);
         inOrder.verify(cleaner).isDisabled();
         inOrder.verify(cleaner).setUp(Mockito.any());
         inOrder.verify(stub3).isDisabled();
-        inOrder.verify(stub3).setUp(mContext);
+        inOrder.verify(stub3).setUp(testInfo);
         inOrder.verify(stub4).isDisabled();
-        inOrder.verify(stub4).setUp(mContext);
+        inOrder.verify(stub4).setUp(testInfo);
         // tear down
         inOrder.verify(stub4).isDisabled();
-        inOrder.verify(stub4).tearDown(mContext, exception);
+        inOrder.verify(stub4).tearDown(testInfo, exception);
         inOrder.verify(stub3).isDisabled();
-        inOrder.verify(stub3).tearDown(mContext, exception);
+        inOrder.verify(stub3).tearDown(testInfo, exception);
 
         inOrder.verify(cleaner).tearDown(Mockito.any(), Mockito.any());
 
         inOrder.verify(stub2).isDisabled();
-        inOrder.verify(stub2).tearDown(mContext, exception);
+        inOrder.verify(stub2).tearDown(testInfo, exception);
         inOrder.verify(stub1).isDisabled();
-        inOrder.verify(stub1).tearDown(mContext, exception);
+        inOrder.verify(stub1).tearDown(testInfo, exception);
+    }
+
+    /** Ensure that setup and teardown are called with the proper device. */
+    @Test
+    public void testDoTearDown_multiDevice() throws Throwable {
+        boolean[] wasCalled = new boolean[2];
+        wasCalled[0] = false;
+        wasCalled[1] = false;
+        ITestDevice mockDevice1 = mock(ITestDevice.class);
+        ITestDevice mockDevice2 = mock(ITestDevice.class);
+        BaseTargetPreparer cleaner =
+                new BaseTargetPreparer() {
+                    @Override
+                    public void setUp(TestInformation testInformation)
+                            throws TargetSetupError, BuildError, DeviceNotAvailableException {
+                        wasCalled[0] = true;
+                        assertEquals(mockDevice2, testInformation.getDevice());
+                    }
+
+                    @Override
+                    public void tearDown(TestInformation testInformation, Throwable e)
+                            throws DeviceNotAvailableException {
+                        wasCalled[1] = true;
+                        assertEquals(mockDevice2, testInformation.getDevice());
+                    }
+                };
+        IDeviceConfiguration holder1 = new DeviceConfigurationHolder("device1");
+        IDeviceConfiguration holder2 = new DeviceConfigurationHolder("device2");
+        holder2.addSpecificConfig(cleaner);
+        List<IDeviceConfiguration> deviceConfigs = new ArrayList<>();
+        deviceConfigs.add(holder1);
+        deviceConfigs.add(holder2);
+        mConfig.setDeviceConfigList(deviceConfigs);
+        mContext.addAllocatedDevice("device1", mockDevice1);
+        mContext.addDeviceBuildInfo("device1", new BuildInfo());
+        mContext.addAllocatedDevice("device2", mockDevice2);
+        mContext.addDeviceBuildInfo("device2", new BuildInfo());
+        TestInformation testInfo =
+                TestInformation.newBuilder().setInvocationContext(mContext).build();
+        mExec.doSetup(testInfo, mConfig, mMockLogger);
+        // Ensure that the original error is the one passed around.
+        Throwable exception = new Throwable("Original error");
+        mExec.doTeardown(testInfo, mConfig, mMockLogger, exception);
+        assertTrue(wasCalled[0]);
+        assertTrue(wasCalled[1]);
     }
 
     /** Interface to test a preparer receiving the logger. */
@@ -437,28 +485,28 @@ public class InvocationExecutionTest {
 
         InOrder inOrder = Mockito.inOrder(stub1, stub2, stub3, stub4, cleaner);
         inOrder.verify(stub1).isDisabled();
-        inOrder.verify(stub1).setUp(mContext);
+        inOrder.verify(stub1).setUp(testInfo);
         inOrder.verify(stub2).isDisabled();
-        inOrder.verify(stub2).setUp(mContext);
+        inOrder.verify(stub2).setUp(testInfo);
         inOrder.verify(cleaner).isDisabled();
         inOrder.verify(cleaner).setUp(Mockito.any());
         inOrder.verify(stub3).isDisabled();
-        inOrder.verify(stub3).setUp(mContext);
+        inOrder.verify(stub3).setUp(testInfo);
         inOrder.verify(stub4).isDisabled();
-        inOrder.verify(stub4).setUp(mContext);
+        inOrder.verify(stub4).setUp(testInfo);
         // tear down
         inOrder.verify(stub4).isDisabled();
-        inOrder.verify(stub4).tearDown(mContext, exception);
+        inOrder.verify(stub4).tearDown(testInfo, exception);
         inOrder.verify(stub3).isDisabled();
-        inOrder.verify(stub3).tearDown(mContext, exception);
+        inOrder.verify(stub3).tearDown(testInfo, exception);
 
         inOrder.verify(cleaner).tearDown(Mockito.any(), Mockito.any());
 
         inOrder.verify(stub2).isDisabled();
-        inOrder.verify(stub2).tearDown(mContext, exception);
+        inOrder.verify(stub2).tearDown(testInfo, exception);
         inOrder.verify(stub1).isDisabled();
         inOrder.verify(stub1).setTestLogger(logger);
-        inOrder.verify(stub1).tearDown(mContext, exception);
+        inOrder.verify(stub1).tearDown(testInfo, exception);
     }
 
     /** Ensure that the full tear down is attempted before throwning an exception. */
@@ -476,12 +524,12 @@ public class InvocationExecutionTest {
         holder.addSpecificConfig(cleaner);
         mConfig.setDeviceConfig(holder);
         mContext.addAllocatedDevice("default", mock(ITestDevice.class));
-
-        // Ensure that the original error is the one passed around.
-        Throwable exception = new Throwable("Original error");
-        doThrow(new RuntimeException("Oups I failed")).when(stub3).tearDown(mContext, exception);
         TestInformation testInfo =
                 TestInformation.newBuilder().setInvocationContext(mContext).build();
+        // Ensure that the original error is the one passed around.
+        Throwable exception = new Throwable("Original error");
+        doThrow(new RuntimeException("Oups I failed")).when(stub3).tearDown(testInfo, exception);
+
         try {
             mExec.doSetup(testInfo, mConfig, mMockLogger);
             mExec.doTeardown(testInfo, mConfig, null, exception);
@@ -492,32 +540,39 @@ public class InvocationExecutionTest {
         // Ensure that even in case of exception, the full tear down goes through before throwing.
         InOrder inOrder = Mockito.inOrder(stub1, stub2, stub3, stub4, cleaner);
         inOrder.verify(stub1).isDisabled();
-        inOrder.verify(stub1).setUp(mContext);
+        inOrder.verify(stub1).setUp(testInfo);
         inOrder.verify(stub2).isDisabled();
-        inOrder.verify(stub2).setUp(mContext);
+        inOrder.verify(stub2).setUp(testInfo);
         inOrder.verify(cleaner).isDisabled();
         inOrder.verify(cleaner).setUp(Mockito.any());
         inOrder.verify(stub3).isDisabled();
-        inOrder.verify(stub3).setUp(mContext);
+        inOrder.verify(stub3).setUp(testInfo);
         inOrder.verify(stub4).isDisabled();
-        inOrder.verify(stub4).setUp(mContext);
+        inOrder.verify(stub4).setUp(testInfo);
         // tear down
         inOrder.verify(stub4).isDisabled();
-        inOrder.verify(stub4).tearDown(mContext, exception);
+        inOrder.verify(stub4).tearDown(testInfo, exception);
         inOrder.verify(stub3).isDisabled();
-        inOrder.verify(stub3).tearDown(mContext, exception);
+        inOrder.verify(stub3).tearDown(testInfo, exception);
 
         inOrder.verify(cleaner).tearDown(Mockito.any(), Mockito.any());
 
         inOrder.verify(stub2).isDisabled();
-        inOrder.verify(stub2).tearDown(mContext, exception);
+        inOrder.verify(stub2).tearDown(testInfo, exception);
         inOrder.verify(stub1).isDisabled();
-        inOrder.verify(stub1).tearDown(mContext, exception);
+        inOrder.verify(stub1).tearDown(testInfo, exception);
     }
 
     /** Ensure we create the shared folder from the resource build. */
     @Test
     public void testFetchBuild_createSharedFolder() throws Throwable {
+        mExec =
+                new InvocationExecution() {
+                    @Override
+                    protected String getAdbVersion() {
+                        return "1";
+                    }
+                };
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("serial");
         mMockDevice.setRecovery(EasyMock.anyObject());
         EasyMock.expectLastCall().times(2);
@@ -530,14 +585,28 @@ public class InvocationExecutionTest {
         listDeviceConfig.add(holder);
 
         DeviceConfigurationHolder holder2 = new DeviceConfigurationHolder("device2", true);
-        IBuildProvider provider2 = new StubBuildProvider();
+        IBuildProvider provider2 =
+                new StubBuildProvider() {
+                    @Override
+                    public IBuildInfo getBuild() throws BuildRetrievalError {
+                        IBuildInfo info = super.getBuild();
+                        info.setBuildId("1234");
+                        info.setBuildBranch("branch");
+                        info.setBuildFlavor("flavor");
+                        return info;
+                    }
+                };
         holder2.addSpecificConfig(provider2);
         mContext.addAllocatedDevice("device2", mMockDevice);
         listDeviceConfig.add(holder2);
 
         mConfig.setDeviceConfigList(listDeviceConfig);
+        File tmpWorkDir = FileUtil.createTempDir("invocation-execution-shared-test");
         TestInformation testInfo =
-                TestInformation.newBuilder().setInvocationContext(mContext).build();
+                TestInformation.newBuilder()
+                        .setInvocationContext(mContext)
+                        .setDependenciesFolder(tmpWorkDir)
+                        .build();
         // Download
         EasyMock.replay(mMockDevice);
         assertTrue(mExec.fetchBuild(testInfo, mConfig, null, mMockListener));
@@ -546,16 +615,14 @@ public class InvocationExecutionTest {
         List<IBuildInfo> builds = mContext.getBuildInfos();
         try {
             assertEquals(2, builds.size());
-            IBuildInfo realBuild = builds.get(0);
-            File shared = realBuild.getFile(BuildInfoFileKey.SHARED_RESOURCE_DIR);
-            assertNotNull(shared);
-
-            IBuildInfo fakeBuild = builds.get(1);
-            assertNull(fakeBuild.getFile(BuildInfoFileKey.SHARED_RESOURCE_DIR));
+            assertEquals(1, tmpWorkDir.listFiles().length);
+            // The resource build was linked to dependencies
+            assertTrue(tmpWorkDir.listFiles()[0].getName().startsWith("branch_1234_flavor"));
         } finally {
             for (IBuildInfo info : builds) {
                 info.cleanUp();
             }
+            FileUtil.recursiveDelete(tmpWorkDir);
         }
         assertTrue(mContext.getAttributes().containsKey(InvocationExecution.JAVA_VERSION_KEY));
     }

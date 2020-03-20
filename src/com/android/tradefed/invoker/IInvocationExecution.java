@@ -139,14 +139,14 @@ public interface IInvocationExecution {
      * {@link IShardHelper#shardConfig}.
      *
      * @param config the current {@link IConfiguration}.
-     * @param context the {@link IInvocationContext} holding the info of the tests.
+     * @param testInfo the {@link TestInformation} holding the info of the tests.
      * @param rescheduler the {@link IRescheduler}.
      * @param logger {@link ITestLogger} used to log file during sharding.
      * @return true if test was sharded. Otherwise return <code>false</code>
      */
     public default boolean shardConfig(
             IConfiguration config,
-            IInvocationContext context,
+            TestInformation testInfo,
             IRescheduler rescheduler,
             ITestLogger logger) {
         return false;

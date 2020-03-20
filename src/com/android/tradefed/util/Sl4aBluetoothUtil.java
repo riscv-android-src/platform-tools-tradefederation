@@ -50,9 +50,6 @@ public class Sl4aBluetoothUtil {
     @VisibleForTesting
     static final String BT_SNOOP_LOG_CMD = "setprop persist.bluetooth.btsnooplogmode %s";
 
-    /** A singleton for the utility class */
-    private static Sl4aBluetoothUtil sUtil;
-
     /** Holding mappings from device serial number to the {@link Sl4aClient} of the device */
     private Map<String, Sl4aClient> mSl4aClients = new HashMap<>();
 
@@ -92,6 +89,11 @@ public class Sl4aBluetoothUtil {
         static final String BLUETOOTH_MAP_GET_CONNECTED_DEVICES = "bluetoothMapGetConnectedDevices";
         static final String BLUETOOTH_MAP_CLIENT_GET_CONNECTED_DEVICES =
                 "bluetoothMapClientGetConnectedDevices";
+        static final String BLUETOOTH_CHANGE_PROFILE_ACCESS_PERMISSION =
+                "bluetoothChangeProfileAccessPermission";
+        static final String BLUETOOTH_A2DP_SINK_SET_PRIORITY = "bluetoothA2dpSinkSetPriority";
+        static final String BLUETOOTH_HFP_CLIENT_SET_PRIORITY = "bluetoothHfpClientSetPriority";
+        static final String BLUETOOTH_PBAP_CLIENT_SET_PRIORITY = "bluetoothPbapClientSetPriority";
     }
 
     /** SL4A events to be used for Bluetooth */
@@ -157,20 +159,46 @@ public class Sl4aBluetoothUtil {
         }
     }
 
-    public static Sl4aBluetoothUtil getInstance() {
-        if (sUtil == null) {
-            sUtil = new Sl4aBluetoothUtil();
-        }
-        return sUtil;
-    }
+    /** Enums for Bluetooth device access level which are based on {@code BluetoothDevice.java} */
+    public enum BluetoothAccessLevel {
+        ACCESS_UNKNOWN(0),
+        ACCESS_ALLOWED(1),
+        ACCESS_REJECTED(2);
 
-    @VisibleForTesting
-    static Sl4aBluetoothUtil createInstance() {
-        return new Sl4aBluetoothUtil();
+        private final int mAccess;
+
+        BluetoothAccessLevel(int access) {
+            mAccess = access;
+        }
+
+        public int getAccess() {
+            return mAccess;
+        }
     }
 
     /**
-     * Start SL4A client with the given device and SL4A apk file
+     * Enums for Bluetooth profile priority level which are based on {@code BluetoothProfile.java}
+     */
+    public enum BluetoothPriorityLevel {
+        PRIORITY_AUTO_CONNECT(1000),
+        PRIORITY_ON(100),
+        PRIORITY_OFF(0),
+        PRIORITY_UNDEFINED(-1);
+
+        private final int mPriority;
+
+        BluetoothPriorityLevel(int priority) {
+            mPriority = priority;
+        }
+
+        public int getPriority() {
+            return mPriority;
+        }
+    }
+
+    /**
+     * Explicitly start SL4A client with the given device and SL4A apk file. Normally this method is
+     * not required, because SL4A connection will always be established before actual operations.
      *
      * @param device the device to be connected using SL4A
      * @param sl4aApkFile the optional SL4A apk to install and use.
@@ -189,6 +217,7 @@ public class Sl4aBluetoothUtil {
         for (Map.Entry<String, Sl4aClient> entry : mSl4aClients.entrySet()) {
             entry.getValue().close();
         }
+        mSl4aClients.clear();
     }
 
     @VisibleForTesting
@@ -420,6 +449,13 @@ public class Sl4aBluetoothUtil {
         return false;
     }
 
+    /**
+     * Enable Bluetooth snoop log
+     *
+     * @param device to enable snoop log
+     * @return true if enabled successfully
+     * @throws DeviceNotAvailableException
+     */
     public boolean enableBluetoothSnoopLog(ITestDevice device) throws DeviceNotAvailableException {
         if (isQAndAbove(device)) {
             device.executeShellCommand(String.format(BT_SNOOP_LOG_CMD, "full"));
@@ -429,6 +465,13 @@ public class Sl4aBluetoothUtil {
         return disable(device) && enable(device);
     }
 
+    /**
+     * Disable Bluetooth snoop log
+     *
+     * @param device to disable snoop log
+     * @return true if disabled successfully
+     * @throws DeviceNotAvailableException
+     */
     public boolean disableBluetoothSnoopLog(ITestDevice device) throws DeviceNotAvailableException {
         if (isQAndAbove(device)) {
             device.executeShellCommand(String.format(BT_SNOOP_LOG_CMD, "disabled"));
@@ -436,6 +479,90 @@ public class Sl4aBluetoothUtil {
             device.executeShellCommand(String.format(BT_SNOOP_LOG_CMD_LEGACY, "false"));
         }
         return disable(device) && enable(device);
+    }
+
+    /**
+     * Change Bluetooth profile access permission of secondary device on primary device in order for
+     * secondary device to access primary device on the given profile
+     *
+     * @param primary device to change permission
+     * @param secondary device that accesses primary device on the given profile
+     * @param profile Bluetooth profile to access
+     * @param access level of access, see {@code BluetoothAccessLevel}
+     * @return true if permission changed successfully
+     * @throws DeviceNotAvailableException
+     */
+    public boolean changeProfileAccessPermission(
+            ITestDevice primary,
+            ITestDevice secondary,
+            BluetoothProfile profile,
+            BluetoothAccessLevel access)
+            throws DeviceNotAvailableException {
+        Sl4aClient primaryClient = getSl4aClient(primary);
+        String secondaryAddress = getAddress(secondary);
+        try {
+            primaryClient.rpcCall(
+                    Commands.BLUETOOTH_CHANGE_PROFILE_ACCESS_PERMISSION,
+                    secondaryAddress,
+                    profile.mProfile,
+                    access.getAccess());
+        } catch (IOException e) {
+            CLog.e("Failed to set profile access level %s for profile %s, %s", access, profile, e);
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Change priority setting of given profiles on primary device towards secondary device
+     *
+     * @param primary device to set priority on
+     * @param secondary device to set priority for
+     * @param profiles Bluetooth profiles to change priority setting
+     * @param priority level of priority
+     * @return true if set priority successfully
+     * @throws DeviceNotAvailableException
+     */
+    public boolean setProfilePriority(
+            ITestDevice primary,
+            ITestDevice secondary,
+            Set<BluetoothProfile> profiles,
+            BluetoothPriorityLevel priority)
+            throws DeviceNotAvailableException {
+        Sl4aClient primaryClient = getSl4aClient(primary);
+        String secondaryAddress = getAddress(secondary);
+
+        for (BluetoothProfile profile : profiles) {
+            try {
+                switch (profile) {
+                    case A2DP_SINK:
+                        primaryClient.rpcCall(
+                                Commands.BLUETOOTH_A2DP_SINK_SET_PRIORITY,
+                                secondaryAddress,
+                                priority.getPriority());
+                        break;
+                    case HEADSET_CLIENT:
+                        primaryClient.rpcCall(
+                                Commands.BLUETOOTH_HFP_CLIENT_SET_PRIORITY,
+                                secondaryAddress,
+                                priority.getPriority());
+                        break;
+                    case PBAP_CLIENT:
+                        primaryClient.rpcCall(
+                                Commands.BLUETOOTH_PBAP_CLIENT_SET_PRIORITY,
+                                secondaryAddress,
+                                priority.getPriority());
+                        break;
+                    default:
+                        CLog.e("Profile %s is not yet supported for priority settings", profile);
+                        return false;
+                }
+            } catch (IOException e) {
+                CLog.e("Failed to set profile %s with priority %s, %s", profile, priority, e);
+                return false;
+            }
+        }
+        return true;
     }
 
     private boolean toggleState(ITestDevice device, boolean targetState)

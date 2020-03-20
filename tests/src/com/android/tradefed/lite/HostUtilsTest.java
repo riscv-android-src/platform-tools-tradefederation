@@ -15,38 +15,15 @@
  */
 package com.android.tradefed.lite;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
-import org.junit.runner.Description;
-import org.junit.runner.Request;
 import org.junit.runner.RunWith;
-import org.junit.runner.notification.RunListener;
 import org.junit.runners.JUnit4;
-import org.mockito.Mockito;
 
 /** {@link com.android.tradefed.lite.HostUtils} */
 @RunWith(JUnit4.class)
 public class HostUtilsTest {
-    /**
-     * This test just quickly tries the fake execution method to ensure that it basically works.
-     *
-     * @throws Exception
-     */
-    @Test
-    public void testFakeExecution() throws Exception {
-        RunListener list = Mockito.mock(RunListener.class);
-        Request req = Request.classes(SampleTests.class);
-        Description desc = req.getRunner().getDescription();
-        HostUtils.fakeExecution(desc, list);
-        assertEquals("Test count should be 3", 3, desc.testCount());
-        Mockito.verify(list, Mockito.times(desc.testCount()))
-                .testStarted((Description) Mockito.anyObject());
-        Mockito.verify(list, Mockito.times(desc.testCount()))
-                .testFinished((Description) Mockito.anyObject());
-    }
-
     /**
      * This test checks if our test class is correctly detected to bes annotated with the JUnit
      * annotation.
@@ -55,6 +32,6 @@ public class HostUtilsTest {
     public void testHasJUnit4Annotation() {
         assertTrue(
                 "Has JUnit annotation on crafted test class",
-                HostUtils.hasJUnit4Annotation(SampleTests.class));
+                HostUtils.hasJUnitAnnotation(SampleTests.class));
     }
 }

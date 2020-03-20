@@ -160,6 +160,13 @@ public class TestDeviceOptions {
             isTimeVal = true)
     private long mGceCmdTimeout = 30 * 60 * 1000; // 30 minutes.
 
+    @Option(
+            name = "allow-gce-boot-timeout-override",
+            description =
+                    "Acloud can take boot-timeout as an arg already, this flag allows to use "
+                            + "the Acloud value as a basis instead of the gce-boot-timeout option.")
+    private boolean mAllowGceCmdTimeoutOverride = false;
+
     @Option(name = "gce-driver-path", description = "path of the binary to launch GCE devices")
     private File mAvdDriverBinary = null;
 
@@ -515,6 +522,11 @@ public class TestDeviceOptions {
     /** Set the Gce Avd timeout for the instance to come online. */
     public void setGceCmdTimeout(long gceCmdTimeout) {
         mGceCmdTimeout = gceCmdTimeout;
+    }
+
+    /** Returns whether or not we should rely on the boot-timeout args from acloud if present. */
+    public boolean allowGceCmdTimeoutOverride() {
+        return mAllowGceCmdTimeoutOverride;
     }
 
     /** Return the path to the binary to start the Gce Avd instance. */

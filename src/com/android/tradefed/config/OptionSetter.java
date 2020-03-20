@@ -16,7 +16,6 @@
 
 package com.android.tradefed.config;
 
-import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.ArrayUtil;
@@ -632,7 +631,7 @@ public class OptionSetter {
                 if ((option.updateRule() == OptionUpdateRule.GREATEST) ||
                         (option.updateRule() == OptionUpdateRule.LEAST)) {
                     Class cType = (Class) type;
-                    if (!(Comparable.class.isAssignableFrom(cType))) {
+                    if (!Comparable.class.isAssignableFrom(cType)) {
                         throw new ConfigurationException(String.format(
                                 "Option '%s' in class '%s' attempts to use updateRule %s with " +
                                 "non-Comparable type '%s'.", option.name(),
@@ -756,21 +755,14 @@ public class OptionSetter {
     /**
      * Runs through all the {@link File} option type and check if their path should be resolved.
      *
+     * @param The {@link DynamicRemoteFileResolver} to use to resolve the files.
      * @return The list of {@link File} that was resolved that way.
      * @throws BuildRetrievalError
      */
-    public final Set<File> validateRemoteFilePath() throws BuildRetrievalError {
-        DynamicRemoteFileResolver resolver = createResolver();
+    public final Set<File> validateRemoteFilePath(DynamicRemoteFileResolver resolver)
+            throws BuildRetrievalError {
         resolver.setOptionMap(mOptionMap);
         return resolver.validateRemoteFilePath();
-    }
-
-    /**
-     * Create a {@link DynamicRemoteFileResolver} that will resolved {@link File} of remote file.
-     */
-    @VisibleForTesting
-    protected DynamicRemoteFileResolver createResolver() {
-        return new DynamicRemoteFileResolver();
     }
 
     /**
