@@ -129,16 +129,15 @@ public class ParentSandboxInvocationExecution extends InvocationExecution {
                         cleaned = true;
                     }
                 }
-                if (instanceName == null || cleaned) {
-                    return;
-                }
-                // TODO: Handle other devices if needed.
-                TestDeviceOptions options = config.getDeviceConfig().get(0).getDeviceOptions();
-                CLog.w("Instance was not cleaned in sandbox subprocess, cleaning it now.");
-                boolean res = GceManager.AcloudShutdown(options, getRunUtil(), instanceName);
-                if (res) {
-                    info.getBuildInfo()
-                            .addBuildAttribute(GceManager.GCE_INSTANCE_CLEANED_KEY, "true");
+                if (instanceName != null && !cleaned) {
+                    // TODO: Handle other devices if needed.
+                    TestDeviceOptions options = config.getDeviceConfig().get(0).getDeviceOptions();
+                    CLog.w("Instance was not cleaned in sandbox subprocess, cleaning it now.");
+                    boolean res = GceManager.AcloudShutdown(options, getRunUtil(), instanceName);
+                    if (res) {
+                        info.getBuildInfo()
+                                .addBuildAttribute(GceManager.GCE_INSTANCE_CLEANED_KEY, "true");
+                    }
                 }
             }
         }
