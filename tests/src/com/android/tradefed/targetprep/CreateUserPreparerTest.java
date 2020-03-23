@@ -21,6 +21,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
+import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.NativeDevice;
 import com.android.tradefed.device.UserInfo;
@@ -65,6 +66,87 @@ public class CreateUserPreparerTest {
         doReturn(true).when(mMockDevice).removeUser(5);
         doReturn(true).when(mMockDevice).switchUser(10);
         mPreparer.tearDown(mTestInfo, null);
+    }
+
+    @Test
+    public void testSetUp_tearDown_reuseTestUser() throws Exception {
+        // Set the reuse-test-user to true.
+        CreateUserPreparer preparer = new CreateUserPreparer();
+        OptionSetter setter = new OptionSetter(preparer);
+        setter.setOptionValue("reuse-test-user", "true");
+
+        Map<Integer, UserInfo> existingUsers =
+                new HashMap<Integer, UserInfo>() {
+                    {
+                        put(
+                                0,
+                                new UserInfo(
+                                        /* id= */ 0,
+                                        /* userName= */ null,
+                                        /* flags= */ 0x00000013,
+                                        /* isRunning= */ true));
+                        put(
+                                13,
+                                new UserInfo(
+                                        /* id= */ 13,
+                                        "tf_created_user",
+                                        /* flags= */ 0,
+                                        /* isRunning= */ false));
+                    }
+                };
+
+        doReturn(existingUsers).when(mMockDevice).getUserInfos();
+        doReturn(0).when(mMockDevice).getCurrentUser();
+        doReturn(true).when(mMockDevice).switchUser(13);
+        doReturn(true).when(mMockDevice).startUser(13, true);
+        doReturn(true).when(mMockDevice).switchUser(0);
+
+        preparer.setUp(mTestInfo);
+        // We should reuse the existing, not create a new user.
+        verify(mMockDevice, never()).createUser(Mockito.any());
+        verify(mMockDevice).switchUser(13);
+
+        preparer.tearDown(mTestInfo, null);
+        // We should keep the user for the next module to reuse.
+        verify(mMockDevice, never()).removeUser(13);
+        verify(mMockDevice).switchUser(0);
+    }
+
+    @Test
+    public void testSetUp_tearDown_reuseTestUser_noExistingTestUser() throws Exception {
+        // Set the reuse-test-user to true.
+        CreateUserPreparer preparer = new CreateUserPreparer();
+        OptionSetter setter = new OptionSetter(preparer);
+        setter.setOptionValue("reuse-test-user", "true");
+
+        Map<Integer, UserInfo> existingUsers =
+                new HashMap<Integer, UserInfo>() {
+                    {
+                        put(
+                                0,
+                                new UserInfo(
+                                        /* id= */ 0,
+                                        /* userName= */ null,
+                                        /* flags= */ 0x00000013,
+                                        /* isRunning= */ true));
+                    }
+                };
+
+        doReturn(existingUsers).when(mMockDevice).getUserInfos();
+        doReturn(0).when(mMockDevice).getCurrentUser();
+        doReturn(12).when(mMockDevice).createUser(Mockito.any());
+        doReturn(true).when(mMockDevice).switchUser(12);
+        doReturn(true).when(mMockDevice).startUser(12, true);
+        doReturn(true).when(mMockDevice).switchUser(0);
+
+        preparer.setUp(mTestInfo);
+        verify(mMockDevice).createUser(Mockito.any());
+        verify(mMockDevice).switchUser(12);
+
+        preparer.tearDown(mTestInfo, null);
+        // Newly created user is kept to reuse it in the next run.
+        verify(mMockDevice, never()).removeUser(12);
+        verify(mMockDevice).switchUser(0);
     }
 
     @Test
