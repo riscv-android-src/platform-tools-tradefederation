@@ -4707,11 +4707,12 @@ public class NativeDevice implements IManagedTestDevice {
                                 currSystemServerProcess.getStartTime()
                                         - prevSystemServerProcess.getStartTime())
                         <= 1) {
-            CLog.e(
-                    "current system_server: %s different from prev system_server: %s",
-                    currSystemServerProcess, prevSystemServerProcess);
             return false;
         }
+
+        CLog.v(
+                "current system_server: %s; prev system_server: %s",
+                currSystemServerProcess, prevSystemServerProcess);
 
         // The system_server process restarted.
         // Check boot history with previous system_server start time.
