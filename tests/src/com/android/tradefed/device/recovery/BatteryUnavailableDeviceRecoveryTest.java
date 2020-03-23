@@ -18,6 +18,7 @@ package com.android.tradefed.device.recovery;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import com.android.ddmlib.IDevice;
 import com.android.tradefed.device.IManagedTestDevice;
 import com.android.tradefed.device.TestDeviceState;
 
@@ -32,11 +33,14 @@ import org.junit.runners.JUnit4;
 public class BatteryUnavailableDeviceRecoveryTest {
     private BatteryUnavailableDeviceRecovery mRecoverer;
     private IManagedTestDevice mMockDevice;
+    private IDevice mMockIDevice;
 
     @Before
     public void setUp() {
         mRecoverer = new BatteryUnavailableDeviceRecovery();
         mMockDevice = EasyMock.createMock(IManagedTestDevice.class);
+        mMockIDevice = EasyMock.createMock(IDevice.class);
+        EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(mMockIDevice);
     }
 
     @Test
