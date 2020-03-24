@@ -1051,9 +1051,21 @@ public class DeviceManager implements IDeviceManager {
 
     @Override
     public void displayDevicesInfo(PrintWriter stream, boolean includeStub) {
-        ArrayList<List<String>> displayRows = new ArrayList<List<String>>();
-        displayRows.add(Arrays.asList("Serial", "State", "Allocation", "Product", "Variant",
-                "Build", "Battery"));
+        List<List<String>> displayRows = new ArrayList<List<String>>();
+        List<String> headers =
+                new ArrayList<>(
+                        Arrays.asList(
+                                "Serial",
+                                "State",
+                                "Allocation",
+                                "Product",
+                                "Variant",
+                                "Build",
+                                "Battery"));
+        if (includeStub) {
+            headers.add("class");
+        }
+        displayRows.add(headers);
         List<DeviceDescriptor> deviceList = listAllDevices();
         sortDeviceList(deviceList);
         addDevicesInfo(displayRows, deviceList, includeStub);
@@ -1111,15 +1123,20 @@ public class DeviceManager implements IDeviceManager {
             if (desc.getDisplaySerial() != null) {
                 serial = desc.getDisplaySerial();
             }
-            displayRows.add(
-                    Arrays.asList(
-                            serial,
-                            desc.getDeviceState().toString(),
-                            desc.getState().toString(),
-                            desc.getProduct(),
-                            desc.getProductVariant(),
-                            desc.getBuildId(),
-                            desc.getBatteryLevel()));
+            List<String> infos =
+                    new ArrayList<>(
+                            Arrays.asList(
+                                    serial,
+                                    desc.getDeviceState().toString(),
+                                    desc.getState().toString(),
+                                    desc.getProduct(),
+                                    desc.getProductVariant(),
+                                    desc.getBuildId(),
+                                    desc.getBatteryLevel()));
+            if (includeStub) {
+                infos.add(desc.getDeviceClass());
+            }
+            displayRows.add(infos);
         }
     }
 
