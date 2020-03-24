@@ -70,6 +70,11 @@ public class HostOptions implements IHostOptions {
     @Option(name = "label", description = "Labels to describe the host.")
     private List<String> mLabels = new ArrayList<>();
 
+    @Option(
+            name = "use-zip64-in-partial-download",
+            description = "Whether to use zip64 format in partial download.")
+    private boolean mUseZip64InPartialDownload = false;
+
     /** {@inheritDoc} */
     @Override
     public Integer getConcurrentFlasherLimit() {
@@ -116,5 +121,11 @@ public class HostOptions implements IHostOptions {
     @Override
     public List<String> getLabels() {
         return new ArrayList<>(mLabels);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean getUseZip64InPartialDownload() {
+        return mUseZip64InPartialDownload;
     }
 }

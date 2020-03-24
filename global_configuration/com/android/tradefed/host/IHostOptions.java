@@ -60,4 +60,7 @@ public interface IHostOptions {
 
     /** Get labels for the host. */
     public List<String> getLabels();
+
+    /** Check if it should use the zip64 format in partial download or not. */
+    boolean getUseZip64InPartialDownload();
 }
