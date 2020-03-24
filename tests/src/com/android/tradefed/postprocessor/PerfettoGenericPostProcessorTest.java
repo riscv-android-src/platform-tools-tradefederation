@@ -16,6 +16,7 @@
 
 package com.android.tradefed.postprocessor;
 
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.MockitoAnnotations.initMocks;
 
@@ -63,8 +64,10 @@ public class PerfettoGenericPostProcessorTest {
     private static final String PREFIX_OPTION = "perfetto-proto-file-prefix";
     private static final String PREFIX_OPTION_VALUE = "metric-perfetto";
     private static final String INDEX_OPTION = "perfetto-indexed-list-field";
+    private static final String KEY_PREFIX_OPTION = "perfetto-prefix-key-field";
     private static final String REGEX_OPTION_VALUE = "perfetto-metric-filter-regex";
     private static final String ALL_METRICS_OPTION = "perfetto-include-all-metrics";
+    private static final String REPLACE_REGEX_OPTION = "perfetto-metric-replace-prefix";
     private static final String FILE_FORMAT_OPTION = "trace-processor-output-format";
 
     File perfettoMetricProtoFile = null;
@@ -117,13 +120,42 @@ public class PerfettoGenericPostProcessorTest {
         Map<String, Metric.Builder> parsedMetrics =
                 mProcessor.processRunMetricsAndLogs(new HashMap<>(), testLogs);
 
-        assertTrue(
-                "Number of metrics parsed filter regex match is incorrect.",
-                parsedMetrics.size() == 32);
         assertMetricsContain(parsedMetrics, "android_startup-startup-1-startup_id", 1);
         assertMetricsContain(
                 parsedMetrics,
                 "android_startup-startup-1-package_name-com.google."
+                        + "android.apps.nexuslauncher-to_first_frame-dur_ns",
+                36175473);
+    }
+
+    /**
+     * Test metrics are filtered correctly when filter regex are passed and
+     * prefix are replaced with the given string.
+     */
+    @Test
+    public void testMetricsFilterWithRegExAndReplacePrefix()
+            throws ConfigurationException, IOException {
+        setupPerfettoMetricFile(METRIC_FILE_FORMAT.text, true);
+        mOptionSetter.setOptionValue(PREFIX_OPTION, PREFIX_OPTION_VALUE);
+        mOptionSetter.setOptionValue(INDEX_OPTION, "perfetto.protos.AndroidStartupMetric.startup");
+        mOptionSetter.setOptionValue(REGEX_OPTION_VALUE, "android_startup-startup-1.*");
+        mOptionSetter.setOptionValue(REPLACE_REGEX_OPTION, "android_startup-startup-1",
+                "newprefix");
+
+        Map<String, LogFile> testLogs = new HashMap<>();
+        testLogs.put(
+                PREFIX_OPTION_VALUE,
+                new LogFile(
+                        perfettoMetricProtoFile.getAbsolutePath(), "some.url", LogDataType.TEXTPB));
+        Map<String, Metric.Builder> parsedMetrics = mProcessor
+                .processRunMetricsAndLogs(new HashMap<>(), testLogs);
+
+        assertFalse("Metric key not expected but found",
+                parsedMetrics.containsKey("android_startup-startup-1-startup_id"));
+        assertMetricsContain(parsedMetrics, "newprefix-startup_id", 1);
+        assertMetricsContain(
+                parsedMetrics,
+                "newprefix-package_name-com.google."
                         + "android.apps.nexuslauncher-to_first_frame-dur_ns",
                 36175473);
     }
@@ -145,10 +177,12 @@ public class PerfettoGenericPostProcessorTest {
                         perfettoMetricProtoFile.getAbsolutePath(), "some.url", LogDataType.TEXTPB));
         Map<String, Metric.Builder> parsedMetrics =
                 mProcessor.processRunMetricsAndLogs(new HashMap<>(), testLogs);
-
-        assertTrue(
-                "Number of metrics parsed without indexing is incorrect.",
-                parsedMetrics.size() == 76);
+        // Test for non startup metrics exists.
+        assertMetricsContain(
+                parsedMetrics,
+                "android_mem-process_metrics-process_name-"
+                        + ".dataservices-total_counters-anon_rss-min",
+                27938816);
     }
 
     /** Test that the post processor can parse reports from test metrics. */
@@ -208,10 +242,6 @@ public class PerfettoGenericPostProcessorTest {
                         perfettoMetricProtoFile.getAbsolutePath(), "some.url", LogDataType.TEXTPB));
         Map<String, Metric.Builder> parsedMetrics =
                 mProcessor.processRunMetricsAndLogs(new HashMap<>(), testLogs);
-
-        assertTrue(
-                "Number of metrics parsed without indexing is incorrect.",
-                parsedMetrics.size() == 44);
         assertMetricsContain(parsedMetrics, "android_startup-startup-startup_id", 2);
         assertMetricsContain(
                 parsedMetrics,
@@ -238,8 +268,6 @@ public class PerfettoGenericPostProcessorTest {
         Map<String, Metric.Builder> parsedMetrics =
                 mProcessor.processRunMetricsAndLogs(new HashMap<>(), testLogs);
 
-        assertTrue(
-                "Number of metrics parsed with indexing is incorrect.", parsedMetrics.size() == 76);
         assertMetricsContain(parsedMetrics, "android_startup-startup-1-startup_id", 1);
         assertMetricsContain(
                 parsedMetrics,
@@ -253,6 +281,31 @@ public class PerfettoGenericPostProcessorTest {
                         + "android.apps.nexuslauncher-to_first_frame-dur_ns",
                 53102401);
     }
+
+    /**
+     * Test metrics enabled with key prefixing.
+     */
+    @Test
+    public void testParsingWithKeyPrefixing() throws ConfigurationException, IOException {
+        setupPerfettoMetricFile(METRIC_FILE_FORMAT.text, true);
+        mOptionSetter.setOptionValue(PREFIX_OPTION, PREFIX_OPTION_VALUE);
+        mOptionSetter.setOptionValue(KEY_PREFIX_OPTION,
+                "perfetto.protos.ProcessRenderInfo.process_name");
+        mOptionSetter.setOptionValue(ALL_METRICS_OPTION, "true");
+        Map<String, LogFile> testLogs = new HashMap<>();
+        testLogs.put(
+                PREFIX_OPTION_VALUE,
+                new LogFile(
+                        perfettoMetricProtoFile.getAbsolutePath(), "some.url", LogDataType.TEXTPB));
+        Map<String, Metric.Builder> parsedMetrics =
+                mProcessor.processRunMetricsAndLogs(new HashMap<>(), testLogs);
+
+        assertMetricsContain(parsedMetrics,
+                "android_hwui_metric-process_info-process_name-com.android.systemui-all_mem_min",
+                15120269);
+
+    }
+
 
     /** Test the post processor can parse binary perfetto metric proto format. */
     @Test
@@ -372,7 +425,6 @@ public class PerfettoGenericPostProcessorTest {
                         + "      time_choreographer {\n"
                         + "        dur_ns: 15314324\n"
                         + "      }\n"
-                        + "      other_process_to_activity_cpu_ratio: 6.9345600857535672\n"
                         + "    }\n"
                         + "    activity_hosting_process_count: 1\n"
                         + "  }\n"
@@ -399,11 +451,48 @@ public class PerfettoGenericPostProcessorTest {
                         + "      time_choreographer {\n"
                         + "        dur_ns: 13705366\n"
                         + "      }\n"
-                        + "      other_process_to_activity_cpu_ratio: 12.956123015968883\n"
                         + "    }\n"
                         + "    activity_hosting_process_count: 1\n"
                         + "  }\n"
-                        + "}";
+                        + "}\n"
+                        + "android_hwui_metric {\n" +
+                        "  process_info {\n" +
+                        "    process_name: \"com.android.systemui\"\n" +
+                        "    rt_cpu_time_ms: 2481\n" +
+                        "    draw_frame_count: 889\n" +
+                        "    draw_frame_max: 21990523\n" +
+                        "    draw_frame_min: 660573\n" +
+                        "    draw_frame_avg: 3515215.0101237344\n" +
+                        "    flush_count: 884\n" +
+                        "    flush_max: 8101094\n" +
+                        "    flush_min: 127760\n" +
+                        "    flush_avg: 773943.91515837109\n" +
+                        "    prepare_tree_count: 889\n" +
+                        "    prepare_tree_max: 1718593\n" +
+                        "    prepare_tree_min: 25052\n" +
+                        "    prepare_tree_avg: 133403.03374578178\n" +
+                        "    gpu_completion_count: 572\n" +
+                        "    gpu_completion_max: 8600365\n" +
+                        "    gpu_completion_min: 3594\n" +
+                        "    gpu_completion_avg: 737765.40209790214\n" +
+                        "    ui_record_count: 889\n" +
+                        "    ui_record_max: 7079949\n" +
+                        "    ui_record_min: 4583\n" +
+                        "    ui_record_avg: 477551.82902137231\n" +
+                        "    graphics_cpu_mem_max: 265242\n" +
+                        "    graphics_cpu_mem_min: 244198\n" +
+                        "    graphics_cpu_mem_avg: 260553.33484162897\n" +
+                        "    graphics_gpu_mem_max: 34792176\n" +
+                        "    graphics_gpu_mem_min: 9855728\n" +
+                        "    graphics_gpu_mem_avg: 19030174.914027151\n" +
+                        "    texture_mem_max: 5217091\n" +
+                        "    texture_mem_min: 5020343\n" +
+                        "    texture_mem_avg: 5177376.0407239823\n" +
+                        "    all_mem_max: 40274509\n" +
+                        "    all_mem_min: 15120269\n" +
+                        "    all_mem_avg: 24468104.289592762\n" +
+                        "  }\n" +
+                        "}";
         FileWriter fileWriter = null;
         try {
             perfettoMetricProtoFile = FileUtil.createTempFile("metric_perfetto", "");
