@@ -43,6 +43,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -63,6 +64,7 @@ import perfetto.protos.PerfettoMergedMetrics.TraceMetrics;
  * keys. For example
  *
  * <p>"perfetto-indexed-list-field" - perfetto.protos.AndroidStartupMetric.Startup
+ * <p>"perfetto-prefix-key-field" - perfetto.protos.ProcessRenderInfo.process_name
  *
  * <p>android_startup-startup#1-package_name-com.calculator-to_first_frame-dur_ns: 300620342
  * android_startup-startup#2-package_name-com.nexuslauncher-to_first_frame-dur_ns: 49257713
@@ -88,6 +90,12 @@ public class PerfettoGenericPostProcessor extends BasePostProcessor {
             name = "perfetto-indexed-list-field",
             description = "List fields in perfetto proto metric file that has to be indexed.")
     private Set<String> mPerfettoIndexedListFields = new HashSet<>();
+
+    @Option(
+            name = "perfetto-prefix-key-field",
+            description = "String value field need to be prefixed with the all the other"
+                    + "numeric value field keys in the proto message.")
+    private Set<String> mPerfettoPrefixKeyFields = new HashSet<>();
 
     @Option(
             name = "perfetto-include-all-metrics",
@@ -121,6 +129,11 @@ public class PerfettoGenericPostProcessor extends BasePostProcessor {
                     "True if the metric is final and shouldn't be processed any more,"
                             + " false if the metric can be handled by another post-processor.")
     private boolean mProcessedMetric = true;
+
+    @Option(name = "perfetto-metric-replace-prefix", description = "Replace the prefix in metrics"
+            + "from the metric proto file. Key is the prefix to look for in the metric"
+            + "keys parsed and value is be the replacement string.")
+    private Map<String, String> mReplacePrefixMap = new LinkedHashMap<String, String>();
 
     // Matches 1.73, 1.73E+2
     private Pattern mNumberWithExponentPattern =
@@ -208,6 +221,7 @@ public class PerfettoGenericPostProcessor extends BasePostProcessor {
                         TextFormat.merge(bufferedReader, builder);
                         parsedMetrics.putAll(
                                 filterMetrics(convertPerfettoProtoMessage(builder.build())));
+                        replacePrefix(parsedMetrics);
                         break;
                     case binary:
                         TraceMetrics metricProto = null;
@@ -215,6 +229,7 @@ public class PerfettoGenericPostProcessor extends BasePostProcessor {
                                 .parseFrom(new FileInputStream(perfettoMetricFile));
                         parsedMetrics
                                 .putAll(filterMetrics(convertPerfettoProtoMessage(metricProto)));
+                        replacePrefix(parsedMetrics);
                         break;
                     case json:
                         CLog.w("JSON perfetto metric file processing not supported.");
@@ -234,6 +249,36 @@ public class PerfettoGenericPostProcessor extends BasePostProcessor {
     }
 
     /**
+     * Replace the prefix in the metric key parsed from the proto file with the given string.
+     *
+     * @param processPerfettoMetrics metrics parsed from the perfetto proto file.
+     */
+    private void replacePrefix(Map<String, Metric.Builder> processPerfettoMetrics) {
+        if (mReplacePrefixMap.isEmpty()) {
+            return;
+        }
+        Map<String, Metric.Builder> finalMetrics = new HashMap<String, Metric.Builder>();
+        for (Map.Entry<String, Metric.Builder> metric : processPerfettoMetrics.entrySet()) {
+            boolean isReplaced = false;
+            for (Map.Entry<String, String> replaceEntry : mReplacePrefixMap.entrySet()) {
+                if (metric.getKey().startsWith(replaceEntry.getKey())) {
+                    String newKey = metric.getKey().replaceFirst(replaceEntry.getKey(),
+                            replaceEntry.getValue());
+                    finalMetrics.put(newKey, metric.getValue());
+                    isReplaced = true;
+                    break;
+                }
+            }
+            // If key is not replaced put the original key and value in the final metrics.
+            if (!isReplaced) {
+                finalMetrics.put(metric.getKey(), metric.getValue());
+            }
+        }
+        processPerfettoMetrics.clear();
+        processPerfettoMetrics.putAll(finalMetrics);
+    }
+
+    /**
      * Expands the metric proto file as tree structure and converts it into key, value pairs by
      * recursively constructing the key using the message name, proto fields with string values
      * until the numeric proto field is encountered.
@@ -250,12 +295,20 @@ public class PerfettoGenericPostProcessor extends BasePostProcessor {
      * <p><android_startup-startup#1-package_name-com.calculator-to_first_frame-dur_ns: 300620342
      * android_startup-startup#2-package_name-com.nexuslauncher-to_first_frame-dur_ns: 49257713
      * android_startup-startup#3-package_name-com.calculator-to_first_frame-dur_ns: 261382005
+     *
+     * <p>"perfetto-prefix-key-field" - perfetto.protos.ProcessRenderInfo.process_name
+     * android_hwui_metric-process_info-process_name-system_server-cache_miss_avg
+     *
      */
     private Map<String, Metric.Builder> convertPerfettoProtoMessage(Message reportMessage) {
         Map<FieldDescriptor, Object> fields = reportMessage.getAllFields();
         Map<String, Metric.Builder> convertedMetrics = new HashMap<String, Metric.Builder>();
         List<String> keyPrefixes = new ArrayList<String>();
 
+        // Keys that will be used to prefix the other keys in the same proto message.
+        List<String> keyPrefixOtherFields = new ArrayList<>();
+
+        // TODO(b/15014555): Cleanup the parsing logic.
         for (Entry<FieldDescriptor, Object> entry : fields.entrySet()) {
             if (!(entry.getValue() instanceof Message) && !(entry.getValue() instanceof List)) {
                 if (isNumeric(entry.getValue().toString())) {
@@ -282,9 +335,27 @@ public class PerfettoGenericPostProcessor extends BasePostProcessor {
                                     METRIC_SEP,
                                     entry.getKey().getName().toString(),
                                     entry.getValue().toString()));
+                    if (mPerfettoPrefixKeyFields.contains(entry.getKey().toString())) {
+                        keyPrefixOtherFields.add(String.format("%s-%s",
+                                entry.getKey().getName().toString(), entry.getValue().toString()));
+                    }
                 }
             }
         }
+
+        // Add prefix key to all the keys in current proto message which has numeric values.
+        Map<String, Metric.Builder> additionalConvertedMetrics =
+                new HashMap<String, Metric.Builder>();
+        for (String prefix : keyPrefixOtherFields) {
+            for (Map.Entry<String, Metric.Builder> currentMetric : convertedMetrics.entrySet()) {
+                additionalConvertedMetrics.put(String.format("%s-%s", prefix,
+                        currentMetric.getKey()), currentMetric.getValue());
+            }
+        }
+
+        // Not cleaning up the other metrics without prefix fields.
+        convertedMetrics.putAll(additionalConvertedMetrics);
+
 
         // Recursively expand the proto messages and repeated fields(i.e list).
         // Recursion when there are no messages or list with in the current message.
