@@ -73,6 +73,7 @@ import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.SystemUtil;
 import com.android.tradefed.util.SystemUtil.EnvVariable;
 import com.android.tradefed.util.TimeUtil;
+import com.android.tradefed.util.executor.ParallelDeviceExecutor;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
@@ -85,7 +86,9 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -219,13 +222,36 @@ public class InvocationExecution implements IInvocationExecution {
                     testInfo,
                     "multi pre target preparer setup");
 
-            // TODO: evaluate doing device setup in parallel
             mTrackTargetPreparers = new ConcurrentHashMap<>();
             int index = 0;
-            for (String deviceName : testInfo.getContext().getDeviceConfigNames()) {
-                mTrackTargetPreparers.put(deviceName, new HashSet<>());
-                runPreparationOnDevice(testInfo, deviceName, index, config, listener);
-                index++;
+            if (config.getCommandOptions().shouldUseReplicateSetup()
+                    && config.getDeviceConfig().size() > 1) {
+                CLog.d("Using parallel setup due to replicated setup enabled.");
+                ParallelDeviceExecutor<Boolean> executor =
+                        new ParallelDeviceExecutor<>(testInfo.getContext().getDevices());
+                List<Callable<Boolean>> callableTasks = new ArrayList<>();
+                for (String deviceName : testInfo.getContext().getDeviceConfigNames()) {
+                    final int deviceIndex = index;
+                    // Replicate TestInfo
+                    TestInformation replicated =
+                            TestInformation.createModuleTestInfo(testInfo, testInfo.getContext());
+                    Callable<Boolean> callableTask =
+                            () -> {
+                                runPreparationOnDevice(
+                                        replicated, deviceName, deviceIndex, config, listener);
+                                return true;
+                            };
+                    callableTasks.add(callableTask);
+                    index++;
+                }
+                // Run setup with 30 minutes right now.
+                executor.invokeAll(callableTasks, 30, TimeUnit.MINUTES);
+            } else {
+                for (String deviceName : testInfo.getContext().getDeviceConfigNames()) {
+                    mTrackTargetPreparers.put(deviceName, new HashSet<>());
+                    runPreparationOnDevice(testInfo, deviceName, index, config, listener);
+                    index++;
+                }
             }
             // After all the individual setup, make the multi-devices setup
             runMultiTargetPreparers(
