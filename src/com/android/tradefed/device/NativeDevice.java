@@ -3163,11 +3163,11 @@ public class NativeDevice implements IManagedTestDevice {
                 return;
             }
             if (reason == null) {
-                CLog.i("Rebooting device %s mode: %s", getSerialNumber(), rebootMode);
+                CLog.i("Rebooting device %s mode: %s", getSerialNumber(), rebootMode.name());
             } else {
                 CLog.i(
                         "Rebooting device %s mode: %s reason: %s",
-                        getSerialNumber(), rebootMode, reason);
+                        getSerialNumber(), rebootMode.name(), reason);
             }
             doAdbReboot(rebootMode, reason);
             // Check if device shows as unavailable (as expected after reboot).
