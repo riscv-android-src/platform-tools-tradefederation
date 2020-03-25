@@ -17,6 +17,10 @@
     <system_checker class="com.android.tradefed.suite.checker.KeyguardStatusChecker" />
     <system_checker class="com.android.tradefed.suite.checker.TimeStatusChecker" />
     <system_checker class="com.android.tradefed.suite.checker.DeviceSettingChecker" />
+    <system_checker class="com.android.tradefed.suite.checker.DeviceStorageStatusChecker" >
+        <option name="partition" value="/data" />
+        <option name="partition" value="/sdcard" />
+    </system_checker>
     <system_checker class="com.android.tradefed.suite.checker.SystemServerStatusChecker" />
     <system_checker class="com.android.tradefed.suite.checker.SystemServerFileDescriptorChecker" />
 
