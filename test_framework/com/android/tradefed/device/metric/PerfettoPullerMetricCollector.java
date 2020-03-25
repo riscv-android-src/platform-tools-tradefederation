@@ -35,6 +35,7 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.Pair;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
+import com.android.tradefed.util.ZipUtil;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -299,61 +300,67 @@ public class PerfettoPullerMetricCollector extends FilePullerDeviceMetricCollect
         }
 
         File metricOutputFile = null;
-        if (mTraceProcessorBinary != null) {
-            FileUtil.chmodGroupRWX(mTraceProcessorBinary);
-            List<String> commandArgsList = new ArrayList<String>();
-            commandArgsList.add(mTraceProcessorBinary.getAbsolutePath());
+        if (mTraceProcessorBinary == null) {
+            CLog.e("Failed to locate the trace processor shell binary file.");
+            return metricOutputFile;
+        }
 
-            // Comma separated list of metrics to extract.
-            if (!mTraceProcessorMetrics.isEmpty()) {
-                commandArgsList.add("--run-metrics");
-                commandArgsList.add(mTraceProcessorMetrics);
+        FileUtil.chmodGroupRWX(mTraceProcessorBinary);
+        List<String> commandArgsList = new ArrayList<String>();
+        commandArgsList.add(mTraceProcessorBinary.getAbsolutePath());
+
+        // Comma separated list of metrics to extract.
+        if (!mTraceProcessorMetrics.isEmpty()) {
+            commandArgsList.add("--run-metrics");
+            commandArgsList.add(mTraceProcessorMetrics);
+        }
+        // Metric file output format.
+        commandArgsList.add("--metrics-output=" + mTraceProcessorOutputFormat);
+        commandArgsList.add(perfettoRawTraceFile.getAbsolutePath());
+
+        try {
+            metricOutputFile = FileUtil.createTempFile(
+                    "metric_" + getRawTraceFileName(perfettoRawTraceFile.getName()), "");
+        } catch (IOException e) {
+            CLog.e("Not able to create metric perfetto output file.");
+            CLog.e(e);
+            return null;
+        }
+
+        // Running the trace conversion.
+        CLog.i("Run the trace convertor.");
+        boolean isConversionSuccess = true;
+        try (FileOutputStream outStream = new FileOutputStream(metricOutputFile);
+                ByteArrayOutputStream errStream = new ByteArrayOutputStream()) {
+            CommandResult conversionResult = runHostCommand(mTraceConversionTimeout,
+                    commandArgsList.toArray(new String[commandArgsList
+                            .size()]),
+                    outStream, errStream);
+            if (!CommandStatus.SUCCESS.equals(conversionResult.getStatus())) {
+                CLog.e("Unable to convert the raw trace - %s to metric file due to"
+                        + " %s - Status - %s ", perfettoRawTraceFile.getName(),
+                        errStream.toString(), conversionResult.getStatus());
+                isConversionSuccess = false;
+            } else if (mTraceProcessorOutputFormat.equals(METRIC_FILE_FORMAT.text)) {
+                CLog.i("Compressing the perfetto metric text proto.");
+                File compressedFile = getCompressedFile(metricOutputFile);
+                metricOutputFile.delete();
+                return compressedFile;
             }
-            // Metric file output format.
-            commandArgsList.add("--metrics-output=" + mTraceProcessorOutputFormat);
-            commandArgsList.add(perfettoRawTraceFile.getAbsolutePath());
-
-            try {
-                metricOutputFile = FileUtil.createTempFile(
-                        "metric_" + getRawTraceFileName(perfettoRawTraceFile.getName()), "");
-            } catch (IOException e) {
-                CLog.e("Not able to create metric perfetto output file.");
-                CLog.e(e);
+        } catch (FileNotFoundException e) {
+            CLog.e("Not able to find the result metric file to write the "
+                    + "metric output.");
+            CLog.e(e);
+            isConversionSuccess = false;
+        } catch (IOException e1) {
+            CLog.e("Unable to close the streams.");
+            CLog.e(e1);
+            isConversionSuccess = false;
+        } finally {
+            if (!isConversionSuccess) {
+                metricOutputFile.delete();
                 return null;
             }
-
-            // Running the trace conversion.
-            CLog.i("Run the trace convertor.");
-            boolean isConversionSuccess = true;
-            try (FileOutputStream outStream = new FileOutputStream(metricOutputFile);
-                    ByteArrayOutputStream errStream = new ByteArrayOutputStream()) {
-                CommandResult conversionResult = runHostCommand(mTraceConversionTimeout,
-                        commandArgsList.toArray(new String[commandArgsList
-                                .size()]),
-                        outStream, errStream);
-                if (!CommandStatus.SUCCESS.equals(conversionResult.getStatus())) {
-                    CLog.e("Unable to convert the raw trace - %s to metric file due to"
-                            + " %s - Status - %s ", perfettoRawTraceFile.getName(),
-                            errStream.toString(), conversionResult.getStatus());
-                    metricOutputFile.delete();
-                }
-            } catch (FileNotFoundException e) {
-                CLog.e("Not able to find the result metric file to write the "
-                        + "metric output.");
-                CLog.e(e);
-                isConversionSuccess = false;
-            } catch (IOException e1) {
-                CLog.e("Unable to close the streams.");
-                CLog.e(e1);
-                isConversionSuccess = false;
-            } finally {
-                if (!isConversionSuccess) {
-                    metricOutputFile.delete();
-                    return null;
-                }
-            }
-        } else {
-            CLog.e("Failed to locate the trace processor shell binary file.");
         }
         return metricOutputFile;
     }
@@ -517,7 +524,7 @@ public class PerfettoPullerMetricCollector extends FilePullerDeviceMetricCollect
     private LogDataType getLogDataType() {
         // text option in perfetto trace processor means text proto.
         if(mTraceProcessorOutputFormat.equals(METRIC_FILE_FORMAT.text)) {
-            return LogDataType.TEXTPB;
+            return LogDataType.ZIP;
         } else if(mTraceProcessorOutputFormat.equals(METRIC_FILE_FORMAT.binary)) {
             return LogDataType.PB;
         } else {
@@ -550,5 +557,16 @@ public class PerfettoPullerMetricCollector extends FilePullerDeviceMetricCollect
     @VisibleForTesting
     IBuildInfo getCurrentBuildInfo() {
         return getBuildInfos().get(0);
+    }
+
+    /**
+     * Compress the given file.
+     *
+     * @return File compressed version of the file.
+     */
+    @VisibleForTesting
+    File getCompressedFile(File metricOutputFile) throws IOException {
+        return ZipUtil.createZip(metricOutputFile,
+                metricOutputFile.getName());
     }
 }
