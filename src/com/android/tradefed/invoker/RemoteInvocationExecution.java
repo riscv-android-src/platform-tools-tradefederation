@@ -23,7 +23,6 @@ import com.android.tradefed.clearcut.ClearcutClient;
 import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.command.CommandRunner;
 import com.android.tradefed.config.ConfigurationException;
-import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IDeviceConfiguration;
@@ -197,7 +196,6 @@ public class RemoteInvocationExecution extends InvocationExecution {
                     new String[] {
                         GlobalConfiguration.SANDBOX_FACTORY_TYPE_NAME,
                         GlobalConfiguration.HOST_OPTIONS_TYPE_NAME,
-                        DynamicRemoteFileResolver.DYNAMIC_RESOLVER,
                         "android-build"
                     };
             try {
