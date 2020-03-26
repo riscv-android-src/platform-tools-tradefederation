@@ -23,6 +23,10 @@ import com.android.tradefed.device.helper.TelephonyHelper.SimCardInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Strings;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /** Token provider for telephony related tokens. */
 public class TelephonyTokenProvider implements ITokenProvider {
@@ -61,9 +65,9 @@ public class TelephonyTokenProvider implements ITokenProvider {
                     return false;
                 case SECURE_ELEMENT_SIM_CARD:
                     if (info.mHasSecuredElement && info.mHasSeService) {
-                        // TODO: Improve how we detect this use case.
-                        String simProp = device.getProperty(GSM_OPERATOR_PROP);
-                        if (ORANGE_SIM_ID.equals(simProp)) {
+                        List<String> simProp =
+                                getOptionalDualSimProperty(device, GSM_OPERATOR_PROP);
+                        if (simProp.contains(ORANGE_SIM_ID)) {
                             return true;
                         } else {
                             CLog.w(
@@ -93,5 +97,20 @@ public class TelephonyTokenProvider implements ITokenProvider {
     @VisibleForTesting
     SimCardInformation getSimInfo(ITestDevice device) throws DeviceNotAvailableException {
         return TelephonyHelper.getSimInfo(device);
+    }
+
+    private List<String> getOptionalDualSimProperty(ITestDevice device, String property)
+            throws DeviceNotAvailableException {
+        String propRes = device.getProperty(property);
+        CLog.d("queried sim property: '%s'. result: '%s'", property, propRes);
+        if (Strings.isNullOrEmpty(propRes)) {
+            return new ArrayList<>();
+        }
+        String[] splitProp = propRes.split(",");
+        List<String> results = new ArrayList<>();
+        for (String p : splitProp) {
+            results.add(p);
+        }
+        return results;
     }
 }
