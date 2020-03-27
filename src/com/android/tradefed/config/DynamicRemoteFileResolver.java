@@ -57,7 +57,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class DynamicRemoteFileResolver {
 
-    public static final String DYNAMIC_RESOLVER = "dynamic-resolver";
     private static final Map<String, IRemoteFileResolver> PROTOCOL_SUPPORT = new HashMap<>();
 
     static {
