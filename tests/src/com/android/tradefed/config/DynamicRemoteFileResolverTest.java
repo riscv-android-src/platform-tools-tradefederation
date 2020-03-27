@@ -28,15 +28,20 @@ import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.StubBuildProvider;
 import com.android.tradefed.config.remote.GcsRemoteFileResolver;
 import com.android.tradefed.config.remote.IRemoteFileResolver;
+import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.shard.ParentShardReplicate;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.MultiMap;
+import com.android.tradefed.util.RunUtil;
+import com.android.tradefed.util.executor.ParallelDeviceExecutor;
 
 import org.easymock.EasyMock;
+import org.easymock.IAnswer;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mockito;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -48,6 +53,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
 
 /** Unit tests for {@link DynamicRemoteFileResolver}. */
 @RunWith(JUnit4.class)
@@ -384,6 +391,73 @@ public class DynamicRemoteFileResolverTest {
         } finally {
             for (File f : downloadedFile) {
                 FileUtil.recursiveDelete(f);
+            }
+        }
+        EasyMock.verify(mMockResolver);
+    }
+
+    @Test
+    public void testResolve_remoteMultiMap_concurrent() throws Exception {
+        RemoteFileOption object = new RemoteFileOption();
+        OptionSetter setter = new OptionSetter(object);
+
+        File fake = FileUtil.createTempFile("gs-option-setter-test", "txt");
+        File fake2 = FileUtil.createTempFile("gs-option-setter-test", "txt");
+        File fake3 = FileUtil.createTempFile("gs-option-setter-test", "txt");
+
+        setter.setOptionValue("remote-multi-map", "fake/file", "gs://fake/path");
+        setter.setOptionValue("remote-multi-map", "fake/file", "gs://fake/path2");
+        setter.setOptionValue("remote-multi-map", "fake/file", "gs://fake/path3");
+        assertEquals(1, object.remoteMultiMap.size());
+
+        EasyMock.expect(
+                        mMockResolver.resolveRemoteFiles(
+                                EasyMock.eq(new File("gs:/fake/path")), EasyMock.anyObject()))
+                .andAnswer(
+                        new IAnswer<File>() {
+                            @Override
+                            public File answer() throws Throwable {
+                                RunUtil.getDefault().sleep(1000);
+                                return fake;
+                            }
+                        });
+        EasyMock.expect(
+                        mMockResolver.resolveRemoteFiles(
+                                EasyMock.eq(new File("gs:/fake/path2")), EasyMock.anyObject()))
+                .andReturn(fake2);
+        EasyMock.expect(
+                        mMockResolver.resolveRemoteFiles(
+                                EasyMock.eq(new File("gs:/fake/path3")), EasyMock.anyObject()))
+                .andReturn(fake3);
+        EasyMock.replay(mMockResolver);
+
+        List<Callable<Set<File>>> call = new ArrayList<>();
+        List<ITestDevice> devices = new ArrayList<>();
+        for (int i = 0; i < 5; i++) {
+            OptionSetter setter2 = new OptionSetter(object);
+            Callable<Set<File>> callableTask =
+                    () -> {
+                        return setter2.validateRemoteFilePath(mResolver);
+                    };
+            call.add(callableTask);
+            devices.add(Mockito.mock(ITestDevice.class));
+        }
+        ParallelDeviceExecutor<Set<File>> executor = new ParallelDeviceExecutor<>(devices);
+        List<Set<File>> downloadedFile = null;
+        try {
+            downloadedFile = executor.invokeAll(call, 1, TimeUnit.MINUTES);
+            assertEquals(3, downloadedFile.get(0).size());
+            // The file has been replaced by the downloaded one.
+            assertEquals(1, object.remoteMultiMap.size());
+            assertEquals(3, object.remoteMultiMap.values().size());
+            assertEquals(fake, object.remoteMultiMap.get(new File("fake/file")).get(0));
+            assertEquals(fake2, object.remoteMultiMap.get(new File("fake/file")).get(1));
+            assertEquals(fake3, object.remoteMultiMap.get(new File("fake/file")).get(2));
+        } finally {
+            for (Set<File> set : downloadedFile) {
+                for (File f : set) {
+                    FileUtil.recursiveDelete(f);
+                }
             }
         }
         EasyMock.verify(mMockResolver);
