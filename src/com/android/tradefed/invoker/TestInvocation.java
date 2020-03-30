@@ -295,7 +295,14 @@ public class TestInvocation implements ITestInvocation {
                 }
             }
             if (bugreportName != null) {
-                if (badDevice == null) {
+                if (context.getDevices().size() == 1 || badDevice != null) {
+                    ITestDevice collectBugreport = badDevice;
+                    if (collectBugreport == null) {
+                        collectBugreport = context.getDevices().get(0);
+                    }
+                    // If we have identified a faulty device only take the bugreport on it.
+                    takeBugreport(collectBugreport, listener, bugreportName);
+                } else if (context.getDevices().size() > 1) {
                     ParallelDeviceExecutor<Boolean> executor =
                             new ParallelDeviceExecutor<>(context.getDevices());
                     List<Callable<Boolean>> callableTasks = new ArrayList<>();
@@ -310,9 +317,6 @@ public class TestInvocation implements ITestInvocation {
                     }
                     // Capture the bugreports best effort, ignore the results.
                     executor.invokeAll(callableTasks, 5, TimeUnit.MINUTES);
-                } else {
-                    // If we have identified a faulty device only take the bugreport on it.
-                    takeBugreport(badDevice, listener, bugreportName);
                 }
             }
             // Save the device executeShellCommand logs
