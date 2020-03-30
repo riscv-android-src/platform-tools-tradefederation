@@ -3163,11 +3163,11 @@ public class NativeDevice implements IManagedTestDevice {
                 return;
             }
             if (reason == null) {
-                CLog.i("Rebooting device %s mode: %s", getSerialNumber(), rebootMode);
+                CLog.i("Rebooting device %s mode: %s", getSerialNumber(), rebootMode.name());
             } else {
                 CLog.i(
                         "Rebooting device %s mode: %s reason: %s",
-                        getSerialNumber(), rebootMode, reason);
+                        getSerialNumber(), rebootMode.name(), reason);
             }
             doAdbReboot(rebootMode, reason);
             // Check if device shows as unavailable (as expected after reboot).
@@ -4707,11 +4707,12 @@ public class NativeDevice implements IManagedTestDevice {
                                 currSystemServerProcess.getStartTime()
                                         - prevSystemServerProcess.getStartTime())
                         <= 1) {
-            CLog.e(
-                    "current system_server: %s different from prev system_server: %s",
-                    currSystemServerProcess, prevSystemServerProcess);
             return false;
         }
+
+        CLog.v(
+                "current system_server: %s; prev system_server: %s",
+                currSystemServerProcess, prevSystemServerProcess);
 
         // The system_server process restarted.
         // Check boot history with previous system_server start time.

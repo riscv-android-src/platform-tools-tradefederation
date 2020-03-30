@@ -85,6 +85,18 @@ public class TelephonyTokenProviderTest {
     }
 
     @Test
+    public void testSimCard_securedElementOrange_dualSim() throws Exception {
+        mSimInfo = new SimCardInformation();
+        mSimInfo.mHasTelephonySupport = true;
+        mSimInfo.mHasSecuredElement = true;
+        mSimInfo.mHasSeService = true;
+        Mockito.doReturn(TelephonyTokenProvider.ORANGE_SIM_ID + ",9999")
+                .when(mDevice)
+                .getProperty(TelephonyTokenProvider.GSM_OPERATOR_PROP);
+        assertTrue(provider.hasToken(mDevice, TokenProperty.SECURE_ELEMENT_SIM_CARD));
+    }
+
+    @Test
     public void testSimCard_securedElement_anySim() throws Exception {
         mSimInfo = new SimCardInformation();
         mSimInfo.mHasTelephonySupport = true;

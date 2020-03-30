@@ -16,6 +16,7 @@
 
 package com.android.tradefed.util.zip;
 
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.ByteArrayUtil;
 
 import java.io.File;
@@ -39,14 +40,15 @@ public final class EndCentralDirectoryInfo {
     public static final int MAX_LOOKBACK = 64 * 1024;
 
     private static final byte[] END_CENTRAL_DIRECTORY_SIGNATURE = {0x50, 0x4b, 0x05, 0x06};
+    private static final byte[] ZIP64_END_CENTRAL_DIRECTORY_SIGNATURE = {0x50, 0x4b, 0x06, 0x06};
     // Central directory signature is always 4 bytes.
     private static final int CENTRAL_DIRECTORY_MAGIC_LENGTH = 4;
 
-    private int mEntryNumber;
+    private long mEntryNumber;
     private long mCentralDirSize;
     private long mCentralDirOffset;
 
-    public int getEntryNumber() {
+    public long getEntryNumber() {
         return mEntryNumber;
     }
 
@@ -66,6 +68,18 @@ public final class EndCentralDirectoryInfo {
      * @throws IOException
      */
     public EndCentralDirectoryInfo(File zipFile) throws IOException {
+        this(zipFile, false);
+    }
+
+    /**
+     * Constructor to collect end central directory information of a zip file.
+     *
+     * @param zipFile a {@link File} contains the end central directory information. It's likely the
+     *     ending part of the zip file.
+     * @param useZip64 a boolean to support zip64 format in partial download.
+     * @throws IOException
+     */
+    public EndCentralDirectoryInfo(File zipFile, boolean useZip64) throws IOException {
         // End of central directory record:
         //    Offset   Length   Contents
         //      0      4 bytes  End of central dir signature (0x06054b50)
@@ -79,6 +93,61 @@ public final class EndCentralDirectoryInfo {
         //     20      2 bytes  zipfile comment length (c)
         //     22     (c)bytes  zipfile comment
 
+        // ZIP64 End of central directory record:
+        //    Offset   Length   Contents
+        //      0      4 bytes  ZIPO64 End of central dir signature (0x06064b50)
+        //      4      8 bytes  Size of the ZIP64 central directory
+        //     12      2 bytes  Version made by
+        //     14      2 bytes  Version needed to extract
+        //     16      4 bytes  Number of this disk
+        //     20      4 bytes  Number of the disk with the start of the central directory
+        //     24      8 bytes  Total number of entries in the central dir on this disk
+        //     32      8 bytes  Total number of entries in the central dir
+        //     40      8 bytes  Size of the central directory
+        //     48      8 bytes  Offset of start of central directory with respect to the starting
+        //                      disk number
+
+        byte[] data = getEndCentralDirectoryInfo(zipFile, END_CENTRAL_DIRECTORY_SIGNATURE);
+        // Get the total number of entries in the central directory
+        mEntryNumber = ByteArrayUtil.getInt(data, 10, 2);
+        // Get the size of the central directory block
+        mCentralDirSize = ByteArrayUtil.getLong(data, 12, 4);
+        // Get the offset of start of central directory
+        mCentralDirOffset = ByteArrayUtil.getLong(data, 16, 4);
+        if (!useZip64) {
+            if (mCentralDirOffset < 0) {
+                throw new IOException(
+                        "Failed to get offset of EndCentralDirectoryInfo. Partial unzip doesn't "
+                                + "support zip files larger than 4GB.");
+            }
+            return;
+        }
+        // Get the real data while use-zip64-in-partial-download is set and the 3 corresponding
+        // elements match the condition.
+        if (Long.toHexString(mEntryNumber).equals("ffff") ||
+            Long.toHexString(mCentralDirSize).equals("ffffffff") ||
+            Long.toHexString(mCentralDirOffset).equals("ffffffff")) {
+            CLog.i("Values(total number of entries, central directory size, and the offset of start"
+                    + "of central directory header) in EndCentralDirectoryInfo reach limitation, "
+                    + "getting real data from the ZIP64EndCentralDirectoryInfo.");
+            // Get the ZIP64 End Central Directory Info.
+            data = getEndCentralDirectoryInfo(zipFile, ZIP64_END_CENTRAL_DIRECTORY_SIGNATURE);
+            mEntryNumber = ByteArrayUtil.getLong(data, 32, 8);
+            mCentralDirSize = ByteArrayUtil.getLong(data, 40, 8);
+            mCentralDirOffset = ByteArrayUtil.getLong(data, 48, 8);
+        }
+    }
+
+    /**
+     * Get the EndCentralDirectoryInfo data in a zip file according to the given signature.
+     *
+     * @param zipFile a {@link File} contains the end central directory information. It's likely the
+     *     ending part of the zip file.
+     * @param signature a {@code byte[]} end central directory info signature.
+     * @return a {@code byte[]} end central directory info data in a zip file.
+     * @throws IOException
+     */
+    private byte[] getEndCentralDirectoryInfo(File zipFile, byte[] signature) throws IOException {
         try (FileInputStream stream = new FileInputStream(zipFile)) {
             long size = stream.getChannel().size();
             if (size > MAX_LOOKBACK) {
@@ -91,21 +160,10 @@ public final class EndCentralDirectoryInfo {
             // Seek from the end of the file, searching for the end central directory signature.
             while (offset >= 0) {
                 if (!java.util.Arrays.equals(
-                        END_CENTRAL_DIRECTORY_SIGNATURE,
+                        signature,
                         Arrays.copyOfRange(endCentralDir, offset, offset + 4))) {
                     offset--;
                     continue;
-                }
-                // Get the total number of entries in the central directory
-                mEntryNumber = ByteArrayUtil.getInt(endCentralDir, offset + 10, 2);
-                // Get the size of the central directory block
-                mCentralDirSize = ByteArrayUtil.getLong(endCentralDir, offset + 12, 4);
-                // Get the offset of start of central directory
-                mCentralDirOffset = ByteArrayUtil.getLong(endCentralDir, offset + 16, 4);
-
-                if (mCentralDirOffset < 0) {
-                    throw new IOException(
-                            "Failed to get offset of EndCentralDirectoryInfo. Partial unzip doesn't support zip files larger than 4GB.");
                 }
                 break;
             }
@@ -114,6 +172,7 @@ public final class EndCentralDirectoryInfo {
                         "Failed to find end central directory info for zip file: "
                                 + zipFile.getPath());
             }
+            return Arrays.copyOfRange(endCentralDir, offset, offset + 64);
         }
     }
 }

@@ -53,6 +53,10 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
         mDevice = device;
     }
 
+    public ITestDevice getDevice() {
+        return mDevice;
+    }
+
     @Override
     public void testStarted(TestDescription test, long startTime) {
         mStartTime = startTime;

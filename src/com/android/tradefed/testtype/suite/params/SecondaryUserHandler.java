@@ -31,14 +31,14 @@ import java.util.Set;
 
 /** Handler for {@link ModuleParameters#SECONDARY_USER}. */
 public class SecondaryUserHandler implements IModuleParameter {
-
     @Override
     public String getParameterIdentifier() {
         return "secondary_user";
     }
 
+    /** {@inheritDoc} */
     @Override
-    public void applySetup(IConfiguration moduleConfiguration) {
+    public void addParameterSpecificConfig(IConfiguration moduleConfiguration) {
         for (IDeviceConfiguration deviceConfig : moduleConfiguration.getDeviceConfig()) {
             List<ITargetPreparer> preparers = deviceConfig.getTargetPreparers();
             // The first things module will do is switch to a secondary user
@@ -46,7 +46,10 @@ public class SecondaryUserHandler implements IModuleParameter {
             // Add a preparer to setup the location settings on the new user
             preparers.add(1, createLocationPreparer());
         }
+    }
 
+    @Override
+    public void applySetup(IConfiguration moduleConfiguration) {
         // Add filter to exclude @SystemUserOnly
         for (IRemoteTest test : moduleConfiguration.getTests()) {
             if (test instanceof ITestAnnotationFilterReceiver) {

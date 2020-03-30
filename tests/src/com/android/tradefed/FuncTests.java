@@ -25,6 +25,7 @@ import com.android.tradefed.util.FileUtilFuncTest;
 import com.android.tradefed.util.GCSFileDownloaderFuncTest;
 import com.android.tradefed.util.GCSFileUploaderFuncTest;
 import com.android.tradefed.util.RunUtilFuncTest;
+import com.android.tradefed.util.ZipUtilFuncTest;
 import com.android.tradefed.util.net.HttpHelperFuncTest;
 
 import org.junit.runner.RunWith;
@@ -51,5 +52,6 @@ import org.junit.runners.Suite.SuiteClasses;
     GCSFileUploaderFuncTest.class,
     HttpHelperFuncTest.class,
     RunUtilFuncTest.class,
+    ZipUtilFuncTest.class,
 })
 public class FuncTests {}
