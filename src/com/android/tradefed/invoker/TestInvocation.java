@@ -46,7 +46,6 @@ import com.android.tradefed.invoker.logger.TfObjectTracker;
 import com.android.tradefed.invoker.sandbox.ParentSandboxInvocationExecution;
 import com.android.tradefed.invoker.sandbox.SandboxedInvocationExecution;
 import com.android.tradefed.invoker.shard.LastShardDetector;
-import com.android.tradefed.invoker.shard.ShardBuildCloner;
 import com.android.tradefed.invoker.shard.ShardHelper;
 import com.android.tradefed.log.BaseLeveledLogOutput;
 import com.android.tradefed.log.ILeveledLogOutput;
@@ -62,15 +61,12 @@ import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogSaverResultForwarder;
 import com.android.tradefed.result.ResultAndLogForwarder;
-import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.retry.ResultAggregator;
 import com.android.tradefed.retry.RetryStrategy;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.DeviceFailedToBootError;
 import com.android.tradefed.targetprep.TargetSetupError;
-import com.android.tradefed.testtype.IRemoteTest;
-import com.android.tradefed.testtype.IResumableTest;
 import com.android.tradefed.testtype.SubprocessTfLauncher;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
@@ -156,36 +152,6 @@ public class TestInvocation implements ITestInvocation {
     private List<IScheduledInvocationListener> mSchedulerListeners = new ArrayList<>();
 
     /**
-     * A {@link ResultForwarder} for forwarding resumed invocations.
-     * <p/>
-     * It filters the invocationStarted event for the resumed invocation, and sums the invocation
-     * elapsed time
-     */
-    private static class ResumeResultForwarder extends ResultForwarder {
-
-        long mCurrentElapsedTime;
-
-        /**
-         * @param listeners
-         */
-        public ResumeResultForwarder(List<ITestInvocationListener> listeners,
-                long currentElapsedTime) {
-            super(listeners);
-            mCurrentElapsedTime = currentElapsedTime;
-        }
-
-        @Override
-        public void invocationStarted(IInvocationContext context) {
-            // ignore
-        }
-
-        @Override
-        public void invocationEnded(long newElapsedTime) {
-            super.invocationEnded(mCurrentElapsedTime + newElapsedTime);
-        }
-    }
-
-    /**
      * Display a log message informing the user of a invocation being started.
      *
      * @param context the {@link IInvocationContext}
@@ -228,7 +194,6 @@ public class TestInvocation implements ITestInvocation {
             IConfiguration config,
             TestInformation testInfo,
             IInvocationExecution invocationPath,
-            IRescheduler rescheduler,
             ITestInvocationListener listener,
             boolean devicePreSetupDone)
             throws Throwable {
@@ -291,12 +256,7 @@ public class TestInvocation implements ITestInvocation {
                 // under certain cases it might still be possible to grab a bugreport
                 bugreportName = DEVICE_UNRESPONSIVE_BUGREPORT_NAME;
             }
-            resumed = resume(config, testInfo, rescheduler, System.currentTimeMillis() - startTime);
-            if (!resumed) {
-                reportFailure(e, listener, config, context, invocationPath);
-            } else {
-                CLog.i("Rescheduled failed invocation for resume");
-            }
+            reportFailure(e, listener, config, context, invocationPath);
             // Upon reaching here after an exception, it is safe to assume that recovery
             // has already been attempted so we disable it to avoid re-entry during clean up.
             if (badDevice != null) {
@@ -380,8 +340,14 @@ public class TestInvocation implements ITestInvocation {
             InvocationMetricLogger.addInvocationMetrics(
                     InvocationMetricKey.DEVICE_DONE_TIMESTAMP, System.currentTimeMillis());
             if (config.getCommandOptions().earlyDeviceRelease()) {
+                // Capture the FreeDeviceState of the primary device
                 Map<ITestDevice, FreeDeviceState> devicesStates =
                         CommandScheduler.createReleaseMap(context, exception);
+                if (devicesStates.size() >= 1) {
+                    InvocationMetricLogger.addInvocationMetrics(
+                            InvocationMetricKey.DEVICE_RELEASE_STATE,
+                            devicesStates.values().iterator().next().toString());
+                }
                 for (IScheduledInvocationListener scheduleListener : mSchedulerListeners) {
                     scheduleListener.releaseDevices(context, devicesStates);
                 }
@@ -471,52 +437,6 @@ public class TestInvocation implements ITestInvocation {
             ITestInvocationListener listener) {
         logStartInvocation(context, config);
         listener.invocationStarted(context);
-    }
-
-    /**
-     * Attempt to reschedule the failed invocation to resume where it left off.
-     *
-     * <p>
-     *
-     * @see IResumableTest
-     * @param config
-     * @return <code>true</code> if invocation was resumed successfully
-     */
-    private boolean resume(
-            IConfiguration config,
-            TestInformation testInfo,
-            IRescheduler rescheduler,
-            long elapsedTime) {
-        IInvocationContext context = testInfo.getContext();
-        for (IRemoteTest test : config.getTests()) {
-            if (test instanceof IResumableTest) {
-                IResumableTest resumeTest = (IResumableTest)test;
-                if (resumeTest.isResumable()) {
-                    // resume this config if any test is resumable
-                    IConfiguration resumeConfig = config.clone();
-                    // reuse the same build for the resumed invocation
-                    ShardBuildCloner.cloneBuildInfos(resumeConfig, resumeConfig, testInfo);
-
-                    // create a result forwarder, to prevent sending two invocationStarted events
-                    resumeConfig.setTestInvocationListener(new ResumeResultForwarder(
-                            config.getTestInvocationListeners(), elapsedTime));
-                    resumeConfig.setLogOutput(config.getLogOutput().clone());
-                    resumeConfig.setCommandOptions(config.getCommandOptions().clone());
-                    boolean canReschedule = rescheduler.scheduleConfig(resumeConfig);
-                    if (!canReschedule) {
-                        CLog.i("Cannot reschedule resumed config for build. Cleaning up build.");
-                        for (String deviceName : context.getDeviceConfigNames()) {
-                            resumeConfig.getDeviceConfigByName(deviceName).getBuildProvider()
-                                    .cleanUp(context.getBuildInfo(deviceName));
-                        }
-                    }
-                    // FIXME: is it a bug to return from here, when we may not have completed the
-                    // FIXME: config.getTests iteration?
-                    return canReschedule;
-                }
-            }
-        }
-        return false;
     }
 
     private void reportFailure(
@@ -948,7 +868,7 @@ public class TestInvocation implements ITestInvocation {
                 return;
             }
 
-            performInvocation(config, info, invocationPath, rescheduler, listener, deviceInit);
+            performInvocation(config, info, invocationPath, listener, deviceInit);
             setExitCode(ExitCode.NO_ERROR, null);
         } catch (IOException e) {
             CLog.e(e);

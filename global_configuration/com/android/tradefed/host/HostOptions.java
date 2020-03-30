@@ -86,6 +86,11 @@ public class HostOptions implements IHostOptions {
                             + "gce-device placeholder.")
     private Set<String> mKnownGceDeviceIpPool = new HashSet<>();
 
+    @Option(
+            name = "use-zip64-in-partial-download",
+            description = "Whether to use zip64 format in partial download.")
+    private boolean mUseZip64InPartialDownload = false;
+
     /** {@inheritDoc} */
     @Override
     public Integer getConcurrentFlasherLimit() {
@@ -144,5 +149,11 @@ public class HostOptions implements IHostOptions {
     @Override
     public Set<String> getKnownGceDeviceIpPool() {
         return new HashSet<>(mKnownGceDeviceIpPool);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean getUseZip64InPartialDownload() {
+        return mUseZip64InPartialDownload;
     }
 }

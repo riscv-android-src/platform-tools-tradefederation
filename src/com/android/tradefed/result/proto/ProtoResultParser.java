@@ -74,6 +74,7 @@ public class ProtoResultParser {
 
     private boolean mInvocationStarted = false;
     private boolean mInvocationEnded = false;
+    private boolean mFirstModule = true;
 
     /** Ctor. */
     public ProtoResultParser(
@@ -319,6 +320,11 @@ public class ProtoResultParser {
             }
             log(message);
             mListener.testModuleStarted(moduleContext);
+            if (mFirstModule) {
+                mFirstModule = false;
+                // Parse the build attributes once after invocation start to update the BuildInfo
+                mergeBuildInfo(mMainContext, moduleContext);
+            }
         } catch (InvalidProtocolBufferException e) {
             throw new RuntimeException(e);
         }
@@ -486,14 +492,7 @@ public class ProtoResultParser {
         }
     }
 
-    /**
-     * Copy the build info and invocation attributes from the proto context to the current
-     * invocation context
-     *
-     * @param receiverContext The context receiving the attributes
-     * @param endInvocationContext The context providing the attributes
-     */
-    private void mergeInvocationContext(
+    private void mergeBuildInfo(
             IInvocationContext receiverContext, IInvocationContext endInvocationContext) {
         if (receiverContext == null) {
             return;
@@ -508,6 +507,21 @@ public class ProtoResultParser {
             }
             info.addBuildAttributes(endInvocationInfo.getBuildAttributes());
         }
+    }
+
+    /**
+     * Copy the build info and invocation attributes from the proto context to the current
+     * invocation context
+     *
+     * @param receiverContext The context receiving the attributes
+     * @param endInvocationContext The context providing the attributes
+     */
+    private void mergeInvocationContext(
+            IInvocationContext receiverContext, IInvocationContext endInvocationContext) {
+        if (receiverContext == null) {
+            return;
+        }
+        mergeBuildInfo(receiverContext, endInvocationContext);
 
         try {
             Method unlock = InvocationContext.class.getDeclaredMethod("unlock");

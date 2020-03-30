@@ -73,6 +73,7 @@ import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.SystemUtil;
 import com.android.tradefed.util.SystemUtil.EnvVariable;
 import com.android.tradefed.util.TimeUtil;
+import com.android.tradefed.util.executor.ParallelDeviceExecutor;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
@@ -80,12 +81,14 @@ import com.google.common.base.Strings;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -219,44 +222,36 @@ public class InvocationExecution implements IInvocationExecution {
                     testInfo,
                     "multi pre target preparer setup");
 
-            // TODO: evaluate doing device setup in parallel
-            mTrackTargetPreparers = new HashMap<>();
+            mTrackTargetPreparers = new ConcurrentHashMap<>();
             int index = 0;
-            for (String deviceName : testInfo.getContext().getDeviceConfigNames()) {
-                mTrackTargetPreparers.put(deviceName, new HashSet<>());
-                ITestDevice device = testInfo.getContext().getDevice(deviceName);
-                CLog.d("Starting setup for device: '%s'", device.getSerialNumber());
-                if (device instanceof ITestLoggerReceiver) {
-                    ((ITestLoggerReceiver) testInfo.getContext().getDevice(deviceName))
-                            .setTestLogger(listener);
+            if (config.getCommandOptions().shouldUseReplicateSetup()
+                    && config.getDeviceConfig().size() > 1) {
+                CLog.d("Using parallel setup due to replicated setup enabled.");
+                ParallelDeviceExecutor<Boolean> executor =
+                        new ParallelDeviceExecutor<>(testInfo.getContext().getDevices());
+                List<Callable<Boolean>> callableTasks = new ArrayList<>();
+                for (String deviceName : testInfo.getContext().getDeviceConfigNames()) {
+                    final int deviceIndex = index;
+                    // Replicate TestInfo
+                    TestInformation replicated =
+                            TestInformation.createModuleTestInfo(testInfo, testInfo.getContext());
+                    Callable<Boolean> callableTask =
+                            () -> {
+                                runPreparationOnDevice(
+                                        replicated, deviceName, deviceIndex, config, listener);
+                                return true;
+                            };
+                    callableTasks.add(callableTask);
+                    index++;
                 }
-                for (ITargetPreparer preparer :
-                        config.getDeviceConfigByName(deviceName).getTargetPreparers()) {
-                    // do not call the preparer if it was disabled
-                    if (preparer.isDisabled()) {
-                        CLog.d("%s has been disabled. skipping.", preparer);
-                        continue;
-                    }
-                    TfObjectTracker.countWithParents(preparer.getClass());
-                    if (preparer instanceof ITestLoggerReceiver) {
-                        ((ITestLoggerReceiver) preparer).setTestLogger(listener);
-                    }
-                    CLog.d(
-                            "starting preparer '%s' on device: '%s'",
-                            preparer, device.getSerialNumber());
-                    try {
-                        testInfo.setActiveDeviceIndex(index);
-                        preparer.setUp(testInfo);
-                    } finally {
-                        testInfo.setActiveDeviceIndex(0);
-                    }
-                    mTrackTargetPreparers.get(deviceName).add(preparer);
-                    CLog.d(
-                            "done with preparer '%s' on device: '%s'",
-                            preparer, device.getSerialNumber());
+                // Run setup with 30 minutes right now.
+                executor.invokeAll(callableTasks, 30, TimeUnit.MINUTES);
+            } else {
+                for (String deviceName : testInfo.getContext().getDeviceConfigNames()) {
+                    mTrackTargetPreparers.put(deviceName, new HashSet<>());
+                    runPreparationOnDevice(testInfo, deviceName, index, config, listener);
+                    index++;
                 }
-                CLog.d("Done with setup of device: '%s'", device.getSerialNumber());
-                index++;
             }
             // After all the individual setup, make the multi-devices setup
             runMultiTargetPreparers(
@@ -275,6 +270,43 @@ public class InvocationExecution implements IInvocationExecution {
                 reportLogs(testInfo.getContext().getDevice(deviceName), listener, Stage.SETUP);
             }
         }
+    }
+
+    private void runPreparationOnDevice(
+            TestInformation testInfo,
+            String deviceName,
+            int index,
+            IConfiguration config,
+            ITestLogger logger)
+            throws TargetSetupError, BuildError, DeviceNotAvailableException {
+        ITestDevice device = testInfo.getContext().getDevice(deviceName);
+        CLog.d("Starting setup for device: '%s'", device.getSerialNumber());
+        if (device instanceof ITestLoggerReceiver) {
+            ((ITestLoggerReceiver) testInfo.getContext().getDevice(deviceName))
+                    .setTestLogger(logger);
+        }
+        for (ITargetPreparer preparer :
+                config.getDeviceConfigByName(deviceName).getTargetPreparers()) {
+            // do not call the preparer if it was disabled
+            if (preparer.isDisabled()) {
+                CLog.d("%s has been disabled. skipping.", preparer);
+                continue;
+            }
+            TfObjectTracker.countWithParents(preparer.getClass());
+            if (preparer instanceof ITestLoggerReceiver) {
+                ((ITestLoggerReceiver) preparer).setTestLogger(logger);
+            }
+            CLog.d("starting preparer '%s' on device: '%s'", preparer, device.getSerialNumber());
+            try {
+                testInfo.setActiveDeviceIndex(index);
+                preparer.setUp(testInfo);
+            } finally {
+                testInfo.setActiveDeviceIndex(0);
+            }
+            mTrackTargetPreparers.get(deviceName).add(preparer);
+            CLog.d("done with preparer '%s' on device: '%s'", preparer, device.getSerialNumber());
+        }
+        CLog.d("Done with setup of device: '%s'", device.getSerialNumber());
     }
 
     /** {@inheritDoc} */
