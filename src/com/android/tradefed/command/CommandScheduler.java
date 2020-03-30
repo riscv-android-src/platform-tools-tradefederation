@@ -784,25 +784,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
     /** Create a map of the devices state so they can be released appropriately. */
     public static Map<ITestDevice, FreeDeviceState> createReleaseMap(
             IInvocationContext context, Throwable e) {
-        Map<ITestDevice, FreeDeviceState> deviceStates = new HashMap<>();
+        Map<ITestDevice, FreeDeviceState> deviceStates = new LinkedHashMap<>();
         for (ITestDevice device : context.getDevices()) {
             deviceStates.put(device, FreeDeviceState.AVAILABLE);
-        }
-
-        if (e != null) {
-            if (e instanceof DeviceUnresponsiveException) {
-                ITestDevice badDevice =
-                        context.getDeviceBySerial(((DeviceUnresponsiveException) e).getSerial());
-                if (badDevice != null) {
-                    deviceStates.put(badDevice, FreeDeviceState.UNRESPONSIVE);
-                }
-            } else if (e instanceof DeviceNotAvailableException) {
-                ITestDevice badDevice =
-                        context.getDeviceBySerial(((DeviceNotAvailableException) e).getSerial());
-                if (badDevice != null) {
-                    deviceStates.put(badDevice, FreeDeviceState.UNAVAILABLE);
-                }
-            }
         }
 
         for (ITestDevice device : context.getDevices()) {
@@ -819,6 +803,20 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             }
             // Reset the recovery mode at the end of the invocation.
             device.setRecoveryMode(RecoveryMode.AVAILABLE);
+        }
+
+        if (e instanceof DeviceUnresponsiveException) {
+            ITestDevice badDevice =
+                    context.getDeviceBySerial(((DeviceUnresponsiveException) e).getSerial());
+            if (badDevice != null) {
+                deviceStates.put(badDevice, FreeDeviceState.UNRESPONSIVE);
+            }
+        } else if (e instanceof DeviceNotAvailableException) {
+            ITestDevice badDevice =
+                    context.getDeviceBySerial(((DeviceNotAvailableException) e).getSerial());
+            if (badDevice != null) {
+                deviceStates.put(badDevice, FreeDeviceState.UNAVAILABLE);
+            }
         }
         return deviceStates;
     }

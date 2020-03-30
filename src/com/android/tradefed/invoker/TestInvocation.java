@@ -340,8 +340,14 @@ public class TestInvocation implements ITestInvocation {
             InvocationMetricLogger.addInvocationMetrics(
                     InvocationMetricKey.DEVICE_DONE_TIMESTAMP, System.currentTimeMillis());
             if (config.getCommandOptions().earlyDeviceRelease()) {
+                // Capture the FreeDeviceState of the primary device
                 Map<ITestDevice, FreeDeviceState> devicesStates =
                         CommandScheduler.createReleaseMap(context, exception);
+                if (devicesStates.size() >= 1) {
+                    InvocationMetricLogger.addInvocationMetrics(
+                            InvocationMetricKey.DEVICE_RELEASE_STATE,
+                            devicesStates.values().iterator().next().toString());
+                }
                 for (IScheduledInvocationListener scheduleListener : mSchedulerListeners) {
                     scheduleListener.releaseDevices(context, devicesStates);
                 }
