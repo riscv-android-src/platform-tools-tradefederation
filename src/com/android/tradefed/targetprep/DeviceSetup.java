@@ -30,11 +30,13 @@ import com.android.tradefed.util.BinaryState;
 import com.android.tradefed.util.MultiMap;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Strings;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -91,7 +93,7 @@ public class DeviceSetup extends BaseTargetPreparer {
     protected String mWifiPsk = null;
 
     @Option(name = "wifi-ssid-to-psk", description = "A map of wifi SSIDs to passwords.")
-    protected Map<String, String> mWifiSsidToPsk = new HashMap<>();
+    protected Map<String, String> mWifiSsidToPsk = new LinkedHashMap<>();
 
     @Option(name = "wifi-watchdog",
             description = "Turn wifi watchdog on or off")
@@ -892,13 +894,14 @@ public class DeviceSetup extends BaseTargetPreparer {
             return;
         }
 
-        if (mWifiSsid != null && device.connectToWifiNetwork(mWifiSsid, mWifiPsk)) {
+        String wifiPsk = Strings.emptyToNull(mWifiPsk);
+        if (mWifiSsid != null && device.connectToWifiNetwork(mWifiSsid, wifiPsk)) {
             InvocationMetricLogger.addInvocationMetrics(
                     InvocationMetricKey.WIFI_AP_NAME, mWifiSsid);
             return;
         }
         for (Map.Entry<String, String> ssidToPsk : mWifiSsidToPsk.entrySet()) {
-            String psk = "".equals(ssidToPsk.getValue()) ? null : ssidToPsk.getValue();
+            String psk = Strings.emptyToNull(ssidToPsk.getValue());
             if (device.connectToWifiNetwork(ssidToPsk.getKey(), psk)) {
                 InvocationMetricLogger.addInvocationMetrics(
                         InvocationMetricKey.WIFI_AP_NAME, ssidToPsk.getKey());

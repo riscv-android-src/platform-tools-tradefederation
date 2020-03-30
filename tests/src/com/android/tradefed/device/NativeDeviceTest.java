@@ -2534,8 +2534,8 @@ public class NativeDeviceTest {
         assertFalse(spy.deviceSoftRestartedSince(1559091923000L, TimeUnit.MILLISECONDS));
         assertFalse(spy.deviceSoftRestartedSince(1559091922L, TimeUnit.SECONDS));
         assertFalse(spy.deviceSoftRestartedSince(1559091922000L, TimeUnit.MILLISECONDS));
-        assertTrue(spy.deviceSoftRestartedSince(1559091921L, TimeUnit.SECONDS));
-        assertTrue(spy.deviceSoftRestartedSince(1559091921000L, TimeUnit.MILLISECONDS));
+        assertTrue(spy.deviceSoftRestartedSince(1559091920L, TimeUnit.SECONDS));
+        assertTrue(spy.deviceSoftRestartedSince(1559091920000L, TimeUnit.MILLISECONDS));
         EasyMock.verify(mMockIDevice);
     }
 
@@ -3025,21 +3025,6 @@ public class NativeDeviceTest {
                 .andReturn(res);
         EasyMock.replay(mMockRunUtil, mMockIDevice);
         assertTrue(mTestDevice.setProperty("test", "value"));
-        EasyMock.verify(mMockRunUtil, mMockIDevice);
-    }
-
-    /** Unit test for {@link INativeDevice#setProperty(String, String)}. */
-    @Test
-    public void testSetProperty_notRoot() throws DeviceNotAvailableException {
-        mTestDevice =
-                new TestableAndroidNativeDevice() {
-                    @Override
-                    public boolean isAdbRoot() throws DeviceNotAvailableException {
-                        return false;
-                    }
-                };
-        EasyMock.replay(mMockRunUtil, mMockIDevice);
-        assertFalse(mTestDevice.setProperty("test", "value"));
         EasyMock.verify(mMockRunUtil, mMockIDevice);
     }
 

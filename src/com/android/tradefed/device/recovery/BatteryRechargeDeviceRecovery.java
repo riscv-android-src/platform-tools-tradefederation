@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 The Android Open Source Project
+ * Copyright (C) 2020 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,24 +15,30 @@
  */
 package com.android.tradefed.device.recovery;
 
-import com.android.ddmlib.IDevice.DeviceState;
+import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.IManagedTestDevice;
-import com.android.tradefed.device.TestDeviceState;
 
-/** Recovery checker that will trigger a configuration if the battery level is not available. */
-@OptionClass(alias = "battery-recovery")
-public class BatteryUnavailableDeviceRecovery extends RunConfigDeviceRecovery {
+/** Allow to trigger a command when the battery level of the device goes under a given threshold. */
+@OptionClass(alias = "battery-level-recovery")
+public class BatteryRechargeDeviceRecovery extends RunConfigDeviceRecovery {
+
+    @Option(
+            name = "min-battery",
+            description =
+                    "only run this test on a device whose battery level is lower than the given "
+                            + "amount. Scale: 0-100")
+    private Integer mMinBattery = null;
 
     @Override
     public boolean shouldSkip(IManagedTestDevice device) {
-        if (TestDeviceState.FASTBOOT.equals(device.getDeviceState())) {
+        if (mMinBattery == null) {
             return true;
         }
-        if (DeviceState.OFFLINE.equals(device.getIDevice().getState())) {
+        Integer level = device.getBattery();
+        if (level == null || level >= mMinBattery) {
             return true;
         }
-        // Check the battery level of the device and if it's NA continue recovery.
-        return device.getBattery() != null;
+        return false;
     }
 }

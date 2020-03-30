@@ -15,8 +15,6 @@
  */
 package com.android.tradefed.device;
 
-import com.google.common.util.concurrent.SettableFuture;
-
 import com.android.ddmlib.AdbCommandRejectedException;
 import com.android.ddmlib.Client;
 import com.android.ddmlib.FileListingService;
@@ -33,18 +31,21 @@ import com.android.ddmlib.TimeoutException;
 import com.android.ddmlib.log.LogReceiver;
 import com.android.sdklib.AndroidVersion;
 
+import com.google.common.util.concurrent.SettableFuture;
+
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-/**
- * Stub placeholder implementation of a {@link IDevice}.
- */
-public class StubDevice implements IDevice {
+/** Stub placeholder implementation of a {@link IDevice}. */
+public class StubDevice implements IDevice, Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     private String mSerial;
     private final boolean mIsEmulator;

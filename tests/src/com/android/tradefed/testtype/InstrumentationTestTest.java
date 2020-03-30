@@ -398,10 +398,11 @@ public class InstrumentationTestTest {
         inOrder.verify(mMockListener).testRunStarted(TEST_PACKAGE_VALUE, 2);
         inOrder.verify(mMockListener).testStarted(eq(TEST1), anyLong());
         inOrder.verify(mMockListener).testEnded(eq(TEST1), anyLong(), eq(EMPTY_STRING_MAP));
-        FailureDescription error =
+        FailureDescription error1 =
                 FailureDescription.create(
                         "Test run failed to complete", FailureStatus.TEST_FAILURE);
-        inOrder.verify(mMockListener).testRunFailed(error);
+        error1.setDebugHelpMessage("The following tests didn't run: [Test#test2]");
+        inOrder.verify(mMockListener).testRunFailed(error1);
         inOrder.verify(mMockListener).testRunEnded(1, EMPTY_STRING_MAP);
 
         inOrder.verify(mMockListener).testRunStarted(TEST_PACKAGE_VALUE, 0, 1);

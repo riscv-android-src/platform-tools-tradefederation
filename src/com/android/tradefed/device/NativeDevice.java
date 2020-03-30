@@ -219,6 +219,9 @@ public class NativeDevice implements IManagedTestDevice {
 
     private File mExecuteShellCommandLogs = null;
 
+    private DeviceDescriptor mCachedDeviceDescriptor = null;
+    private final Object mCacheLock = new Object();
+
     /**
      * Interface for a generic device communication attempt.
      */
@@ -524,10 +527,6 @@ public class NativeDevice implements IManagedTestDevice {
             throws DeviceNotAvailableException {
         if (propKey == null || propValue == null) {
             throw new IllegalArgumentException("set property key or value cannot be null.");
-        }
-        if (!isAdbRoot()) {
-            CLog.e("setProperty requires adb root = true.");
-            return false;
         }
         String setPropCmd = String.format("\"setprop %s '%s'\"", propKey, propValue);
         CommandResult result = executeShellV2Command(setPropCmd);
@@ -3164,11 +3163,11 @@ public class NativeDevice implements IManagedTestDevice {
                 return;
             }
             if (reason == null) {
-                CLog.i("Rebooting device %s mode: %s", getSerialNumber(), rebootMode);
+                CLog.i("Rebooting device %s mode: %s", getSerialNumber(), rebootMode.name());
             } else {
                 CLog.i(
                         "Rebooting device %s mode: %s reason: %s",
-                        getSerialNumber(), rebootMode, reason);
+                        getSerialNumber(), rebootMode.name(), reason);
             }
             doAdbReboot(rebootMode, reason);
             // Check if device shows as unavailable (as expected after reboot).
@@ -4452,6 +4451,24 @@ public class NativeDevice implements IManagedTestDevice {
         }
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public DeviceDescriptor getCachedDeviceDescriptor() {
+        synchronized (mCacheLock) {
+            if (DeviceAllocationState.Allocated.equals(getAllocationState())) {
+                if (mCachedDeviceDescriptor == null) {
+                    // Create the cache the very first time when it's allocated.
+                    mCachedDeviceDescriptor = getDeviceDescriptor();
+                    return mCachedDeviceDescriptor;
+                }
+                return mCachedDeviceDescriptor;
+            }
+            // If device is not allocated, just return current information
+            mCachedDeviceDescriptor = null;
+            return getDeviceDescriptor();
+        }
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -4652,8 +4669,10 @@ public class NativeDevice implements IManagedTestDevice {
         }
 
         // The system_server process started at or before utcEpochTime, there is no soft-restart
-        if (currSystemServerProcess.getStartTime()
-                <= TimeUnit.SECONDS.convert(utcEpochTime, timeUnit)) {
+        if (Math.abs(
+                        currSystemServerProcess.getStartTime()
+                                - TimeUnit.SECONDS.convert(utcEpochTime, timeUnit))
+                <= 1) {
             return false;
         }
 
@@ -4688,11 +4707,12 @@ public class NativeDevice implements IManagedTestDevice {
                                 currSystemServerProcess.getStartTime()
                                         - prevSystemServerProcess.getStartTime())
                         <= 1) {
-            CLog.e(
-                    "current system_server: %s different from prev system_server: %s",
-                    currSystemServerProcess, prevSystemServerProcess);
             return false;
         }
+
+        CLog.v(
+                "current system_server: %s; prev system_server: %s",
+                currSystemServerProcess, prevSystemServerProcess);
 
         // The system_server process restarted.
         // Check boot history with previous system_server start time.
