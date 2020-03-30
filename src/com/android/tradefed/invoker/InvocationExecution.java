@@ -246,6 +246,22 @@ public class InvocationExecution implements IInvocationExecution {
                 }
                 // Run setup with 30 minutes right now.
                 executor.invokeAll(callableTasks, 30, TimeUnit.MINUTES);
+                if (executor.hasErrors()) {
+                    List<Throwable> errors = executor.getErrors();
+                    // TODO: Handle throwing multi-exceptions, right now throw the first one.
+                    for (Throwable error : errors) {
+                        if (error instanceof TargetSetupError) {
+                            throw (TargetSetupError) error;
+                        }
+                        if (error instanceof BuildError) {
+                            throw (BuildError) error;
+                        }
+                        if (error instanceof DeviceNotAvailableException) {
+                            throw (DeviceNotAvailableException) error;
+                        }
+                        throw new RuntimeException(error);
+                    }
+                }
             } else {
                 for (String deviceName : testInfo.getContext().getDeviceConfigNames()) {
                     mTrackTargetPreparers.put(deviceName, new HashSet<>());
