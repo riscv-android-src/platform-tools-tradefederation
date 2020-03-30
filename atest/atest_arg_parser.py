@@ -554,8 +554,8 @@ EXAMPLES
     To run tests in iterations, simply pass --iterations argument. No matter pass or fail, atest won't stop testing until the max iteration is reached.
 
     Example:
-        atest <test> --interations    # 10 iterations(by default).
-        atest <test> --interations 5  # run <test> 5 times.
+        atest <test> --iterations    # 10 iterations(by default).
+        atest <test> --iterations 5  # run <test> 5 times.
 
     Two approaches that assist users to detect flaky tests:
 
