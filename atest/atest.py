@@ -56,7 +56,7 @@ EXPECTED_VARS = frozenset([
     constants.ANDROID_BUILD_TOP,
     'ANDROID_TARGET_OUT_TESTCASES',
     constants.ANDROID_OUT])
-TEST_RUN_DIR_PREFIX = "%Y%m%d_%H%M"
+TEST_RUN_DIR_PREFIX = "%Y%m%d_%H%M%S"
 CUSTOM_ARG_FLAG = '--'
 OPTION_NOT_FOR_TEST_MAPPING = (
     'Option `%s` does not work for running tests in TEST_MAPPING files')
