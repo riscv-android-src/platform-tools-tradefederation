@@ -56,7 +56,7 @@ EXPECTED_VARS = frozenset([
     constants.ANDROID_BUILD_TOP,
     'ANDROID_TARGET_OUT_TESTCASES',
     constants.ANDROID_OUT])
-TEST_RUN_DIR_PREFIX = "%Y%m%d_%H%M"
+TEST_RUN_DIR_PREFIX = "%Y%m%d_%H%M%S"
 CUSTOM_ARG_FLAG = '--'
 OPTION_NOT_FOR_TEST_MAPPING = (
     'Option `%s` does not work for running tests in TEST_MAPPING files')
@@ -157,10 +157,6 @@ def make_test_run_dir():
     ctime = time.strftime(TEST_RUN_DIR_PREFIX, time.localtime())
     test_result_dir = tempfile.mkdtemp(prefix='%s_' % ctime,
                                        dir=constants.ATEST_RESULT_ROOT)
-    symlink = os.path.join(constants.ATEST_RESULT_ROOT, 'LATEST')
-    if os.path.exists(symlink):
-        os.remove(symlink)
-    os.symlink(test_result_dir, symlink)
     return test_result_dir
 
 

@@ -202,6 +202,7 @@ import com.android.tradefed.sandbox.SandboxInvocationRunnerTest;
 import com.android.tradefed.sandbox.TradefedSandboxTest;
 import com.android.tradefed.suite.checker.ActivityStatusCheckerTest;
 import com.android.tradefed.suite.checker.DeviceSettingCheckerTest;
+import com.android.tradefed.suite.checker.DeviceStorageStatusCheckerTest;
 import com.android.tradefed.suite.checker.EnforcedSeLinuxCheckerTest;
 import com.android.tradefed.suite.checker.KeyguardStatusCheckerTest;
 import com.android.tradefed.suite.checker.LeakedThreadStatusCheckerTest;
@@ -248,6 +249,7 @@ import com.android.tradefed.targetprep.multi.MergeMultiBuildTargetPreparerTest;
 import com.android.tradefed.targetprep.multi.MixImageZipPreparerTest;
 import com.android.tradefed.targetprep.suite.SuiteApkInstallerTest;
 import com.android.tradefed.testtype.AndroidJUnitTestTest;
+import com.android.tradefed.testtype.ClangCodeCoverageListenerTest;
 import com.android.tradefed.testtype.DeviceBatteryLevelCheckerTest;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunnerTest;
 import com.android.tradefed.testtype.DeviceSuiteTest;
@@ -372,6 +374,7 @@ import com.android.tradefed.util.TimeValTest;
 import com.android.tradefed.util.VersionParserTest;
 import com.android.tradefed.util.ZipUtil2Test;
 import com.android.tradefed.util.ZipUtilTest;
+import com.android.tradefed.util.executor.ParallelDeviceExecutorTest;
 import com.android.tradefed.util.hostmetric.AbstractHostMonitorTest;
 import com.android.tradefed.util.hostmetric.HeapHostMonitorTest;
 import com.android.tradefed.util.keystore.JSONFileKeyStoreClientTest;
@@ -701,6 +704,7 @@ import org.junit.runners.Suite.SuiteClasses;
     // suite/checker
     ActivityStatusCheckerTest.class,
     DeviceSettingCheckerTest.class,
+    DeviceStorageStatusCheckerTest.class,
     EnforcedSeLinuxCheckerTest.class,
     KeyguardStatusCheckerTest.class,
     LeakedThreadStatusCheckerTest.class,
@@ -712,6 +716,7 @@ import org.junit.runners.Suite.SuiteClasses;
 
     // testtype
     AndroidJUnitTestTest.class,
+    ClangCodeCoverageListenerTest.class,
     CoverageMeasurementForwarderTest.class,
     DeviceBatteryLevelCheckerTest.class,
     DeviceJUnit4ClassRunnerTest.class,
@@ -854,6 +859,9 @@ import org.junit.runners.Suite.SuiteClasses;
     VersionParserTest.class,
     ZipUtilTest.class,
     ZipUtil2Test.class,
+
+    // util/executor
+    ParallelDeviceExecutorTest.class,
 
     // util/hostmetric
     AbstractHostMonitorTest.class,

@@ -42,13 +42,10 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.BugreportCollector;
 import com.android.tradefed.result.CollectingTestListener;
-import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
-import com.android.tradefed.result.LogcatCrashResultForwarder;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.result.ddmlib.DefaultRemoteAndroidTestRunner;
-import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.retry.RetryStrategy;
 import com.android.tradefed.testtype.coverage.CoverageOptions;
@@ -68,7 +65,6 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -311,6 +307,13 @@ public class InstrumentationTest
                     "If set to true, it will not check that a method is only run once by a "
                             + "given instrumentation.")
     private boolean mDisableDuplicateCheck = false;
+
+    @Option(
+            name = "enable-soft-restart-check",
+            description =
+                    "Whether or not to enable checking whether instrumentation crash is due to "
+                            + "a system_server restart.")
+    private boolean mEnableSoftRestartCheck = false;
 
     private IAbi mAbi = null;
 
@@ -1021,52 +1024,16 @@ public class InstrumentationTest
             Collection<TestDescription> expectedTests)
             throws DeviceNotAvailableException {
         CollectingTestListener testTracker = new CollectingTestListener();
-        mDevice.runInstrumentationTests(
-                mRunner,
-                // Use a crash forwarder to get stacks from logcat when crashing.
-                new LogcatCrashResultForwarder(getDevice(), listener, testTracker) {
-                    private Set<TestDescription> mTests = new HashSet<>();
-                    private Set<TestDescription> mDuplicateTests = new HashSet<>();
-
-                    @Override
-                    public void testRunStarted(String runName, int testCount) {
-                        // In case of crash, run will attempt to report with 0
-                        if (testCount == 0 && !expectedTests.isEmpty()) {
-                            CLog.e(
-                                    "Run reported 0 tests while we collected %s",
-                                    expectedTests.size());
-                            super.testRunStarted(runName, expectedTests.size());
-                        } else {
-                            super.testRunStarted(runName, testCount);
-                        }
-                    }
-
-                    @Override
-                    public void testStarted(TestDescription test, long startTime) {
-                        super.testStarted(test, startTime);
-                        if (!mTests.add(test)) {
-                            mDuplicateTests.add(test);
-                        }
-                    }
-
-                    @Override
-                    public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
-                        if (!mDuplicateTests.isEmpty() && !mDisableDuplicateCheck) {
-                            FailureDescription error =
-                                    FailureDescription.create(
-                                            String.format(
-                                                    "The following tests ran more than once: %s. Check "
-                                                            + "your run configuration, you might be "
-                                                            + "including the same test class several "
-                                                            + "times.",
-                                                    mDuplicateTests));
-                            error.setFailureStatus(FailureStatus.TEST_FAILURE);
-                            CLog.e("%s", error);
-                            super.testRunFailed(error);
-                        }
-                        super.testRunEnded(elapsedTime, runMetrics);
-                    }
-                });
+        // Our dedicated listener that allows to perform checks for the harness and collect
+        // the appropriate data.
+        InstrumentationListener instrumentationListener =
+                new InstrumentationListener(getDevice(), expectedTests, listener, testTracker);
+        instrumentationListener.setDisableDuplicateCheck(mDisableDuplicateCheck);
+        if (mEnableSoftRestartCheck) {
+            instrumentationListener.setOriginalSystemServer(
+                    getDevice().getProcessByName("system_server"));
+        }
+        mDevice.runInstrumentationTests(mRunner, instrumentationListener);
         TestRunResult testRun = testTracker.getCurrentRunResults();
         if (testRun.isRunFailure() || !testRun.getCompletedTests().containsAll(expectedTests)) {
             // Don't re-run any completed tests, unless this is a coverage run.

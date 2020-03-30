@@ -330,6 +330,7 @@ public class SuiteModuleLoader {
                                     .addMetadata(
                                             ConfigurationDescriptor.PARAMETER_KEY,
                                             param.getParameterIdentifier());
+                            param.addParameterSpecificConfig(paramConfig);
                             setUpConfig(name, baseId, fullId, paramConfig, abi);
                             param.applySetup(paramConfig);
                             toRun.put(fullId, paramConfig);
@@ -558,6 +559,7 @@ public class SuiteModuleLoader {
     private List<IModuleParameter> getModuleParameters(String moduleName, IConfiguration config)
             throws ConfigurationException {
         List<IModuleParameter> params = new ArrayList<>();
+        Set<String> processedParameterArgs = new HashSet<>();
         // Track family of the parameters to make sure we have no duplicate.
         Map<String, ModuleParameters> duplicateModule = new LinkedHashMap<>();
 
@@ -567,6 +569,10 @@ public class SuiteModuleLoader {
             return params;
         }
         for (String p : parameters) {
+            if (!processedParameterArgs.add(p)) {
+                // Avoid processing the same parameter twice
+                continue;
+            }
             ModuleParameters suiteParam = ModuleParameters.valueOf(p.toUpperCase());
             String family = suiteParam.getFamily();
             if (duplicateModule.containsKey(family)) {
