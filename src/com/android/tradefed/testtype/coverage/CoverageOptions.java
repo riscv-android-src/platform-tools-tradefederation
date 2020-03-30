@@ -43,6 +43,7 @@ public final class CoverageOptions {
     private List<Toolchain> mToolchains = new ArrayList<>();
 
     public enum Toolchain {
+        CLANG,
         GCOV,
         JACOCO;
     }
