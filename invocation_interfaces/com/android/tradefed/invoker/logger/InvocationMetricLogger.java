@@ -36,7 +36,8 @@ public class InvocationMetricLogger {
         STAGE_TESTS_BYTES("stage_tests_bytes", true),
         STAGE_TESTS_INDIVIDUAL_DOWNLOADS("stage_tests_individual_downloads", true),
         SHUTDOWN_HARD_LATENCY("shutdown_hard_latency_ms", false),
-        DEVICE_DONE_TIMESTAMP("device_done_timestamp", false);
+        DEVICE_DONE_TIMESTAMP("device_done_timestamp", false),
+        DEVICE_RELEASE_STATE("device_release_state", false);
 
         private final String mKeyName;
         // Whether or not to add the value when the key is added again.
