@@ -87,6 +87,13 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
 
         cleanUpStagedAndActiveSession(device);
 
+        Set<ApexInfo> activatedApexes = device.getActiveApexes();
+
+        CLog.i("Activated apex packages list before module/train installation:");
+        for (ApexInfo info : activatedApexes) {
+            CLog.i("Activated apex: %s", info.toString());
+        }
+
         List<String> testAppFileNames = getModulesToInstall(testInfo);
         if (testAppFileNames.isEmpty()) {
             CLog.i("No modules are preloaded on the device, so no modules will be installed.");
@@ -114,7 +121,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
             }
         }
 
-        Set<ApexInfo> activatedApexes = device.getActiveApexes();
+        activatedApexes = device.getActiveApexes();
 
         if (activatedApexes.isEmpty()) {
             throw new TargetSetupError(
@@ -122,6 +129,11 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
                             "Failed to retrieve activated apex on device %s. Empty set returned.",
                             device.getSerialNumber()),
                     device.getDeviceDescriptor());
+        } else {
+            CLog.i("Activated apex packages list after module/train installation:");
+            for (ApexInfo info : activatedApexes) {
+                CLog.i("Activated apex: %s", info.toString());
+            }
         }
 
         List<ApexInfo> failToActivateApex = new ArrayList<ApexInfo>();
@@ -133,10 +145,6 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
         }
 
         if (!failToActivateApex.isEmpty()) {
-            CLog.i("Activated apex packages list:");
-            for (ApexInfo info : activatedApexes) {
-                CLog.i("Activated apex: %s", info.toString());
-            }
             throw new TargetSetupError(
                     String.format(
                             "Failed to activate %s on device %s.",
