@@ -35,7 +35,7 @@ if [[ ! -z "$ANDROID_HOST_OUT" ]]; then
           cts-tradefed.jar
           sts-tradefed.jar
           vts-core-tradefed.jar
-          vts-tradefed.jar
+          vts10-tradefed.jar
           csuite-harness.jar
           tradefed-isolation.jar
           host-libprotobuf-java-full.jar
