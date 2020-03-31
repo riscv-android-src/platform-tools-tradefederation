@@ -26,6 +26,7 @@ import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.result.TestDescription;
@@ -34,19 +35,36 @@ import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 
+import com.google.common.io.CharStreams;
+
+import org.easymock.Capture;
 import org.easymock.EasyMock;
+import org.easymock.IAnswer;
+import org.easymock.IArgumentMatcher;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+import static com.android.tradefed.testtype.python.PythonBinaryHostTest.TEST_OUTPUT_FILE_FLAG;
+import static com.android.tradefed.testtype.python.PythonBinaryHostTest.USE_TEST_OUTPUT_FILE_OPTION;
+import static com.google.common.truth.Truth.assertThat;
+import static org.easymock.EasyMock.anyLong;
+import static org.easymock.EasyMock.anyObject;
+import static org.easymock.EasyMock.capture;
+import static org.easymock.EasyMock.eq;
+import static org.easymock.EasyMock.expect;
+
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.HashMap;
 
 /** Unit tests for {@link PythonBinaryHostTest}. */
 @RunWith(JUnit4.class)
-public class PythonBinaryHostTestTest {
+public final class PythonBinaryHostTestTest {
     private PythonBinaryHostTest mTest;
     private IRunUtil mMockRunUtil;
     private IBuildInfo mMockBuildInfo;
@@ -54,13 +72,14 @@ public class PythonBinaryHostTestTest {
     private TestInformation mTestInfo;
     private ITestInvocationListener mMockListener;
     private File mFakeAdb;
+    private File mPythonBinary;
 
     @Before
     public void setUp() throws Exception {
         mFakeAdb = FileUtil.createTempFile("adb-python-tests", "");
         mMockRunUtil = EasyMock.createMock(IRunUtil.class);
         mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
-        mMockListener = EasyMock.createMock(ITestInvocationListener.class);
+        mMockListener = EasyMock.createNiceMock(ITestInvocationListener.class);
         mMockDevice = EasyMock.createMock(ITestDevice.class);
         mTest =
                 new PythonBinaryHostTest() {
@@ -80,11 +99,14 @@ public class PythonBinaryHostTestTest {
         mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("SERIAL");
         mMockRunUtil.setEnvVariable(PythonBinaryHostTest.ANDROID_SERIAL_VAR, "SERIAL");
+
+        mPythonBinary = FileUtil.createTempFile("python-dir", "");
     }
 
     @After
     public void tearDown() throws Exception {
         FileUtil.deleteFile(mFakeAdb);
+        FileUtil.deleteFile(mPythonBinary);
     }
 
     /** Test that when running a python binary the output is parsed to obtain results. */
@@ -369,8 +391,8 @@ public class PythonBinaryHostTestTest {
     }
 
     /**
-     * If the binary reports a FAILED status but the output actually have some tests, it most likely
-     * means that some tests failed. So we simply continue with parsing the results.
+     * If the binary reports a FAILED status but the output actually have some tests, it most *
+     * likely means that some tests failed. So we simply continue with parsing the results.
      */
     @Test
     public void testRunFail_failureOnly() throws Exception {
@@ -406,6 +428,131 @@ public class PythonBinaryHostTestTest {
         }
     }
 
+    @Test
+    public void testRun_useTestOutputFileOptionSet_parsesSubprocessOutputFile() throws Exception {
+        newDefaultOptionSetter(mTest).setOptionValue(USE_TEST_OUTPUT_FILE_OPTION, "true");
+        expectRunThatWritesTestOutputFile(
+                newCommandResult(CommandStatus.SUCCESS, "NOT TEST OUTPUT"),
+                "TEST_RUN_STARTED {\"testCount\": 5, \"runName\": \"TestSuite\"}");
+        mMockListener.testRunStarted(anyObject(), eq(5), eq(0), anyLong());
+        replayAllMocks();
+
+        mTest.run(mTestInfo, mMockListener);
+
+        EasyMock.verify(mMockListener);
+    }
+
+    @Test
+    public void testRun_useTestOutputFileOptionSet_parsesUnitTestOutputFile() throws Exception {
+        newDefaultOptionSetter(mTest).setOptionValue(USE_TEST_OUTPUT_FILE_OPTION, "true");
+        expectRunThatWritesTestOutputFile(
+                newCommandResult(CommandStatus.SUCCESS, "NOT TEST OUTPUT"),
+                "test_1 (__main__.Class1)\n"
+                        + "run first test. ... ok\n"
+                        + "test_2 (__main__.Class1)\n"
+                        + "run second test. ... ok\n"
+                        + "----------------------------------------------------------------------\n"
+                        + "Ran 2 tests in 1s");
+        mMockListener.testRunStarted(anyObject(), eq(2), eq(0), anyLong());
+        replayAllMocks();
+
+        mTest.run(mTestInfo, mMockListener);
+
+        EasyMock.verify(mMockListener);
+    }
+
+    @Test
+    public void testRun_useTestOutputFileOptionSet_logsErrorOutput() throws Exception {
+        String errorOutput = "NOT TEST OUTPUT";
+        newDefaultOptionSetter(mTest).setOptionValue(USE_TEST_OUTPUT_FILE_OPTION, "true");
+        expectRunThatWritesTestOutputFile(
+                newCommandResult(CommandStatus.SUCCESS, errorOutput),
+                "TEST_RUN_STARTED {\"testCount\": 5, \"runName\": \"TestSuite\"}");
+        mMockListener.testLog(
+                anyObject(), eq(LogDataType.TEXT), inputStreamSourceContainsText(errorOutput));
+        replayAllMocks();
+
+        mTest.run(mTestInfo, mMockListener);
+
+        EasyMock.verify(mMockListener);
+    }
+
+    @Test
+    public void testRun_useTestOutputFileOptionSet_logsTestOutput() throws Exception {
+        String testOutput = "TEST_RUN_STARTED {\"testCount\": 5, \"runName\": \"TestSuite\"}";
+        newDefaultOptionSetter(mTest).setOptionValue(USE_TEST_OUTPUT_FILE_OPTION, "true");
+        expectRunThatWritesTestOutputFile(
+                newCommandResult(CommandStatus.SUCCESS, "NOT TEST OUTPUT"), testOutput);
+        mMockListener.testLog(
+                anyObject(), eq(LogDataType.TEXT), inputStreamSourceContainsText(testOutput));
+        replayAllMocks();
+
+        mTest.run(mTestInfo, mMockListener);
+
+        EasyMock.verify(mMockListener);
+    }
+
+    @Test
+    public void testRun_useTestOutputFileOptionSet_failureMessageContainsHints() throws Exception {
+        newDefaultOptionSetter(mTest).setOptionValue(USE_TEST_OUTPUT_FILE_OPTION, "true");
+        expectRunThatWritesTestOutputFile(
+                newCommandResult(CommandStatus.SUCCESS, "NOT TEST OUTPUT"), "BAD OUTPUT FORMAT");
+        Capture<FailureDescription> description = new Capture<>();
+        mMockListener.testRunFailed(capture(description));
+        replayAllMocks();
+
+        mTest.run(mTestInfo, mMockListener);
+
+        String message = description.getValue().getErrorMessage();
+        EasyMock.verify(mMockListener);
+        assertThat(message).contains("--" + TEST_OUTPUT_FILE_FLAG);
+        assertThat(message).contains("verbosity");
+    }
+
+    private OptionSetter newDefaultOptionSetter(PythonBinaryHostTest test) throws Exception {
+        OptionSetter setter = new OptionSetter(test);
+        setter.setOptionValue("python-binaries", mPythonBinary.getAbsolutePath());
+        return setter;
+    }
+
+    private static CommandResult newCommandResult(CommandStatus status, String stderr) {
+        CommandResult res = new CommandResult();
+        res.setStatus(status);
+        res.setStderr(stderr);
+        return res;
+    }
+
+    private void expectRunThatWritesTestOutputFile(
+            CommandResult result, String testOutputFileContents) {
+        Capture<String> testOutputFilePath = new Capture<>();
+        expect(
+                        mMockRunUtil.runTimedCmd(
+                                anyLong(),
+                                eq(mPythonBinary.getAbsolutePath()),
+                                eq("--test-output-file"),
+                                capture(testOutputFilePath)))
+                .andStubAnswer(
+                        new IAnswer<>() {
+                            @Override
+                            public CommandResult answer() {
+                                try {
+                                    FileUtil.writeToFile(
+                                            testOutputFileContents,
+                                            new File(testOutputFilePath.getValue()));
+                                } catch (IOException ex) {
+                                    throw new RuntimeException(ex);
+                                }
+                                return result;
+                            }
+                        });
+        expect(mMockDevice.getIDevice()).andReturn(new StubDevice("serial"));
+        expectedAdbPath(mFakeAdb);
+    }
+
+    private void replayAllMocks() {
+        EasyMock.replay(mMockRunUtil, mMockBuildInfo, mMockListener, mMockDevice);
+    }
+
     private void expectedAdbPath(File adbPath) {
         CommandResult pathRes = new CommandResult();
         pathRes.setStatus(CommandStatus.SUCCESS);
@@ -426,5 +573,38 @@ public class PythonBinaryHostTestTest {
                         mMockRunUtil.runTimedCmd(
                                 PythonBinaryHostTest.PATH_TIMEOUT_MS, "adb", "version"))
                 .andReturn(versionRes);
+    }
+
+    private static InputStreamSource inputStreamSourceContainsText(String text) {
+        EasyMock.reportMatcher(
+                new IArgumentMatcher() {
+                    @Override
+                    public boolean matches(Object actual) {
+                        if (!(actual instanceof InputStreamSource)) {
+                            return false;
+                        }
+
+                        InputStream is = ((InputStreamSource) actual).createInputStream();
+                        String contents;
+
+                        try {
+                            contents =
+                                    CharStreams.toString(
+                                            new InputStreamReader(is)); // Assumes default charset.
+                        } catch (IOException ex) {
+                            throw new RuntimeException(ex);
+                        }
+
+                        return contents.contains(text);
+                    }
+
+                    @Override
+                    public void appendTo(StringBuffer buffer) {
+                        buffer.append("inputStreamSourceContainsText(\"");
+                        buffer.append(text);
+                        buffer.append("\")");
+                    }
+                });
+        return null;
     }
 }
