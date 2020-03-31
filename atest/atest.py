@@ -562,6 +562,7 @@ def _is_inside_android_root():
 
 # pylint: disable=too-many-statements
 # pylint: disable=too-many-branches
+# pylint: disable=too-many-return-statements
 def main(argv, results_dir):
     """Entry point of atest script.
 
@@ -593,6 +594,10 @@ def main(argv, results_dir):
         return constants.EXIT_CODE_OUTSIDE_ROOT
     if args.help:
         atest_arg_parser.print_epilog_text()
+        return constants.EXIT_CODE_SUCCESS
+    if args.history:
+        atest_execution_info.print_test_result(constants.ATEST_RESULT_ROOT,
+                                               args.history)
         return constants.EXIT_CODE_SUCCESS
     mod_info = module_info.ModuleInfo(force_build=args.rebuild_module_info)
     if args.rebuild_module_info:
