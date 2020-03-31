@@ -1364,7 +1364,13 @@ public class DeviceManager implements IDeviceManager {
                         CLog.d(
                                 "Triggering IMultiDeviceRecovery class %s ...",
                                 m.getClass().getSimpleName());
-                        m.recoverDevices(getDeviceList());
+                        try {
+                            m.recoverDevices(getDeviceList());
+                        } catch (RuntimeException e) {
+                            CLog.e("Exception during %s recovery:", m.getClass().getSimpleName());
+                            CLog.e(e);
+                            // TODO: Log this to the history events.
+                        }
                     }
                 }
             }
