@@ -31,6 +31,7 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.JavaCodeCoverageFlusher;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableList;
 
 import org.jacoco.core.tools.ExecFileLoader;
@@ -48,6 +49,9 @@ final class JavaCodeCoverageListener extends ResultForwarder {
 
     public static final String MERGE_COVERAGE_MEASUREMENTS_TEST_NAME = "mergeCoverageMeasurements";
     public static final String COVERAGE_MEASUREMENT_KEY = "coverageFilePath";
+    public static final String COVERAGE_DIRECTORY = "/data/misc/trace";
+    public static final String FIND_COVERAGE_FILES =
+            String.format("find %s -name '*.ec'", COVERAGE_DIRECTORY);
 
     private final ITestDevice mDevice;
     private final CoverageOptions mCoverageOptions;
@@ -122,8 +126,12 @@ final class JavaCodeCoverageListener extends ResultForwarder {
 
             try {
                 if (mCoverageOptions.isCoverageFlushEnabled()) {
-                    devicePaths.addAll(mFlusher.forceCoverageFlush());
+                    mFlusher.forceCoverageFlush();
                 }
+
+                // Find all .ec files in /data/misc/trace and pull them from the device as well.
+                String fileList = mDevice.executeShellCommand(FIND_COVERAGE_FILES);
+                devicePaths.addAll(Splitter.on('\n').omitEmptyStrings().split(fileList));
 
                 collectAndLogCoverageMeasurementsAsRoot(devicePaths.build());
 
