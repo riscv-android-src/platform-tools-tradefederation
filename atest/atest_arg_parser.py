@@ -41,6 +41,8 @@ COLLECT_TESTS_ONLY = ('Collect a list test cases of the instrumentation tests '
 DISABLE_TEARDOWN = 'Disable test teardown and cleanup.'
 DRY_RUN = 'Dry run atest without building, installing and running tests in real.'
 ENABLE_FILE_PATTERNS = 'Enable FILE_PATTERNS in TEST_MAPPING.'
+HISTORY = ('Show test results in chronological order(with specified number or '
+           'all by default).')
 HOST = ('Run the test completely on the host without a device. '
         '(Note: running a host test that requires a device without '
         '--host will fail.)')
@@ -203,6 +205,11 @@ class AtestArgParser(argparse.ArgumentParser):
                            type=_positive_int, const=10, default=0,
                            metavar='MAX_ITERATIONS', help=RETRY_ANY_FAILURE)
 
+        # Option for test result history.
+        group.add_argument('--history', nargs='?',
+                           type=_positive_int, const=1000, default=0,
+                           help=HISTORY)
+
         # This arg actually doesn't consume anything, it's primarily used for
         # the help description and creating custom_args in the NameSpace object.
         self.add_argument('--', dest='custom_args', nargs='*',
@@ -238,6 +245,7 @@ def print_epilog_text():
                                          DRY_RUN=DRY_RUN,
                                          ENABLE_FILE_PATTERNS=ENABLE_FILE_PATTERNS,
                                          HELP_DESC=HELP_DESC,
+                                         HISTORY=HISTORY,
                                          HOST=HOST,
                                          INCLUDE_SUBDIRS=INCLUDE_SUBDIRS,
                                          INFO=INFO,
@@ -288,6 +296,9 @@ OPTIONS
 
         -D --tf-debug
             {TF_DEBUG}
+
+        --history
+            {HISTORY}
 
         --host
             {HOST}
