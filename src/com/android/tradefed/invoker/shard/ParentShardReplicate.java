@@ -16,6 +16,7 @@
 package com.android.tradefed.invoker.shard;
 
 import com.android.ddmlib.Log.LogLevel;
+import com.android.tradefed.build.StubBuildProvider;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
@@ -56,6 +57,8 @@ public class ParentShardReplicate {
                 String newName = String.format("expanded-%s", i);
                 IDeviceConfiguration newDeviceConfig =
                         deepCopy.getDeviceConfig().get(0).clone(newName);
+                // Stub the build provider since it should never be called
+                newDeviceConfig.addSpecificConfig(new StubBuildProvider());
                 currentConfigs.add(newDeviceConfig);
             }
             config.setDeviceConfigList(currentConfigs);

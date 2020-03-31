@@ -143,4 +143,8 @@ public class BootstrapBuildProvider implements IDeviceBuildProvider {
     ExecutionFiles getInvocationFiles() {
         return CurrentInvocation.getInvocationFiles();
     }
+
+    public final File getTestsDir() {
+        return mTestsDir;
+    }
 }
