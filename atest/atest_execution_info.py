@@ -17,6 +17,7 @@ ATest execution info generator.
 
 from __future__ import print_function
 
+import glob
 import logging
 import json
 import os
@@ -69,6 +70,34 @@ def symlink_latest_result(test_result_dir):
     if os.path.exists(symlink) or os.path.islink(symlink):
         os.remove(symlink)
     os.symlink(test_result_dir, symlink)
+
+
+def print_test_result(root, num):
+    """Make a list of latest n test result.
+
+    Args:
+        root: A string of the test result root path.
+        num: An integer, the number of latest results.
+    """
+    target = '%s/20*_*_*' % root
+    paths = glob.glob(target)
+    paths.sort(reverse=True)
+    print('{:-^22}    {:-^35}    {:-^50}'.format('uuid', 'result', 'command'))
+    for path in paths[0: num+1]:
+        result_path = os.path.join(path, 'test_result')
+        if os.path.isfile(result_path):
+            try:
+                with open(result_path) as json_file:
+                    result = json.load(json_file)
+                    total_summary = result.get(_TOTAL_SUMMARY_KEY, {})
+                    summary_str = ', '.join([k+':'+str(v)
+                                             for k, v in total_summary.items()])
+                    print('{:<22}    {:<35}    {:<50}'
+                          .format(os.path.basename(path),
+                                  summary_str,
+                                  'atest '+result.get(_ARGS_KEY, '')))
+            except ValueError:
+                pass
 
 
 class AtestExecutionInfo(object):
