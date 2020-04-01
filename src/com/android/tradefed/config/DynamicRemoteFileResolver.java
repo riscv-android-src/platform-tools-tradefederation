@@ -192,34 +192,36 @@ public class DynamicRemoteFileResolver {
                         }
                     } else if (value instanceof MultiMap) {
                         MultiMap<Object, Object> m = (MultiMap<Object, Object>) value;
-                        MultiMap<Object, Object> copy = new MultiMap<>(m);
-                        for (Object key : copy.keySet()) {
-                            List<Object> mapValues = copy.get(key);
+                        synchronized (m) {
+                            MultiMap<Object, Object> copy = new MultiMap<>(m);
+                            for (Object key : copy.keySet()) {
+                                List<Object> mapValues = copy.get(key);
 
-                            m.remove(key);
-                            Object finalKey = key;
-                            if (key instanceof File) {
-                                key = resolveRemoteFiles((File) key, option);
-                                if (key != null) {
-                                    downloadedFiles.add((File) key);
-                                    finalKey = key;
-                                }
-                            }
-                            for (Object mapValue : mapValues) {
-                                if (mapValue instanceof File) {
-                                    File f = resolveRemoteFiles((File) mapValue, option);
-                                    if (f != null) {
-                                        downloadedFiles.add(f);
-                                        mapValue = f;
+                                m.remove(key);
+                                Object finalKey = key;
+                                if (key instanceof File) {
+                                    key = resolveRemoteFiles((File) key, option);
+                                    if (key != null) {
+                                        downloadedFiles.add((File) key);
+                                        finalKey = key;
                                     }
                                 }
-                                m.put(finalKey, mapValue);
+                                for (Object mapValue : mapValues) {
+                                    if (mapValue instanceof File) {
+                                        File f = resolveRemoteFiles((File) mapValue, option);
+                                        if (f != null) {
+                                            downloadedFiles.add(f);
+                                            mapValue = f;
+                                        }
+                                    }
+                                    m.put(finalKey, mapValue);
+                                }
                             }
                         }
                     }
                 }
             }
-        } catch (BuildRetrievalError e) {
+        } catch (RuntimeException | BuildRetrievalError e) {
             // Clean up the files before throwing
             for (File f : downloadedFiles) {
                 FileUtil.recursiveDelete(f);
