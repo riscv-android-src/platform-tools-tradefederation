@@ -371,12 +371,16 @@ public class ZipUtil {
      * @param partialZipFile a {@link File} object of the partial zip file that contains central
      *     directory entries.
      * @param endCentralDirInfo a {@link EndCentralDirectoryInfo} object of the zip file.
+     * @param useZip64 a boolean to support zip64 format in partial download.
      * @return A list of {@link CentralDirectoryInfo} of the zip file
      * @throws IOException
      */
     public static List<CentralDirectoryInfo> getZipCentralDirectoryInfos(
-            File partialZipFile, EndCentralDirectoryInfo endCentralDirInfo) throws IOException {
-        return getZipCentralDirectoryInfos(partialZipFile, endCentralDirInfo, 0);
+            File partialZipFile,
+            EndCentralDirectoryInfo endCentralDirInfo,
+            boolean useZip64)
+            throws IOException {
+        return getZipCentralDirectoryInfos(partialZipFile, endCentralDirInfo, 0, useZip64);
     }
 
     /**
@@ -391,7 +395,46 @@ public class ZipUtil {
      * @throws IOException
      */
     public static List<CentralDirectoryInfo> getZipCentralDirectoryInfos(
-            File partialZipFile, EndCentralDirectoryInfo endCentralDirInfo, long offset)
+            File partialZipFile,
+            EndCentralDirectoryInfo endCentralDirInfo,
+            long offset)
+            throws IOException {
+        return getZipCentralDirectoryInfos(partialZipFile, endCentralDirInfo, offset, false);
+    }
+
+    /**
+     * Get a list of {link CentralDirectoryInfo} for files in a zip file.
+     *
+     * @param partialZipFile a {@link File} object of the partial zip file that contains central
+     *     directory entries.
+     * @param endCentralDirInfo a {@link EndCentralDirectoryInfo} object of the zip file.
+     * @return A list of {@link CentralDirectoryInfo} of the zip file
+     * @throws IOException
+     */
+    public static List<CentralDirectoryInfo> getZipCentralDirectoryInfos(
+            File partialZipFile,
+            EndCentralDirectoryInfo endCentralDirInfo)
+            throws IOException {
+        return getZipCentralDirectoryInfos(partialZipFile, endCentralDirInfo, 0, false);
+    }
+
+    /**
+     * Get a list of {link CentralDirectoryInfo} for files in a zip file.
+     *
+     * @param partialZipFile a {@link File} object of the partial zip file that contains central
+     *     directory entries.
+     * @param endCentralDirInfo a {@link EndCentralDirectoryInfo} object of the zip file.
+     * @param offset the offset in the partial zip file where the content of central directory
+     *     entries starts.
+     * @param useZip64 a boolean to support zip64 format in partial download.
+     * @return A list of {@link CentralDirectoryInfo} of the zip file
+     * @throws IOException
+     */
+    public static List<CentralDirectoryInfo> getZipCentralDirectoryInfos(
+            File partialZipFile,
+            EndCentralDirectoryInfo endCentralDirInfo,
+            long offset,
+            boolean useZip64)
             throws IOException {
         List<CentralDirectoryInfo> infos = new ArrayList<>();
         byte[] data;
@@ -405,7 +448,7 @@ public class ZipUtil {
         }
         int startOffset = 0;
         for (int i = 0; i < endCentralDirInfo.getEntryNumber(); i++) {
-            CentralDirectoryInfo info = new CentralDirectoryInfo(data, startOffset);
+            CentralDirectoryInfo info = new CentralDirectoryInfo(data, startOffset, useZip64);
             infos.add(info);
             startOffset += info.getInfoSize();
         }

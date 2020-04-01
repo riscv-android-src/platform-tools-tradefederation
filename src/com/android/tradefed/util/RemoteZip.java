@@ -38,6 +38,28 @@ public class RemoteZip {
     // Last time this object is accessed. The timestamp is used to maintain the cache of RemoteZip
     // objects.
     private long mLastAccess;
+    private boolean mUseZip64;
+
+    /**
+     * Constructor
+     *
+     * @param remoteFilePath the remote path to the file to download.
+     * @param fileSize size of the remote file.
+     * @param downloader a @{link IFileDownloader} used to download a remote file.
+     * @param useZip64 whether to use zip64 format for partial download or not.
+     */
+    public RemoteZip(
+            String remoteFilePath,
+            long fileSize,
+            IFileDownloader downloader,
+            boolean useZip64) {
+        mRemoteFilePath = remoteFilePath;
+        mFileSize = fileSize;
+        mDownloader = downloader;
+        mZipEntries = null;
+        mUseZip64 = useZip64;
+        mLastAccess = System.currentTimeMillis();
+    }
 
     /**
      * Constructor
@@ -47,11 +69,7 @@ public class RemoteZip {
      * @param downloader a @{link IFileDownloader} used to download a remote file.
      */
     public RemoteZip(String remoteFilePath, long fileSize, IFileDownloader downloader) {
-        mRemoteFilePath = remoteFilePath;
-        mFileSize = fileSize;
-        mDownloader = downloader;
-        mZipEntries = null;
-        mLastAccess = System.currentTimeMillis();
+        this(remoteFilePath, fileSize, downloader, false);
     }
 
     /** Get the remote file path of the remote zip artifact. */
@@ -95,7 +113,8 @@ public class RemoteZip {
             }
 
             mDownloader.downloadFile(mRemoteFilePath, partialZipFile, startOffset, size);
-            EndCentralDirectoryInfo endCentralDirInfo = new EndCentralDirectoryInfo(partialZipFile);
+            EndCentralDirectoryInfo endCentralDirInfo =
+                    new EndCentralDirectoryInfo(partialZipFile, mUseZip64);
             partialZipFile.delete();
 
             // Read central directory infos
@@ -105,7 +124,11 @@ public class RemoteZip {
                     endCentralDirInfo.getCentralDirOffset(),
                     endCentralDirInfo.getCentralDirSize());
 
-            mZipEntries = ZipUtil.getZipCentralDirectoryInfos(partialZipFile, endCentralDirInfo);
+            mZipEntries =
+                    ZipUtil.getZipCentralDirectoryInfos(
+                            partialZipFile,
+                            endCentralDirInfo,
+                            mUseZip64);
             return mZipEntries;
         } catch (IOException e) {
             throw new BuildRetrievalError(
