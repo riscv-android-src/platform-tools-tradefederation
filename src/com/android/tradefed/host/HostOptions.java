@@ -65,6 +65,11 @@ public class HostOptions implements IHostOptions {
     )
     private Map<String, File> mJsonServiceAccountMap = new HashMap<>();
 
+    @Option(
+            name = "use-zip64-in-partial-download",
+            description = "Whether to use zip64 format in partial download.")
+    private boolean mUseZip64InPartialDownload = false;
+
     /**
      * {@inheritDoc}
      */
@@ -107,5 +112,11 @@ public class HostOptions implements IHostOptions {
     @Override
     public void validateOptions() throws ConfigurationException {
         // Validation of host options
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean getUseZip64InPartialDownload() {
+        return mUseZip64InPartialDownload;
     }
 }
