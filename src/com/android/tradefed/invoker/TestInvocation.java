@@ -628,12 +628,13 @@ public class TestInvocation implements ITestInvocation {
             RunMode mode) {
         try {
             // Don't resolve for remote invocation, wait until we are inside the remote.
-            if (!RunMode.REMOTE_INVOCATION.equals(mode)) {
-                DynamicRemoteFileResolver resolver = new DynamicRemoteFileResolver();
-                resolver.setDevice(context.getDevices().get(0));
-                resolver.addExtraArgs(config.getCommandOptions().getDynamicDownloadArgs());
-                config.resolveDynamicOptions(resolver);
+            if (RunMode.REMOTE_INVOCATION.equals(mode)) {
+                return true;
             }
+            DynamicRemoteFileResolver resolver = new DynamicRemoteFileResolver();
+            resolver.setDevice(context.getDevices().get(0));
+            resolver.addExtraArgs(config.getCommandOptions().getDynamicDownloadArgs());
+            config.resolveDynamicOptions(resolver);
             return true;
         } catch (RuntimeException | BuildRetrievalError | ConfigurationException e) {
             // In case of build not found issues.

@@ -23,17 +23,25 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import com.android.tradefed.build.BootstrapBuildProvider;
 import com.android.tradefed.build.BuildRetrievalError;
+import com.android.tradefed.build.StubBuildProvider;
 import com.android.tradefed.config.remote.GcsRemoteFileResolver;
 import com.android.tradefed.config.remote.IRemoteFileResolver;
+import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.shard.ParentShardReplicate;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.MultiMap;
+import com.android.tradefed.util.RunUtil;
+import com.android.tradefed.util.executor.ParallelDeviceExecutor;
 
 import org.easymock.EasyMock;
+import org.easymock.IAnswer;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mockito;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -45,6 +53,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
 
 /** Unit tests for {@link DynamicRemoteFileResolver}. */
 @RunWith(JUnit4.class)
@@ -387,6 +397,73 @@ public class DynamicRemoteFileResolverTest {
     }
 
     @Test
+    public void testResolve_remoteMultiMap_concurrent() throws Exception {
+        RemoteFileOption object = new RemoteFileOption();
+        OptionSetter setter = new OptionSetter(object);
+
+        File fake = FileUtil.createTempFile("gs-option-setter-test", "txt");
+        File fake2 = FileUtil.createTempFile("gs-option-setter-test", "txt");
+        File fake3 = FileUtil.createTempFile("gs-option-setter-test", "txt");
+
+        setter.setOptionValue("remote-multi-map", "fake/file", "gs://fake/path");
+        setter.setOptionValue("remote-multi-map", "fake/file", "gs://fake/path2");
+        setter.setOptionValue("remote-multi-map", "fake/file", "gs://fake/path3");
+        assertEquals(1, object.remoteMultiMap.size());
+
+        EasyMock.expect(
+                        mMockResolver.resolveRemoteFiles(
+                                EasyMock.eq(new File("gs:/fake/path")), EasyMock.anyObject()))
+                .andAnswer(
+                        new IAnswer<File>() {
+                            @Override
+                            public File answer() throws Throwable {
+                                RunUtil.getDefault().sleep(1000);
+                                return fake;
+                            }
+                        });
+        EasyMock.expect(
+                        mMockResolver.resolveRemoteFiles(
+                                EasyMock.eq(new File("gs:/fake/path2")), EasyMock.anyObject()))
+                .andReturn(fake2);
+        EasyMock.expect(
+                        mMockResolver.resolveRemoteFiles(
+                                EasyMock.eq(new File("gs:/fake/path3")), EasyMock.anyObject()))
+                .andReturn(fake3);
+        EasyMock.replay(mMockResolver);
+
+        List<Callable<Set<File>>> call = new ArrayList<>();
+        List<ITestDevice> devices = new ArrayList<>();
+        for (int i = 0; i < 5; i++) {
+            OptionSetter setter2 = new OptionSetter(object);
+            Callable<Set<File>> callableTask =
+                    () -> {
+                        return setter2.validateRemoteFilePath(mResolver);
+                    };
+            call.add(callableTask);
+            devices.add(Mockito.mock(ITestDevice.class));
+        }
+        ParallelDeviceExecutor<Set<File>> executor = new ParallelDeviceExecutor<>(devices);
+        List<Set<File>> downloadedFile = null;
+        try {
+            downloadedFile = executor.invokeAll(call, 1, TimeUnit.MINUTES);
+            assertEquals(3, downloadedFile.get(0).size());
+            // The file has been replaced by the downloaded one.
+            assertEquals(1, object.remoteMultiMap.size());
+            assertEquals(3, object.remoteMultiMap.values().size());
+            assertEquals(fake, object.remoteMultiMap.get(new File("fake/file")).get(0));
+            assertEquals(fake2, object.remoteMultiMap.get(new File("fake/file")).get(1));
+            assertEquals(fake3, object.remoteMultiMap.get(new File("fake/file")).get(2));
+        } finally {
+            for (Set<File> set : downloadedFile) {
+                for (File f : set) {
+                    FileUtil.recursiveDelete(f);
+                }
+            }
+        }
+        EasyMock.verify(mMockResolver);
+    }
+
+    @Test
     public void testResolve_withNoGlobalNameSpace() throws Exception {
         RemoteFileOptionWithOptionClass object = new RemoteFileOptionWithOptionClass();
         OptionSetter setter = new OptionSetter(object);
@@ -562,5 +639,97 @@ public class DynamicRemoteFileResolverTest {
         // We want to ensure we were successful in loading resolvers, we need to load at least one
         // since we should always have a few.
         assertThat(listResolver).isNotEmpty();
+    }
+
+    @Test
+    public void testMultiDevices() throws Exception {
+        IConfiguration configuration = new Configuration("test", "test");
+
+        List<IDeviceConfiguration> listConfigs = new ArrayList<>();
+        IDeviceConfiguration holder1 = new DeviceConfigurationHolder("device1");
+        BootstrapBuildProvider provider1 = new BootstrapBuildProvider();
+        OptionSetter setter = new OptionSetter(provider1);
+        setter.setOptionValue("tests-dir", "gs://fake/path");
+        holder1.addSpecificConfig(provider1);
+        listConfigs.add(holder1);
+
+        IDeviceConfiguration holder2 = new DeviceConfigurationHolder("device2");
+        BootstrapBuildProvider provider2 = new BootstrapBuildProvider();
+        OptionSetter setter2 = new OptionSetter(provider2);
+        setter2.setOptionValue("tests-dir", "gs://fake/path");
+        holder2.addSpecificConfig(provider2);
+        listConfigs.add(holder2);
+
+        configuration.setDeviceConfigList(listConfigs);
+
+        File fake = FileUtil.createTempFile("gs-option-setter-test", "txt");
+        File fake2 = FileUtil.createTempFile("gs-option-setter-test", "txt");
+
+        EasyMock.expect(
+                        mMockResolver.resolveRemoteFiles(
+                                EasyMock.eq(new File("gs:/fake/path")), EasyMock.anyObject()))
+                .andReturn(fake);
+        EasyMock.expect(
+                        mMockResolver.resolveRemoteFiles(
+                                EasyMock.eq(new File("gs:/fake/path")), EasyMock.anyObject()))
+                .andReturn(fake2);
+
+        EasyMock.replay(mMockResolver);
+        configuration.resolveDynamicOptions(mResolver);
+        try {
+            assertEquals(fake, provider1.getTestsDir());
+            assertEquals(fake2, provider2.getTestsDir());
+        } finally {
+            configuration.cleanConfigurationData();
+        }
+        EasyMock.verify(mMockResolver);
+    }
+
+    @Test
+    public void testMultiDevices_replicat() throws Exception {
+        IConfiguration configuration =
+                new Configuration("test", "test") {
+                    @Override
+                    protected boolean isRemoteEnvironment() {
+                        return true;
+                    }
+                };
+        configuration.getCommandOptions().setReplicateSetup(true);
+        configuration.getCommandOptions().setShardCount(2);
+        configuration.setCommandLine(
+                new String[] {"tf/bootstrap", "--tests-dir", "gs://fake/path"});
+
+        List<IDeviceConfiguration> listConfigs = new ArrayList<>();
+        IDeviceConfiguration holder1 =
+                new DeviceConfigurationHolder(ConfigurationDef.DEFAULT_DEVICE_NAME);
+        BootstrapBuildProvider provider1 = new BootstrapBuildProvider();
+        OptionSetter setter = new OptionSetter(provider1);
+        setter.setOptionValue("tests-dir", "gs://fake/path");
+        holder1.addSpecificConfig(provider1);
+        listConfigs.add(holder1);
+
+        configuration.setDeviceConfigList(listConfigs);
+
+        assertEquals(1, configuration.getDeviceConfig().size());
+        ParentShardReplicate.replicatedSetup(configuration, null);
+        assertEquals(2, configuration.getDeviceConfig().size());
+
+        assertTrue(
+                configuration.getDeviceConfig().get(1).getBuildProvider()
+                        instanceof StubBuildProvider);
+
+        File fake = FileUtil.createTempFile("gs-option-setter-test", ".txt");
+        EasyMock.expect(
+                        mMockResolver.resolveRemoteFiles(
+                                EasyMock.eq(new File("gs:/fake/path")), EasyMock.anyObject()))
+                .andReturn(fake);
+        EasyMock.replay(mMockResolver);
+        configuration.resolveDynamicOptions(mResolver);
+        try {
+            assertEquals(fake, provider1.getTestsDir());
+        } finally {
+            configuration.cleanConfigurationData();
+        }
+        EasyMock.verify(mMockResolver);
     }
 }
