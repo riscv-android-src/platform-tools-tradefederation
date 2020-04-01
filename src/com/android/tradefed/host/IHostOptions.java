@@ -56,4 +56,7 @@ public interface IHostOptions {
 
     /** Validate that the options set on {@link IHostOptions} are valid. */
     void validateOptions() throws ConfigurationException;
+
+    /** Check if it should use the zip64 format in partial download or not. */
+    boolean getUseZip64InPartialDownload();
 }
