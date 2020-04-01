@@ -25,6 +25,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -48,7 +49,17 @@ public class ParallelDeviceExecutor<V> {
      * @return The list of results for each callable task.
      */
     public List<V> invokeAll(List<Callable<V>> callableTasks, long timeout, TimeUnit unit) {
-        ExecutorService executor = Executors.newFixedThreadPool(mDevices.size());
+        ExecutorService executor =
+                Executors.newFixedThreadPool(
+                        mDevices.size(),
+                        new ThreadFactory() {
+                            @Override
+                            public Thread newThread(Runnable r) {
+                                Thread t = Executors.defaultThreadFactory().newThread(r);
+                                t.setDaemon(true);
+                                return t;
+                            }
+                        });
         List<V> results = new ArrayList<>();
         try {
             List<Future<V>> futures = executor.invokeAll(callableTasks);
