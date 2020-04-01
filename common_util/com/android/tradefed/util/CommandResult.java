@@ -92,4 +92,11 @@ public class CommandResult {
     public void setExitCode(int exitCode) {
         mExitCode = exitCode;
     }
+
+    /** Returns a string representation of this object. Stdout/err can be very large. */
+    @Override
+    public String toString() {
+        return String.format(
+                "CommandResult: exit code=%d, out=%s, err=%s", mExitCode, mStdout, mStderr);
+    }
 }
