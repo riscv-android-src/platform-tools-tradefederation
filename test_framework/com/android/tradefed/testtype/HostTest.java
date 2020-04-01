@@ -184,6 +184,8 @@ public class HostTest
     // when test count is requested.
     private int mNumTestCases = -1;
 
+    private List<File> mJUnit4JarFiles = new ArrayList<>();
+
     private static final String EXCLUDE_NO_TEST_FAILURE = "org.junit.runner.manipulation.Filter";
     private static final String TEST_FULL_NAME_FORMAT = "%s#%s";
 
@@ -354,7 +356,7 @@ public class HostTest
                 }
             } else if (hasJUnit4Annotation(classObj)) {
                 Request req = Request.aClass(classObj);
-                req = req.filterWith(new JUnit4TestFilter(mFilterHelper));
+                req = req.filterWith(new JUnit4TestFilter(mFilterHelper, mJUnit4JarFiles));
                 Runner checkRunner = req.getRunner();
                 // If no tests are remaining after filtering, checkRunner is ErrorReportingRunner.
                 // testCount() for ErrorReportingRunner returns 1, skip this classObj in this case.
@@ -568,11 +570,21 @@ public class HostTest
                     includes.add(String.format(TEST_FULL_NAME_FORMAT, classObj.getName(),
                             mMethodName));
                 }
-
                 // Running in a full JUnit4 manner, no downgrade to JUnit3 {@link Test}
                 Request req = Request.aClass(classObj);
-                req = req.filterWith(new JUnit4TestFilter(mFilterHelper));
-                Runner checkRunner = req.getRunner();
+                Runner checkRunner = null;
+                try {
+                    req = req.filterWith(new JUnit4TestFilter(mFilterHelper, mJUnit4JarFiles));
+                    checkRunner = req.getRunner();
+                } catch (IllegalArgumentException e) {
+                    listener.testRunStarted(classObj.getName(), 0);
+                    FailureDescription failureDescription =
+                            FailureDescription.create(StreamUtil.getStackTrace(e));
+                    failureDescription.setFailureStatus(FailureStatus.TEST_FAILURE);
+                    listener.testRunFailed(failureDescription);
+                    listener.testRunEnded(0L, new HashMap<String, Metric>());
+                    throw e;
+                }
                 runJUnit4Tests(listener, checkRunner, classObj.getName());
             } else {
                 throw new IllegalArgumentException(
@@ -597,7 +609,17 @@ public class HostTest
                 Description desc = (Description) obj;
                 Request req = Request.aClass(desc.getTestClass());
                 Runner checkRunner = req.filterWith(desc).getRunner();
-                runJUnit4Tests(listener, checkRunner, desc.getClassName());
+                try {
+                    runJUnit4Tests(listener, checkRunner, desc.getClassName());
+                } catch (IllegalArgumentException e) {
+                    listener.testRunStarted(desc.getClassName(), 0);
+                    FailureDescription failureDescription =
+                            FailureDescription.create(StreamUtil.getStackTrace(e));
+                    failureDescription.setFailureStatus(FailureStatus.TEST_FAILURE);
+                    listener.testRunFailed(failureDescription);
+                    listener.testRunEnded(0L, new HashMap<String, Metric>());
+                    throw e;
+                }
             } else {
                 throw new IllegalArgumentException(
                         String.format("%s is not a supported test", obj));
@@ -837,7 +859,7 @@ public class HostTest
                             mMethodName));
                 }
 
-                req = req.filterWith(new JUnit4TestFilter(mFilterHelper));
+                req = req.filterWith(new JUnit4TestFilter(mFilterHelper, mJUnit4JarFiles));
                 Runner checkRunner = req.getRunner();
                 Deque<Description> descriptions = new ArrayDeque<>();
                 descriptions.push(checkRunner.getDescription());
@@ -885,6 +907,7 @@ public class HostTest
                 Enumeration<JarEntry> e = jarFile.entries();
                 URL[] urls = {file.toURI().toURL()};
                 URLClassLoader cl = URLClassLoader.newInstance(urls);
+                mJUnit4JarFiles.add(file);
 
                 while (e.hasMoreElements()) {
                     JarEntry je = e.nextElement();
