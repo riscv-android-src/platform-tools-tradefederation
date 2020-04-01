@@ -62,6 +62,7 @@ import java.util.Map;
 public class JarHostTestTest {
 
     private static final String TEST_JAR1 = "/testtype/testJar1.jar";
+    private static final String TEST_JAR2 = "/testtype/testJarJunit4.jar";
     private HostTest mTest;
     private DeviceBuildInfo mStubBuildInfo;
     private TestInformation mTestInfo;
@@ -317,6 +318,36 @@ public class JarHostTestTest {
         mListener.testEnded(
                 EasyMock.eq(tid), EasyMock.eq(TfMetricProtoUtil.upgradeConvert(metrics)));
         mListener.testRunEnded(EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
+        EasyMock.replay(mListener);
+        mTest.run(mTestInfo, mListener);
+        EasyMock.verify(mListener);
+    }
+
+    @Test
+    public void testRunWithJar() throws Exception {
+        File testJar = getJarResource(TEST_JAR2, mTestDir);
+        mTest = new HostTestLoader(mTestDir, testJar);
+        mTest.setBuild(mStubBuildInfo);
+        ITestDevice device = EasyMock.createNiceMock(ITestDevice.class);
+        mTest.setDevice(device);
+        OptionSetter setter = new OptionSetter(mTest);
+        setter.setOptionValue("enable-pretty-logs", "false");
+        setter.setOptionValue("jar", testJar.getName());
+        // full class count without sharding
+        mTest.setTestInformation(mTestInfo);
+        assertEquals(2, mTest.countTestCases());
+
+        mListener.testRunStarted("com.android.tradefed.JUnit4TfUnitTest", 2);
+        TestDescription testOne =
+                new TestDescription("com.android.tradefed.JUnit4TfUnitTest", "testOne");
+        TestDescription testTwo =
+                new TestDescription("com.android.tradefed.JUnit4TfUnitTest", "testTwo");
+        mListener.testStarted(testOne);
+        mListener.testEnded(EasyMock.eq(testOne), EasyMock.<HashMap<String, Metric>>anyObject());
+        mListener.testStarted(testTwo);
+        mListener.testEnded(EasyMock.eq(testTwo), EasyMock.<HashMap<String, Metric>>anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
+
         EasyMock.replay(mListener);
         mTest.run(mTestInfo, mListener);
         EasyMock.verify(mListener);
