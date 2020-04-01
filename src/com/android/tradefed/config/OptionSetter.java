@@ -37,6 +37,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -253,7 +254,7 @@ public class OptionSetter {
      */
     protected class OptionFieldsForName implements Iterable<Map.Entry<Object, Field>> {
 
-        private Map<Object, Field> mSourceFieldMap = new HashMap<Object, Field>();
+        private Map<Object, Field> mSourceFieldMap = new LinkedHashMap<Object, Field>();
 
         void addField(String name, Object source, Field field) throws ConfigurationException {
             if (size() > 0) {
@@ -561,7 +562,7 @@ public class OptionSetter {
     private Map<String, OptionFieldsForName> makeOptionMap() throws ConfigurationException {
         final Map<String, Integer> freqMap = new HashMap<String, Integer>(mOptionSources.size());
         final Map<String, OptionFieldsForName> optionMap =
-                new HashMap<String, OptionFieldsForName>();
+                new LinkedHashMap<String, OptionFieldsForName>();
         for (Object objectSource : mOptionSources) {
             final String className = objectSource.getClass().getName();
 

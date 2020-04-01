@@ -655,6 +655,15 @@ public abstract class GTestBase
     }
 
     /**
+     * Returns the test configuration.
+     *
+     * @return an IConfiguration
+     */
+    protected IConfiguration getConfiguration() {
+        return mConfiguration;
+    }
+
+    /**
      * Returns the {@link CoverageOptions} for this test, if it exists. Otherwise returns a default
      * {@link CoverageOptions} object with all coverage disabled.
      */
