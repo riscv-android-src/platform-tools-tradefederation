@@ -21,11 +21,17 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.targetprep.TargetSetupError;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.json.JSONObject;
+import org.json.JSONArray;
+
+import java.util.Map;
 
 /** Unit tests for {@link GceAvdInfo} */
 @RunWith(JUnit4.class)
@@ -305,5 +311,34 @@ public class GceAvdInfoTest {
         } catch (TargetSetupError e) {
             // expected
         }
+    }
+
+    /** Test CF start time metrics are added. */
+    @Test
+    public void testCfStartTimeMetricsAdded() throws Exception {
+        String cuttlefish =
+                " {\n"
+                        + "    \"command\": \"create_cf\",\n"
+                        + "    \"data\": {\n"
+                        + "      \"devices\": [\n"
+                        + "        {\n"
+                        + "          \"ip\": \"34.71.83.182\",\n"
+                        + "          \"instance_name\": \"ins-cf-x86-phone-userdebug\",\n"
+                        + "          \"fetch_artifact_time\": 63.22,\n"
+                        + "          \"gce_create_time\": 23.5,\n"
+                        + "          \"launch_cvd_time\": 226.5\n"
+                        + "        },\n"
+                        + "      ]\n"
+                        + "    },\n"
+                        + "    \"errors\": [],\n"
+                        + "    \"status\": \"SUCCESS\"\n"
+                        + "  }";
+        JSONObject res = new JSONObject(cuttlefish);
+        JSONArray devices = res.getJSONObject("data").getJSONArray("devices");
+        GceAvdInfo.addCfStartTimeMetrics((JSONObject) devices.get(0));
+        Map<String, String> metrics = InvocationMetricLogger.getInvocationMetrics();
+        assertEquals("63220", metrics.get(InvocationMetricKey.CF_FETCH_ARTIFACT_TIME.toString()));
+        assertEquals("23500", metrics.get(InvocationMetricKey.CF_GCE_CREATE_TIME.toString()));
+        assertEquals("226500", metrics.get(InvocationMetricKey.CF_LAUNCH_CVD_TIME.toString()));
     }
 }
