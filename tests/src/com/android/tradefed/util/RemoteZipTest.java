@@ -110,6 +110,25 @@ public class RemoteZipTest {
         }
     }
 
+    /**
+     * Test get zip entries with use-zip64-in-partial-download is set.
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testGetZipEntriesWithUseZip64() throws Exception {
+        File destDir = null;
+        try {
+            destDir = FileUtil.createTempDir("test");
+            RemoteZip remoteZip = new RemoteZip(REMOTE_FILE, mZipFileSize, mDownloader, true);
+            List<CentralDirectoryInfo> entries = remoteZip.getZipEntries();
+            assertEquals(7, entries.size());
+            assertTrue(mExpectedEntries.containsAll(entries));
+        } finally {
+            FileUtil.recursiveDelete(destDir);
+        }
+    }
+
     @Test
     public void testDownloadFilesFromZip() throws Exception {
         File destDir = null;

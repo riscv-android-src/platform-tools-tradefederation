@@ -16,6 +16,7 @@
 
 package com.android.tradefed.util.zip;
 
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.ByteArrayUtil;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -34,6 +35,7 @@ import java.util.Arrays;
 public final class CentralDirectoryInfo {
 
     private static final byte[] CENTRAL_DIRECTORY_SIGNATURE = {0x50, 0x4b, 0x01, 0x02};
+    private static final byte[] ZIP64_FILE_FIELD_ID = {0x01, 0x00};
 
     private int mCompressionMethod;
     private long mCrc;
@@ -179,6 +181,18 @@ public final class CentralDirectoryInfo {
      * @throws IOException
      */
     public CentralDirectoryInfo(byte[] data, int startOffset) throws IOException {
+        this(data, startOffset, false);
+    }
+
+    /**
+     * Constructor to collect the information of a file entry inside zip file.
+     *
+     * @param data {@code byte[]} of data that contains the information of a file entry.
+     * @param startOffset start offset of the information block.
+     * @param useZip64 a boolean to support zip64 format in partial download.
+     * @throws IOException
+     */
+    public CentralDirectoryInfo(byte[] data, int startOffset, boolean useZip64) throws IOException {
         // Central directory:
         //    Offset   Length   Contents
         //      0      4 bytes  Central file header signature (0x02014b50)
@@ -219,6 +233,31 @@ public final class CentralDirectoryInfo {
         mFileName = ByteArrayUtil.getString(data, startOffset + 46, mFileNameLength);
         mExtraFieldLength = ByteArrayUtil.getInt(data, startOffset + 30, 2);
         mFileCommentLength = ByteArrayUtil.getInt(data, startOffset + 32, 2);
+        if (!useZip64) {
+            return;
+        }
+        // Get the real data while use-zip64-in-partial-download is set and the 3 corresponding
+        // elements match the condition.
+        if (Long.toHexString(mUncompressedSize).equals("ffffffff") ||
+            Long.toHexString(mCompressedSize).equals("ffffffff") ||
+            Long.toHexString(mLocalHeaderOffset).equals("ffffffff")) {
+            CLog.i("Values(compressed/uncompressed size, and relative offset of local header)) in "
+                    + "CentralDirectoryInfo for file name: %s reaches the limitation(0xffffffff), "
+                    + "getting the data from extra field.", mFileName);
+            byte[] zip64FieldId = Arrays.copyOfRange(
+                    data, startOffset + mFileNameLength + 46, startOffset + mFileNameLength + 48);
+            // There should be a ZIP64 Field ID(0x0001) existing here.
+            if (!Arrays.equals(ZIP64_FILE_FIELD_ID, zip64FieldId)) {
+                throw new RuntimeException(String.format("Failed to find ZIP64 field id(0x0001) "
+                        + "from the Central Directory Info for file: %s", mFileName));
+            }
+            mUncompressedSize = ByteArrayUtil.getLong(
+                data, startOffset + mFileNameLength + 50, 8);
+            mCompressedSize = ByteArrayUtil.getLong(
+                data, startOffset + mFileNameLength + 58, 8);
+            mLocalHeaderOffset = ByteArrayUtil.getLong(
+                data, startOffset + mFileNameLength + 66, 8);
+        }
     }
 
     @Override
