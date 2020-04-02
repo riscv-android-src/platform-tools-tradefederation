@@ -36,7 +36,8 @@ public class BatteryRechargeDeviceRecovery extends RunConfigDeviceRecovery {
             return true;
         }
         Integer level = device.getBattery();
-        if (level == null || level >= mMinBattery) {
+        // Skip zero battery since some devices use that as 'no-battery'
+        if (level == null || level == 0 || level >= mMinBattery) {
             return true;
         }
         return false;
