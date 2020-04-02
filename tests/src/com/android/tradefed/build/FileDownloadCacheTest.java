@@ -92,6 +92,18 @@ public class FileDownloadCacheTest {
         EasyMock.verify(mMockDownloader);
     }
 
+    @Test
+    public void testFetchRemoteFile_destFile_nullPath() throws Exception {
+        EasyMock.replay(mMockDownloader);
+        try {
+            assertFetchRemoteFile(null, null, null);
+            fail("Should have thrown an exception.");
+        } catch (BuildRetrievalError expected) {
+            assertEquals("remote path was null.", expected.getMessage());
+        }
+        EasyMock.verify(mMockDownloader);
+    }
+
     /**
      * Test {@link FileDownloadCache#fetchRemoteFile(IFileDownloader, String)} when file can be
      * retrieved from cache.
