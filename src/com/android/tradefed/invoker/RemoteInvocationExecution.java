@@ -30,6 +30,7 @@ import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceSelectionOptions;
+import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.device.cloud.GceAvdInfo;
 import com.android.tradefed.device.cloud.GceManager;
@@ -114,6 +115,21 @@ public class RemoteInvocationExecution extends InvocationExecution {
         testInfo.getContext().addDeviceBuildInfo(deviceName, info);
         updateBuild(info, config);
         return true;
+    }
+
+    @Override
+    protected void customizeDevicePreInvocation(IConfiguration config, IInvocationContext context) {
+        super.customizeDevicePreInvocation(config, context);
+
+        if (config.getCommandOptions().getShardCount() != null
+                && config.getCommandOptions().getShardIndex() == null) {
+            ITestDevice device = context.getDevices().get(0);
+            TestDeviceOptions options = device.getOptions();
+            // Trigger the multi-tenant start in the VM
+            options.addGceDriverParams("--num-avds-per-instance");
+            options.addGceDriverParams(config.getCommandOptions().getShardCount().toString());
+            // TODO: Track how many instances we created
+        }
     }
 
     @Override
