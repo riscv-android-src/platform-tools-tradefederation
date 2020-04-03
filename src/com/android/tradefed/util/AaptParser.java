@@ -48,6 +48,9 @@ public class AaptParser {
 
     private static final Pattern ALT_NATIVE_CODE_PATTERN =
             Pattern.compile("alt-native-code: '(.*)'");
+    private static final Pattern USES_PERMISSION_MANAGE_EXTERNAL_STORAGE_PATTERN =
+            Pattern.compile(
+                    "uses-permission: name='android\\.permission\\.MANAGE_EXTERNAL_STORAGE'");
     private static final int AAPT_TIMEOUT_MS = 60000;
     private static final int INVALID_SDK = -1;
 
@@ -59,6 +62,7 @@ public class AaptParser {
     private int mSdkVersion = INVALID_SDK;
     private int mTargetSdkVersion = 10000;
     private boolean mRequestLegacyStorage = false;
+    private boolean mUsesPermissionManageExternalStorage;
 
     // @VisibleForTesting
     AaptParser() {
@@ -100,6 +104,8 @@ public class AaptParser {
                     }
                 }
             }
+            m = USES_PERMISSION_MANAGE_EXTERNAL_STORAGE_PATTERN.matcher(aaptOut);
+            mUsesPermissionManageExternalStorage = m.find();
             return true;
         }
         CLog.e("Failed to parse package and version info from 'aapt dump badging'. stdout: '%s'",
@@ -208,5 +214,9 @@ public class AaptParser {
      */
     public boolean isRequestingLegacyStorage() {
         return mRequestLegacyStorage;
+    }
+
+    public boolean isUsingPermissionManageExternalStorage() {
+        return mUsesPermissionManageExternalStorage;
     }
 }
