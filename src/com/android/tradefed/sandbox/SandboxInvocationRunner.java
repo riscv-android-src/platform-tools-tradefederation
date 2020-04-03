@@ -18,6 +18,8 @@ package com.android.tradefed.sandbox;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.invoker.TestInformation;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.CommandResult;
@@ -60,6 +62,11 @@ public class SandboxInvocationRunner {
         PrettyPrintDelimiter.printStageDelimiter("Done with Sandbox Environment Setup");
         try {
             CommandResult result = sandbox.run(config, listener);
+            if (result.getExitCode() != null) {
+                // Log the exit code
+                InvocationMetricLogger.addInvocationMetrics(
+                        InvocationMetricKey.SANDBOX_EXIT_CODE, result.getExitCode());
+            }
             if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
                 CLog.e(
                         "Sandbox finished with status: %s and exit code: %s",
