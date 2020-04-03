@@ -330,6 +330,7 @@ public class InvocationExecution implements IInvocationExecution {
     public final void runDevicePreInvocationSetup(
             IInvocationContext context, IConfiguration config, ITestLogger logger)
             throws DeviceNotAvailableException, TargetSetupError {
+        customizeDevicePreInvocation(config, context);
         for (String deviceName : context.getDeviceConfigNames()) {
             ITestDevice device = context.getDevice(deviceName);
 
@@ -344,6 +345,16 @@ public class InvocationExecution implements IInvocationExecution {
                             .filter(buildInfo -> buildInfo.isTestResourceBuild())
                             .collect(Collectors.toList()));
         }
+    }
+
+    /**
+     * Give a chance to customize some of the device before preInvocationSetup.
+     *
+     * @param config The config of the invocation.
+     * @param context The current invocation context.
+     */
+    protected void customizeDevicePreInvocation(IConfiguration config, IInvocationContext context) {
+        // Empty by default
     }
 
     /** {@inheritDoc} */
