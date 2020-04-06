@@ -251,6 +251,7 @@ public class SandboxedInvocationExecutionTest {
                 .saveLogData(any(), any(), any());
 
         CommandResult result = new CommandResult(CommandStatus.SUCCESS);
+        result.setExitCode(0);
         doReturn(result).when(mMockSandbox).run(any(), any());
 
         doReturn(new BuildInfo()).when(mMockProvider).getBuild();
