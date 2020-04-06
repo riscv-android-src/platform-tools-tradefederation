@@ -201,6 +201,8 @@ public class DeviceManagerTest {
 
         EasyMock.expect(mMockIDevice.getSerialNumber()).andStubReturn(DEVICE_SERIAL);
         EasyMock.expect(mMockStateMonitor.getSerialNumber()).andStubReturn(DEVICE_SERIAL);
+        mMockStateMonitor.waitForDeviceBootloaderStateUpdate();
+        EasyMock.expectLastCall().anyTimes();
         EasyMock.expect(mMockIDevice.isEmulator()).andStubReturn(Boolean.FALSE);
         EasyMock.expect(mMockTestDevice.getMacAddress()).andStubReturn(MAC_ADDRESS);
         EasyMock.expect(mMockTestDevice.getSimState()).andStubReturn(SIM_STATE);
