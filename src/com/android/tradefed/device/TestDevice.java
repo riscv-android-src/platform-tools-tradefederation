@@ -1401,9 +1401,12 @@ public class TestDevice extends NativeDevice {
      */
     @Override
     public boolean hasFeature(String feature) throws DeviceNotAvailableException {
-        final String output = executeShellCommand("pm list features");
-        if (output.contains(feature)) {
-            return true;
+        String commandOutput = executeShellCommand("pm list features");
+        for (String line: commandOutput.split("\\s+")) {
+            // Each line in the output of the command has the format "feature:{FEATURE_VALUE}".
+            if (feature.equals(line)) {
+                return true;
+            }
         }
         CLog.w("Feature: %s is not available on %s", feature, getSerialNumber());
         return false;
