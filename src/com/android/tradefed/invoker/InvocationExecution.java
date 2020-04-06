@@ -231,6 +231,7 @@ public class InvocationExecution implements IInvocationExecution {
                         new ParallelDeviceExecutor<>(testInfo.getContext().getDevices());
                 List<Callable<Boolean>> callableTasks = new ArrayList<>();
                 for (String deviceName : testInfo.getContext().getDeviceConfigNames()) {
+                    mTrackTargetPreparers.put(deviceName, new HashSet<>());
                     final int deviceIndex = index;
                     // Replicate TestInfo
                     TestInformation replicated =
