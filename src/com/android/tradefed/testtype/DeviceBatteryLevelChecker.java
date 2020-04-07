@@ -92,6 +92,11 @@ public class DeviceBatteryLevelChecker implements IRemoteTest {
         mTestDevice.executeShellCommand("stop");
     }
 
+    private void startDeviceRuntime() throws DeviceNotAvailableException {
+        mTestDevice.executeShellCommand("start");
+        mTestDevice.waitForDeviceAvailable();
+    }
+
     /** {@inheritDoc} */
     @Override
     public void run(TestInformation testInfo, ITestInvocationListener listener)
@@ -171,6 +176,12 @@ public class DeviceBatteryLevelChecker implements IRemoteTest {
             }
             batteryLevel = newLevel;
         }
+
+        if (mStopRuntime) {
+            // Restart runtime if it was stopped
+            startDeviceRuntime();
+        }
+
         CLog.w("Device %s is now charged to battery level %d; releasing.",
                 mTestDevice.getSerialNumber(), batteryLevel);
     }

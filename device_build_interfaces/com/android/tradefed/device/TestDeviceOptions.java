@@ -593,6 +593,11 @@ public class TestDeviceOptions {
         return mGceDriverParams;
     }
 
+    /** Add a param to the gce driver params. */
+    public void addGceDriverParams(String param) {
+        mGceDriverParams.add(param);
+    }
+
     /** Set the GCE driver parameter that should be paired with the build id from build info */
     public void setGceDriverBuildIdParam(String gceDriverBuildIdParam) {
         mGceDriverBuildIdParam = gceDriverBuildIdParam;
