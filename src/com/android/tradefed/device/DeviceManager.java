@@ -108,7 +108,7 @@ public class DeviceManager implements IDeviceManager {
      *
      * <p>serial2 offline
      */
-    private static final String DEVICE_LIST_PATTERN = ".*\n(%s)\\s+(device|offline).*";
+    private static final String DEVICE_LIST_PATTERN = ".*\n(%s)\\s+(device|offline|recovery).*";
 
     private Semaphore mConcurrentFlashLock = null;
 
