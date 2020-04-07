@@ -59,6 +59,7 @@ import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.MultiFailureDescription;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.retry.BaseRetryDecision;
 import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
@@ -758,7 +759,10 @@ public class ITestSuiteTest {
         // The module that didn't run is reported too.
         mMockListener.testRunStarted(
                 EasyMock.eq("NOT_RUN"), EasyMock.eq(0), EasyMock.eq(0), EasyMock.anyLong());
-        mMockListener.testRunFailed("Module did not run due to device not available.");
+        mMockListener.testRunFailed(
+                FailureDescription.create(
+                        "Module did not run due to device not available.",
+                        FailureStatus.NOT_EXECUTED));
         mMockListener.testRunEnded(0L, new HashMap<String, Metric>());
 
         mMockListener.testModuleEnded();
@@ -1823,7 +1827,8 @@ public class ITestSuiteTest {
         mMockListener.testModuleStarted(EasyMock.anyObject());
         mMockListener.testRunStarted(
                 EasyMock.eq(TEST_CONFIG_NAME), EasyMock.eq(0), EasyMock.eq(0), EasyMock.anyLong());
-        mMockListener.testRunFailed("Injected message");
+        mMockListener.testRunFailed(
+                FailureDescription.create("Injected message", FailureStatus.NOT_EXECUTED));
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         mMockListener.testModuleEnded();
@@ -1850,9 +1855,12 @@ public class ITestSuiteTest {
         mMockListener.testModuleStarted(EasyMock.anyObject());
         mMockListener.testRunStarted(
                 EasyMock.eq("in-progress"), EasyMock.eq(0), EasyMock.eq(0), EasyMock.anyLong());
-        mMockListener.testRunFailed(
-                "Module in-progress was interrupted after starting. Results might not be "
-                        + "accurate or complete.");
+        FailureDescription error =
+                FailureDescription.create(
+                                "Module in-progress was interrupted after starting. Results might not be "
+                                        + "accurate or complete.")
+                        .setFailureStatus(FailureStatus.NOT_EXECUTED);
+        mMockListener.testRunFailed(error);
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         mMockListener.testModuleEnded();
@@ -1860,7 +1868,8 @@ public class ITestSuiteTest {
         mMockListener.testModuleStarted(EasyMock.anyObject());
         mMockListener.testRunStarted(
                 EasyMock.eq(TEST_CONFIG_NAME), EasyMock.eq(0), EasyMock.eq(0), EasyMock.anyLong());
-        mMockListener.testRunFailed("Injected message");
+        mMockListener.testRunFailed(
+                FailureDescription.create("Injected message", FailureStatus.NOT_EXECUTED));
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         mMockListener.testModuleEnded();

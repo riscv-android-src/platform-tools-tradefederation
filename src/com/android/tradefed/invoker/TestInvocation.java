@@ -23,6 +23,7 @@ import com.android.tradefed.command.CommandRunner.ExitCode;
 import com.android.tradefed.command.CommandScheduler;
 import com.android.tradefed.command.ICommandScheduler.IScheduledInvocationListener;
 import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -45,7 +46,6 @@ import com.android.tradefed.invoker.logger.TfObjectTracker;
 import com.android.tradefed.invoker.sandbox.ParentSandboxInvocationExecution;
 import com.android.tradefed.invoker.sandbox.SandboxedInvocationExecution;
 import com.android.tradefed.invoker.shard.LastShardDetector;
-import com.android.tradefed.invoker.shard.ShardBuildCloner;
 import com.android.tradefed.invoker.shard.ShardHelper;
 import com.android.tradefed.log.BaseLeveledLogOutput;
 import com.android.tradefed.log.ILeveledLogOutput;
@@ -61,15 +61,12 @@ import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogSaverResultForwarder;
 import com.android.tradefed.result.ResultAndLogForwarder;
-import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.retry.ResultAggregator;
 import com.android.tradefed.retry.RetryStrategy;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.DeviceFailedToBootError;
 import com.android.tradefed.targetprep.TargetSetupError;
-import com.android.tradefed.testtype.IRemoteTest;
-import com.android.tradefed.testtype.IResumableTest;
 import com.android.tradefed.testtype.SubprocessTfLauncher;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
@@ -77,6 +74,7 @@ import com.android.tradefed.util.PrettyPrintDelimiter;
 import com.android.tradefed.util.RunInterruptedException;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.TimeUtil;
+import com.android.tradefed.util.executor.ParallelDeviceExecutor;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -87,6 +85,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Default implementation of {@link ITestInvocation}.
@@ -152,36 +152,6 @@ public class TestInvocation implements ITestInvocation {
     private List<IScheduledInvocationListener> mSchedulerListeners = new ArrayList<>();
 
     /**
-     * A {@link ResultForwarder} for forwarding resumed invocations.
-     * <p/>
-     * It filters the invocationStarted event for the resumed invocation, and sums the invocation
-     * elapsed time
-     */
-    private static class ResumeResultForwarder extends ResultForwarder {
-
-        long mCurrentElapsedTime;
-
-        /**
-         * @param listeners
-         */
-        public ResumeResultForwarder(List<ITestInvocationListener> listeners,
-                long currentElapsedTime) {
-            super(listeners);
-            mCurrentElapsedTime = currentElapsedTime;
-        }
-
-        @Override
-        public void invocationStarted(IInvocationContext context) {
-            // ignore
-        }
-
-        @Override
-        public void invocationEnded(long newElapsedTime) {
-            super.invocationEnded(mCurrentElapsedTime + newElapsedTime);
-        }
-    }
-
-    /**
      * Display a log message informing the user of a invocation being started.
      *
      * @param context the {@link IInvocationContext}
@@ -224,7 +194,6 @@ public class TestInvocation implements ITestInvocation {
             IConfiguration config,
             TestInformation testInfo,
             IInvocationExecution invocationPath,
-            IRescheduler rescheduler,
             ITestInvocationListener listener,
             boolean devicePreSetupDone)
             throws Throwable {
@@ -287,12 +256,7 @@ public class TestInvocation implements ITestInvocation {
                 // under certain cases it might still be possible to grab a bugreport
                 bugreportName = DEVICE_UNRESPONSIVE_BUGREPORT_NAME;
             }
-            resumed = resume(config, testInfo, rescheduler, System.currentTimeMillis() - startTime);
-            if (!resumed) {
-                reportFailure(e, listener, config, context, invocationPath);
-            } else {
-                CLog.i("Rescheduled failed invocation for resume");
-            }
+            reportFailure(e, listener, config, context, invocationPath);
             // Upon reaching here after an exception, it is safe to assume that recovery
             // has already been attempted so we disable it to avoid re-entry during clean up.
             if (badDevice != null) {
@@ -331,13 +295,28 @@ public class TestInvocation implements ITestInvocation {
                 }
             }
             if (bugreportName != null) {
-                if (badDevice == null) {
-                    for (ITestDevice device : context.getDevices()) {
-                        takeBugreport(device, listener, bugreportName);
+                if (context.getDevices().size() == 1 || badDevice != null) {
+                    ITestDevice collectBugreport = badDevice;
+                    if (collectBugreport == null) {
+                        collectBugreport = context.getDevices().get(0);
                     }
-                } else {
                     // If we have identified a faulty device only take the bugreport on it.
-                    takeBugreport(badDevice, listener, bugreportName);
+                    takeBugreport(collectBugreport, listener, bugreportName);
+                } else if (context.getDevices().size() > 1) {
+                    ParallelDeviceExecutor<Boolean> executor =
+                            new ParallelDeviceExecutor<>(context.getDevices());
+                    List<Callable<Boolean>> callableTasks = new ArrayList<>();
+                    final String reportName = bugreportName;
+                    for (ITestDevice device : context.getDevices()) {
+                        Callable<Boolean> callableTask =
+                                () -> {
+                                    takeBugreport(device, listener, reportName);
+                                    return true;
+                                };
+                        callableTasks.add(callableTask);
+                    }
+                    // Capture the bugreports best effort, ignore the results.
+                    executor.invokeAll(callableTasks, 5, TimeUnit.MINUTES);
                 }
             }
             // Save the device executeShellCommand logs
@@ -365,8 +344,14 @@ public class TestInvocation implements ITestInvocation {
             InvocationMetricLogger.addInvocationMetrics(
                     InvocationMetricKey.DEVICE_DONE_TIMESTAMP, System.currentTimeMillis());
             if (config.getCommandOptions().earlyDeviceRelease()) {
+                // Capture the FreeDeviceState of the primary device
                 Map<ITestDevice, FreeDeviceState> devicesStates =
                         CommandScheduler.createReleaseMap(context, exception);
+                if (devicesStates.size() >= 1) {
+                    InvocationMetricLogger.addInvocationMetrics(
+                            InvocationMetricKey.DEVICE_RELEASE_STATE,
+                            devicesStates.values().iterator().next().toString());
+                }
                 for (IScheduledInvocationListener scheduleListener : mSchedulerListeners) {
                     scheduleListener.releaseDevices(context, devicesStates);
                 }
@@ -417,7 +402,6 @@ public class TestInvocation implements ITestInvocation {
             } finally {
                 TfObjectTracker.clearTracking();
                 CurrentInvocation.clearInvocationInfos();
-                invocationPath.cleanUpBuilds(context, config);
             }
         }
         if (tearDownException != null) {
@@ -457,52 +441,6 @@ public class TestInvocation implements ITestInvocation {
             ITestInvocationListener listener) {
         logStartInvocation(context, config);
         listener.invocationStarted(context);
-    }
-
-    /**
-     * Attempt to reschedule the failed invocation to resume where it left off.
-     *
-     * <p>
-     *
-     * @see IResumableTest
-     * @param config
-     * @return <code>true</code> if invocation was resumed successfully
-     */
-    private boolean resume(
-            IConfiguration config,
-            TestInformation testInfo,
-            IRescheduler rescheduler,
-            long elapsedTime) {
-        IInvocationContext context = testInfo.getContext();
-        for (IRemoteTest test : config.getTests()) {
-            if (test instanceof IResumableTest) {
-                IResumableTest resumeTest = (IResumableTest)test;
-                if (resumeTest.isResumable()) {
-                    // resume this config if any test is resumable
-                    IConfiguration resumeConfig = config.clone();
-                    // reuse the same build for the resumed invocation
-                    ShardBuildCloner.cloneBuildInfos(resumeConfig, resumeConfig, testInfo);
-
-                    // create a result forwarder, to prevent sending two invocationStarted events
-                    resumeConfig.setTestInvocationListener(new ResumeResultForwarder(
-                            config.getTestInvocationListeners(), elapsedTime));
-                    resumeConfig.setLogOutput(config.getLogOutput().clone());
-                    resumeConfig.setCommandOptions(config.getCommandOptions().clone());
-                    boolean canReschedule = rescheduler.scheduleConfig(resumeConfig);
-                    if (!canReschedule) {
-                        CLog.i("Cannot reschedule resumed config for build. Cleaning up build.");
-                        for (String deviceName : context.getDeviceConfigNames()) {
-                            resumeConfig.getDeviceConfigByName(deviceName).getBuildProvider()
-                                    .cleanUp(context.getBuildInfo(deviceName));
-                        }
-                    }
-                    // FIXME: is it a bug to return from here, when we may not have completed the
-                    // FIXME: config.getTests iteration?
-                    return canReschedule;
-                }
-            }
-        }
-        return false;
     }
 
     private void reportFailure(
@@ -669,7 +607,8 @@ public class TestInvocation implements ITestInvocation {
     }
 
     /**
-     * Invoke {@link IConfiguration#resolveDynamicOptions()} to resolve the dynamic files.
+     * Invoke {@link IConfiguration#resolveDynamicOptions(DynamicRemoteFileResolver)} to resolve the
+     * dynamic files.
      *
      * @param context the {@link IInvocationContext} of the invocation.
      * @param config the {@link IConfiguration} of this test run.
@@ -689,9 +628,13 @@ public class TestInvocation implements ITestInvocation {
             RunMode mode) {
         try {
             // Don't resolve for remote invocation, wait until we are inside the remote.
-            if (!RunMode.REMOTE_INVOCATION.equals(mode)) {
-                config.resolveDynamicOptions();
+            if (RunMode.REMOTE_INVOCATION.equals(mode)) {
+                return true;
             }
+            DynamicRemoteFileResolver resolver = new DynamicRemoteFileResolver();
+            resolver.setDevice(context.getDevices().get(0));
+            resolver.addExtraArgs(config.getCommandOptions().getDynamicDownloadArgs());
+            config.resolveDynamicOptions(resolver);
             return true;
         } catch (RuntimeException | BuildRetrievalError | ConfigurationException e) {
             // In case of build not found issues.
@@ -892,7 +835,15 @@ public class TestInvocation implements ITestInvocation {
                     }
                 }
 
-                sharding = invocationPath.shardConfig(config, info, rescheduler, listener);
+                try {
+                    sharding = invocationPath.shardConfig(config, info, rescheduler, listener);
+                } catch (RuntimeException unexpected) {
+                    if (deviceInit) {
+                        // If we did an early setup, do the tear down.
+                        invocationPath.runDevicePostInvocationTearDown(context, config, null);
+                    }
+                    throw unexpected;
+                }
                 if (sharding) {
                     CLog.i(
                             "Invocation for %s has been sharded, rescheduling",
@@ -922,7 +873,7 @@ public class TestInvocation implements ITestInvocation {
                 return;
             }
 
-            performInvocation(config, info, invocationPath, rescheduler, listener, deviceInit);
+            performInvocation(config, info, invocationPath, listener, deviceInit);
             setExitCode(ExitCode.NO_ERROR, null);
         } catch (IOException e) {
             CLog.e(e);
@@ -936,6 +887,10 @@ public class TestInvocation implements ITestInvocation {
                     context.getDevice(deviceName).stopLogcat();
                 }
             }
+            if (!sharding) {
+                // If we are the parent shard, we do not delete the test information
+                deleteInvocationFiles(info, config);
+            }
             // save remaining logs contents to global log
             getLogRegistry().dumpToGlobalLog(config.getLogOutput());
             // Ensure log is unregistered and closed
@@ -944,10 +899,6 @@ public class TestInvocation implements ITestInvocation {
             config.cleanConfigurationData();
 
             Runtime.getRuntime().removeShutdownHook(cleanUpThread);
-            if (!sharding) {
-                // If we are the parent shard, we do not delete the test information
-                deleteInvocationFiles(info, config);
-            }
         }
     }
 
@@ -981,7 +932,7 @@ public class TestInvocation implements ITestInvocation {
     @Override
     public void notifyInvocationStopped(String message) {
         mStopCause = message;
-        if (mStopRequestTime != null) {
+        if (mStopRequestTime == null) {
             mStopRequestTime = System.currentTimeMillis();
         }
     }

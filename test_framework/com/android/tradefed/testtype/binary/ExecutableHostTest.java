@@ -24,10 +24,12 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
@@ -138,15 +140,19 @@ public class ExecutableHostTest extends ExecutableBaseTest {
                             stderrStream,
                             command.toArray(new String[0]));
             if (!CommandStatus.SUCCESS.equals(res.getStatus())) {
+                FailureStatus status = FailureStatus.TEST_FAILURE;
                 // Everything should be outputted in stdout with our redirect above.
                 String errorMessage = FileUtil.readStringFromFile(stdout);
                 if (CommandStatus.TIMED_OUT.equals(res.getStatus())) {
                     errorMessage += "\nTimeout.";
+                    status = FailureStatus.TIMED_OUT;
                 }
                 if (res.getExitCode() != null) {
                     errorMessage += String.format("\nExit Code: %s", res.getExitCode());
                 }
-                listener.testFailed(description, errorMessage);
+                listener.testFailed(
+                        description,
+                        FailureDescription.create(errorMessage).setFailureStatus(status));
             }
         } finally {
             logFile(stdout, listener);

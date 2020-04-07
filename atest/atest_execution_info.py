@@ -17,6 +17,7 @@ ATest execution info generator.
 
 from __future__ import print_function
 
+import glob
 import logging
 import json
 import os
@@ -59,6 +60,65 @@ def preparation_time(start_time):
     return PREPARE_END_TIME - start_time if PREPARE_END_TIME else None
 
 
+def symlink_latest_result(test_result_dir):
+    """Make the symbolic link to latest result.
+
+    Args:
+        test_result_dir: A string of the dir path.
+    """
+    symlink = os.path.join(constants.ATEST_RESULT_ROOT, 'LATEST')
+    if os.path.exists(symlink) or os.path.islink(symlink):
+        os.remove(symlink)
+    os.symlink(test_result_dir, symlink)
+
+
+def print_test_result(root, num):
+    """Make a list of latest n test result.
+
+    Args:
+        root: A string of the test result root path.
+        num: An integer, the number of latest results.
+    """
+    target = '%s/20*_*_*' % root
+    paths = glob.glob(target)
+    paths.sort(reverse=True)
+    print('{:-^22}    {:-^35}    {:-^50}'.format('uuid', 'result', 'command'))
+    for path in paths[0: num+1]:
+        result_path = os.path.join(path, 'test_result')
+        if os.path.isfile(result_path):
+            try:
+                with open(result_path) as json_file:
+                    result = json.load(json_file)
+                    total_summary = result.get(_TOTAL_SUMMARY_KEY, {})
+                    summary_str = ', '.join([k+':'+str(v)
+                                             for k, v in total_summary.items()])
+                    print('{:<22}    {:<35}    {:<50}'
+                          .format(os.path.basename(path),
+                                  summary_str,
+                                  'atest '+result.get(_ARGS_KEY, '')))
+            except ValueError:
+                pass
+
+
+def has_non_test_options(args):
+    """
+    check whether non-test option in the args.
+
+    Args:
+        args: An argspace.Namespace class instance holding parsed args.
+
+    Returns:
+        True, if args has at least one non-test option.
+        False, otherwise.
+    """
+    return (args.collect_tests_only
+            or args.dry_run
+            or args.help
+            or args.history
+            or args.info
+            or args.version)
+
+
 class AtestExecutionInfo(object):
     """Class that stores the whole test progress information in JSON format.
 
@@ -98,12 +158,13 @@ class AtestExecutionInfo(object):
 
     result_reporters = []
 
-    def __init__(self, args, work_dir):
+    def __init__(self, args, work_dir, args_ns):
         """Initialise an AtestExecutionInfo instance.
 
         Args:
             args: Command line parameters.
-            work_dir : The directory for saving information.
+            work_dir: The directory for saving information.
+            args_ns: An argspace.Namespace class instance holding parsed args.
 
         Returns:
                A json format string.
@@ -111,6 +172,7 @@ class AtestExecutionInfo(object):
         self.args = args
         self.work_dir = work_dir
         self.result_file = None
+        self.args_ns = args_ns
 
     def __enter__(self):
         """Create and return information file object."""
@@ -127,6 +189,8 @@ class AtestExecutionInfo(object):
             self.result_file.write(AtestExecutionInfo.
                                    _generate_execution_detail(self.args))
             self.result_file.close()
+            if not has_non_test_options(self.args_ns):
+                symlink_latest_result(self.work_dir)
         main_module = sys.modules.get(_MAIN_MODULE_KEY)
         main_exit_code = getattr(main_module, _EXIT_CODE_ATTR,
                                  constants.EXIT_CODE_ERROR)

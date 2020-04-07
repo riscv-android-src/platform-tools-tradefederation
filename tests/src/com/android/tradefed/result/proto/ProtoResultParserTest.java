@@ -16,6 +16,7 @@
 package com.android.tradefed.result.proto;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.config.ConfigurationDef;
@@ -24,6 +25,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.ActionInProgress;
 import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.LogDataType;
@@ -169,9 +171,25 @@ public class ProtoResultParserTest {
 
         EasyMock.replay(mMockListener);
         // Invocation start
+        mInvocationContext.getBuildInfos().get(0).addBuildAttribute("early_key", "build_value");
+        mInvocationContext.addInvocationAttribute("early_context_key", "context_value");
         mTestParser.invocationStarted(mInvocationContext);
+        mInvocationContext.getBuildInfos().get(0).addBuildAttribute("after_start", "build_value");
+        // Check early context
+        IInvocationContext context = mMainInvocationContext;
+        assertFalse(context.getBuildInfos().get(0).getBuildAttributes().containsKey(TEST_KEY));
+        assertFalse(context.getAttributes().containsKey(CONTEXT_TEST_KEY));
+        assertEquals(
+                "build_value",
+                context.getBuildInfos().get(0).getBuildAttributes().get("early_key"));
+        assertEquals("context_value", context.getAttributes().get("early_context_key").get(0));
+
+        assertFalse(context.getBuildInfos().get(0).getBuildAttributes().containsKey("after_start"));
         // Run modules
         mTestParser.testModuleStarted(createModuleContext("arm64 module1"));
+        assertEquals(
+                "build_value",
+                context.getBuildInfos().get(0).getBuildAttributes().get("after_start"));
         mTestParser.testRunStarted("run1", 2);
 
         mTestParser.testStarted(test1, 5L);
@@ -207,11 +225,17 @@ public class ProtoResultParserTest {
         assertEquals(logFile.getType(), capturedFile.getType());
         assertEquals(logFile.getSize(), capturedFile.getSize());
 
-        // Check Context
-        IInvocationContext context = mMainInvocationContext;
+        // Check Context at the end
         assertEquals(
                 "build_value", context.getBuildInfos().get(0).getBuildAttributes().get(TEST_KEY));
         assertEquals("context_value", context.getAttributes().get(CONTEXT_TEST_KEY).get(0));
+        assertEquals(
+                "build_value",
+                context.getBuildInfos().get(0).getBuildAttributes().get("early_key"));
+        assertEquals("context_value", context.getAttributes().get("early_context_key").get(0));
+        assertEquals(
+                "build_value",
+                context.getBuildInfos().get(0).getBuildAttributes().get("after_start"));
     }
 
     /** Test that a run failure occurring inside a test case pair is handled properly. */
@@ -361,7 +385,9 @@ public class ProtoResultParserTest {
 
         mMockListener.testRunFailed(
                 FailureDescription.create("run failure")
-                        .setFailureStatus(FailureStatus.INFRA_FAILURE));
+                        .setFailureStatus(FailureStatus.INFRA_FAILURE)
+                        .setActionInProgress(ActionInProgress.INSTALL_APK)
+                        .setDebugHelpMessage("help message"));
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
@@ -376,7 +402,9 @@ public class ProtoResultParserTest {
         // test run failed inside a test
         mFinalTestParser.testRunFailed(
                 FailureDescription.create("run failure")
-                        .setFailureStatus(FailureStatus.INFRA_FAILURE));
+                        .setFailureStatus(FailureStatus.INFRA_FAILURE)
+                        .setActionInProgress(ActionInProgress.INSTALL_APK)
+                        .setDebugHelpMessage("help message"));
 
         mFinalTestParser.testEnded(test1, 10L, new HashMap<String, Metric>());
 
@@ -604,6 +632,8 @@ public class ProtoResultParserTest {
         IInvocationContext context = new InvocationContext();
         context.addInvocationAttribute(ModuleDefinition.MODULE_ID, moduleId);
         context.setConfigurationDescriptor(new ConfigurationDescriptor());
+        context.addDeviceBuildInfo(
+                ConfigurationDef.DEFAULT_DEVICE_NAME, mInvocationContext.getBuildInfos().get(0));
         return context;
     }
 }

@@ -21,6 +21,7 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -53,6 +54,7 @@ import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.retry.RetryStatistics;
 import com.android.tradefed.suite.checker.ISystemStatusCheckerReceiver;
@@ -73,8 +75,6 @@ import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import com.google.common.annotations.VisibleForTesting;
 
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -355,7 +355,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         Throwable preparationException = null;
         DeviceNotAvailableException runException = null;
         // Resolve dynamic files except for the IRemotTest ones
-        preparationException = invokeRemoteDynamic(mModuleConfiguration);
+        preparationException = invokeRemoteDynamic(moduleInfo.getDevice(), mModuleConfiguration);
         // Setup
         long prepStartTime = getCurrentTime();
         if (preparationException == null) {
@@ -364,7 +364,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         // Skip multi-preparation if preparation already failed.
         if (preparationException == null) {
             for (IMultiTargetPreparer multiPreparer : mMultiPreparers) {
-                preparationException = runMultiPreparerSetup(multiPreparer, listener);
+                preparationException = runMultiPreparerSetup(multiPreparer, moduleInfo, listener);
                 if (preparationException != null) {
                     mIsFailedModule = true;
                     CLog.e("Some preparation step failed. failing the module %s", getId());
@@ -397,6 +397,10 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                             .setInvocationContext(mModuleInvocationContext);
                 }
                 mInternalTestConfiguration = new Configuration("tmp-download", "tmp-download");
+                mInternalTestConfiguration
+                        .getCommandOptions()
+                        .getDynamicDownloadArgs()
+                        .putAll(mModuleConfiguration.getCommandOptions().getDynamicDownloadArgs());
                 // We do it before the official set, otherwise the IConfiguration will not be the
                 // right one.
                 mInternalTestConfiguration.setTest(test);
@@ -424,7 +428,8 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                                 maxRunLimit);
                 retriableTest.setCollectTestsOnly(mCollectTestsOnly);
                 // Resolve the dynamic options for that one test.
-                preparationException = invokeRemoteDynamic(mInternalTestConfiguration);
+                preparationException =
+                        invokeRemoteDynamic(moduleInfo.getDevice(), mInternalTestConfiguration);
                 if (preparationException != null) {
                     reportSetupFailure(preparationException, listener, moduleLevelListeners);
                     return;
@@ -755,7 +760,8 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     }
 
     /** Run all multi target preparer step. */
-    private Throwable runMultiPreparerSetup(IMultiTargetPreparer preparer, ITestLogger logger) {
+    private Throwable runMultiPreparerSetup(
+            IMultiTargetPreparer preparer, TestInformation moduleInfo, ITestLogger logger) {
         if (preparer.isDisabled()) {
             // If disabled skip completely.
             return null;
@@ -771,7 +777,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 ((IInvocationContextReceiver) preparer)
                         .setInvocationContext(mModuleInvocationContext);
             }
-            preparer.setUp(mModuleInvocationContext);
+            preparer.setUp(moduleInfo);
             return null;
         } catch (BuildError
                 | TargetSetupError
@@ -799,7 +805,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 continue;
             }
             CLog.d("Running teardown multi cleaner: %s", multiCleaner.getClass().getSimpleName());
-            multiCleaner.tearDown(mModuleInvocationContext, exception);
+            multiCleaner.tearDown(moduleInfo, exception);
         }
 
         for (int i = 0; i < mModuleInvocationContext.getDeviceConfigNames().size(); i++) {
@@ -942,7 +948,9 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             listener.testModuleStarted(getModuleInvocationContext());
         }
         listener.testRunStarted(getId(), 0, 0, System.currentTimeMillis());
-        listener.testRunFailed(message);
+        FailureDescription description =
+                FailureDescription.create(message).setFailureStatus(FailureStatus.NOT_EXECUTED);
+        listener.testRunFailed(description);
         listener.testRunEnded(0, new HashMap<String, Metric>());
         listener.testModuleEnded();
     }
@@ -950,6 +958,10 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     /** Whether or not to enable dynamic download at module level. */
     public void setEnableDynamicDownload(boolean enableDynamicDownload) {
         mEnableDynamicDownload = enableDynamicDownload;
+    }
+
+    public void addDynamicDownloadArgs(Map<String, String> extraArgs) {
+        mModuleConfiguration.getCommandOptions().getDynamicDownloadArgs().putAll(extraArgs);
     }
 
     /**
@@ -1018,15 +1030,20 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         return null;
     }
 
-    /** Handle calling the {@link IConfiguration#resolveDynamicOptions()}. */
-    private Exception invokeRemoteDynamic(IConfiguration moduleConfiguration) {
+    /**
+     * Handle calling the {@link IConfiguration#resolveDynamicOptions(DynamicRemoteFileResolver)}.
+     */
+    private Exception invokeRemoteDynamic(ITestDevice device, IConfiguration moduleConfiguration) {
         if (!mEnableDynamicDownload) {
             return null;
         }
         // TODO: Add elapsed time tracking
         try {
             CLog.d("Attempting to resolve dynamic files from %s", getId());
-            moduleConfiguration.resolveDynamicOptions();
+            DynamicRemoteFileResolver resolver = new DynamicRemoteFileResolver();
+            resolver.setDevice(device);
+            resolver.addExtraArgs(moduleConfiguration.getCommandOptions().getDynamicDownloadArgs());
+            moduleConfiguration.resolveDynamicOptions(resolver);
             return null;
         } catch (RuntimeException | ConfigurationException | BuildRetrievalError e) {
             mIsFailedModule = true;
@@ -1051,9 +1068,10 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         // For reporting purpose we create a failure placeholder with the error stack
         // similar to InitializationError of JUnit.
         forwarder.testRunStarted(getId(), 1, 0, System.currentTimeMillis());
-        StringWriter sw = new StringWriter();
-        setupException.printStackTrace(new PrintWriter(sw));
-        forwarder.testRunFailed(sw.toString());
+        FailureDescription failureDescription =
+                FailureDescription.create(StreamUtil.getStackTrace(setupException));
+        failureDescription.setFailureStatus(FailureStatus.TEST_FAILURE);
+        forwarder.testRunFailed(failureDescription);
         HashMap<String, Metric> metricsProto = new HashMap<>();
         metricsProto.put(TEST_TIME, TfMetricProtoUtil.createSingleValue(0L, "milliseconds"));
         forwarder.testRunEnded(0, metricsProto);

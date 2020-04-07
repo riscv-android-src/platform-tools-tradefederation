@@ -22,10 +22,14 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import com.android.tradefed.build.BuildInfo;
+import com.android.tradefed.build.StubBuildProvider;
 import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.config.Configuration;
+import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
+import com.android.tradefed.config.DeviceConfigurationHolder;
+import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -41,6 +45,7 @@ import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.testtype.StubTest;
 import com.android.tradefed.testtype.suite.ITestSuite;
+import com.android.tradefed.util.FileUtil;
 
 import org.easymock.EasyMock;
 import org.junit.Assert;
@@ -51,6 +56,8 @@ import org.junit.runners.JUnit4;
 import org.mockito.ArgumentMatcher;
 import org.mockito.Mockito;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -59,6 +66,11 @@ import java.util.List;
 /** Unit tests for {@link StrictShardHelper}. */
 @RunWith(JUnit4.class)
 public class StrictShardHelperTest {
+
+    private static final String TEST_CONFIG =
+            "<configuration description=\"shard config test\">\n"
+                    + "    <%s class=\"%s\" />\n"
+                    + "</configuration>";
 
     private StrictShardHelper mHelper;
     private IConfiguration mConfig;
@@ -72,7 +84,9 @@ public class StrictShardHelperTest {
         mHelper = new StrictShardHelper();
         mConfig = new Configuration("fake_sharding_config", "desc");
         mContext = new InvocationContext();
-        mContext.addDeviceBuildInfo("default", new BuildInfo());
+        mContext.addAllocatedDevice(
+                ConfigurationDef.DEFAULT_DEVICE_NAME, Mockito.mock(ITestDevice.class));
+        mContext.addDeviceBuildInfo(ConfigurationDef.DEFAULT_DEVICE_NAME, new BuildInfo());
         mTestInfo = TestInformation.newBuilder().setInvocationContext(mContext).build();
         mRescheduler = Mockito.mock(IRescheduler.class);
         mMockLogSaver = Mockito.mock(ILogSaver.class);
@@ -82,28 +96,43 @@ public class StrictShardHelperTest {
     /** Test sharding using Tradefed internal algorithm. */
     @Test
     public void testShardConfig_internal() throws Exception {
-        CommandOptions options = new CommandOptions();
-        OptionSetter setter = new OptionSetter(options);
-        setter.setOptionValue("shard-count", "5");
-        mConfig.setCommandOptions(options);
-        mConfig.setCommandLine(new String[] {"empty"});
-        StubTest test = new StubTest();
-        setter = new OptionSetter(test);
-        setter.setOptionValue("num-shards", "5");
-        mConfig.setTest(test);
-        assertEquals(1, mConfig.getTests().size());
-        assertTrue(mHelper.shardConfig(mConfig, mTestInfo, mRescheduler, null));
-        // Ensure that we did split 1 tests per shard rescheduled.
-        Mockito.verify(mRescheduler, Mockito.times(5))
-                .scheduleConfig(
-                        Mockito.argThat(
-                                new ArgumentMatcher<IConfiguration>() {
-                                    @Override
-                                    public boolean matches(IConfiguration argument) {
-                                        assertEquals(1, argument.getTests().size());
-                                        return true;
-                                    }
-                                }));
+        try {
+            GlobalConfiguration.createGlobalConfiguration(new String[] {"empty"});
+        } catch (IllegalStateException ignore) {
+            // Ignore
+        }
+        File configFile =
+                createTmpConfig(Configuration.BUILD_PROVIDER_TYPE_NAME, new StubBuildProvider());
+        try {
+            DeviceConfigurationHolder holder =
+                    new DeviceConfigurationHolder(ConfigurationDef.DEFAULT_DEVICE_NAME);
+            holder.addSpecificConfig(new StubBuildProvider());
+            mConfig.setDeviceConfig(holder);
+            CommandOptions options = new CommandOptions();
+            OptionSetter setter = new OptionSetter(options);
+            setter.setOptionValue("shard-count", "5");
+            mConfig.setCommandOptions(options);
+            mConfig.setCommandLine(new String[] {configFile.getAbsolutePath()});
+            StubTest test = new StubTest();
+            setter = new OptionSetter(test);
+            setter.setOptionValue("num-shards", "5");
+            mConfig.setTest(test);
+            assertEquals(1, mConfig.getTests().size());
+            assertTrue(mHelper.shardConfig(mConfig, mTestInfo, mRescheduler, null));
+            // Ensure that we did split 1 tests per shard rescheduled.
+            Mockito.verify(mRescheduler, Mockito.times(5))
+                    .scheduleConfig(
+                            Mockito.argThat(
+                                    new ArgumentMatcher<IConfiguration>() {
+                                        @Override
+                                        public boolean matches(IConfiguration argument) {
+                                            assertEquals(1, argument.getTests().size());
+                                            return true;
+                                        }
+                                    }));
+        } finally {
+            FileUtil.deleteFile(configFile);
+        }
     }
 
     /** Test sharding using Tradefed internal algorithm. */
@@ -440,5 +469,12 @@ public class StrictShardHelperTest {
         assertEquals(2, res.get(3).size());
         assertEquals(2, res.get(4).size());
         assertEquals(2, res.get(5).size());
+    }
+
+    private File createTmpConfig(String objType, Object obj) throws IOException {
+        File configFile = FileUtil.createTempFile("shard-helper-test", ".xml");
+        String content = String.format(TEST_CONFIG, objType, obj.getClass().getCanonicalName());
+        FileUtil.writeToFile(content, configFile);
+        return configFile;
     }
 }

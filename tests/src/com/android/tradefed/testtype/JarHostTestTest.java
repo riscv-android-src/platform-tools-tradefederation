@@ -29,12 +29,14 @@ import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner.TestMetrics;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
+import org.easymock.Capture;
 import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Before;
@@ -60,6 +62,7 @@ import java.util.Map;
 public class JarHostTestTest {
 
     private static final String TEST_JAR1 = "/testtype/testJar1.jar";
+    private static final String TEST_JAR2 = "/testtype/testJarJunit4.jar";
     private HostTest mTest;
     private DeviceBuildInfo mStubBuildInfo;
     private TestInformation mTestInfo;
@@ -276,9 +279,8 @@ public class JarHostTestTest {
         mTest.setBuild(new BuildInfo());
 
         mListener.testRunStarted(HostTest.class.getName(), 0);
-        mListener.testRunFailed(
-                "java.io.FileNotFoundException: "
-                        + "Could not find an artifact file associated with thisjardoesnotexistatall.jar");
+        Capture<FailureDescription> captured = new Capture<>();
+        mListener.testRunFailed(EasyMock.capture(captured));
         mListener.testRunEnded(0L, new HashMap<String, Metric>());
 
         EasyMock.replay(mListener);
@@ -289,10 +291,18 @@ public class JarHostTestTest {
             // expected
             assertEquals(
                     "java.io.FileNotFoundException: "
-                            + "Could not find an artifact file associated with thisjardoesnotexistatall.jar",
+                            + "Could not find an artifact file associated with "
+                            + "thisjardoesnotexistatall.jar",
                     expected.getMessage());
         }
         EasyMock.verify(mListener);
+        assertTrue(
+                captured.getValue()
+                        .getErrorMessage()
+                        .contains(
+                                "java.io.FileNotFoundException: "
+                                        + "Could not find an artifact file associated with "
+                                        + "thisjardoesnotexistatall.jar"));
     }
 
     /** Test that metrics from tests in JarHost are reported and accounted for. */
@@ -308,6 +318,36 @@ public class JarHostTestTest {
         mListener.testEnded(
                 EasyMock.eq(tid), EasyMock.eq(TfMetricProtoUtil.upgradeConvert(metrics)));
         mListener.testRunEnded(EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
+        EasyMock.replay(mListener);
+        mTest.run(mTestInfo, mListener);
+        EasyMock.verify(mListener);
+    }
+
+    @Test
+    public void testRunWithJar() throws Exception {
+        File testJar = getJarResource(TEST_JAR2, mTestDir);
+        mTest = new HostTestLoader(mTestDir, testJar);
+        mTest.setBuild(mStubBuildInfo);
+        ITestDevice device = EasyMock.createNiceMock(ITestDevice.class);
+        mTest.setDevice(device);
+        OptionSetter setter = new OptionSetter(mTest);
+        setter.setOptionValue("enable-pretty-logs", "false");
+        setter.setOptionValue("jar", testJar.getName());
+        // full class count without sharding
+        mTest.setTestInformation(mTestInfo);
+        assertEquals(2, mTest.countTestCases());
+
+        mListener.testRunStarted("com.android.tradefed.JUnit4TfUnitTest", 2);
+        TestDescription testOne =
+                new TestDescription("com.android.tradefed.JUnit4TfUnitTest", "testOne");
+        TestDescription testTwo =
+                new TestDescription("com.android.tradefed.JUnit4TfUnitTest", "testTwo");
+        mListener.testStarted(testOne);
+        mListener.testEnded(EasyMock.eq(testOne), EasyMock.<HashMap<String, Metric>>anyObject());
+        mListener.testStarted(testTwo);
+        mListener.testEnded(EasyMock.eq(testTwo), EasyMock.<HashMap<String, Metric>>anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
+
         EasyMock.replay(mListener);
         mTest.run(mTestInfo, mListener);
         EasyMock.verify(mListener);

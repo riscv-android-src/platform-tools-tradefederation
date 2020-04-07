@@ -186,12 +186,12 @@ public class HostGTest extends GTestBase implements IAbiReceiver, IBuildReceiver
             }
         } finally {
             resultParser.flush();
-            for (String cmd : getAfterTestCmd()) {
-                CommandResult result = executeHostCommand(cmd);
-                if (!result.getStatus().equals(CommandStatus.SUCCESS)) {
-                    throw new RuntimeException(
-                            "'After test' command failed: " + result.getStderr());
-                }
+        }
+        // Execute the host command if nothing failed badly before.
+        for (String cmd : getAfterTestCmd()) {
+            CommandResult result = executeHostCommand(cmd);
+            if (!result.getStatus().equals(CommandStatus.SUCCESS)) {
+                throw new RuntimeException("'After test' command failed: " + result.getStderr());
             }
         }
     }

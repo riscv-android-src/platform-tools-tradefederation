@@ -219,6 +219,9 @@ public class NativeDevice implements IManagedTestDevice {
 
     private File mExecuteShellCommandLogs = null;
 
+    private DeviceDescriptor mCachedDeviceDescriptor = null;
+    private final Object mCacheLock = new Object();
+
     /**
      * Interface for a generic device communication attempt.
      */
@@ -441,7 +444,7 @@ public class NativeDevice implements IManagedTestDevice {
      */
     protected String internalGetProperty(String propName, String fastbootVar, String description)
             throws DeviceNotAvailableException, UnsupportedOperationException {
-        String propValue = getIDevice().getProperty(propName);
+        String propValue = getProperty(propName);
         if (propValue != null) {
             return propValue;
         } else if (TestDeviceState.FASTBOOT.equals(getDeviceState()) &&
@@ -470,7 +473,18 @@ public class NativeDevice implements IManagedTestDevice {
             CLog.d("Device %s is not online cannot get property %s.", getSerialNumber(), name);
             return null;
         }
-        return getIDevice().getProperty(name);
+        String cmd = String.format("getprop %s", name);
+        CommandResult result = executeShellV2Command(cmd);
+        if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
+            CLog.e(
+                    "Failed to run '%s' returning null. stdout: %s\nstderr: %s\nexit code: %s",
+                    cmd, result.getStdout(), result.getStderr(), result.getExitCode());
+            return null;
+        }
+        if (result.getStdout() == null || result.getStdout().trim().isEmpty()) {
+            return null;
+        }
+        return result.getStdout().trim();
     }
 
     /** {@inheritDoc} */
@@ -3149,11 +3163,11 @@ public class NativeDevice implements IManagedTestDevice {
                 return;
             }
             if (reason == null) {
-                CLog.i("Rebooting device %s mode: %s", getSerialNumber(), rebootMode);
+                CLog.i("Rebooting device %s mode: %s", getSerialNumber(), rebootMode.name());
             } else {
                 CLog.i(
                         "Rebooting device %s mode: %s reason: %s",
-                        getSerialNumber(), rebootMode, reason);
+                        getSerialNumber(), rebootMode.name(), reason);
             }
             doAdbReboot(rebootMode, reason);
             // Check if device shows as unavailable (as expected after reboot).
@@ -4437,6 +4451,24 @@ public class NativeDevice implements IManagedTestDevice {
         }
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public DeviceDescriptor getCachedDeviceDescriptor() {
+        synchronized (mCacheLock) {
+            if (DeviceAllocationState.Allocated.equals(getAllocationState())) {
+                if (mCachedDeviceDescriptor == null) {
+                    // Create the cache the very first time when it's allocated.
+                    mCachedDeviceDescriptor = getDeviceDescriptor();
+                    return mCachedDeviceDescriptor;
+                }
+                return mCachedDeviceDescriptor;
+            }
+            // If device is not allocated, just return current information
+            mCachedDeviceDescriptor = null;
+            return getDeviceDescriptor();
+        }
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -4637,8 +4669,10 @@ public class NativeDevice implements IManagedTestDevice {
         }
 
         // The system_server process started at or before utcEpochTime, there is no soft-restart
-        if (currSystemServerProcess.getStartTime()
-                <= TimeUnit.SECONDS.convert(utcEpochTime, timeUnit)) {
+        if (Math.abs(
+                        currSystemServerProcess.getStartTime()
+                                - TimeUnit.SECONDS.convert(utcEpochTime, timeUnit))
+                <= 1) {
             return false;
         }
 
@@ -4673,11 +4707,12 @@ public class NativeDevice implements IManagedTestDevice {
                                 currSystemServerProcess.getStartTime()
                                         - prevSystemServerProcess.getStartTime())
                         <= 1) {
-            CLog.e(
-                    "current system_server: %s different from prev system_server: %s",
-                    currSystemServerProcess, prevSystemServerProcess);
             return false;
         }
+
+        CLog.v(
+                "current system_server: %s; prev system_server: %s",
+                currSystemServerProcess, prevSystemServerProcess);
 
         // The system_server process restarted.
         // Check boot history with previous system_server start time.
