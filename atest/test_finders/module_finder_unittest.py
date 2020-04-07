@@ -91,11 +91,11 @@ class ModuleFinderUnittests(unittest.TestCase):
     def test_is_vts_module(self):
         """Test _load_module_info_file regular operation."""
         mod_name = 'mod'
-        is_vts_module_info = {'compatibility_suites': ['vts', 'tests']}
+        is_vts_module_info = {'compatibility_suites': ['vts10', 'tests']}
         self.mod_finder.module_info.get_module_info.return_value = is_vts_module_info
         self.assertTrue(self.mod_finder._is_vts_module(mod_name))
 
-        is_not_vts_module = {'compatibility_suites': ['vts', 'cts']}
+        is_not_vts_module = {'compatibility_suites': ['vts10', 'cts']}
         self.mod_finder.module_info.get_module_info.return_value = is_not_vts_module
         self.assertFalse(self.mod_finder._is_vts_module(mod_name))
 
