@@ -47,7 +47,7 @@ class TestInfo(object):
             test_finder: String of test finder.
             compatibility_suites: A list of compatibility_suites. It's a
                         snippet of compatibility_suites in module_info. e.g.
-                        ["device-tests",  "vts-core"]
+                        ["device-tests",  "vts10"]
         """
         self.test_name = test_name
         self.test_runner = test_runner
