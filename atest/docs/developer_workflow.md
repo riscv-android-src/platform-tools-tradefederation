@@ -123,20 +123,20 @@ Before submitting code you should run all the TradeFed tests.
 
 ## <a name="working-on-the-vts-tradefed-code">Working on the VTS-TradeFed Code</a>
 
-##### Where does the VTS-TradeFed code live?
+##### Where does the VTS10-TradeFed code live?
 
-The VTS-Tradefed code lives here: `test/vts/tools/vts-tradefed/`
+The VTS10-Tradefed code lives here: `test/vts/tools/vts-tradefed/`
 (path relative to android repo root)
 
 ##### Writing tests
 
-You shouldn't need to edit vts-tradefed code, so there is no
-need to write vts-tradefed tests. Reach out to the vts team
+You shouldn't need to edit vts10-tradefed code, so there is no
+need to write vts10 tests. Reach out to the vts team
 if you need information on their unittests.
 
 ##### Running tests
 
-Again, you shouldn't need to change vts-tradefed code.
+Again, you shouldn't need to change vts10-tradefed code.
 
 ## <a name="working-on-the-robolectric-code">Working on the Robolectric Code</a>
 
