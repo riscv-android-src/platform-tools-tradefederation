@@ -106,6 +106,11 @@ public class JUnitXmlParser extends AbstractXmlParser {
             if (FAILURE_TAG.equalsIgnoreCase(name) || ERROR_TAG.equalsIgnoreCase(name)) {
                 // current testcase has a failure - will be extracted in characters() callback
                 mFailureContent = new StringBuffer();
+                String value = attributes.getValue("message");
+                if (value != null) {
+                    mFailureContent.append(value);
+                    mFailureContent.append(". ");
+                }
             }
         }
 

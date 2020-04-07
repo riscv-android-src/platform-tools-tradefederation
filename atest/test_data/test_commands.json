@@ -36,7 +36,7 @@
 "atest_tradefed.sh template/atest_local_min --template:map test=atest --include-filter hello_world_test --log-level WARN --skip-loading-config-jar --logcat-on-failure --no-enable-granular-attempts"
 ], 
 "VtsCodelabHelloWorldTest": [
-"vts-tradefed run commandAndExit vts-staging-default -m VtsCodelabHelloWorldTest --skip-all-system-status-check --skip-preconditions --primary-abi-only"
+"vts10-tradefed run commandAndExit vts-staging-default -m VtsCodelabHelloWorldTest --skip-all-system-status-check --skip-preconditions --primary-abi-only"
 ], 
 "aidegen_unittests": [
 "atest_tradefed.sh template/atest_local_min --template:map test=atest --atest-log-file-path=/tmp/atest_run_1568627341_v33kdA/log --include-filter aidegen_unittests --log-level WARN"

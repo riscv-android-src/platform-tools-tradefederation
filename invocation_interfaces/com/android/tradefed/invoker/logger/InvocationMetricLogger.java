@@ -37,7 +37,11 @@ public class InvocationMetricLogger {
         STAGE_TESTS_INDIVIDUAL_DOWNLOADS("stage_tests_individual_downloads", true),
         SHUTDOWN_HARD_LATENCY("shutdown_hard_latency_ms", false),
         DEVICE_DONE_TIMESTAMP("device_done_timestamp", false),
-        DEVICE_RELEASE_STATE("device_release_state", false);
+        DEVICE_RELEASE_STATE("device_release_state", false),
+        SANDBOX_EXIT_CODE("sandbox_exit_code", false),
+        CF_FETCH_ARTIFACT_TIME("cf_fetch_artifact_time_ms", false),
+        CF_GCE_CREATE_TIME("cf_gce_create_time_ms", false),
+        CF_LAUNCH_CVD_TIME("cf_launch_cvd_time_ms", false);
 
         private final String mKeyName;
         // Whether or not to add the value when the key is added again.

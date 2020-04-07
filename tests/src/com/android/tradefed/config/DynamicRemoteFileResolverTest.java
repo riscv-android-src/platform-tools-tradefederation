@@ -446,7 +446,13 @@ public class DynamicRemoteFileResolverTest {
         List<Set<File>> downloadedFile = null;
         try {
             downloadedFile = executor.invokeAll(call, 1, TimeUnit.MINUTES);
-            assertEquals(3, downloadedFile.get(0).size());
+            boolean oneMustBeNonEmpty = false;
+            for (Set<File> set : downloadedFile) {
+                if (set.size() == 3) {
+                    oneMustBeNonEmpty = true;
+                }
+            }
+            assertTrue(oneMustBeNonEmpty);
             // The file has been replaced by the downloaded one.
             assertEquals(1, object.remoteMultiMap.size());
             assertEquals(3, object.remoteMultiMap.values().size());
