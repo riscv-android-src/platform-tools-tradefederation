@@ -180,6 +180,13 @@ public class BaseTestSuite extends ITestSuite {
     )
     private Set<ModuleParameters> mExcludedModuleParameters = new HashSet<>();
 
+    @Option(
+            name = "fail-on-everything-filtered",
+            description =
+                    "Whether or not to fail the invocation in case test filter returns"
+                            + " an empty result.")
+    private boolean mFailOnEverythingFiltered = false;
+
     private SuiteModuleLoader mModuleRepo;
     private Map<String, List<SuiteTestFilter>> mIncludeFiltersParsed = new HashMap<>();
     private Map<String, List<SuiteTestFilter>> mExcludeFiltersParsed = new HashMap<>();
@@ -285,7 +292,19 @@ public class BaseTestSuite extends ITestSuite {
             // Finally add the full test cases directory in case there is no special sub-dir.
             testsDirectories.add(testsDir);
             // Actual loading of the configurations.
-            return loadingStrategy(abis, testsDirectories, mSuitePrefix, mSuiteTag);
+            LinkedHashMap<String, IConfiguration> loadedTests =
+                    loadingStrategy(abis, testsDirectories, mSuitePrefix, mSuiteTag);
+
+            if (mFailOnEverythingFiltered
+                    && loadedTests.isEmpty()
+                    && !mIncludeFiltersParsed.isEmpty()) {
+                throw new IllegalStateException(
+                        String.format(
+                                "Include filter '%s' was specified"
+                                        + " but resulted in an empty test set.",
+                                includeFilter));
+            }
+            return loadedTests;
         } catch (DeviceNotAvailableException | FileNotFoundException e) {
             throw new RuntimeException(e);
         }
