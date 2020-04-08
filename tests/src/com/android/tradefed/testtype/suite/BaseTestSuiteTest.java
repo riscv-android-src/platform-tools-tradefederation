@@ -309,6 +309,43 @@ public class BaseTestSuiteTest {
         assertTrue(configMap.containsKey("armeabi-v7a suite/stub1"));
     }
 
+    /**
+     * Test for {@link BaseTestSuite#loadTests()} implementation, for configuration with include
+     * filter set to a non-existent test.
+     */
+    @Test
+    public void testLoadTests_emptyFilter() throws Exception {
+        OptionSetter setter = new OptionSetter(mRunner);
+        setter.setOptionValue("include-filter", "Doesntexist");
+        setter.setOptionValue("suite-config-prefix", "suite");
+        setter.setOptionValue("run-suite-tag", "example-suite");
+        LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
+        assertEquals(0, configMap.size());
+    }
+
+    /**
+     * Test for {@link BaseTestSuite#loadTests()} implementation, for configuration with include
+     * filter set to a non-existent test and enabled failure on empty test set.
+     */
+    @Test
+    public void testLoadTests_emptyFilterWithFailOnEmpty() throws Exception {
+        OptionSetter setter = new OptionSetter(mRunner);
+        setter.setOptionValue("include-filter", "Doesntexist");
+        setter.setOptionValue("fail-on-everything-filtered", "true");
+        setter.setOptionValue("suite-config-prefix", "suite");
+        setter.setOptionValue("run-suite-tag", "example-suite");
+        try {
+            mRunner.loadTests();
+            fail("Should have thrown exception");
+        } catch (IllegalStateException ex) {
+            assertEquals(
+                    "Include filter '{arm64-v8a Doesntexist=[Doesntexist], armeabi-v7a "
+                            + "Doesntexist=[Doesntexist]}' was specified but resulted in "
+                            + "an empty test set.",
+                    ex.getMessage());
+        }
+    }
+
     /** Test that when splitting, the instance of the implementation is used. */
     @Test
     public void testSplit() throws Exception {
