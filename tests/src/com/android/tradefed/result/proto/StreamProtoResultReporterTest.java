@@ -123,6 +123,29 @@ public class StreamProtoResultReporterTest {
         assertNull(receiver.getError());
     }
 
+    /** Once the join receiver is done, we don't parse any more events. */
+    @Test
+    public void testStream_stopParsing() throws Exception {
+        StreamProtoReceiver receiver =
+                new StreamProtoReceiver(mMockListener, mMainInvocationContext, true);
+        OptionSetter setter = new OptionSetter(mReporter);
+        try {
+            setter.setOptionValue(
+                    "proto-report-port", Integer.toString(receiver.getSocketServerPort()));
+            // No calls on the mocks
+            EasyMock.replay(mMockListener);
+            // If we join, then we will stop parsing events
+            receiver.joinReceiver(100);
+            mReporter.invocationStarted(mInvocationContext);
+            // Invocation ends
+            mReporter.invocationEnded(500L);
+        } finally {
+            receiver.close();
+        }
+        EasyMock.verify(mMockListener);
+        assertNull(receiver.getError());
+    }
+
     @Test
     public void testStream_noInvocationReporting() throws Exception {
         StreamProtoReceiver receiver =
