@@ -378,6 +378,10 @@ public class TradefedSandbox implements ISandbox {
                 }
                 throw e;
             }
+            // Turn off some of the invocation level options that would be duplicated in the
+            // child sandbox subprocess.
+            config.getCommandOptions().setBugreportOnInvocationEnded(false);
+            config.getCommandOptions().setBugreportzOnInvocationEnded(false);
         } catch (IOException | ConfigurationException e) {
             StreamUtil.close(mEventParser);
             StreamUtil.close(mProtoReceiver);
