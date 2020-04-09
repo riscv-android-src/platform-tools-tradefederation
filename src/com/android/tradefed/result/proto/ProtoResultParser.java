@@ -36,9 +36,11 @@ import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.proto.LogFileProto.LogFileInfo;
 import com.android.tradefed.result.proto.TestRecordProto.ChildReference;
 import com.android.tradefed.result.proto.TestRecordProto.DebugInfo;
+import com.android.tradefed.result.proto.TestRecordProto.DebugInfoContext;
 import com.android.tradefed.result.proto.TestRecordProto.TestRecord;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
 import com.android.tradefed.util.MultiMap;
+import com.android.tradefed.util.SerializationUtil;
 import com.android.tradefed.util.proto.TestRecordProtoUtil;
 
 import com.google.common.base.Splitter;
@@ -274,9 +276,24 @@ public class ProtoResultParser {
         }
 
         if (endInvocationProto.hasDebugInfo()) {
-            // TODO: Re-interpret the exception with proper type.
             String trace = endInvocationProto.getDebugInfo().getTrace();
-            mListener.invocationFailed(new Throwable(trace));
+            Throwable invocationError = new Throwable(trace);
+            if (endInvocationProto.getDebugInfo().hasDebugInfoContext()) {
+                DebugInfoContext failureContext =
+                        endInvocationProto.getDebugInfo().getDebugInfoContext();
+                if (!Strings.isNullOrEmpty(failureContext.getErrorType())) {
+                    try {
+                        invocationError =
+                                (Throwable)
+                                        SerializationUtil.deserialize(
+                                                failureContext.getErrorType());
+                    } catch (IOException e) {
+                        CLog.e("Failed to deserialize the invocation exception:");
+                        CLog.e(e);
+                    }
+                }
+            }
+            mListener.invocationFailed(invocationError);
         }
 
         log("Invocation ended proto");
