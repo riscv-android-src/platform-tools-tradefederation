@@ -106,10 +106,6 @@ public class SandboxConfigDump {
                     // Ensure we get the stdout logging in FileLogger case.
                     ((FileLogger) logger).setLogLevelDisplay(LogLevel.VERBOSE);
                 }
-                // Turn off some of the invocation level options that would be duplicated in the
-                // parent.
-                config.getCommandOptions().setBugreportOnInvocationEnded(false);
-                config.getCommandOptions().setBugreportzOnInvocationEnded(false);
 
                 // Ensure in special conditions (placeholder devices) we can still allocate.
                 secureDeviceAllocation(config);
