@@ -17,6 +17,7 @@ package com.android.tradefed.result.proto;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.config.ConfigurationDef;
@@ -166,7 +167,8 @@ public class ProtoResultParserTest {
         mMockListener.logAssociation(
                 EasyMock.eq("subprocess-invocation_log1"), EasyMock.anyObject());
         // Invocation failure is replayed
-        mMockListener.invocationFailed(EasyMock.anyObject());
+        Capture<Throwable> captureInvocFailure = new Capture<>();
+        mMockListener.invocationFailed(EasyMock.capture(captureInvocFailure));
         mMockListener.invocationEnded(500L);
 
         EasyMock.replay(mMockListener);
@@ -224,6 +226,9 @@ public class ProtoResultParserTest {
         assertEquals(logFile.getUrl(), capturedFile.getUrl());
         assertEquals(logFile.getType(), capturedFile.getType());
         assertEquals(logFile.getSize(), capturedFile.getSize());
+
+        Throwable invocFailureCaptured = captureInvocFailure.getValue();
+        assertTrue(invocFailureCaptured instanceof RuntimeException);
 
         // Check Context at the end
         assertEquals(
