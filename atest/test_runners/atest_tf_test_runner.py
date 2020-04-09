@@ -107,7 +107,7 @@ class AtestTradefedTestRunner(test_runner_base.TestRunnerBase):
         key_path = os.path.join(self.root_dir, ape_api_key)
         if ape_api_key and os.path.exists(key_path):
             logging.debug('Set APE_API_KEY: %s', ape_api_key)
-            os.environ['APE_API_KEY'] = ape_api_key
+            os.environ['APE_API_KEY'] = key_path
         else:
             logging.debug('APE_API_KEY not set, some GTS tests may fail'
                           ' without authentication.')
