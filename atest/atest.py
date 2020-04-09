@@ -602,7 +602,8 @@ def main(argv, results_dir, args):
     mod_info = module_info.ModuleInfo(force_build=args.rebuild_module_info)
     if args.rebuild_module_info:
         _run_extra_tasks(join=True)
-    translator = cli_translator.CLITranslator(module_info=mod_info)
+    translator = cli_translator.CLITranslator(module_info=mod_info,
+                                              print_cache_msg=not args.clear_cache)
     if args.list_modules:
         _print_testable_modules(mod_info, args.list_modules)
         return constants.EXIT_CODE_SUCCESS
