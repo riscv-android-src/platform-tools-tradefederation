@@ -61,14 +61,21 @@ class CLITranslator(object):
         3. If test files found, generate Build Targets and the Run Command.
     """
 
-    def __init__(self, module_info=None):
+    def __init__(self, module_info=None, print_cache_msg=True):
         """CLITranslator constructor
 
         Args:
             module_info: ModuleInfo class that has cached module-info.json.
+            print_cache_msg: Boolean whether printing clear cache message or not.
+                             True will print message while False won't print.
         """
         self.mod_info = module_info
         self.enable_file_patterns = False
+        self.msg = ''
+        if print_cache_msg:
+            self.msg = ('(Test info has been cached for speeding up the next '
+                        'run, if test info need to be updated, please add -c '
+                        'to clean the old cache.)')
 
     # pylint: disable=too-many-locals
     def _find_test_infos(self, test, tm_test_detail):
@@ -136,9 +143,7 @@ class CLITranslator(object):
         # non-test_mapping tests.
         if test_infos and not tm_test_detail:
             atest_utils.update_test_info_cache(test, test_infos)
-            print('Test info has been cached for speeding up the next run, if '
-                  'test info need to be updated, please add -c to clean the '
-                  'old cache.')
+            print(self.msg)
         return test_infos
 
     def _fuzzy_search_and_msg(self, test, find_test_err_msg):
