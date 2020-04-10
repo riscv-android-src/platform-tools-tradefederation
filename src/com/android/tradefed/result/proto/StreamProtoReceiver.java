@@ -189,6 +189,11 @@ public class StreamProtoReceiver implements Closeable {
         return true;
     }
 
+    /** If needed to ensure consistent reporting, complete the events of the module. */
+    public void completeModuleEvents() {
+        mParser.completeModuleEvents();
+    }
+
     private void parse(TestRecord receivedRecord) {
         try {
             TestLevel level = mParser.processNewProto(receivedRecord);

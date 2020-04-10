@@ -169,6 +169,9 @@ public class TradefedSandbox implements ISandbox {
             result.setStderr(
                     String.format("Event receiver thread did not complete.:\n%s", stderrText));
         }
+        if (mProtoReceiver != null) {
+            mProtoReceiver.completeModuleEvents();
+        }
         PrettyPrintDelimiter.printStageDelimiter(
                 String.format(
                         "Execution of the tests occurred in the sandbox, you can find its logs "
