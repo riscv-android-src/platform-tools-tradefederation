@@ -91,11 +91,11 @@ class ModuleFinderUnittests(unittest.TestCase):
     def test_is_vts_module(self):
         """Test _load_module_info_file regular operation."""
         mod_name = 'mod'
-        is_vts_module_info = {'compatibility_suites': ['vts', 'tests']}
+        is_vts_module_info = {'compatibility_suites': ['vts10', 'tests']}
         self.mod_finder.module_info.get_module_info.return_value = is_vts_module_info
         self.assertTrue(self.mod_finder._is_vts_module(mod_name))
 
-        is_not_vts_module = {'compatibility_suites': ['vts', 'cts']}
+        is_not_vts_module = {'compatibility_suites': ['vts10', 'cts']}
         self.mod_finder.module_info.get_module_info.return_value = is_not_vts_module
         self.assertFalse(self.mod_finder._is_vts_module(mod_name))
 
@@ -536,6 +536,16 @@ class ModuleFinderUnittests(unittest.TestCase):
             uc.MODULE_NAME, uc.MODULE2_NAME]
         result = self.mod_finder.get_fuzzy_searching_results(uc.TYPO_MODULE_NAME)
         self.assertEqual(uc.MODULE_NAME, result[0])
+
+    def test_get_build_targets_w_vts_core(self):
+        """Test _get_build_targets."""
+        self.mod_finder.module_info.is_auto_gen_test_config.return_value = True
+        self.mod_finder.module_info.get_paths.return_value = []
+        mod_info = {constants.MODULE_COMPATIBILITY_SUITES:
+                        [constants.VTS_CORE_SUITE]}
+        self.mod_finder.module_info.get_module_info.return_value = mod_info
+        self.assertEqual(self.mod_finder._get_build_targets('', ''),
+                         {constants.VTS_CORE_TF_MODULE})
 
 
 if __name__ == '__main__':

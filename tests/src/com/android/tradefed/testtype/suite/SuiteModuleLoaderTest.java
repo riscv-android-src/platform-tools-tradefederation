@@ -64,6 +64,8 @@ public class SuiteModuleLoaderTest {
     private static final String TEST_INSTANT_CONFIG =
             "<configuration description=\"Runs a stub tests part of some suite\">\n"
                     + "    <option name=\"config-descriptor:metadata\" key=\"parameter\" value=\"instant_app\" />"
+                    // Duplicate parameter should not have impact
+                    + "    <option name=\"config-descriptor:metadata\" key=\"parameter\" value=\"instant_app\" />"
                     + "    <test class=\"com.android.tradefed.testtype.suite.TestSuiteStub\" />\n"
                     + "</configuration>";
 

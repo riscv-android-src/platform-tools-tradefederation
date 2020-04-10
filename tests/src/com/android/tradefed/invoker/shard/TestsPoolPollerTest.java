@@ -37,8 +37,10 @@ import com.android.tradefed.invoker.shard.token.ITokenRequest;
 import com.android.tradefed.log.ILogRegistry;
 import com.android.tradefed.log.ILogRegistry.EventType;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IReportNotExecuted;
 import com.android.tradefed.testtype.StubTest;
@@ -292,7 +294,10 @@ public class TestsPoolPollerTest {
                 .testRunStarted(
                         Mockito.eq("test4"), Mockito.eq(0), Mockito.eq(0), Mockito.anyLong());
         Mockito.verify(mListener, Mockito.times(5))
-                .testRunFailed(IReportNotExecuted.NOT_EXECUTED_FAILURE);
+                .testRunFailed(
+                        FailureDescription.create(
+                                IReportNotExecuted.NOT_EXECUTED_FAILURE,
+                                FailureStatus.NOT_EXECUTED));
         Mockito.verify(mListener, Mockito.times(5))
                 .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
         assertEquals(0, tracker.getCount());

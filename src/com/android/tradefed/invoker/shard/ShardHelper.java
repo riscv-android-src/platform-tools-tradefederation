@@ -20,7 +20,7 @@ import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.ConfigurationException;
-import com.android.tradefed.config.ConfigurationFactory;
+import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IGlobalConfiguration;
@@ -42,7 +42,6 @@ import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IShardableTest;
-import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
 import com.android.tradefed.util.keystore.KeyStoreException;
 
@@ -68,7 +67,10 @@ public class ShardHelper implements IShardHelper {
     static {
         CONFIG_OBJ_TO_CLONE.add(Configuration.SYSTEM_STATUS_CHECKER_TYPE_NAME);
         CONFIG_OBJ_TO_CLONE.add(Configuration.DEVICE_METRICS_COLLECTOR_TYPE_NAME);
-        CONFIG_OBJ_TO_CLONE.add(Configuration.TARGET_PREPARER_TYPE_NAME);
+        // Copy all the objects under the <device> tag from
+        // {@link Configuration#getMultiDeviceSupportedTag()}.
+        CONFIG_OBJ_TO_CLONE.add(Configuration.DEVICE_NAME);
+
         CONFIG_OBJ_TO_CLONE.add(Configuration.MULTI_PREPARER_TYPE_NAME);
         CONFIG_OBJ_TO_CLONE.add(Configuration.CMD_OPTIONS_TYPE_NAME);
         CONFIG_OBJ_TO_CLONE.add(Configuration.LOGGER_TYPE_NAME);
@@ -139,7 +141,7 @@ public class ShardHelper implements IShardHelper {
                     tokenPool = extractTokenTests(shardableTests);
                 }
                 for (int i = 0; i < maxShard; i++) {
-                    IConfiguration shardConfig = config.clone();
+                    IConfiguration shardConfig = cloneConfigObject(config);
                     try {
                         shardConfig.setConfigurationObject(LAST_SHARD_DETECTOR, lastShard);
                     } catch (ConfigurationException e) {
@@ -160,7 +162,7 @@ public class ShardHelper implements IShardHelper {
                 int i = 0;
                 for (IRemoteTest testShard : shardableTests) {
                     CLog.d("Rescheduling sharded config...");
-                    IConfiguration shardConfig = config.clone();
+                    IConfiguration shardConfig = cloneConfigObject(config);
                     try {
                         shardConfig.setConfigurationObject(LAST_SHARD_DETECTOR, lastShard);
                     } catch (ConfigurationException e) {
@@ -195,7 +197,7 @@ public class ShardHelper implements IShardHelper {
             IRescheduler rescheduler,
             ShardMasterResultForwarder resultCollector,
             int index) {
-        cloneConfigObject(config, shardConfig);
+        validateOptions(testInfo, shardConfig);
         ShardBuildCloner.cloneBuildInfos(config, shardConfig, testInfo);
 
         shardConfig.setTestInvocationListeners(
@@ -223,16 +225,22 @@ public class ShardHelper implements IShardHelper {
 
     /** Runs the {@link IConfiguration#validateOptions()} on the config. */
     @VisibleForTesting
-    protected void validateOptions(IConfiguration config)
-            throws ConfigurationException, BuildRetrievalError {
-        config.validateOptions();
-        config.resolveDynamicOptions();
+    protected void validateOptions(TestInformation testInfo, IConfiguration config) {
+        try {
+            config.validateOptions();
+            DynamicRemoteFileResolver resolver = new DynamicRemoteFileResolver();
+            resolver.setDevice(testInfo.getDevice());
+            resolver.addExtraArgs(config.getCommandOptions().getDynamicDownloadArgs());
+            config.resolveDynamicOptions(resolver);
+        } catch (ConfigurationException | BuildRetrievalError e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /**
      * Helper to clone {@link ISystemStatusChecker}s from the original config to the clonedConfig.
      */
-    private void cloneConfigObject(IConfiguration oriConfig, IConfiguration clonedConfig) {
+    private IConfiguration cloneConfigObject(IConfiguration origConfig) {
         IKeyStoreClient client = null;
         try {
             client = getGlobalConfiguration().getKeyStoreFactory().createKeyStoreClient();
@@ -242,26 +250,15 @@ public class ShardHelper implements IShardHelper {
                             "failed to load keystore client when sharding: %s", e.getMessage()),
                     e);
         }
+
         try {
-            IConfiguration deepCopy =
-                    ConfigurationFactory.getInstance()
-                            .createConfigurationFromArgs(
-                                    QuotationAwareTokenizer.tokenizeLine(
-                                            oriConfig.getCommandLine()),
-                                    null,
-                                    client);
-            for (String objType : CONFIG_OBJ_TO_CLONE) {
-                clonedConfig.setConfigurationObjectList(
-                        objType, deepCopy.getConfigurationObjectList(objType));
-            }
+            IConfiguration deepCopy = origConfig.partialDeepClone(CONFIG_OBJ_TO_CLONE, client);
             // Sharding was done, no need for children to look into it.
-            clonedConfig.getCommandOptions().setShardCount(null);
-            clonedConfig
-                    .getConfigurationDescription()
+            deepCopy.getCommandOptions().setShardCount(null);
+            deepCopy.getConfigurationDescription()
                     .addMetadata(ConfigurationDescriptor.LOCAL_SHARDED_KEY, "true");
-            // Validate and download the dynamic options
-            validateOptions(clonedConfig);
-        } catch (ConfigurationException | BuildRetrievalError e) {
+            return deepCopy;
+        } catch (ConfigurationException e) {
             throw new RuntimeException(
                     String.format("failed to deep copy a configuration: %s", e.getMessage()), e);
         }

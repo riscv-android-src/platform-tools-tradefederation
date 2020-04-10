@@ -165,7 +165,7 @@ public class TestDeviceOptions {
             description =
                     "Acloud can take boot-timeout as an arg already, this flag allows to use "
                             + "the Acloud value as a basis instead of the gce-boot-timeout option.")
-    private boolean mAllowGceCmdTimeoutOverride = true;
+    private boolean mAllowGceCmdTimeoutOverride = false;
 
     @Option(name = "gce-driver-path", description = "path of the binary to launch GCE devices")
     private File mAvdDriverBinary = null;
@@ -591,6 +591,11 @@ public class TestDeviceOptions {
     /** Return the additional GCE driver parameters provided via option */
     public List<String> getGceDriverParams() {
         return mGceDriverParams;
+    }
+
+    /** Add a param to the gce driver params. */
+    public void addGceDriverParams(String param) {
+        mGceDriverParams.add(param);
     }
 
     /** Set the GCE driver parameter that should be paired with the build id from build info */

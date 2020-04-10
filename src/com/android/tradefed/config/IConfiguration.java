@@ -263,6 +263,17 @@ public interface IConfiguration {
     public IConfiguration clone();
 
     /**
+     * Create a base clone from {@link #clone()} then deep clone the list of given config object.
+     *
+     * @param objectToDeepClone The list of configuration object to deep clone.
+     * @param client The keystore client.
+     * @return The partially deep cloned config.
+     * @throws ConfigurationException
+     */
+    public IConfiguration partialDeepClone(List<String> objectToDeepClone, IKeyStoreClient client)
+            throws ConfigurationException;
+
+    /**
      * Replace the current {@link IBuildProvider} in the configuration.
      *
      * @param provider the new {@link IBuildProvider}
@@ -502,10 +513,12 @@ public interface IConfiguration {
      * Resolve options of {@link File} pointing to a remote location. This requires {@link
      * #cleanConfigurationData()} to be called to clean up the files.
      *
+     * @param resolver the {@link DynamicRemoteFileResolver} to resolve the files
      * @throws BuildRetrievalError
      * @throws ConfigurationException
      */
-    public void resolveDynamicOptions() throws ConfigurationException, BuildRetrievalError;
+    public void resolveDynamicOptions(DynamicRemoteFileResolver resolver)
+            throws ConfigurationException, BuildRetrievalError;
 
     /** Delete any files that was downloaded to resolved Option fields of remote files. */
     public void cleanConfigurationData();

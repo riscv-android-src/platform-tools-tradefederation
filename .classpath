@@ -42,5 +42,6 @@
 	<classpathentry kind="var" path="TRADEFED_ROOT/out/soong/.intermediates/prebuilts/tools/common/m2/protobuf-java-util-prebuilt-jar/linux_glibc_common/combined/protobuf-java-util-prebuilt-jar.jar"/>
 	<classpathentry kind="var" path="TRADEFED_ROOT/out/soong/.intermediates/platform_testing/libraries/health/runners/longevity/host/longevity-base-lib/linux_glibc_common/javac/longevity-base-lib.jar"/>
 	<classpathentry kind="var" path="TRADEFED_ROOT/out/soong/.intermediates/tools/tradefederation/core/isolation/tradefed-isolation-protos/linux_glibc_common/combined/tradefed-isolation-protos.jar"/>
+	<classpathentry kind="var" path="TRADEFED_ROOT/out/soong/.intermediates/external/perfetto/perfetto_metrics-full/linux_glibc_common/combined/perfetto_metrics-full.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

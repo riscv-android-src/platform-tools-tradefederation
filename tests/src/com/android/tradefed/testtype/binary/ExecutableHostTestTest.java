@@ -34,7 +34,9 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -301,7 +303,58 @@ public class ExecutableHostTestTest {
 
             verify(mMockListener, Mockito.times(1)).testRunStarted(eq(tmpBinary.getName()), eq(1));
             verify(mMockListener, Mockito.times(0)).testRunFailed((String) any());
-            verify(mMockListener, Mockito.times(1)).testFailed(any(), eq("stdout\nExit Code: 5"));
+            verify(mMockListener, Mockito.times(1))
+                    .testFailed(
+                            any(),
+                            eq(
+                                    FailureDescription.create("stdout\nExit Code: 5")
+                                            .setFailureStatus(FailureStatus.TEST_FAILURE)));
+            verify(mMockListener, Mockito.times(1))
+                    .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
+        } finally {
+            FileUtil.recursiveDelete(tmpBinary);
+        }
+    }
+
+    @Test
+    public void testRunHostExecutable_timeout() throws Exception {
+        File tmpBinary = FileUtil.createTempFile("test-executable", "");
+        try {
+            OptionSetter setter = new OptionSetter(mExecutableTest);
+            setter.setOptionValue("binary", tmpBinary.getAbsolutePath());
+
+            CommandResult result = new CommandResult(CommandStatus.TIMED_OUT);
+            result.setExitCode(5);
+            result.setStdout("stdout");
+
+            doAnswer(
+                            new Answer<CommandResult>() {
+
+                                @Override
+                                public CommandResult answer(InvocationOnMock invocation)
+                                        throws Throwable {
+                                    OutputStream outputStream = invocation.getArgument(1);
+                                    outputStream.write("stdout".getBytes());
+                                    return result;
+                                }
+                            })
+                    .when(mMockRunUtil)
+                    .runTimedCmd(
+                            Mockito.anyLong(),
+                            (OutputStream) Mockito.any(),
+                            Mockito.any(),
+                            Mockito.eq(tmpBinary.getAbsolutePath()));
+
+            mExecutableTest.run(mTestInfo, mMockListener);
+
+            verify(mMockListener, Mockito.times(1)).testRunStarted(eq(tmpBinary.getName()), eq(1));
+            verify(mMockListener, Mockito.times(0)).testRunFailed((String) any());
+            verify(mMockListener, Mockito.times(1))
+                    .testFailed(
+                            any(),
+                            eq(
+                                    FailureDescription.create("stdout\nTimeout.\nExit Code: 5")
+                                            .setFailureStatus(FailureStatus.TIMED_OUT)));
             verify(mMockListener, Mockito.times(1))
                     .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
         } finally {

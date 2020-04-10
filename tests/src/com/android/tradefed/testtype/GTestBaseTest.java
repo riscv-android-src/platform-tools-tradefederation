@@ -16,6 +16,7 @@
 package com.android.tradefed.testtype;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -34,6 +35,9 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /** Unit tests for {@link GTestBase}. */
 @RunWith(JUnit4.class)
@@ -188,5 +192,16 @@ public class GTestBaseTest {
         GTestBase gTestBase = new GTestBaseImpl();
         gTestBase.setCollectTestsOnly(true);
         assertNull(gTestBase.split(5));
+    }
+
+    /** GTest should shard and propagate abi information */
+    @Test
+    public void testGTestSharding_abi() throws Exception {
+        IAbi abi = new Abi("arm-v7a", "32");
+        GTestBase gTestBase = new GTestBaseImpl();
+        gTestBase.setAbi(abi);
+        List<IRemoteTest> tests = new ArrayList<>(gTestBase.split(5));
+        assertNotNull(tests);
+        assertNotNull(((GTestBase) tests.get(0)).getAbi());
     }
 }
