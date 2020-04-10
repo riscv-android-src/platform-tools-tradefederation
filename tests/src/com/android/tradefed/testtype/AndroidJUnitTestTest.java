@@ -34,8 +34,10 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLifeCycleReceiver;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.util.FileUtil;
 
 import org.easymock.EasyMock;
@@ -357,7 +359,9 @@ public class AndroidJUnitTestTest {
                 .andThrow(new DeviceNotAvailableException("failed to push", "device1"));
 
         mMockListener.testRunStarted(EasyMock.anyObject(), EasyMock.eq(0));
-        mMockListener.testRunFailed("failed to push");
+        FailureDescription failure = FailureDescription.create("failed to push");
+        failure.setFailureStatus(FailureStatus.INFRA_FAILURE);
+        mMockListener.testRunFailed(failure);
         mMockListener.testRunEnded(0, new HashMap<String, Metric>());
 
         EasyMock.replay(mMockRemoteRunner, mMockTestDevice, mMockListener);

@@ -75,26 +75,26 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         return test_finder_utils.extract_test_from_tests(testable_modules)
 
     def _is_vts_module(self, module_name):
-        """Returns True if the module is a vts module, else False."""
+        """Returns True if the module is a vts10 module, else False."""
         mod_info = self.module_info.get_module_info(module_name)
         suites = []
         if mod_info:
             suites = mod_info.get('compatibility_suites', [])
         # Pull out all *ts (cts, tvts, etc) suites.
         suites = [suite for suite in suites if suite not in _SUITES_TO_IGNORE]
-        return len(suites) == 1 and 'vts' in suites
+        return len(suites) == 1 and 'vts10' in suites
 
     def _update_to_vts_test_info(self, test):
-        """Fill in the fields with vts specific info.
+        """Fill in the fields with vts10 specific info.
 
-        We need to update the runner to use the vts runner and also find the
+        We need to update the runner to use the vts10 runner and also find the
         test specific dependencies.
 
         Args:
-            test: TestInfo to update with vts specific details.
+            test: TestInfo to update with vts10 specific details.
 
         Return:
-            TestInfo that is ready for the vts test runner.
+            TestInfo that is ready for the vts10 test runner.
         """
         test.test_runner = self._VTS_TEST_RUNNER
         config_file = os.path.join(self.root_dir,
@@ -106,7 +106,7 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         # If we're not an absolute custom out dir, get relative out dir path.
         if custom_out_dir is None or not os.path.isabs(custom_out_dir):
             out_dir = os.path.relpath(out_dir, self.root_dir)
-        vts_out_dir = os.path.join(out_dir, 'vts', 'android-vts', 'testcases')
+        vts_out_dir = os.path.join(out_dir, 'vts10', 'android-vts10', 'testcases')
         # Parse dependency of default staging plans.
         xml_paths = test_finder_utils.search_integration_dirs(
             constants.VTS_STAGING_PLAN,
@@ -116,7 +116,7 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         for xml_path in xml_paths:
             vts_xmls |= test_finder_utils.get_plans_from_vts_xml(xml_path)
         for config_file in vts_xmls:
-            # Add in vts test build targets.
+            # Add in vts10 test build targets.
             test.build_targets |= test_finder_utils.get_targets_from_vts_xml(
                 config_file, vts_out_dir, self.module_info)
         test.build_targets.add('vts-test-core')
@@ -139,7 +139,7 @@ class ModuleFinder(test_finder_base.TestFinderBase):
     def _process_test_info(self, test):
         """Process the test info and return some fields updated/changed.
 
-        We need to check if the test found is a special module (like vts) and
+        We need to check if the test found is a special module (like vts10) and
         update the test_info fields (like test_runner) appropriately.
 
         Args:
@@ -156,7 +156,7 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         test.module_class = mod_info['class']
         test.install_locations = test_finder_utils.get_install_locations(
             mod_info['installed'])
-        # Check if this is only a vts module.
+        # Check if this is only a vts10 module.
         if self._is_vts_module(test.test_name):
             return self._update_to_vts_test_info(test)
         elif self.module_info.is_robolectric_test(test.test_name):
@@ -180,6 +180,9 @@ class ModuleFinder(test_finder_base.TestFinderBase):
             config_file = os.path.join(self.root_dir, rel_config)
             targets = test_finder_utils.get_targets_from_xml(config_file,
                                                              self.module_info)
+        if constants.VTS_CORE_SUITE in self.module_info.get_module_info(
+                module_name).get(constants.MODULE_COMPATIBILITY_SUITES, []):
+            targets.add(constants.VTS_CORE_TF_MODULE)
         for module_path in self.module_info.get_paths(module_name):
             mod_dir = module_path.replace('/', '-')
             targets.add(_MODULES_IN % mod_dir)

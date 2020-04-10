@@ -16,6 +16,7 @@
 
 package com.android.tradefed.testtype;
 
+import static com.android.tradefed.testtype.coverage.CoverageOptions.Toolchain.CLANG;
 import static com.android.tradefed.testtype.coverage.CoverageOptions.Toolchain.GCOV;
 
 import com.android.ddmlib.FileListingService;
@@ -46,7 +47,7 @@ import java.util.concurrent.TimeUnit;
 
 /** A Test that runs a native test package on given device. */
 @OptionClass(alias = "gtest")
-public class GTest extends GTestBase implements IDeviceTest, IAbiReceiver {
+public class GTest extends GTestBase implements IDeviceTest {
 
     static final String DEFAULT_NATIVETEST_PATH = "/data/nativetest";
 
@@ -96,8 +97,6 @@ public class GTest extends GTestBase implements IDeviceTest, IAbiReceiver {
                             + "match abi under test.")
     private boolean mFilterAbiFolders = true;
 
-    private IAbi mAbi;
-
     // Max characters allowed for executing GTest via command line
     private static final int GTEST_CMD_CHAR_LIMIT = 1000;
     /**
@@ -114,16 +113,6 @@ public class GTest extends GTestBase implements IDeviceTest, IAbiReceiver {
     @Override
     public ITestDevice getDevice() {
         return mDevice;
-    }
-
-    @Override
-    public void setAbi(IAbi abi) {
-        mAbi = abi;
-    }
-
-    @Override
-    public IAbi getAbi() {
-        return mAbi;
     }
 
     @Override
@@ -209,14 +198,14 @@ public class GTest extends GTestBase implements IDeviceTest, IAbiReceiver {
         if (!mFilterAbiFolders) {
             return true;
         }
-        if (mAbi == null) {
+        if (getAbi() == null) {
             return true;
         }
         String fileName = getFileName(path);
         if (!AbiUtils.getArchSupported().contains(fileName)) {
             return true;
         }
-        if (fileName.equals(AbiUtils.getArchForAbi(mAbi.getName()))) {
+        if (fileName.equals(AbiUtils.getArchForAbi(getAbi().getName()))) {
             return true;
         }
         return false;
@@ -438,6 +427,7 @@ public class GTest extends GTestBase implements IDeviceTest, IAbiReceiver {
         }
         // Insert the coverage listener if code coverage collection is enabled.
         listener = addNativeCoverageListenerIfEnabled(listener);
+        listener = addClangCoverageListenerIfEnabled(listener);
         NativeCodeCoverageFlusher flusher =
                 new NativeCodeCoverageFlusher(mDevice, getCoverageOptions().getCoverageProcesses());
 
@@ -478,6 +468,26 @@ public class GTest extends GTestBase implements IDeviceTest, IAbiReceiver {
 
         if (options.isCoverageEnabled() && options.getCoverageToolchains().contains(GCOV)) {
             return new NativeCodeCoverageListener(mDevice, options, listener);
+        }
+        return listener;
+    }
+
+    /**
+     * Adds a listener to pull Clang code coverage measurements from the device after the test is
+     * complete if coverage is enabled, otherwise returns the same listener.
+     *
+     * @param listener the current chain of listeners
+     * @return a native coverage listener if coverage is enabled, otherwise the original listener
+     */
+    private ITestInvocationListener addClangCoverageListenerIfEnabled(
+            ITestInvocationListener listener) {
+        CoverageOptions options = getCoverageOptions();
+
+        if (options.isCoverageEnabled() && options.getCoverageToolchains().contains(CLANG)) {
+            ClangCodeCoverageListener clangListener =
+                    new ClangCodeCoverageListener(mDevice, listener);
+            clangListener.setConfiguration(getConfiguration());
+            return clangListener;
         }
         return listener;
     }

@@ -252,6 +252,13 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
 
     /** {@inheritDoc} */
     @Override
+    public void testRunFailed(FailureDescription failure) {
+        setCountDirty();
+        mCurrentTestRunResult.testRunFailed(failure);
+    }
+
+    /** {@inheritDoc} */
+    @Override
     public void testRunStopped(long elapsedTime) {
         setCountDirty();
         mCurrentTestRunResult.testRunStopped(elapsedTime);
