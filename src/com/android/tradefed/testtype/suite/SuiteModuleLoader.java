@@ -21,6 +21,7 @@ import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.ConfigurationUtil;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
+import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.config.OptionDef;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.targetprep.ITargetPreparer;
@@ -329,6 +330,7 @@ public class SuiteModuleLoader {
                                     .addMetadata(
                                             ConfigurationDescriptor.PARAMETER_KEY,
                                             param.getParameterIdentifier());
+                            param.addParameterSpecificConfig(paramConfig);
                             setUpConfig(name, baseId, fullId, paramConfig, abi);
                             param.applySetup(paramConfig);
                             toRun.put(fullId, paramConfig);
@@ -557,6 +559,7 @@ public class SuiteModuleLoader {
     private List<IModuleParameter> getModuleParameters(String moduleName, IConfiguration config)
             throws ConfigurationException {
         List<IModuleParameter> params = new ArrayList<>();
+        Set<String> processedParameterArgs = new HashSet<>();
         // Track family of the parameters to make sure we have no duplicate.
         Map<String, ModuleParameters> duplicateModule = new LinkedHashMap<>();
 
@@ -566,6 +569,10 @@ public class SuiteModuleLoader {
             return params;
         }
         for (String p : parameters) {
+            if (!processedParameterArgs.add(p)) {
+                // Avoid processing the same parameter twice
+                continue;
+            }
             ModuleParameters suiteParam = ModuleParameters.valueOf(p.toUpperCase());
             String family = suiteParam.getFamily();
             if (duplicateModule.containsKey(family)) {
@@ -618,14 +625,15 @@ public class SuiteModuleLoader {
         config.injectOptionValues(optionsToInject);
 
         // Set target preparers
-        List<ITargetPreparer> preparers = config.getTargetPreparers();
-        for (ITargetPreparer preparer : preparers) {
-            String className = preparer.getClass().getName();
-            if (mTestOrPreparerOptions.containsKey(className)) {
-                config.injectOptionValues(mTestOrPreparerOptions.get(className));
-            }
-            if (preparer instanceof IAbiReceiver) {
-                ((IAbiReceiver) preparer).setAbi(abi);
+        for (IDeviceConfiguration holder : config.getDeviceConfig()) {
+            for (ITargetPreparer preparer : holder.getTargetPreparers()) {
+                String className = preparer.getClass().getName();
+                if (mTestOrPreparerOptions.containsKey(className)) {
+                    config.injectOptionValues(mTestOrPreparerOptions.get(className));
+                }
+                if (preparer instanceof IAbiReceiver) {
+                    ((IAbiReceiver) preparer).setAbi(abi);
+                }
             }
         }
 

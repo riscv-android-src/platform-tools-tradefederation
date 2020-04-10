@@ -23,6 +23,7 @@ import com.android.tradefed.config.remote.HttpRemoteFileResolver;
 import com.android.tradefed.config.remote.HttpsRemoteFileResolver;
 import com.android.tradefed.config.remote.IRemoteFileResolver;
 import com.android.tradefed.config.remote.LocalFileResolver;
+import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.MultiMap;
@@ -56,7 +57,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class DynamicRemoteFileResolver {
 
-    public static final String DYNAMIC_RESOLVER = "dynamic-resolver";
     private static final Map<String, IRemoteFileResolver> PROTOCOL_SUPPORT = new HashMap<>();
 
     static {
@@ -73,10 +73,23 @@ public class DynamicRemoteFileResolver {
     public static final String OPTIONAL_KEY = "optional";
 
     private Map<String, OptionFieldsForName> mOptionMap;
+    // Populated from {@link ICommandOptions#getDynamicDownloadArgs()}
+    private Map<String, String> mExtraArgs = new LinkedHashMap<>();
+    private ITestDevice mDevice;
 
     /** Sets the map of options coming from {@link OptionSetter} */
     public void setOptionMap(Map<String, OptionFieldsForName> optionMap) {
         mOptionMap = optionMap;
+    }
+
+    /** Sets the device under tests */
+    public void setDevice(ITestDevice device) {
+        mDevice = device;
+    }
+
+    /** Add extra args for the query. */
+    public void addExtraArgs(Map<String, String> extraArgs) {
+        mExtraArgs.putAll(extraArgs);
     }
 
     /**
@@ -179,34 +192,36 @@ public class DynamicRemoteFileResolver {
                         }
                     } else if (value instanceof MultiMap) {
                         MultiMap<Object, Object> m = (MultiMap<Object, Object>) value;
-                        MultiMap<Object, Object> copy = new MultiMap<>(m);
-                        for (Object key : copy.keySet()) {
-                            List<Object> mapValues = copy.get(key);
+                        synchronized (m) {
+                            MultiMap<Object, Object> copy = new MultiMap<>(m);
+                            for (Object key : copy.keySet()) {
+                                List<Object> mapValues = copy.get(key);
 
-                            m.remove(key);
-                            Object finalKey = key;
-                            if (key instanceof File) {
-                                key = resolveRemoteFiles((File) key, option);
-                                if (key != null) {
-                                    downloadedFiles.add((File) key);
-                                    finalKey = key;
-                                }
-                            }
-                            for (Object mapValue : mapValues) {
-                                if (mapValue instanceof File) {
-                                    File f = resolveRemoteFiles((File) mapValue, option);
-                                    if (f != null) {
-                                        downloadedFiles.add(f);
-                                        mapValue = f;
+                                m.remove(key);
+                                Object finalKey = key;
+                                if (key instanceof File) {
+                                    key = resolveRemoteFiles((File) key, option);
+                                    if (key != null) {
+                                        downloadedFiles.add((File) key);
+                                        finalKey = key;
                                     }
                                 }
-                                m.put(finalKey, mapValue);
+                                for (Object mapValue : mapValues) {
+                                    if (mapValue instanceof File) {
+                                        File f = resolveRemoteFiles((File) mapValue, option);
+                                        if (f != null) {
+                                            downloadedFiles.add(f);
+                                            mapValue = f;
+                                        }
+                                    }
+                                    m.put(finalKey, mapValue);
+                                }
                             }
                         }
                     }
                 }
             }
-        } catch (BuildRetrievalError e) {
+        } catch (RuntimeException | BuildRetrievalError e) {
             // Clean up the files before throwing
             for (File f : downloadedFiles) {
                 FileUtil.recursiveDelete(f);
@@ -260,6 +275,7 @@ public class DynamicRemoteFileResolver {
         }
         // Downloaded individual files should be saved to destDir, return value is not needed.
         try {
+            resolver.setPrimaryDevice(mDevice);
             resolver.resolveRemoteFiles(new File(remoteZipFilePath), queryArgs);
         } catch (BuildRetrievalError e) {
             if (isOptional(queryArgs)) {
@@ -275,18 +291,6 @@ public class DynamicRemoteFileResolver {
     @VisibleForTesting
     protected IRemoteFileResolver getResolver(String protocol) {
         if (updateProtocols()) {
-            // TODO: Remove and clean up the global configuration specification.
-            IGlobalConfiguration globalConfig = getGlobalConfig();
-            Object o = globalConfig.getConfigurationObject(DYNAMIC_RESOLVER);
-            if (o != null) {
-                if (o instanceof IRemoteFileResolver) {
-                    IRemoteFileResolver resolver = (IRemoteFileResolver) o;
-                    CLog.d("Adding %s to supported remote file resolver", resolver);
-                    PROTOCOL_SUPPORT.put(resolver.getSupportedProtocol(), resolver);
-                } else {
-                    CLog.e("%s is not of type IRemoteFileResolver", o);
-                }
-            }
             // Use the service loader to find all the implementations.
             ServiceLoader<IRemoteFileResolver> serviceLoader =
                     ServiceLoader.load(IRemoteFileResolver.class);
@@ -349,6 +353,8 @@ public class DynamicRemoteFileResolver {
                 CLog.d(
                         "Considering option '%s' with path: '%s' for download.",
                         option.name(), path);
+                // Overrides query args
+                query.putAll(mExtraArgs);
                 return resolver.resolveRemoteFiles(fileToResolve, query);
             } catch (BuildRetrievalError e) {
                 if (isOptional(query)) {

@@ -19,6 +19,7 @@ package com.android.tradefed.command;
 import com.android.tradefed.device.metric.AutoLogCollector;
 import com.android.tradefed.util.UniqueMultiMap;
 
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -184,6 +185,12 @@ public interface ICommandOptions {
     /** Whether or not to attempt parallel setup of the remote devices. */
     public boolean shouldUseParallelRemoteSetup();
 
+    /** Whether or not to use replicated setup for all the remote devices. */
+    public boolean shouldUseReplicateSetup();
+
+    /** Set whether or not to use replicated setup. */
+    public void setReplicateSetup(boolean replicate);
+
     /** Whether or not to report progression of remote invocation at module level. */
     public boolean shouldReportModuleProgression();
 
@@ -192,4 +199,7 @@ public interface ICommandOptions {
 
     /** Whether or not to release the device early when done with it. */
     public boolean earlyDeviceRelease();
+
+    /** Returns the map of args to pass to the dynamic download query. */
+    public Map<String, String> getDynamicDownloadArgs();
 }

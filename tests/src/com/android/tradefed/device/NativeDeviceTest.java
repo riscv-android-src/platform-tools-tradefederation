@@ -155,30 +155,26 @@ public class NativeDeviceTest {
      * boolean, String...)}.
      */
     @Test
-    public void testInstallPackages_exception() {
+    public void testInstallPackages_exception() throws Exception {
         try {
             mTestDevice.installPackage(new File(""), false);
-        } catch (UnsupportedOperationException onse) {
-            return;
-        } catch (DeviceNotAvailableException e) {
-            fail("installPackage should have thrown an Unsupported exception, not dnae");
+            fail("installPackage should have thrown an exception");
+        } catch (UnsupportedOperationException expected) {
+            // Expected
         }
-        fail("installPackage should have thrown an exception");
     }
 
     /**
      * Test return exception for package installation {@link NativeDevice#uninstallPackage(String)}.
      */
     @Test
-    public void testUninstallPackages_exception() {
+    public void testUninstallPackages_exception() throws Exception {
         try {
             mTestDevice.uninstallPackage("");
-        } catch (UnsupportedOperationException onse) {
-            return;
-        } catch (DeviceNotAvailableException e) {
-            fail("uninstallPackage should have thrown an Unsupported exception, not dnae");
+            fail("uninstallPackageForUser should have thrown an exception");
+        } catch (UnsupportedOperationException expected) {
+            // Expected
         }
-        fail("uninstallPackageForUser should have thrown an exception");
     }
 
     /**
@@ -186,15 +182,13 @@ public class NativeDeviceTest {
      * boolean, boolean, String...)}.
      */
     @Test
-    public void testInstallPackagesBool_exception() {
+    public void testInstallPackagesBool_exception() throws Exception {
         try {
             mTestDevice.installPackage(new File(""), false, false);
-        } catch (UnsupportedOperationException onse) {
-            return;
-        } catch (DeviceNotAvailableException e) {
-            fail("installPackage should have thrown an Unsupported exception, not dnae");
+            fail("installPackage should have thrown an exception");
+        } catch (UnsupportedOperationException expected) {
+            // Expected
         }
-        fail("installPackage should have thrown an exception");
     }
 
     /**
@@ -202,15 +196,13 @@ public class NativeDeviceTest {
      * NativeDevice#installPackageForUser(File, boolean, int, String...)}.
      */
     @Test
-    public void testInstallPackagesForUser_exception() {
+    public void testInstallPackagesForUser_exception() throws Exception {
         try {
             mTestDevice.installPackageForUser(new File(""), false, 0);
-        } catch (UnsupportedOperationException onse) {
-            return;
-        } catch (DeviceNotAvailableException e) {
-            fail("installPackageForUser should have thrown an Unsupported exception, not dnae");
+            fail("installPackageForUser should have thrown an exception");
+        } catch (UnsupportedOperationException expected) {
+            // Expected
         }
-        fail("installPackageForUser should have thrown an exception");
     }
 
     /**
@@ -218,15 +210,13 @@ public class NativeDeviceTest {
      * NativeDevice#installPackageForUser(File, boolean, boolean, int, String...)}.
      */
     @Test
-    public void testInstallPackagesForUserWithPermission_exception() {
+    public void testInstallPackagesForUserWithPermission_exception() throws Exception {
         try {
             mTestDevice.installPackageForUser(new File(""), false, false, 0);
-        } catch (UnsupportedOperationException onse) {
-            return;
-        } catch (DeviceNotAvailableException e) {
-            fail("installPackageForUser should have thrown an Unsupported exception, not dnae");
+            fail("installPackageForUser should have thrown an exception");
+        } catch (UnsupportedOperationException expected) {
+            // Expected
         }
-        fail("installPackageForUser should have thrown an exception");
     }
 
     /** Unit test for {@link NativeDevice#getInstalledPackageNames()}. */
@@ -234,10 +224,10 @@ public class NativeDeviceTest {
     public void testGetInstalledPackageNames_exception() throws Exception {
         try {
             mTestDevice.getInstalledPackageNames();
-        } catch (UnsupportedOperationException onse) {
-            return;
+            fail("getInstalledPackageNames should have thrown an exception");
+        } catch (UnsupportedOperationException expected) {
+            // Expected
         }
-        fail("getInstalledPackageNames should have thrown an exception");
     }
 
     /** Unit test for {@link NativeDevice#getActiveApexes()}. */
@@ -925,8 +915,6 @@ public class NativeDeviceTest {
         EasyMock.replay(mMockWifi, mMockIDevice, mMockRunUtil);
         try {
             mTestDevice.reconnectToWifiNetwork();
-        } catch (NetworkNotAvailableException nnae) {
-            fail("reconnectToWifiNetwork() should not have thrown an exception.");
         } finally {
             EasyMock.verify(mMockWifi, mMockIDevice, mMockRunUtil);
         }
@@ -2413,6 +2401,27 @@ public class NativeDeviceTest {
         EasyMock.verify(mMockIDevice);
     }
 
+    @Test
+    public void testGetProperty_noOutput() throws Exception {
+        CommandResult res = new CommandResult(CommandStatus.SUCCESS);
+        res.setStdout("\n");
+        EasyMock.expect(
+                        mMockRunUtil.runTimedCmd(
+                                100,
+                                (OutputStream) null,
+                                null,
+                                "adb",
+                                "-s",
+                                "serial",
+                                "shell",
+                                "getprop",
+                                "test"))
+                .andReturn(res);
+        EasyMock.replay(mMockRunUtil, mMockIDevice);
+        assertNull(mTestDevice.getProperty("test"));
+        EasyMock.verify(mMockRunUtil, mMockIDevice);
+    }
+
     /** Test get boot history */
     @Test
     public void testGetBootHistory() throws Exception {
@@ -2525,8 +2534,8 @@ public class NativeDeviceTest {
         assertFalse(spy.deviceSoftRestartedSince(1559091923000L, TimeUnit.MILLISECONDS));
         assertFalse(spy.deviceSoftRestartedSince(1559091922L, TimeUnit.SECONDS));
         assertFalse(spy.deviceSoftRestartedSince(1559091922000L, TimeUnit.MILLISECONDS));
-        assertTrue(spy.deviceSoftRestartedSince(1559091921L, TimeUnit.SECONDS));
-        assertTrue(spy.deviceSoftRestartedSince(1559091921000L, TimeUnit.MILLISECONDS));
+        assertTrue(spy.deviceSoftRestartedSince(1559091920L, TimeUnit.SECONDS));
+        assertTrue(spy.deviceSoftRestartedSince(1559091920000L, TimeUnit.MILLISECONDS));
         EasyMock.verify(mMockIDevice);
     }
 
@@ -2866,7 +2875,7 @@ public class NativeDeviceTest {
     @Test
     public void testGetLogcatSince() throws Exception {
         long date = 1512990942000L; // 2017-12-11 03:15:42.015
-        EasyMock.expect(mMockIDevice.getProperty("ro.build.version.sdk")).andReturn("23");
+        setGetPropertyExpectation("ro.build.version.sdk", "23");
 
         SimpleDateFormat format = new SimpleDateFormat("MM-dd HH:mm:ss.mmm");
         String dateFormatted = format.format(new Date(date));
@@ -2881,8 +2890,7 @@ public class NativeDeviceTest {
 
     @Test
     public void testGetProductVariant() throws Exception {
-        EasyMock.expect(mMockIDevice.getProperty(DeviceProperties.VARIANT)).andReturn("variant");
-
+        setGetPropertyExpectation(DeviceProperties.VARIANT, "variant");
         EasyMock.replay(mMockIDevice);
         assertEquals("variant", mTestDevice.getProductVariant());
         EasyMock.verify(mMockIDevice);
@@ -3140,7 +3148,7 @@ public class NativeDeviceTest {
     /** Test {@link NativeDevice#getLaunchApiLevel()} with ro.product.first_api_level being set. */
     @Test
     public void testGetLaunchApiLevel_w_first_api() throws DeviceNotAvailableException {
-        EasyMock.expect(mMockIDevice.getProperty(DeviceProperties.FIRST_API_LEVEL)).andReturn("23");
+        setGetPropertyExpectation(DeviceProperties.FIRST_API_LEVEL, "23");
         mTestDevice =
                 new TestableAndroidNativeDevice() {
                     @Override
@@ -3158,20 +3166,7 @@ public class NativeDeviceTest {
      */
     @Test
     public void testGetLaunchApiLevel_wo_first_api() throws DeviceNotAvailableException {
-        mTestDevice =
-                new TestableAndroidNativeDevice() {
-                    @Override
-                    public int getApiLevel() throws DeviceNotAvailableException {
-                        return 29;
-                    }
-                };
-        assertEquals(29, mTestDevice.getLaunchApiLevel());
-    }
-
-    /** Test {@link NativeDevice#getLaunchApiLevel()} with NumberFormatException be asserted. */
-    @Test
-    public void testGetLaunchApiLevel_w_exception() throws DeviceNotAvailableException {
-        EasyMock.expect(mMockIDevice.getProperty(DeviceProperties.FIRST_API_LEVEL)).andReturn("R");
+        setGetPropertyExpectation(DeviceProperties.FIRST_API_LEVEL, null);
         mTestDevice =
                 new TestableAndroidNativeDevice() {
                     @Override
@@ -3182,5 +3177,39 @@ public class NativeDeviceTest {
         EasyMock.replay(mMockIDevice);
         assertEquals(29, mTestDevice.getLaunchApiLevel());
         EasyMock.verify(mMockIDevice);
+    }
+
+    /** Test {@link NativeDevice#getLaunchApiLevel()} with NumberFormatException be asserted. */
+    @Test
+    public void testGetLaunchApiLevel_w_exception() throws DeviceNotAvailableException {
+        setGetPropertyExpectation(DeviceProperties.FIRST_API_LEVEL, "R");
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        return 29;
+                    }
+                };
+        EasyMock.replay(mMockIDevice);
+        assertEquals(29, mTestDevice.getLaunchApiLevel());
+        EasyMock.verify(mMockIDevice);
+    }
+
+    private void setGetPropertyExpectation(String property, String value) {
+        CommandResult stubResult = new CommandResult(CommandStatus.SUCCESS);
+        stubResult.setStdout(value);
+        EasyMock.expect(
+                        mMockRunUtil.runTimedCmd(
+                                EasyMock.anyLong(),
+                                (OutputStream) EasyMock.isNull(),
+                                EasyMock.isNull(),
+                                EasyMock.eq("adb"),
+                                EasyMock.eq("-s"),
+                                EasyMock.eq("serial"),
+                                EasyMock.eq("shell"),
+                                EasyMock.eq("getprop"),
+                                EasyMock.eq(property)))
+                .andReturn(stubResult);
+        EasyMock.replay(mMockRunUtil);
     }
 }

@@ -18,6 +18,9 @@ package com.android.tradefed.testtype;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.DynamicRemoteFileResolver;
+import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
@@ -28,9 +31,11 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.testtype.host.PrettyTestEventLogger;
 import com.android.tradefed.testtype.junit4.CarryDnaeError;
 import com.android.tradefed.testtype.junit4.JUnit4ResultForwarder;
@@ -94,7 +99,8 @@ public class HostTest
                 IBuildReceiver,
                 IAbiReceiver,
                 IShardableTest,
-                IRuntimeHintProvider {
+                IRuntimeHintProvider,
+                IConfigurationReceiver {
 
     @Option(name = "class", description = "The JUnit test classes to run, in the format "
             + "<package>.<class>. eg. \"com.android.foo.Bar\". This field can be repeated.",
@@ -164,6 +170,7 @@ public class HostTest
     )
     private boolean mEnableHostDeviceLogs = true;
 
+    private IConfiguration mConfig;
     private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
     private IAbi mAbi;
@@ -176,6 +183,8 @@ public class HostTest
     // Initialized as -1 to indicate that this value needs to be recalculated
     // when test count is requested.
     private int mNumTestCases = -1;
+
+    private List<File> mJUnit4JarFiles = new ArrayList<>();
 
     private static final String EXCLUDE_NO_TEST_FAILURE = "org.junit.runner.manipulation.Filter";
     private static final String TEST_FULL_NAME_FORMAT = "%s#%s";
@@ -190,6 +199,11 @@ public class HostTest
 
     public void setTestInformation(TestInformation testInfo) {
         mTestInfo = testInfo;
+    }
+
+    @Override
+    public void setConfiguration(IConfiguration configuration) {
+        mConfig = configuration;
     }
 
     /**
@@ -342,7 +356,7 @@ public class HostTest
                 }
             } else if (hasJUnit4Annotation(classObj)) {
                 Request req = Request.aClass(classObj);
-                req = req.filterWith(new JUnit4TestFilter(mFilterHelper));
+                req = req.filterWith(new JUnit4TestFilter(mFilterHelper, mJUnit4JarFiles));
                 Runner checkRunner = req.getRunner();
                 // If no tests are remaining after filtering, checkRunner is ErrorReportingRunner.
                 // testCount() for ErrorReportingRunner returns 1, skip this classObj in this case.
@@ -495,16 +509,22 @@ public class HostTest
             List<Class<?>> classes = getClasses();
             if (!mSkipTestClassCheck) {
                 if (classes.isEmpty()) {
-                    throw new IllegalArgumentException("Missing Test class name");
+                    throw new IllegalArgumentException("No '--class' option was specified.");
                 }
             }
             if (mMethodName != null && classes.size() > 1) {
-                throw new IllegalArgumentException("Method name given with multiple test classes");
+                throw new IllegalArgumentException(
+                        String.format(
+                                "'--method' only supports one '--class' name. Multiple were "
+                                        + "given: '%s'",
+                                classes));
             }
         } catch (IllegalArgumentException e) {
-            // TODO: If possible in some cases, carry the name of the failed class in the run start
             listener.testRunStarted(this.getClass().getCanonicalName(), 0);
-            listener.testRunFailed(e.getMessage());
+            FailureDescription failureDescription =
+                    FailureDescription.create(StreamUtil.getStackTrace(e));
+            failureDescription.setFailureStatus(FailureStatus.TEST_FAILURE);
+            listener.testRunFailed(failureDescription);
             listener.testRunEnded(0L, new HashMap<String, Metric>());
             throw e;
         }
@@ -550,11 +570,21 @@ public class HostTest
                     includes.add(String.format(TEST_FULL_NAME_FORMAT, classObj.getName(),
                             mMethodName));
                 }
-
                 // Running in a full JUnit4 manner, no downgrade to JUnit3 {@link Test}
                 Request req = Request.aClass(classObj);
-                req = req.filterWith(new JUnit4TestFilter(mFilterHelper));
-                Runner checkRunner = req.getRunner();
+                Runner checkRunner = null;
+                try {
+                    req = req.filterWith(new JUnit4TestFilter(mFilterHelper, mJUnit4JarFiles));
+                    checkRunner = req.getRunner();
+                } catch (IllegalArgumentException e) {
+                    listener.testRunStarted(classObj.getName(), 0);
+                    FailureDescription failureDescription =
+                            FailureDescription.create(StreamUtil.getStackTrace(e));
+                    failureDescription.setFailureStatus(FailureStatus.TEST_FAILURE);
+                    listener.testRunFailed(failureDescription);
+                    listener.testRunEnded(0L, new HashMap<String, Metric>());
+                    throw e;
+                }
                 runJUnit4Tests(listener, checkRunner, classObj.getName());
             } else {
                 throw new IllegalArgumentException(
@@ -579,7 +609,17 @@ public class HostTest
                 Description desc = (Description) obj;
                 Request req = Request.aClass(desc.getTestClass());
                 Runner checkRunner = req.filterWith(desc).getRunner();
-                runJUnit4Tests(listener, checkRunner, desc.getClassName());
+                try {
+                    runJUnit4Tests(listener, checkRunner, desc.getClassName());
+                } catch (IllegalArgumentException e) {
+                    listener.testRunStarted(desc.getClassName(), 0);
+                    FailureDescription failureDescription =
+                            FailureDescription.create(StreamUtil.getStackTrace(e));
+                    failureDescription.setFailureStatus(FailureStatus.TEST_FAILURE);
+                    listener.testRunFailed(failureDescription);
+                    listener.testRunEnded(0L, new HashMap<String, Metric>());
+                    throw e;
+                }
             } else {
                 throw new IllegalArgumentException(
                         String.format("%s is not a supported test", obj));
@@ -819,7 +859,7 @@ public class HostTest
                             mMethodName));
                 }
 
-                req = req.filterWith(new JUnit4TestFilter(mFilterHelper));
+                req = req.filterWith(new JUnit4TestFilter(mFilterHelper, mJUnit4JarFiles));
                 Runner checkRunner = req.getRunner();
                 Deque<Description> descriptions = new ArrayDeque<>();
                 descriptions.push(checkRunner.getDescription());
@@ -865,8 +905,9 @@ public class HostTest
                 File file = getJarFile(jarName, mTestInfo);
                 jarFile = new JarFile(file);
                 Enumeration<JarEntry> e = jarFile.entries();
-                URL[] urls = {new URL(String.format("jar:file:%s!/", file.getAbsolutePath()))};
+                URL[] urls = {file.toURI().toURL()};
                 URLClassLoader cl = URLClassLoader.newInstance(urls);
+                mJUnit4JarFiles.add(file);
 
                 while (e.hasMoreElements()) {
                     JarEntry je = e.nextElement();
@@ -1231,14 +1272,17 @@ public class HostTest
     }
 
     @VisibleForTesting
-    OptionSetter createOptionSetter(Object obj) throws ConfigurationException {
-        return new OptionSetter(obj);
+    DynamicRemoteFileResolver createResolver() {
+        DynamicRemoteFileResolver resolver = new DynamicRemoteFileResolver();
+        resolver.setDevice(mDevice);
+        resolver.addExtraArgs(mConfig.getCommandOptions().getDynamicDownloadArgs());
+        return resolver;
     }
 
     private Set<File> resolveRemoteFileForObject(Object obj) {
         try {
-            OptionSetter setter = createOptionSetter(obj);
-            return setter.validateRemoteFilePath();
+            OptionSetter setter = new OptionSetter(obj);
+            return setter.validateRemoteFilePath(createResolver());
         } catch (BuildRetrievalError | ConfigurationException e) {
             throw new RuntimeException(e);
         }
