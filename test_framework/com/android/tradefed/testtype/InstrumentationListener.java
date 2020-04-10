@@ -45,6 +45,7 @@ final class InstrumentationListener extends LogcatCrashResultForwarder {
     private Set<TestDescription> mDuplicateTests = new HashSet<>();
     private final Collection<TestDescription> mExpectedTests;
     private boolean mDisableDuplicateCheck = false;
+    private boolean mReportUnexecutedTests = false;
     private ProcessInfo mSystemServerProcess = null;
 
     /**
@@ -66,6 +67,10 @@ final class InstrumentationListener extends LogcatCrashResultForwarder {
 
     public void setOriginalSystemServer(ProcessInfo info) {
         mSystemServerProcess = info;
+    }
+
+    public void setReportUnexecutedTests(boolean enable) {
+        mReportUnexecutedTests = enable;
     }
 
     @Override
@@ -123,6 +128,18 @@ final class InstrumentationListener extends LogcatCrashResultForwarder {
                                     mDuplicateTests));
             error.setFailureStatus(FailureStatus.TEST_FAILURE);
             super.testRunFailed(error);
+        } else if (mReportUnexecutedTests && mExpectedTests.size() > mTests.size()) {
+            Set<TestDescription> missingTests = new LinkedHashSet<>(mExpectedTests);
+            missingTests.removeAll(mTests);
+            for (TestDescription miss : missingTests) {
+                super.testStarted(miss);
+                FailureDescription failure =
+                        FailureDescription.create(
+                                "test did not run due to instrumentation issue.",
+                                FailureStatus.NOT_EXECUTED);
+                super.testFailed(miss, failure);
+                super.testEnded(miss, new HashMap<String, Metric>());
+            }
         }
         super.testRunEnded(elapsedTime, runMetrics);
     }

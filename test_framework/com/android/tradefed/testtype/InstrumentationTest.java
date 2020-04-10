@@ -45,8 +45,10 @@ import com.android.tradefed.result.BugreportCollector;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.result.ddmlib.DefaultRemoteAndroidTestRunner;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.retry.RetryStrategy;
 import com.android.tradefed.testtype.coverage.CoverageOptions;
@@ -68,6 +70,7 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -314,6 +317,12 @@ public class InstrumentationTest
                     "Whether or not to enable checking whether instrumentation crash is due to "
                             + "a system_server restart.")
     private boolean mEnableSoftRestartCheck = false;
+
+    @Option(
+            name = "report-unexecuted-tests",
+            description =
+                    "Whether or not to enable reporting all unexecuted tests from instrumentation.")
+    private boolean mReportUnexecuted = true;
 
     private IAbi mAbi = null;
 
@@ -1053,13 +1062,14 @@ public class InstrumentationTest
             instrumentationListener.setOriginalSystemServer(
                     getDevice().getProcessByName("system_server"));
         }
+        instrumentationListener.setReportUnexecutedTests(mReportUnexecuted);
         mDevice.runInstrumentationTests(mRunner, instrumentationListener);
         TestRunResult testRun = testTracker.getCurrentRunResults();
         if (testRun.isRunFailure() || !testRun.getCompletedTests().containsAll(expectedTests)) {
             // Don't re-run any completed tests, unless this is a coverage run.
             if (mConfiguration != null
                     && !mConfiguration.getCoverageOptions().isCoverageEnabled()) {
-                expectedTests.removeAll(testTracker.getCurrentRunResults().getCompletedTests());
+                expectedTests.removeAll(excludeNonExecuted(testTracker.getCurrentRunResults()));
                 IRetryDecision decision = mConfiguration.getRetryDecision();
                 if (!RetryStrategy.NO_RETRY.equals(decision.getRetryStrategy())
                         && decision.getMaxRetryCount() > 1) {
@@ -1071,6 +1081,20 @@ public class InstrumentationTest
             }
             rerunTests(expectedTests, testInfo, listener);
         }
+    }
+
+    /** Filter out "NOT_EXECUTED" for the purpose of tracking what needs to be rerun. */
+    protected static Set<TestDescription> excludeNonExecuted(TestRunResult results) {
+        Set<TestDescription> completedTest = results.getCompletedTests();
+        for (Entry<TestDescription, TestResult> entry : results.getTestResults().entrySet()) {
+            if (completedTest.contains(entry.getKey()) && entry.getValue().getFailure() != null) {
+                if (FailureStatus.NOT_EXECUTED.equals(
+                        entry.getValue().getFailure().getFailureStatus())) {
+                    completedTest.remove(entry.getKey());
+                }
+            }
+        }
+        return completedTest;
     }
 
     /**
