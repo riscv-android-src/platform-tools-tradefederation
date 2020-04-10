@@ -43,6 +43,7 @@ import com.android.tradefed.result.TestSummary;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.QuotationAwareTokenizer;
+import com.android.tradefed.util.StreamUtil;
 
 import com.google.common.primitives.Ints;
 
@@ -142,6 +143,7 @@ public class ClusterCommandScheduler extends CommandScheduler {
         private final ClusterCommand mCommandTask;
         private Set<String> mDeviceSerials = new HashSet<>();
         private String mSummary;
+        private Set<String> processedSummaries = new HashSet<>();
         private String mError;
         private File mWorkDir;
         private InvocationStatus mInvocationStatus;
@@ -259,7 +261,7 @@ public class ClusterCommandScheduler extends CommandScheduler {
         public void invocationFailed(Throwable cause) {
             super.invocationFailed(cause);
 
-            mError = cause.toString();
+            mError = StreamUtil.getStackTrace(cause);
         }
 
         /** {@inheritDoc} */
@@ -348,8 +350,12 @@ public class ClusterCommandScheduler extends CommandScheduler {
         public void putSummary(List<TestSummary> summaries) {
             StringBuilder sb = new StringBuilder();
             for (final TestSummary summary : summaries) {
-                sb.append(summary.getSummary());
-                sb.append("\n");
+                String summaryString = summary.getSummary().toString();
+                if (!processedSummaries.contains(summaryString)) {
+                    processedSummaries.add(summaryString);
+                    sb.append(summaryString);
+                    sb.append("\n");
+                }
             }
             mSummary = mSummary == null ? sb.toString() : mSummary + sb.toString();
         }
@@ -375,13 +381,18 @@ public class ClusterCommandScheduler extends CommandScheduler {
                                                 mCommandTask.getRequestId(),
                                                 mCommandTask.getCommandId());
                         if (ClusterCommand.State.CANCELED.equals(status)) {
-                            CLog.w(
-                                    "Cluster marked command %s %s as canceled, stopping invocation",
-                                    mCommandTask.getRequestId(), mCommandTask.getCommandId());
+                            // TODO: retrieve cancel reason from TFC.
+                            String cause =
+                                    String.format(
+                                            "Command (requestId=%s, commandId=%s) has been marked"
+                                                    + " canceled by the cluster",
+                                            mCommandTask.getRequestId(),
+                                            mCommandTask.getCommandId());
+                            CLog.w("Stop invocation due to: %s", cause);
                             Optional.ofNullable(getInvocationContext())
                                     .map(IInvocationContext::getInvocationId)
                                     .map(Ints::tryParse)
-                                    .ifPresent(ClusterCommandScheduler.this::stopInvocation);
+                                    .ifPresent(invocationId -> stopInvocation(invocationId, cause));
                         }
                     }
 

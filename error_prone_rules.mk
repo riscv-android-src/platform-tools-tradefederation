@@ -17,6 +17,7 @@
 LOCAL_ERROR_PRONE_FLAGS:= -XDandroidCompatible=false \
                           -Xep:ArrayToString:ERROR \
                           -Xep:BoxedPrimitiveConstructor:ERROR \
+                          -Xep:CatchFail:ERROR \
                           -Xep:ConstantField:ERROR \
                           -Xep:DeadException:ERROR \
                           -Xep:EqualsIncompatibleType:ERROR \
@@ -41,5 +42,6 @@ LOCAL_ERROR_PRONE_FLAGS:= -XDandroidCompatible=false \
                           -Xep:SelfEquals:ERROR \
                           -Xep:SizeGreaterThanOrEqualsZero:ERROR \
                           -Xep:TryFailThrowable:ERROR \
-                          -Xep:UnnecessaryParentheses:ERROR
+                          -Xep:UnnecessaryParentheses:ERROR \
+                          -Xep:UseCorrectAssertInTests:ERROR
 

@@ -16,7 +16,6 @@
 
 package com.android.tradefed.config;
 
-import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.ArrayUtil;
@@ -38,6 +37,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -254,7 +254,7 @@ public class OptionSetter {
      */
     protected class OptionFieldsForName implements Iterable<Map.Entry<Object, Field>> {
 
-        private Map<Object, Field> mSourceFieldMap = new HashMap<Object, Field>();
+        private Map<Object, Field> mSourceFieldMap = new LinkedHashMap<Object, Field>();
 
         void addField(String name, Object source, Field field) throws ConfigurationException {
             if (size() > 0) {
@@ -562,7 +562,7 @@ public class OptionSetter {
     private Map<String, OptionFieldsForName> makeOptionMap() throws ConfigurationException {
         final Map<String, Integer> freqMap = new HashMap<String, Integer>(mOptionSources.size());
         final Map<String, OptionFieldsForName> optionMap =
-                new HashMap<String, OptionFieldsForName>();
+                new LinkedHashMap<String, OptionFieldsForName>();
         for (Object objectSource : mOptionSources) {
             final String className = objectSource.getClass().getName();
 
@@ -756,21 +756,14 @@ public class OptionSetter {
     /**
      * Runs through all the {@link File} option type and check if their path should be resolved.
      *
+     * @param The {@link DynamicRemoteFileResolver} to use to resolve the files.
      * @return The list of {@link File} that was resolved that way.
      * @throws BuildRetrievalError
      */
-    public final Set<File> validateRemoteFilePath() throws BuildRetrievalError {
-        DynamicRemoteFileResolver resolver = createResolver();
+    public final Set<File> validateRemoteFilePath(DynamicRemoteFileResolver resolver)
+            throws BuildRetrievalError {
         resolver.setOptionMap(mOptionMap);
         return resolver.validateRemoteFilePath();
-    }
-
-    /**
-     * Create a {@link DynamicRemoteFileResolver} that will resolved {@link File} of remote file.
-     */
-    @VisibleForTesting
-    protected DynamicRemoteFileResolver createResolver() {
-        return new DynamicRemoteFileResolver();
     }
 
     /**

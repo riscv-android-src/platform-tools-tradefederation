@@ -16,11 +16,13 @@
 package com.android.tradefed.testtype.suite.params;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import android.platform.test.annotations.SystemUserOnly;
 
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.targetprep.CreateUserPreparer;
 import com.android.tradefed.testtype.suite.params.InstantAppHandlerTest.TestFilterable;
 
 import org.junit.Before;
@@ -53,5 +55,15 @@ public class SecondaryUserHandlerTest {
         assertEquals(1, test.mReceivedFiltered.size());
         assertEquals(
                 SystemUserOnly.class.getCanonicalName(), test.mReceivedFiltered.iterator().next());
+    }
+
+    /**
+     * Test that when a module configuration goes through the handler's
+     * addParameterSpecificConfiguration, {@link CreateUserPreparer} is added correctly.
+     */
+    @Test
+    public void testAddParameterSpecificConfig() {
+        mHandler.addParameterSpecificConfig(mModuleConfig);
+        assertTrue(mModuleConfig.getTargetPreparers().get(0) instanceof CreateUserPreparer);
     }
 }

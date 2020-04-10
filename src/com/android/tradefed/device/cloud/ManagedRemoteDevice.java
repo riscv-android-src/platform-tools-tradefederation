@@ -20,6 +20,7 @@ import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -221,7 +222,7 @@ public class ManagedRemoteDevice extends TestDevice implements ITestLoggerReceiv
             mValidationConfig = new Configuration("validation", "validation");
             mValidationConfig.setDeviceOptions(mCopiedOptions);
             try {
-                mValidationConfig.resolveDynamicOptions();
+                mValidationConfig.resolveDynamicOptions(new DynamicRemoteFileResolver());
             } catch (BuildRetrievalError | ConfigurationException e) {
                 throw new RuntimeException(e);
             }

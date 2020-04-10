@@ -23,10 +23,15 @@ import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.TargetSetupError;
+import com.android.tradefed.util.CommandResult;
+import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.ZipUtil;
 import com.google.common.annotations.VisibleForTesting;
@@ -39,9 +44,12 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
@@ -105,6 +113,35 @@ public class MixImageZipPreparer extends BaseMultiTargetPreparer {
     )
     private int mCompressionLevel = Deflater.DEFAULT_COMPRESSION;
 
+    @Option(
+            name = "misc-info-path",
+            description =
+                    "the misc info file for repacking super image. By default, this preparer "
+                            + "retrieves the file from device build.")
+    private File mMiscInfoFile = null;
+
+    @Option(
+            name = "ota-tools-path",
+            description =
+                    "the zip file containing the tools for repacking super image. By default, "
+                            + "this preparer retrieves the file from system build.")
+    private File mOtaToolsZip = null;
+
+    @Option(
+            name = "repack-super-image-path",
+            description =
+                    "the script that repacks the super image. By default, this preparer "
+                            + "retrieves the file from system build. In build environment, the "
+                            + "script is located at development/gsi/repack_super_image, and can "
+                            + "be built by `make repack_super_image` or `make dist gsi_utils`.")
+    private File mRepackSuperImageFile = null;
+
+    // Build info file keys.
+    private static final String SUPER_IMAGE_NAME = "super.img";
+    private static final String OTATOOLS_ZIP_NAME = "otatools.zip";
+    private static final String MISC_INFO_FILE_NAME = "misc_info.txt";
+    private static final String REPACK_SUPER_IMAGE_FILE_NAME = "repack_super_image";
+
     /** The interface that creates {@link InputStream} from a file or a compressed file. */
     @VisibleForTesting
     static interface InputStreamFactory {
@@ -118,9 +155,33 @@ public class MixImageZipPreparer extends BaseMultiTargetPreparer {
         long getCrc32() throws IOException;
     }
 
+    private static class FileInputStreamFactory implements InputStreamFactory {
+        private File mFile;
+
+        FileInputStreamFactory(File file) {
+            mFile = file;
+        }
+
+        @Override
+        public InputStream createInputStream() throws IOException {
+            return new FileInputStream(mFile);
+        }
+
+        @Override
+        public long getSize() {
+            return mFile.length();
+        }
+
+        @Override
+        public long getCrc32() throws IOException {
+            return FileUtil.calculateCrc32(mFile);
+        }
+    }
+
     @Override
-    public void setUp(IInvocationContext context)
+    public void setUp(TestInformation testInformation)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
+        IInvocationContext context = testInformation.getContext();
 
         ITestDevice device = context.getDevice(mDeviceLabel);
         IDeviceBuildInfo deviceBuildInfo = (IDeviceBuildInfo) context.getBuildInfo(device);
@@ -137,6 +198,7 @@ public class MixImageZipPreparer extends BaseMultiTargetPreparer {
 
         ZipFile deviceImageZip = null;
         ZipFile systemImageZip = null;
+        File mixedSuperImage = null;
         File mixedImageZip = null;
         try {
             deviceImageZip = new ZipFile(deviceBuildInfo.getDeviceImageFile());
@@ -155,6 +217,7 @@ public class MixImageZipPreparer extends BaseMultiTargetPreparer {
             systemFiles = replaceExistingEntries(systemFiles, files);
             filesNotInDeviceBuild.putAll(systemFiles);
 
+            // Generate specified dummy files and replace those in device build.
             Map<String, InputStreamFactory> dummyFiles =
                     createDummyInputStreamFactories(mDummyFileNames);
             Map<String, InputStreamFactory> dummyFilesNotInDeviceBuild =
@@ -163,6 +226,8 @@ public class MixImageZipPreparer extends BaseMultiTargetPreparer {
             // Some devices don't have product partition and image. If the dummy file names are not
             // found in device build, they are ignored so that devices with and without product
             // partition can share configurations.
+            // This preparer does not generate dummy files in super image because
+            // build_super_image cannot handle unformatted files.
             if (!dummyFilesNotInDeviceBuild.isEmpty()) {
                 CLog.w(
                         "Skip creating dummy images: %s",
@@ -177,6 +242,52 @@ public class MixImageZipPreparer extends BaseMultiTargetPreparer {
                 filesNotInDeviceBuild.putAll(resourceFiles);
             }
 
+            if (files.containsKey(SUPER_IMAGE_NAME) && !filesNotInDeviceBuild.isEmpty()) {
+                CLog.i("Mix %s in super image.", String.join(", ", filesNotInDeviceBuild.keySet()));
+
+                File miscInfoFile = mMiscInfoFile;
+                if (miscInfoFile == null) {
+                    miscInfoFile = deviceBuildInfo.getFile(MISC_INFO_FILE_NAME);
+                }
+                if (miscInfoFile == null) {
+                    throw new BuildError(
+                            "Cannot get " + MISC_INFO_FILE_NAME + " from device build.",
+                            device.getDeviceDescriptor());
+                }
+
+                File otaToolsZip = mOtaToolsZip;
+                if (otaToolsZip == null) {
+                    otaToolsZip = systemBuildInfo.getFile(OTATOOLS_ZIP_NAME);
+                }
+                if (otaToolsZip == null) {
+                    throw new BuildError(
+                            "Cannot get " + OTATOOLS_ZIP_NAME + " from system build.",
+                            systemNullDevice.getDeviceDescriptor());
+                }
+
+                File repackSuperImageFile = mRepackSuperImageFile;
+                if (repackSuperImageFile == null) {
+                    repackSuperImageFile = systemBuildInfo.getFile(REPACK_SUPER_IMAGE_FILE_NAME);
+                }
+                if (repackSuperImageFile == null) {
+                    throw new BuildError(
+                            "Cannot get " + REPACK_SUPER_IMAGE_FILE_NAME + " from system build.",
+                            systemNullDevice.getDeviceDescriptor());
+                }
+
+                mixedSuperImage = FileUtil.createTempFile("super", ".img");
+                repackSuperImage(
+                        repackSuperImageFile,
+                        otaToolsZip,
+                        miscInfoFile,
+                        files.get(SUPER_IMAGE_NAME),
+                        filesNotInDeviceBuild,
+                        mixedSuperImage);
+                files.put(SUPER_IMAGE_NAME, new FileInputStreamFactory(mixedSuperImage));
+                // The command ensures that all input images are used.
+                filesNotInDeviceBuild.clear();
+            }
+
             if (!filesNotInDeviceBuild.isEmpty()) {
                 throw new TargetSetupError(
                         String.join(",", filesNotInDeviceBuild.keySet()) + " not in device build.",
@@ -189,6 +300,7 @@ public class MixImageZipPreparer extends BaseMultiTargetPreparer {
             throw new TargetSetupError(
                     "Could not create mixed image zip", e, device.getDeviceDescriptor());
         } finally {
+            FileUtil.deleteFile(mixedSuperImage);
             ZipUtil.closeZip(deviceImageZip);
             ZipUtil.closeZip(systemImageZip);
         }
@@ -305,24 +417,7 @@ public class MixImageZipPreparer extends BaseMultiTargetPreparer {
             if (file == null) {
                 throw new IOException(String.format("Could not get file with name: %s", fileName));
             }
-            factories.put(
-                    fileName,
-                    new InputStreamFactory() {
-                        @Override
-                        public InputStream createInputStream() throws IOException {
-                            return new FileInputStream(file);
-                        }
-
-                        @Override
-                        public long getSize() {
-                            return file.length();
-                        }
-
-                        @Override
-                        public long getCrc32() throws IOException {
-                            return FileUtil.calculateCrc32(file);
-                        }
-                    });
+            factories.put(fileName, new FileInputStreamFactory(file));
         }
         return factories;
     }
@@ -362,7 +457,13 @@ public class MixImageZipPreparer extends BaseMultiTargetPreparer {
                 ZipEntry entry = new ZipEntry(factory.getKey());
                 // STORED is faster than the default DEFLATED in no compression mode.
                 if (compressionLevel == Deflater.NO_COMPRESSION) {
-                    initStoredZipEntry(entry, factory.getValue());
+                    // STORED requires size and CRC-32 to be set before putNextEntry.
+                    // In some versions of Java, ZipEntry.getSize() returns (1L << 32) - 1
+                    // if the original size is larger than or equal to 4GB.
+                    // This condition avoids using the wrong size value.
+                    if (factory.getValue().getSize() != (1L << 32) - 1) {
+                        initStoredZipEntry(entry, factory.getValue());
+                    }
                 }
                 zipOut.putNextEntry(entry);
                 try (InputStream in =
@@ -379,6 +480,77 @@ public class MixImageZipPreparer extends BaseMultiTargetPreparer {
             StreamUtil.close(out);
             FileUtil.deleteFile(zipFile);
         }
+    }
+
+    /**
+     * Execute a script that unpacks a super image, replaces the unpacked images, and makes a new
+     * super image.
+     *
+     * @param repackSuperImageFile the script to be executed.
+     * @param otaToolsZip the OTA tools zip.
+     * @param miscInfoFile the misc info file.
+     * @param superImage the original super image.
+     * @param replacement the images that replace the ones in the super image.
+     * @param outputFile the output super image.
+     * @throws IOException if any file operation fails.
+     */
+    private void repackSuperImage(
+            File repackSuperImageFile,
+            File otaToolsZip,
+            File miscInfoFile,
+            InputStreamFactory superImage,
+            Map<String, InputStreamFactory> replacement,
+            File outputFile)
+            throws IOException {
+        if (!repackSuperImageFile.canExecute()) {
+            if (!repackSuperImageFile.setExecutable(true, false)) {
+                CLog.w("Fail to set %s to be executable.", repackSuperImageFile);
+            }
+        }
+
+        try (InputStream imageStream = superImage.createInputStream()) {
+            FileUtil.writeToFile(imageStream, outputFile);
+        }
+
+        CommandResult result = null;
+        List<File> tempFiles = new ArrayList<File>();
+        File tempDir = null;
+        try {
+            tempDir = FileUtil.createTempDir("RepackSuperImage");
+            List<String> command =
+                    new ArrayList<String>(
+                            Arrays.asList(
+                                    repackSuperImageFile.getAbsolutePath(),
+                                    "--temp-dir",
+                                    tempDir.getAbsolutePath(),
+                                    "--ota-tools",
+                                    otaToolsZip.getAbsolutePath(),
+                                    "--misc-info",
+                                    miscInfoFile.getAbsolutePath(),
+                                    outputFile.getAbsolutePath()));
+
+            for (Map.Entry<String, InputStreamFactory> entry : replacement.entrySet()) {
+                String partitionName = FileUtil.getBaseName(entry.getKey());
+                File imageFile = FileUtil.createTempFile(partitionName, ".img");
+                tempFiles.add(imageFile);
+                try (InputStream imageStream = entry.getValue().createInputStream()) {
+                    FileUtil.writeToFile(imageStream, imageFile);
+                }
+                command.add(partitionName + "=" + imageFile.getAbsolutePath());
+            }
+            result = createRunUtil().runTimedCmd(4 * 60 * 1000, command.toArray(new String[0]));
+        } finally {
+            for (File tempFile : tempFiles) {
+                FileUtil.deleteFile(tempFile);
+            }
+            FileUtil.recursiveDelete(tempDir);
+        }
+
+        CLog.d("Repack super image stdout:\n%s", result.getStdout());
+        if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
+            throw new IOException("Fail to repack super image. stderr:\n" + result.getStderr());
+        }
+        CLog.d("Repack super image stderr:\n%s", result.getStderr());
     }
 
     private static IBuildInfo createBuildCopy(
@@ -429,5 +601,10 @@ public class MixImageZipPreparer extends BaseMultiTargetPreparer {
     @VisibleForTesting
     void setCompressionLevel(int compressionLevel) {
         mCompressionLevel = compressionLevel;
+    }
+
+    @VisibleForTesting
+    IRunUtil createRunUtil() {
+        return new RunUtil();
     }
 }

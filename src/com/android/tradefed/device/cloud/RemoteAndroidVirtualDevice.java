@@ -264,7 +264,11 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
         } else {
             CLog.i("GCE AVD has been started: %s", mGceAvd);
             if (GceAvdInfo.GceStatus.BOOT_FAIL.equals(mGceAvd.getStatus())) {
-                throw new TargetSetupError(mGceAvd.getErrors(), getDeviceDescriptor());
+                String errorMsg =
+                        String.format(
+                                "Device failed to boot. Error from Acloud: %s",
+                                mGceAvd.getErrors());
+                throw new TargetSetupError(errorMsg, getDeviceDescriptor());
             }
         }
         createGceSshMonitor(this, buildInfo, mGceAvd.hostAndPort(), this.getOptions());
