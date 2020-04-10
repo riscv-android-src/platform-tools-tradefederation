@@ -298,6 +298,10 @@ public class TestRunResult {
         updateTestResult(test, TestStatus.FAILURE, FailureDescription.create(trace));
     }
 
+    public void testFailed(TestDescription test, FailureDescription failure) {
+        updateTestResult(test, TestStatus.FAILURE, failure);
+    }
+
     public void testAssumptionFailure(TestDescription test, String trace) {
         updateTestResult(test, TestStatus.ASSUMPTION_FAILURE, FailureDescription.create(trace));
     }
