@@ -254,7 +254,7 @@ public class BaseTestSuite extends ITestSuite {
             if (mForceParameter != null && !mEnableParameter) {
                 throw new IllegalArgumentException(
                         "'module-parameter' option was specified without "
-                                + "'enable-optional-parameterization'");
+                                + "'enable-parameterized-modules'");
             }
             if (mEnableOptionalParameter && !mEnableParameter) {
                 throw new IllegalArgumentException(

@@ -96,4 +96,7 @@ public interface IDeviceConfiguration {
      * Return a shallow copy of this {@link IDeviceConfiguration} object.
      */
     public IDeviceConfiguration clone();
+
+    /** Return a shallow copy of this {@link IDeviceConfiguration} object, under a new name. */
+    public IDeviceConfiguration clone(String newName);
 }

@@ -703,6 +703,24 @@ public class Configuration implements IConfiguration {
         return clone;
     }
 
+    @Override
+    public IConfiguration partialDeepClone(List<String> objectToDeepClone, IKeyStoreClient client)
+            throws ConfigurationException {
+        Configuration clonedConfig = this.clone();
+        IConfiguration deepCopy =
+                ConfigurationFactory.getInstance()
+                        .createConfigurationFromArgs(
+                                QuotationAwareTokenizer.tokenizeLine(this.getCommandLine()),
+                                null,
+                                client);
+        for (String objType : objectToDeepClone) {
+            // TODO: Might need to handle internal device objects
+            clonedConfig.setConfigurationObjectList(
+                    objType, deepCopy.getConfigurationObjectList(objType));
+        }
+        return clonedConfig;
+    }
+
     private void addToDefaultDeviceConfig(Object obj) {
         try {
             getDeviceConfigByName(ConfigurationDef.DEFAULT_DEVICE_NAME).addSpecificConfig(obj);
@@ -1158,7 +1176,8 @@ public class Configuration implements IConfiguration {
 
     /** {@inheritDoc} */
     @Override
-    public void resolveDynamicOptions() throws ConfigurationException, BuildRetrievalError {
+    public void resolveDynamicOptions(DynamicRemoteFileResolver resolver)
+            throws ConfigurationException, BuildRetrievalError {
         // Resolve regardless of sharding if we are in remote environment because we know that's
         // where the execution will occur.
         if (!isRemoteEnvironment()) {
@@ -1172,7 +1191,7 @@ public class Configuration implements IConfiguration {
         ArgsOptionParser argsParser = new ArgsOptionParser(getAllConfigurationObjects());
         CLog.d("Resolve and download remote files from @Option");
         // Setup and validate the GCS File paths
-        mRemoteFiles.addAll(argsParser.validateRemoteFilePath());
+        mRemoteFiles.addAll(argsParser.validateRemoteFilePath(resolver));
     }
 
     /** Returns whether or not the environment of TF is a remote invocation. */

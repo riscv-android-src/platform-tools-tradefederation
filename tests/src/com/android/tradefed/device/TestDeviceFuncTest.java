@@ -41,6 +41,7 @@ import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 
 import org.easymock.EasyMock;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -301,10 +302,11 @@ public class TestDeviceFuncTest implements IDeviceTest {
      */
     @Test
     public void testPull_nopermissions() throws IOException, DeviceNotAvailableException {
-        CLog.i("testPull_nopermissions");
-
-        // make sure the root path is valid
-        String externalStorePath =  mTestDevice.getMountPoint(IDevice.MNT_EXTERNAL_STORAGE);
+        Assume.assumeFalse(
+                "Skipping test since harness is running as root.",
+                "root".equals(System.getProperty("user.name")));
+        // Make sure the root path is valid
+        String externalStorePath = mTestDevice.getMountPoint(IDevice.MNT_EXTERNAL_STORAGE);
         assertNotNull(externalStorePath);
         String deviceFilePath = String.format("%s/%s", externalStorePath, "testPull_nopermissions");
         // first push a file so we have something to retrieve
@@ -832,9 +834,9 @@ public class TestDeviceFuncTest implements IDeviceTest {
     /** Test that {@link TestDevice#getProperty(String)} works for volatile properties. */
     @Test
     public void testGetProperty_volatile() throws Exception {
-        getDevice().executeShellCommand("setprop prop.test 0");
+        getDevice().setProperty("prop.test", "0");
         assertEquals("0", getDevice().getProperty("prop.test"));
-        getDevice().executeShellCommand("setprop prop.test 1");
+        getDevice().setProperty("prop.test", "1");
         assertEquals("1", getDevice().getProperty("prop.test"));
     }
 

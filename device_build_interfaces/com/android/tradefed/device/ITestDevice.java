@@ -765,11 +765,11 @@ public interface ITestDevice extends INativeDevice {
     public Integer getPrimaryUserId() throws DeviceNotAvailableException;
 
     /**
-     * Return the id of the current running user.
+     * Return the id of the current running user. In case of error, return -10000.
      *
      * @throws DeviceNotAvailableException
      */
-    public int getCurrentUser() throws DeviceNotAvailableException, DeviceRuntimeException;
+    public int getCurrentUser() throws DeviceNotAvailableException;
 
     /**
      * Find and return the flags of a given user.

@@ -41,6 +41,8 @@ COLLECT_TESTS_ONLY = ('Collect a list test cases of the instrumentation tests '
 DISABLE_TEARDOWN = 'Disable test teardown and cleanup.'
 DRY_RUN = 'Dry run atest without building, installing and running tests in real.'
 ENABLE_FILE_PATTERNS = 'Enable FILE_PATTERNS in TEST_MAPPING.'
+HISTORY = ('Show test results in chronological order(with specified number or '
+           'all by default).')
 HOST = ('Run the test completely on the host without a device. '
         '(Note: running a host test that requires a device without '
         '--host will fail.)')
@@ -60,6 +62,7 @@ RERUN_UNTIL_FAILURE = ('Rerun all tests until a failure occurs or the max '
 RETRY_ANY_FAILURE = ('Rerun failed tests until passed or the max iteration '
                      'is reached. (10 by default)')
 SERIAL = 'The device to run the test on.'
+SHARDING = 'Option to specify sharding count. The default value is 2'
 TEST = ('Run the tests. WARNING: Many test configs force cleanup of device '
         'after test run. In this case, "-d" must be used in previous test run to '
         'disable cleanup for "-t" to work. Otherwise, device will need to be '
@@ -67,6 +70,7 @@ TEST = ('Run the tests. WARNING: Many test configs force cleanup of device '
 TEST_MAPPING = 'Run tests defined in TEST_MAPPING files.'
 TF_TEMPLATE = ('Add extra tradefed template for ATest suite, '
                'e.g. atest <test> --tf-template <template_key>=<template_path>')
+TF_DEBUG = 'Enable tradefed debug mode with a specify port. Default value is 10888.'
 UPDATE_CMD_MAPPING = ('Update the test command of input tests. Warning: result '
                       'will be saved under tools/tradefederation/core/atest/test_data.')
 USER_TYPE = 'Run test with specific user type, e.g. atest <test> --user-type secondary_user'
@@ -94,7 +98,6 @@ def _positive_int(value):
     except ValueError:
         raise argparse.ArgumentTypeError(err_msg)
 
-
 class AtestArgParser(argparse.ArgumentParser):
     """Atest wrapper of ArgumentParser."""
 
@@ -120,6 +123,9 @@ class AtestArgParser(argparse.ArgumentParser):
         self.add_argument('-m', constants.REBUILD_MODULE_INFO_FLAG,
                           action='store_true', help=REBUILD_MODULE_INFO)
         self.add_argument('-s', '--serial', help=SERIAL)
+        self.add_argument('--sharding', nargs='?', const=2,
+                          type=_positive_int, default=0,
+                          help=SHARDING)
         self.add_argument('-t', '--test', action='append_const', dest='steps',
                           const=constants.TEST_STEP, help=TEST)
         self.add_argument('-w', '--wait-for-debugger', action='store_true',
@@ -176,6 +182,11 @@ class AtestArgParser(argparse.ArgumentParser):
         self.add_argument('-y', '--verify-cmd-mapping', action='store_true',
                           help=VERIFY_CMD_MAPPING)
 
+        # Options for Tradefed debug mode.
+        self.add_argument('-D', '--tf-debug', nargs='?', const=10888,
+                          type=_positive_int, default=0,
+                          help=TF_DEBUG)
+
         # Options for Tradefed customization related.
         self.add_argument('--tf-template', action='append',
                           help=TF_TEMPLATE)
@@ -193,6 +204,11 @@ class AtestArgParser(argparse.ArgumentParser):
         group.add_argument('--retry-any-failure', nargs='?',
                            type=_positive_int, const=10, default=0,
                            metavar='MAX_ITERATIONS', help=RETRY_ANY_FAILURE)
+
+        # Option for test result history.
+        group.add_argument('--history', nargs='?',
+                           type=_positive_int, const=1000, default=0,
+                           help=HISTORY)
 
         # This arg actually doesn't consume anything, it's primarily used for
         # the help description and creating custom_args in the NameSpace object.
@@ -229,6 +245,7 @@ def print_epilog_text():
                                          DRY_RUN=DRY_RUN,
                                          ENABLE_FILE_PATTERNS=ENABLE_FILE_PATTERNS,
                                          HELP_DESC=HELP_DESC,
+                                         HISTORY=HISTORY,
                                          HOST=HOST,
                                          INCLUDE_SUBDIRS=INCLUDE_SUBDIRS,
                                          INFO=INFO,
@@ -240,8 +257,10 @@ def print_epilog_text():
                                          RERUN_UNTIL_FAILURE=RERUN_UNTIL_FAILURE,
                                          RETRY_ANY_FAILURE=RETRY_ANY_FAILURE,
                                          SERIAL=SERIAL,
+                                         SHARDING=SHARDING,
                                          TEST=TEST,
                                          TEST_MAPPING=TEST_MAPPING,
+                                         TF_DEBUG=TF_DEBUG,
                                          TF_TEMPLATE=TF_TEMPLATE,
                                          USER_TYPE=USER_TYPE,
                                          UPDATE_CMD_MAPPING=UPDATE_CMD_MAPPING,
@@ -275,6 +294,12 @@ OPTIONS
         -d, --disable-teardown
             {DISABLE_TEARDOWN}
 
+        -D --tf-debug
+            {TF_DEBUG}
+
+        --history
+            {HISTORY}
+
         --host
             {HOST}
 
@@ -286,6 +311,9 @@ OPTIONS
 
         -s, --serial
             {SERIAL}
+            
+        --sharding
+          {SHARDING}
 
         -t, --test
             {TEST} (default)
@@ -537,8 +565,8 @@ EXAMPLES
     To run tests in iterations, simply pass --iterations argument. No matter pass or fail, atest won't stop testing until the max iteration is reached.
 
     Example:
-        atest <test> --interations    # 10 iterations(by default).
-        atest <test> --interations 5  # run <test> 5 times.
+        atest <test> --iterations    # 10 iterations(by default).
+        atest <test> --iterations 5  # run <test> 5 times.
 
     Two approaches that assist users to detect flaky tests:
 
