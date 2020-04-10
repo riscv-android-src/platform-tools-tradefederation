@@ -135,6 +135,12 @@ public class PerfettoGenericPostProcessor extends BasePostProcessor {
             + "keys parsed and value is be the replacement string.")
     private Map<String, String> mReplacePrefixMap = new LinkedHashMap<String, String>();
 
+    @Option(
+            name = "perfetto-all-metric-prefix",
+            description = "Prefix to be used with the metrics collected from perfetto."
+                    + "This will be applied before any other prefixes to metrics.")
+    private String mAllMetricPrefix = "perfetto";
+
     // Matches 1.73, 1.73E+2
     private Pattern mNumberWithExponentPattern =
             Pattern.compile("[-+]?[0-9]*[\\.]?[0-9]+([eE][-+]?[0-9]+)?");
@@ -222,6 +228,9 @@ public class PerfettoGenericPostProcessor extends BasePostProcessor {
                         parsedMetrics.putAll(
                                 filterMetrics(convertPerfettoProtoMessage(builder.build())));
                         replacePrefix(parsedMetrics);
+                        // Generic prefix string is applied to all the metrics parsed from
+                        // perfetto trace file.
+                        replaceAllMetricPrefix(parsedMetrics);
                         break;
                     case binary:
                         TraceMetrics metricProto = null;
@@ -230,6 +239,9 @@ public class PerfettoGenericPostProcessor extends BasePostProcessor {
                         parsedMetrics
                                 .putAll(filterMetrics(convertPerfettoProtoMessage(metricProto)));
                         replacePrefix(parsedMetrics);
+                        // Generic prefix string is applied to all the metrics parsed from
+                        // perfetto trace file.
+                        replaceAllMetricPrefix(parsedMetrics);
                         break;
                     case json:
                         CLog.w("JSON perfetto metric file processing not supported.");
@@ -245,6 +257,7 @@ public class PerfettoGenericPostProcessor extends BasePostProcessor {
                 FileUtil.recursiveDelete(uncompressedDir);
             }
         }
+
         return parsedMetrics;
     }
 
@@ -273,6 +286,25 @@ public class PerfettoGenericPostProcessor extends BasePostProcessor {
             if (!isReplaced) {
                 finalMetrics.put(metric.getKey(), metric.getValue());
             }
+        }
+        processPerfettoMetrics.clear();
+        processPerfettoMetrics.putAll(finalMetrics);
+    }
+
+    /**
+     * Prefix all the metrics key with given string.
+     *
+     * @param processPerfettoMetrics metrics parsed from the perfetto proto file.
+     */
+    private void replaceAllMetricPrefix(Map<String, Metric.Builder> processPerfettoMetrics) {
+        if (mAllMetricPrefix == null || mAllMetricPrefix.isEmpty()) {
+            return;
+        }
+        Map<String, Metric.Builder> finalMetrics = new HashMap<String, Metric.Builder>();
+        for (Map.Entry<String, Metric.Builder> metric : processPerfettoMetrics.entrySet()) {
+            String newKey = String.format("%s_%s", mAllMetricPrefix, metric.getKey());
+            finalMetrics.put(newKey, metric.getValue());
+            CLog.d("Perfetto trace metric: key: %s value: %s", newKey, metric.getValue());
         }
         processPerfettoMetrics.clear();
         processPerfettoMetrics.putAll(finalMetrics);
