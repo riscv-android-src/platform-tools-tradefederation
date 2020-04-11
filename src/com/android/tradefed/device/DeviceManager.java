@@ -108,7 +108,7 @@ public class DeviceManager implements IDeviceManager {
      *
      * <p>serial2 offline
      */
-    private static final String DEVICE_LIST_PATTERN = ".*\n(%s)\\s+(device|offline).*";
+    private static final String DEVICE_LIST_PATTERN = ".*\n(%s)\\s+(device|offline|recovery).*";
 
     private Semaphore mConcurrentFlashLock = null;
 
@@ -619,6 +619,8 @@ public class DeviceManager implements IDeviceManager {
         if (d != null) {
             DeviceEventResponse r = d.handleAllocationEvent(DeviceEvent.FORCE_ALLOCATE_REQUEST);
             if (r.stateChanged && r.allocationState == DeviceAllocationState.Allocated) {
+                // Wait for the fastboot state to be updated once to update the IDevice.
+                d.getMonitor().waitForDeviceBootloaderStateUpdate();
                 return d;
             }
         }
@@ -1031,7 +1033,7 @@ public class DeviceManager implements IDeviceManager {
             if (d == null) {
                 continue;
             }
-            DeviceDescriptor desc = d.getDeviceDescriptor();
+            DeviceDescriptor desc = d.getCachedDeviceDescriptor();
             if (desc != null) {
                 serialStates.add(desc);
             }
@@ -1051,9 +1053,21 @@ public class DeviceManager implements IDeviceManager {
 
     @Override
     public void displayDevicesInfo(PrintWriter stream, boolean includeStub) {
-        ArrayList<List<String>> displayRows = new ArrayList<List<String>>();
-        displayRows.add(Arrays.asList("Serial", "State", "Allocation", "Product", "Variant",
-                "Build", "Battery"));
+        List<List<String>> displayRows = new ArrayList<List<String>>();
+        List<String> headers =
+                new ArrayList<>(
+                        Arrays.asList(
+                                "Serial",
+                                "State",
+                                "Allocation",
+                                "Product",
+                                "Variant",
+                                "Build",
+                                "Battery"));
+        if (includeStub) {
+            headers.add("class");
+        }
+        displayRows.add(headers);
         List<DeviceDescriptor> deviceList = listAllDevices();
         sortDeviceList(deviceList);
         addDevicesInfo(displayRows, deviceList, includeStub);
@@ -1111,15 +1125,20 @@ public class DeviceManager implements IDeviceManager {
             if (desc.getDisplaySerial() != null) {
                 serial = desc.getDisplaySerial();
             }
-            displayRows.add(
-                    Arrays.asList(
-                            serial,
-                            desc.getDeviceState().toString(),
-                            desc.getState().toString(),
-                            desc.getProduct(),
-                            desc.getProductVariant(),
-                            desc.getBuildId(),
-                            desc.getBatteryLevel()));
+            List<String> infos =
+                    new ArrayList<>(
+                            Arrays.asList(
+                                    serial,
+                                    desc.getDeviceState().toString(),
+                                    desc.getState().toString(),
+                                    desc.getProduct(),
+                                    desc.getProductVariant(),
+                                    desc.getBuildId(),
+                                    desc.getBatteryLevel()));
+            if (includeStub) {
+                infos.add(desc.getDeviceClass());
+            }
+            displayRows.add(infos);
         }
     }
 
@@ -1347,7 +1366,13 @@ public class DeviceManager implements IDeviceManager {
                         CLog.d(
                                 "Triggering IMultiDeviceRecovery class %s ...",
                                 m.getClass().getSimpleName());
-                        m.recoverDevices(getDeviceList());
+                        try {
+                            m.recoverDevices(getDeviceList());
+                        } catch (RuntimeException e) {
+                            CLog.e("Exception during %s recovery:", m.getClass().getSimpleName());
+                            CLog.e(e);
+                            // TODO: Log this to the history events.
+                        }
                     }
                 }
             }

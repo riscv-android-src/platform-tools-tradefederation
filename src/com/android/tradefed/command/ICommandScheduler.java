@@ -243,7 +243,20 @@ public interface ICommandScheduler {
      * @return true if the invocation was stopped, false otherwise
      * @throws UnsupportedOperationException if the implementation doesn't support this
      */
-    public boolean stopInvocation(int invocationId) throws UnsupportedOperationException;
+    public default boolean stopInvocation(int invocationId) throws UnsupportedOperationException {
+        return stopInvocation(invocationId, null);
+    }
+
+    /**
+     * Stop a running invocation by specifying it's id.
+     *
+     * @param invocationId the tracking id of the invocation.
+     * @param cause the cause for stopping the invocation.
+     * @return true if the invocation was stopped, false otherwise
+     * @throws UnsupportedOperationException if the implementation doesn't support this
+     */
+    public boolean stopInvocation(int invocationId, String cause)
+            throws UnsupportedOperationException;
 
     /**
      * Return the information on an invocation bu specifying the invocation id.

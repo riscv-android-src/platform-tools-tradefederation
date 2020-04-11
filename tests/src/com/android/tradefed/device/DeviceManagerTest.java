@@ -201,6 +201,8 @@ public class DeviceManagerTest {
 
         EasyMock.expect(mMockIDevice.getSerialNumber()).andStubReturn(DEVICE_SERIAL);
         EasyMock.expect(mMockStateMonitor.getSerialNumber()).andStubReturn(DEVICE_SERIAL);
+        mMockStateMonitor.waitForDeviceBootloaderStateUpdate();
+        EasyMock.expectLastCall().anyTimes();
         EasyMock.expect(mMockIDevice.isEmulator()).andStubReturn(Boolean.FALSE);
         EasyMock.expect(mMockTestDevice.getMacAddress()).andStubReturn(MAC_ADDRESS);
         EasyMock.expect(mMockTestDevice.getSimState()).andStubReturn(SIM_STATE);
@@ -1046,6 +1048,67 @@ public class DeviceManagerTest {
         assertEquals(1, manager.getDeviceList().size());
     }
 
+    /** Ensure that an unavailable device in recovery mode is released properly. */
+    @Test
+    public void testFreeDevice_recovery() {
+        EasyMock.expect(mMockIDevice.isEmulator()).andStubReturn(Boolean.FALSE);
+        EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.ONLINE);
+        EasyMock.expect(mMockStateMonitor.waitForDeviceShell(EasyMock.anyLong()))
+                .andReturn(Boolean.TRUE);
+        mMockStateMonitor.setState(TestDeviceState.NOT_AVAILABLE);
+
+        CommandResult stubAdbDevices = new CommandResult(CommandStatus.SUCCESS);
+        stubAdbDevices.setStdout("List of devices attached\nserial\trecovery\n");
+        EasyMock.expect(
+                        mMockRunUtil.runTimedCmd(
+                                EasyMock.anyLong(), EasyMock.eq("adb"), EasyMock.eq("devices")))
+                .andReturn(stubAdbDevices);
+
+        replayMocks();
+        IManagedTestDevice testDevice = new TestDevice(mMockIDevice, mMockStateMonitor, null);
+        DeviceManager manager = createDeviceManagerNoInit();
+        manager.init(
+                null,
+                null,
+                new ManagedTestDeviceFactory(false, null, null) {
+                    @Override
+                    public IManagedTestDevice createDevice(IDevice idevice) {
+                        mMockTestDevice.setIDevice(idevice);
+                        return testDevice;
+                    }
+
+                    @Override
+                    protected CollectingOutputReceiver createOutputReceiver() {
+                        return new CollectingOutputReceiver() {
+                            @Override
+                            public String getOutput() {
+                                return "/system/bin/pm";
+                            }
+                        };
+                    }
+
+                    @Override
+                    public void setFastbootEnabled(boolean enable) {
+                        // ignore
+                    }
+                });
+
+        mDeviceListener.deviceConnected(mMockIDevice);
+
+        IManagedTestDevice device = (IManagedTestDevice) manager.allocateDevice(mDeviceSelections);
+        assertNotNull(device);
+        // Device becomes unavailable
+        device.setDeviceState(TestDeviceState.NOT_AVAILABLE);
+        // A freed 'unavailable' device becomes UNAVAILABLE state
+        manager.freeDevice(device, FreeDeviceState.UNAVAILABLE);
+        // Ensure device cannot be allocated again
+        ITestDevice device2 = manager.allocateDevice(mDeviceSelections);
+        assertNull(device2);
+        verifyMocks();
+        // We still have the device in the list because device is not lost.
+        assertEquals(1, manager.getDeviceList().size());
+    }
+
     /**
      * Test that when freeing an Unavailable device that is not in 'adb devices' we correctly remove
      * it from our tracking list.
@@ -1176,10 +1239,8 @@ public class DeviceManagerTest {
         assertEquals(0, manager.getDeviceList().size());
     }
 
-    /**
-     * Helper to set the expectation when a {@link DeviceDescriptor} is expected.
-     */
-    private void setDeviceDescriptorExpectation() {
+    /** Helper to set the expectation when a {@link DeviceDescriptor} is expected. */
+    private void setDeviceDescriptorExpectation(boolean cached) {
         DeviceDescriptor descriptor =
                 new DeviceDescriptor(
                         "serial",
@@ -1198,14 +1259,18 @@ public class DeviceManagerTest {
                         SIM_OPERATOR,
                         false,
                         null);
-        EasyMock.expect(mMockTestDevice.getDeviceDescriptor()).andReturn(descriptor);
+        if (cached) {
+            EasyMock.expect(mMockTestDevice.getCachedDeviceDescriptor()).andReturn(descriptor);
+        } else {
+            EasyMock.expect(mMockTestDevice.getDeviceDescriptor()).andReturn(descriptor);
+        }
     }
 
     /** Test that {@link DeviceManager#listAllDevices()} returns a list with all devices. */
     @Test
     public void testListAllDevices() throws Exception {
         setCheckAvailableDeviceExpectations();
-        setDeviceDescriptorExpectation();
+        setDeviceDescriptorExpectation(true);
         replayMocks();
         DeviceManager manager = createDeviceManager(null, mMockIDevice);
         List<DeviceDescriptor> res = manager.listAllDevices();
@@ -1224,7 +1289,7 @@ public class DeviceManagerTest {
     @Test
     public void testGetDeviceDescriptor() throws Exception {
         setCheckAvailableDeviceExpectations();
-        setDeviceDescriptorExpectation();
+        setDeviceDescriptorExpectation(false);
         replayMocks();
         DeviceManager manager = createDeviceManager(null, mMockIDevice);
         DeviceDescriptor res = manager.getDeviceDescriptor(mMockIDevice.getSerialNumber());
@@ -1256,7 +1321,7 @@ public class DeviceManagerTest {
     @Test
     public void testDisplayDevicesInfo() throws Exception {
         setCheckAvailableDeviceExpectations();
-        setDeviceDescriptorExpectation();
+        setDeviceDescriptorExpectation(true);
         replayMocks();
         DeviceManager manager = createDeviceManager(null, mMockIDevice);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
