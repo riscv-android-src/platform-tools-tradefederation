@@ -51,11 +51,19 @@ public class TestInformation {
         mExecutionFiles = builder.mExecutionFiles;
     }
 
-    private TestInformation(TestInformation invocationInfo, IInvocationContext moduleContext) {
+    private TestInformation(
+            TestInformation invocationInfo,
+            IInvocationContext moduleContext,
+            boolean copyExecFile) {
         mContext = moduleContext;
         mProperties = invocationInfo.mProperties;
         mDependenciesFolder = invocationInfo.mDependenciesFolder;
-        mExecutionFiles = invocationInfo.mExecutionFiles;
+        if (copyExecFile) {
+            mExecutionFiles = new ExecutionFiles();
+            mExecutionFiles.putAll(invocationInfo.executionFiles().getAll());
+        } else {
+            mExecutionFiles = invocationInfo.mExecutionFiles;
+        }
     }
 
     /** Create a builder for creating {@link TestInformation} instances. */
@@ -66,7 +74,13 @@ public class TestInformation {
     /** Create an {@link TestInformation} representing a module rather than an invocation. */
     public static TestInformation createModuleTestInfo(
             TestInformation invocationInfo, IInvocationContext moduleContext) {
-        return new TestInformation(invocationInfo, moduleContext);
+        return new TestInformation(invocationInfo, moduleContext, false);
+    }
+
+    /** Create an {@link TestInformation} with a copied {@link ExecutionFiles}. */
+    public static TestInformation createCopyTestInfo(
+            TestInformation invocationInfo, IInvocationContext context) {
+        return new TestInformation(invocationInfo, context, true);
     }
 
     /** Returns the current invocation context, or the module context if this is a module. */

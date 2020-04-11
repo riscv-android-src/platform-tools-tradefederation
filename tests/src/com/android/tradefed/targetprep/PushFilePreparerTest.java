@@ -139,6 +139,37 @@ public class PushFilePreparerTest {
         }
     }
 
+    /** Pushing the same file to two different locations is working. */
+    @Test
+    public void testPushFile_duplicateKey() throws Exception {
+        BuildInfo info = new BuildInfo();
+        File testsDir = FileUtil.createTempDir("tests_dir");
+        try {
+            File testFile = new File(testsDir, "perf_test");
+            testFile.createNewFile();
+            info.setFile("perf_test", testFile, "v1");
+            mOptionSetter.setOptionValue("push-file", "perf_test", "/data/local/tmp/perf_test1");
+            mOptionSetter.setOptionValue("push-file", "perf_test", "/data/local/tmp/perf_test2");
+            // expect a pushFile() to be done with the appended file name.
+            EasyMock.expect(
+                            mMockDevice.pushFile(
+                                    EasyMock.eq(testFile),
+                                    EasyMock.eq("/data/local/tmp/perf_test1")))
+                    .andReturn(Boolean.TRUE);
+            EasyMock.expect(
+                            mMockDevice.pushFile(
+                                    EasyMock.eq(testFile),
+                                    EasyMock.eq("/data/local/tmp/perf_test2")))
+                    .andReturn(Boolean.TRUE);
+            mTestInfo.getContext().addDeviceBuildInfo("device", info);
+            EasyMock.replay(mMockDevice);
+            mPreparer.setUp(mTestInfo);
+            EasyMock.verify(mMockDevice);
+        } finally {
+            FileUtil.recursiveDelete(testsDir);
+        }
+    }
+
     /** Test pushing a directory to an existing remote directory. */
     @Test
     public void testPushDir_RemoteIsDir() throws Exception {

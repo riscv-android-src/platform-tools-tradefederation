@@ -23,7 +23,6 @@ import com.android.tradefed.result.proto.TestRecordProto.TestRecord;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.TimeUtil;
 
-import java.io.BufferedReader;
 import java.io.Closeable;
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -133,7 +132,6 @@ public class StreamProtoReceiver implements Closeable {
         @Override
         public void run() {
             Socket client = null;
-            BufferedReader in = null;
             try {
                 client = mSocket.accept();
                 TestRecord received = null;
@@ -144,7 +142,7 @@ public class StreamProtoReceiver implements Closeable {
             } catch (IOException e) {
                 CLog.e(e);
             } finally {
-                StreamUtil.close(in);
+                StreamUtil.close(client);
                 mCountDown.countDown();
             }
             CLog.d("ProtoEventReceiverThread done.");

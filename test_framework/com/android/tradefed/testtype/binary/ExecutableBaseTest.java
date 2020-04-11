@@ -20,6 +20,7 @@ import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.IAbi;
@@ -85,7 +86,8 @@ public abstract class ExecutableBaseTest
                         runBinary(path, listener, description);
                     }
                 } catch (IOException e) {
-                    listener.testFailed(description, StreamUtil.getStackTrace(e));
+                    listener.testFailed(
+                            description, FailureDescription.create(StreamUtil.getStackTrace(e)));
                 } finally {
                     listener.testEnded(description, new HashMap<String, Metric>());
                     listener.testRunEnded(

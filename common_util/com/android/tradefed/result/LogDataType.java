@@ -35,6 +35,7 @@ public enum LogDataType {
     HPROF("hprof", "text/plain", true, false),
     COVERAGE("ec", "text/plain", false, false), // Emma coverage file
     NATIVE_COVERAGE("zip", "application/zip", true, false), // gcov coverage archive
+    CLANG_COVERAGE("profdata", "text/plain", false, false), // LLVM indexed profile data
     PB("pb", "application/octet-stream", true, false), // Binary proto file
     TEXTPB("textproto", "text/plain", false, true), // Text proto file
     /* Specific text file types */

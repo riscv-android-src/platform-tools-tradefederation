@@ -35,6 +35,7 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.ITestLogger;
+import com.android.tradefed.targetprep.CreateUserPreparer;
 import com.android.tradefed.testtype.Abi;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IRemoteTest;
@@ -48,6 +49,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 import java.io.File;
+import java.lang.reflect.Field;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -763,5 +765,41 @@ public class BaseTestSuiteTest {
         assertEquals(1, configMap.size());
         assertTrue(configMap.containsKey("arm64-v8a suite/stub-parameterized[secondary_user]"));
         EasyMock.verify(mockDevice);
+    }
+
+    /**
+     * Test for {@link BaseTestSuite#loadTests()} when loading a configuration with parameterized
+     * metadata that target preparer options are injected after preparers are added to the config.
+     */
+    @Test
+    public void testLoadTests_parameterizedModule_optionSetupAfterConfigAdded() throws Exception {
+        ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
+        mRunner.setDevice(mockDevice);
+        OptionSetter setter = new OptionSetter(mRunner);
+        setter.setOptionValue("suite-config-prefix", "suite");
+        setter.setOptionValue("run-suite-tag", "example-suite-parameters");
+        setter.setOptionValue("enable-parameterized-modules", "true");
+        setter.setOptionValue("enable-optional-parameterization", "true");
+        setter.setOptionValue("module-parameter", "SECONDARY_USER");
+        setter.setOptionValue(
+                "test-arg",
+                "com.android.tradefed.targetprep.CreateUserPreparer:reuse-test-user:true");
+        EasyMock.replay(mockDevice);
+        LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
+        // We only create the primary abi of the parameterized module version.
+        assertEquals(1, configMap.size());
+        assertTrue(configMap.containsKey("arm64-v8a suite/stub-parameterized[secondary_user]"));
+        EasyMock.verify(mockDevice);
+
+        IConfiguration config = configMap.get("arm64-v8a suite/stub-parameterized[secondary_user]");
+
+        // Check if the target preparer was correctly inserted in addParameterSpecificConfig.
+        assertTrue(config.getTargetPreparers().get(0) instanceof CreateUserPreparer);
+
+        // Check if the option mReuseTestUser was injected on the preparer in setUpConfig.
+        Field reuseTestUser = CreateUserPreparer.class.getDeclaredField("mReuseTestUser");
+        reuseTestUser.setAccessible(true);
+        assertTrue(reuseTestUser.getBoolean(config.getTargetPreparers().get(0)));
+        reuseTestUser.setAccessible(false);
     }
 }
