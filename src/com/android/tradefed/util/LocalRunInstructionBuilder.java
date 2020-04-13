@@ -130,7 +130,7 @@ public class LocalRunInstructionBuilder {
         }
         // Ensure repro is aligned with parameterized modules.
         List<String> paramMetadata =
-                configDescriptor.getMetaData(ConfigurationDescriptor.PARAMETER_KEY);
+                configDescriptor.getMetaData(ConfigurationDescriptor.ACTIVE_PARAMETER_KEY);
         if (paramMetadata != null
                 && paramMetadata.size() > 0
                 && "instant".equals(paramMetadata.get(0))) {
