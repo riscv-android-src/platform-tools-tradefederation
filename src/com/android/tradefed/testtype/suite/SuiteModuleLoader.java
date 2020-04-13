@@ -328,7 +328,7 @@ public class SuiteModuleLoader {
                             paramConfig
                                     .getConfigurationDescription()
                                     .addMetadata(
-                                            ConfigurationDescriptor.PARAMETER_KEY,
+                                            ConfigurationDescriptor.ACTIVE_PARAMETER_KEY,
                                             param.getParameterIdentifier());
                             param.addParameterSpecificConfig(paramConfig);
                             setUpConfig(name, baseId, fullId, paramConfig, abi);
