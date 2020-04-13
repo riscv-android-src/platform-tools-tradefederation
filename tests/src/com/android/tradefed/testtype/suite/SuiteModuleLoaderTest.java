@@ -311,11 +311,17 @@ public class SuiteModuleLoaderTest {
         // Ensure that appropriate metadata are set on the module config descriptor
         ConfigurationDescriptor descriptor = instantModule.getConfigurationDescription();
         assertEquals(
-                "instant_app",
+                1,
+                descriptor
+                        .getAllMetaData()
+                        .get(ConfigurationDescriptor.ACTIVE_PARAMETER_KEY)
+                        .size());
+        assertEquals(
+                "instant",
                 descriptor
                         .getAllMetaData()
                         .getUniqueMap()
-                        .get(ConfigurationDescriptor.PARAMETER_KEY));
+                        .get(ConfigurationDescriptor.ACTIVE_PARAMETER_KEY));
         assertEquals("armeabi-v7a", descriptor.getAbi().getName());
     }
 

@@ -110,7 +110,7 @@ public class LocalRunInstructionBuilderTest {
         ConfigurationDescriptor configDescriptor = new ConfigurationDescriptor();
         configDescriptor.setAbi(new Abi(ABI_NAME, "32"));
         configDescriptor.setModuleName(OPTION_SOURCE);
-        configDescriptor.addMetadata(ConfigurationDescriptor.PARAMETER_KEY, "instant");
+        configDescriptor.addMetadata(ConfigurationDescriptor.ACTIVE_PARAMETER_KEY, "instant");
         String instruction =
                 LocalRunInstructionBuilder.getInstruction(
                         configDescriptor, LocalTestRunner.ATEST, null);
