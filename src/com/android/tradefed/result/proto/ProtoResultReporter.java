@@ -33,12 +33,14 @@ import com.android.tradefed.result.proto.TestRecordProto.TestRecord;
 import com.android.tradefed.result.proto.TestRecordProto.TestStatus;
 import com.android.tradefed.result.retry.ISupportGranularResults;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
+import com.android.tradefed.util.SerializationUtil;
 import com.android.tradefed.util.StreamUtil;
 
 import com.google.common.base.Strings;
 import com.google.protobuf.Any;
 import com.google.protobuf.Timestamp;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Stack;
@@ -192,6 +194,14 @@ public abstract class ProtoResultReporter
                 debugBuilder.setErrorMessage(mInvocationFailure.getMessage());
             }
             debugBuilder.setTrace(StreamUtil.getStackTrace(mInvocationFailure));
+            DebugInfoContext.Builder debugContext = DebugInfoContext.newBuilder();
+            try {
+                debugContext.setErrorType(SerializationUtil.serializeToString(mInvocationFailure));
+            } catch (IOException e) {
+                CLog.e("Failed to serialize the invocation failure:");
+                CLog.e(e);
+            }
+            debugBuilder.setDebugInfoContext(debugContext);
             mInvocationRecordBuilder.setDebugInfo(debugBuilder);
         }
 
