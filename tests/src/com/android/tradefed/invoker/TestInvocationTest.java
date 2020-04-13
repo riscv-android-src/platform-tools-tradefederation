@@ -51,6 +51,7 @@ import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.TcpDevice;
 import com.android.tradefed.device.TestDeviceOptions;
+import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.device.metric.BaseDeviceMetricCollector;
 import com.android.tradefed.device.metric.DeviceMetricData;
 import com.android.tradefed.device.metric.IMetricCollector;
@@ -217,6 +218,8 @@ public class TestInvocationTest {
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn(SERIAL);
         EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(null);
         EasyMock.expect(mMockDevice.getBattery()).andStubReturn(null);
+        EasyMock.expect(mMockDevice.getDeviceState()).andStubReturn(TestDeviceState.NOT_AVAILABLE);
+        mMockDevice.setRecoveryMode(RecoveryMode.AVAILABLE);
         mMockDevice.setRecovery(mMockRecovery);
         mMockDevice.preInvocationSetup(
                 (IBuildInfo) EasyMock.anyObject(), EasyMock.<List<IBuildInfo>>anyObject());
@@ -307,6 +310,12 @@ public class TestInvocationTest {
                     public void registerExecutionFiles(ExecutionFiles executionFiles) {
                         // Empty of purpose
                     }
+
+                    @Override
+                    protected void addInvocationMetric(InvocationMetricKey key, long value) {}
+
+                    @Override
+                    protected void addInvocationMetric(InvocationMetricKey key, String value) {}
                 };
     }
 
@@ -1565,6 +1574,12 @@ public class TestInvocationTest {
                         // Avoid re-entry in the current TF invocation scope for unit tests.
                         return new InvocationScope();
                     }
+
+                    @Override
+                    protected void addInvocationMetric(InvocationMetricKey key, long value) {}
+
+                    @Override
+                    protected void addInvocationMetric(InvocationMetricKey key, String value) {}
                 };
         mMockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
         EasyMock.expect(mMockBuildInfo.getProperties()).andStubReturn(new HashSet<>());
@@ -1645,6 +1660,12 @@ public class TestInvocationTest {
                             // Avoid re-entry in the current TF invocation scope for unit tests.
                             return new InvocationScope();
                         }
+
+                        @Override
+                        protected void addInvocationMetric(InvocationMetricKey key, long value) {}
+
+                        @Override
+                        protected void addInvocationMetric(InvocationMetricKey key, String value) {}
                     };
             mMockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
             IRemoteTest test = EasyMock.createNiceMock(IRemoteTest.class);
@@ -1743,6 +1764,12 @@ public class TestInvocationTest {
                             // Avoid re-entry in the current TF invocation scope for unit tests.
                             return new InvocationScope();
                         }
+
+                        @Override
+                        protected void addInvocationMetric(InvocationMetricKey key, long value) {}
+
+                        @Override
+                        protected void addInvocationMetric(InvocationMetricKey key, String value) {}
                     };
             mMockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
             IRemoteTest test = EasyMock.createNiceMock(IRemoteTest.class);
