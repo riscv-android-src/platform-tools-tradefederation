@@ -15,12 +15,14 @@
  */
 package com.android.tradefed.targetprep;
 
+import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.invoker.TestInformation;
+import com.android.tradefed.log.LogUtil.CLog;
 
 /**
  * Target preparer that performs "adb root" or "adb unroot" based on option "force-root".
@@ -39,6 +41,11 @@ public final class RootTargetPreparer extends BaseTargetPreparer {
                             + "root during setup.")
     private boolean mForceRoot = true;
 
+    @Option(
+            name = "throw-on-error",
+            description = "Throws TargetSetupError if adb root/unroot fails")
+    private boolean mThrowOnError = true;
+
     @Override
     public void setUp(TestInformation testInfo)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
@@ -49,9 +56,9 @@ public final class RootTargetPreparer extends BaseTargetPreparer {
         }
         mWasRoot = device.isAdbRoot();
         if (!mWasRoot && mForceRoot && !device.enableAdbRoot()) {
-            throw new TargetSetupError("Failed to adb root device", device.getDeviceDescriptor());
+            throwOrLog("Failed to adb root device", device.getDeviceDescriptor());
         } else if (mWasRoot && !mForceRoot && !device.disableAdbRoot()) {
-            throw new TargetSetupError("Failed to adb unroot device", device.getDeviceDescriptor());
+            throwOrLog("Failed to adb unroot device", device.getDeviceDescriptor());
         }
     }
 
@@ -66,6 +73,15 @@ public final class RootTargetPreparer extends BaseTargetPreparer {
             device.disableAdbRoot();
         } else if (mWasRoot && !mForceRoot) {
             device.enableAdbRoot();
+        }
+    }
+
+    private void throwOrLog(String message, DeviceDescriptor deviceDescriptor)
+            throws TargetSetupError {
+        if (mThrowOnError) {
+            throw new TargetSetupError(message, deviceDescriptor);
+        } else {
+            CLog.w(message + " " + deviceDescriptor);
         }
     }
 }
