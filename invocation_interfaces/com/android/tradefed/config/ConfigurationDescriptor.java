@@ -48,7 +48,7 @@ public class ConfigurationDescriptor implements Serializable, Cloneable {
     /** Metadata key for a config to specify that it was sharded. */
     public static final String LOCAL_SHARDED_KEY = "sharded";
     /** Metadata key for a config parameterization, optional. */
-    public static final String PARAMETER_KEY = "parameter";
+    public static final String ACTIVE_PARAMETER_KEY = "active-parameter";
 
     @Option(name = "test-suite-tag", description = "A membership tag to suite. Can be repeated.")
     private List<String> mSuiteTags = new ArrayList<>();
@@ -136,7 +136,7 @@ public class ConfigurationDescriptor implements Serializable, Cloneable {
      * @param key {@link String} of the key to add values to.
      * @param values a list of {@link String} of the additional values.
      */
-    public void addMetaData(String key, List<String> values) {
+    public void addMetadata(String key, List<String> values) {
         for (String source : values) {
             mMetaData.put(key, source);
         }
