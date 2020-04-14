@@ -101,6 +101,7 @@ public final class PythonBinaryHostTestTest {
         mMockRunUtil.setEnvVariable(PythonBinaryHostTest.ANDROID_SERIAL_VAR, "SERIAL");
 
         mPythonBinary = FileUtil.createTempFile("python-dir", "");
+        mTestInfo.executionFiles().put(FilesKey.HOST_TESTS_DIRECTORY, new File("/path-not-exist"));
     }
 
     @After
@@ -312,6 +313,7 @@ public final class PythonBinaryHostTestTest {
     public void testRun_withAdbPath() throws Exception {
         mTestInfo.executionFiles().put(FilesKey.ADB_BINARY, new File("/test/adb"));
         File binary = FileUtil.createTempFile("python-dir", "");
+
         try {
             OptionSetter setter = new OptionSetter(mTest);
             setter.setOptionValue("python-binaries", binary.getAbsolutePath());
@@ -341,6 +343,51 @@ public final class PythonBinaryHostTestTest {
             EasyMock.verify(mMockRunUtil, mMockBuildInfo, mMockListener, mMockDevice);
         } finally {
             FileUtil.deleteFile(binary);
+        }
+    }
+
+    /** Test running the python tests when shared lib is available in HOST_TESTS_DIRECTORY. */
+    @Test
+    public void testRun_withSharedLib() throws Exception {
+        File hostTestsDir = FileUtil.createTempDir("host-test-cases");
+        mTestInfo.executionFiles().put(FilesKey.HOST_TESTS_DIRECTORY, hostTestsDir);
+        File binary = FileUtil.createTempFile("python-dir", "", hostTestsDir);
+        File lib = new File(hostTestsDir, "lib");
+        lib.mkdirs();
+        File lib64 = new File(hostTestsDir, "lib64");
+        lib64.mkdirs();
+
+        try {
+            OptionSetter setter = new OptionSetter(mTest);
+            setter.setOptionValue("python-binaries", binary.getAbsolutePath());
+            mMockRunUtil.setEnvVariable(
+                    PythonBinaryHostTest.LD_LIBRARY_PATH,
+                    lib.getAbsolutePath() + ":" + lib64.getAbsolutePath());
+            expectedAdbPath(mFakeAdb);
+
+            CommandResult res = new CommandResult();
+            res.setStatus(CommandStatus.SUCCESS);
+            res.setStderr("TEST_RUN_STARTED {\"testCount\": 5, \"runName\": \"TestSuite\"}");
+            EasyMock.expect(
+                            mMockRunUtil.runTimedCmd(
+                                    EasyMock.anyLong(), EasyMock.eq(binary.getAbsolutePath())))
+                    .andReturn(res);
+            mMockListener.testRunStarted(
+                    EasyMock.eq(binary.getName()),
+                    EasyMock.eq(5),
+                    EasyMock.eq(0),
+                    EasyMock.anyLong());
+            mMockListener.testLog(
+                    EasyMock.eq(binary.getName() + "-stderr"),
+                    EasyMock.eq(LogDataType.TEXT),
+                    EasyMock.anyObject());
+            EasyMock.expect(mMockDevice.getIDevice()).andReturn(new StubDevice("serial"));
+
+            EasyMock.replay(mMockRunUtil, mMockBuildInfo, mMockListener, mMockDevice);
+            mTest.run(mTestInfo, mMockListener);
+            EasyMock.verify(mMockRunUtil, mMockBuildInfo, mMockListener, mMockDevice);
+        } finally {
+            FileUtil.recursiveDelete(hostTestsDir);
         }
     }
 
