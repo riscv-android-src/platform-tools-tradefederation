@@ -42,7 +42,8 @@ public class InvocationMetricLogger {
         SANDBOX_EXIT_CODE("sandbox_exit_code", false),
         CF_FETCH_ARTIFACT_TIME("cf_fetch_artifact_time_ms", false),
         CF_GCE_CREATE_TIME("cf_gce_create_time_ms", false),
-        CF_LAUNCH_CVD_TIME("cf_launch_cvd_time_ms", false);
+        CF_LAUNCH_CVD_TIME("cf_launch_cvd_time_ms", false),
+        CF_INSTANCE_COUNT("cf_instance_count", false);
 
         private final String mKeyName;
         // Whether or not to add the value when the key is added again.
