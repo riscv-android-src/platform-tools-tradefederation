@@ -341,17 +341,26 @@ public class TestInvocation implements ITestInvocation {
             }
             mStatus = "done running tests";
             // Track the timestamp when we are done with devices
-            InvocationMetricLogger.addInvocationMetrics(
+            addInvocationMetric(
                     InvocationMetricKey.DEVICE_DONE_TIMESTAMP, System.currentTimeMillis());
-            if (config.getCommandOptions().earlyDeviceRelease()) {
-                // Capture the FreeDeviceState of the primary device
-                Map<ITestDevice, FreeDeviceState> devicesStates =
-                        CommandScheduler.createReleaseMap(context, exception);
-                if (devicesStates.size() >= 1) {
-                    InvocationMetricLogger.addInvocationMetrics(
-                            InvocationMetricKey.DEVICE_RELEASE_STATE,
-                            devicesStates.values().iterator().next().toString());
+            // Capture the FreeDeviceState of the primary device
+            Map<ITestDevice, FreeDeviceState> devicesStates =
+                    CommandScheduler.createReleaseMap(context, exception);
+            if (devicesStates.size() >= 1) {
+                addInvocationMetric(
+                        InvocationMetricKey.DEVICE_RELEASE_STATE,
+                        devicesStates.values().iterator().next().toString());
+            }
+            int countLost = 0;
+            for (FreeDeviceState fds : devicesStates.values()) {
+                if (FreeDeviceState.UNAVAILABLE.equals(fds)) {
+                    countLost++;
                 }
+            }
+            if (countLost > 0) {
+                addInvocationMetric(InvocationMetricKey.DEVICE_LOST_DETECTED, countLost);
+            }
+            if (config.getCommandOptions().earlyDeviceRelease()) {
                 for (IScheduledInvocationListener scheduleListener : mSchedulerListeners) {
                     scheduleListener.releaseDevices(context, devicesStates);
                 }
@@ -919,6 +928,14 @@ public class TestInvocation implements ITestInvocation {
     protected void setExitCode(ExitCode code, Throwable stack) {
         GlobalConfiguration.getInstance().getCommandScheduler()
                 .setLastInvocationExitCode(code, stack);
+    }
+
+    protected void addInvocationMetric(InvocationMetricKey key, long value) {
+        InvocationMetricLogger.addInvocationMetrics(key, value);
+    }
+
+    protected void addInvocationMetric(InvocationMetricKey key, String value) {
+        InvocationMetricLogger.addInvocationMetrics(key, value);
     }
 
     public static String getDeviceLogName(Stage stage) {
