@@ -2525,10 +2525,14 @@ public class NativeDevice implements IManagedTestDevice {
                 return null;
             } else {
                 String remoteFilePath = match.group(2);
+                if (Strings.isNullOrEmpty(remoteFilePath)) {
+                    CLog.e("Invalid bugreportz path found from output: %s", output);
+                    return null;
+                }
                 File zipFile = null;
                 try {
                     if (!doesFileExist(remoteFilePath)) {
-                        CLog.e("Did not find bugreportz at: %s", remoteFilePath);
+                        CLog.e("Did not find bugreportz at: '%s'", remoteFilePath);
                         return null;
                     }
                     // Create a placeholder to replace the file
