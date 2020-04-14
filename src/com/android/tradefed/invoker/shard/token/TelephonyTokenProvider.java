@@ -62,12 +62,17 @@ public class TelephonyTokenProvider implements ITokenProvider {
                 case SECURE_ELEMENT_SIM_CARD:
                     if (info.mHasSecuredElement && info.mHasSeService) {
                         // TODO: Improve how we detect this use case.
-                        if (ORANGE_SIM_ID.equals(device.getProperty(GSM_OPERATOR_PROP))) {
+                        String simProp = device.getProperty(GSM_OPERATOR_PROP);
+                        if (ORANGE_SIM_ID.equals(simProp)) {
                             return true;
                         } else {
                             CLog.w(
-                                    "%s doesn't have a Orange Sim card for secured elements.",
-                                    device.getSerialNumber());
+                                    "%s doesn't have a Orange Sim card (%s) for secured elements."
+                                            + " %s returned: '%s'",
+                                    device.getSerialNumber(),
+                                    ORANGE_SIM_ID,
+                                    GSM_OPERATOR_PROP,
+                                    simProp);
                         }
                     }
 
