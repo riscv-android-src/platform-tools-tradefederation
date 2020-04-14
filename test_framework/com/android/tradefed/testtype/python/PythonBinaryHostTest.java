@@ -42,6 +42,8 @@ import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.SubprocessTestResultsParser;
 
+import com.google.common.base.Joiner;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -64,6 +66,7 @@ import java.util.Set;
 public class PythonBinaryHostTest implements IRemoteTest, ITestFilterReceiver {
 
     protected static final String ANDROID_SERIAL_VAR = "ANDROID_SERIAL";
+    protected static final String LD_LIBRARY_PATH = "LD_LIBRARY_PATH";
     protected static final String PATH_VAR = "PATH";
     protected static final long PATH_TIMEOUT_MS = 60000L;
 
@@ -75,6 +78,7 @@ public class PythonBinaryHostTest implements IRemoteTest, ITestFilterReceiver {
 
     private Set<String> mIncludeFilters = new LinkedHashSet<>();
     private Set<String> mExcludeFilters = new LinkedHashSet<>();
+    private String mLdLibraryPath = null;
 
     @Option(name = "par-file-name", description = "The binary names inside the build info to run.")
     private Set<String> mBinaryNames = new HashSet<>();
@@ -174,6 +178,22 @@ public class PythonBinaryHostTest implements IRemoteTest, ITestFilterReceiver {
     public final void run(TestInformation testInfo, ITestInvocationListener listener)
             throws DeviceNotAvailableException {
         mTestInfo = testInfo;
+        File hostTestDir = mTestInfo.executionFiles().get(FilesKey.HOST_TESTS_DIRECTORY);
+        if (hostTestDir.exists()) {
+            File libDir = new File(hostTestDir, "lib");
+            List<String> ldLibraryPath = new ArrayList<>();
+            if (libDir.exists()) {
+                ldLibraryPath.add(libDir.getAbsolutePath());
+            }
+
+            File lib64Dir = new File(hostTestDir, "lib64");
+            if (lib64Dir.exists()) {
+                ldLibraryPath.add(lib64Dir.getAbsolutePath());
+            }
+            if (!ldLibraryPath.isEmpty()) {
+                mLdLibraryPath = Joiner.on(":").join(ldLibraryPath);
+            }
+        }
         List<File> pythonFilesList = findParFiles();
         for (File pyFile : pythonFilesList) {
             if (!pyFile.exists()) {
@@ -222,6 +242,9 @@ public class PythonBinaryHostTest implements IRemoteTest, ITestFilterReceiver {
             commandLine.add(mTestInfo.getDevice().getSerialNumber());
         }
 
+        if (mLdLibraryPath != null) {
+            getRunUtil().setEnvVariable(LD_LIBRARY_PATH, mLdLibraryPath);
+        }
         if (mInjectAndroidSerialVar) {
             getRunUtil()
                     .setEnvVariable(ANDROID_SERIAL_VAR, mTestInfo.getDevice().getSerialNumber());
