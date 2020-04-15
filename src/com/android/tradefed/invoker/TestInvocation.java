@@ -343,23 +343,8 @@ public class TestInvocation implements ITestInvocation {
             // Track the timestamp when we are done with devices
             addInvocationMetric(
                     InvocationMetricKey.DEVICE_DONE_TIMESTAMP, System.currentTimeMillis());
-            // Capture the FreeDeviceState of the primary device
             Map<ITestDevice, FreeDeviceState> devicesStates =
-                    CommandScheduler.createReleaseMap(context, exception);
-            if (devicesStates.size() >= 1) {
-                addInvocationMetric(
-                        InvocationMetricKey.DEVICE_RELEASE_STATE,
-                        devicesStates.values().iterator().next().toString());
-            }
-            int countLost = 0;
-            for (FreeDeviceState fds : devicesStates.values()) {
-                if (FreeDeviceState.UNAVAILABLE.equals(fds)) {
-                    countLost++;
-                }
-            }
-            if (countLost > 0) {
-                addInvocationMetric(InvocationMetricKey.DEVICE_LOST_DETECTED, countLost);
-            }
+                    handleAndLogReleaseState(context, exception);
             if (config.getCommandOptions().earlyDeviceRelease()) {
                 for (IScheduledInvocationListener scheduleListener : mSchedulerListeners) {
                     scheduleListener.releaseDevices(context, devicesStates);
@@ -1050,6 +1035,32 @@ public class TestInvocation implements ITestInvocation {
         FileUtil.recursiveDelete(testInfo.dependenciesFolder());
         // Delete all the execution files
         testInfo.executionFiles().clearFiles();
+    }
+
+    private Map<ITestDevice, FreeDeviceState> handleAndLogReleaseState(
+            IInvocationContext context, Throwable exception) {
+        // Capture the FreeDeviceState of the primary device
+        Map<ITestDevice, FreeDeviceState> devicesStates =
+                CommandScheduler.createReleaseMap(context, exception);
+        if (devicesStates.size() >= 1) {
+            addInvocationMetric(
+                    InvocationMetricKey.DEVICE_RELEASE_STATE,
+                    devicesStates.values().iterator().next().toString());
+        }
+        // TODO: Add Handling of virtual devices
+        int countPhysicalLost = 0;
+        for (Entry<ITestDevice, FreeDeviceState> fds : devicesStates.entrySet()) {
+            if (fds.getKey().getIDevice() instanceof StubDevice) {
+                continue;
+            }
+            if (FreeDeviceState.UNAVAILABLE.equals(fds.getValue())) {
+                countPhysicalLost++;
+            }
+        }
+        if (countPhysicalLost > 0) {
+            addInvocationMetric(InvocationMetricKey.DEVICE_LOST_DETECTED, countPhysicalLost);
+        }
+        return devicesStates;
     }
 
     /** Helper Thread that ensures host_log is reported in case of killed JVM */
