@@ -579,7 +579,7 @@ public final class PythonBinaryHostTestTest {
                                 eq("--test-output-file"),
                                 capture(testOutputFilePath)))
                 .andStubAnswer(
-                        new IAnswer<>() {
+                        new IAnswer<CommandResult>() {
                             @Override
                             public CommandResult answer() {
                                 try {
