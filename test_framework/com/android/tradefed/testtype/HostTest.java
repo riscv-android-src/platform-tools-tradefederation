@@ -39,6 +39,7 @@ import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.testtype.host.PrettyTestEventLogger;
 import com.android.tradefed.testtype.junit4.CarryDnaeError;
 import com.android.tradefed.testtype.junit4.JUnit4ResultForwarder;
+import com.android.tradefed.testtype.suite.ModuleDefinition;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.JUnit4TestFilter;
 import com.android.tradefed.util.StreamUtil;
@@ -68,6 +69,7 @@ import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayDeque;
@@ -890,12 +892,45 @@ public class HostTest
             if (classNames.contains(className)) {
                 continue;
             }
+            IllegalArgumentException initialError = null;
             try {
                 classes.add(Class.forName(className, true, getClassLoader()));
                 classNames.add(className);
             } catch (ClassNotFoundException e) {
-                throw new IllegalArgumentException(String.format("Could not load Test class %s",
-                        className), e);
+                initialError =
+                        new IllegalArgumentException(
+                                String.format("Could not load Test class %s", className), e);
+            }
+            if (initialError != null) {
+                // Fallback search a jar for the module under tests if any.
+                String moduleName =
+                        mTestInfo
+                                .getContext()
+                                .getAttributes()
+                                .getUniqueMap()
+                                .get(ModuleDefinition.MODULE_NAME);
+                if (moduleName != null) {
+                    try {
+                        File f = getJarFile(moduleName + ".jar", mTestInfo);
+                        URL[] urls = {f.toURI().toURL()};
+                        URLClassLoader cl = URLClassLoader.newInstance(urls);
+                        mJUnit4JarFiles.add(f);
+                        Class<?> cls = cl.loadClass(className);
+                        classes.add(cls);
+                        classNames.add(className);
+                        initialError = null;
+                    } catch (FileNotFoundException
+                            | MalformedURLException
+                            | ClassNotFoundException fallbackSearch) {
+                        CLog.e(
+                                "Fallback search for a jar containing '%s' didn't work."
+                                        + "Consider using --jar option directly instead of using --class",
+                                className);
+                    }
+                }
+            }
+            if (initialError != null) {
+                throw initialError;
             }
         }
         // Inspect for the jar files
