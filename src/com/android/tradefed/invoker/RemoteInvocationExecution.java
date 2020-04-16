@@ -359,8 +359,12 @@ public class RemoteInvocationExecution extends InvocationExecution {
                             info,
                             options,
                             runUtil);
-            mRemoteConsoleStdErr = FileUtil.readStringFromFile(stderr);
-            FileUtil.recursiveDelete(stderr);
+            if (stderr != null && stderr.exists()) {
+                mRemoteConsoleStdErr = FileUtil.readStringFromFile(stderr);
+                FileUtil.recursiveDelete(stderr);
+            } else {
+                mRemoteConsoleStdErr = "Failed to fetch stderr from remote.";
+            }
         }
 
         // If not result in progress are reported, parse the full results at the end.
