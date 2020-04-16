@@ -119,6 +119,13 @@ public class ResultAggregator extends CollectingTestListener {
 
     /** {@inheritDoc} */
     @Override
+    public void invocationFailed(FailureDescription failure) {
+        super.invocationFailed(failure);
+        mAllForwarder.invocationFailed(failure);
+    }
+
+    /** {@inheritDoc} */
+    @Override
     public void invocationEnded(long elapsedTime) {
         if (!mPureRunResultForAgg.isEmpty()) {
             for (String name : mPureRunResultForAgg.keySet()) {
