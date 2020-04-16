@@ -188,7 +188,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 configDescriptor
                         .getAllMetaData()
                         .getUniqueMap()
-                        .get(ConfigurationDescriptor.PARAMETER_KEY);
+                        .get(ConfigurationDescriptor.ACTIVE_PARAMETER_KEY);
         if (parameterization != null) {
             mModuleInvocationContext.addInvocationAttribute(
                     MODULE_PARAMETERIZATION, parameterization);

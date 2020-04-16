@@ -341,17 +341,11 @@ public class TestInvocation implements ITestInvocation {
             }
             mStatus = "done running tests";
             // Track the timestamp when we are done with devices
-            InvocationMetricLogger.addInvocationMetrics(
+            addInvocationMetric(
                     InvocationMetricKey.DEVICE_DONE_TIMESTAMP, System.currentTimeMillis());
+            Map<ITestDevice, FreeDeviceState> devicesStates =
+                    handleAndLogReleaseState(context, exception);
             if (config.getCommandOptions().earlyDeviceRelease()) {
-                // Capture the FreeDeviceState of the primary device
-                Map<ITestDevice, FreeDeviceState> devicesStates =
-                        CommandScheduler.createReleaseMap(context, exception);
-                if (devicesStates.size() >= 1) {
-                    InvocationMetricLogger.addInvocationMetrics(
-                            InvocationMetricKey.DEVICE_RELEASE_STATE,
-                            devicesStates.values().iterator().next().toString());
-                }
                 for (IScheduledInvocationListener scheduleListener : mSchedulerListeners) {
                     scheduleListener.releaseDevices(context, devicesStates);
                 }
@@ -921,6 +915,14 @@ public class TestInvocation implements ITestInvocation {
                 .setLastInvocationExitCode(code, stack);
     }
 
+    protected void addInvocationMetric(InvocationMetricKey key, long value) {
+        InvocationMetricLogger.addInvocationMetrics(key, value);
+    }
+
+    protected void addInvocationMetric(InvocationMetricKey key, String value) {
+        InvocationMetricLogger.addInvocationMetrics(key, value);
+    }
+
     public static String getDeviceLogName(Stage stage) {
         return DEVICE_LOG_NAME_PREFIX + stage.getName();
     }
@@ -1033,6 +1035,32 @@ public class TestInvocation implements ITestInvocation {
         FileUtil.recursiveDelete(testInfo.dependenciesFolder());
         // Delete all the execution files
         testInfo.executionFiles().clearFiles();
+    }
+
+    private Map<ITestDevice, FreeDeviceState> handleAndLogReleaseState(
+            IInvocationContext context, Throwable exception) {
+        // Capture the FreeDeviceState of the primary device
+        Map<ITestDevice, FreeDeviceState> devicesStates =
+                CommandScheduler.createReleaseMap(context, exception);
+        if (devicesStates.size() >= 1) {
+            addInvocationMetric(
+                    InvocationMetricKey.DEVICE_RELEASE_STATE,
+                    devicesStates.values().iterator().next().toString());
+        }
+        // TODO: Add Handling of virtual devices
+        int countPhysicalLost = 0;
+        for (Entry<ITestDevice, FreeDeviceState> fds : devicesStates.entrySet()) {
+            if (fds.getKey().getIDevice() instanceof StubDevice) {
+                continue;
+            }
+            if (FreeDeviceState.UNAVAILABLE.equals(fds.getValue())) {
+                countPhysicalLost++;
+            }
+        }
+        if (countPhysicalLost > 0) {
+            addInvocationMetric(InvocationMetricKey.DEVICE_LOST_DETECTED, countPhysicalLost);
+        }
+        return devicesStates;
     }
 
     /** Helper Thread that ensures host_log is reported in case of killed JVM */
