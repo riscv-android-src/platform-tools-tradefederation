@@ -36,6 +36,8 @@ import com.android.tradefed.device.cloud.GceAvdInfo;
 import com.android.tradefed.device.cloud.GceManager;
 import com.android.tradefed.device.cloud.ManagedRemoteDevice;
 import com.android.tradefed.device.cloud.RemoteFileUtil;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.FileInputStreamSource;
@@ -127,8 +129,10 @@ public class RemoteInvocationExecution extends InvocationExecution {
             TestDeviceOptions options = device.getOptions();
             // Trigger the multi-tenant start in the VM
             options.addGceDriverParams("--num-avds-per-instance");
-            options.addGceDriverParams(config.getCommandOptions().getShardCount().toString());
-            // TODO: Track how many instances we created
+            String count = config.getCommandOptions().getShardCount().toString();
+            options.addGceDriverParams(count);
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.CF_INSTANCE_COUNT, count);
         }
     }
 
@@ -355,8 +359,12 @@ public class RemoteInvocationExecution extends InvocationExecution {
                             info,
                             options,
                             runUtil);
-            mRemoteConsoleStdErr = FileUtil.readStringFromFile(stderr);
-            FileUtil.recursiveDelete(stderr);
+            if (stderr != null && stderr.exists()) {
+                mRemoteConsoleStdErr = FileUtil.readStringFromFile(stderr);
+                FileUtil.recursiveDelete(stderr);
+            } else {
+                mRemoteConsoleStdErr = "Failed to fetch stderr from remote.";
+            }
         }
 
         // If not result in progress are reported, parse the full results at the end.

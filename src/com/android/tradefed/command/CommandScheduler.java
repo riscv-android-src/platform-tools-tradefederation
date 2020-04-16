@@ -808,13 +808,13 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         if (e instanceof DeviceUnresponsiveException) {
             ITestDevice badDevice =
                     context.getDeviceBySerial(((DeviceUnresponsiveException) e).getSerial());
-            if (badDevice != null) {
+            if (badDevice != null && !(badDevice.getIDevice() instanceof StubDevice)) {
                 deviceStates.put(badDevice, FreeDeviceState.UNRESPONSIVE);
             }
         } else if (e instanceof DeviceNotAvailableException) {
             ITestDevice badDevice =
                     context.getDeviceBySerial(((DeviceNotAvailableException) e).getSerial());
-            if (badDevice != null) {
+            if (badDevice != null && !(badDevice.getIDevice() instanceof StubDevice)) {
                 deviceStates.put(badDevice, FreeDeviceState.UNAVAILABLE);
             }
         }

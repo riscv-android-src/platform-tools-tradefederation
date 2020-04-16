@@ -384,8 +384,9 @@ public class ClusterCommandScheduler extends CommandScheduler {
                             // TODO: retrieve cancel reason from TFC.
                             String cause =
                                     String.format(
-                                            "Command (requestId=%s, commandId=%s) has been marked"
-                                                    + " canceled by the cluster",
+                                            "The cluster client %s has marked command "
+                                                    + "(requestId=%s, commandId=%s) canceled",
+                                            getClusterClient().getClass().getSimpleName(),
                                             mCommandTask.getRequestId(),
                                             mCommandTask.getCommandId());
                             CLog.w("Stop invocation due to: %s", cause);

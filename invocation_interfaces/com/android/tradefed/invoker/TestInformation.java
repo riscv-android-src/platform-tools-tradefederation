@@ -60,7 +60,7 @@ public class TestInformation {
         mDependenciesFolder = invocationInfo.mDependenciesFolder;
         if (copyExecFile) {
             mExecutionFiles = new ExecutionFiles();
-            mExecutionFiles.putAll(invocationInfo.executionFiles().getAll());
+            mExecutionFiles.putAll(invocationInfo.executionFiles());
         } else {
             mExecutionFiles = invocationInfo.mExecutionFiles;
         }
