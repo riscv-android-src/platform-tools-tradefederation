@@ -178,15 +178,18 @@ public class PythonBinaryHostTest implements IRemoteTest, ITestFilterReceiver {
     public final void run(TestInformation testInfo, ITestInvocationListener listener)
             throws DeviceNotAvailableException {
         mTestInfo = testInfo;
-        File hostTestDir = mTestInfo.executionFiles().get(FilesKey.HOST_TESTS_DIRECTORY);
-        if (hostTestDir.exists()) {
-            File libDir = new File(hostTestDir, "lib");
+        File testDir = mTestInfo.executionFiles().get(FilesKey.HOST_TESTS_DIRECTORY);
+        if (testDir == null || !testDir.exists()) {
+            testDir = mTestInfo.executionFiles().get(FilesKey.TESTS_DIRECTORY);
+        }
+        if (testDir != null && testDir.exists()) {
+            File libDir = new File(testDir, "lib");
             List<String> ldLibraryPath = new ArrayList<>();
             if (libDir.exists()) {
                 ldLibraryPath.add(libDir.getAbsolutePath());
             }
 
-            File lib64Dir = new File(hostTestDir, "lib64");
+            File lib64Dir = new File(testDir, "lib64");
             if (lib64Dir.exists()) {
                 ldLibraryPath.add(lib64Dir.getAbsolutePath());
             }
