@@ -193,7 +193,7 @@ public class TestInvocationMultiTest {
         mMockTestListener.invocationStarted(mContext);
         EasyMock.expect(mMockTestListener.getSummary()).andReturn(null);
         mMockLogSaver.invocationStarted(mContext);
-        mMockTestListener.invocationFailed(EasyMock.anyObject());
+        mMockTestListener.invocationFailed(EasyMock.<Throwable>anyObject());
         mMockTestListener.testLog(EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject());
         EasyMock.expect(
                         mMockLogSaver.saveLogData(
@@ -359,7 +359,7 @@ public class TestInvocationMultiTest {
         mMockTestListener.invocationStarted(mContext);
         EasyMock.expect(mMockTestListener.getSummary()).andReturn(null);
         mMockLogSaver.invocationStarted(mContext);
-        mMockTestListener.invocationFailed(EasyMock.anyObject());
+        mMockTestListener.invocationFailed(EasyMock.<Throwable>anyObject());
         mMockTestListener.testLog(EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject());
         EasyMock.expect(
                         mMockLogSaver.saveLogData(
@@ -446,7 +446,7 @@ public class TestInvocationMultiTest {
         mMockTestListener.invocationStarted(mContext);
         EasyMock.expect(mMockTestListener.getSummary()).andReturn(null);
         mMockLogSaver.invocationStarted(mContext);
-        mMockTestListener.invocationFailed(EasyMock.anyObject());
+        mMockTestListener.invocationFailed(EasyMock.<Throwable>anyObject());
         mMockTestListener.testLog(EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject());
         EasyMock.expect(
                         mMockLogSaver.saveLogData(

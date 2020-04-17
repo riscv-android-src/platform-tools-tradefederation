@@ -1073,8 +1073,8 @@ public class TestInvocationTest {
         // invocationFailed
         if (!status.equals(InvocationStatus.SUCCESS)) {
             if (stubFailures) {
-                mMockTestListener.invocationFailed(EasyMock.anyObject());
-                mMockSummaryListener.invocationFailed(EasyMock.anyObject());
+                mMockTestListener.invocationFailed(EasyMock.<Throwable>anyObject());
+                mMockSummaryListener.invocationFailed(EasyMock.<Throwable>anyObject());
             } else {
                 mMockTestListener.invocationFailed(EasyMock.eq(throwable));
                 mMockSummaryListener.invocationFailed(EasyMock.eq(throwable));
