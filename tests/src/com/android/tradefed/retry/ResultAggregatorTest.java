@@ -122,7 +122,7 @@ public class ResultAggregatorTest {
                 EasyMock.anyLong(),
                 EasyMock.<HashMap<String, Metric>>anyObject());
         mDetailedListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mDetailedListener.testFailed(test2, "I failed. retry me.");
+        mDetailedListener.testFailed(test2, FailureDescription.create("I failed. retry me."));
         mDetailedListener.logAssociation("test2-before-log", test2LogBefore);
         mDetailedListener.logAssociation("test2-after-log", test2LogAfter);
         mDetailedListener.testEnded(
@@ -185,7 +185,7 @@ public class ResultAggregatorTest {
         mAggregator.testEnded(test1, new HashMap<String, Metric>());
         mAggregator.testStarted(test2);
         mAggregator.logAssociation("test2-before-log", test2LogBefore);
-        mAggregator.testFailed(test2, "I failed. retry me.");
+        mAggregator.testFailed(test2, FailureDescription.create("I failed. retry me."));
         mAggregator.logAssociation("test2-after-log", test2LogAfter);
         mAggregator.testEnded(test2, new HashMap<String, Metric>());
         mAggregator.logAssociation("test-run1-before-log", testRun1LogBefore);
