@@ -328,6 +328,9 @@ public class FileDownloadCache {
             throws BuildRetrievalError {
         boolean download = false;
         File cachedFile, copyFile;
+        if (remotePath == null) {
+            throw new BuildRetrievalError("remote path was null.");
+        }
 
         lockFile(remotePath);
         try {
