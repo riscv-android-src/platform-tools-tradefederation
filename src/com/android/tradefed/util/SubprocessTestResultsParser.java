@@ -576,8 +576,9 @@ public class SubprocessTestResultsParser implements Closeable {
                         try {
                             InvocationMetricLogger.addInvocationMetrics(key, Long.parseLong(val));
                         } catch (NumberFormatException e) {
-                            CLog.e("Key %s should have a number value, instead was: %s", key, val);
-                            CLog.e(e);
+                            CLog.d("Key %s doesn't have a number value, was: %s.", key, val);
+                            // If it's not a number then, let the string concatenate
+                            InvocationMetricLogger.addInvocationMetrics(key, val);
                         }
                     } else {
                         InvocationMetricLogger.addInvocationMetrics(key, val);
