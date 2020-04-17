@@ -107,6 +107,11 @@ public abstract class BasePostProcessor implements IPostProcessor {
     }
 
     @Override
+    public final void invocationFailed(FailureDescription failure) {
+        mForwarder.invocationFailed(failure);
+    }
+
+    @Override
     public final void invocationEnded(long elapsedTime) {
         mForwarder.invocationEnded(elapsedTime);
     }

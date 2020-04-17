@@ -118,6 +118,21 @@ public class ResultForwarder implements ITestInvocationListener {
         }
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public void invocationFailed(FailureDescription failure) {
+        for (ITestInvocationListener listener : mListeners) {
+            try {
+                listener.invocationFailed(failure);
+            } catch (RuntimeException e) {
+                CLog.e(
+                        "Exception while invoking %s#invocationFailed",
+                        listener.getClass().getName());
+                CLog.e(e);
+            }
+        }
+    }
+
     /**
      * {@inheritDoc}
      */

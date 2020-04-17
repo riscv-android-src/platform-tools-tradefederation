@@ -33,6 +33,8 @@ public class FailureDescription {
     private @Nullable ActionInProgress mActionInProgress = null;
     // Optional: A free-formed text that help debugging the failure
     private @Nullable String mDebugHelpMessage = null;
+    // Optional: The exception that triggered the failure
+    private @Nullable Throwable mCause = null;
 
     FailureDescription() {}
 
@@ -73,6 +75,17 @@ public class FailureDescription {
     /** Returns the debug help message. Can be null. */
     public @Nullable String getDebugHelpMessage() {
         return mDebugHelpMessage;
+    }
+
+    /** Sets the exception that caused the failure if any. */
+    public FailureDescription setCause(Throwable cause) {
+        mCause = cause;
+        return this;
+    }
+
+    /** Returns the exception that caused the failure. Can be null. */
+    public @Nullable Throwable getCause() {
+        return mCause;
     }
 
     /** Sets the error message. */

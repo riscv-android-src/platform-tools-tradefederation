@@ -204,6 +204,11 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
     }
 
     @Override
+    public final void invocationFailed(FailureDescription failure) {
+        mForwarder.invocationFailed(failure);
+    }
+
+    @Override
     public final void invocationEnded(long elapsedTime) {
         mForwarder.invocationEnded(elapsedTime);
     }
