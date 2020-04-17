@@ -30,11 +30,14 @@ import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceSelectionOptions;
+import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.device.cloud.GceAvdInfo;
 import com.android.tradefed.device.cloud.GceManager;
 import com.android.tradefed.device.cloud.ManagedRemoteDevice;
 import com.android.tradefed.device.cloud.RemoteFileUtil;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.FileInputStreamSource;
@@ -114,6 +117,23 @@ public class RemoteInvocationExecution extends InvocationExecution {
         testInfo.getContext().addDeviceBuildInfo(deviceName, info);
         updateBuild(info, config);
         return true;
+    }
+
+    @Override
+    protected void customizeDevicePreInvocation(IConfiguration config, IInvocationContext context) {
+        super.customizeDevicePreInvocation(config, context);
+
+        if (config.getCommandOptions().getShardCount() != null
+                && config.getCommandOptions().getShardIndex() == null) {
+            ITestDevice device = context.getDevices().get(0);
+            TestDeviceOptions options = device.getOptions();
+            // Trigger the multi-tenant start in the VM
+            options.addGceDriverParams("--num-avds-per-instance");
+            String count = config.getCommandOptions().getShardCount().toString();
+            options.addGceDriverParams(count);
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.CF_INSTANCE_COUNT, count);
+        }
     }
 
     @Override
@@ -339,8 +359,12 @@ public class RemoteInvocationExecution extends InvocationExecution {
                             info,
                             options,
                             runUtil);
-            mRemoteConsoleStdErr = FileUtil.readStringFromFile(stderr);
-            FileUtil.recursiveDelete(stderr);
+            if (stderr != null && stderr.exists()) {
+                mRemoteConsoleStdErr = FileUtil.readStringFromFile(stderr);
+                FileUtil.recursiveDelete(stderr);
+            } else {
+                mRemoteConsoleStdErr = "Failed to fetch stderr from remote.";
+            }
         }
 
         // If not result in progress are reported, parse the full results at the end.

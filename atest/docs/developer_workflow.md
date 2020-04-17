@@ -6,7 +6,7 @@ This document explains the practical steps for contributing code to atest.
 1. [Identify the code you should work on](#identify-the-code-you-should-work-on)
 2. [Working on the Python Code](#working-on-the-python-code)
 3. [Working on the TradeFed Code](#working-on-the-tradefed-code)
-4. [Working on the VTS-TradeFed Code](#working-on-the-vts-tradefed-code)
+4. [Working on the VTS10-TradeFed Code](#working-on-the-vts10-tradefed-code)
 5. [Working on the Robolectric Code](#working-on-the-robolectric-code)
 
 
@@ -44,7 +44,7 @@ code.
 Each test runner will have a different workflow. Atest currently
 supports the following test runners:
 - TradeFed
-- VTS-TradeFed
+- VTS10-TradeFed
 - Robolectric
 
 
@@ -121,22 +121,22 @@ To run ALL the TradeFed unittests, enter:
 
 Before submitting code you should run all the TradeFed tests.
 
-## <a name="working-on-the-vts-tradefed-code">Working on the VTS-TradeFed Code</a>
+## <a name="working-on-the-vts10-tradefed-code">Working on the VTS10-TradeFed Code</a>
 
-##### Where does the VTS-TradeFed code live?
+##### Where does the VTS10-TradeFed code live?
 
-The VTS-Tradefed code lives here: `test/vts/tools/vts-tradefed/`
+The VTS10-Tradefed code lives here: `test/vts/tools/vts-tradefed/`
 (path relative to android repo root)
 
 ##### Writing tests
 
-You shouldn't need to edit vts-tradefed code, so there is no
-need to write vts-tradefed tests. Reach out to the vts team
+You shouldn't need to edit vts10-tradefed code, so there is no
+need to write vts10 tests. Reach out to the vts team
 if you need information on their unittests.
 
 ##### Running tests
 
-Again, you shouldn't need to change vts-tradefed code.
+Again, you shouldn't need to change vts10-tradefed code.
 
 ## <a name="working-on-the-robolectric-code">Working on the Robolectric Code</a>
 

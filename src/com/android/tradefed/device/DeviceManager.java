@@ -108,7 +108,7 @@ public class DeviceManager implements IDeviceManager {
      *
      * <p>serial2 offline
      */
-    private static final String DEVICE_LIST_PATTERN = ".*\n(%s)\\s+(device|offline).*";
+    private static final String DEVICE_LIST_PATTERN = ".*\n(%s)\\s+(device|offline|recovery).*";
 
     private Semaphore mConcurrentFlashLock = null;
 
@@ -619,6 +619,8 @@ public class DeviceManager implements IDeviceManager {
         if (d != null) {
             DeviceEventResponse r = d.handleAllocationEvent(DeviceEvent.FORCE_ALLOCATE_REQUEST);
             if (r.stateChanged && r.allocationState == DeviceAllocationState.Allocated) {
+                // Wait for the fastboot state to be updated once to update the IDevice.
+                d.getMonitor().waitForDeviceBootloaderStateUpdate();
                 return d;
             }
         }

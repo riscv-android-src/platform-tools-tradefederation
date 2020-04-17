@@ -586,7 +586,7 @@ def get_targets_from_xml_root(xml_root, module_info):
 
     We're going to pull the following bits of info:
       - Parse any .apk files listed in the config file.
-      - Parse option value for "test-module-name" (for vts tests).
+      - Parse option value for "test-module-name" (for vts10 tests).
       - Look for the perf script.
 
     Args:
@@ -627,14 +627,14 @@ def get_targets_from_xml_root(xml_root, module_info):
 
 
 def _get_vts_push_group_targets(push_file, rel_out_dir):
-    """Retrieve vts push group build targets.
+    """Retrieve vts10 push group build targets.
 
     A push group file is a file that list out test dependencies and other push
     group files. Go through the push file and gather all the test deps we need.
 
     Args:
         push_file: Name of the push file in the VTS
-        rel_out_dir: Abs path to the out dir to help create vts build targets.
+        rel_out_dir: Abs path to the out dir to help create vts10 build targets.
 
     Returns:
         Set of string which represent build targets.
@@ -678,7 +678,7 @@ def _specified_bitness(xml_root):
 
 
 def _get_vts_binary_src_target(value, rel_out_dir):
-    """Parse out the vts binary src target.
+    """Parse out the vts10 binary src target.
 
     The value can be in the following pattern:
       - {_32bit,_64bit,_IPC32_32bit}::DATA/target (DATA/target)
@@ -727,9 +727,9 @@ def get_plans_from_vts_xml(xml_file):
     option_tags = xml_root.findall('.//include')
     if not option_tags:
         return plans
-    # Currently, all vts xmls live in the same dir :
+    # Currently, all vts10 xmls live in the same dir :
     # https://android.googlesource.com/platform/test/vts/+/master/tools/vts-tradefed/res/config/
-    # If the vts plans start using folders to organize the plans, the logic here
+    # If the vts10 plans start using folders to organize the plans, the logic here
     # should be changed.
     xml_dir = os.path.dirname(xml_file)
     for tag in option_tags:
@@ -739,9 +739,9 @@ def get_plans_from_vts_xml(xml_file):
 
 
 def get_targets_from_vts_xml(xml_file, rel_out_dir, module_info):
-    """Parse a vts xml for test dependencies we need to build.
+    """Parse a vts10 xml for test dependencies we need to build.
 
-    We have a separate vts parsing function because we make a big assumption
+    We have a separate vts10 parsing function because we make a big assumption
     on the targets (the way they're formatted and what they represent) and we
     also create these build targets in a very special manner as well.
     The 6 options we're looking for are:
@@ -754,7 +754,7 @@ def get_targets_from_vts_xml(xml_file, rel_out_dir, module_info):
 
     Args:
         module_info: ModuleInfo class used to verify targets are valid modules.
-        rel_out_dir: Abs path to the out dir to help create vts build targets.
+        rel_out_dir: Abs path to the out dir to help create vts10 build targets.
         xml_file: abs path to xml file.
 
     Returns:
@@ -770,7 +770,7 @@ def get_targets_from_vts_xml(xml_file, rel_out_dir, module_info):
             if module_info.is_module(value):
                 targets.add(value)
             else:
-                logging.warning('vts test module (%s) not present in module '
+                logging.warning('vts10 test module (%s) not present in module '
                                 'info, skipping build', value)
         elif name == _VTS_BINARY_SRC:
             targets.add(_get_vts_binary_src_target(value, rel_out_dir))
@@ -797,7 +797,7 @@ def get_targets_from_vts_xml(xml_file, rel_out_dir, module_info):
             # and then append the _VTS_TEST_FILE value to targets to build.
             target = os.path.join(rel_out_dir, value)
             # If value is just an APK, specify the path that we expect it to be in
-            # e.g. out/host/linux-x86/vts/android-vts/testcases/DATA/app/test_file/test_file.apk
+            # e.g. out/host/linux-x86/vts10/android-vts10/testcases/DATA/app/test_file/test_file.apk
             head, _ = os.path.split(value)
             if not head:
                 target = os.path.join(rel_out_dir, _VTS_OUT_DATA_APP_PATH,

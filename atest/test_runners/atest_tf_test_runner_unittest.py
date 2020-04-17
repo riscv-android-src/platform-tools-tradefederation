@@ -306,13 +306,13 @@ class AtestTradefedTestRunnerUnittests(unittest.TestCase):
         self.tr._try_set_gts_authentication_key()
         mock_exist.assert_not_called()
 
-    @mock.patch('constants.GTS_GOOGLE_SERVICE_ACCOUNT')
-    @mock.patch('os.path.exists')
-    def test_try_set_gts_authentication_key_not_set(self, mock_exist, mock_key):
+    @mock.patch('os.path.join', return_value='/tmp/file_not_exist.json')
+    def test_try_set_gts_authentication_key_not_set(self, _):
         """Test try_set_authentication_key_not_set method."""
-        # Test key neither exists nor set by user.
-        mock_exist.return_value = False
-        mock_key.return_value = ''
+        # Delete the environment variable if it's set. This is fine for this
+        # method because it's for validating the APE_API_KEY isn't set.
+        if os.environ.get('APE_API_KEY'):
+            del os.environ['APE_API_KEY']
         self.tr._try_set_gts_authentication_key()
         self.assertEqual(os.environ.get('APE_API_KEY'), None)
 
