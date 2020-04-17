@@ -250,6 +250,12 @@ public class ResultAggregator extends CollectingTestListener {
     }
 
     @Override
+    public void testFailed(TestDescription test, FailureDescription failure) {
+        super.testFailed(test, failure);
+        mDetailedForwarder.testFailed(test, failure);
+    }
+
+    @Override
     public void testEnded(TestDescription test, long endTime, HashMap<String, Metric> testMetrics) {
         super.testEnded(test, endTime, testMetrics);
         mDetailedForwarder.testEnded(test, endTime, testMetrics);
