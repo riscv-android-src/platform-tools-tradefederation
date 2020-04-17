@@ -73,6 +73,23 @@ public interface ITestInvocationListener extends ITestLogger, ITestLifeCycleRece
     default public void invocationFailed(Throwable cause) { }
 
     /**
+     * Reports an incomplete invocation due to some error condition.
+     *
+     * <p>Will be automatically called by the TradeFederation framework.
+     *
+     * @param failure the {@link FailureDescription} describing the cause of the failure
+     */
+    public default void invocationFailed(FailureDescription failure) {
+        if (failure.getCause() != null) {
+            invocationFailed(failure.getCause());
+        } else {
+            invocationFailed(
+                    new RuntimeException(
+                            String.format("ConvertedFailure: %s", failure.getErrorMessage())));
+        }
+    }
+
+    /**
      * Allows the InvocationListener to return a summary.
      *
      * @return A {@link TestSummary} summarizing the run, or null
