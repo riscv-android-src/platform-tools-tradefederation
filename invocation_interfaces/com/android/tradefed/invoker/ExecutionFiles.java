@@ -121,6 +121,18 @@ public class ExecutionFiles {
         return this;
     }
 
+    /**
+     * Copies all of the mappings from the specified map to this map.
+     *
+     * @param copyFrom original {@link ExecutionFiles} to copy from.
+     * @return The final mapping
+     */
+    public ExecutionFiles putAll(ExecutionFiles copyFrom) {
+        mFiles.putAll(copyFrom.getAll());
+        mShouldNotDelete.addAll(copyFrom.mShouldNotDelete);
+        return this;
+    }
+
     /** Returns whether or not the map of properties is empty. */
     public boolean isEmpty() {
         return mFiles.isEmpty();
