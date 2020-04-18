@@ -74,6 +74,13 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
     )
     private long mApexStagingWaitTime = 1 * 60 * 1000;
 
+    @Option(
+            name = "ignore-if-module-not-preloaded",
+            description =
+                    "Skip installing the module(s) when the module(s) that are not "
+                            + "preloaded on device. Otherwise an exception will be thrown.")
+    private boolean mIgnoreIfNotPreloaded = false;
+
     @Override
     public void setUp(TestInformation testInfo)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
@@ -288,6 +295,19 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
                 moduleNamesToInstall.add(moduleFileName);
                 installedPackages.remove(modulePackageName);
             } else {
+                if (!mIgnoreIfNotPreloaded) {
+                    if (!installedPackages.isEmpty()) {
+                        CLog.i(
+                                "The following modules are preloaded on the device %s",
+                                installedPackages);
+                    }
+                    throw new TargetSetupError(
+                            String.format(
+                                    "Mainline module %s is not preloaded on the device "
+                                            + "but is in the input lists.",
+                                    modulePackageName),
+                            device.getDeviceDescriptor());
+                }
                 CLog.i(
                         "The module package %s is not preloaded on the device but is included in "
                                 + "the train.",
