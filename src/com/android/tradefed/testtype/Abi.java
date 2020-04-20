@@ -15,10 +15,13 @@
  */
 package com.android.tradefed.testtype;
 
+import com.android.tradefed.build.BuildSerializedVersion;
+
 /**
  * A class representing an ABI.
  */
 public class Abi implements IAbi {
+    private static final long serialVersionUID = BuildSerializedVersion.VERSION;
 
     private final String mName;
     private final String mBitness;
