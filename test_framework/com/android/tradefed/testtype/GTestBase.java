@@ -163,6 +163,11 @@ public abstract class GTestBase
                             + "the same name as the binary with the .json extension.")
     private String mTestFilterKey = null;
 
+    @Option(
+            name = "disable-duplicate-test-check",
+            description = "If set to true, it will not check that a method is only run once.")
+    private boolean mDisableDuplicateCheck = false;
+
     // GTest flags...
     protected static final String GTEST_FLAG_PRINT_TIME = "--gtest_print_time";
     protected static final String GTEST_FLAG_FILTER = "--gtest_filter";
@@ -672,5 +677,18 @@ public abstract class GTestBase
             return mConfiguration.getCoverageOptions();
         }
         return new CoverageOptions();
+    }
+
+    /**
+     * Returns the {@link GTestListener} that provides extra debugging info, like detects and
+     * reports duplicate tests if mDisabledDuplicateCheck is false. Otherwise, returns the passed-in
+     * listener.
+     */
+    protected ITestInvocationListener getGTestListener(ITestInvocationListener listener) {
+        if (mDisableDuplicateCheck) {
+            return listener;
+        }
+
+        return new GTestListener(listener);
     }
 }
