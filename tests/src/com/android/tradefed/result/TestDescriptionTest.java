@@ -91,5 +91,13 @@ public class TestDescriptionTest {
         mDescription = new TestDescription("className", "testName[key:22]");
         assertEquals("testName[key:22]", mDescription.getTestName());
         assertEquals("testName", mDescription.getTestNameWithoutParams());
+
+        mDescription =
+                new TestDescription(
+                        "className", "testTransitions[BluetoothRouteTestParameters{key ='[]'}]");
+        assertEquals(
+                "testTransitions[BluetoothRouteTestParameters{key ='[]'}]",
+                mDescription.getTestName());
+        assertEquals("testTransitions", mDescription.getTestNameWithoutParams());
     }
 }
