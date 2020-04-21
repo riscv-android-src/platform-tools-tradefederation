@@ -21,6 +21,7 @@ import com.android.tradefed.command.CommandInterrupter;
 import com.android.tradefed.log.LogUtil.CLog;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Strings;
 
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
@@ -565,12 +566,14 @@ public class RunUtil implements IRunUtil {
             } catch (InterruptedException e) {
                 CLog.i("runutil interrupted");
                 status = CommandStatus.EXCEPTION;
+                backFillException(mRunnable.getResult(), e);
             } catch (Exception e) {
                 if (mLogErrors) {
                     CLog.e("Exception occurred when executing runnable");
                     CLog.e(e);
                 }
                 status = CommandStatus.EXCEPTION;
+                backFillException(mRunnable.getResult(), e);
             }
             synchronized (this) {
                 mStatus = status;
@@ -583,6 +586,15 @@ public class RunUtil implements IRunUtil {
 
         synchronized CommandStatus getStatus() {
             return mStatus;
+        }
+
+        private void backFillException(CommandResult result, Exception e) {
+            if (result == null) {
+                return;
+            }
+            if (Strings.isNullOrEmpty(result.getStderr())) {
+                result.setStderr(StreamUtil.getStackTrace(e));
+            }
         }
     }
 
@@ -651,6 +663,7 @@ public class RunUtil implements IRunUtil {
             return new ArrayList<>(mProcessBuilder.command());
         }
 
+        @Override
         public CommandResult getResult() {
             return mCommandResult;
         }
