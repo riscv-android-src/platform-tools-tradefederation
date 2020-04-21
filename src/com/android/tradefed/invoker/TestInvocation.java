@@ -26,6 +26,7 @@ import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.device.DeviceManager;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.FreeDeviceState;
@@ -1059,6 +1060,12 @@ public class TestInvocation implements ITestInvocation {
         }
         if (countPhysicalLost > 0) {
             addInvocationMetric(InvocationMetricKey.DEVICE_LOST_DETECTED, countPhysicalLost);
+            if (GlobalConfiguration.getDeviceManagerInstance() instanceof DeviceManager) {
+                String adbOutput =
+                        ((DeviceManager) GlobalConfiguration.getDeviceManagerInstance())
+                                .executeGlobalAdbCommand("devices");
+                CLog.e("'adb devices' output:\n%s", adbOutput);
+            }
         }
         return devicesStates;
     }

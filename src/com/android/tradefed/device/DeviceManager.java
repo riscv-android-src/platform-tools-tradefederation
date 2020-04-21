@@ -916,7 +916,7 @@ public class DeviceManager implements IDeviceManager {
      * @return std output if the command succeedm null otherwise.
      */
     public String executeGlobalAdbCommand(String... cmdArgs) {
-        String[] fullCmd = ArrayUtil.buildArray(new String[] {"adb"}, cmdArgs);
+        String[] fullCmd = ArrayUtil.buildArray(new String[] {getAdbPath()}, cmdArgs);
         CommandResult result = getRunUtil().runTimedCmd(FASTBOOT_CMD_TIMEOUT, fullCmd);
         if (CommandStatus.SUCCESS.equals(result.getStatus())) {
             return result.getStdout();
