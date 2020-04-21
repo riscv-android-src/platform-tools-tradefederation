@@ -428,6 +428,7 @@ public class GTest extends GTestBase implements IDeviceTest {
         // Insert the coverage listener if code coverage collection is enabled.
         listener = addNativeCoverageListenerIfEnabled(listener);
         listener = addClangCoverageListenerIfEnabled(listener);
+        listener = getGTestListener(listener);
         NativeCodeCoverageFlusher flusher =
                 new NativeCodeCoverageFlusher(mDevice, getCoverageOptions().getCoverageProcesses());
 

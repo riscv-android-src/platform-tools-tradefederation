@@ -246,6 +246,7 @@ public class HostGTest extends GTestBase implements IAbiReceiver, IBuildReceiver
                     String.format("%s is not executable!", gTestFile.getAbsolutePath()));
         }
 
+        listener = getGTestListener(listener);
         // TODO: Need to support XML test output based on isEnableXmlOutput
         IShellOutputReceiver resultParser = createResultParser(gTestFile.getName(), listener);
         String flags = getAllGTestFlags(gTestFile.getName());
