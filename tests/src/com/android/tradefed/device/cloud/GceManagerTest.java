@@ -756,6 +756,7 @@ public class GceManagerTest {
                                 EasyMock.anyObject(),
                                 EasyMock.eq("root@127.0.0.1"),
                                 EasyMock.eq("./bin/adb"),
+                                EasyMock.eq("wait-for-device"),
                                 EasyMock.eq("shell"),
                                 EasyMock.eq("bugreportz")))
                 .andReturn(res);
