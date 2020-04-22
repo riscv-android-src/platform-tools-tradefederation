@@ -25,6 +25,8 @@ import com.android.ddmlib.IDevice.DeviceState;
  */
 public enum TestDeviceState {
     FASTBOOT,
+    /** Fastbootd mode with is-userspace = true though `adb reboot fastboot` */
+    FASTBOOTD,
     ONLINE,
     RECOVERY,
     SIDELOAD,
@@ -68,6 +70,8 @@ public enum TestDeviceState {
                 return TestDeviceState.NOT_AVAILABLE;
             case BOOTLOADER:
                 return TestDeviceState.FASTBOOT;
+            case FASTBOOTD:
+                return TestDeviceState.FASTBOOTD;
             default:
                 return TestDeviceState.NOT_AVAILABLE;
         }
