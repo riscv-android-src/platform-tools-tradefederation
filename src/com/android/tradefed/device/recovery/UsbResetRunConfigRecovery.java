@@ -17,7 +17,6 @@ package com.android.tradefed.device.recovery;
 
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.IManagedTestDevice;
-import com.android.tradefed.device.TestDeviceState;
 
 /** Allow to trigger a command to reset the USB of a device */
 @OptionClass(alias = "usb-reset-recovery")
@@ -25,6 +24,6 @@ public class UsbResetRunConfigRecovery extends RunConfigDeviceRecovery {
 
     @Override
     public boolean shouldSkip(IManagedTestDevice device) {
-        return TestDeviceState.FASTBOOT.equals(device.getDeviceState());
+        return device.isStateBootloaderOrFastbootd();
     }
 }
