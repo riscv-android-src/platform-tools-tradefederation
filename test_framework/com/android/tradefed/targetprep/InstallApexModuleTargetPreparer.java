@@ -37,6 +37,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -56,6 +57,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
     private static final String APK_SUFFIX = ".apk";
     private static final String SPLIT_APKS_SUFFIX = ".apks";
     private static final String TRAIN_WITH_APEX_INSTALL_OPTION = "install-multi-package";
+    private static final String ACTIVATED_APEX_SOURCEDIR_PREFIX = "data";
 
     private List<ApexInfo> mTestApexInfoList = new ArrayList<>();
     private Set<String> mApkToInstall = new LinkedHashSet<>();
@@ -143,13 +145,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
             }
         }
 
-        List<ApexInfo> failToActivateApex = new ArrayList<ApexInfo>();
-
-        for (ApexInfo testApexInfo : mTestApexInfoList) {
-            if (!activatedApexes.contains(testApexInfo)) {
-                failToActivateApex.add(testApexInfo);
-            }
-        }
+        List<ApexInfo> failToActivateApex = getModulesFailToActivate(activatedApexes);
 
         if (!failToActivateApex.isEmpty()) {
             throw new TargetSetupError(
@@ -694,6 +690,36 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
             }
         }
         return apexInfoList;
+    }
+
+    /**
+     * Get modules that failed to be activated.
+     *
+     * @param activatedApexes The set of the active apexes on device
+     * @return a list containing the apexinfo of the input apex modules that failed to be activated.
+     */
+    protected List<ApexInfo> getModulesFailToActivate(Set<ApexInfo> activatedApexes) {
+        List<ApexInfo> failToActivateApex = new ArrayList<ApexInfo>();
+        HashMap<String, ApexInfo> activatedApexInfo = new HashMap<>();
+        for (ApexInfo info : activatedApexes) {
+            activatedApexInfo.put(info.name, info);
+        }
+        for (ApexInfo testApexInfo : mTestApexInfoList) {
+            if (!activatedApexInfo.containsKey(testApexInfo.name)) {
+                failToActivateApex.add(testApexInfo);
+            } else {
+                // Activated apex sourceDir starts with "/data"
+                if (!activatedApexInfo
+                                .get(testApexInfo.name)
+                                .sourceDir
+                                .startsWith(ACTIVATED_APEX_SOURCEDIR_PREFIX, 1)
+                        || activatedApexInfo.get(testApexInfo.name).versionCode
+                                != testApexInfo.versionCode) {
+                    failToActivateApex.add(testApexInfo);
+                }
+            }
+        }
+        return failToActivateApex;
     }
 
     @VisibleForTesting
