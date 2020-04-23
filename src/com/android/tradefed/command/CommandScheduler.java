@@ -557,6 +557,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
         @Override
         public void run() {
+            if (mClient != null) {
+                mClient.notifyTradefedInvocationStartEvent();
+            }
             Map<ITestDevice, FreeDeviceState> deviceStates = new HashMap<>();
             for (ITestDevice device : mInvocationContext.getDevices()) {
                 deviceStates.put(device, FreeDeviceState.AVAILABLE);
