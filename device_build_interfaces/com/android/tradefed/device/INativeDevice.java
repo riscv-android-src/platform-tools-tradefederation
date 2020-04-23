@@ -921,6 +921,12 @@ public interface INativeDevice {
     public void rebootIntoBootloader() throws DeviceNotAvailableException;
 
     /**
+     * Returns true if device is in {@link TestDeviceState#FASTBOOT} or {@link
+     * TestDeviceState#FASTBOOTD}.
+     */
+    public boolean isStateBootloaderOrFastbootd();
+
+    /**
      * Reboots the device into adb mode.
      * <p/>
      * Blocks until device becomes available.
