@@ -94,6 +94,14 @@ public interface IDeviceStateMonitor {
     public boolean waitForDeviceBootloader(long waitTime);
 
     /**
+     * Waits for the device to be in fastbootd.
+     *
+     * @param waitTime the maximum time in ms to wait
+     * @return <code>true</code> if device is in fastbootd before time expires
+     */
+    public boolean waitForDeviceFastbootd(long waitTime);
+
+    /**
      * Waits for device bootloader state to be refreshed
      */
     public void waitForDeviceBootloaderStateUpdate();

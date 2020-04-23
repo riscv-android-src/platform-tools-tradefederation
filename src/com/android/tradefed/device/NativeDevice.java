@@ -2936,7 +2936,7 @@ public class NativeDevice implements IManagedTestDevice {
             throws DeviceNotAvailableException, UnsupportedOperationException {
         rebootIntoFastbootInternal(false);
     }
-
+    
     /**
      * Reboots the device into bootloader or fastbootd mode.
      *
@@ -2970,8 +2970,11 @@ public class NativeDevice implements IManagedTestDevice {
         }
     }
 
-    private void doAdbRebootBootloader() throws DeviceNotAvailableException {
-        doAdbReboot(RebootMode.REBOOT_INTO_BOOTLOADER, null);
+    /** {@inheritDoc} */
+    @Override
+    public boolean isStateBootloaderOrFastbootd() {
+        return TestDeviceState.FASTBOOT.equals(getDeviceState())
+                || TestDeviceState.FASTBOOTD.equals(getDeviceState());
     }
 
     /**
@@ -3060,7 +3063,7 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public void rebootIntoRecovery() throws DeviceNotAvailableException {
-        if (TestDeviceState.FASTBOOT == getDeviceState()) {
+        if (isStateBootloaderOrFastbootd()) {
             CLog.w("device %s in fastboot when requesting boot to recovery. " +
                     "Rebooting to userspace first.", getSerialNumber());
             rebootUntilOnline();
@@ -3080,7 +3083,7 @@ public class NativeDevice implements IManagedTestDevice {
     /** {@inheritDoc} */
     @Override
     public void rebootIntoSideload(boolean autoReboot) throws DeviceNotAvailableException {
-        if (TestDeviceState.FASTBOOT == getDeviceState()) {
+        if (isStateBootloaderOrFastbootd()) {
             CLog.w(
                     "device %s in fastboot when requesting boot to sideload. "
                             + "Rebooting to userspace first.",
