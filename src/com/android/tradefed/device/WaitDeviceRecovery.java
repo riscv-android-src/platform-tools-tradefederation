@@ -120,10 +120,13 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
         // ensure bootloader state is updated
         monitor.waitForDeviceBootloaderStateUpdate();
 
-        if (monitor.getDeviceState().equals(TestDeviceState.FASTBOOT)) {
-            Log.i(LOG_TAG, String.format(
-                    "Found device %s in fastboot but expected online. Rebooting...",
-                    monitor.getSerialNumber()));
+        TestDeviceState state = monitor.getDeviceState();
+        if (TestDeviceState.FASTBOOT.equals(state) || TestDeviceState.FASTBOOTD.equals(state)) {
+            Log.i(
+                    LOG_TAG,
+                    String.format(
+                            "Found device %s in %s but expected online. Rebooting...",
+                            monitor.getSerialNumber(), state));
             // TODO: retry if failed
             getRunUtil().runTimedCmd(mFastbootWaitTime, mFastbootPath, "-s",
                     monitor.getSerialNumber(), "reboot");
