@@ -174,10 +174,7 @@ public class RemoteAndroidVirtualDeviceTest {
                     @Override
                     GceManager getGceHandler() {
                         return new GceManager(
-                                getDeviceDescriptor(),
-                                new TestDeviceOptions(),
-                                mMockBuildInfo,
-                                null) {
+                                getDeviceDescriptor(), new TestDeviceOptions(), mMockBuildInfo) {
                             @Override
                             protected List<String> buildGceCmd(
                                     File reportFile, IBuildInfo b, String ipDevice) {
