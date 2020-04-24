@@ -91,9 +91,7 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
             mGceAvd = null;
             mGceSshMonitor = null;
             // We create a brand new GceManager each time to ensure clean state.
-            mGceHandler =
-                    new GceManager(
-                            getDeviceDescriptor(), getOptions(), info, testResourceBuildInfos);
+            mGceHandler = new GceManager(getDeviceDescriptor(), getOptions(), info);
             getGceHandler().logStableHostImageInfos(info);
             setFastbootEnabled(false);
 
