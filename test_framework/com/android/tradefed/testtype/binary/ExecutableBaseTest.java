@@ -29,6 +29,7 @@ import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IRuntimeHintProvider;
 import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.testtype.ITestCollector;
+import com.android.tradefed.testtype.ITestFilterReceiver;
 import com.android.tradefed.util.StreamUtil;
 
 import java.io.File;
@@ -37,21 +38,41 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /** Base class for executable style of tests. For example: binaries, shell scripts. */
 public abstract class ExecutableBaseTest
-        implements IRemoteTest, IRuntimeHintProvider, ITestCollector, IShardableTest, IAbiReceiver {
+        implements IRemoteTest,
+                IRuntimeHintProvider,
+                ITestCollector,
+                IShardableTest,
+                IAbiReceiver,
+                ITestFilterReceiver {
 
     public static final String NO_BINARY_ERROR = "Binary %s does not exist.";
+
+    @Option(
+            name = "per-binary-timeout",
+            isTimeVal = true,
+            description = "Timeout applied to each binary for their execution.")
+    private long mTimeoutPerBinaryMs = 5 * 60 * 1000L;
 
     @Option(name = "binary", description = "Path to the binary to be run. Can be repeated.")
     private List<String> mBinaryPaths = new ArrayList<>();
 
     @Option(
-        name = "collect-tests-only",
-        description = "Only dry-run through the tests, do not actually run them."
-    )
+            name = "test-command-line",
+            description = "The test commands of each test names.",
+            requiredForRerun = true)
+    private Map<String, String> mTestCommands = new LinkedHashMap<>();
+
+    @Option(
+            name = "collect-tests-only",
+            description = "Only dry-run through the tests, do not actually run them.")
     private boolean mCollectTestsOnly = false;
 
     @Option(
@@ -63,22 +84,79 @@ public abstract class ExecutableBaseTest
 
     private IAbi mAbi;
     private TestInformation mTestInfo;
+    private Set<String> mIncludeFilters = new LinkedHashSet<>();
+    private Set<String> mExcludeFilters = new LinkedHashSet<>();
+
+    /** @return the timeout applied to each binary for their execution. */
+    protected long getTimeoutPerBinaryMs() {
+        return mTimeoutPerBinaryMs;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void addIncludeFilter(String filter) {
+        mIncludeFilters.add(filter);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void addExcludeFilter(String filter) {
+        mExcludeFilters.add(filter);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void addAllIncludeFilters(Set<String> filters) {
+        mIncludeFilters.addAll(filters);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void addAllExcludeFilters(Set<String> filters) {
+        mExcludeFilters.addAll(filters);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void clearIncludeFilters() {
+        mIncludeFilters.clear();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void clearExcludeFilters() {
+        mExcludeFilters.clear();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Set<String> getIncludeFilters() {
+        return mIncludeFilters;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Set<String> getExcludeFilters() {
+        return mExcludeFilters;
+    }
 
     @Override
-    public final void run(TestInformation testInfo, ITestInvocationListener listener)
+    public void run(TestInformation testInfo, ITestInvocationListener listener)
             throws DeviceNotAvailableException {
         mTestInfo = testInfo;
-        for (String binary : mBinaryPaths) {
-            String path = findBinary(binary);
+        Map<String, String> testCommands = getAllTestCommands();
+        for (String testName : testCommands.keySet()) {
+            String cmd = testCommands.get(testName);
+            String path = findBinary(cmd);
+            TestDescription description = new TestDescription(testName, testName);
+            if (shouldSkipCurrentTest(description)) continue;
             if (path == null) {
-                listener.testRunStarted(new File(binary).getName(), 0);
-                listener.testRunFailed(String.format(NO_BINARY_ERROR, binary));
+                listener.testRunStarted(testName, 0);
+                listener.testRunFailed(String.format(NO_BINARY_ERROR, cmd));
                 listener.testRunEnded(0L, new HashMap<String, Metric>());
             } else {
-                listener.testRunStarted(new File(path).getName(), 1);
+                listener.testRunStarted(testName, 1);
                 long startTimeMs = System.currentTimeMillis();
-                TestDescription description =
-                        new TestDescription(new File(path).getName(), new File(path).getName());
                 listener.testStarted(description);
                 try {
                     if (!mCollectTestsOnly) {
@@ -99,12 +177,33 @@ public abstract class ExecutableBaseTest
     }
 
     /**
+     * Check if current test should be skipped.
+     *
+     * @param description The test in progress.
+     * @return true if the test should be skipped.
+     */
+    private boolean shouldSkipCurrentTest(TestDescription description) {
+        // Force to skip any test not listed in include filters, or listed in exclude filters.
+        // exclude filters have highest priority.
+        String testName = description.getTestName();
+        if (mExcludeFilters.contains(testName)
+                || mExcludeFilters.contains(description.toString())) {
+            return true;
+        }
+        if (!mIncludeFilters.isEmpty()) {
+            return !mIncludeFilters.contains(testName)
+                    && !mExcludeFilters.contains(description.toString());
+        }
+        return false;
+    }
+
+    /**
      * Search for the binary to be able to run it.
      *
      * @param binary the path of the binary or simply the binary name.
      * @return The path to the binary, or null if not found.
      */
-    public abstract String findBinary(String binary);
+    public abstract String findBinary(String binary) throws DeviceNotAvailableException;
 
     /**
      * Actually run the binary at the given path.
@@ -179,5 +278,18 @@ public abstract class ExecutableBaseTest
                             e.getClass().getSimpleName(), e.getMessage()));
         }
         return shard;
+    }
+
+    /**
+     * Convert mBinaryPaths to mTestCommands for consistency.
+     *
+     * @return a Map{@link LinkedHashMap}<String, String> of testCommands.
+     */
+    private Map<String, String> getAllTestCommands() {
+        Map<String, String> testCommands = new LinkedHashMap<>(mTestCommands);
+        for (String binary : mBinaryPaths) {
+            testCommands.put(new File(binary).getName(), binary);
+        }
+        return testCommands;
     }
 }
