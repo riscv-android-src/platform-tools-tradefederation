@@ -222,15 +222,14 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
      * Extracts and returns splits for the specified apks.
      *
      * @param testInfo the {@link TestInformation}
-     * @param apksName The name of the apks file to extract splits from.
+     * @param moduleFile The module file to extract the splits from.
      * @return a File[] containing the splits.
      * @throws TargetSetupError if bundletool cannot be found or device spec file fails to generate.
      */
-    private File[] getSplitsForApks(TestInformation testInfo, String apksName)
+    private File[] getSplitsForApks(TestInformation testInfo, File moduleFile)
             throws TargetSetupError {
         initBundletoolUtil(testInfo);
         initDeviceSpecFilePath(testInfo.getDevice());
-        File moduleFile = getLocalPathForFilename(testInfo, apksName);
         File splitsDir =
                 getBundletoolUtil()
                         .extractSplitsFromApks(
@@ -274,7 +273,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
             }
             String modulePackageName = "";
             if (moduleFile.getName().endsWith(SPLIT_APKS_SUFFIX)) {
-                File[] splits = getSplitsForApks(testInfo, moduleFileName);
+                File[] splits = getSplitsForApks(testInfo, moduleFile);
                 if (splits == null) {
                     // Bundletool failed to extract splits.
                     CLog.w(
@@ -437,7 +436,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
             throws TargetSetupError, DeviceNotAvailableException {
         File apks = getLocalPathForFilename(testInfo, apksName);
         // Rename the extracted files and add the file to filename list.
-        File[] splits = getSplitsForApks(testInfo, apks.getName());
+        File[] splits = getSplitsForApks(testInfo, apks);
         ITestDevice device = testInfo.getDevice();
         if (splits.length == 0) {
             throw new TargetSetupError(
@@ -471,7 +470,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
         for (String moduleFileName : testAppFileNames) {
             File moduleFile = getLocalPathForFilename(testInfo, moduleFileName);
             if (moduleFileName.endsWith(SPLIT_APKS_SUFFIX)) {
-                File[] splits = getSplitsForApks(testInfo, moduleFileName);
+                File[] splits = getSplitsForApks(testInfo, moduleFile);
                 String splitsArgs = createInstallArgsForSplit(splits, device);
                 mSplitsInstallArgs.add(splitsArgs);
             } else {
