@@ -42,6 +42,7 @@ import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.invoker.logger.TfObjectTracker;
 import com.android.tradefed.invoker.shard.IShardHelper;
+import com.android.tradefed.invoker.shard.TestsPoolPoller;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
@@ -585,7 +586,9 @@ public class InvocationExecution implements IInvocationExecution {
                 // Handle the no-retry use case
                 if (!decision.isAutoRetryEnabled()
                         || RetryStrategy.NO_RETRY.equals(decision.getRetryStrategy())
-                        || test instanceof ITestSuite) {
+                        || test instanceof ITestSuite
+                        // TODO: Handle auto-retry in local-sharding for non-suite
+                        || test instanceof TestsPoolPoller) {
                     runTest(config, info, listener, test);
                     remainingTests.remove(test);
                     continue;
