@@ -184,7 +184,6 @@ public class RustBinaryHostTestTest {
             mockListenerLog(binary);
             CommandResult res = newCommandResult(CommandStatus.EXCEPTION, "Err.", "Exception.");
             mockTestRunExpect(binary, res);
-            mMockListener.testRunFailed((String) EasyMock.anyObject());
             mMockListener.testRunFailed((FailureDescription) EasyMock.anyObject());
             mockTestRunEnded();
             callReplayRunVerify();

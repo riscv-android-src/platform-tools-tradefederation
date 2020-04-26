@@ -32,6 +32,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+import java.util.Arrays;
 import java.util.HashMap;
 
 /** Unit tests for {@link RustTestResultParser}. */
@@ -108,6 +109,7 @@ public class RustTestResultParserTest extends RustParserTestBase {
 
         replay(mMockListener);
         mParser.processNewLines(contents);
+        mParser.done();
         verify(mMockListener);
     }
 
@@ -126,6 +128,7 @@ public class RustTestResultParserTest extends RustParserTestBase {
                 (String) EasyMock.anyObject());
         replay(mMockListener);
         mParser.processNewLines(contents);
+        mParser.done();
         verify(mMockListener);
     }
 
@@ -141,6 +144,27 @@ public class RustTestResultParserTest extends RustParserTestBase {
                 EasyMock.eq(new TestDescription("test", "make_sure_no_proc_macro")));
         replay(mMockListener);
         mParser.processNewLines(contents);
+        mParser.done();
+        verify(mMockListener);
+    }
+
+    /**
+     * Tests may not return all their output in a single call to processNewLines. This tests that we
+     * properly parse output split across several calls.
+     */
+    @Test
+    public void testParsePartialOutput() {
+        String[] contents = readInFile(RUST_OUTPUT_FILE_1);
+        for (int i = 0; i < 10; i++) {
+            mMockListener.testStarted(EasyMock.anyObject());
+            mMockListener.testEnded(
+                    EasyMock.anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
+        }
+        replay(mMockListener);
+        mParser.processNewLines(Arrays.copyOfRange(contents, 0, 4));
+        mParser.processNewLines(Arrays.copyOfRange(contents, 4, 7));
+        mParser.processNewLines(Arrays.copyOfRange(contents, 4, contents.length));
+        mParser.done();
         verify(mMockListener);
     }
 }
