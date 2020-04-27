@@ -24,10 +24,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import com.android.tradefed.build.BuildInfo;
-import com.android.tradefed.build.BuildRetrievalError;
-import com.android.tradefed.build.IBuildInfo;
-import com.android.tradefed.build.IBuildProvider;
-import com.android.tradefed.build.StubBuildProvider;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.DeviceConfigurationHolder;
 import com.android.tradefed.config.IConfiguration;
@@ -55,7 +51,6 @@ import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.suite.TestSuiteStub;
-import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IDisableable;
 
 import org.easymock.EasyMock;
@@ -66,7 +61,6 @@ import org.junit.runners.JUnit4;
 import org.mockito.InOrder;
 import org.mockito.Mockito;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -86,7 +80,6 @@ public class InvocationExecutionTest {
     private ILogSaver mLogSaver;
     private ITestInvocationListener mMockListener;
     private ILogSaverListener mMockLogListener;
-    private ITestDevice mMockDevice;
     private ITestLogger mMockLogger;
 
     @Before
@@ -99,7 +92,6 @@ public class InvocationExecutionTest {
         mMockListener = mock(ITestInvocationListener.class);
         mMockLogListener = mock(ILogSaverListener.class);
         mMockLogger = mock(ITestLogger.class);
-        mMockDevice = EasyMock.createMock(ITestDevice.class);
         // Reset the counters
         TestBaseMetricCollector.sTotalInit = 0;
         RemoteTestCollector.sTotalInit = 0;
@@ -561,69 +553,5 @@ public class InvocationExecutionTest {
         inOrder.verify(stub2).tearDown(testInfo, exception);
         inOrder.verify(stub1).isDisabled();
         inOrder.verify(stub1).tearDown(testInfo, exception);
-    }
-
-    /** Ensure we create the shared folder from the resource build. */
-    @Test
-    public void testFetchBuild_createSharedFolder() throws Throwable {
-        mExec =
-                new InvocationExecution() {
-                    @Override
-                    protected String getAdbVersion() {
-                        return "1";
-                    }
-                };
-        EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("serial");
-        mMockDevice.setRecovery(EasyMock.anyObject());
-        EasyMock.expectLastCall().times(2);
-
-        List<IDeviceConfiguration> listDeviceConfig = new ArrayList<>();
-        DeviceConfigurationHolder holder = new DeviceConfigurationHolder("device1");
-        IBuildProvider provider = new StubBuildProvider();
-        holder.addSpecificConfig(provider);
-        mContext.addAllocatedDevice("device1", mMockDevice);
-        listDeviceConfig.add(holder);
-
-        DeviceConfigurationHolder holder2 = new DeviceConfigurationHolder("device2", true);
-        IBuildProvider provider2 =
-                new StubBuildProvider() {
-                    @Override
-                    public IBuildInfo getBuild() throws BuildRetrievalError {
-                        IBuildInfo info = super.getBuild();
-                        info.setBuildId("1234");
-                        info.setBuildBranch("branch");
-                        info.setBuildFlavor("flavor");
-                        return info;
-                    }
-                };
-        holder2.addSpecificConfig(provider2);
-        mContext.addAllocatedDevice("device2", mMockDevice);
-        listDeviceConfig.add(holder2);
-
-        mConfig.setDeviceConfigList(listDeviceConfig);
-        File tmpWorkDir = FileUtil.createTempDir("invocation-execution-shared-test");
-        TestInformation testInfo =
-                TestInformation.newBuilder()
-                        .setInvocationContext(mContext)
-                        .setDependenciesFolder(tmpWorkDir)
-                        .build();
-        // Download
-        EasyMock.replay(mMockDevice);
-        assertTrue(mExec.fetchBuild(testInfo, mConfig, null, mMockListener));
-        EasyMock.verify(mMockDevice);
-
-        List<IBuildInfo> builds = mContext.getBuildInfos();
-        try {
-            assertEquals(2, builds.size());
-            assertEquals(1, tmpWorkDir.listFiles().length);
-            // The resource build was linked to dependencies
-            assertTrue(tmpWorkDir.listFiles()[0].getName().startsWith("branch_1234_flavor"));
-        } finally {
-            for (IBuildInfo info : builds) {
-                info.cleanUp();
-            }
-            FileUtil.recursiveDelete(tmpWorkDir);
-        }
-        assertTrue(mContext.getAttributes().containsKey(InvocationExecution.JAVA_VERSION_KEY));
     }
 }
