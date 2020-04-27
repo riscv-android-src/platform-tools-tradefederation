@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.targetprep;
 
+import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.command.remote.DeviceDescriptor;
@@ -33,12 +34,19 @@ import com.android.tradefed.util.AaptParser;
 import com.android.tradefed.util.AbiFormatter;
 import com.android.tradefed.util.BuildTestsZipUtils;
 
+import com.google.common.base.Strings;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * A {@link ITargetPreparer} that installs one or more apps from a {@link
@@ -64,24 +72,22 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
             "INSTALL_FAILED_UPDATE_INCOMPATIBLE";
 
     @Option(
-        name = "test-file-name",
-        description = "the name of an apk file to be installed on device. Can be repeated.",
-        importance = Importance.IF_UNSET
-    )
-    private Collection<String> mTestFileNames = new ArrayList<String>();
+            name = "test-file-name",
+            description = "the name of an apk file to be installed on device. Can be repeated.",
+            importance = Importance.IF_UNSET)
+    private List<File> mTestFileNames = new ArrayList<>();
 
     // A string made of split apk file names divided by ",".
     // See "https://developer.android.com/studio/build/configure-apk-splits" on how to split
     // apk to several files.
     @Option(
-        name = "split-apk-file-names",
-        description =
-                "the split apk file names separted by comma that will be installed on device. "
-                        + "Can be repeated for multiple split apk sets."
-                        + "See https://developer.android.com/studio/build/configure-apk-splits on "
-                        + "how to split apk to several files"
-    )
-    private Collection<String> mSplitApkFileNames = new ArrayList<String>();
+            name = "split-apk-file-names",
+            description =
+                    "the split apk file names separted by comma that will be installed on device. "
+                            + "Can be repeated for multiple split apk sets."
+                            + "See https://developer.android.com/studio/build/configure-apk-splits on "
+                            + "how to split apk to several files")
+    private List<String> mSplitApkFileNames = new ArrayList<>();
 
     @Option(
         name = "throw-if-not-found",
@@ -135,20 +141,21 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
     private Integer mUserId = null;
     private Boolean mGrantPermission = null;
 
-    private List<String> mPackagesInstalled = null;
+    private Set<String> mPackagesInstalled = null;
     private TestInformation mTestInfo;
 
     protected void setTestInformation(TestInformation testInfo) {
         mTestInfo = testInfo;
     }
 
-    /**
-     * Adds a file name to the list of apks to installed
-     *
-     * @param fileName
-     */
+    /** Adds a file name to the list of apks to installed. */
     public void addTestFileName(String fileName) {
-        mTestFileNames.add(fileName);
+        mTestFileNames.add(new File(fileName));
+    }
+
+    @VisibleForTesting
+    void clearTestFile() {
+        mTestFileNames.clear();
     }
 
     /**
@@ -160,9 +167,14 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
         mSplitApkFileNames.add(fileNames);
     }
 
+    @VisibleForTesting
+    void clearSplitApkFileNames() {
+        mSplitApkFileNames.clear();
+    }
+
     /** Returns a copy of the list of specified test apk names. */
     public List<String> getTestsFileName() {
-        return new ArrayList<String>(mTestFileNames);
+        return mTestFileNames.stream().map(f -> f.getName()).collect(Collectors.toList());
     }
 
     /** Sets whether or not the installed apk should be cleaned on tearDown */
@@ -238,7 +250,7 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
             return;
         }
         if (mCleanup) {
-            mPackagesInstalled = new ArrayList<>();
+            mPackagesInstalled = new HashSet<>();
         }
 
         // resolve abi flags
@@ -273,13 +285,16 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
             mInstallArgs.add("--force-queryable");
         }
 
-        for (String testAppName : mTestFileNames) {
-            installer(testInfo, Arrays.asList(new String[] {testAppName}));
+        for (File testAppName : mTestFileNames) {
+            Map<File, String> appFilesAndPackages =
+                    resolveApkFiles(testInfo, Arrays.asList(new String[] {testAppName.getName()}));
+            installer(testInfo, appFilesAndPackages);
         }
 
         for (String testAppNames : mSplitApkFileNames) {
             List<String> apkNames = Arrays.asList(testAppNames.split(","));
-            installer(testInfo, apkNames);
+            Map<File, String> appFilesAndPackages = resolveApkFiles(testInfo, apkNames);
+            installer(testInfo, appFilesAndPackages);
         }
     }
 
@@ -357,17 +372,50 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
      * Attempt to install an package or split package on the device.
      *
      * @param testInfo the {@link TestInformation} for the invocation
-     * @param apkNames List of String. The application file base names to be installed. If apkNames
-     *     contains only one apk name, the apk will be installed as single package. If apkNames
-     *     contains more than one name, the apks will be installed as split apks.
+     * @param appFilesAndPackages The apks and their package to be installed.
      */
-    protected void installer(TestInformation testInfo, List<String> apkNames)
+    protected void installer(TestInformation testInfo, Map<File, String> appFilesAndPackages)
             throws TargetSetupError, DeviceNotAvailableException {
-        List<File> appFiles = new ArrayList<File>();
-        List<String> packageNames = new ArrayList<String>();
+        ITestDevice device = testInfo.getDevice();
+
+        if (appFilesAndPackages.isEmpty()) {
+            return;
+        }
+        CLog.d(
+                "Installing apk %s with %s ...",
+                appFilesAndPackages.values(), appFilesAndPackages.keySet());
+        String result = installPackage(device, new ArrayList<>(appFilesAndPackages.keySet()));
+        if (result != null) {
+            if (result.startsWith(INSTALL_FAILED_UPDATE_INCOMPATIBLE)) {
+                // Try to uninstall package and reinstall.
+                for (String packageName : new HashSet<>(appFilesAndPackages.values())) {
+                    uninstallPackage(device, packageName);
+                }
+                result = installPackage(device, new ArrayList<>(appFilesAndPackages.keySet()));
+            }
+        }
+        if (result != null) {
+            throw new TargetSetupError(
+                    String.format(
+                            "Failed to install %s with %s on %s. Reason: '%s'",
+                            appFilesAndPackages.values(),
+                            appFilesAndPackages.keySet(),
+                            device.getSerialNumber(),
+                            result),
+                    device.getDeviceDescriptor());
+        }
+        if (mCleanup) {
+            mPackagesInstalled.addAll(appFilesAndPackages.values());
+        }
+    }
+
+    /** Helper to resolve some apk to their File and Package. */
+    protected Map<File, String> resolveApkFiles(TestInformation testInfo, List<String> apkNames)
+            throws TargetSetupError {
+        Map<File, String> appFiles = new LinkedHashMap<>();
         ITestDevice device = testInfo.getDevice();
         for (String name : apkNames) {
-            if (name == null || name.trim().isEmpty()) {
+            if (Strings.isNullOrEmpty(name)) {
                 continue;
             }
             File testAppFile = getLocalPathForFilename(testInfo, name);
@@ -391,44 +439,10 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
                     continue;
                 }
             }
-            appFiles.add(testAppFile);
             String packageName = parsePackageName(testAppFile, device.getDeviceDescriptor());
-            if (!packageNames.contains(packageName)) {
-                packageNames.add(packageName);
-            }
+            appFiles.put(testAppFile, packageName);
         }
-
-        if (appFiles.isEmpty()) {
-            return;
-        }
-
-        CLog.d("Installing apk %s with %s ...", packageNames.toString(), appFiles.toString());
-        String result = installPackage(device, appFiles);
-        if (result != null) {
-            if (result.startsWith(INSTALL_FAILED_UPDATE_INCOMPATIBLE)) {
-                // Try to uninstall package and reinstall.
-                for (String packageName : packageNames) {
-                    uninstallPackage(device, packageName);
-                }
-                result = installPackage(device, appFiles);
-            }
-        }
-        if (result != null) {
-            throw new TargetSetupError(
-                    String.format(
-                            "Failed to install %s with %s on %s. Reason: '%s'",
-                            packageNames.toString(),
-                            appFiles.toString(),
-                            device.getSerialNumber(),
-                            result),
-                    device.getDeviceDescriptor());
-        }
-        if (mCleanup) {
-            if (mPackagesInstalled == null) {
-                mPackagesInstalled = new ArrayList<>();
-            }
-            mPackagesInstalled.addAll(packageNames);
-        }
+        return appFiles;
     }
 
     /**
