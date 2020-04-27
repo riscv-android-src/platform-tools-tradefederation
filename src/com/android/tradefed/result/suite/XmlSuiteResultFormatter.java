@@ -98,6 +98,7 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
     private static final String MODULE_TAG = "Module";
     private static final String MODULES_DONE_ATTR = "modules_done";
     private static final String MODULES_TOTAL_ATTR = "modules_total";
+    private static final String MODULES_NOT_DONE_REASON = "Reason";
     private static final String NAME_ATTR = "name";
     private static final String OS_ARCH_ATTR = "os_arch";
     private static final String OS_NAME_ATTR = "os_name";
@@ -297,6 +298,15 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
                     NS, PASS_ATTR, Integer.toString(module.getNumTestsInState(TestStatus.PASSED)));
             serializer.attribute(NS, TOTAL_TESTS_ATTR, Integer.toString(module.getNumTests()));
 
+            if (!isDone) {
+                String message = module.getRunFailureMessage();
+                if (message == null) {
+                    message = "Run was incomplete. Some tests might not have finished.";
+                }
+                serializer.startTag(NS, MODULES_NOT_DONE_REASON);
+                serializer.attribute(NS, MESSAGE_ATTR, message);
+                serializer.endTag(NS, MODULES_NOT_DONE_REASON);
+            }
             serializeTestCases(serializer, module.getTestResults());
             serializer.endTag(NS, MODULE_TAG);
         }
@@ -603,6 +613,13 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
             module.testRunStarted(moduleId, totalTests);
             // TestCase level information parsing
             while (parser.nextTag() == XmlPullParser.START_TAG) {
+                // If a reason for not done exists, handle it.
+                if (parser.getName().equals(MODULES_NOT_DONE_REASON)) {
+                    parser.require(XmlPullParser.START_TAG, NS, MODULES_NOT_DONE_REASON);
+                    parser.nextTag();
+                    parser.require(XmlPullParser.END_TAG, NS, MODULES_NOT_DONE_REASON);
+                    continue;
+                }
                 parser.require(XmlPullParser.START_TAG, NS, CASE_TAG);
                 String className = parser.getAttributeValue(NS, NAME_ATTR);
                 // Test level information parsing
