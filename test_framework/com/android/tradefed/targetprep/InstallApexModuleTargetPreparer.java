@@ -37,6 +37,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -56,6 +57,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
     private static final String APK_SUFFIX = ".apk";
     private static final String SPLIT_APKS_SUFFIX = ".apks";
     private static final String TRAIN_WITH_APEX_INSTALL_OPTION = "install-multi-package";
+    private static final String ACTIVATED_APEX_SOURCEDIR_PREFIX = "data";
 
     private List<ApexInfo> mTestApexInfoList = new ArrayList<>();
     private Set<String> mApkToInstall = new LinkedHashSet<>();
@@ -73,6 +75,13 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
         isTimeVal = true
     )
     private long mApexStagingWaitTime = 1 * 60 * 1000;
+
+    @Option(
+            name = "ignore-if-module-not-preloaded",
+            description =
+                    "Skip installing the module(s) when the module(s) that are not "
+                            + "preloaded on device. Otherwise an exception will be thrown.")
+    private boolean mIgnoreIfNotPreloaded = false;
 
     @Override
     public void setUp(TestInformation testInfo)
@@ -136,13 +145,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
             }
         }
 
-        List<ApexInfo> failToActivateApex = new ArrayList<ApexInfo>();
-
-        for (ApexInfo testApexInfo : mTestApexInfoList) {
-            if (!activatedApexes.contains(testApexInfo)) {
-                failToActivateApex.add(testApexInfo);
-            }
-        }
+        List<ApexInfo> failToActivateApex = getModulesFailToActivate(activatedApexes);
 
         if (!failToActivateApex.isEmpty()) {
             throw new TargetSetupError(
@@ -219,15 +222,14 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
      * Extracts and returns splits for the specified apks.
      *
      * @param testInfo the {@link TestInformation}
-     * @param apksName The name of the apks file to extract splits from.
+     * @param moduleFile The module file to extract the splits from.
      * @return a File[] containing the splits.
      * @throws TargetSetupError if bundletool cannot be found or device spec file fails to generate.
      */
-    private File[] getSplitsForApks(TestInformation testInfo, String apksName)
+    private File[] getSplitsForApks(TestInformation testInfo, File moduleFile)
             throws TargetSetupError {
         initBundletoolUtil(testInfo);
         initDeviceSpecFilePath(testInfo.getDevice());
-        File moduleFile = getLocalPathForFilename(testInfo, apksName);
         File splitsDir =
                 getBundletoolUtil()
                         .extractSplitsFromApks(
@@ -271,7 +273,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
             }
             String modulePackageName = "";
             if (moduleFile.getName().endsWith(SPLIT_APKS_SUFFIX)) {
-                File[] splits = getSplitsForApks(testInfo, moduleFileName);
+                File[] splits = getSplitsForApks(testInfo, moduleFile);
                 if (splits == null) {
                     // Bundletool failed to extract splits.
                     CLog.w(
@@ -288,6 +290,19 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
                 moduleNamesToInstall.add(moduleFileName);
                 installedPackages.remove(modulePackageName);
             } else {
+                if (!mIgnoreIfNotPreloaded) {
+                    if (!installedPackages.isEmpty()) {
+                        CLog.i(
+                                "The following modules are preloaded on the device %s",
+                                installedPackages);
+                    }
+                    throw new TargetSetupError(
+                            String.format(
+                                    "Mainline module %s is not preloaded on the device "
+                                            + "but is in the input lists.",
+                                    modulePackageName),
+                            device.getDeviceDescriptor());
+                }
                 CLog.i(
                         "The module package %s is not preloaded on the device but is included in "
                                 + "the train.",
@@ -421,7 +436,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
             throws TargetSetupError, DeviceNotAvailableException {
         File apks = getLocalPathForFilename(testInfo, apksName);
         // Rename the extracted files and add the file to filename list.
-        File[] splits = getSplitsForApks(testInfo, apks.getName());
+        File[] splits = getSplitsForApks(testInfo, apks);
         ITestDevice device = testInfo.getDevice();
         if (splits.length == 0) {
             throw new TargetSetupError(
@@ -455,7 +470,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
         for (String moduleFileName : testAppFileNames) {
             File moduleFile = getLocalPathForFilename(testInfo, moduleFileName);
             if (moduleFileName.endsWith(SPLIT_APKS_SUFFIX)) {
-                File[] splits = getSplitsForApks(testInfo, moduleFileName);
+                File[] splits = getSplitsForApks(testInfo, moduleFile);
                 String splitsArgs = createInstallArgsForSplit(splits, device);
                 mSplitsInstallArgs.add(splitsArgs);
             } else {
@@ -674,6 +689,36 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
             }
         }
         return apexInfoList;
+    }
+
+    /**
+     * Get modules that failed to be activated.
+     *
+     * @param activatedApexes The set of the active apexes on device
+     * @return a list containing the apexinfo of the input apex modules that failed to be activated.
+     */
+    protected List<ApexInfo> getModulesFailToActivate(Set<ApexInfo> activatedApexes) {
+        List<ApexInfo> failToActivateApex = new ArrayList<ApexInfo>();
+        HashMap<String, ApexInfo> activatedApexInfo = new HashMap<>();
+        for (ApexInfo info : activatedApexes) {
+            activatedApexInfo.put(info.name, info);
+        }
+        for (ApexInfo testApexInfo : mTestApexInfoList) {
+            if (!activatedApexInfo.containsKey(testApexInfo.name)) {
+                failToActivateApex.add(testApexInfo);
+            } else {
+                // Activated apex sourceDir starts with "/data"
+                if (!activatedApexInfo
+                                .get(testApexInfo.name)
+                                .sourceDir
+                                .startsWith(ACTIVATED_APEX_SOURCEDIR_PREFIX, 1)
+                        || activatedApexInfo.get(testApexInfo.name).versionCode
+                                != testApexInfo.versionCode) {
+                    failToActivateApex.add(testApexInfo);
+                }
+            }
+        }
+        return failToActivateApex;
     }
 
     @VisibleForTesting

@@ -2936,7 +2936,7 @@ public class NativeDevice implements IManagedTestDevice {
             throws DeviceNotAvailableException, UnsupportedOperationException {
         rebootIntoFastbootInternal(false);
     }
-
+    
     /**
      * Reboots the device into bootloader or fastbootd mode.
      *
@@ -2970,8 +2970,11 @@ public class NativeDevice implements IManagedTestDevice {
         }
     }
 
-    private void doAdbRebootBootloader() throws DeviceNotAvailableException {
-        doAdbReboot(RebootMode.REBOOT_INTO_BOOTLOADER, null);
+    /** {@inheritDoc} */
+    @Override
+    public boolean isStateBootloaderOrFastbootd() {
+        return TestDeviceState.FASTBOOT.equals(getDeviceState())
+                || TestDeviceState.FASTBOOTD.equals(getDeviceState());
     }
 
     /**
@@ -3060,7 +3063,7 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public void rebootIntoRecovery() throws DeviceNotAvailableException {
-        if (TestDeviceState.FASTBOOT == getDeviceState()) {
+        if (isStateBootloaderOrFastbootd()) {
             CLog.w("device %s in fastboot when requesting boot to recovery. " +
                     "Rebooting to userspace first.", getSerialNumber());
             rebootUntilOnline();
@@ -3080,7 +3083,7 @@ public class NativeDevice implements IManagedTestDevice {
     /** {@inheritDoc} */
     @Override
     public void rebootIntoSideload(boolean autoReboot) throws DeviceNotAvailableException {
-        if (TestDeviceState.FASTBOOT == getDeviceState()) {
+        if (isStateBootloaderOrFastbootd()) {
             CLog.w(
                     "device %s in fastboot when requesting boot to sideload. "
                             + "Rebooting to userspace first.",
@@ -3158,8 +3161,8 @@ public class NativeDevice implements IManagedTestDevice {
         // Track Tradefed reboot time
         mLastTradefedRebootTime = System.currentTimeMillis();
 
-        if (TestDeviceState.FASTBOOT == getDeviceState()) {
-            CLog.i("device %s in fastboot. Rebooting to userspace.", getSerialNumber());
+        if (isStateBootloaderOrFastbootd()) {
+            CLog.i("device %s in %s. Rebooting to userspace.", getSerialNumber(), getDeviceState());
             executeFastbootCommand("reboot");
         } else {
             if (mOptions.shouldDisableReboot()) {
@@ -3727,7 +3730,7 @@ public class NativeDevice implements IManagedTestDevice {
         if (!deviceState.equals(getDeviceState())) {
             // disable state changes while fastboot lock is held, because issuing fastboot command
             // will disrupt state
-            if (getDeviceState().equals(TestDeviceState.FASTBOOT) && mFastbootLock.isLocked()) {
+            if (isStateBootloaderOrFastbootd() && mFastbootLock.isLocked()) {
                 return;
             }
             mState = deviceState;
@@ -4866,7 +4869,7 @@ public class NativeDevice implements IManagedTestDevice {
         if (getIDevice() instanceof StubDevice) {
             return null;
         }
-        if (TestDeviceState.FASTBOOT.equals(getDeviceState())) {
+        if (isStateBootloaderOrFastbootd()) {
             return null;
         }
         try {

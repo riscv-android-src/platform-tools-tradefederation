@@ -130,7 +130,6 @@ public class TestInvocationMultiTest {
         mProvider1 = EasyMock.createMock(IBuildProvider.class);
         holder1.addSpecificConfig(mProvider1);
         EasyMock.expect(mMockConfig.getDeviceConfigByName("device1")).andStubReturn(holder1);
-        EasyMock.expect(mMockConfig.isDeviceConfiguredFake("device1")).andReturn(false);
         mDevice1.setOptions(EasyMock.anyObject());
         mDevice1.setRecovery(EasyMock.anyObject());
 
@@ -193,7 +192,7 @@ public class TestInvocationMultiTest {
         mMockTestListener.invocationStarted(mContext);
         EasyMock.expect(mMockTestListener.getSummary()).andReturn(null);
         mMockLogSaver.invocationStarted(mContext);
-        mMockTestListener.invocationFailed(EasyMock.anyObject());
+        mMockTestListener.invocationFailed(EasyMock.<Throwable>anyObject());
         mMockTestListener.testLog(EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject());
         EasyMock.expect(
                         mMockLogSaver.saveLogData(
@@ -359,7 +358,7 @@ public class TestInvocationMultiTest {
         mMockTestListener.invocationStarted(mContext);
         EasyMock.expect(mMockTestListener.getSummary()).andReturn(null);
         mMockLogSaver.invocationStarted(mContext);
-        mMockTestListener.invocationFailed(EasyMock.anyObject());
+        mMockTestListener.invocationFailed(EasyMock.<Throwable>anyObject());
         mMockTestListener.testLog(EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject());
         EasyMock.expect(
                         mMockLogSaver.saveLogData(
@@ -446,7 +445,7 @@ public class TestInvocationMultiTest {
         mMockTestListener.invocationStarted(mContext);
         EasyMock.expect(mMockTestListener.getSummary()).andReturn(null);
         mMockLogSaver.invocationStarted(mContext);
-        mMockTestListener.invocationFailed(EasyMock.anyObject());
+        mMockTestListener.invocationFailed(EasyMock.<Throwable>anyObject());
         mMockTestListener.testLog(EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject());
         EasyMock.expect(
                         mMockLogSaver.saveLogData(

@@ -51,6 +51,11 @@ public interface IRunUtil {
         public default List<String> getCommand() {
             return null;
         }
+
+        /** Returns the {@link CommandResult} associated with the command. */
+        public default CommandResult getResult() {
+            return null;
+        }
     }
 
     /**

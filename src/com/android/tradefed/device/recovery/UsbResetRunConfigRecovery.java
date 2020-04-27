@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 The Android Open Source Project
+ * Copyright (C) 2020 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,23 +15,15 @@
  */
 package com.android.tradefed.device.recovery;
 
-import com.android.ddmlib.IDevice.DeviceState;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.IManagedTestDevice;
 
-/** Recovery checker that will trigger a configuration if the battery level is not available. */
-@OptionClass(alias = "battery-recovery")
-public class BatteryUnavailableDeviceRecovery extends RunConfigDeviceRecovery {
+/** Allow to trigger a command to reset the USB of a device */
+@OptionClass(alias = "usb-reset-recovery")
+public class UsbResetRunConfigRecovery extends RunConfigDeviceRecovery {
 
     @Override
     public boolean shouldSkip(IManagedTestDevice device) {
-        if (device.isStateBootloaderOrFastbootd()) {
-            return true;
-        }
-        if (DeviceState.OFFLINE.equals(device.getIDevice().getState())) {
-            return true;
-        }
-        // Check the battery level of the device and if it's NA continue recovery.
-        return device.getBattery() != null;
+        return device.isStateBootloaderOrFastbootd();
     }
 }

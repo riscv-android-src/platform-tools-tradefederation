@@ -18,7 +18,6 @@ package com.android.tradefed.invoker;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.build.BuildInfo;
-import com.android.tradefed.build.BuildInfoKey;
 import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
@@ -42,6 +41,7 @@ import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.invoker.logger.TfObjectTracker;
 import com.android.tradefed.invoker.shard.IShardHelper;
+import com.android.tradefed.invoker.shard.TestsPoolPoller;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
@@ -157,7 +157,6 @@ public class InvocationExecution implements IInvocationExecution {
                 // TODO: remove build update when reporting is done on context
                 updateBuild(info, config);
                 linkExternalDirs(info, testInfo);
-                info.setTestResourceBuild(config.isDeviceConfiguredFake(currentDeviceName));
 
                 if (config.getCommandOptions().shouldUseReplicateSetup()) {
                     buildReplicat = info;
@@ -172,7 +171,6 @@ public class InvocationExecution implements IInvocationExecution {
             }
             throw e;
         }
-        createSharedResources(testInfo);
         setBinariesVersion(testInfo.getContext());
         return true;
     }
@@ -585,7 +583,9 @@ public class InvocationExecution implements IInvocationExecution {
                 // Handle the no-retry use case
                 if (!decision.isAutoRetryEnabled()
                         || RetryStrategy.NO_RETRY.equals(decision.getRetryStrategy())
-                        || test instanceof ITestSuite) {
+                        || test instanceof ITestSuite
+                        // TODO: Handle auto-retry in local-sharding for non-suite
+                        || test instanceof TestsPoolPoller) {
                     runTest(config, info, listener, test);
                     remainingTests.remove(test);
                     continue;
@@ -867,39 +867,6 @@ public class InvocationExecution implements IInvocationExecution {
             CLog.e(e);
         }
         return null;
-    }
-
-    /** Populate the shared resources directory for all non-resource build */
-    private void createSharedResources(TestInformation testInfo) {
-        List<IBuildInfo> infos = testInfo.getContext().getBuildInfos();
-        if (infos.size() <= 1) {
-            return;
-        }
-        try {
-            for (IBuildInfo info : infos) {
-                if (info.isTestResourceBuild()) {
-                    // Create a reception sub-folder for each build info resource to avoid mixing
-                    String name =
-                            String.format(
-                                    "%s_%s_%s",
-                                    info.getBuildBranch(),
-                                    info.getBuildId(),
-                                    info.getBuildFlavor());
-                    File buildDir = FileUtil.createTempDir(name, testInfo.dependenciesFolder());
-                    for (BuildInfoFileKey key : BuildInfoKey.SHARED_KEY) {
-                        File f = info.getFile(key);
-                        if (f == null) {
-                            continue;
-                        }
-                        File subDir = new File(buildDir, f.getName());
-                        FileUtil.symlinkFile(f, subDir);
-                    }
-                }
-            }
-        } catch (IOException e) {
-            CLog.e("Failed to create the shared resources dir.");
-            CLog.e(e);
-        }
     }
 
     private void setBinariesVersion(IInvocationContext context) {

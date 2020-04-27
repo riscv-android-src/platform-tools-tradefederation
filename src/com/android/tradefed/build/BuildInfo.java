@@ -215,7 +215,6 @@ public class BuildInfo implements IBuildInfo {
         setBuildFlavor(build.getBuildFlavor());
         setBuildBranch(build.getBuildBranch());
         setTestTag(build.getTestTag());
-        setTestResourceBuild(build.isTestResourceBuild());
     }
 
     protected MultiMap<String, String> getAttributesMultiMap() {
@@ -681,30 +680,7 @@ public class BuildInfo implements IBuildInfo {
                         buildFile.getVersion());
             }
         }
-        // Test resource
-        buildInfo.setTestResourceBuild(protoBuild.getIsTestResource());
         return buildInfo;
-    }
-
-    /**
-     * Get test resource from a list of builds.
-     *
-     * @param testResourceBuildInfos An list of {@link IBuildInfo}.
-     * @param testResourceName the test resource name
-     * @return the test resource file.
-     */
-    public static File getTestResource(
-            List<IBuildInfo> testResourceBuildInfos, String testResourceName) {
-        if (testResourceBuildInfos == null) {
-            return null;
-        }
-        for (IBuildInfo buildInfo : testResourceBuildInfos) {
-            File testResourceFile = buildInfo.getFile(testResourceName);
-            if (testResourceFile != null) {
-                return testResourceFile;
-            }
-        }
-        return null;
     }
 
     /** {@inheritDoc} */

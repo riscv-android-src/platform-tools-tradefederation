@@ -25,7 +25,6 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
-import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.TimeUtil;
@@ -33,7 +32,7 @@ import com.android.tradefed.util.TimeUtil;
 import org.junit.Assert;
 
 /**
- * An {@link ITargetPreparer} that checks for a minimum battery charge, and waits for the battery to
+ * An {@link IRemoteTest} that checks for a minimum battery charge, and waits for the battery to
  * reach a second charging threshold if the minimum charge isn't present.
  */
 @OptionClass(alias = "battery-checker")

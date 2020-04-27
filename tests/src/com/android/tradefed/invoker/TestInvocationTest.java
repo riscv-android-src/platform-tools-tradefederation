@@ -242,8 +242,6 @@ public class TestInvocationTest {
         EasyMock.expect(mMockBuildInfo.getBuildFlavor()).andStubReturn("flavor");
         EasyMock.expect(mMockBuildInfo.getProperties()).andStubReturn(new HashSet<>());
         EasyMock.expect(mMockBuildInfo.isTestResourceBuild()).andStubReturn(false);
-        mMockBuildInfo.setTestResourceBuild(EasyMock.anyBoolean());
-        EasyMock.expectLastCall().anyTimes();
 
         // always expect logger initialization and cleanup calls
         mMockLogRegistry.registerLogger(mMockLogger);
@@ -1073,8 +1071,8 @@ public class TestInvocationTest {
         // invocationFailed
         if (!status.equals(InvocationStatus.SUCCESS)) {
             if (stubFailures) {
-                mMockTestListener.invocationFailed(EasyMock.anyObject());
-                mMockSummaryListener.invocationFailed(EasyMock.anyObject());
+                mMockTestListener.invocationFailed(EasyMock.<Throwable>anyObject());
+                mMockSummaryListener.invocationFailed(EasyMock.<Throwable>anyObject());
             } else {
                 mMockTestListener.invocationFailed(EasyMock.eq(throwable));
                 mMockSummaryListener.invocationFailed(EasyMock.eq(throwable));

@@ -23,7 +23,6 @@ import com.android.tradefed.build.DeviceBuildDescriptorTest;
 import com.android.tradefed.build.DeviceBuildInfoTest;
 import com.android.tradefed.build.DeviceFolderBuildInfoTest;
 import com.android.tradefed.build.FileDownloadCacheTest;
-import com.android.tradefed.build.GCSTestResourceProviderTest;
 import com.android.tradefed.build.LocalDeviceBuildProviderTest;
 import com.android.tradefed.build.OtaZipfileBuildProviderTest;
 import com.android.tradefed.clearcut.ClearcutClientTest;
@@ -236,6 +235,7 @@ import com.android.tradefed.targetprep.RestartSystemServerTargetPreparerTest;
 import com.android.tradefed.targetprep.RootTargetPreparerTest;
 import com.android.tradefed.targetprep.RunCommandTargetPreparerTest;
 import com.android.tradefed.targetprep.RunHostCommandTargetPreparerTest;
+import com.android.tradefed.targetprep.RunHostScriptTargetPreparerTest;
 import com.android.tradefed.targetprep.StopServicesSetupTest;
 import com.android.tradefed.targetprep.SwitchUserTargetPreparerTest;
 import com.android.tradefed.targetprep.SystemUpdaterDeviceFlasherTest;
@@ -257,6 +257,7 @@ import com.android.tradefed.testtype.DeviceTestCaseTest;
 import com.android.tradefed.testtype.DeviceTestSuiteTest;
 import com.android.tradefed.testtype.FakeTestTest;
 import com.android.tradefed.testtype.GTestListTestParserTest;
+import com.android.tradefed.testtype.GTestListenerTest;
 import com.android.tradefed.testtype.GTestResultParserTest;
 import com.android.tradefed.testtype.GTestTest;
 import com.android.tradefed.testtype.GTestXmlResultParserTest;
@@ -279,6 +280,7 @@ import com.android.tradefed.testtype.NoisyDryRunTestTest;
 import com.android.tradefed.testtype.PythonUnitTestResultParserTest;
 import com.android.tradefed.testtype.PythonUnitTestRunnerTest;
 import com.android.tradefed.testtype.TfTestLauncherTest;
+import com.android.tradefed.testtype.UsbResetTestTest;
 import com.android.tradefed.testtype.binary.ExecutableHostTestTest;
 import com.android.tradefed.testtype.binary.ExecutableTargetTestTest;
 import com.android.tradefed.testtype.host.CoverageMeasurementForwarderTest;
@@ -413,7 +415,6 @@ import org.junit.runners.Suite.SuiteClasses;
     DeviceBuildDescriptorTest.class,
     DeviceFolderBuildInfoTest.class,
     FileDownloadCacheTest.class,
-    GCSTestResourceProviderTest.class,
     LocalDeviceBuildProviderTest.class,
     OtaZipfileBuildProviderTest.class,
 
@@ -674,6 +675,7 @@ import org.junit.runners.Suite.SuiteClasses;
     RootTargetPreparerTest.class,
     RunCommandTargetPreparerTest.class,
     RunHostCommandTargetPreparerTest.class,
+    RunHostScriptTargetPreparerTest.class,
     StopServicesSetupTest.class,
     SystemUpdaterDeviceFlasherTest.class,
     TargetSetupErrorTest.class,
@@ -728,6 +730,7 @@ import org.junit.runners.Suite.SuiteClasses;
     GoogleBenchmarkResultParserTest.class,
     GoogleBenchmarkTestTest.class,
     GTestListTestParserTest.class,
+    GTestListenerTest.class,
     GTestResultParserTest.class,
     GTestTest.class,
     GTestXmlResultParserTest.class,
@@ -748,6 +751,7 @@ import org.junit.runners.Suite.SuiteClasses;
     PythonUnitTestResultParserTest.class,
     PythonUnitTestRunnerTest.class,
     TfTestLauncherTest.class,
+    UsbResetTestTest.class,
 
     // testtype/binary
     ExecutableHostTestTest.class,
