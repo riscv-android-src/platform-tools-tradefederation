@@ -95,6 +95,35 @@ public class FilePullerDeviceMetricCollectorTest {
     }
 
     /**
+     * Test when a multiple file is found matching the matching key, then pulled and {@link
+     * FilePullerDeviceMetricCollector#processMetricFile(String, File, DeviceMetricData)} is called
+     * multiple times.
+     */
+    @Test
+    public void testPullMultipleMatchingKeyInMetrics() throws Exception {
+        OptionSetter setter = new OptionSetter(mFilePuller);
+        setter.setOptionValue("pull-pattern-keys", "coverageFile");
+        HashMap<String, Metric> currentMetrics = new HashMap<>();
+        currentMetrics.put("coverageFile", TfMetricProtoUtil.stringToMetric("/data/coverage1"));
+        currentMetrics.put("coverageFileAnother",
+                TfMetricProtoUtil.stringToMetric("/data/coverage2"));
+
+        Mockito.when(mMockDevice.pullFile(Mockito.eq("/data/coverage1")))
+                .thenReturn(new File("fake1"));
+        Mockito.when(mMockDevice.pullFile(Mockito.eq("/data/coverage2")))
+                .thenReturn(new File("fake2"));
+
+        mFilePuller.testRunStarted("fakeRun", 5);
+        mFilePuller.testRunEnded(500, currentMetrics);
+
+        Mockito.verify(mMockListener)
+                .testLog(Mockito.eq("coverageFile"), Mockito.eq(LogDataType.TEXT), Mockito.any());
+        Mockito.verify(mMockListener)
+                .testLog(Mockito.eq("coverageFileAnother"), Mockito.eq(LogDataType.TEXT),
+                        Mockito.any());
+    }
+
+    /**
      * Test when a file is found matching the key using a pattern matching, then pulled and {@link
      * FilePullerDeviceMetricCollector#processMetricFile(String, File, DeviceMetricData)} is called.
      */
