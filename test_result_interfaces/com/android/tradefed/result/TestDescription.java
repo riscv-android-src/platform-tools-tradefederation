@@ -28,7 +28,7 @@ import java.util.regex.Pattern;
 public final class TestDescription implements Serializable {
 
     /** Regex for method parameterized. For example: testName[0] */
-    public static final Pattern PARAMETERIZED_TEST_REGEX = Pattern.compile("(.*)?\\[(.*)\\]$");
+    public static final Pattern PARAMETERIZED_TEST_REGEX = Pattern.compile("([^\\[]+)\\[(.*)\\]$");
 
     private final String mClassName;
     private final String mTestName;
