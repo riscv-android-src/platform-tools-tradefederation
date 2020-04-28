@@ -63,6 +63,8 @@ import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.ITestFilterReceiver;
+import com.android.tradefed.testtype.retry.IAutoRetriableTest;
 import com.android.tradefed.testtype.suite.ITestSuite;
 import com.android.tradefed.testtype.suite.ModuleListener;
 import com.android.tradefed.util.CommandResult;
@@ -579,12 +581,15 @@ public class InvocationExecution implements IInvocationExecution {
                         || RetryStrategy.NO_RETRY.equals(decision.getRetryStrategy())
                         || test instanceof ITestSuite
                         // TODO: Handle auto-retry in local-sharding for non-suite
-                        || test instanceof TestsPoolPoller) {
+                        || test instanceof TestsPoolPoller
+                        // If test doesn't support auto-retry
+                        || (!(test instanceof ITestFilterReceiver)
+                                && !(test instanceof IAutoRetriableTest))) {
                     runTest(config, info, listener, test);
                     remainingTests.remove(test);
                     continue;
                 }
-
+                CLog.d("Using RetryLogSaverResultForwarder to forward results.");
                 ModuleListener mainGranularRunListener = new ModuleListener(null);
                 RetryLogSaverResultForwarder runListener =
                         initializeListeners(config, listener, mainGranularRunListener);
