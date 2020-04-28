@@ -221,8 +221,7 @@ public class TestInvocationTest {
         EasyMock.expect(mMockDevice.getDeviceState()).andStubReturn(TestDeviceState.NOT_AVAILABLE);
         mMockDevice.setRecoveryMode(RecoveryMode.AVAILABLE);
         mMockDevice.setRecovery(mMockRecovery);
-        mMockDevice.preInvocationSetup(
-                (IBuildInfo) EasyMock.anyObject(), EasyMock.<List<IBuildInfo>>anyObject());
+        mMockDevice.preInvocationSetup((IBuildInfo) EasyMock.anyObject());
         EasyMock.expectLastCall().anyTimes();
         mFakeDescriptor =
                 new DeviceDescriptor(
@@ -1582,8 +1581,6 @@ public class TestInvocationTest {
         mMockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
         EasyMock.expect(mMockBuildInfo.getProperties()).andStubReturn(new HashSet<>());
         EasyMock.expect(mMockBuildInfo.isTestResourceBuild()).andStubReturn(false);
-        mMockBuildInfo.setTestResourceBuild(EasyMock.anyBoolean());
-        EasyMock.expectLastCall().anyTimes();
 
         IRemoteTest test = EasyMock.createNiceMock(IRemoteTest.class);
         mMockPreparer.tearDown(EasyMock.anyObject(), EasyMock.isNull());
@@ -1683,8 +1680,6 @@ public class TestInvocationTest {
                     .andReturn(tmpTestsDir);
             EasyMock.expect(mMockBuildInfo.getProperties()).andStubReturn(new HashSet<>());
             EasyMock.expect(mMockBuildInfo.isTestResourceBuild()).andStubReturn(false);
-            mMockBuildInfo.setTestResourceBuild(EasyMock.anyBoolean());
-            EasyMock.expectLastCall().anyTimes();
 
             setupMockSuccessListeners();
             setupNormalInvoke(test);
@@ -1777,8 +1772,6 @@ public class TestInvocationTest {
             prop.add(BuildInfoProperties.DO_NOT_LINK_TESTS_DIR);
             EasyMock.expect(mMockBuildInfo.getProperties()).andStubReturn(prop);
             EasyMock.expect(mMockBuildInfo.isTestResourceBuild()).andStubReturn(false);
-            mMockBuildInfo.setTestResourceBuild(EasyMock.anyBoolean());
-            EasyMock.expectLastCall().anyTimes();
 
             setupMockSuccessListeners();
             setupNormalInvoke(test);
