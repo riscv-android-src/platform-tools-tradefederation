@@ -240,7 +240,6 @@ public class TestInvocationTest {
         EasyMock.expect(mMockBuildInfo.getBuildBranch()).andStubReturn("branch");
         EasyMock.expect(mMockBuildInfo.getBuildFlavor()).andStubReturn("flavor");
         EasyMock.expect(mMockBuildInfo.getProperties()).andStubReturn(new HashSet<>());
-        EasyMock.expect(mMockBuildInfo.isTestResourceBuild()).andStubReturn(false);
 
         // always expect logger initialization and cleanup calls
         mMockLogRegistry.registerLogger(mMockLogger);
@@ -1580,7 +1579,6 @@ public class TestInvocationTest {
                 };
         mMockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
         EasyMock.expect(mMockBuildInfo.getProperties()).andStubReturn(new HashSet<>());
-        EasyMock.expect(mMockBuildInfo.isTestResourceBuild()).andStubReturn(false);
 
         IRemoteTest test = EasyMock.createNiceMock(IRemoteTest.class);
         mMockPreparer.tearDown(EasyMock.anyObject(), EasyMock.isNull());
@@ -1679,7 +1677,6 @@ public class TestInvocationTest {
             EasyMock.expect(((IDeviceBuildInfo) mMockBuildInfo).getTestsDir())
                     .andReturn(tmpTestsDir);
             EasyMock.expect(mMockBuildInfo.getProperties()).andStubReturn(new HashSet<>());
-            EasyMock.expect(mMockBuildInfo.isTestResourceBuild()).andStubReturn(false);
 
             setupMockSuccessListeners();
             setupNormalInvoke(test);
@@ -1771,7 +1768,6 @@ public class TestInvocationTest {
             Set<BuildInfoProperties> prop = new HashSet<>();
             prop.add(BuildInfoProperties.DO_NOT_LINK_TESTS_DIR);
             EasyMock.expect(mMockBuildInfo.getProperties()).andStubReturn(prop);
-            EasyMock.expect(mMockBuildInfo.isTestResourceBuild()).andStubReturn(false);
 
             setupMockSuccessListeners();
             setupNormalInvoke(test);
