@@ -499,12 +499,12 @@ public class DeviceSelectionOptions implements IDeviceSelection {
         }
         // If battery check is required and we have a min/max battery requested
         if (mRequireBatteryCheck) {
-            if (((mMinBattery != null) || (mMaxBattery != null))
-                    && (!(device instanceof StubDevice) || (device instanceof FastbootDevice))) {
+            if ((mMinBattery != null || mMaxBattery != null)) {
                 // Only check battery on physical device. (FastbootDevice placeholder is always for
                 // a physical device
-                if (device instanceof FastbootDevice) {
-                    // Ready battery of fastboot device does not work and could lead to weird log.
+                if (device instanceof StubDevice || device instanceof FastbootDevice) {
+                    // Reading battery of fastboot and StubDevice device does not work and could
+                    // lead to weird log.
                     return false;
                 }
                 Integer deviceBattery = getBatteryLevel(device);
