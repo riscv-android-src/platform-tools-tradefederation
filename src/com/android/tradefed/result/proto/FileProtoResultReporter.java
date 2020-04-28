@@ -16,11 +16,8 @@
 package com.android.tradefed.result.proto;
 
 import com.android.tradefed.config.Option;
-import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.proto.TestRecordProto.TestRecord;
-import com.android.tradefed.util.FileUtil;
-import com.android.tradefed.util.StreamUtil;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -29,91 +26,25 @@ import java.io.IOException;
 /** Proto reporter that dumps the {@link TestRecord} into a file. */
 public class FileProtoResultReporter extends ProtoResultReporter {
 
-    public static final String PROTO_OUTPUT_FILE = "proto-output-file";
-
     @Option(
-        name = PROTO_OUTPUT_FILE,
-        description = "File where the proto output will be saved. If unset, reporter will be inop."
+        name = "proto-output-file",
+        description = "File where the proto output will be saved",
+        mandatory = true
     )
-    private File mOutputFile = null;
-
-    public static final String PERIODIC_PROTO_WRITING_OPTION = "periodic-proto-writing";
-
-    @Option(
-        name = PERIODIC_PROTO_WRITING_OPTION,
-        description =
-                "Whether or not to output intermediate proto per module following a numbered "
-                        + "sequence."
-    )
-    private boolean mPeriodicWriting = false;
-
-    // Current index of the sequence of proto output
-    private int mIndex = 0;
-
-    @Override
-    public void processStartInvocation(
-            TestRecord invocationStartRecord, IInvocationContext invocationContext) {
-        writeProto(invocationStartRecord);
-    }
-
-    @Override
-    public void processTestModuleEnd(TestRecord moduleRecord) {
-        writeProto(moduleRecord);
-    }
-
-    @Override
-    public void processTestRunEnded(TestRecord runRecord, boolean moduleInProgress) {
-        if (!moduleInProgress) {
-            // If it's a testRun outside of the module scope, output it to ensure we support
-            // non-module use cases.
-            writeProto(runRecord);
-        }
-    }
+    private File mOutputFile;
 
     @Override
     public void processFinalProto(TestRecord finalRecord) {
-        writeProto(finalRecord);
+        try {
+            finalRecord.writeDelimitedTo(new FileOutputStream(mOutputFile));
+        } catch (IOException e) {
+            CLog.e(e);
+            throw new RuntimeException(e);
+        }
     }
 
     /** Sets the file where to output the result. */
     public void setFileOutput(File output) {
         mOutputFile = output;
-    }
-
-    /** Enable writing each module individualy to a file. */
-    public void setPeriodicWriting(boolean enabled) {
-        mPeriodicWriting = enabled;
-    }
-
-    private void writeProto(TestRecord record) {
-        if (mOutputFile == null) {
-            return;
-        }
-        FileOutputStream output = null;
-        File tmpFile = null;
-        try {
-            tmpFile = FileUtil.createTempFile("tmp-proto", "", mOutputFile.getParentFile());
-            File outputFile = mOutputFile;
-            if (mPeriodicWriting) {
-                outputFile = new File(mOutputFile.getAbsolutePath() + mIndex);
-            }
-            // Write to the tmp file
-            output = new FileOutputStream(tmpFile);
-            record.writeDelimitedTo(output);
-            if (mPeriodicWriting) {
-                nextOutputFile();
-            }
-            // Move the tmp file to the new name when done writing.
-            tmpFile.renameTo(outputFile);
-        } catch (IOException e) {
-            CLog.e(e);
-            throw new RuntimeException(e);
-        } finally {
-            StreamUtil.close(output);
-        }
-    }
-
-    private void nextOutputFile() {
-        mIndex++;
     }
 }

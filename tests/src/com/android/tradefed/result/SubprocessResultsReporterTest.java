@@ -69,15 +69,13 @@ public class SubprocessResultsReporterTest {
         File tmpReportFile = FileUtil.createTempFile("subprocess-reporter", "unittest");
         try {
             setter.setOptionValue("subprocess-report-file", tmpReportFile.getAbsolutePath());
-            mReporter.testRunStarted("TEST", 5, 1, 500);
+            mReporter.testRunStarted("TEST", 5);
             mReporter.testRunEnded(100, new HashMap<String, Metric>());
             String content = FileUtil.readStringFromFile(tmpReportFile);
-            assertTrue(content.contains("TEST_RUN_STARTED"));
-            assertTrue(content.contains("\"testCount\":5"));
-            assertTrue(content.contains("\"runName\":\"TEST\""));
-            assertTrue(content.contains("\"start_time\":500"));
-            assertTrue(content.contains("\"runAttempt\":1"));
-            assertTrue(content.contains("TEST_RUN_ENDED {\"time\":100}\n"));
+            assertEquals(
+                    "TEST_RUN_STARTED {\"testCount\":5,\"runName\":\"TEST\",\"runAttempt\":0}\n"
+                            + "TEST_RUN_ENDED {\"time\":100}\n",
+                    content);
         } finally {
             FileUtil.deleteFile(tmpReportFile);
         }

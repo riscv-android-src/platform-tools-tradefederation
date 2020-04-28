@@ -19,6 +19,7 @@ import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
+import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.InputStreamSource;
 
 import java.io.IOException;
@@ -79,8 +80,8 @@ public class StdoutLogger implements ILeveledLogOutput {
      */
     @Override
     public InputStreamSource getLog() {
-        // Not supported - return null
-        return null;
+        // not supported - return empty stream
+        return new ByteArrayInputStreamSource(new byte[0]);
     }
 
     @Override

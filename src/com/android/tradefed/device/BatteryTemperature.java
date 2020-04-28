@@ -27,7 +27,7 @@ import java.io.IOException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class BatteryTemperature {
+public class BatteryTemperature implements IBatteryTemperature {
 
     /** Parse the output of "adb shell dumpsys battery" to collect the temperature. */
     class DumpsysBatteryTemperatureReceiver extends MultiLineReceiver {
@@ -69,13 +69,7 @@ public class BatteryTemperature {
         }
     }
 
-    /**
-     * Get the device's battery temperature, in degrees celsius.
-     *
-     * <p>TODO: Implement as ddmlib {@code IDevice#getBatteryTemperature()}
-     *
-     * @return The device's temperature, in degrees celsius. If unavailable, the return value is 0.
-     */
+    @Override
     public Integer getBatteryTemperature(IDevice device) {
         DumpsysBatteryTemperatureReceiver receiver = new DumpsysBatteryTemperatureReceiver();
 

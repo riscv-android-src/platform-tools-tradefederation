@@ -15,13 +15,12 @@
  */
 package com.android.tradefed.testtype.suite;
 
-import com.android.tradefed.config.ConfigurationDescriptor;
+import com.android.tradefed.config.ConfigurationDef.OptionDef;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.ConfigurationUtil;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
-import com.android.tradefed.config.OptionDef;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.testtype.IAbi;
@@ -72,7 +71,6 @@ public class SuiteModuleLoader {
     private IConfigurationFactory mConfigFactory = ConfigurationFactory.getInstance();
 
     private boolean mAllowParameterizedModules = false;
-    private boolean mAllowOptionalParameterizedModules = false;
     private ModuleParameters mForcedModuleParameter = null;
     private Set<ModuleParameters> mExcludedModuleParameters = new HashSet<>();
 
@@ -100,11 +98,6 @@ public class SuiteModuleLoader {
     /** Sets whether or not to allow parameterized modules. */
     public final void setParameterizedModules(boolean allowed) {
         mAllowParameterizedModules = allowed;
-    }
-
-    /** Sets whether or not to allow optional parameterized modules. */
-    public final void setOptionalParameterizedModules(boolean allowed) {
-        mAllowOptionalParameterizedModules = allowed;
     }
 
     /** Sets the only {@link ModuleParameters} type that should be run. */
@@ -160,6 +153,16 @@ public class SuiteModuleLoader {
         List<String> configs = configFactory.getConfigList(suitePrefix, false);
         // Sort configs to ensure they are always evaluated and added in the same order.
         Collections.sort(configs);
+        toRun.putAll(loadTfConfigsFromSpecifiedPaths(configs, abis, suiteTag));
+        return toRun;
+    }
+
+    /** Main loading of configurations, looking into the specified resources on the classpath. */
+    public LinkedHashMap<String, IConfiguration> loadTfConfigsFromSpecifiedPaths(
+        List<String> configs,
+        Set<IAbi> abis,
+        String suiteTag) {
+        LinkedHashMap<String, IConfiguration> toRun = new LinkedHashMap<>();
         for (String configName : configs) {
             toRun.putAll(loadOneConfig(configName, configName, abis, suiteTag));
         }
@@ -220,8 +223,7 @@ public class SuiteModuleLoader {
             if (mForcedModuleParameter != null) {
                 mForcedParameter =
                         ModuleParametersHelper.getParameterHandler(
-                                mForcedModuleParameter, /* optionalParams */
-                                mAllowOptionalParameterizedModules);
+                                mForcedModuleParameter, /* optionalParams */ false);
             }
 
             // Invokes parser to process the test module config file
@@ -313,12 +315,6 @@ public class SuiteModuleLoader {
                         if (shouldRunParameterized(baseId, fullId)) {
                             IConfiguration paramConfig =
                                     mConfigFactory.createConfigurationFromArgs(pathArg);
-                            // Mark the parameter in the metadata
-                            paramConfig
-                                    .getConfigurationDescription()
-                                    .addMetadata(
-                                            ConfigurationDescriptor.PARAMETER_KEY,
-                                            param.getParameterIdentifier());
                             setUpConfig(name, baseId, fullId, paramConfig, abi);
                             param.applySetup(paramConfig);
                             toRun.put(fullId, paramConfig);
@@ -532,7 +528,7 @@ public class SuiteModuleLoader {
             String optionValueString = remainder.substring(optionNameSep + 1);
             // TODO: See if QuotationTokenizer can be improved for multi-character delimiter.
             // or change the delimiter to a single char.
-            String[] tokens = optionValueString.split(":=", 2);
+            String[] tokens = optionValueString.split(":=");
             OptionDef option = null;
             if (tokens.length == 1) {
                 option = new OptionDef(optionName, tokens[0], moduleName);
@@ -570,15 +566,13 @@ public class SuiteModuleLoader {
             }
             // Do not consider the excluded parameterization dimension
             if (mExcludedModuleParameters.contains(suiteParam)) {
-                CLog.d("'%s' was excluded via exclude-module-parameters.", moduleName);
+                CLog.d("'%s' was excluded via exclude-module-parameters.");
                 continue;
             }
             IModuleParameter handler =
                     ModuleParametersHelper.getParameterHandler(
-                            suiteParam, /* optionalParams */ mAllowOptionalParameterizedModules);
-            if (handler != null) {
-                params.add(handler);
-            }
+                            suiteParam, /* optionalParams */ false);
+            params.add(handler);
         }
         return params;
     }
@@ -632,7 +626,7 @@ public class SuiteModuleLoader {
         config.getConfigurationDescription().setAbi(abi);
         config.getConfigurationDescription().setModuleName(name);
 
-        config.validateOptions();
+        config.validateOptions(false);
     }
 
     /** Whether or not the base configuration should be created for all abis or not. */

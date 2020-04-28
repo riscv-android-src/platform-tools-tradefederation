@@ -17,8 +17,6 @@
 package com.android.tradefed.testtype;
 
 import com.android.ddmlib.Log.LogLevel;
-import com.android.tradefed.config.IConfiguration;
-import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
@@ -32,8 +30,10 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 
-/** No-op empty test implementation. */
-public class StubTest implements IShardableTest, IConfigurationReceiver {
+/**
+ * No-op empty test implementation.
+ */
+public class StubTest implements IShardableTest {
 
     public static final String DNAE_MESSAGE = "StubTest DeviceNotAvailableException";
 
@@ -73,13 +73,6 @@ public class StubTest implements IShardableTest, IConfigurationReceiver {
     )
     private boolean mRunTest = false;
 
-    private IConfiguration mConfig;
-
-    /* Get whether the stub test trigger some test callbacks on the invocation. */
-    public boolean getRunTest() {
-        return mRunTest;
-    }
-
     /**
      * {@inheritDoc}
      */
@@ -117,14 +110,5 @@ public class StubTest implements IShardableTest, IConfigurationReceiver {
             return shards;
         }
         return null;
-    }
-
-    @Override
-    public void setConfiguration(IConfiguration configuration) {
-        mConfig = configuration;
-    }
-
-    public IConfiguration getConfiguration() {
-        return mConfig;
     }
 }

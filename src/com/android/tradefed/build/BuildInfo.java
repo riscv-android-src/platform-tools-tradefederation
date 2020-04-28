@@ -19,11 +19,7 @@ import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.proto.BuildInformation;
 import com.android.tradefed.build.proto.BuildInformation.BuildFile;
 import com.android.tradefed.build.proto.BuildInformation.KeyBuildFilePair;
-import com.android.tradefed.config.ConfigurationException;
-import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.invoker.logger.InvocationMetricLogger;
-import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.MultiMap;
@@ -37,7 +33,6 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.lang.reflect.InvocationTargetException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
@@ -395,23 +390,6 @@ public class BuildInfo implements IBuildInfo {
         setFile(key.getFileKey(), file, version);
     }
 
-    /** {@inheritDoc} */
-    @Override
-    public List<VersionedFile> getAppPackageFiles() {
-        List<VersionedFile> origList = getVersionedFiles(BuildInfoFileKey.PACKAGE_FILES);
-        List<VersionedFile> listCopy = new ArrayList<VersionedFile>();
-        if (origList != null) {
-            listCopy.addAll(origList);
-        }
-        return listCopy;
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public void addAppPackageFile(File appPackageFile, String version) {
-        setFile(BuildInfoFileKey.PACKAGE_FILES, appPackageFile, version);
-    }
-
     /**
      * {@inheritDoc}
      */
@@ -548,13 +526,13 @@ public class BuildInfo implements IBuildInfo {
             return false;
         }
         BuildInfo other = (BuildInfo) obj;
-        return Objects.equal(mBuildAttributes, other.mBuildAttributes)
-                && Objects.equal(mBuildBranch, other.mBuildBranch)
-                && Objects.equal(mBuildFlavor, other.mBuildFlavor)
-                && Objects.equal(mBuildId, other.mBuildId)
-                && Objects.equal(mBuildTargetName, other.mBuildTargetName)
-                && Objects.equal(mTestTag, other.mTestTag)
-                && Objects.equal(mDeviceSerial, other.mDeviceSerial);
+        return Objects.equal(mBuildAttributes, other.mBuildAttributes) &&
+                Objects.equal(mBuildBranch, other.mBuildBranch) &&
+                Objects.equal(mBuildFlavor, other.mBuildFlavor) &&
+                Objects.equal(mBuildId, other.mBuildId) &&
+                Objects.equal(mBuildTargetName, other.mBuildTargetName) &&
+                Objects.equal(mTestTag, other.mTestTag) &&
+                Objects.equal(mDeviceSerial, other.mDeviceSerial);
     }
 
     /**
@@ -595,12 +573,7 @@ public class BuildInfo implements IBuildInfo {
             for (VersionedFile vFile : mVersionedFileMultiMap.get(fileKey)) {
                 BuildFile.Builder fileInformation = BuildFile.newBuilder();
                 fileInformation.setVersion(vFile.getVersion());
-                if (fileKey.startsWith(IBuildInfo.REMOTE_FILE_PREFIX)) {
-                    // Remote file doesn't exist on local cache, so don't save absolute path.
-                    fileInformation.setLocalPath(vFile.getFile().toString());
-                } else {
-                    fileInformation.setLocalPath(vFile.getFile().getAbsolutePath());
-                }
+                fileInformation.setLocalPath(vFile.getFile().getAbsolutePath());
                 buildFile.addFile(fileInformation);
             }
             protoBuilder.addVersionedFile(buildFile);
@@ -697,42 +670,6 @@ public class BuildInfo implements IBuildInfo {
             File testResourceFile = buildInfo.getFile(testResourceName);
             if (testResourceFile != null) {
                 return testResourceFile;
-            }
-        }
-        return null;
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public Set<File> getRemoteFiles() {
-        Set<File> remoteFiles = new HashSet<>();
-        for (String fileKey : mVersionedFileMultiMap.keySet()) {
-            if (fileKey.startsWith(IBuildInfo.REMOTE_FILE_PREFIX)) {
-                // Remote file is not versioned, there should be only one entry.
-                remoteFiles.add(mVersionedFileMultiMap.get(fileKey).get(0).getFile());
-            }
-        }
-        return remoteFiles;
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public File stageRemoteFile(String fileName, File workingDir) {
-        InvocationMetricLogger.addInvocationMetrics(
-                InvocationMetricKey.STAGE_TESTS_INDIVIDUAL_DOWNLOADS, fileName);
-        List<String> includeFilters = Arrays.asList(String.format("/%s$", fileName));
-        for (File file : getRemoteFiles()) {
-            try {
-                new DynamicRemoteFileResolver()
-                        .resolvePartialDownloadZip(
-                                workingDir, file.toString(), includeFilters, null);
-            } catch (ConfigurationException e) {
-                throw new RuntimeException(e);
-            }
-
-            File stagedFile = FileUtil.findFile(workingDir, fileName);
-            if (stagedFile != null) {
-                return stagedFile;
             }
         }
         return null;

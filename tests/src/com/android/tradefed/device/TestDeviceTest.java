@@ -48,6 +48,7 @@ import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.KeyguardControllerState;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
+import com.android.tradefed.util.UserUtil;
 import com.android.tradefed.util.ZipUtil2;
 
 import junit.framework.TestCase;
@@ -115,8 +116,8 @@ public class TestDeviceTest extends TestCase {
         }
 
         @Override
-        void doReboot(final String into)
-                throws DeviceNotAvailableException, UnsupportedOperationException {}
+        void doReboot() throws DeviceNotAvailableException, UnsupportedOperationException {
+        }
 
         @Override
         IHostOptions getHostOptions() {
@@ -587,7 +588,7 @@ public class TestDeviceTest extends TestCase {
                     }
 
                     @Override
-                    void doReboot(final String into)
+                    void doReboot()
                             throws DeviceNotAvailableException, UnsupportedOperationException {}
                 };
         mTestDevice.setRecovery(mMockRecovery);
@@ -654,7 +655,7 @@ public class TestDeviceTest extends TestCase {
                     }
 
                     @Override
-                    void doReboot(final String into)
+                    void doReboot()
                             throws DeviceNotAvailableException, UnsupportedOperationException {}
                 };
         mTestDevice.setRecovery(mMockRecovery);
@@ -704,7 +705,7 @@ public class TestDeviceTest extends TestCase {
                     }
 
                     @Override
-                    void doReboot(final String into)
+                    void doReboot()
                             throws DeviceNotAvailableException, UnsupportedOperationException {}
                 };
         mTestDevice.setRecovery(mMockRecovery);
@@ -1308,8 +1309,8 @@ public class TestDeviceTest extends TestCase {
      */
     public void testRuntimePermissionSupportedLmpRelease() throws Exception {
         injectSystemProperty("ro.build.version.sdk", "21");
-        injectSystemProperty(DeviceProperties.BUILD_CODENAME, "REL");
-        injectSystemProperty(DeviceProperties.BUILD_ID, "1642709");
+        injectSystemProperty(TestDevice.BUILD_CODENAME_PROP, "REL");
+        injectSystemProperty(TestDevice.BUILD_ID_PROP, "1642709");
         replayMocks();
         assertFalse(mTestDevice.isRuntimePermissionSupported());
     }
@@ -1321,8 +1322,8 @@ public class TestDeviceTest extends TestCase {
      */
     public void testRuntimePermissionSupportedLmpMr1Dev() throws Exception {
         injectSystemProperty("ro.build.version.sdk", "22");
-        injectSystemProperty(DeviceProperties.BUILD_CODENAME, "REL");
-        injectSystemProperty(DeviceProperties.BUILD_ID, "1844090");
+        injectSystemProperty(TestDevice.BUILD_CODENAME_PROP, "REL");
+        injectSystemProperty(TestDevice.BUILD_ID_PROP, "1844090");
         replayMocks();
         assertFalse(mTestDevice.isRuntimePermissionSupported());
     }
@@ -1334,8 +1335,8 @@ public class TestDeviceTest extends TestCase {
      */
     public void testRuntimePermissionSupportedNonMncLocal() throws Exception {
         injectSystemProperty("ro.build.version.sdk", "21");
-        injectSystemProperty(DeviceProperties.BUILD_CODENAME, "LMP");
-        injectSystemProperty(DeviceProperties.BUILD_ID, "eng.foo.20150414.190304");
+        injectSystemProperty(TestDevice.BUILD_CODENAME_PROP, "LMP");
+        injectSystemProperty(TestDevice.BUILD_ID_PROP, "eng.foo.20150414.190304");
         replayMocks();
         assertFalse(mTestDevice.isRuntimePermissionSupported());
     }
@@ -2193,34 +2194,7 @@ public class TestDeviceTest extends TestCase {
     }
 
     /** Unit test for {@link TestDevice#getActiveApexes()}. */
-    public void testGetActiveApexesPlatformSupportsPath() throws Exception {
-        final String output =
-                "package:/system/apex/com.android.foo.apex="
-                        + "com.android.foo versionCode:100\n"
-                        + "package:/system/apex/com.android.bar.apex="
-                        + "com.android.bar versionCode:200";
-        injectShellResponse(TestDevice.LIST_APEXES_CMD, output);
-        EasyMock.replay(mMockIDevice, mMockStateMonitor);
-        Set<ApexInfo> actual = mTestDevice.getActiveApexes();
-        assertEquals(2, actual.size());
-        ApexInfo foo =
-                actual.stream()
-                        .filter(apex -> apex.name.equals("com.android.foo"))
-                        .findFirst()
-                        .get();
-        ApexInfo bar =
-                actual.stream()
-                        .filter(apex -> apex.name.equals("com.android.bar"))
-                        .findFirst()
-                        .get();
-        assertEquals(100, foo.versionCode);
-        assertEquals(200, bar.versionCode);
-        assertEquals("/system/apex/com.android.foo.apex", foo.sourceDir);
-        assertEquals("/system/apex/com.android.bar.apex", bar.sourceDir);
-    }
-
-    /** Unit test for {@link TestDevice#getActiveApexes()}. */
-    public void testGetActiveApexesPlatformDoesNotSupportPath() throws Exception {
+    public void testGetActiveApexes() throws Exception {
         final String output =
                 "package:com.android.foo versionCode:100\n"
                         + "package:com.android.bar versionCode:200";
@@ -2228,20 +2202,8 @@ public class TestDeviceTest extends TestCase {
         EasyMock.replay(mMockIDevice, mMockStateMonitor);
         Set<ApexInfo> actual = mTestDevice.getActiveApexes();
         assertEquals(2, actual.size());
-        ApexInfo foo =
-                actual.stream()
-                        .filter(apex -> apex.name.equals("com.android.foo"))
-                        .findFirst()
-                        .get();
-        ApexInfo bar =
-                actual.stream()
-                        .filter(apex -> apex.name.equals("com.android.bar"))
-                        .findFirst()
-                        .get();
-        assertEquals(100, foo.versionCode);
-        assertEquals(200, bar.versionCode);
-        assertEquals("", foo.sourceDir);
-        assertEquals("", bar.sourceDir);
+        assertTrue(actual.contains(new ApexInfo("com.android.foo", 100)));
+        assertTrue(actual.contains(new ApexInfo("com.android.bar", 200)));
     }
 
     /**
@@ -2524,46 +2486,6 @@ public class TestDeviceTest extends TestCase {
         assertEquals(3, actual.get(1).intValue());
     }
 
-    /** Test that a single user is handled by {@link TestDevice#listUsers()}. */
-    public void testListUsersInfo_oneUser() throws Exception {
-        final String listUsersCommand = "pm list users";
-        injectShellResponse(
-                listUsersCommand, ArrayUtil.join("\r\n", "Users:", "UserInfo{0:Foo:13} running"));
-        replayMocks();
-        Map<Integer, UserInfo> actual = mTestDevice.getUserInfos();
-        assertNotNull(actual);
-        assertEquals(1, actual.size());
-        UserInfo user0 = actual.get(0);
-        assertEquals(0, user0.userId());
-        assertEquals("Foo", user0.userName());
-        assertEquals(0x13, user0.flag());
-        assertEquals(true, user0.isRunning());
-    }
-
-    /** Test that multiple user is handled by {@link TestDevice#listUsers()}. */
-    public void testListUsersInfo_multiUsers() throws Exception {
-        final String listUsersCommand = "pm list users";
-        injectShellResponse(
-                listUsersCommand,
-                ArrayUtil.join(
-                        "\r\n", "Users:", "UserInfo{0:Foo:13} running", "UserInfo{10:FooBar:14}"));
-        replayMocks();
-        Map<Integer, UserInfo> actual = mTestDevice.getUserInfos();
-        assertNotNull(actual);
-        assertEquals(2, actual.size());
-        UserInfo user0 = actual.get(0);
-        assertEquals(0, user0.userId());
-        assertEquals("Foo", user0.userName());
-        assertEquals(0x13, user0.flag());
-        assertEquals(true, user0.isRunning());
-
-        UserInfo user10 = actual.get(10);
-        assertEquals(10, user10.userId());
-        assertEquals("FooBar", user10.userName());
-        assertEquals(0x14, user10.flag());
-        assertEquals(false, user10.isRunning());
-    }
-
     /**
      * Test that multi user output is handled by {@link TestDevice#getMaxNumberOfUsersSupported()}.
      */
@@ -2589,7 +2511,7 @@ public class TestDeviceTest extends TestCase {
      */
     public void testMaxNumberOfRunningUsersSupported() throws Exception {
         injectSystemProperty("ro.build.version.sdk", "28");
-        injectSystemProperty(DeviceProperties.BUILD_CODENAME, "REL");
+        injectSystemProperty(TestDevice.BUILD_CODENAME_PROP, "REL");
         final String getMaxRunningUsersCommand = "pm get-max-running-users";
         injectShellResponse(getMaxRunningUsersCommand, "Maximum supported running users: 4");
         replayMocks();
@@ -2599,7 +2521,7 @@ public class TestDeviceTest extends TestCase {
     /** Test that invalid output is handled by {@link TestDevice#getMaxNumberOfUsersSupported()}. */
     public void testMaxNumberOfRunningUsersSupported_invalid() throws Exception {
         injectSystemProperty("ro.build.version.sdk", "28");
-        injectSystemProperty(DeviceProperties.BUILD_CODENAME, "REL");
+        injectSystemProperty(TestDevice.BUILD_CODENAME_PROP, "REL");
         final String getMaxRunningUsersCommand = "pm get-max-running-users";
         injectShellResponse(getMaxRunningUsersCommand, "not the output we expect");
         replayMocks();
@@ -2834,6 +2756,20 @@ public class TestDeviceTest extends TestCase {
     }
 
     /**
+     * Test that remount vendor works as expected on a device not supporting dm verity
+     *
+     * @throws Exception
+     */
+    public void testRemountVendor_verityUnsupported() throws Exception {
+        injectSystemProperty("partition.vendor.verified", "");
+        setExecuteAdbCommandExpectations(new CommandResult(CommandStatus.SUCCESS), "remount");
+        EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable()).andReturn(mMockIDevice);
+        replayMocks();
+        mTestDevice.remountVendorWritable();
+        verifyMocks();
+    }
+
+    /**
      * Test that remount works as expected on a device supporting dm verity v1
      * @throws Exception
      */
@@ -2846,6 +2782,22 @@ public class TestDeviceTest extends TestCase {
         EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable()).andReturn(mMockIDevice);
         replayMocks();
         mTestDevice.remountSystemWritable();
+        verifyMocks();
+    }
+    /**
+     * Test that remount vendor works as expected on a device supporting dm verity v1
+     *
+     * @throws Exception
+     */
+    public void testRemountVendor_veritySupportedV1() throws Exception {
+        injectSystemProperty("partition.vendor.verified", "1");
+        setExecuteAdbCommandExpectations(
+                new CommandResult(CommandStatus.SUCCESS), "disable-verity");
+        setRebootExpectations();
+        setExecuteAdbCommandExpectations(new CommandResult(CommandStatus.SUCCESS), "remount");
+        EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable()).andReturn(mMockIDevice);
+        replayMocks();
+        mTestDevice.remountVendorWritable();
         verifyMocks();
     }
 
@@ -2866,6 +2818,23 @@ public class TestDeviceTest extends TestCase {
     }
 
     /**
+     * Test that remount vendor works as expected on a device supporting dm verity v2
+     *
+     * @throws Exception
+     */
+    public void testRemountVendor_veritySupportedV2() throws Exception {
+        injectSystemProperty("partition.vendor.verified", "2");
+        setExecuteAdbCommandExpectations(
+                new CommandResult(CommandStatus.SUCCESS), "disable-verity");
+        setRebootExpectations();
+        setExecuteAdbCommandExpectations(new CommandResult(CommandStatus.SUCCESS), "remount");
+        EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable()).andReturn(mMockIDevice);
+        replayMocks();
+        mTestDevice.remountVendorWritable();
+        verifyMocks();
+    }
+
+    /**
      * Test that remount works as expected on a device supporting dm verity but with unknown version
      * @throws Exception
      */
@@ -2882,11 +2851,29 @@ public class TestDeviceTest extends TestCase {
     }
 
     /**
+     * Test that remount vendor works as expected on a device supporting dm verity but with unknown
+     * version
+     *
+     * @throws Exception
+     */
+    public void testRemountVendor_veritySupportedNonNumerical() throws Exception {
+        injectSystemProperty("partition.vendor.verified", "foo");
+        setExecuteAdbCommandExpectations(
+                new CommandResult(CommandStatus.SUCCESS), "disable-verity");
+        setRebootExpectations();
+        setExecuteAdbCommandExpectations(new CommandResult(CommandStatus.SUCCESS), "remount");
+        EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable()).andReturn(mMockIDevice);
+        replayMocks();
+        mTestDevice.remountVendorWritable();
+        verifyMocks();
+    }
+
+    /**
      * Test that {@link TestDevice#getBuildSigningKeys()} works for the typical "test-keys" case
      * @throws Exception
      */
     public void testGetBuildSigningKeys_test_keys() throws Exception {
-        injectSystemProperty(DeviceProperties.BUILD_TAGS, "test-keys");
+        injectSystemProperty(TestDevice.BUILD_TAGS, "test-keys");
         replayMocks();
         assertEquals("test-keys", mTestDevice.getBuildSigningKeys());
     }
@@ -2897,7 +2884,7 @@ public class TestDeviceTest extends TestCase {
      * @throws Exception
      */
     public void testGetBuildSigningKeys_test_keys_commas() throws Exception {
-        injectSystemProperty(DeviceProperties.BUILD_TAGS, "test-keys,foo,bar,yadda");
+        injectSystemProperty(TestDevice.BUILD_TAGS, "test-keys,foo,bar,yadda");
         replayMocks();
         assertEquals("test-keys", mTestDevice.getBuildSigningKeys());
     }
@@ -2907,7 +2894,7 @@ public class TestDeviceTest extends TestCase {
      * @throws Exception
      */
     public void testGetBuildSigningKeys_not_matched() throws Exception {
-        injectSystemProperty(DeviceProperties.BUILD_TAGS, "huh,foo,bar,yadda");
+        injectSystemProperty(TestDevice.BUILD_TAGS, "huh,foo,bar,yadda");
         replayMocks();
         assertNull(mTestDevice.getBuildSigningKeys());
     }
@@ -3058,10 +3045,10 @@ public class TestDeviceTest extends TestCase {
                                         + "UserInfo{12:Secondary:0}\n\t"
                                         + "UserInfo{13:Managed:%x}\n\t"
                                         + "UserInfo{100:Restricted:%x}\n\t",
-                                UserInfo.FLAG_PRIMARY,
-                                UserInfo.FLAG_GUEST,
-                                UserInfo.FLAG_MANAGED_PROFILE,
-                                UserInfo.FLAG_RESTRICTED);
+                                UserUtil.FLAG_PRIMARY,
+                                UserUtil.FLAG_GUEST,
+                                UserUtil.FLAG_MANAGED_PROFILE,
+                                UserUtil.FLAG_RESTRICTED);
                     }
 
                     @Override
@@ -3227,12 +3214,8 @@ public class TestDeviceTest extends TestCase {
                     @Override
                     public String executeShellCommand(String command)
                             throws DeviceNotAvailableException {
-                        if (!started) {
-                            started = true;
-                            test.setDaemon(true);
-                            test.setName(getClass().getCanonicalName() + "#testSwitchUser_delay");
-                            test.start();
-                        }
+                        test.setName(getClass().getCanonicalName() + "#testSwitchUser_delay");
+                        test.start();
                         return "";
                     }
 
@@ -3256,7 +3239,6 @@ public class TestDeviceTest extends TestCase {
                         return 100;
                     }
 
-                    boolean started = false;
                     Thread test =
                             new Thread(
                                     new Runnable() {
@@ -4411,7 +4393,7 @@ public class TestDeviceTest extends TestCase {
         mMockWifi.cleanUp();
         replayMocks();
         mTestDevice.getIpAddress();
-        mTestDevice.postInvocationTearDown(null);
+        mTestDevice.postInvocationTearDown();
         verifyMocks();
     }
 
@@ -4437,10 +4419,10 @@ public class TestDeviceTest extends TestCase {
                                 "modes:'"))
                 .andReturn(res);
         replayMocks();
-        Set<Long> displays = mTestDevice.listDisplayIds();
+        Set<Integer> displays = mTestDevice.listDisplayIds();
         assertEquals(2, displays.size());
-        assertTrue(displays.contains(0L));
-        assertTrue(displays.contains(5L));
+        assertTrue(displays.contains(0));
+        assertTrue(displays.contains(5));
         verifyMocks();
     }
 
@@ -4481,42 +4463,5 @@ public class TestDeviceTest extends TestCase {
         assertNotNull(source);
         StreamUtil.close(source);
         verifyMocks();
-    }
-
-    /** Test {@link TestDevice#doesFileExist(String)}. */
-    public void testDoesFileExists() throws Exception {
-        injectShellResponse("ls \"/data/local/tmp/file\"", "file");
-        EasyMock.replay(mMockIDevice);
-        assertTrue(mTestDevice.doesFileExist("/data/local/tmp/file"));
-        EasyMock.verify(mMockIDevice);
-    }
-
-    /** Test {@link TestDevice#doesFileExist(String)} when the file does not exists. */
-    public void testDoesFileExists_notExists() throws Exception {
-        injectShellResponse(
-                "ls \"/data/local/tmp/file\"",
-                "ls: cannot access 'file': No such file or directory\n");
-        EasyMock.replay(mMockIDevice);
-        assertFalse(mTestDevice.doesFileExist("/data/local/tmp/file"));
-        EasyMock.verify(mMockIDevice);
-    }
-
-    /**
-     * Test {@link TestDevice#doesFileExist(String)} when the file exists on an sdcard from another
-     * user.
-     */
-    public void testDoesFileExists_sdcard() throws Exception {
-        mTestDevice =
-                new TestableTestDevice() {
-                    @Override
-                    public int getCurrentUser()
-                            throws DeviceNotAvailableException, DeviceRuntimeException {
-                        return 10;
-                    }
-                };
-        injectShellResponse("ls \"/storage/emulated/10/file\"", "file");
-        EasyMock.replay(mMockIDevice);
-        assertTrue(mTestDevice.doesFileExist("/sdcard/file"));
-        EasyMock.verify(mMockIDevice);
     }
 }

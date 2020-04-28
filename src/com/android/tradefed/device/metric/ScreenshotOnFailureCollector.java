@@ -29,7 +29,7 @@ public class ScreenshotOnFailureCollector extends BaseDeviceMetricCollector {
 
     @Override
     public void onTestFail(DeviceMetricData testData, TestDescription test) {
-        for (ITestDevice device : getRealDevices()) {
+        for (ITestDevice device : getDevices()) {
             try (InputStreamSource screenSource = device.getScreenshot()) {
                 super.testLog(
                         String.format(NAME_FORMAT, test.toString(), device.getSerialNumber()),

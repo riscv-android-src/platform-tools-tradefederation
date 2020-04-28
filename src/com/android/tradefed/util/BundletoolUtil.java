@@ -25,13 +25,10 @@ import com.android.tradefed.targetprep.TargetSetupError;
 import com.google.common.annotations.VisibleForTesting;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Utility class that uses bundletool command line to install the .apks on deivce. Bundletool doc
@@ -45,7 +42,6 @@ public class BundletoolUtil {
     private static final String DEVICE_SPEC_OUTPUT_FLAG = "--output=";
     private static final String APKS_TO_EXTRACT_FLAG = "--apks=";
     private static final String DEVICE_SPEC_FLAG = "--device-spec=";
-    private static final String DEVICE_ID_FLAG = "--device-id=";
     private static final String EXTRACT_APKS_OPTION = "extract-apks";
     private static final String INSTALL_APKS_OPTION = "install-apks";
     private static final String DEVICE_SPEC_FILE_EXTENSION = ".json";
@@ -59,7 +55,7 @@ public class BundletoolUtil {
         mRunUtil = new RunUtil();
     }
 
-    protected File getBundletoolFile() {
+    public File getBundletoolFile() {
         return mBundleToolFile;
     }
 
@@ -69,42 +65,33 @@ public class BundletoolUtil {
      * @param device the connected device
      * @return a {@link String} representing the path of the device specification file.
      */
-    public String generateDeviceSpecFile(ITestDevice device) throws IOException {
+    public String generateDeviceSpecFile(ITestDevice device) {
         Path specFilePath =
                 Paths.get(
                         getBundletoolFile().getParentFile().getAbsolutePath(),
                         device.getSerialNumber() + DEVICE_SPEC_FILE_EXTENSION);
-
-        Files.deleteIfExists(specFilePath);
+        if (Files.exists(specFilePath)) {
+            return specFilePath.toString();
+        }
 
         String outputDirArg = DEVICE_SPEC_OUTPUT_FLAG + specFilePath.toString();
 
-        String deviceIdArg = DEVICE_ID_FLAG + device.getSerialNumber();
+        String adbArg = "--adb=" + getAdbPath();
 
-        List<String> generateDeviceSpecCmd =
-                new ArrayList<String>(
-                        Arrays.asList(
-                                "java",
-                                "-jar",
-                                getBundletoolFile().getAbsolutePath(),
-                                GET_DEVICE_SPEC_OPTION,
-                                outputDirArg,
-                                deviceIdArg));
-
-        if (getAdbPath() != null) {
-            generateDeviceSpecCmd.add("--adb=" + getAdbPath());
-        }
-
-        CommandResult res =
-                getRunUtil()
-                        .runTimedCmd(
-                                CMD_TIME_OUT,
-                                generateDeviceSpecCmd.toArray(
-                                        new String[generateDeviceSpecCmd.size()]));
+        String[] cmd =
+                new String[] {
+                    "java",
+                    "-jar",
+                    getBundletoolFile().getAbsolutePath(),
+                    GET_DEVICE_SPEC_OPTION,
+                    outputDirArg,
+                    adbArg
+                };
+        CommandResult res = getRunUtil().runTimedCmd(CMD_TIME_OUT, cmd);
         if (!CommandStatus.SUCCESS.equals(res.getStatus())) {
             CLog.e(
                     "Failed to generated device spec file. Cmd is %s. Error: %s.",
-                    generateDeviceSpecCmd.toString(), res.getStderr());
+                    Arrays.toString(cmd), res.getStderr());
             return null;
         }
         return specFilePath.toString();
@@ -164,33 +151,22 @@ public class BundletoolUtil {
      */
     public void installApks(File apks, ITestDevice device) throws TargetSetupError {
         String inputPathArg = "--apks=" + apks.getAbsolutePath();
-
-        String deviceIdArg = DEVICE_ID_FLAG + device.getSerialNumber();
-
-        List<String> installApksCmd =
-                new ArrayList<String>(
-                        Arrays.asList(
-                                "java",
-                                "-jar",
-                                getBundletoolFile().getAbsolutePath(),
-                                INSTALL_APKS_OPTION,
-                                inputPathArg,
-                                deviceIdArg));
-
-        if (getAdbPath() != null) {
-            installApksCmd.add("--adb=" + getAdbPath());
-        }
-
-        CommandResult res =
-                getRunUtil()
-                        .runTimedCmd(
-                                CMD_TIME_OUT,
-                                installApksCmd.toArray(new String[installApksCmd.size()]));
+        String adbArg = "--adb=" + getAdbPath();
+        String[] installApksCmd =
+                new String[] {
+                    "java",
+                    "-jar",
+                    getBundletoolFile().getAbsolutePath(),
+                    INSTALL_APKS_OPTION,
+                    inputPathArg,
+                    adbArg
+                };
+        CommandResult res = getRunUtil().runTimedCmd(CMD_TIME_OUT, installApksCmd);
         if (!CommandStatus.SUCCESS.equals(res.getStatus())) {
             throw new TargetSetupError(
                     String.format(
                             "Failed to install split apk. Cmd: %s. Error: %s.",
-                            installApksCmd.toString(), res.getStderr()),
+                            Arrays.toString(installApksCmd), res.getStderr()),
                     device.getDeviceDescriptor());
         }
         CLog.i("%s is installed successfully", apks.getName());
@@ -204,11 +180,6 @@ public class BundletoolUtil {
 
     @VisibleForTesting
     protected String getAdbPath() {
-        String adbPath = GlobalConfiguration.getDeviceManagerInstance().getAdbPath();
-        // No explicit adb path passed from device manager.
-        if (!new File(adbPath).exists()) {
-            return null;
-        }
-        return adbPath;
+        return GlobalConfiguration.getDeviceManagerInstance().getAdbPath();
     }
 }

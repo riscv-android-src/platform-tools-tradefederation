@@ -22,13 +22,8 @@ import com.android.tradefed.device.helper.TelephonyHelper;
 import com.android.tradefed.device.helper.TelephonyHelper.SimCardInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 
-import com.google.common.annotations.VisibleForTesting;
-
 /** Token provider for telephony related tokens. */
 public class TelephonyTokenProvider implements ITokenProvider {
-
-    public static final String ORANGE_SIM_ID = "20801";
-    public static final String GSM_OPERATOR_PROP = "gsm.sim.operator.numeric";
 
     @Override
     public boolean hasToken(ITestDevice device, TokenProperty token) {
@@ -36,7 +31,7 @@ public class TelephonyTokenProvider implements ITokenProvider {
             return false;
         }
         try {
-            SimCardInformation info = getSimInfo(device);
+            SimCardInformation info = TelephonyHelper.getSimInfo(device);
             if (info == null || !info.mHasTelephonySupport) {
                 CLog.e("SimcardInfo: %s", info);
                 return false;
@@ -61,16 +56,8 @@ public class TelephonyTokenProvider implements ITokenProvider {
                     return false;
                 case SECURE_ELEMENT_SIM_CARD:
                     if (info.mHasSecuredElement && info.mHasSeService) {
-                        // TODO: Improve how we detect this use case.
-                        if (ORANGE_SIM_ID.equals(device.getProperty(GSM_OPERATOR_PROP))) {
-                            return true;
-                        } else {
-                            CLog.w(
-                                    "%s doesn't have a Orange Sim card for secured elements.",
-                                    device.getSerialNumber());
-                        }
+                        return true;
                     }
-
                     CLog.w(
                             "%s cannot run with token '%s' - Sim info: %s",
                             device.getSerialNumber(), token, info);
@@ -83,10 +70,5 @@ public class TelephonyTokenProvider implements ITokenProvider {
             CLog.e("Ignoring DNAE: %s", e);
         }
         return false;
-    }
-
-    @VisibleForTesting
-    SimCardInformation getSimInfo(ITestDevice device) throws DeviceNotAvailableException {
-        return TelephonyHelper.getSimInfo(device);
     }
 }

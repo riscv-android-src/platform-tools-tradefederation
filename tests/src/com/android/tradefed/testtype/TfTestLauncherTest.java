@@ -91,12 +91,9 @@ public class TfTestLauncherTest {
                                 EasyMock.anyLong(),
                                 (FileOutputStream) EasyMock.anyObject(),
                                 (FileOutputStream) EasyMock.anyObject(),
-                                EasyMock.endsWith("/java"),
+                                EasyMock.eq("java"),
                                 (String) EasyMock.anyObject(),
                                 EasyMock.eq("--add-opens=java.base/java.nio=ALL-UNNAMED"),
-                                EasyMock.eq(
-                                        "--add-opens=java.base/sun.reflect.annotation=ALL-UNNAMED"),
-                                EasyMock.eq("--add-opens=java.base/java.io=ALL-UNNAMED"),
                                 EasyMock.eq("-cp"),
                                 (String) EasyMock.anyObject(),
                                 EasyMock.eq("com.android.tradefed.command.CommandRunner"),

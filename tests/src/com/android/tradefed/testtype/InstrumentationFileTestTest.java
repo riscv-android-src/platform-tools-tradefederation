@@ -87,7 +87,6 @@ public class InstrumentationFileTestTest {
         mMockITest.setConfiguration(new Configuration("", ""));
         mMockITest.setDevice(mMockTestDevice);
         mMockITest.setPackageName(TEST_PACKAGE_VALUE);
-        mMockITest.setConfiguration(new Configuration("name", "description"));
         mMockITest = Mockito.spy(mMockITest);
     }
 
@@ -310,7 +309,6 @@ public class InstrumentationFileTestTest {
                     }
                 };
         setRunTestExpectations(secdondSerialRunAnswer);
-        mMockTestDevice.waitForDeviceAvailable();
 
         mInstrumentationFileTest = new InstrumentationFileTest(mMockITest, testsList, true, -1) {
             @Override

@@ -22,10 +22,8 @@ CtsAnimationTestCases:EvaluatorTest, HelloWorldTests, and WmTests
 
 Running Tests ...
 
-CtsAnimationTestCases
----------------------
-
-android.animation.cts.EvaluatorTest.UnitTests (7 Tests)
+CtsAnimationTestCases (7 Tests)
+------------------------------
 [1/7] android.animation.cts.EvaluatorTest#testRectEvaluator: PASSED (153ms)
 [2/7] android.animation.cts.EvaluatorTest#testIntArrayEvaluator: PASSED (0ms)
 [3/7] android.animation.cts.EvaluatorTest#testIntEvaluator: PASSED (0ms)
@@ -34,17 +32,13 @@ android.animation.cts.EvaluatorTest.UnitTests (7 Tests)
 [6/7] android.animation.cts.EvaluatorTest#testArgbEvaluator: PASSED (0ms)
 [7/7] android.animation.cts.EvaluatorTest#testFloatEvaluator: PASSED (1ms)
 
-HelloWorldTests
----------------
-
-android.test.example.helloworld.UnitTests(2 Tests)
+HelloWorldTests (2 Tests)
+------------------------
 [1/2] android.test.example.helloworld.HelloWorldTest#testHalloWelt: PASSED (0ms)
 [2/2] android.test.example.helloworld.HelloWorldTest#testHelloWorld: PASSED (1ms)
 
-WmTests
--------
-
-com.android.tradefed.targetprep.UnitTests (1 Test)
+WmTests (1 Test)
+---------------
 RUNNER ERROR: com.android.tradefed.targetprep.TargetSetupError:
 Failed to install WmTests.apk on 127.0.0.1:54373. Reason:
     error message ...
@@ -146,8 +140,6 @@ class ResultReporter(object):
         self.runners = OrderedDict()
         self.failed_tests = []
         self.all_test_results = []
-        self.pre_test = None
-        self.log_path = None
 
     def process_test_result(self, test):
         """Given the results of a single test, update stats and print results.
@@ -247,8 +239,6 @@ class ResultReporter(object):
             print(au.colorize(message, constants.RED))
             print('-'*len(message))
             self.print_failed_tests()
-        if self.log_path:
-            print('Test Logs have saved in %s' % self.log_path)
         return tests_ret
 
     def print_failed_tests(self):
@@ -328,15 +318,21 @@ class ResultReporter(object):
     def _print_group_title(self, test):
         """Print the title line for a test group.
 
-        Test Group/Runner Name
-        ----------------------
+        Test Group/Runner Name (## Total)
+        ---------------------------------
 
         Args:
             test: A TestResult namedtuple.
         """
         title = test.group_name or test.runner_name
-        underline = '-' * (len(title))
-        print('\n%s\n%s' % (title, underline))
+        total = ''
+        if test.group_total:
+            if test.group_total > 1:
+                total = '(%s Tests)' % test.group_total
+            else:
+                total = '(%s Test)' % test.group_total
+        underline = '-' * (len(title) + len(total))
+        print('\n%s %s\n%s' % (title, total, underline))
 
     def _print_result(self, test):
         """Print the results of a single test.
@@ -347,15 +343,8 @@ class ResultReporter(object):
         Args:
             test: a TestResult namedtuple.
         """
-        if not self.pre_test or (test.test_run_name !=
-                                 self.pre_test.test_run_name):
-            print('%s (%s %s)' % (au.colorize(test.test_run_name,
-                                              constants.BLUE),
-                                  test.group_total,
-                                  'Test' if test.group_total <= 1 else 'Tests'))
         if test.status == test_runner_base.ERROR_STATUS:
             print('RUNNER ERROR: %s\n' % test.details)
-            self.pre_test = test
             return
         if test.test_name:
             if test.status == test_runner_base.PASSED_STATUS:
@@ -368,8 +357,14 @@ class ResultReporter(object):
                                                  test.status,
                                                  constants.GREEN),
                                              test.test_time))
-                for key, data in test.additional_info.items():
-                    print('\t%s: %s' % (au.colorize(key, constants.BLUE), data))
+                if test.perf_info.keys():
+                    print('\t%s: %s(ns) %s: %s(ns) %s: %s'
+                          %(au.colorize('cpu_time', constants.BLUE),
+                            test.perf_info['cpu_time'],
+                            au.colorize('real_time', constants.BLUE),
+                            test.perf_info['real_time'],
+                            au.colorize('iterations', constants.BLUE),
+                            test.perf_info['iterations']))
             elif test.status == test_runner_base.IGNORED_STATUS:
                 # Example: [33/92] test_name: IGNORED (12ms)
                 print('[%s/%s] %s: %s %s' % (test.test_count, test.group_total,
@@ -390,4 +385,3 @@ class ResultReporter(object):
                                              test.test_time))
         if test.status == test_runner_base.FAILED_STATUS:
             print('\nSTACKTRACE:\n%s' % test.details)
-        self.pre_test = test

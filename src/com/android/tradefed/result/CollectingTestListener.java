@@ -21,7 +21,6 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
-import com.android.tradefed.retry.MergeStrategy;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -65,10 +64,6 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
     private TestRunResult mCurrentTestRunResult = new TestRunResult();
     /** True if the default initialized mCurrentTestRunResult has its original value. */
     private boolean mDefaultRun = true;
-    /** Track whether or not a test run is currently in progress */
-    private boolean mRunInProgress = false;
-
-    private Map<String, LogFile> mNonAssociatedLogFiles = new LinkedHashMap<>();
 
     // Tracks if mStatusCounts are accurate, or if they need to be recalculated
     private AtomicBoolean mIsCountDirty = new AtomicBoolean(true);
@@ -181,12 +176,6 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
     /** {@inheritDoc} */
     @Override
     public void testRunStarted(String name, int numTests, int attemptNumber) {
-        testRunStarted(name, numTests, attemptNumber, System.currentTimeMillis());
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public void testRunStarted(String name, int numTests, int attemptNumber, long startTime) {
         setCountDirty();
         // Only testRunStarted can affect the expected count.
         mIsExpectedCountDirty.set(true);
@@ -216,7 +205,7 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
             int size = results.size();
             for (int i = size; i < attemptNumber; i++) {
                 TestRunResult result = getNewRunResult();
-                result.testRunStarted(name, numTests, startTime);
+                result.testRunStarted(name, numTests);
                 String errorMessage =
                         String.format(
                                 "Run attempt %s of %s did not exists, but got attempt %s. This is a placeholder for the missing attempt.",
@@ -231,8 +220,7 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
         }
         mCurrentTestRunResult = results.get(attemptNumber);
 
-        mCurrentTestRunResult.testRunStarted(name, numTests, startTime);
-        mRunInProgress = true;
+        mCurrentTestRunResult.testRunStarted(name, numTests);
     }
 
     /** {@inheritDoc} */
@@ -240,7 +228,6 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
     public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
         setCountDirty();
         mCurrentTestRunResult.testRunEnded(elapsedTime, runMetrics);
-        mRunInProgress = false;
     }
 
     /** {@inheritDoc} */
@@ -305,11 +292,7 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
     /** {@inheritDoc} */
     @Override
     public void logAssociation(String dataName, LogFile logFile) {
-        if (mRunInProgress) {
-            mCurrentTestRunResult.testLogSaved(dataName, logFile);
-        } else {
-            mNonAssociatedLogFiles.put(dataName, logFile);
-        }
+        mCurrentTestRunResult.testLogSaved(dataName, logFile);
     }
 
     /**
@@ -476,23 +459,6 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
     }
 
     /**
-     * Gets all the results for a given attempt.
-     *
-     * @param attempt The attempt we want results for.
-     * @return All {@link TestRunResult} for a given attempt.
-     */
-    public List<TestRunResult> getTestRunForAttempts(int attempt) {
-        List<TestRunResult> allResultForAttempts = new ArrayList<>();
-        for (Entry<String, List<TestRunResult>> runInfo : mTestRunResultMap.entrySet()) {
-            if (attempt < runInfo.getValue().size()) {
-                TestRunResult attemptRes = runInfo.getValue().get(attempt);
-                allResultForAttempts.add(attemptRes);
-            }
-        }
-        return allResultForAttempts;
-    }
-
-    /**
      * Returns whether a given test run name has any results.
      *
      * @param testRunName The name given by {{@link #testRunStarted(String, int)}.
@@ -540,19 +506,5 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
      */
     public IInvocationContext getModuleContextForRunResult(String testRunName) {
         return mModuleContextMap.get(testRunName);
-    }
-
-    /** Returns a copy of the map containing all the logged file not associated with a test run. */
-    public Map<String, LogFile> getNonAssociatedLogFiles() {
-        return new LinkedHashMap<>(mNonAssociatedLogFiles);
-    }
-
-    /**
-     * Allows to clear the results for a given run name. Should only be used in some cases like the
-     * aggregator of results.
-     */
-    protected final synchronized void clearResultsForName(String testRunName) {
-        setCountDirty();
-        mTestRunResultMap.remove(testRunName);
     }
 }

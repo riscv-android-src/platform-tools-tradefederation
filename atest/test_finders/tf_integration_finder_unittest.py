@@ -63,38 +63,30 @@ class TFIntegrationFinderUnittests(unittest.TestCase):
                        return_value=uc.FULL_CLASS_NAME)
     @mock.patch('subprocess.check_output')
     @mock.patch('os.path.exists', return_value=True)
-    @mock.patch('os.path.isfile', return_value=False)
-    @mock.patch('os.path.isdir', return_value=False)
+    @mock.patch('os.path.isfile', return_value=True)
     #pylint: disable=unused-argument
-    def test_find_test_by_integration_name(self, _isdir, _isfile, _path, mock_find,
+    def test_find_test_by_integration_name(self, _isfile, _path, mock_find,
                                            _fcqn, _build):
-        """Test find_test_by_integration_name.
-
-        Note that _isfile is always False since we don't index integration tests.
-        """
+        """Test find_test_by_integration_name."""
         mock_find.return_value = os.path.join(uc.ROOT, uc.INT_DIR, uc.INT_NAME + '.xml')
-        t_infos = self.tf_finder.find_test_by_integration_name(uc.INT_NAME)
-        self.assertEqual(len(t_infos), 0)
-        _isdir.return_value = True
-        t_infos = self.tf_finder.find_test_by_integration_name(uc.INT_NAME)
-        unittest_utils.assert_equal_testinfos(self, t_infos[0], uc.INT_INFO)
-        t_infos = self.tf_finder.find_test_by_integration_name(INT_NAME_CLASS)
-        unittest_utils.assert_equal_testinfos(self, t_infos[0], INT_CLASS_INFO)
-        t_infos = self.tf_finder.find_test_by_integration_name(INT_NAME_METHOD)
-        unittest_utils.assert_equal_testinfos(self, t_infos[0], INT_METHOD_INFO)
+        t_info = self.tf_finder.find_test_by_integration_name(uc.INT_NAME)
+        unittest_utils.assert_equal_testinfos(self, t_info, uc.INT_INFO)
+        t_info = self.tf_finder.find_test_by_integration_name(INT_NAME_CLASS)
+        unittest_utils.assert_equal_testinfos(self, t_info, INT_CLASS_INFO)
+        t_info = self.tf_finder.find_test_by_integration_name(INT_NAME_METHOD)
+        unittest_utils.assert_equal_testinfos(self, t_info, INT_METHOD_INFO)
         not_fully_qual = uc.INT_NAME + ':' + 'someClass'
-        t_infos = self.tf_finder.find_test_by_integration_name(not_fully_qual)
-        unittest_utils.assert_equal_testinfos(self, t_infos[0], INT_CLASS_INFO)
+        t_info = self.tf_finder.find_test_by_integration_name(not_fully_qual)
+        unittest_utils.assert_equal_testinfos(self, t_info, INT_CLASS_INFO)
         mock_find.return_value = os.path.join(uc.ROOT, uc.GTF_INT_DIR,
                                               uc.GTF_INT_NAME + '.xml')
-        t_infos = self.tf_finder.find_test_by_integration_name(uc.GTF_INT_NAME)
         unittest_utils.assert_equal_testinfos(
             self,
-            t_infos[0],
+            self.tf_finder.find_test_by_integration_name(uc.GTF_INT_NAME),
             uc.GTF_INT_INFO)
         mock_find.return_value = ''
-        self.assertEqual(
-            self.tf_finder.find_test_by_integration_name('NotIntName'), [])
+        self.assertIsNone(
+            self.tf_finder.find_test_by_integration_name('NotIntName'))
 
     @mock.patch.object(tf_integration_finder.TFIntegrationFinder,
                        '_get_build_targets', return_value=set())
@@ -108,22 +100,21 @@ class TFIntegrationFinderUnittests(unittest.TestCase):
                                    _build):
         """Test find_int_test_by_path."""
         path = os.path.join(uc.INT_DIR, uc.INT_NAME + '.xml')
-        t_infos = self.tf_finder.find_int_test_by_path(path)
         unittest_utils.assert_equal_testinfos(
-            self, uc.INT_INFO, t_infos[0])
+            self, uc.INT_INFO, self.tf_finder.find_int_test_by_path(path))
         path = os.path.join(uc.GTF_INT_DIR, uc.GTF_INT_NAME + '.xml')
-        t_infos = self.tf_finder.find_int_test_by_path(path)
         unittest_utils.assert_equal_testinfos(
-            self, uc.GTF_INT_INFO, t_infos[0])
+            self, uc.GTF_INT_INFO, self.tf_finder.find_int_test_by_path(path))
 
     #pylint: disable=protected-access
     @mock.patch.object(tf_integration_finder.TFIntegrationFinder,
                        '_search_integration_dirs')
     def test_load_xml_file(self, search):
         """Test _load_xml_file and _load_include_tags methods."""
-        search.return_value = [os.path.join(uc.TEST_DATA_DIR,
-                                            'CtsUiDeviceTestCases.xml')]
+        search.return_value = os.path.join(uc.TEST_DATA_DIR,
+                                           'CtsUiDeviceTestCases.xml')
         xml_file = os.path.join(uc.TEST_DATA_DIR, constants.MODULE_CONFIG)
+        print 'xml_file: %s' % xml_file
         xml_root = self.tf_finder._load_xml_file(xml_file)
         include_tags = xml_root.findall('.//include')
         self.assertEqual(0, len(include_tags))

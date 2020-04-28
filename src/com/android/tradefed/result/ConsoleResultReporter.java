@@ -23,10 +23,9 @@ import com.android.tradefed.config.OptionClass;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * Result reporter to print the test results to the console.
@@ -36,26 +35,20 @@ import java.util.Set;
  */
 @OptionClass(alias = "console-result-reporter")
 public class ConsoleResultReporter extends CollectingTestListener implements ILogSaverListener {
+    private static final String LOG_TAG = ConsoleResultReporter.class.getSimpleName();
 
     @Option(name = "suppress-passed-tests", description = "For functional tests, ommit summary for "
             + "passing tests, only print failed and ignored ones")
     private boolean mSuppressPassedTest = false;
 
-    private Set<LogFile> mLogFiles = new LinkedHashSet<>();
+    private List<LogFile> mLogFiles = new LinkedList<>();
 
     /**
      * {@inheritDoc}
      */
     @Override
     public void invocationEnded(long elapsedTime) {
-        Log.logAndDisplay(LogLevel.INFO, this.getClass().getSimpleName(), getInvocationSummary());
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public void logAssociation(String dataName, LogFile logFile) {
-        super.logAssociation(dataName, logFile);
-        mLogFiles.add(logFile);
+        Log.logAndDisplay(LogLevel.INFO, LOG_TAG, getInvocationSummary());
     }
 
     /**

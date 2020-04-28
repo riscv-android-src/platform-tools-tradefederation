@@ -5,7 +5,6 @@ import static org.mockito.Mockito.verify;
 
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -33,7 +32,6 @@ public class FilePullerDeviceMetricCollectorTest {
     private FilePullerDeviceMetricCollector mFilePuller;
     @Mock private ITestInvocationListener mMockListener;
     @Mock private ITestDevice mMockDevice;
-    @Mock private ITestDevice mStubDevice;
     private IInvocationContext mContext;
 
     @Before
@@ -41,8 +39,6 @@ public class FilePullerDeviceMetricCollectorTest {
         MockitoAnnotations.initMocks(this);
         mContext = new InvocationContext();
         mContext.addAllocatedDevice("default", mMockDevice);
-        mContext.addAllocatedDevice("stub", mStubDevice);
-        Mockito.when(mStubDevice.getIDevice()).thenReturn(new StubDevice("serial-stub"));
         mFilePuller =
                 new FilePullerDeviceMetricCollector() {
                     @Override

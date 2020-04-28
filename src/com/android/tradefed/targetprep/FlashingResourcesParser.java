@@ -18,8 +18,6 @@ package com.android.tradefed.targetprep;
 
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.util.MultiMap;
-import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
-import org.apache.commons.compress.archivers.zip.ZipFile;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -31,7 +29,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.zip.ZipEntry;
 import java.util.zip.ZipException;
+import java.util.zip.ZipFile;
 
 /**
  * A class that parses out required versions of auxiliary image files needed to flash a device.
@@ -256,19 +256,11 @@ public class FlashingResourcesParser implements IFlashingResourcesParser {
      */
     static AndroidInfo getBuildRequirements(File deviceImgZipFile,
             Map<String, Constraint> constraints) throws TargetSetupError {
-        if (!deviceImgZipFile.exists()) {
-            throw new TargetSetupError(
-                    String.format(
-                            "Device image zip %s doesn't not exist", deviceImgZipFile.getName()),
-                    null,
-                    null);
-        }
-
         ZipFile deviceZip = null;
         BufferedReader infoReader = null;
         try {
             deviceZip = new ZipFile(deviceImgZipFile);
-            ZipArchiveEntry androidInfoEntry = deviceZip.getEntry(ANDROID_INFO_FILE_NAME);
+            ZipEntry androidInfoEntry = deviceZip.getEntry(ANDROID_INFO_FILE_NAME);
             if (androidInfoEntry == null) {
                 DeviceDescriptor nullDescriptor = null;
                 throw new TargetSetupError(String.format("Could not find %s in device image zip %s",

@@ -45,7 +45,6 @@ import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.metric.IMetricCollector;
-import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.CollectingTestListener;
@@ -229,18 +228,6 @@ public class InstrumentationTestTest {
                 (RemoteAndroidTestRunner)
                         mInstrumentationTest.createRemoteAndroidTestRunner("", "", mMockIDevice);
         assertThat(runner.getRunOptions()).contains("--no-isolated-storage");
-    }
-
-    /** Test normal run scenario with --no-isolated-storage specified */
-    @Test
-    public void testRun_windowAnimation() throws Exception {
-        doReturn(14).when(mMockTestDevice).getApiLevel();
-        OptionSetter setter = new OptionSetter(mInstrumentationTest);
-        setter.setOptionValue("window-animation", "false");
-        RemoteAndroidTestRunner runner =
-                (RemoteAndroidTestRunner)
-                        mInstrumentationTest.createRemoteAndroidTestRunner("", "", mMockIDevice);
-        assertThat(runner.getRunOptions()).contains("--no-window-animation");
     }
 
     /** Test normal run scenario with a test class specified. */
@@ -997,13 +984,10 @@ public class InstrumentationTestTest {
 
         List<IMetricCollector> collectors = new ArrayList<>();
         CalledMetricCollector calledCollector = new CalledMetricCollector();
-        calledCollector.mName = "called";
         CalledMetricCollector notCalledCollector = new CalledMetricCollector();
         notCalledCollector.setDisable(true);
-        notCalledCollector.mName = "not-called";
         collectors.add(notCalledCollector);
         collectors.add(calledCollector);
-        mInstrumentationTest.setInvocationContext(new InvocationContext());
         mInstrumentationTest.setMetricCollectors(collectors);
         mInstrumentationTest.run(mMockListener);
 
@@ -1013,26 +997,16 @@ public class InstrumentationTestTest {
         inOrder.verify(mInstrumentationTest).setRunnerArgs(runner.capture());
         inOrder.verify(mMockTestDevice, times(2))
                 .runInstrumentationTests(eq(runner.getValue()), any(ITestLifeCycleReceiver.class));
+
         inOrder.verify(mMockListener).testRunStarted(TEST_PACKAGE_VALUE, 2);
         inOrder.verify(mMockListener).testStarted(eq(TEST1), anyLong());
-        ArgumentCaptor<HashMap<String, Metric>> testCapture1 =
-                ArgumentCaptor.forClass(HashMap.class);
-        inOrder.verify(mMockListener).testEnded(eq(TEST1), anyLong(), testCapture1.capture());
-        HashMap<String, Metric> test1Metric = testCapture1.getValue();
-        assertTrue(test1Metric.containsKey("called"));
-        assertFalse(test1Metric.containsKey("not-called"));
+        inOrder.verify(mMockListener).testEnded(eq(TEST1), anyLong(), eq(EMPTY_STRING_MAP));
         inOrder.verify(mMockListener).testStarted(eq(TEST2), anyLong());
-        ArgumentCaptor<HashMap<String, Metric>> testCapture2 =
-                ArgumentCaptor.forClass(HashMap.class);
-        inOrder.verify(mMockListener).testEnded(eq(TEST2), anyLong(), testCapture2.capture());
-        HashMap<String, Metric> test2Metric = testCapture2.getValue();
-        assertTrue(test2Metric.containsKey("called"));
-        assertFalse(test2Metric.containsKey("not-called"));
-        ArgumentCaptor<HashMap<String, Metric>> runCapture = ArgumentCaptor.forClass(HashMap.class);
-        inOrder.verify(mMockListener).testRunEnded(anyLong(), runCapture.capture());
-        HashMap<String, Metric> runMetric = runCapture.getValue();
-        assertTrue(runMetric.containsKey("called"));
-        assertFalse(runMetric.containsKey("not-called"));
+        inOrder.verify(mMockListener).testEnded(eq(TEST2), anyLong(), eq(EMPTY_STRING_MAP));
+        inOrder.verify(mMockListener).testRunEnded(1, EMPTY_STRING_MAP);
+
+        assertTrue(calledCollector.wasCalled);
+        assertFalse(notCalledCollector.wasCalled);
     }
 
     private static class FakeTestRunner extends RemoteAndroidTestRunner {

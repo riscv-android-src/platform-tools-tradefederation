@@ -461,6 +461,7 @@ public class WifiHelper implements IWifiHelper {
         }
         if (!asBool(runWifiUtil("connectToNetwork", "ssid", ssid, "psk", psk, "urlToCheck",
                 urlToCheck, "scan_ssid", Boolean.toString(scanSsid)))) {
+            CLog.e("Failed to connect to " + ssid);
             return false;
         }
         return true;
@@ -472,6 +473,7 @@ public class WifiHelper implements IWifiHelper {
     @Override
     public boolean disconnectFromNetwork() throws DeviceNotAvailableException {
         if (!asBool(runWifiUtil("disconnectFromNetwork"))) {
+            CLog.e("Failed to disconnect");
             return false;
         }
         if (!disableWifi()) {
@@ -522,11 +524,7 @@ public class WifiHelper implements IWifiHelper {
         WifiUtilOutput parser = new WifiUtilOutput();
         mDevice.executeShellCommand(cmd, parser, WIFIUTIL_CMD_TIMEOUT_MINUTES, TimeUnit.MINUTES, 0);
         if (parser.getError() != null) {
-            String errorMessage =
-                    String.format(
-                            "Failed to %s due to: '%s'. See logcat for details.",
-                            method, parser.getError());
-            CLog.e(errorMessage);
+            CLog.e(parser.getError());
         }
         return parser.getResult();
     }

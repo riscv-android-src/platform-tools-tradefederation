@@ -18,7 +18,6 @@ package com.android.tradefed.device.metric;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -34,7 +33,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * Base implementation of {@link IMetricCollector} that allows to start and stop collection on
@@ -67,7 +65,6 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
     private List<String> mTestCaseExcludeAnnotationGroup = new ArrayList<>();
 
     private IInvocationContext mContext;
-    private List<ITestDevice> mRealDeviceList;
     private ITestInvocationListener mForwarder;
     private DeviceMetricData mRunData;
     private DeviceMetricData mTestData;
@@ -77,37 +74,18 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
      * Variable for whether or not to skip the collection of one test case because it was filtered.
      */
     private boolean mSkipTestCase = false;
-    /** Whether or not the collector was initialized already or not. */
-    private boolean mWasInitDone = false;
 
     @Override
     public ITestInvocationListener init(
             IInvocationContext context, ITestInvocationListener listener) {
         mContext = context;
         mForwarder = listener;
-        if (mWasInitDone) {
-            throw new IllegalStateException(
-                    String.format("init was called a second time on %s", this));
-        }
-        mWasInitDone = true;
         return this;
     }
 
     @Override
     public final List<ITestDevice> getDevices() {
         return mContext.getDevices();
-    }
-
-    /** Returns all the non-stub devices from the {@link #getDevices()} list. */
-    public final List<ITestDevice> getRealDevices() {
-        if (mRealDeviceList == null) {
-            mRealDeviceList =
-                    mContext.getDevices()
-                            .stream()
-                            .filter(d -> (!(d.getIDevice() instanceof StubDevice)))
-                            .collect(Collectors.toList());
-        }
-        return mRealDeviceList;
     }
 
     @Override

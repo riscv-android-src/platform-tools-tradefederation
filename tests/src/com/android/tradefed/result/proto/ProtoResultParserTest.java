@@ -90,7 +90,7 @@ public class ProtoResultParserTest {
         }
 
         @Override
-        public void processTestRunEnded(TestRecord runRecord, boolean moduleInProgress) {
+        public void processTestRunEnded(TestRecord runRecord) {
             mParser.processNewProto(runRecord);
         }
 

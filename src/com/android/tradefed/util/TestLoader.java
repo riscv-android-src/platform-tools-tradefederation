@@ -52,8 +52,8 @@ public class TestLoader {
     public Test loadTests(File testJarFile, Collection<File> dependentJars) {
         ClassPathScanner scanner = new ClassPathScanner();
         try {
-            Set<String> classNames =
-                    scanner.getEntriesFromJar(testJarFile, new ExternalClassNameFilter()).keySet();
+            Set<String> classNames = scanner.getEntriesFromJar(testJarFile,
+                    new ExternalClassNameFilter());
 
             ClassLoader jarClassLoader = buildJarClassLoader(testJarFile, dependentJars);
             return loadTests(classNames, jarClassLoader);

@@ -16,7 +16,6 @@
 
 """Unittest for atest_execution_info."""
 
-import time
 import unittest
 
 from test_runners import test_runner_base
@@ -33,8 +32,7 @@ RESULT_TEST_TEMPLATE = test_runner_base.TestResult(
     test_time='(10ms)',
     runner_total=None,
     group_total=2,
-    additional_info={},
-    test_run_name='com.android.UnitTests'
+    perf_info={}
 )
 
 # pylint: disable=protected-access
@@ -106,14 +104,6 @@ class AtestRunInfoUnittests(unittest.TestCase):
                                 aei._STATUS_FAILED_KEY : 2,
                                 aei._STATUS_PASSED_KEY : 3}
         self.assertEqual(expect_total_summary, info_dict[aei._TOTAL_SUMMARY_KEY])
-
-    def test_preparation_time(self):
-        """Test preparation_time method."""
-        start_time = time.time()
-        aei.PREPARE_END_TIME = None
-        self.assertTrue(aei.preparation_time(start_time) is None)
-        aei.PREPARE_END_TIME = time.time()
-        self.assertFalse(aei.preparation_time(start_time) is None)
 
     def test_arrange_test_result_multi_runner(self):
         """Test _arrange_test_result method with multi runner."""

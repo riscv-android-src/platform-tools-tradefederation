@@ -191,7 +191,7 @@ public class Sl4aClient implements AutoCloseable {
             mSocket = new Socket("localhost", mHostPort);
             CLog.i("is sl4a socket connected: %s", mSocket.isConnected());
             String rep = sendCommand(Sl4aClient.INIT);
-            CLog.i("response sl4a INIT: '%s', from device %s", rep, mDevice.getSerialNumber());
+            CLog.i("response sl4a INIT: %s", rep);
             JSONObject init = new JSONObject(rep);
             mUid = init.getInt("uid");
             startEventDispatcher();
@@ -223,11 +223,11 @@ public class Sl4aClient implements AutoCloseable {
         PrintWriter out = new PrintWriter(mSocket.getOutputStream(), true);
         out.print(message.toString());
         out.print('\n');
-        CLog.d("flushing");
+        CLog.i("flushing");
         out.flush();
-        CLog.d("sent");
+        CLog.i("sent");
         BufferedReader in = new BufferedReader(new InputStreamReader(mSocket.getInputStream()));
-        CLog.d("reading");
+        CLog.i("reading");
         String response = in.readLine();
         return response;
     }
@@ -240,14 +240,14 @@ public class Sl4aClient implements AutoCloseable {
      * @throws IOException
      */
     private synchronized Object sendThroughSocket(String message) throws IOException {
-        CLog.d("preparing sending: '%s' to device %s", message, mDevice.getSerialNumber());
+        CLog.d("preparing sending: '%s'", message.toString());
         PrintWriter out = new PrintWriter(mSocket.getOutputStream(), false);
-        out.print(message);
+        out.print(message.toString());
         out.print('\n');
         out.flush();
         BufferedReader in = new BufferedReader(new InputStreamReader(mSocket.getInputStream()));
         String response = in.readLine();
-        CLog.d("response: '%s' from device %s", response, mDevice.getSerialNumber());
+        CLog.d("response: '%s'", response);
         try {
             JSONObject resp = new JSONObject(response);
             if (!resp.isNull("error")) {

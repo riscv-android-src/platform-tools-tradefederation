@@ -155,6 +155,9 @@ public interface ICommandOptions {
     /** Whether or not sharding should use the token support. */
     public boolean shouldUseTokenSharding();
 
+    /** Return true if the test should skip device setup during TestInvocation setup. */
+    public boolean shouldSkipPreDeviceSetup();
+
     /** Returns if we should use dynamic sharding or not */
     public boolean shouldUseDynamicSharding();
 
@@ -196,10 +199,4 @@ public interface ICommandOptions {
 
     /** Whether or not to attempt parallel setup of the remote devices. */
     public boolean shouldUseParallelRemoteSetup();
-
-    /** Whether or not to report progression of remote invocation at module level. */
-    public boolean shouldReportModuleProgression();
-
-    /** Whether or not to start extra instances in the remote VM in postsubmit. */
-    public int getExtraRemotePostsubmitInstance();
 }

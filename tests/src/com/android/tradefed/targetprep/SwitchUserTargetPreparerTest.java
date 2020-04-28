@@ -27,7 +27,6 @@ import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.device.UserInfo;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -35,9 +34,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-
-import java.util.Map;
-import java.util.HashMap;
 
 /** Unit tests for {@link SwitchUserTargetPreparer}. */
 @RunWith(JUnit4.class)
@@ -57,96 +53,25 @@ public class SwitchUserTargetPreparerTest {
     }
 
     @Test
-    public void testSetUpRunAsPrimary_ifAlreadyInPrimary_noSwitch()
+    public void testSetUpRunAsPrimary_ifAlreadyInPrimary_switchToPrimary()
             throws DeviceNotAvailableException, TargetSetupError, ConfigurationException {
+        // setup
+        mockUsers(/* primaryUserId= */ 11, /* currentUserId= */ 11);
         mOptionSetter.setOptionValue("user-type", "primary");
 
-        // setup
-        when(mMockDevice.getCurrentUser()).thenReturn(11);
-        mockListUsersInfo(
-                mMockDevice,
-                /* userIds= */ new Integer[] {0, 11},
-                /* flags= */ new Integer[] {0, UserInfo.FLAG_PRIMARY});
-
-
         // act
         mSwitchUserTargetPreparer.setUp(mMockDevice, /* buildInfo= */ null);
 
         // assert
-        verify(mMockDevice, never()).switchUser(anyInt());
+        verify(mMockDevice, times(1)).switchUser(11);
     }
 
     @Test
-    public void testSetUpRunAsSystem_ifAlreadyInSystem_noSwitch()
+    public void testSetUpRunAsSystem_ifAlreadyInSystem_switchToSystem()
             throws DeviceNotAvailableException, TargetSetupError, ConfigurationException {
+        // setup
+        mockUsers(/* primaryUserId= */ 11, /* currentUserId= */ USER_SYSTEM);
         mOptionSetter.setOptionValue("user-type", "system");
-
-        // setup
-        when(mMockDevice.getCurrentUser()).thenReturn(0);
-        mockListUsersInfo(
-                mMockDevice,
-                /* userIds= */ new Integer[] {0, 11},
-                /* flags= */ new Integer[] {0, UserInfo.FLAG_PRIMARY});
-
-        // act
-        mSwitchUserTargetPreparer.setUp(mMockDevice, /* buildInfo= */ null);
-
-        // assert
-        verify(mMockDevice, never()).switchUser(0);
-    }
-
-    @Test
-    public void testSetUpRunAsPrimary_ifNotInPrimary_switchToPrimary()
-            throws DeviceNotAvailableException, TargetSetupError, ConfigurationException {
-        mOptionSetter.setOptionValue("user-type", "primary");
-
-        // setup
-        when(mMockDevice.getCurrentUser()).thenReturn(11);
-        mockListUsersInfo(
-                mMockDevice,
-                /* userIds= */ new Integer[] {0, 10, 11},
-                /* flags= */ new Integer[] {0, UserInfo.FLAG_PRIMARY, 0});
-        when(mMockDevice.switchUser(10)).thenReturn(true);
-
-        // act
-        mSwitchUserTargetPreparer.setUp(mMockDevice, /* buildInfo= */ null);
-
-        // assert
-        verify(mMockDevice, times(1)).switchUser(10);
-    }
-
-    @Test
-    public void testSetUpRunAsGuest_ifNotInGuest_switchToGuest()
-            throws DeviceNotAvailableException, TargetSetupError, ConfigurationException {
-        mOptionSetter.setOptionValue("user-type", "guest");
-
-        // setup
-        when(mMockDevice.getCurrentUser()).thenReturn(11);
-        mockListUsersInfo(
-                mMockDevice,
-                /* userIds= */ new Integer[] {0, 10, 11},
-                /* flags= */ new Integer[] {0, UserInfo.FLAG_GUEST, 0});
-        when(mMockDevice.switchUser(10)).thenReturn(true);
-
-        // act
-        mSwitchUserTargetPreparer.setUp(mMockDevice, /* buildInfo= */ null);
-
-        // assert
-        verify(mMockDevice, times(1)).switchUser(10);
-    }
-
-    @Test
-    public void testSetUpRunAsSystem_ifNotInSystem_switchToSystem()
-            throws DeviceNotAvailableException, TargetSetupError, ConfigurationException {
-        mOptionSetter.setOptionValue("user-type", "system");
-
-        // setup
-        when(mMockDevice.getCurrentUser()).thenReturn(10);
-        mockListUsersInfo(
-                mMockDevice,
-                /* userIds= */ new Integer[] {0, 10},
-                /* flags= */ new Integer[] {0, 0});
-        when(mMockDevice.switchUser(0)).thenReturn(true);
 
         // act
         mSwitchUserTargetPreparer.setUp(mMockDevice, /* buildInfo= */ null);
@@ -156,18 +81,39 @@ public class SwitchUserTargetPreparerTest {
     }
 
     @Test
-    public void testTearDown_ifStartedInSecondary_switchesBackToSecondary()
+    public void testSetUpRunAsPrimary_ifNotInPrimary_switchToPrimary()
             throws DeviceNotAvailableException, TargetSetupError, ConfigurationException {
+        // setup
+        mockUsers(/* primaryUserId= */ 10, /* currentUserId= */ 11);
+        mOptionSetter.setOptionValue("user-type", "primary");
+
+        // act
+        mSwitchUserTargetPreparer.setUp(mMockDevice, /* buildInfo= */ null);
+
+        // assert it switches to primary in setUp
+        verify(mMockDevice, times(1)).switchUser(10);
+    }
+
+    @Test
+    public void testSetUpRunAsSystem_ifNotInSystem_switchToSystem()
+            throws DeviceNotAvailableException, TargetSetupError, ConfigurationException {
+        // setup
+        mockUsers(/* primaryUserId= */ 10, /* currentUserId= */ 11);
         mOptionSetter.setOptionValue("user-type", "system");
 
+        // act
+        mSwitchUserTargetPreparer.setUp(mMockDevice, /* buildInfo= */ null);
+
+        // assert it switches to primary in setUp
+        verify(mMockDevice, times(1)).switchUser(USER_SYSTEM);
+    }
+
+    @Test
+    public void testTearDown_ifStartedInSecondary_switchesBackToSecondary()
+            throws DeviceNotAvailableException, TargetSetupError, ConfigurationException {
         // setup
-        when(mMockDevice.getCurrentUser()).thenReturn(10);
-        mockListUsersInfo(
-                mMockDevice,
-                /* userIds= */ new Integer[] {0, 10},
-                /* flags= */ new Integer[] {0, 0});
-        when(mMockDevice.switchUser(0)).thenReturn(true);
-        when(mMockDevice.switchUser(10)).thenReturn(true);
+        mockUsers(/* primaryUserId= */ 0, /* currentUserId= */ 10);
+        mOptionSetter.setOptionValue("user-type", "primary");
 
         // first switches to primary
         mSwitchUserTargetPreparer.setUp(mMockDevice, /* buildInfo= */ null);
@@ -176,18 +122,13 @@ public class SwitchUserTargetPreparerTest {
         // then switches back to secondary
         mSwitchUserTargetPreparer.tearDown(mMockDevice, /* buildInfo= */ null, null);
         verify(mMockDevice, times(1)).switchUser(10);
-
     }
 
     @Test
     public void testSetUp_ifNoSwitchToSpecified_noUserSwitch()
             throws DeviceNotAvailableException, TargetSetupError {
         // setup
-        when(mMockDevice.getCurrentUser()).thenReturn(10);
-        mockListUsersInfo(
-                mMockDevice,
-                /* userIds= */ new Integer[] {0, 10},
-                /* flags= */ new Integer[] {0, 0});
+        mockUsers(/* primaryUserId= */ 0, /* currentUserId= */ 10);
 
         // act
         mSwitchUserTargetPreparer.setUp(mMockDevice, /* buildInfo= */ null);
@@ -199,14 +140,9 @@ public class SwitchUserTargetPreparerTest {
     @Test
     public void testSetUp_ifSwitchFails_throwsTargetSetupError()
             throws DeviceNotAvailableException, ConfigurationException {
-        mOptionSetter.setOptionValue("user-type", "primary");
-
         // setup
-        when(mMockDevice.getCurrentUser()).thenReturn(10);
-        mockListUsersInfo(
-                mMockDevice,
-                /* userIds= */ new Integer[] {0, 10},
-                /* flags= */ new Integer[] {UserInfo.FLAG_PRIMARY, 0});
+        mockUsers(/* primaryUserId= */ 0, /* currentUserId= */ 11);
+        mOptionSetter.setOptionValue("user-type", "primary");
         when(mMockDevice.switchUser(0)).thenReturn(false);
 
         // act
@@ -221,24 +157,7 @@ public class SwitchUserTargetPreparerTest {
     private void mockUsers(int primaryUserId, int currentUserId)
             throws DeviceNotAvailableException {
         when(mMockDevice.getCurrentUser()).thenReturn(currentUserId);
-
         when(mMockDevice.getPrimaryUserId()).thenReturn(primaryUserId);
         when(mMockDevice.switchUser(anyInt())).thenReturn(true);
-    }
-
-    private void mockListUsersInfo(ITestDevice device, Integer[] userIds, Integer[] flags)
-            throws DeviceNotAvailableException {
-        Map<Integer, UserInfo> result = new HashMap<>();
-        for (int i = 0; i < userIds.length; i++) {
-            int userId = userIds[i];
-            result.put(
-                    userId,
-                    new UserInfo(
-                            /* userId= */ userId,
-                            /* userName= */ "usr" + userId,
-                            /* flag= */ flags[i],
-                            /* isRunning= */ false));
-        }
-        when(device.getUserInfos()).thenReturn(result);
     }
 }

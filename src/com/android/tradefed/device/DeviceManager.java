@@ -92,7 +92,7 @@ public class DeviceManager implements IDeviceManager {
 
     /** a {@link DeviceSelectionOptions} that matches any device. Visible for testing. */
     static final IDeviceSelection ANY_DEVICE_OPTIONS = new DeviceSelectionOptions();
-    private static final String NULL_DEVICE_SERIAL_PREFIX = "null-device";
+    static final String NULL_DEVICE_SERIAL_PREFIX = "null-device";
     private static final String EMULATOR_SERIAL_PREFIX = "emulator";
     private static final String TCP_DEVICE_SERIAL_PREFIX = "tcp-device";
     private static final String GCE_DEVICE_SERIAL_PREFIX = "gce-device";
@@ -640,7 +640,7 @@ public class DeviceManager implements IDeviceManager {
                 deviceState = FreeDeviceState.UNAVAILABLE;
             }
         }
-        if (ideviceToReturn instanceof TcpDevice || ideviceToReturn instanceof VmRemoteDevice) {
+        if (ideviceToReturn instanceof TcpDevice) {
             // Make sure the device goes back to the original state.
             managedDevice.setDeviceState(TestDeviceState.NOT_AVAILABLE);
         }

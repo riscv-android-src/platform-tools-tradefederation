@@ -1,3 +1,4 @@
-# tests ownership is wider for Tradefed Unit tests
-
-per-file *.java, *.xml = *
+# tests ownership is wider: base OWNERS + folks familiar with testing
+allenhair@google.com
+gelanchezhian@google.com
+mrosenfeld@google.com

@@ -19,7 +19,6 @@ import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
@@ -42,11 +41,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.mockito.Mockito;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
 
 import java.io.File;
-import java.io.OutputStream;
 import java.util.HashMap;
 
 /** Unit tests for {@link ExecutableHostTest}. */
@@ -105,45 +101,7 @@ public class ExecutableHostTestTest {
             CommandResult result = new CommandResult(CommandStatus.SUCCESS);
             doReturn(result)
                     .when(mMockRunUtil)
-                    .runTimedCmd(
-                            Mockito.anyLong(),
-                            (OutputStream) Mockito.any(),
-                            Mockito.any(),
-                            Mockito.eq(tmpBinary.getAbsolutePath()));
-
-            mExecutableTest.run(mMockListener);
-
-            verify(mMockListener, Mockito.times(1)).testRunStarted(eq(tmpBinary.getName()), eq(1));
-            verify(mMockListener, Mockito.times(0)).testRunFailed(any());
-            verify(mMockListener, Mockito.times(0)).testFailed(any(), any());
-            verify(mMockListener, Mockito.times(1))
-                    .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
-        } finally {
-            FileUtil.recursiveDelete(tmpBinary);
-        }
-    }
-
-    @Test
-    public void testRunHostExecutable_relativePath() throws Exception {
-        File tmpBinary = FileUtil.createTempFile("test-executable", "");
-        try {
-            OptionSetter setter = new OptionSetter(mExecutableTest);
-            setter.setOptionValue("binary", tmpBinary.getAbsolutePath());
-            setter.setOptionValue("relative-path-execution", "true");
-
-            CommandResult result = new CommandResult(CommandStatus.SUCCESS);
-            doReturn(result)
-                    .when(mMockRunUtil)
-                    .runTimedCmd(
-                            Mockito.anyLong(),
-                            (OutputStream) Mockito.any(),
-                            Mockito.any(),
-                            Mockito.eq("bash"),
-                            Mockito.eq("-c"),
-                            Mockito.eq(
-                                    String.format(
-                                            "pushd %s; ./%s;",
-                                            tmpBinary.getParent(), tmpBinary.getName())));
+                    .runTimedCmd(Mockito.anyLong(), Mockito.eq(tmpBinary.getAbsolutePath()));
 
             mExecutableTest.run(mMockListener);
 
@@ -167,11 +125,7 @@ public class ExecutableHostTestTest {
             CommandResult result = new CommandResult(CommandStatus.SUCCESS);
             doReturn(result)
                     .when(mMockRunUtil)
-                    .runTimedCmd(
-                            Mockito.anyLong(),
-                            (OutputStream) Mockito.any(),
-                            Mockito.any(),
-                            Mockito.eq(tmpBinary.getAbsolutePath()));
+                    .runTimedCmd(Mockito.anyLong(), Mockito.eq(tmpBinary.getAbsolutePath()));
 
             doThrow(new DeviceNotAvailableException()).when(mMockDevice).waitForDeviceAvailable();
             try {
@@ -211,11 +165,7 @@ public class ExecutableHostTestTest {
             CommandResult result = new CommandResult(CommandStatus.SUCCESS);
             doReturn(result)
                     .when(mMockRunUtil)
-                    .runTimedCmd(
-                            Mockito.anyLong(),
-                            (OutputStream) Mockito.any(),
-                            Mockito.any(),
-                            Mockito.eq(tmpBinary.getAbsolutePath()));
+                    .runTimedCmd(Mockito.anyLong(), Mockito.eq(tmpBinary.getAbsolutePath()));
 
             mExecutableTest.run(mMockListener);
 
@@ -272,24 +222,9 @@ public class ExecutableHostTestTest {
             CommandResult result = new CommandResult(CommandStatus.FAILED);
             result.setExitCode(5);
             result.setStdout("stdout");
-
-            doAnswer(
-                            new Answer<CommandResult>() {
-
-                                @Override
-                                public CommandResult answer(InvocationOnMock invocation)
-                                        throws Throwable {
-                                    OutputStream outputStream = invocation.getArgument(1);
-                                    outputStream.write("stdout".getBytes());
-                                    return result;
-                                }
-                            })
+            doReturn(result)
                     .when(mMockRunUtil)
-                    .runTimedCmd(
-                            Mockito.anyLong(),
-                            (OutputStream) Mockito.any(),
-                            Mockito.any(),
-                            Mockito.eq(tmpBinary.getAbsolutePath()));
+                    .runTimedCmd(Mockito.anyLong(), Mockito.eq(tmpBinary.getAbsolutePath()));
 
             mExecutableTest.run(mMockListener);
 

@@ -15,12 +15,11 @@
  */
 package com.android.tradefed.result;
 
+import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.invoker.IInvocationContext;
-import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
-import com.android.tradefed.result.retry.ISupportGranularResults;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.SubprocessEventHelper.BaseTestEventInfo;
@@ -47,17 +46,14 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
 
 /**
  * Implements {@link ITestInvocationListener} to be specified as a result_reporter and forward from
  * the subprocess the results of tests, test runs, test invocations.
  */
 public class SubprocessResultsReporter
-        implements ITestInvocationListener,
-                ILogSaverListener,
-                AutoCloseable,
-                ISupportGranularResults {
+        implements ITestInvocationListener, ILogSaverListener, AutoCloseable {
 
     @Option(name = "subprocess-report-file", description = "the file where to log the events.")
     private File mReportFile = null;
@@ -69,18 +65,11 @@ public class SubprocessResultsReporter
     @Option(name = "output-test-log", description = "Option to report test logs to parent process.")
     private boolean mOutputTestlog = false;
 
-    private IInvocationContext mContext = null;
+    private IBuildInfo mPrimaryBuildInfo = null;
     private Socket mReportSocket = null;
-    private Object mLock = new Object();
     private PrintWriter mPrintWriter = null;
 
     private boolean mPrintWarning = true;
-    private boolean mCancelled = false;
-
-    @Override
-    public boolean supportGranularResults() {
-        return true;
-    }
 
     /** {@inheritDoc} */
     @Override
@@ -149,14 +138,8 @@ public class SubprocessResultsReporter
     /** {@inheritDoc} */
     @Override
     public void testRunStarted(String runName, int testCount, int attemptNumber) {
-        testRunStarted(runName, testCount, attemptNumber, System.currentTimeMillis());
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public void testRunStarted(String runName, int testCount, int attemptNumber, long startTime) {
         TestRunStartedEventInfo info =
-                new TestRunStartedEventInfo(runName, testCount, attemptNumber, startTime);
+                new TestRunStartedEventInfo(runName, testCount, attemptNumber);
         printEvent(SubprocessTestResultsParser.StatusKeys.TEST_RUN_STARTED, info);
     }
 
@@ -190,8 +173,10 @@ public class SubprocessResultsReporter
         InvocationStartedEventInfo info =
                 new InvocationStartedEventInfo(context.getTestTag(), System.currentTimeMillis());
         printEvent(SubprocessTestResultsParser.StatusKeys.INVOCATION_STARTED, info);
-        // Save off the context so that we can parse it later during invocation ended.
-        mContext = context;
+
+        // Save off primary build info so that we can parse it later during invocation ended.
+        List<IBuildInfo> infos = context.getBuildInfos();
+        mPrimaryBuildInfo = infos.isEmpty() ? null : infos.get(0);
     }
 
     /** {@inheritDoc} */
@@ -220,7 +205,8 @@ public class SubprocessResultsReporter
     /** {@inheritDoc} */
     @Override
     public void logAssociation(String dataName, LogFile logFile) {
-        LogAssociationEventInfo info = new LogAssociationEventInfo(dataName, logFile);
+        LogAssociationEventInfo info =
+                new LogAssociationEventInfo("subprocess-a-" + dataName, logFile);
         printEvent(SubprocessTestResultsParser.StatusKeys.LOG_ASSOCIATION, info);
     }
 
@@ -229,18 +215,12 @@ public class SubprocessResultsReporter
      */
     @Override
     public void invocationEnded(long elapsedTime) {
-        if (mContext == null) {
+        if (mPrimaryBuildInfo == null) {
             return;
         }
-
-        Map<String, String> metrics = mContext.getAttributes().getUniqueMap();
-        // All the invocation level metrics collected
-        metrics.putAll(InvocationMetricLogger.getInvocationMetrics());
-        InvocationEndedEventInfo eventEnd = new InvocationEndedEventInfo(metrics);
+        InvocationEndedEventInfo eventEnd =
+                new InvocationEndedEventInfo(mPrimaryBuildInfo.getBuildAttributes());
         printEvent(SubprocessTestResultsParser.StatusKeys.INVOCATION_ENDED, eventEnd);
-        // Upon invocation ended, trigger the end of the socket when the process finishes
-        SocketFinisher thread = new SocketFinisher();
-        Runtime.getRuntime().addShutdownHook(thread);
     }
 
     /**
@@ -296,21 +276,16 @@ public class SubprocessResultsReporter
         }
         if(mReportPort != null) {
             try {
-                if (mCancelled) {
-                    return;
+                if (mReportSocket == null) {
+                    mReportSocket = new Socket("localhost", mReportPort.intValue());
+                    mPrintWriter = new PrintWriter(mReportSocket.getOutputStream(), true);
                 }
-                synchronized (mLock) {
-                    if (mReportSocket == null) {
-                        mReportSocket = new Socket("localhost", mReportPort.intValue());
-                        mPrintWriter = new PrintWriter(mReportSocket.getOutputStream(), true);
-                    }
-                    if (!mReportSocket.isConnected()) {
-                        throw new RuntimeException("Reporter Socket is not connected");
-                    }
-                    String eventLog = String.format("%s %s\n", key, event.toString());
-                    mPrintWriter.print(eventLog);
-                    mPrintWriter.flush();
+                if (!mReportSocket.isConnected()) {
+                    throw new RuntimeException("Reporter Socket is not connected");
                 }
+                String eventLog = String.format("%s %s\n", key, event.toString());
+                mPrintWriter.print(eventLog);
+                mPrintWriter.flush();
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -327,34 +302,12 @@ public class SubprocessResultsReporter
     /** {@inheritDoc} */
     @Override
     public void close() {
-        mCancelled = true;
-        synchronized (mLock) {
-            if (mPrintWriter != null) {
-                mPrintWriter.flush();
-            }
-            StreamUtil.close(mPrintWriter);
-            mPrintWriter = null;
-            StreamUtil.close(mReportSocket);
-            mReportSocket = null;
-        }
+        StreamUtil.close(mReportSocket);
+        StreamUtil.close(mPrintWriter);
     }
 
     /** Sets whether or not we should output the test logged or not. */
     public void setOutputTestLog(boolean outputTestLog) {
         mOutputTestlog = outputTestLog;
-    }
-
-    /** Threads that help terminating the socket. */
-    private class SocketFinisher extends Thread {
-
-        public SocketFinisher() {
-            super();
-            setName("SubprocessResultsReporter-socket-finisher");
-        }
-
-        @Override
-        public void run() {
-            close();
-        }
     }
 }

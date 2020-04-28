@@ -65,28 +65,24 @@ public class SubprocessEventHelper {
         public String mRunName = null;
         public Integer mTestCount = null;
         public Integer mAttempt = null;
-        public Long mStartTime = null;
 
         /** Keep this constructor for legacy compatibility. */
         public TestRunStartedEventInfo(String runName, int testCount) {
             mRunName = runName;
             mTestCount = testCount;
             mAttempt = 0;
-            mStartTime = System.currentTimeMillis();
         }
 
-        public TestRunStartedEventInfo(String runName, int testCount, int attempt, long startTime) {
+        public TestRunStartedEventInfo(String runName, int testCount, int attempt) {
             mRunName = runName;
             mTestCount = testCount;
             mAttempt = attempt;
-            mStartTime = startTime;
         }
 
         public TestRunStartedEventInfo(JSONObject jsonObject) throws JSONException {
             mRunName = jsonObject.getString(RUNNAME_KEY);
             mTestCount = jsonObject.getInt(TESTCOUNT_KEY);
             mAttempt = jsonObject.optInt(ATTEMPT_KEY, 0);
-            mStartTime = jsonObject.optLong(START_TIME, System.currentTimeMillis());
         }
 
         @Override
@@ -101,9 +97,6 @@ public class SubprocessEventHelper {
                 }
                 if (mAttempt != null) {
                     tags.put(ATTEMPT_KEY, mAttempt.intValue());
-                }
-                if (mStartTime != null) {
-                    tags.put(START_TIME, mStartTime.longValue());
                 }
             } catch (JSONException e) {
                 CLog.e(e);
@@ -546,7 +539,7 @@ public class SubprocessEventHelper {
                         mModuleContext
                                 .getAttributes()
                                 .getUniqueMap()
-                                .get(ModuleDefinition.MODULE_ID);
+                                .get(ModuleDefinition.MODULE_NAME);
                 if (moduleName != null) {
                     tags.put(MODULE_NAME, moduleName);
                 }

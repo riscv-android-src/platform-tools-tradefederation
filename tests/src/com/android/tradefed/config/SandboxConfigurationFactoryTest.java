@@ -16,7 +16,6 @@
 package com.android.tradefed.config;
 
 import static org.easymock.EasyMock.anyObject;
-import static org.easymock.EasyMock.endsWith;
 import static org.easymock.EasyMock.eq;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -77,7 +76,7 @@ public class SandboxConfigurationFactoryTest {
         EasyMock.expect(
                         mMockRunUtil.runTimedCmd(
                                 EasyMock.anyLong(),
-                                endsWith("/java"),
+                                eq("java"),
                                 eq("-cp"),
                                 anyObject(),
                                 eq(SandboxConfigDump.class.getCanonicalName()),

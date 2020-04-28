@@ -17,16 +17,11 @@ package com.android.tradefed.device.cloud;
 
 import com.android.ddmlib.IDevice;
 import com.android.tradefed.build.IBuildInfo;
-import com.android.tradefed.config.Configuration;
-import com.android.tradefed.config.ConfigurationException;
-import com.android.tradefed.config.IConfiguration;
-import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IDeviceMonitor;
 import com.android.tradefed.device.IDeviceStateMonitor;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.TestDevice;
-import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.device.cloud.GceAvdInfo.GceStatus;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -54,9 +49,6 @@ public class ManagedRemoteDevice extends TestDevice implements ITestLoggerReceiv
     private GceAvdInfo mGceAvd;
     private ITestLogger mTestLogger;
 
-    private TestDeviceOptions mCopiedOptions;
-    private IConfiguration mValidationConfig;
-
     /**
      * Creates a {@link ManagedRemoteDevice}.
      *
@@ -74,27 +66,28 @@ public class ManagedRemoteDevice extends TestDevice implements ITestLoggerReceiv
             throws TargetSetupError, DeviceNotAvailableException {
         super.preInvocationSetup(info, testResourceBuildInfos);
         mGceAvd = null;
-        // First get the options
-        TestDeviceOptions options = getOptions();
+
         // We create a brand new GceManager each time to ensure clean state.
-        mGceHandler = new GceManager(getDeviceDescriptor(), options, info, testResourceBuildInfos);
+        mGceHandler =
+                new GceManager(getDeviceDescriptor(), getOptions(), info, testResourceBuildInfos);
         getGceHandler().logStableHostImageInfos(info);
         setFastbootEnabled(false);
 
         // Launch GCE helper script.
         long startTime = getCurrentTime();
         launchGce();
-        long remainingTime = options.getGceCmdTimeout() - (getCurrentTime() - startTime);
+        long remainingTime = getOptions().getGceCmdTimeout() - (getCurrentTime() - startTime);
         if (remainingTime < 0) {
             throw new DeviceNotAvailableException(
-                    String.format("Failed to launch GCE after %sms", options.getGceCmdTimeout()),
+                    String.format(
+                            "Failed to launch GCE after %sms", getOptions().getGceCmdTimeout()),
                     getSerialNumber());
         }
     }
 
     /** {@inheritDoc} */
     @Override
-    public void postInvocationTearDown(Throwable exception) {
+    public void postInvocationTearDown() {
         try {
             CLog.i("Shutting down GCE device %s", getSerialNumber());
             // Log the last part of the logcat from the tear down.
@@ -131,14 +124,8 @@ public class ManagedRemoteDevice extends TestDevice implements ITestLoggerReceiv
                 getGceHandler().cleanUp();
             }
         } finally {
-            // Reset the internal variable
-            mCopiedOptions = null;
-            if (mValidationConfig != null) {
-                mValidationConfig.cleanConfigurationData();
-                mValidationConfig = null;
-            }
             // Ensure parent postInvocationTearDown is always called.
-            super.postInvocationTearDown(exception);
+            super.postInvocationTearDown();
         }
     }
 
@@ -204,26 +191,5 @@ public class ManagedRemoteDevice extends TestDevice implements ITestLoggerReceiv
     @VisibleForTesting
     GceManager getGceHandler() {
         return mGceHandler;
-    }
-
-    /**
-     * Override the base getter to be able to resolve dynamic options before attempting to do the
-     * remote setup.
-     */
-    @Override
-    public TestDeviceOptions getOptions() {
-        if (mCopiedOptions == null) {
-            mCopiedOptions = new TestDeviceOptions();
-            TestDeviceOptions options = super.getOptions();
-            OptionCopier.copyOptionsNoThrow(options, mCopiedOptions);
-            mValidationConfig = new Configuration("validation", "validation");
-            mValidationConfig.setDeviceOptions(mCopiedOptions);
-            try {
-                mValidationConfig.resolveDynamicOptions();
-            } catch (ConfigurationException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        return mCopiedOptions;
     }
 }

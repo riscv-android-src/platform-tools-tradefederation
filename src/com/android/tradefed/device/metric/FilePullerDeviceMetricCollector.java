@@ -18,7 +18,6 @@ package com.android.tradefed.device.metric;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.util.FileUtil;
@@ -137,19 +136,14 @@ public abstract class FilePullerDeviceMetricCollector extends BaseDeviceMetricCo
 
     }
 
-
     private Entry<String, File> pullMetricFile(
             String pattern, final Map<String, String> currentMetrics) {
         Pattern p = Pattern.compile(pattern);
         for (Entry<String, String> entry : currentMetrics.entrySet()) {
             if (p.matcher(entry.getKey()).find()) {
                 for (ITestDevice device : getDevices()) {
-                    // Skip StubDevices
-                    if (device.getIDevice() instanceof StubDevice) {
-                        continue;
-                    }
                     try {
-                        File attemptPull = retrieveFile(device, entry.getValue());
+                        File attemptPull = device.pullFile(entry.getValue());
                         if (attemptPull != null) {
                             if (mCleanUp) {
                                 device.deleteFile(entry.getValue());
@@ -172,19 +166,6 @@ public abstract class FilePullerDeviceMetricCollector extends BaseDeviceMetricCo
     }
 
     /**
-     * Pull the file from the specified path in the device.
-     *
-     * @param device which has the file.
-     * @param remoteFilePath location in the device.
-     * @return File retrieved from the given path in the device.
-     * @throws DeviceNotAvailableException
-     */
-    protected File retrieveFile(ITestDevice device, String remoteFilePath)
-            throws DeviceNotAvailableException {
-        return device.pullFile(remoteFilePath);
-    }
-
-    /**
      * Pulls the directory and all its content from the device and save it in the
      * host under the host_tmp folder.
      *
@@ -196,10 +177,6 @@ public abstract class FilePullerDeviceMetricCollector extends BaseDeviceMetricCo
         try {
             File tmpDestDir = FileUtil.createTempDir("host_tmp");
             for (ITestDevice device : getDevices()) {
-                // Skip StubDevices
-                if (device.getIDevice() instanceof StubDevice) {
-                    continue;
-                }
                 try {
                     if (device.pullDir(keyDirectory, tmpDestDir)) {
                         if (mCleanUp) {

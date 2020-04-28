@@ -16,7 +16,6 @@
 package com.android.tradefed.build;
 
 import com.android.tradefed.device.DeviceNotAvailableException;
-import com.android.tradefed.device.DeviceProperties;
 import com.android.tradefed.device.ITestDevice;
 
 /**
@@ -100,11 +99,8 @@ public class DeviceBuildDescriptor {
             throws DeviceNotAvailableException {
         b.addBuildAttribute(DEVICE_BUILD_ID, device.getBuildId());
         b.addBuildAttribute(DEVICE_BUILD_ALIAS, device.getBuildAlias());
-        String buildFlavor =
-                String.format(
-                        "%s-%s",
-                        device.getProperty(DeviceProperties.PRODUCT),
-                        device.getProperty(DeviceProperties.BUILD_TYPE));
+        String buildFlavor = String.format("%s-%s", device.getProperty("ro.product.name"),
+                device.getProperty("ro.build.type"));
         b.addBuildAttribute(DEVICE_BUILD_FLAVOR, buildFlavor);
         b.addBuildAttribute(DEVICE_DESC, generateDeviceDesc(device));
         b.addBuildAttribute(DEVICE_PRODUCT, generateDeviceProduct(device));
@@ -123,15 +119,12 @@ public class DeviceBuildDescriptor {
     public static String generateDeviceDesc(ITestDevice device)
             throws DeviceNotAvailableException {
         // brand is typically all lower case. Capitalize it
-        String brand = device.getProperty(DeviceProperties.BRAND);
+        String brand =  device.getProperty("ro.product.brand");
         if (brand.length() > 1) {
             brand = String.format("%s%s", brand.substring(0, 1).toUpperCase(), brand.substring(1));
         }
-        return String.format(
-                "%s %s %s",
-                brand,
-                device.getProperty("ro.product.model"),
-                device.getProperty(DeviceProperties.RELEASE_VERSION));
+        return String.format("%s %s %s", brand, device.getProperty("ro.product.model"),
+                device.getProperty("ro.build.version.release"));
     }
 
     /**

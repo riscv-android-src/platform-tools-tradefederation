@@ -103,6 +103,9 @@ public class JavaCodeCoverageFlusher {
                 mDevice.executeShellCommand(String.format(COVERAGE_RESET_FORMAT, processName));
             }
         }
+
+        // Reset coverage for system_server.
+        mDevice.executeShellCommand("cmd coverage reset");
     }
 
     /**
@@ -133,6 +136,10 @@ public class JavaCodeCoverageFlusher {
                 coverageFiles.add(outputPath);
             }
         }
+
+        // Flush coverage for system_server.
+        mDevice.executeShellCommand("cmd coverage dump /data/misc/trace/system_server.ec");
+        coverageFiles.add("/data/misc/trace/system_server.ec");
 
         return coverageFiles;
     }

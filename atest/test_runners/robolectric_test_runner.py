@@ -56,11 +56,7 @@ class RobolectricTestRunner(test_runner_base.TestRunnerBase):
     def __init__(self, results_dir, **kwargs):
         """Init stuff for robolectric runner class."""
         super(RobolectricTestRunner, self).__init__(results_dir, **kwargs)
-        # TODO: Rollback when b/131301211 is fixed.
-        if not os.getenv(test_runner_base.OLD_OUTPUT_ENV_VAR):
-            self.is_verbose = True
-        else:
-            self.is_verbose = logging.getLogger().isEnabledFor(logging.DEBUG)
+        self.is_verbose = logging.getLogger().isEnabledFor(logging.DEBUG)
 
     def run_tests(self, test_infos, extra_args, reporter):
         """Run the list of test_infos. See base class for more.
@@ -73,10 +69,9 @@ class RobolectricTestRunner(test_runner_base.TestRunnerBase):
         Returns:
             0 if tests succeed, non-zero otherwise.
         """
-        # TODO: Rollback when b/131301211 is fixed.
         if os.getenv(test_runner_base.OLD_OUTPUT_ENV_VAR):
-            return self.run_tests_pretty(test_infos, extra_args, reporter)
-        return self.run_tests_raw(test_infos, extra_args, reporter)
+            return self.run_tests_raw(test_infos, extra_args, reporter)
+        return self.run_tests_pretty(test_infos, extra_args, reporter)
 
     def run_tests_raw(self, test_infos, extra_args, reporter):
         """Run the list of test_infos with raw output.
@@ -162,8 +157,6 @@ class RobolectricTestRunner(test_runner_base.TestRunnerBase):
         """
         buf = ''
         while True:
-            # Make sure that ATest gets content from current position.
-            communication_file.seek(0, 1)
             data = communication_file.read()
             buf += data
             reg = re.compile(r'(.|\n)*}\n\n')
@@ -252,7 +245,7 @@ class RobolectricTestRunner(test_runner_base.TestRunnerBase):
         """
         run_cmds = []
         for test_info in test_infos:
-            robo_command = atest_utils.get_build_cmd() + [str(test_info.test_name)]
+            robo_command = atest_utils.BUILD_CMD + [str(test_info.test_name)]
             run_cmd = ' '.join(x for x in robo_command)
             if constants.DRY_RUN in extra_args:
                 run_cmd = run_cmd.replace(

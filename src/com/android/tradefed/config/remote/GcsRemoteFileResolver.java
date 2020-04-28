@@ -19,13 +19,10 @@ import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.gcs.GCSDownloaderHelper;
 import com.android.tradefed.config.ConfigurationException;
-import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.log.LogUtil.CLog;
 
 import java.io.File;
-import java.io.IOException;
-import java.util.Map;
 
 import javax.annotation.Nonnull;
 
@@ -37,17 +34,15 @@ public class GcsRemoteFileResolver implements IRemoteFileResolver {
     private GCSDownloaderHelper mHelper = null;
 
     @Override
-    public File resolveRemoteFiles(File consideredFile, Option option, Map<String, String> query)
+    public File resolveRemoteFiles(File consideredFile, Option option)
             throws ConfigurationException {
         // Don't use absolute path as it would not start with gs:
         String path = consideredFile.getPath();
         CLog.d("Considering option '%s' with path: '%s' for download.", option.name(), path);
+        // We need to download the file from the bucket
         try {
-            // We need to download the file from the bucket
-            File downloadedFile = getDownloader().fetchTestResource(path);
-            // Unzip it if required
-            return DynamicRemoteFileResolver.unzipIfRequired(downloadedFile, query);
-        } catch (BuildRetrievalError | IOException e) {
+            return getDownloader().fetchTestResource(path);
+        } catch (BuildRetrievalError e) {
             CLog.e(e);
             throw new ConfigurationException(
                     String.format("Failed to download %s due to: %s", path, e.getMessage()), e);
