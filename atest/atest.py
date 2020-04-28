@@ -599,6 +599,10 @@ def main(argv, results_dir, args):
         atest_execution_info.print_test_result(constants.ATEST_RESULT_ROOT,
                                                args.history)
         return constants.EXIT_CODE_SUCCESS
+    if args.latest_result:
+        atest_execution_info.print_test_result_by_path(
+            constants.LATEST_RESULT_FILE)
+        return constants.EXIT_CODE_SUCCESS
     mod_info = module_info.ModuleInfo(force_build=args.rebuild_module_info)
     if args.rebuild_module_info:
         _run_extra_tasks(join=True)
