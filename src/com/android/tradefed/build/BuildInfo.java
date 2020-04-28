@@ -134,12 +134,6 @@ public class BuildInfo implements IBuildInfo {
         return mTestResourceBuild;
     }
 
-    /** {@inheritDoc} */
-    @Override
-    public void setTestResourceBuild(boolean testResourceBuild) {
-        mTestResourceBuild = testResourceBuild;
-    }
-
     /**
      * {@inheritDoc}
      */
