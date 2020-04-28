@@ -206,9 +206,7 @@ class AtestArgParser(argparse.ArgumentParser):
                            metavar='MAX_ITERATIONS', help=RETRY_ANY_FAILURE)
 
         # Option for test result history.
-        group.add_argument('--history', nargs='?',
-                           type=_positive_int, const=1000, default=0,
-                           help=HISTORY)
+        group.add_argument('--history', nargs='?', const='99999', help=HISTORY)
 
         # This arg actually doesn't consume anything, it's primarily used for
         # the help description and creating custom_args in the NameSpace object.
