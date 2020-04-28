@@ -237,6 +237,23 @@ class ManagedDeviceList implements Iterable<IManagedTestDevice> {
     }
 
     /**
+     * Force allocate a device based on its serial, if the device isn't tracked yet we won't create
+     * its tracking. This is meant for force-allocate known devices, usually for automated recovery.
+     */
+    public IManagedTestDevice forceAllocate(String serial) {
+        if (!isValidDeviceSerial(serial)) {
+            return null;
+        }
+        mListLock.lock();
+        try {
+            // Unlike findOrCreate we don't attempt to create in this case.
+            return find(serial);
+        } finally {
+            mListLock.unlock();
+        }
+    }
+
+    /**
      * Directly add a device to the list. Should not be used outside of unit testing.
      * @param device
      */

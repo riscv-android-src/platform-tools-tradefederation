@@ -615,7 +615,7 @@ public class DeviceManager implements IDeviceManager {
     @Override
     public ITestDevice forceAllocateDevice(String serial) {
         checkInit();
-        IManagedTestDevice d = mManagedDeviceList.findOrCreate(new StubDevice(serial, false));
+        IManagedTestDevice d = mManagedDeviceList.forceAllocate(serial);
         if (d != null) {
             DeviceEventResponse r = d.handleAllocationEvent(DeviceEvent.FORCE_ALLOCATE_REQUEST);
             if (r.stateChanged && r.allocationState == DeviceAllocationState.Allocated) {
@@ -836,8 +836,15 @@ public class DeviceManager implements IDeviceManager {
      */
     @Override
     public ITestDevice connectToTcpDevice(String ipAndPort) {
-        ITestDevice tcpDevice = forceAllocateDevice(ipAndPort);
+        IManagedTestDevice tcpDevice = mManagedDeviceList.findOrCreate(new StubDevice(ipAndPort));
         if (tcpDevice == null) {
+            return null;
+        }
+        DeviceEventResponse r = tcpDevice.handleAllocationEvent(DeviceEvent.FORCE_ALLOCATE_REQUEST);
+        if (r.stateChanged && r.allocationState == DeviceAllocationState.Allocated) {
+            // Wait for the fastboot state to be updated once to update the IDevice.
+            tcpDevice.getMonitor().waitForDeviceBootloaderStateUpdate();
+        } else {
             return null;
         }
         if (doAdbConnect(ipAndPort)) {

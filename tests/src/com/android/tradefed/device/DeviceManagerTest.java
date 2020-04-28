@@ -502,11 +502,9 @@ public class DeviceManagerTest {
     /** Test {@link DeviceManager#forceAllocateDevice(String)} when device is unknown */
     @Test
     public void testForceAllocateDevice() {
-        EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.FORCE_ALLOCATE_REQUEST))
-                .andReturn(new DeviceEventResponse(DeviceAllocationState.Allocated, true));
         replayMocks();
         DeviceManager manager = createDeviceManager(null);
-        assertNotNull(manager.forceAllocateDevice("unknownserial"));
+        assertNull(manager.forceAllocateDevice("unknownserial"));
         verifyMocks();
     }
 
@@ -514,8 +512,6 @@ public class DeviceManagerTest {
     @Test
     public void testForceAllocateDevice_available() {
         setCheckAvailableDeviceExpectations();
-        EasyMock.expect(mMockTestDevice.getAllocationState())
-                .andReturn(DeviceAllocationState.Available);
         EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.FORCE_ALLOCATE_REQUEST))
                 .andReturn(new DeviceEventResponse(DeviceAllocationState.Allocated, true));
         replayMocks();
@@ -528,8 +524,6 @@ public class DeviceManagerTest {
     @Test
     public void testForceAllocateDevice_alreadyAllocated() {
         setCheckAvailableDeviceExpectations();
-        EasyMock.expect(mMockTestDevice.getAllocationState())
-                .andReturn(DeviceAllocationState.Allocated);
         EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.ALLOCATE_REQUEST))
                 .andReturn(new DeviceEventResponse(DeviceAllocationState.Allocated, true));
         EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.FORCE_ALLOCATE_REQUEST))
