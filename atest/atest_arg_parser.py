@@ -53,6 +53,7 @@ INSTANT = ('Run the instant_app version of the module if the module supports it.
            'Note: Nothing\'s going to run if it\'s not an Instant App test and '
            '"--instant" is passed.')
 ITERATION = 'Loop-run tests until the max iteration is reached. (10 by default)'
+LATEST_RESULT = 'Print latest test result.'
 LIST_MODULES = 'List testable modules for the given suite.'
 REBUILD_MODULE_INFO = ('Forces a rebuild of the module-info.json file. '
                        'This may be necessary following a repo sync or '
@@ -205,8 +206,14 @@ class AtestArgParser(argparse.ArgumentParser):
                            type=_positive_int, const=10, default=0,
                            metavar='MAX_ITERATIONS', help=RETRY_ANY_FAILURE)
 
-        # Option for test result history.
-        group.add_argument('--history', nargs='?', const='99999', help=HISTORY)
+        # A group of options for history. They are mutually exclusive
+        # in a command line.
+        history_group = self.add_mutually_exclusive_group()
+        # History related options.
+        history_group.add_argument('--latest-result', action='store_true',
+                                   help=LATEST_RESULT)
+        history_group.add_argument('--history', nargs='?', const='99999',
+                                   help=HISTORY)
 
         # This arg actually doesn't consume anything, it's primarily used for
         # the help description and creating custom_args in the NameSpace object.
@@ -250,6 +257,7 @@ def print_epilog_text():
                                          INSTALL=INSTALL,
                                          INSTANT=INSTANT,
                                          ITERATION=ITERATION,
+                                         LATEST_RESULT=LATEST_RESULT,
                                          LIST_MODULES=LIST_MODULES,
                                          REBUILD_MODULE_INFO=REBUILD_MODULE_INFO,
                                          RERUN_UNTIL_FAILURE=RERUN_UNTIL_FAILURE,
@@ -343,6 +351,9 @@ OPTIONS
 
         -L, --list-modules
             {LIST_MODULES}
+
+        --latest-result
+            {LATEST_RESULT}
 
         -v, --verbose
             {VERBOSE}
