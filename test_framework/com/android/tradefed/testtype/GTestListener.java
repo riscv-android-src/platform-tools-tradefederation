@@ -22,8 +22,10 @@ import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -32,6 +34,7 @@ import java.util.Set;
  */
 final class GTestListener extends ResultForwarder {
 
+    private static final int MAX_PARTIAL_SET_SIZE = 20;
     private Set<TestDescription> mTests = new HashSet<>();
     private Set<TestDescription> mDuplicateTests = new HashSet<>();
 
@@ -50,11 +53,19 @@ final class GTestListener extends ResultForwarder {
     @Override
     public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
         if (!mDuplicateTests.isEmpty()) {
-            FailureDescription error =
-                    FailureDescription.create(
-                            String.format(
-                                    "The following tests ran more than once: %s.",
-                                    mDuplicateTests));
+            StringBuilder errorMessage = new StringBuilder();
+            errorMessage.append(
+                    String.format("%s tests ran more than once.", mDuplicateTests.size()));
+            if (mDuplicateTests.size() > MAX_PARTIAL_SET_SIZE) {
+                List<TestDescription> partialDuplicateSet = new ArrayList<>(mDuplicateTests);
+                while (partialDuplicateSet.size() > MAX_PARTIAL_SET_SIZE) {
+                    partialDuplicateSet.remove(0);
+                }
+                errorMessage.append(String.format(" Partial list: %s", partialDuplicateSet));
+            } else {
+                errorMessage.append(String.format(" Full list: %s", mDuplicateTests));
+            }
+            FailureDescription error = FailureDescription.create(errorMessage.toString());
             error.setFailureStatus(FailureStatus.TEST_FAILURE);
             super.testRunFailed(error);
         }
