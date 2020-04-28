@@ -177,7 +177,8 @@ def has_non_test_options(args):
             or args.help
             or args.history
             or args.info
-            or args.version)
+            or args.version
+            or args.latest_result)
 
 
 class AtestExecutionInfo(object):
