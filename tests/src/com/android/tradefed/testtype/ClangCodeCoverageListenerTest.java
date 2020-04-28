@@ -36,7 +36,6 @@ import com.android.tradefed.testtype.coverage.CoverageOptions;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.IRunUtil;
-import com.android.tradefed.util.TarUtil;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import com.google.common.base.VerifyException;
@@ -148,7 +147,7 @@ public class ClangCodeCoverageListenerTest {
         // Setup mocks.
         doReturn(true).when(mMockDevice).enableAdbRoot();
         doReturn(true).when(mMockDevice).isAdbRoot();
-        doReturn(createTarGz(ImmutableMap.of())).when(mMockDevice).pullFile(anyString());
+        doReturn(createTar(ImmutableMap.of())).when(mMockDevice).pullFile(anyString());
 
         // Simulate a test run.
         mListener.testRunStarted(RUN_NAME, TEST_COUNT);
@@ -166,7 +165,7 @@ public class ClangCodeCoverageListenerTest {
         // Setup mocks.
         doReturn(true).when(mMockDevice).enableAdbRoot();
         File tarGz =
-                createTarGz(
+                createTar(
                         ImmutableMap.of(
                                 "path/to/coverage.profraw",
                                 ByteString.copyFromUtf8("coverage.profraw"),
@@ -202,7 +201,7 @@ public class ClangCodeCoverageListenerTest {
         // Setup mocks.
         doReturn(true).when(mMockDevice).enableAdbRoot();
         File tarGz =
-                createTarGz(
+                createTar(
                         ImmutableMap.of(
                                 "path/to/coverage.profraw",
                                 ByteString.copyFromUtf8("coverage.profraw"),
@@ -234,7 +233,7 @@ public class ClangCodeCoverageListenerTest {
 
         // Setup mocks.
         doReturn(true).when(mMockDevice).enableAdbRoot();
-        doReturn(createTarGz(ImmutableMap.of())).when(mMockDevice).pullFile(anyString());
+        doReturn(createTar(ImmutableMap.of())).when(mMockDevice).pullFile(anyString());
 
         // Simulate a test run.
         mListener.testRunStarted(RUN_NAME, TEST_COUNT);
@@ -252,7 +251,7 @@ public class ClangCodeCoverageListenerTest {
         // Setup mocks.
         doReturn(true).when(mMockDevice).enableAdbRoot();
         File tarGz =
-                createTarGz(
+                createTar(
                         ImmutableMap.of(
                                 "path/to/coverage.profraw",
                                 ByteString.copyFromUtf8("coverage.profraw"),
@@ -282,7 +281,7 @@ public class ClangCodeCoverageListenerTest {
         // Setup mocks.
         doReturn(true).when(mMockDevice).enableAdbRoot();
         File tarGz =
-                createTarGz(
+                createTar(
                         ImmutableMap.of(
                                 "path/to/coverage.profraw",
                                 ByteString.copyFromUtf8("coverage.profraw"),
@@ -346,8 +345,8 @@ public class ClangCodeCoverageListenerTest {
         }
     }
 
-    /** Utility method to create .tar.gz files. */
-    private File createTarGz(Map<String, ByteString> fileContents) throws IOException {
+    /** Utility method to create .tar files. */
+    private File createTar(Map<String, ByteString> fileContents) throws IOException {
         File tarFile = folder.newFile();
         try (TarArchiveOutputStream out =
                 new TarArchiveOutputStream(new FileOutputStream(tarFile))) {
@@ -360,7 +359,7 @@ public class ClangCodeCoverageListenerTest {
                 out.closeArchiveEntry();
             }
         }
-        return TarUtil.gzip(tarFile);
+        return tarFile;
     }
 
     private File createProfileToolZip() throws IOException {

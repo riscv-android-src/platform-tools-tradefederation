@@ -61,13 +61,13 @@ public final class ClangCodeCoverageListener extends ResultForwarder
 
     private static final String NATIVE_COVERAGE_DEVICE_PATH = "/data/misc/trace";
     private static final String COVERAGE_TAR_PATH =
-            String.format("%s/coverage.tar.gz", NATIVE_COVERAGE_DEVICE_PATH);
+            String.format("%s/coverage.tar", NATIVE_COVERAGE_DEVICE_PATH);
 
     // Finds .profraw files in /data/misc/trace and compresses those files only. Stores the full
     // path of the file on the device.
     private static final String ZIP_CLANG_FILES_COMMAND =
             String.format(
-                    "find %s -name '*.profraw' | tar -cvzf %s -T -",
+                    "find %s -name '*.profraw' | tar -cvf %s -T -",
                     NATIVE_COVERAGE_DEVICE_PATH, COVERAGE_TAR_PATH);
 
     // Deletes .profraw files in /data/misc/trace.
@@ -150,7 +150,8 @@ public final class ClangCodeCoverageListener extends ResultForwarder
             verifyNotNull(coverageTarGz, "Failed to pull the coverage file %s", COVERAGE_TAR_PATH);
             mDevice.deleteFile(COVERAGE_TAR_PATH);
 
-            untarDir = TarUtil.extractTarGzipToTemp(coverageTarGz, "clang_coverage");
+            untarDir = FileUtil.createTempDir("clang_coverage");
+            TarUtil.unTar(coverageTarGz, untarDir);
             Set<String> rawProfileFiles = FileUtil.findFiles(untarDir, ".*\\.profraw");
 
             if (rawProfileFiles.isEmpty()) {
