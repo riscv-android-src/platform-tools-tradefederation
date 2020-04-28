@@ -42,7 +42,7 @@ import javax.annotation.Nullable;
 
 /**
  * Target preparer which executes a script before running a test. The script can reference the
- * device's serial number using the SERIAL environment variable.
+ * device's serial number using the ANDROID_SERIAL environment variable.
  */
 @OptionClass(alias = "run-host-script")
 public class RunHostScriptTargetPreparer extends BaseTargetPreparer {
@@ -79,7 +79,7 @@ public class RunHostScriptTargetPreparer extends BaseTargetPreparer {
 
         // Set working directory and environment variables
         getRunUtil().setWorkingDir(mWorkDir);
-        getRunUtil().setEnvVariable("SERIAL", device.getSerialNumber());
+        getRunUtil().setEnvVariable("ANDROID_SERIAL", device.getSerialNumber());
         setPathVariable(testInfo);
 
         // Execute script and handle result
