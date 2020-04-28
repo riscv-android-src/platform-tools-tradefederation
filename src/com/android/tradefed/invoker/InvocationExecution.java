@@ -89,7 +89,6 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 /**
  * Class that describes all the invocation steps: build download, target_prep, run tests, clean up.
@@ -337,12 +336,7 @@ public class InvocationExecution implements IInvocationExecution {
             if (device instanceof ITestLoggerReceiver) {
                 ((ITestLoggerReceiver) context.getDevice(deviceName)).setTestLogger(logger);
             }
-            device.preInvocationSetup(
-                    context.getBuildInfo(deviceName),
-                    context.getBuildInfos()
-                            .stream()
-                            .filter(buildInfo -> buildInfo.isTestResourceBuild())
-                            .collect(Collectors.toList()));
+            device.preInvocationSetup(context.getBuildInfo(deviceName));
         }
     }
 
