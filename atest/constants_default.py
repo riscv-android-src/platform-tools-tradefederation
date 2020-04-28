@@ -233,3 +233,4 @@ PACKAGE_OUTPUT_RE = re.compile(r'(?P<java_dir>/.*/).*[.](java|kt)[:]\s*package\s
                                r'(?P<package>[^(;|\s)]+)\s*')
 
 ATEST_RESULT_ROOT = '/tmp/atest_result'
+LATEST_RESULT_FILE = os.path.join(ATEST_RESULT_ROOT, 'LATEST', 'test_result')
