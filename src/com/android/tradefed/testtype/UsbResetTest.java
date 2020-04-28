@@ -47,6 +47,7 @@ public class UsbResetTest implements IRemoteTest {
                 } else {
                     CLog.d("Resetting USB port for device '%s'", serial);
                     usbDevice.reset();
+                    device.waitForDeviceOnline();
                     // If device fails to reboot it will throw an exception and be left unavailable
                     // again.
                     device.reboot();
