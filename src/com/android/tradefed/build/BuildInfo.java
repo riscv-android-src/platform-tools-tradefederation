@@ -64,8 +64,6 @@ public class BuildInfo implements IBuildInfo {
     private String mBuildFlavor = null;
     private String mBuildBranch = null;
     private String mDeviceSerial = null;
-    /** Whether or not the build info describes a test resource */
-    private boolean mTestResourceBuild = false;
 
     /** File handling properties: Some files of the BuildInfo might requires special handling */
     private final Set<BuildInfoProperties> mProperties = new HashSet<>();
@@ -126,12 +124,6 @@ public class BuildInfo implements IBuildInfo {
     @Override
     public void setBuildId(String buildId) {
         mBuildId = buildId;
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public boolean isTestResourceBuild() {
-        return mTestResourceBuild;
     }
 
     /**
@@ -598,8 +590,6 @@ public class BuildInfo implements IBuildInfo {
             protoBuilder.addVersionedFile(buildFile);
         }
         protoBuilder.setBuildInfoClass(this.getClass().getCanonicalName());
-        // Test resource
-        protoBuilder.setIsTestResource(isTestResourceBuild());
         return protoBuilder.build();
     }
 
