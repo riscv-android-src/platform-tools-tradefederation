@@ -322,7 +322,7 @@ public class SandboxedInvocationExecutionTest {
         mContext.addInvocationAttribute("test", "test");
         // Device early preInvocationSetup was called and even if no tests run we still call tear
         // down
-        Mockito.verify(mMockDevice).preInvocationSetup(any(), any());
+        Mockito.verify(mMockDevice).preInvocationSetup(any());
         Mockito.verify(mMockDevice).postInvocationTearDown(null);
     }
 
@@ -379,7 +379,7 @@ public class SandboxedInvocationExecutionTest {
         doReturn(info).when(mMockProvider).getBuild();
 
         DeviceNotAvailableException exception = new DeviceNotAvailableException("reason", "serial");
-        doThrow(exception).when(mMockDevice).preInvocationSetup(eq(info), any());
+        doThrow(exception).when(mMockDevice).preInvocationSetup(eq(info));
 
         mInvocation.invoke(mContext, mConfig, mMockRescheduler, mMockListener);
         // No tests to run but we still call start/end
@@ -390,7 +390,7 @@ public class SandboxedInvocationExecutionTest {
         mContext.addInvocationAttribute("test", "test");
         // Device early preInvocationSetup was called and even if no tests run we still call tear
         // down
-        Mockito.verify(mMockDevice).preInvocationSetup(any(), any());
+        Mockito.verify(mMockDevice).preInvocationSetup(any());
         Mockito.verify(mMockDevice).postInvocationTearDown(exception);
     }
 
