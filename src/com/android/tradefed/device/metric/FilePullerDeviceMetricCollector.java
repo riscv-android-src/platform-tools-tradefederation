@@ -28,6 +28,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -121,9 +122,11 @@ public abstract class FilePullerDeviceMetricCollector extends BaseDeviceMetricCo
             return;
         }
         for (String key : mKeys) {
-            Entry<String, File> pulledMetrics = pullMetricFile(key, currentMetrics);
-            if (pulledMetrics != null) {
-                processMetricFile(pulledMetrics.getKey(), pulledMetrics.getValue(), data);
+            Map<String, File> pulledMetrics = pullMetricFile(key, currentMetrics);
+
+            // Process all the metric files that matched the key pattern.
+            for (Map.Entry<String, File> entry : pulledMetrics.entrySet()) {
+                processMetricFile(entry.getKey(), entry.getValue(), data);
             }
         }
 
@@ -137,8 +140,9 @@ public abstract class FilePullerDeviceMetricCollector extends BaseDeviceMetricCo
     }
 
 
-    private Entry<String, File> pullMetricFile(
+    private Map<String, File> pullMetricFile(
             String pattern, final Map<String, String> currentMetrics) {
+        Map<String, File> matchedFiles = new HashMap<>();
         Pattern p = Pattern.compile(pattern);
         for (Entry<String, String> entry : currentMetrics.entrySet()) {
             if (p.matcher(entry.getKey()).find()) {
@@ -153,8 +157,9 @@ public abstract class FilePullerDeviceMetricCollector extends BaseDeviceMetricCo
                             if (mCleanUp) {
                                 device.deleteFile(entry.getValue());
                             }
-                            // Return the actual key and the file associated
-                            return new SimpleEntry<String, File>(entry.getKey(), attemptPull);
+                            // Store all the keys that matches the pattern and the corresponding
+                            // files pulled from the device.
+                            matchedFiles.put(entry.getKey(), attemptPull);
                         }
                     } catch (DeviceNotAvailableException e) {
                         CLog.e(
@@ -165,9 +170,13 @@ public abstract class FilePullerDeviceMetricCollector extends BaseDeviceMetricCo
                 }
             }
         }
-        // Not a hard failure, just nice to know
-        CLog.d("Could not find a device file associated to pattern '%s'.", pattern);
-        return null;
+
+        if (matchedFiles.isEmpty()) {
+            // Not a hard failure, just nice to know
+            CLog.d("Could not find a device file associated to pattern '%s'.", pattern);
+
+        }
+        return matchedFiles;
     }
 
     /**
