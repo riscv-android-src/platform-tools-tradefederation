@@ -96,7 +96,7 @@ public class GTestListenerTest {
         String moduleName = "testWithDuplicateTests";
         String testClass = "testClass";
         String testName1 = "testName1";
-        String duplicateTestsMessage = "The following tests ran more than once: ";
+        String duplicateTestsMessage = "1 tests ran more than once. Full list:";
         TestDescription testId1 = new TestDescription(testClass, testName1);
 
         mMockListener.testRunStarted(EasyMock.eq(moduleName), EasyMock.eq(2));
