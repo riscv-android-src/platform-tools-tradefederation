@@ -562,6 +562,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
         @Override
         public void run() {
+            if (mClient != null) {
+                mClient.notifyTradefedInvocationStartEvent();
+            }
             mStartTime = System.currentTimeMillis();
             ITestInvocation instance = getInvocation();
             IConfiguration config = mCmd.getConfiguration();
