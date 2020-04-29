@@ -29,6 +29,7 @@ import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLifeCycleReceiver;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.TimeUtil;
@@ -43,9 +44,11 @@ import java.util.HashMap;
  */
 @OptionClass(alias = "battery-checker")
 public class DeviceBatteryLevelChecker implements IRemoteTest {
+    private static final Integer IGNORE_CHARGE = -101;
 
     private ITestDevice mTestDevice = null;
     private TestDescription mTestDescription = new TestDescription("BatteryCharging", "charge");
+    private TestDescription mChargingSpeed = new TestDescription("BatteryCharging", "speed");
 
     /**
      * We use max-battery here to coincide with a {@link DeviceSelectionOptions} option of the same
@@ -90,6 +93,11 @@ public class DeviceBatteryLevelChecker implements IRemoteTest {
     )
     private long mMaxRunTime = 30 * 60 * 1000L;
 
+    @Option(
+            name = "reference-charging-speed",
+            description = "The expected charging speed in % per hours.")
+    private Integer mChargingSpeedCheck = 15;
+
     Integer checkBatteryLevel(ITestDevice device) {
         return device.getBattery();
     }
@@ -111,18 +119,44 @@ public class DeviceBatteryLevelChecker implements IRemoteTest {
         Assert.assertNotNull(mTestDevice);
 
         long startTime = System.currentTimeMillis();
-        listener.testRunStarted("BatteryCharging", 1);
+        int testCount = 1;
+        boolean chargeCheck = false;
+        if (mChargingSpeedCheck != null && mChargingSpeedCheck > 0) {
+            testCount++;
+            chargeCheck = true;
+        }
+        listener.testRunStarted("BatteryCharging", testCount);
         listener.testStarted(mTestDescription);
         try {
-            runTest(testInfo, listener);
+            Integer charge = null;
+            long elapsedTimeMs = getCurrentTimeMs();
+            try {
+                charge = runTest(testInfo, listener);
+                elapsedTimeMs = getCurrentTimeMs() - elapsedTimeMs;
+            } finally {
+                listener.testEnded(mTestDescription, new HashMap<String, Metric>());
+            }
+            if (chargeCheck) {
+                listener.testStarted(mChargingSpeed);
+                if (charge == null) {
+                    FailureDescription failure =
+                            FailureDescription.create("No battery charge information");
+                    failure.setFailureStatus(FailureStatus.NOT_EXECUTED);
+                    listener.testFailed(mChargingSpeed, failure);
+                } else if (IGNORE_CHARGE.equals(charge)) {
+                    listener.testIgnored(mChargingSpeed);
+                } else {
+                    checkChargingSpeed(listener, charge, elapsedTimeMs);
+                }
+                listener.testEnded(mChargingSpeed, new HashMap<String, Metric>());
+            }
         } finally {
-            listener.testEnded(mTestDescription, new HashMap<String, Metric>());
             listener.testRunEnded(
                     System.currentTimeMillis() - startTime, new HashMap<String, Metric>());
         }
     }
 
-    private void runTest(TestInformation testInfo, ITestInvocationListener listener)
+    private Integer runTest(TestInformation testInfo, ITestInvocationListener listener)
             throws DeviceNotAvailableException {
         mTestDevice = testInfo.getDevice();
         Assert.assertNotNull(mTestDevice);
@@ -135,7 +169,7 @@ public class DeviceBatteryLevelChecker implements IRemoteTest {
             listener.testFailed(
                     mTestDescription,
                     FailureDescription.create("Failed to determine battery level"));
-            return;
+            return null;
         } else if (batteryLevel < mMaxBattery) {
             // Time-out.  Send the device to the corner
             CLog.w("Battery level %d is below the min level %d; holding for device %s to charge " +
@@ -145,7 +179,7 @@ public class DeviceBatteryLevelChecker implements IRemoteTest {
             // Good to go
             CLog.d("Battery level %d is above the minimum of %d; %s is good to go.", batteryLevel,
                     mMaxBattery, mTestDevice.getSerialNumber());
-            return;
+            return IGNORE_CHARGE;
         }
 
         if (mRebootChargeDevices) {
@@ -157,6 +191,7 @@ public class DeviceBatteryLevelChecker implements IRemoteTest {
         // turn screen off
         turnScreenOff(mTestDevice);
 
+        Integer finalBattery = null;
         try {
             if (mStopRuntime) {
                 stopDeviceRuntime();
@@ -166,18 +201,20 @@ public class DeviceBatteryLevelChecker implements IRemoteTest {
                 mTestDevice.stopLogcat();
             }
 
-            runBatteryCharging(listener, mTestDescription);
-            // TODO: Check the charging speed
+            finalBattery = runBatteryCharging(listener, mTestDescription);
         } finally {
             if (mStopRuntime) {
                 // Restart runtime if it was stopped
                 startDeviceRuntime();
             }
         }
-
         CLog.i(
                 "Device %s is now charged to battery level %d; releasing.",
                 mTestDevice.getSerialNumber(), batteryLevel);
+        if (finalBattery != null) {
+            return finalBattery - batteryLevel;
+        }
+        return null;
     }
 
     private void turnScreenOff(ITestDevice device) throws DeviceNotAvailableException {
@@ -219,7 +256,7 @@ public class DeviceBatteryLevelChecker implements IRemoteTest {
                         mTestDevice.getSerialNumber());
                 listener.testFailed(
                         test, FailureDescription.create("Failed to read battery level"));
-                break;
+                return null;
             } else if (newLevel < batteryLevel) {
                 // also weird
                 CLog.w("Warning: battery discharged from %d to %d on device %s during the last " +
@@ -234,6 +271,24 @@ public class DeviceBatteryLevelChecker implements IRemoteTest {
         return batteryLevel;
     }
 
+    private void checkChargingSpeed(
+            ITestInvocationListener listener, Integer charge, long chargingTime) {
+        double speedPerHours = (charge / ((double) chargingTime / 3600));
+        if (speedPerHours < mChargingSpeedCheck) {
+            listener.testFailed(
+                    mChargingSpeed,
+                    FailureDescription.create(
+                            String.format(
+                                    "Device charged %s%% in %s = %s%%/hours. This is below %s",
+                                    charge,
+                                    TimeUtil.formatElapsedTime(chargingTime),
+                                    speedPerHours,
+                                    mChargingSpeedCheck)));
+            mTestDevice.logBugreport("low-charging-speed", listener);
+        }
+        CLog.d("Device charged %s%% in %s", charge, TimeUtil.formatElapsedTime(chargingTime));
+    }
+
     /**
      * Get a RunUtil instance
      *
@@ -246,6 +301,11 @@ public class DeviceBatteryLevelChecker implements IRemoteTest {
 
     protected void setResumeLevel(int level) {
         mResumeLevel = level;
+    }
+
+    @VisibleForTesting
+    long getCurrentTimeMs() {
+        return System.currentTimeMillis();
     }
 }
 
