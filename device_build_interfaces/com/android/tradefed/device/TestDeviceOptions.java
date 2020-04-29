@@ -176,11 +176,6 @@ public class TestDeviceOptions {
     private File mAvdConfigFile = null;
 
     @Option(
-            name = "gce-driver-config-test-resource-name",
-            description = "Test resource name of the config to use to launch GCE devices.")
-    private String mAvdConfigTestResourceName;
-
-    @Option(
             name = "gce-driver-service-account-json-key-path",
             description = "path to the service account json key location.")
     private File mJsonKeyFile = null;
@@ -547,11 +542,6 @@ public class TestDeviceOptions {
     /** Set the Gce Avd config file to start the instance. */
     public void setAvdConfigFile(File avdConfigFile) {
         mAvdConfigFile = avdConfigFile;
-    }
-
-    /** Return the Gce Avd config test resource name to start the instance. */
-    public String getAvdConfigTestResourceName() {
-        return mAvdConfigTestResourceName;
     }
 
     /** @return the service account json key file. */

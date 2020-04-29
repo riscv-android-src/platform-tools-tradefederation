@@ -15,7 +15,6 @@
  */
 package com.android.tradefed.device.cloud;
 
-import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.device.TestDeviceOptions;
@@ -71,7 +70,6 @@ public class GceManager {
     private DeviceDescriptor mDeviceDescriptor;
     private TestDeviceOptions mDeviceOptions;
     private IBuildInfo mBuildInfo;
-    private List<IBuildInfo> mTestResourceBuildInfos;
 
     private String mGceInstanceName = null;
     private String mGceHost = null;
@@ -83,17 +81,12 @@ public class GceManager {
      * @param deviceDesc The {@link DeviceDescriptor} that will be associated with the GCE device.
      * @param deviceOptions A {@link TestDeviceOptions} associated with the device.
      * @param buildInfo A {@link IBuildInfo} describing the gce build to start.
-     * @param testResourceBuildInfos A list {@link IBuildInfo} describing test resources
      */
     public GceManager(
-            DeviceDescriptor deviceDesc,
-            TestDeviceOptions deviceOptions,
-            IBuildInfo buildInfo,
-            List<IBuildInfo> testResourceBuildInfos) {
+            DeviceDescriptor deviceDesc, TestDeviceOptions deviceOptions, IBuildInfo buildInfo) {
         mDeviceDescriptor = deviceDesc;
         mDeviceOptions = deviceOptions;
         mBuildInfo = buildInfo;
-        mTestResourceBuildInfos = testResourceBuildInfos;
 
         if (!deviceOptions.allowGceCmdTimeoutOverride()) {
             return;
@@ -117,13 +110,22 @@ public class GceManager {
         }
     }
 
+    /** @deprecated Use other constructors, we keep this temporarily for backward compatibility. */
+    @Deprecated
+    public GceManager(
+            DeviceDescriptor deviceDesc,
+            TestDeviceOptions deviceOptions,
+            IBuildInfo buildInfo,
+            List<IBuildInfo> testResourceBuildInfos) {
+        this(deviceDesc, deviceOptions, buildInfo);
+    }
+
     /**
      * Ctor, variation that can be used to provide the GCE instance name to use directly.
      *
      * @param deviceDesc The {@link DeviceDescriptor} that will be associated with the GCE device.
      * @param deviceOptions A {@link TestDeviceOptions} associated with the device
      * @param buildInfo A {@link IBuildInfo} describing the gce build to start.
-     * @param testResourceBuildInfos A list {@link IBuildInfo} describing test resources
      * @param gceInstanceName The instance name to use.
      * @param gceHost The host name or ip of the instance to use.
      */
@@ -131,10 +133,9 @@ public class GceManager {
             DeviceDescriptor deviceDesc,
             TestDeviceOptions deviceOptions,
             IBuildInfo buildInfo,
-            List<IBuildInfo> testResourceBuildInfos,
             String gceInstanceName,
             String gceHost) {
-        this(deviceDesc, deviceOptions, buildInfo, testResourceBuildInfos);
+        this(deviceDesc, deviceOptions, buildInfo);
         mGceInstanceName = gceInstanceName;
         mGceHost = gceHost;
     }
@@ -732,10 +733,6 @@ public class GceManager {
 
     @VisibleForTesting
     File getAvdConfigFile() {
-        if (getTestDeviceOptions().getAvdConfigTestResourceName() != null) {
-            return BuildInfo.getTestResource(
-                    mTestResourceBuildInfos, getTestDeviceOptions().getAvdConfigTestResourceName());
-        }
         return getTestDeviceOptions().getAvdConfigFile();
     }
 
