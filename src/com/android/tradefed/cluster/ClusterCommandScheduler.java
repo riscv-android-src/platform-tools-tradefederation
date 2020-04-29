@@ -191,8 +191,7 @@ public class ClusterCommandScheduler extends CommandScheduler {
                                 result.getNumAllFailedTests(),
                                 result.getNumTestsInState(TestStatus.PASSED),
                                 result.isRunComplete(),
-                                result.getElapsedTime(),
-                                result.getRunFailureMessage());
+                                result.getElapsedTime());
                 obj.addTestGroupStatus(testGroupStatus);
             }
             mInvocationStatus = obj;
