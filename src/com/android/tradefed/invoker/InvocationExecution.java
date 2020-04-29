@@ -171,6 +171,13 @@ public class InvocationExecution implements IInvocationExecution {
                 testInfo.getContext().addDeviceBuildInfo(currentDeviceName, errorBuild);
             }
             throw e;
+        } catch (RuntimeException re) {
+            if (currentDeviceName != null) {
+                IBuildInfo errorBuild = new BuildInfo();
+                updateBuild(errorBuild, config);
+                testInfo.getContext().addDeviceBuildInfo(currentDeviceName, errorBuild);
+            }
+            throw re;
         }
         setBinariesVersion(testInfo.getContext());
         return true;
