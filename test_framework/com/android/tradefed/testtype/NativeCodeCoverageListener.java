@@ -47,13 +47,13 @@ public final class NativeCodeCoverageListener extends ResultForwarder {
 
     private static final String NATIVE_COVERAGE_DEVICE_PATH = "/data/misc/trace";
     private static final String COVERAGE_TAR_PATH =
-            String.format("%s/coverage.tar.gz", NATIVE_COVERAGE_DEVICE_PATH);
+            String.format("%s/coverage.tar", NATIVE_COVERAGE_DEVICE_PATH);
 
     // Finds .gcda files in /data/misc/trace and compresses those files only. Stores the full
     // path of the file on the device.
     private static final String ZIP_COVERAGE_FILES_COMMAND =
             String.format(
-                    "find %s -name '*.gcda' | tar -cvzf %s -T -",
+                    "find %s -name '*.gcda' | tar -cvf %s -T -",
                     NATIVE_COVERAGE_DEVICE_PATH, COVERAGE_TAR_PATH);
 
     // Deletes .gcda files in /data/misc/trace.
@@ -113,7 +113,7 @@ public final class NativeCodeCoverageListener extends ResultForwarder {
 
     /** Pulls native coverage measurements from the device and logs them. */
     public void logCoverageMeasurements(String runName) {
-        File coverageTarGz = null;
+        File coverageTar = null;
         File coverageZip = null;
         try {
             // Enable abd root on the device, otherwise the following commands will fail.
@@ -126,11 +126,11 @@ public final class NativeCodeCoverageListener extends ResultForwarder {
 
             // Compress coverage measurements on the device before pulling.
             mDevice.executeShellCommand(ZIP_COVERAGE_FILES_COMMAND);
-            coverageTarGz = mDevice.pullFile(COVERAGE_TAR_PATH);
-            verifyNotNull(coverageTarGz, "Failed to pull the coverage file %s", COVERAGE_TAR_PATH);
+            coverageTar = mDevice.pullFile(COVERAGE_TAR_PATH);
+            verifyNotNull(coverageTar, "Failed to pull the coverage file %s", COVERAGE_TAR_PATH);
             mDevice.deleteFile(COVERAGE_TAR_PATH);
 
-            coverageZip = convertTarGzToZip(coverageTarGz);
+            coverageZip = convertTarToZip(coverageTar);
 
             try (FileInputStreamSource source = new FileInputStreamSource(coverageZip, true)) {
                 testLog(runName + "_native_runtime_coverage", LogDataType.NATIVE_COVERAGE, source);
@@ -141,22 +141,23 @@ public final class NativeCodeCoverageListener extends ResultForwarder {
         } catch (DeviceNotAvailableException | IOException e) {
             throw new RuntimeException(e);
         } finally {
-            FileUtil.deleteFile(coverageTarGz);
+            FileUtil.deleteFile(coverageTar);
             FileUtil.deleteFile(coverageZip);
         }
     }
 
     /**
-     * Converts a .tar.gz file to a .zip file.
+     * Converts a .tar file to a .zip file.
      *
-     * @param tarGz the .tar.gz file to convert
+     * @param tar the .tar file to convert
      * @return a .zip file with the same contents
      * @throws IOException
      */
-    private File convertTarGzToZip(File tarGz) throws IOException {
+    private File convertTarToZip(File tar) throws IOException {
         File untarDir = null;
         try {
-            untarDir = TarUtil.extractTarGzipToTemp(tarGz, "native_coverage");
+            untarDir = FileUtil.createTempDir("gcov_coverage");
+            TarUtil.unTar(tar, untarDir);
             return ZipUtil.createZip(Arrays.asList(untarDir.listFiles()), "native_coverage");
         } finally {
             FileUtil.recursiveDelete(untarDir);
