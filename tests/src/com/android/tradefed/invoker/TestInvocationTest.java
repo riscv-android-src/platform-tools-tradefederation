@@ -415,6 +415,39 @@ public class TestInvocationTest {
         assertEquals(expectedTestTag, mStubInvocationMetadata.getTestTag());
     }
 
+    /** Ensure we get a build info when we get a runtime exception in fetch build. */
+    @Test
+    public void testInvoke_buildFailed_runtimeException() throws Throwable {
+        RuntimeException runtimeException = new RuntimeException("failed to get build.");
+        EasyMock.expect(mMockBuildProvider.getBuild()).andThrow(runtimeException);
+        setupInvoke();
+        // For the mocks to be properly done, stub a BuildRetrievalError.
+        setupMockFailureListenersAny(new BuildRetrievalError("fake"), true);
+
+        EasyMock.reset(mMockLogger, mMockLogRegistry);
+        mMockLogRegistry.registerLogger(mMockLogger);
+        mMockLogger.init();
+        mMockLogger.closeLog();
+        mMockLogRegistry.unregisterLogger();
+
+        EasyMock.expect(mMockLogger.getLog()).andReturn(EMPTY_STREAM_SOURCE);
+        EasyMock.expect(mMockDevice.getLogcat()).andReturn(EMPTY_STREAM_SOURCE).times(2);
+        mMockDevice.clearLogcat();
+        EasyMock.expectLastCall().times(2);
+        Capture<IBuildInfo> captured = new Capture<>();
+        mMockBuildProvider.cleanUp(EasyMock.capture(captured));
+        mMockLogRegistry.unregisterLogger();
+        mMockLogRegistry.dumpToGlobalLog(mMockLogger);
+        mMockLogger.closeLog();
+        replayMocks(mockRescheduler);
+        mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
+        verifyMocks();
+
+        IBuildInfo stubBuild = captured.getValue();
+        assertEquals(BuildInfo.UNKNOWN_BUILD_ID, stubBuild.getBuildId());
+        stubBuild.cleanUp();
+    }
+
     /** Test the invoke scenario where there is no build to test. */
     @Test
     public void testInvoke_noBuild() throws Throwable {
@@ -428,8 +461,6 @@ public class TestInvocationTest {
         mMockLogger.closeLog();
         mMockLogRegistry.unregisterLogger();
 
-        IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
-        mStubConfiguration.setTest(test);
         EasyMock.expect(mMockLogger.getLog()).andReturn(EMPTY_STREAM_SOURCE);
         EasyMock.expect(mMockDevice.getLogcat()).andReturn(EMPTY_STREAM_SOURCE).times(2);
         mMockDevice.clearLogcat();
@@ -439,9 +470,9 @@ public class TestInvocationTest {
         mMockLogRegistry.unregisterLogger();
         mMockLogRegistry.dumpToGlobalLog(mMockLogger);
         mMockLogger.closeLog();
-        replayMocks(test, mockRescheduler);
+        replayMocks(mockRescheduler);
         mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
-        verifyMocks(test);
+        verifyMocks();
 
         IBuildInfo stubBuild = captured.getValue();
         assertEquals(BuildInfo.UNKNOWN_BUILD_ID, stubBuild.getBuildId());
