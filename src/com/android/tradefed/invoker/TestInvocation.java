@@ -586,7 +586,7 @@ public class TestInvocation implements ITestInvocation {
             // Set the exit code to error
             buildException = new BuildRetrievalError("No build found to test.");
             setExitCode(ExitCode.NO_BUILD, buildException);
-        } catch (BuildRetrievalError e) {
+        } catch (BuildRetrievalError | RuntimeException e) {
             buildException = e;
         }
         // Report an empty invocation, so this error is sent to listeners
