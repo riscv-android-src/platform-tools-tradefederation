@@ -105,23 +105,31 @@ public class ClusterCommandLauncherTest {
     }
 
     @Test
-    public void testRun() throws DeviceNotAvailableException, ConfigurationException {
+    public void testRun() throws DeviceNotAvailableException, ConfigurationException, IOException {
         mInvocationContext.addAllocatedDevice("foo", mMockTestDevice);
+        final File tfJar = new File(mRootDir, "foo.jar");
+        tfJar.createNewFile();
+
+        final String tfPathValue =
+                String.format(
+                        "${TF_WORK_DIR}/%s:${TF_WORK_DIR}/%s:${TF_WORK_DIR}/%s",
+                        tfJar.getName(), mTfPath.getName(), mTfLibDir.getName());
         final List<String> jars = new ArrayList<>();
+        jars.add(tfJar.getAbsolutePath());
         jars.add(String.format("%s/*", mTfPath));
         jars.add(String.format("%s/*", mTfLibDir));
         final String classPath = ArrayUtil.join(":", jars);
-        final String tfPathValue =
-                String.format(
-                        "${TF_WORK_DIR}/%s:${TF_WORK_DIR}/%s",
-                        mTfPath.getName(), mTfLibDir.getName());
         mOptionSetter.setOptionValue("cluster:jvm-option", "-Xmx1g");
         mOptionSetter.setOptionValue("cluster:env-var", "TF_PATH", tfPathValue);
         mOptionSetter.setOptionValue("cluster:java-property", "FOO", "${TF_WORK_DIR}/foo");
         mOptionSetter.setOptionValue("cluster:original-command-line", "original-command-line");
         mOptionSetter.setOptionValue("cluster:command-line", "command-line");
         final String expandedTfPathValue =
-                String.format("%s:%s", mTfPath.getAbsolutePath(), mTfLibDir.getAbsolutePath());
+                String.format(
+                        "%s:%s:%s",
+                        tfJar.getAbsolutePath(),
+                        mTfPath.getAbsolutePath(),
+                        mTfLibDir.getAbsolutePath());
         final CommandResult mockCommandResult = new CommandResult(CommandStatus.SUCCESS);
         when(mMockRunUtil.runTimedCmd(
                         Mockito.anyLong(),
