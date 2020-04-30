@@ -134,14 +134,28 @@ public class ClusterCommandLauncher
 
     @Override
     public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
-        // Pass jars under TF_PATH via classpath option (-cp)
+        // Get an expanded TF_PATH value.
         String tfPath = getEnvVar(TF_PATH, System.getProperty(TF_JAR_DIR));
         if (tfPath == null) {
             throw new RuntimeException("cannot find TF path!");
         }
+
+        // Construct a Java class path based on TF_PATH value.
+        // This expects TF_PATH to be a colon(:) separated list of paths where each path
+        // points to a specific jar file or folder.
+        // (example: path/to/tradefed.jar:path/to/tradefed/folder:...)
         final Set<String> jars = new LinkedHashSet<>();
         for (final String path : tfPath.split(":")) {
-            jars.add(new File(path, "*").getAbsolutePath());
+            final File jarFile = new File(path);
+            if (!jarFile.exists()) {
+                CLog.w("TF_PATH %s doesn't exist; ignoring", path);
+                continue;
+            }
+            if (jarFile.isFile()) {
+                jars.add(jarFile.getAbsolutePath());
+            } else {
+                jars.add(new File(path, "*").getAbsolutePath());
+            }
         }
 
         IRunUtil runUtil = getRunUtil();
