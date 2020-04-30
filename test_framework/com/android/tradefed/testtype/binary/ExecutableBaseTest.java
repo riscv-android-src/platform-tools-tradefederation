@@ -192,7 +192,7 @@ public abstract class ExecutableBaseTest
         }
         if (!mIncludeFilters.isEmpty()) {
             return !mIncludeFilters.contains(testName)
-                    && !mExcludeFilters.contains(description.toString());
+                    && !mIncludeFilters.contains(description.toString());
         }
         return false;
     }
