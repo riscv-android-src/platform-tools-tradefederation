@@ -59,8 +59,8 @@ public class FastbootHelper {
     public boolean isFastbootAvailable() {
         // Run "fastboot help" to check the existence and the version of fastboot
         // (Old versions do not support "help" command).
-        CommandResult fastbootResult = mRunUtil.runTimedCmdSilently(5000, mFastbootPath, "help");
-        if (fastbootResult.getStatus() == CommandStatus.SUCCESS) {
+        CommandResult fastbootResult = mRunUtil.runTimedCmdSilently(15000, mFastbootPath, "help");
+        if (CommandStatus.SUCCESS.equals(fastbootResult.getStatus())) {
             return true;
         }
         if (fastbootResult.getStderr() != null &&
