@@ -273,6 +273,7 @@ public class DeviceManager implements IDeviceManager {
             // Populate the fastboot devices
             // TODO: remove when refactoring fastboot handling
             addFastbootDevices();
+            CLog.d("Using Fastboot from: '%s'", getFastbootPath());
         } else {
             CLog.w("Fastboot is not available.");
             mFastbootListeners = null;
