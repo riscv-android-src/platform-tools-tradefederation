@@ -15,37 +15,34 @@
  */
 package com.android.tradefed.device;
 
-import com.google.common.util.concurrent.SettableFuture;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import com.android.ddmlib.IDevice;
-import com.android.ddmlib.TimeoutException;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.IRunUtil;
 
-import junit.framework.TestCase;
+import com.google.common.util.concurrent.SettableFuture;
 
 import org.easymock.EasyMock;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
-import java.io.IOException;
-
-/**
- * Unit tests for {@link WaitDeviceRecovery}.
- */
-public class WaitDeviceRecoveryTest extends TestCase {
+/** Unit tests for {@link WaitDeviceRecovery}. */
+@RunWith(JUnit4.class)
+public class WaitDeviceRecoveryTest {
 
     private IRunUtil mMockRunUtil;
     private WaitDeviceRecovery mRecovery;
     private IDeviceStateMonitor mMockMonitor;
     private IDevice mMockDevice;
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    protected void setUp() throws Exception {
-        super.setUp();
+    @Before
+    public void setUp() throws Exception {
         mMockRunUtil = EasyMock.createMock(IRunUtil.class);
         mRecovery = new WaitDeviceRecovery() {
             @Override
@@ -59,9 +56,10 @@ public class WaitDeviceRecoveryTest extends TestCase {
     }
 
     /**
-     * Test {@link WaitDeviceRecovery#recoverDevice(IDeviceStateMonitor, boolean)}
-     * when devices comes back online on its own accord.
+     * Test {@link WaitDeviceRecovery#recoverDevice(IDeviceStateMonitor, boolean)} when devices
+     * comes back online on its own accord.
      */
+    @Test
     public void testRecoverDevice_success() throws DeviceNotAvailableException {
         // expect initial sleep
         mMockRunUtil.sleep(EasyMock.anyLong());
@@ -81,7 +79,8 @@ public class WaitDeviceRecoveryTest extends TestCase {
      * Test {@link WaitDeviceRecovery#recoverDevice(IDeviceStateMonitor, boolean)} when device is
      * not available.
      */
-    public void testRecoverDevice_unavailable()  {
+    @Test
+    public void testRecoverDevice_unavailable() {
         // expect initial sleep
         mMockRunUtil.sleep(EasyMock.anyLong());
         mMockMonitor.waitForDeviceBootloaderStateUpdate();
@@ -101,6 +100,7 @@ public class WaitDeviceRecoveryTest extends TestCase {
      * Test {@link WaitDeviceRecovery#recoverDevice(IDeviceStateMonitor, boolean)} when device is
      * not responsive.
      */
+    @Test
     public void testRecoverDevice_unresponsive() throws Exception {
         // expect initial sleep
         mMockRunUtil.sleep(EasyMock.anyLong());
@@ -123,9 +123,10 @@ public class WaitDeviceRecoveryTest extends TestCase {
     }
 
     /**
-     * Test {@link WaitDeviceRecovery#recoverDevice(IDeviceStateMonitor, boolean)} when device is
-     * in fastboot.
+     * Test {@link WaitDeviceRecovery#recoverDevice(IDeviceStateMonitor, boolean)} when device is in
+     * fastboot.
      */
+    @Test
     public void testRecoverDevice_fastboot() throws DeviceNotAvailableException {
         // expect initial sleep
         mMockRunUtil.sleep(EasyMock.anyLong());
@@ -153,6 +154,7 @@ public class WaitDeviceRecoveryTest extends TestCase {
      * Test {@link WaitDeviceRecovery#recoverDeviceBootloader(IDeviceStateMonitor)} when device is
      * already in bootloader
      */
+    @Test
     public void testRecoverDeviceBootloader_fastboot() throws DeviceNotAvailableException {
         mMockRunUtil.sleep(EasyMock.anyLong());
         // expect reboot
@@ -176,6 +178,7 @@ public class WaitDeviceRecoveryTest extends TestCase {
      * Test {@link WaitDeviceRecovery#recoverDeviceBootloader(IDeviceStateMonitor)} when device is
      * unavailable but comes back to bootloader on its own
      */
+    @Test
     public void testRecoverDeviceBootloader_unavailable() throws DeviceNotAvailableException {
         mMockRunUtil.sleep(EasyMock.anyLong());
         EasyMock.expect(mMockMonitor.waitForDeviceBootloader(EasyMock.anyLong())).andReturn(
@@ -202,6 +205,7 @@ public class WaitDeviceRecoveryTest extends TestCase {
      * Test {@link WaitDeviceRecovery#recoverDeviceBootloader(IDeviceStateMonitor)} when device is
      * online when bootloader is expected
      */
+    @Test
     public void testRecoverDeviceBootloader_online() throws Exception {
         mMockRunUtil.sleep(EasyMock.anyLong());
         EasyMock.expect(mMockMonitor.waitForDeviceBootloader(EasyMock.anyLong())).andReturn(
@@ -221,6 +225,7 @@ public class WaitDeviceRecoveryTest extends TestCase {
      * Test {@link WaitDeviceRecovery#recoverDeviceBootloader(IDeviceStateMonitor)} when device is
      * initially unavailable, then comes online when bootloader is expected
      */
+    @Test
     public void testRecoverDeviceBootloader_unavailable_online() throws Exception {
         mMockRunUtil.sleep(EasyMock.anyLong());
         EasyMock.expect(mMockMonitor.waitForDeviceBootloader(EasyMock.anyLong())).andReturn(
@@ -243,6 +248,7 @@ public class WaitDeviceRecoveryTest extends TestCase {
      * Test {@link WaitDeviceRecovery#recoverDeviceBootloader(IDeviceStateMonitor)} when device is
      * unavailable
      */
+    @Test
     public void testRecoverDeviceBootloader_unavailable_failure() throws Exception {
         mMockRunUtil.sleep(EasyMock.anyLong());
         EasyMock.expect(mMockMonitor.waitForDeviceBootloader(EasyMock.anyLong())).andStubReturn(
@@ -262,6 +268,7 @@ public class WaitDeviceRecoveryTest extends TestCase {
      * Test {@link WaitDeviceRecovery#checkMinBatteryLevel(IDevice)} throws an exception if battery
      * level is not readable.
      */
+    @Test
     public void testCheckMinBatteryLevel_unreadable() throws Exception {
         OptionSetter setter = new OptionSetter(mRecovery);
         setter.setOptionValue("min-battery-after-recovery", "50");
@@ -283,6 +290,7 @@ public class WaitDeviceRecoveryTest extends TestCase {
      * Test {@link WaitDeviceRecovery#checkMinBatteryLevel(IDevice)} throws an exception if battery
      * level is below the minimal expected.
      */
+    @Test
     public void testCheckMinBatteryLevel_belowLevel() throws Exception {
         OptionSetter setter = new OptionSetter(mRecovery);
         setter.setOptionValue("min-battery-after-recovery", "50");
@@ -305,6 +313,7 @@ public class WaitDeviceRecoveryTest extends TestCase {
      * Test {@link WaitDeviceRecovery#checkMinBatteryLevel(IDevice)} returns without exception when
      * battery level after recovery is above or equals minimum expected.
      */
+    @Test
     public void testCheckMinBatteryLevel() throws Exception {
         OptionSetter setter = new OptionSetter(mRecovery);
         setter.setOptionValue("min-battery-after-recovery", "50");
@@ -313,58 +322,6 @@ public class WaitDeviceRecoveryTest extends TestCase {
         EasyMock.expect(mMockDevice.getBattery()).andReturn(future);
         replayMocks();
         mRecovery.checkMinBatteryLevel(mMockDevice);
-        verifyMocks();
-    }
-
-    /**
-     * Test {@link WaitDeviceRecovery#rebootDeviceIntoBootloader(IDevice)} does throw when reboot
-     * bootloader throws an IO exception.
-     */
-    public void testRebootDeviceIntoBootloader_IOException() throws Exception {
-        mMockDevice.reboot("bootloader");
-        EasyMock.expectLastCall().andThrow(new IOException());
-        EasyMock.expect(mMockDevice.getSerialNumber()).andReturn("SERIAL");
-        replayMocks();
-        mRecovery.rebootDeviceIntoBootloader(mMockDevice);
-        verifyMocks();
-    }
-
-    /**
-     * Test {@link WaitDeviceRecovery#rebootDeviceIntoBootloader(IDevice)} does throw when reboot
-     * bootloader throws an timeout exception.
-     */
-    public void testRebootDeviceIntoBootloader_timeoutException() throws Exception {
-        mMockDevice.reboot("bootloader");
-        EasyMock.expectLastCall().andThrow(new TimeoutException());
-        EasyMock.expect(mMockDevice.getSerialNumber()).andReturn("SERIAL");
-        replayMocks();
-        mRecovery.rebootDeviceIntoBootloader(mMockDevice);
-        verifyMocks();
-    }
-
-    /**
-     * Test {@link WaitDeviceRecovery#rebootDevice(IDevice)} does throw when reboot
-     * throws an IO exception.
-     */
-    public void testReboot_IOException() throws Exception {
-        mMockDevice.reboot(null);
-        EasyMock.expectLastCall().andThrow(new IOException());
-        EasyMock.expect(mMockDevice.getSerialNumber()).andReturn("SERIAL");
-        replayMocks();
-        mRecovery.rebootDevice(mMockDevice);
-        verifyMocks();
-    }
-
-    /**
-     * Test {@link WaitDeviceRecovery#rebootDevice(IDevice)} does throw when reboot
-     * throws an IO exception.
-     */
-    public void testReboot_timeoutException() throws Exception {
-        mMockDevice.reboot(null);
-        EasyMock.expectLastCall().andThrow(new TimeoutException());
-        EasyMock.expect(mMockDevice.getSerialNumber()).andReturn("SERIAL");
-        replayMocks();
-        mRecovery.rebootDevice(mMockDevice);
         verifyMocks();
     }
 
