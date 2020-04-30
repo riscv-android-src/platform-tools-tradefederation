@@ -58,6 +58,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
     private static final String SPLIT_APKS_SUFFIX = ".apks";
     private static final String TRAIN_WITH_APEX_INSTALL_OPTION = "install-multi-package";
     private static final String ACTIVATED_APEX_SOURCEDIR_PREFIX = "data";
+    private static final int R_SDK_INT = 30;
 
     private List<ApexInfo> mTestApexInfoList = new ArrayList<>();
     private Set<String> mApkToInstall = new LinkedHashSet<>();
@@ -697,7 +698,8 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
      * @param activatedApexes The set of the active apexes on device
      * @return a list containing the apexinfo of the input apex modules that failed to be activated.
      */
-    protected List<ApexInfo> getModulesFailToActivate(Set<ApexInfo> activatedApexes) {
+    protected List<ApexInfo> getModulesFailToActivate(Set<ApexInfo> activatedApexes)
+            throws DeviceNotAvailableException, TargetSetupError {
         List<ApexInfo> failToActivateApex = new ArrayList<ApexInfo>();
         HashMap<String, ApexInfo> activatedApexInfo = new HashMap<>();
         for (ApexInfo info : activatedApexes) {
@@ -706,14 +708,14 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
         for (ApexInfo testApexInfo : mTestApexInfoList) {
             if (!activatedApexInfo.containsKey(testApexInfo.name)) {
                 failToActivateApex.add(testApexInfo);
+            } else if (activatedApexInfo.get(testApexInfo.name).versionCode
+                    != testApexInfo.versionCode) {
+                failToActivateApex.add(testApexInfo);
             } else {
+                String sourceDir = activatedApexInfo.get(testApexInfo.name).sourceDir;
                 // Activated apex sourceDir starts with "/data"
-                if (!activatedApexInfo
-                                .get(testApexInfo.name)
-                                .sourceDir
-                                .startsWith(ACTIVATED_APEX_SOURCEDIR_PREFIX, 1)
-                        || activatedApexInfo.get(testApexInfo.name).versionCode
-                                != testApexInfo.versionCode) {
+                if (getDevice().checkApiLevelAgainstNextRelease(R_SDK_INT)
+                        && !sourceDir.startsWith(ACTIVATED_APEX_SOURCEDIR_PREFIX, 1)) {
                     failToActivateApex.add(testApexInfo);
                 }
             }
