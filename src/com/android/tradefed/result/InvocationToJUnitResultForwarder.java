@@ -59,7 +59,9 @@ import java.util.HashMap;
         Test test = new TestIdentifierResult(testId);
         // TODO: is it accurate to represent the trace as AssertionFailedError?
         mJUnitListener.addFailure(test, new AssertionFailedError(trace));
-        Log.i(LOG_TAG, String.format("Test %s failed with:\n %s", testId.toString(), trace));
+        Log.w(
+                LOG_TAG,
+                String.format("\nTest %s failed with stack:\n %s", testId.toString(), trace));
     }
 
     @Override
