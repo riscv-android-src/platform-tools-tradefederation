@@ -704,10 +704,6 @@ public class InvocationExecution implements IInvocationExecution {
         } else if (Strings.isNullOrEmpty(info.getTestTag())) {
             // We ensure that that a default test-tag is always available.
             info.setTestTag("stub");
-        } else {
-            CLog.w(
-                    "Using the test-tag from the build_provider. Consider updating your config to"
-                            + " have no alias/namespace in front of test-tag.");
         }
     }
 
