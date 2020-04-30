@@ -32,7 +32,6 @@ import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.testtype.coverage.CoverageOptions;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
-import com.android.tradefed.util.TarUtil;
 
 import com.google.common.base.VerifyException;
 import com.google.common.collect.ImmutableMap;
@@ -101,14 +100,14 @@ public class NativeCodeCoverageListenerTest {
 
         // Setup mocks to write the coverage measurement to the file.
         doReturn(true).when(mMockDevice).enableAdbRoot();
-        File tarGz =
-                createTarGz(
+        File tar =
+                createTar(
                         ImmutableMap.of(
                                 "path/to/coverage.gcda",
                                 ByteString.copyFromUtf8("coverage.gcda"),
                                 "path/to/.hidden/coverage2.gcda",
                                 ByteString.copyFromUtf8("coverage2.gcda")));
-        doReturn(tarGz).when(mMockDevice).pullFile(anyString());
+        doReturn(tar).when(mMockDevice).pullFile(anyString());
 
         // Simulate a test run.
         mCodeCoverageListener.testRunStarted(RUN_NAME, TEST_COUNT);
@@ -140,7 +139,7 @@ public class NativeCodeCoverageListenerTest {
         mCodeCoverageListener = new NativeCodeCoverageListener(mMockDevice, mFakeListener);
 
         doReturn(true).when(mMockDevice).enableAdbRoot();
-        doReturn(createTarGz(ImmutableMap.of())).when(mMockDevice).pullFile(anyString());
+        doReturn(createTar(ImmutableMap.of())).when(mMockDevice).pullFile(anyString());
 
         // Simulate a test run.
         mCodeCoverageListener.testRunStarted(RUN_NAME, TEST_COUNT);
@@ -170,7 +169,7 @@ public class NativeCodeCoverageListenerTest {
 
         doReturn(true).when(mMockDevice).enableAdbRoot();
         doReturn(true).when(mMockDevice).isAdbRoot();
-        doReturn(createTarGz(ImmutableMap.of())).when(mMockDevice).pullFile(anyString());
+        doReturn(createTar(ImmutableMap.of())).when(mMockDevice).pullFile(anyString());
 
         // Simulate a test run.
         mCodeCoverageListener.testRunStarted(RUN_NAME, TEST_COUNT);
@@ -195,7 +194,7 @@ public class NativeCodeCoverageListenerTest {
         doReturn(true).when(mMockDevice).isAdbRoot();
         doReturn("123").when(mMockDevice).getProcessPid("mediaserver");
         doReturn("56789").when(mMockDevice).getProcessPid("adbd");
-        doReturn(createTarGz(ImmutableMap.of())).when(mMockDevice).pullFile(anyString());
+        doReturn(createTar(ImmutableMap.of())).when(mMockDevice).pullFile(anyString());
 
         // Simulate a test run.
         mCodeCoverageListener.testRunStarted(RUN_NAME, TEST_COUNT);
@@ -244,11 +243,11 @@ public class NativeCodeCoverageListenerTest {
 
         // Setup mocks to write the coverage measurement to the file.
         doReturn(true).when(mMockDevice).enableAdbRoot();
-        File tarGz =
-                createTarGz(
+        File tar =
+                createTar(
                         ImmutableMap.of(
                                 "path/to/coverage.gcda", ByteString.copyFromUtf8("coverage.gcda")));
-        doReturn(tarGz).when(mMockDevice).pullFile(anyString());
+        doReturn(tar).when(mMockDevice).pullFile(anyString());
 
         // Manually call logCoverageMeasurements().
         mCodeCoverageListener.logCoverageMeasurements("manual");
@@ -288,8 +287,8 @@ public class NativeCodeCoverageListenerTest {
         }
     }
 
-    /** Utility method to create .tar.gz files. */
-    private File createTarGz(Map<String, ByteString> fileContents) throws IOException {
+    /** Utility method to create .tar files. */
+    private File createTar(Map<String, ByteString> fileContents) throws IOException {
         File tarFile = folder.newFile("coverage.tar");
         try (TarArchiveOutputStream out =
                 new TarArchiveOutputStream(new FileOutputStream(tarFile))) {
@@ -302,6 +301,6 @@ public class NativeCodeCoverageListenerTest {
                 out.closeArchiveEntry();
             }
         }
-        return TarUtil.gzip(tarFile);
+        return tarFile;
     }
 }
