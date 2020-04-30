@@ -2965,8 +2965,14 @@ public class NativeDevice implements IManagedTestDevice {
             doAdbReboot(mode, null);
         }
 
-        if (!mStateMonitor.waitForDeviceBootloader(mOptions.getFastbootTimeout())) {
-            recoverDeviceFromBootloader();
+        if (RebootMode.REBOOT_INTO_FASTBOOTD.equals(mode) && getHostOptions().isFastbootdEnable()) {
+            if (!mStateMonitor.waitForDeviceFastbootd(mOptions.getFastbootTimeout())) {
+                recoverDeviceFromBootloader();
+            }
+        } else {
+            if (!mStateMonitor.waitForDeviceBootloader(mOptions.getFastbootTimeout())) {
+                recoverDeviceFromBootloader();
+            }
         }
     }
 

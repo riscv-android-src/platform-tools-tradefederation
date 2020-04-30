@@ -1025,6 +1025,14 @@ public class DeviceManager implements IDeviceManager {
             throw new DeviceNotAvailableException("aborted test session",
                     monitor.getSerialNumber());
         }
+
+        /** {@inheritDoc} */
+        @Override
+        public void recoverDeviceFastbootd(IDeviceStateMonitor monitor)
+                throws DeviceNotAvailableException {
+            throw new DeviceNotAvailableException(
+                    "aborted test session", monitor.getSerialNumber());
+        }
     }
 
     /**
