@@ -49,6 +49,7 @@ public class TestAppInstallSetupTest {
     private static final String PACKAGE_NAME = "PACKAGE_NAME";
     private static final String APK_NAME = "fakeApk.apk";
     private File fakeApk;
+    private File fakeApk2;
     private File mFakeBuildApk;
     private TestAppInstallSetup mPrep;
     private TestInformation mTestInfo;
@@ -67,6 +68,7 @@ public class TestAppInstallSetupTest {
         fakeApk = FileUtil.createTempFile("fakeApk", ".apk", mTestDir);
         FileUtil.copyFile(fakeApk, new File(mTestDir, APK_NAME));
         fakeApk = new File(mTestDir, APK_NAME);
+        fakeApk2 = FileUtil.createTempFile("fakeApk", ".apk", mTestDir);
 
         mFakeBuildApk = FileUtil.createTempFile("fakeApk", ".apk", mBuildTestDir);
         new File(mBuildTestDir, "DATA/app").mkdirs();
@@ -84,17 +86,24 @@ public class TestAppInstallSetupTest {
                     @Override
                     protected File getLocalPathForFilename(
                             TestInformation testInfo, String apkFileName) throws TargetSetupError {
-                        return fakeApk;
+                        if (fakeApk != null && apkFileName.equals(fakeApk.getName())) {
+                            return fakeApk;
+                        }
+                        if (fakeApk2 != null && apkFileName.equals(fakeApk2.getName())) {
+                            return fakeApk2;
+                        }
+                        return null;
                     }
                 };
         mSetter = new OptionSetter(mPrep);
         mSetter.setOptionValue("cleanup-apks", "true");
         mSetter.setOptionValue("test-file-name", APK_NAME);
-        mSetter.setOptionValue("split-apk-file-names", String.format("%s,%s", APK_NAME, APK_NAME));
+        mSetter.setOptionValue(
+                "split-apk-file-names", String.format("%s,%s", APK_NAME, fakeApk2.getName()));
 
         mTestSplitApkFiles = new ArrayList<File>();
         mTestSplitApkFiles.add(fakeApk);
-        mTestSplitApkFiles.add(fakeApk);
+        mTestSplitApkFiles.add(fakeApk2);
 
         mMockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
         mMockTestDevice = EasyMock.createMock(ITestDevice.class);
@@ -154,22 +163,7 @@ public class TestAppInstallSetupTest {
 
     @Test
     public void testSetupAndTeardown_install_packages_only() throws Exception {
-        mPrep =
-                new TestAppInstallSetup() {
-                    @Override
-                    protected String parsePackageName(
-                            File testAppFile, DeviceDescriptor deviceDescriptor) {
-                        return PACKAGE_NAME;
-                    }
-
-                    @Override
-                    protected File getLocalPathForFilename(
-                            TestInformation testInfo, String apkFileName) throws TargetSetupError {
-                        return fakeApk;
-                    }
-                };
-        mSetter = new OptionSetter(mPrep);
-        mSetter.setOptionValue("split-apk-file-names", String.format("%s,%s", APK_NAME, APK_NAME));
+        mPrep.clearTestFile();
         mSetter.setOptionValue("cleanup-apks", "true");
         EasyMock.expect(
                         mMockTestDevice.installPackages(
@@ -249,9 +243,6 @@ public class TestAppInstallSetupTest {
     @Test
     public void testSetup_forceQueryable() throws Exception {
         EasyMock.expect(mMockTestDevice.isAppEnumerationSupported()).andReturn(true);
-
-        OptionSetter setter = new OptionSetter(mPrep);
-
         EasyMock.expect(mMockTestDevice.installPackage(
                 EasyMock.eq(fakeApk), EasyMock.eq(true), EasyMock.eq("--force-queryable")))
                 .andReturn(null);
@@ -329,7 +320,7 @@ public class TestAppInstallSetupTest {
      */
     @Test
     public void testUnreadableApk() throws Exception {
-        fakeApk = new File("/not/a/real/path"); // Apk cannot be read
+        fakeApk.delete(); // Apk cannot be read
         EasyMock.replay(mMockBuildInfo, mMockTestDevice);
         try {
             mPrep.setUp(mTestInfo);
@@ -347,6 +338,7 @@ public class TestAppInstallSetupTest {
     @Test
     public void testMissingApk_silent() throws Exception {
         fakeApk = null; // Apk doesn't exist
+        mPrep.clearSplitApkFileNames();
         mSetter.setOptionValue("throw-if-not-found", "false");
         EasyMock.replay(mMockBuildInfo, mMockTestDevice);
         mPrep.setUp(mTestInfo);
@@ -359,7 +351,8 @@ public class TestAppInstallSetupTest {
      */
     @Test
     public void testUnreadableApk_silent() throws Exception {
-        fakeApk = new File("/not/a/real/path"); // Apk cannot be read
+        fakeApk.delete(); // Apk cannot be read
+        mPrep.clearSplitApkFileNames();
         mSetter.setOptionValue("throw-if-not-found", "false");
         EasyMock.replay(mMockBuildInfo, mMockTestDevice);
         mPrep.setUp(mTestInfo);
