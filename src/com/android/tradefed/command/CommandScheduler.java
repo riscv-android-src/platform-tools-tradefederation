@@ -495,8 +495,13 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         public void invocationComplete(
                 IInvocationContext context, Map<ITestDevice, FreeDeviceState> devicesStates) {
             for (ITestInvocationListener listener : getListeners()) {
-                ((IScheduledInvocationListener) listener)
-                        .invocationComplete(context, devicesStates);
+                try {
+                    ((IScheduledInvocationListener) listener)
+                            .invocationComplete(context, devicesStates);
+                } catch (Exception e) {
+                    CLog.e("Exception during invocationComplete:");
+                    CLog.e(e);
+                }
             }
             releaseDevices(context, devicesStates);
         }
