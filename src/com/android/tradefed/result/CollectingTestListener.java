@@ -152,6 +152,12 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
         // ignore
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public void invocationFailed(FailureDescription failure) {
+        // ignore
+    }
+
     @Override
     public void testModuleStarted(IInvocationContext moduleContext) {
         mCurrentModuleContext = moduleContext;
