@@ -29,11 +29,10 @@ import com.android.tradefed.util.FileUtil;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * A {@link ITargetPreparer} that pushes one or more files/dirs from a {@link
@@ -46,24 +45,16 @@ import java.util.Set;
 @OptionClass(alias = "tests-zip-file")
 public class TestFilePushSetup extends BaseTargetPreparer {
 
-    @Option(name = "test-file-name", description =
-            "the relative path of a test zip file/directory to install on device. Can be repeated.",
+    @Option(
+            name = "test-file-name",
+            description =
+                    "the relative path of a test zip file/directory to install on device. Can be repeated.",
             importance = Importance.IF_UNSET)
-    private Collection<String> mTestPaths = new ArrayList<String>();
+    private List<File> mTestPaths = new ArrayList<>();
 
     @Option(name = "throw-if-not-found", description =
             "Throw exception if the specified file is not found.")
     private boolean mThrowIfNoFile = true;
-
-    @Option(name = "alt-dir",
-            description = "Alternate directory to look for the apk if the apk is not in the tests "
-                    + "zip file. For each alternate dir, will look in // and //DATA. Can be "
-                    + "repeated. Look for apks in last alt-dir first.")
-    private List<File> mAltDirs = new ArrayList<>();
-
-    @Option(name = "alt-dir-behavior", description = "The order of alternate directory to be used "
-            + "when searching for files to push")
-    private AltDirBehavior mAltDirBehavior = AltDirBehavior.FALLBACK;
 
     private Set<String> mFailedToPush = new HashSet<>();
 
@@ -73,14 +64,12 @@ public class TestFilePushSetup extends BaseTargetPreparer {
      * @param fileName
      */
     protected void addTestFileName(String fileName) {
-        mTestPaths.add(fileName);
+        mTestPaths.add(new File(fileName));
     }
 
-    /**
-     * Retrieves the list of files to be pushed from test zip onto device
-     */
-    protected Collection<String> getTestFileNames() {
-        return mTestPaths;
+    /** Retrieves the list of files to be pushed from test zip onto device */
+    protected List<String> getTestFileNames() {
+        return mTestPaths.stream().map(p -> p.getPath()).collect(Collectors.toList());
     }
 
     protected void clearTestFileName() {
@@ -97,34 +86,16 @@ public class TestFilePushSetup extends BaseTargetPreparer {
     protected File getLocalPathForFilename(IBuildInfo buildInfo, String fileName,
             ITestDevice device) throws TargetSetupError {
         List<File> dirs = new ArrayList<>();
-        for (File dir : mAltDirs) {
-            dirs.add(dir);
-            dirs.add(FileUtil.getFileForPath(dir, "DATA"));
-        }
-        // reverse the order so ones provided via command line last can be searched first
-        Collections.reverse(dirs);
-
-        List<File> expandedTestDirs = new ArrayList<>();
         if (buildInfo instanceof IDeviceBuildInfo) {
             File testsDir = ((IDeviceBuildInfo)buildInfo).getTestsDir();
             if (testsDir != null && testsDir.exists()) {
-                expandedTestDirs.add(FileUtil.getFileForPath(testsDir, "DATA"));
+                dirs.add(FileUtil.getFileForPath(testsDir, "DATA"));
             }
-        }
-        if (mAltDirBehavior == AltDirBehavior.FALLBACK) {
-            // alt dirs are appended after build artifact dirs
-            expandedTestDirs.addAll(dirs);
-            dirs = expandedTestDirs;
-        } else if (mAltDirBehavior == AltDirBehavior.OVERRIDE) {
-            dirs.addAll(expandedTestDirs);
-        } else {
-            throw new TargetSetupError("Missing handler for alt-dir-behavior: " + mAltDirBehavior,
-                    device.getDeviceDescriptor());
         }
         if (dirs.isEmpty()) {
             throw new TargetSetupError(
-                    "Provided buildInfo does not contain a valid tests directory and no " +
-                    "alternative directories were provided", device.getDeviceDescriptor());
+                    "Provided buildInfo does not contain a valid tests directory.",
+                    device.getDeviceDescriptor());
         }
 
         for (File dir : dirs) {
@@ -146,12 +117,12 @@ public class TestFilePushSetup extends BaseTargetPreparer {
             throw new IllegalArgumentException(String.format("Provided buildInfo is not a %s",
                     IDeviceBuildInfo.class.getCanonicalName()));
         }
-        if (mTestPaths.size() == 0) {
+        if (mTestPaths.isEmpty()) {
             CLog.d("No test files to push, skipping");
             return;
         }
         int filePushed = 0;
-        for (String fileName : mTestPaths) {
+        for (String fileName : getTestFileNames()) {
             File localFile = getLocalPathForFilename(buildInfo, fileName, device);
             if (localFile == null) {
                 if (mThrowIfNoFile) {
@@ -186,20 +157,6 @@ public class TestFilePushSetup extends BaseTargetPreparer {
 
     protected void setThrowIfNoFile(boolean throwIfNoFile) {
         mThrowIfNoFile = throwIfNoFile;
-    }
-
-    /**
-     * Set an alternate directory. Exposed for testing.
-     */
-    protected void setAltDir(File altDir) {
-        mAltDirs.add(altDir);
-    }
-
-    /**
-     * Set the alternative directory search behavior. Exposed for testing.
-     */
-    protected void setAltDirBehavior(AltDirBehavior behavior) {
-        mAltDirBehavior = behavior;
     }
 
     /**
