@@ -24,6 +24,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.MockFileUtil;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 
 import org.easymock.EasyMock;
@@ -32,6 +33,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
 
 /** Unit tests for {@link RustBinaryTest}. */
@@ -74,6 +76,24 @@ public class RustBinaryTestTest {
     /** Helper that verifies all mocks. */
     private void verifyMocks() {
         EasyMock.verify(mMockInvocationListener, mMockITestDevice, mMockReceiver);
+    }
+
+    /** Helper to run a single test binary module. */
+    private void runEmptyTest(String module, String path) throws DeviceNotAvailableException {
+        EasyMock.expect(
+                        mMockITestDevice.executeShellCommand(
+                                EasyMock.and(EasyMock.contains(path), EasyMock.contains("--list"))))
+                .andReturn("");
+        mMockInvocationListener.testRunStarted(
+                EasyMock.eq(module), EasyMock.eq(0), EasyMock.eq(0), EasyMock.anyLong());
+        mMockITestDevice.executeShellCommand(
+                EasyMock.contains(path),
+                EasyMock.same(mMockReceiver),
+                EasyMock.anyLong(),
+                (TimeUnit) EasyMock.anyObject(),
+                EasyMock.anyInt());
+        mMockInvocationListener.testRunEnded(
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
     }
 
     /** Test run when the test dir is not found on the device. */
@@ -121,18 +141,8 @@ public class RustBinaryTestTest {
 
         String[] files = new String[] {"test1", "test2"};
         EasyMock.expect(mMockITestDevice.getChildren(testPath)).andReturn(files);
-        mMockITestDevice.executeShellCommand(
-                EasyMock.contains(test1),
-                EasyMock.same(mMockReceiver),
-                EasyMock.anyLong(),
-                (TimeUnit) EasyMock.anyObject(),
-                EasyMock.anyInt());
-        mMockITestDevice.executeShellCommand(
-                EasyMock.contains(test2),
-                EasyMock.same(mMockReceiver),
-                EasyMock.anyLong(),
-                (TimeUnit) EasyMock.anyObject(),
-                EasyMock.anyInt());
+        runEmptyTest(test1, testPath1);
+        runEmptyTest(test2, testPath2);
 
         replayMocks();
 
@@ -156,14 +166,9 @@ public class RustBinaryTestTest {
 
         EasyMock.expect(mMockITestDevice.doesFileExist(modulePath)).andReturn(true);
         EasyMock.expect(mMockITestDevice.isDirectory(modulePath)).andReturn(false);
-        mMockITestDevice.executeShellCommand(
-                EasyMock.contains(modulePath),
-                EasyMock.same(mMockReceiver),
-                EasyMock.anyLong(),
-                (TimeUnit) EasyMock.anyObject(),
-                EasyMock.anyInt());
         // report the file as executable
         EasyMock.expect(mMockITestDevice.isExecutable(modulePath)).andReturn(true);
+        runEmptyTest(module, modulePath);
 
         replayMocks();
 
@@ -198,12 +203,7 @@ public class RustBinaryTestTest {
         String[] files2 = new String[] {"test1"};
         EasyMock.expect(mMockITestDevice.getChildren(testPath + "/" + subFolderName))
                 .andReturn(files2);
-        mMockITestDevice.executeShellCommand(
-                EasyMock.contains(test1Path),
-                EasyMock.same(mMockReceiver),
-                EasyMock.anyLong(),
-                (TimeUnit) EasyMock.anyObject(),
-                EasyMock.anyInt());
+        runEmptyTest(test1, test1Path);
 
         replayMocks();
 
