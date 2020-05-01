@@ -95,6 +95,15 @@ public class ShardListener extends CollectingTestListener implements ISupportGra
         }
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public void invocationFailed(FailureDescription failure) {
+        super.invocationFailed(failure);
+        synchronized (mMasterListener) {
+            mMasterListener.invocationFailed(failure);
+        }
+    }
+
     /**
      * {@inheritDoc}
      */
