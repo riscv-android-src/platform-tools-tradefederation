@@ -40,7 +40,6 @@ import com.google.common.net.HostAndPort;
 import org.easymock.Capture;
 import org.easymock.EasyMock;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -79,7 +78,7 @@ public class GceManagerTest {
         mOptions.setAvdDriverBinary(mAvdBinary);
         mOptions.setAvdConfigFile(mAvdBinary);
         mGceManager =
-                new GceManager(mMockDeviceDesc, mOptions, mMockBuildInfo, null) {
+                new GceManager(mMockDeviceDesc, mOptions, mMockBuildInfo) {
                     @Override
                     IRunUtil getRunUtil() {
                         return mMockRunUtil;
@@ -249,7 +248,7 @@ public class GceManagerTest {
             setter.setOptionValue("gce-driver-param", "--emulator-build-id");
             setter.setOptionValue("gce-driver-param", "EMULATOR_BUILD_ID");
             mGceManager =
-                    new GceManager(mMockDeviceDesc, mOptions, mMockBuildInfo, null) {
+                    new GceManager(mMockDeviceDesc, mOptions, mMockBuildInfo) {
                         @Override
                         IRunUtil getRunUtil() {
                             return mMockRunUtil;
@@ -331,7 +330,7 @@ public class GceManagerTest {
         // Boot-time on Acloud params will be overridden by TF option.
         setter.setOptionValue("allow-gce-boot-timeout-override", "false");
         mGceManager =
-                new GceManager(mMockDeviceDesc, mOptions, mMockBuildInfo, null) {
+                new GceManager(mMockDeviceDesc, mOptions, mMockBuildInfo) {
                     @Override
                     IRunUtil getRunUtil() {
                         return mMockRunUtil;
@@ -418,7 +417,7 @@ public class GceManagerTest {
         OptionSetter setter = new OptionSetter(mOptions);
         setter.setOptionValue("allow-gce-boot-timeout-override", "true");
         mGceManager =
-                new GceManager(mMockDeviceDesc, mOptions, mMockBuildInfo, null) {
+                new GceManager(mMockDeviceDesc, mOptions, mMockBuildInfo) {
                     @Override
                     IRunUtil getRunUtil() {
                         return mMockRunUtil;
@@ -475,7 +474,7 @@ public class GceManagerTest {
         OptionSetter setter = new OptionSetter(mOptions);
         setter.setOptionValue("allow-gce-boot-timeout-override", "true");
         mGceManager =
-                new GceManager(mMockDeviceDesc, mOptions, mMockBuildInfo, null) {
+                new GceManager(mMockDeviceDesc, mOptions, mMockBuildInfo) {
                     @Override
                     IRunUtil getRunUtil() {
                         return mMockRunUtil;
@@ -517,7 +516,7 @@ public class GceManagerTest {
         OptionSetter setter = new OptionSetter(mOptions);
         setter.setOptionValue("allow-gce-boot-timeout-override", "true");
         mGceManager =
-                new GceManager(mMockDeviceDesc, mOptions, mMockBuildInfo, null) {
+                new GceManager(mMockDeviceDesc, mOptions, mMockBuildInfo) {
                     @Override
                     IRunUtil getRunUtil() {
                         return mMockRunUtil;
@@ -572,8 +571,7 @@ public class GceManagerTest {
     @Test
     public void testShutdownGce() throws Exception {
         mGceManager =
-                new GceManager(
-                        mMockDeviceDesc, mOptions, mMockBuildInfo, null, "instance1", "host1") {
+                new GceManager(mMockDeviceDesc, mOptions, mMockBuildInfo, "instance1", "host1") {
                     @Override
                     IRunUtil getRunUtil() {
                         return mMockRunUtil;
@@ -611,8 +609,7 @@ public class GceManagerTest {
         OptionSetter setter = new OptionSetter(mOptions);
         setter.setOptionValue("wait-gce-teardown", "false");
         mGceManager =
-                new GceManager(
-                        mMockDeviceDesc, mOptions, mMockBuildInfo, null, "instance1", "host1") {
+                new GceManager(mMockDeviceDesc, mOptions, mMockBuildInfo, "instance1", "host1") {
                     @Override
                     IRunUtil getRunUtil() {
                         return mMockRunUtil;
@@ -645,8 +642,7 @@ public class GceManagerTest {
     @Test
     public void testShutdownGce_withJsonKeyFile() throws Exception {
         mGceManager =
-                new GceManager(
-                        mMockDeviceDesc, mOptions, mMockBuildInfo, null, "instance1", "host1") {
+                new GceManager(mMockDeviceDesc, mOptions, mMockBuildInfo, "instance1", "host1") {
                     @Override
                     IRunUtil getRunUtil() {
                         return mMockRunUtil;
@@ -853,7 +849,7 @@ public class GceManagerTest {
         setter.setOptionValue("allow-gce-boot-timeout-override", "true");
         DeviceDescriptor desc = null;
         mGceManager =
-                new GceManager(desc, mOptions, mMockBuildInfo, null) {
+                new GceManager(desc, mOptions, mMockBuildInfo) {
                     @Override
                     IRunUtil getRunUtil() {
                         return mMockRunUtil;
@@ -915,28 +911,6 @@ public class GceManagerTest {
         EasyMock.verify(mMockRunUtil);
     }
 
-    /**
-     * Test {@link GceManager#getAvdConfigFile()} while using test resource.
-     *
-     * @throws Exception
-     */
-    @Test
-    public void testGetAvdConfigFile_testResource() throws Exception {
-        OptionSetter setter = new OptionSetter(mOptions);
-        setter.setOptionValue("gce-driver-config-test-resource-name", "device.config");
-
-        BuildInfo testResourceBuild = new BuildInfo();
-        testResourceBuild.setTestResourceBuild(true);
-        File configFile = new File("device.config");
-        testResourceBuild.setFile("device.config", configFile, "");
-        List<IBuildInfo> testResourceBuildInfos = new ArrayList<>();
-        testResourceBuildInfos.add(testResourceBuild);
-
-        mGceManager =
-                new GceManager(mMockDeviceDesc, mOptions, mMockBuildInfo, testResourceBuildInfos);
-        Assert.assertEquals(configFile, mGceManager.getAvdConfigFile());
-    }
-
     @Test
     public void testUpdateTimeout() throws Exception {
         OptionSetter setter = new OptionSetter(mOptions);
@@ -944,7 +918,7 @@ public class GceManagerTest {
         mOptions.getGceDriverParams().add("--boot-timeout");
         mOptions.getGceDriverParams().add("900");
         assertEquals(1800000L, mOptions.getGceCmdTimeout());
-        mGceManager = new GceManager(mMockDeviceDesc, mOptions, mMockBuildInfo, null);
+        mGceManager = new GceManager(mMockDeviceDesc, mOptions, mMockBuildInfo);
         assertEquals(1080000L, mOptions.getGceCmdTimeout());
     }
 
@@ -957,7 +931,7 @@ public class GceManagerTest {
         mOptions.getGceDriverParams().add("--boot-timeout");
         mOptions.getGceDriverParams().add("450");
         assertEquals(1800000L, mOptions.getGceCmdTimeout());
-        mGceManager = new GceManager(mMockDeviceDesc, mOptions, mMockBuildInfo, null);
+        mGceManager = new GceManager(mMockDeviceDesc, mOptions, mMockBuildInfo);
         // The last specified boot-timeout is used.
         assertEquals(630000L, mOptions.getGceCmdTimeout());
     }
@@ -969,7 +943,7 @@ public class GceManagerTest {
         mOptions.getGceDriverParams().add("--someargs");
         mOptions.getGceDriverParams().add("900");
         assertEquals(1800000L, mOptions.getGceCmdTimeout());
-        mGceManager = new GceManager(mMockDeviceDesc, mOptions, mMockBuildInfo, null);
+        mGceManager = new GceManager(mMockDeviceDesc, mOptions, mMockBuildInfo);
         assertEquals(1800000L, mOptions.getGceCmdTimeout());
     }
 }
