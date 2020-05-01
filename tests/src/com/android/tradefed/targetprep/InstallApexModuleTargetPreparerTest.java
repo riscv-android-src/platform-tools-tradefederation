@@ -191,9 +191,9 @@ public class InstallApexModuleTargetPreparerTest {
                     }
 
                     @Override
-                    protected boolean isPersistentApk(String filename, TestInformation testInfo)
+                    protected boolean isPersistentApk(File filename, TestInformation testInfo)
                             throws TargetSetupError {
-                        if (filename.contains("Persistent")) {
+                        if (filename.getName().contains("Persistent")) {
                             return true;
                         }
                         return false;
