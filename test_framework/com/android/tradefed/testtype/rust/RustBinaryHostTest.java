@@ -27,7 +27,6 @@ import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
@@ -37,6 +36,7 @@ import com.android.tradefed.util.RunUtil;
 
 import java.io.File;
 import java.io.IOException;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -132,10 +132,34 @@ public class RustBinaryHostTest extends RustTestBase implements IBuildReceiver {
         // Add all the other options
         commandLine.addAll(mTestOptions);
 
+        List<String> listCommandLine = new ArrayList<>(commandLine);
+        listCommandLine.add("--list");
+        CommandResult listResult =
+                getRunUtil()
+                        .runTimedCmdSilently(mTestTimeout, listCommandLine.toArray(new String[0]));
+        int testCount = 0;
+        // TODO: Do we want to handle non-standard test harnesses without a
+        // --list param? Currently we will report 0 tests, which will cause an
+        // overall failure, but we don't know how to parse arbitrary test
+        // harness results.
+        if (listResult.getStatus() == CommandStatus.SUCCESS) {
+            try {
+                testCount = parseTestListCount(listResult.getStdout().split("\n"));
+            } catch (ParseException e) {
+                CLog.w("Parsing test list failed: %s", e.getMessage());
+            }
+        } else {
+            CLog.w(
+                    "Could not run command '%s' to get test list.",
+                    String.join(" ", listCommandLine));
+        }
+
+        String runName = file.getName();
+        long startTimeMs = System.currentTimeMillis();
+        listener.testRunStarted(runName, testCount, 0, startTimeMs);
         CommandResult result =
                 getRunUtil().runTimedCmd(mTestTimeout, commandLine.toArray(new String[0]));
-        String runName = file.getName();
-        RustForwarder forwarder = new RustForwarder(listener, runName);
+        long testTimeMs = System.currentTimeMillis() - startTimeMs;
         if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
             CLog.e(
                     "Something went wrong when running the rust binary:\nstdout: "
@@ -152,17 +176,17 @@ public class RustBinaryHostTest extends RustTestBase implements IBuildReceiver {
                         String.format(RUST_LOG_STDERR_FORMAT, runName), LogDataType.TEXT, data);
             }
             String[] lines = result.getStdout().split("\n");
-            new RustTestResultParser(forwarder, runName).processNewLines(lines);
+            new RustTestResultParser(listener, runName).processNewLines(lines);
         } catch (RuntimeException e) {
-            reportFailure(
-                    listener,
-                    runName,
+            listener.testRunFailed(
                     String.format("Failed to parse the rust test output: %s", e.getMessage()));
             CLog.e(e);
         } catch (IOException e) {
+            listener.testRunFailed(e.getMessage());
             throw new RuntimeException(e);
         } finally {
             FileUtil.deleteFile(resultFile);
+            listener.testRunEnded(testTimeMs, new HashMap<String, Metric>());
         }
     }
 
@@ -172,42 +196,5 @@ public class RustBinaryHostTest extends RustTestBase implements IBuildReceiver {
             mRunUtil = new RunUtil();
         }
         return mRunUtil;
-    }
-
-    private void reportFailure(
-            ITestInvocationListener listener, String runName, String errorMessage) {
-        listener.testRunStarted(runName, 0);
-        listener.testRunFailed(errorMessage);
-        listener.testRunEnded(0L, new HashMap<String, Metric>());
-    }
-
-    /** Result forwarder to replace the run name by the binary name. */
-    public class RustForwarder extends ResultForwarder {
-
-        private String mRunName;
-
-        /** Ctor with the run name using the binary name. */
-        public RustForwarder(ITestInvocationListener listener, String name) {
-            super(listener);
-            mRunName = name;
-        }
-
-        @Override
-        public void testRunStarted(String runName, int testCount) {
-            // Replace run name
-            testRunStarted(runName, testCount, 0);
-        }
-
-        @Override
-        public void testRunStarted(String runName, int testCount, int attempt) {
-            // Replace run name
-            testRunStarted(runName, testCount, attempt, System.currentTimeMillis());
-        }
-
-        @Override
-        public void testRunStarted(String runName, int testCount, int attempt, long startTime) {
-            // Replace run name
-            super.testRunStarted(mRunName, testCount, attempt, startTime);
-        }
     }
 }
