@@ -39,8 +39,10 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /*
@@ -118,9 +120,10 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
                 device.reboot();
             }
         } else {
-            installer(testInfo, testAppFileNames);
-            if (containsApex(testAppFileNames)
-                    || containsPersistentApk(testAppFileNames, testInfo)) {
+            Map<File, String> appFilesAndPackages = resolveApkFiles(testInfo, testAppFileNames);
+            installer(testInfo, appFilesAndPackages);
+            if (containsApex(appFilesAndPackages.keySet())
+                    || containsPersistentApk(appFilesAndPackages.keySet(), testInfo)) {
                 RunUtil.getDefault().sleep(mApexStagingWaitTime);
                 device.reboot();
             }
@@ -226,7 +229,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
      * @return a File[] containing the splits.
      * @throws TargetSetupError if bundletool cannot be found or device spec file fails to generate.
      */
-    private File[] getSplitsForApks(TestInformation testInfo, File moduleFile)
+    private List<File> getSplitsForApks(TestInformation testInfo, File moduleFile)
             throws TargetSetupError {
         initBundletoolUtil(testInfo);
         initDeviceSpecFilePath(testInfo.getDevice());
@@ -237,10 +240,10 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
                                 mDeviceSpecFilePath,
                                 testInfo.getDevice(),
                                 testInfo.getBuildInfo());
-        if (splitsDir == null) {
+        if (splitsDir == null || splitsDir.listFiles() == null) {
             return null;
         }
-        return splitsDir.listFiles();
+        return Arrays.asList(splitsDir.listFiles());
     }
 
     /**
@@ -273,7 +276,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
             }
             String modulePackageName = "";
             if (moduleFile.getName().endsWith(SPLIT_APKS_SUFFIX)) {
-                File[] splits = getSplitsForApks(testInfo, moduleFile);
+                List<File> splits = getSplitsForApks(testInfo, moduleFile);
                 if (splits == null) {
                     // Bundletool failed to extract splits.
                     CLog.w(
@@ -281,7 +284,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
                             moduleFileName, mDeviceSpecFilePath);
                     continue;
                 }
-                modulePackageName = parsePackageName(splits[0], device.getDeviceDescriptor());
+                modulePackageName = parsePackageName(splits.get(0), device.getDeviceDescriptor());
             } else {
                 modulePackageName = parsePackageName(moduleFile, device.getDeviceDescriptor());
             }
@@ -321,18 +324,21 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
 
     // TODO(b/124461631): Remove after ddmlib supports install-multi-package.
     @Override
-    protected void installer(TestInformation testInfo, List<String> testAppFileNames)
+    protected void installer(TestInformation testInfo, Map<File, String> testAppFileNames)
             throws TargetSetupError, DeviceNotAvailableException {
-        if (containsApex(testAppFileNames)) {
+        if (containsApex(testAppFileNames.keySet())) {
             mTestApexInfoList = collectApexInfoFromApexModules(testAppFileNames, testInfo);
         }
-        if (containsPersistentApk(testAppFileNames, testInfo)) {
+        if (containsPersistentApk(testAppFileNames.keySet(), testInfo)) {
             // When there is a persistent apk in the train, use '--staged' to install full train
             // Otherwise, do normal install without '--staged'
-            installTrain(testInfo, testAppFileNames, new String[] {"--staged"});
+            installTrain(
+                    testInfo,
+                    new ArrayList<>(testAppFileNames.keySet()),
+                    new String[] {"--staged"});
             return;
         }
-        installTrain(testInfo, testAppFileNames, new String[] {});
+        installTrain(testInfo, new ArrayList<>(testAppFileNames.keySet()), new String[] {});
     }
 
     /**
@@ -343,17 +349,16 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
      *     installed.
      */
     protected void installTrain(
-            TestInformation testInfo, List<String> moduleFilenames, final String[] extraArgs)
+            TestInformation testInfo, List<File> moduleFilenames, final String[] extraArgs)
             throws TargetSetupError, DeviceNotAvailableException {
         // TODO(b/137883918):remove after new adb is released, which supports installing
         // single apk/apex using 'install-multi-package'
         ITestDevice device = testInfo.getDevice();
         if (moduleFilenames.size() == 1) {
-            String moduleFileName = moduleFilenames.get(0);
-            File module = getLocalPathForFilename(testInfo, moduleFileName);
-            device.installPackage(module, true, extraArgs);
-            if (moduleFileName.endsWith(APK_SUFFIX)) {
-                String packageName = parsePackageName(module, device.getDeviceDescriptor());
+            device.installPackage(moduleFilenames.get(0), true, extraArgs);
+            if (moduleFilenames.get(0).getName().endsWith(APK_SUFFIX)) {
+                String packageName =
+                        parsePackageName(moduleFilenames.get(0), device.getDeviceDescriptor());
                 mApkInstalled.add(packageName);
             }
             return;
@@ -369,15 +374,9 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
             }
         }
 
-        for (String fileName : moduleFilenames) {
-            File moduleFile = getLocalPathForFilename(testInfo, fileName);
-            if (moduleFile == null) {
-                throw new TargetSetupError(
-                        String.format("File %s not found.", fileName),
-                        device.getDeviceDescriptor());
-            }
+        for (File moduleFile : moduleFilenames) {
             trainInstallCmd.add(moduleFile.getAbsolutePath());
-            if (fileName.endsWith(APK_SUFFIX)) {
+            if (moduleFile.getName().endsWith(APK_SUFFIX)) {
                 String packageName = parsePackageName(moduleFile, device.getDeviceDescriptor());
                 apkPackageNames.add(packageName);
             }
@@ -434,23 +433,31 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
     private void installSingleModuleUsingBundletool(
             TestInformation testInfo, String deviceSpecFilePath, String apksName)
             throws TargetSetupError, DeviceNotAvailableException {
-        File apks = getLocalPathForFilename(testInfo, apksName);
+        Map<File, String> appFilesAndPackages =
+                resolveApkFiles(testInfo, Arrays.asList(new String[] {apksName}));
+        if (appFilesAndPackages.size() > 1) {
+            throw new RuntimeException(
+                    String.format("We only expected one apk and received %s", appFilesAndPackages));
+        }
+        File apks = appFilesAndPackages.keySet().iterator().next();
         // Rename the extracted files and add the file to filename list.
-        File[] splits = getSplitsForApks(testInfo, apks);
+        List<File> splits = getSplitsForApks(testInfo, apks);
         ITestDevice device = testInfo.getDevice();
-        if (splits.length == 0) {
+        if (splits.isEmpty()) {
             throw new TargetSetupError(
                     String.format("Extraction for %s failed. No apk/apex is extracted.", apksName),
                     device.getDeviceDescriptor());
         }
-        String splitFileName = splits[0].getName();
         // Install .apks that contain apex module.
-        if (containsApex(Arrays.asList(splitFileName))) {
-            super.installer(testInfo, Arrays.asList(splitFileName));
+        if (containsApex(splits)) {
+            appFilesAndPackages = new LinkedHashMap<>();
+            appFilesAndPackages.put(
+                    splits.get(0), parsePackageName(splits.get(0), device.getDeviceDescriptor()));
+            super.installer(testInfo, appFilesAndPackages);
         } else {
             // Install .apks that contain apk module.
             getBundletoolUtil().installApks(apks, device);
-            mApkToInstall.add(parsePackageName(splits[0], device.getDeviceDescriptor()));
+            mApkToInstall.add(parsePackageName(splits.get(0), device.getDeviceDescriptor()));
         }
         return;
     }
@@ -470,7 +477,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
         for (String moduleFileName : testAppFileNames) {
             File moduleFile = getLocalPathForFilename(testInfo, moduleFileName);
             if (moduleFileName.endsWith(SPLIT_APKS_SUFFIX)) {
-                File[] splits = getSplitsForApks(testInfo, moduleFile);
+                List<File> splits = getSplitsForApks(testInfo, moduleFile);
                 String splitsArgs = createInstallArgsForSplit(splits, device);
                 mSplitsInstallArgs.add(splitsArgs);
             } else {
@@ -550,9 +557,9 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
     }
 
     /** Checks if the apps need to be installed contains apex. */
-    private boolean containsApex(Collection<String> testFileNames) {
-        for (String filename : testFileNames) {
-            if (filename.endsWith(APEX_SUFFIX)) {
+    private boolean containsApex(Collection<File> testFileNames) {
+        for (File filename : testFileNames) {
+            if (filename.getName().endsWith(APEX_SUFFIX)) {
                 return true;
             }
         }
@@ -612,7 +619,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
      * @param device The test device
      * @return a {@link String} representing the install args for the split apks.
      */
-    private String createInstallArgsForSplit(File[] splits, ITestDevice device)
+    private String createInstallArgsForSplit(List<File> splits, ITestDevice device)
             throws TargetSetupError {
         String splitsArgs = "";
         for (File f : splits) {
@@ -639,9 +646,10 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
      * @param testInfo The {@link TestInformation}
      * @return <code>true</code> if the input files contains a persistent apk module.
      */
-    protected boolean containsPersistentApk(List<String> testAppFileNames, TestInformation testInfo)
+    protected boolean containsPersistentApk(
+            Collection<File> testAppFileNames, TestInformation testInfo)
             throws TargetSetupError, DeviceNotAvailableException {
-        for (String moduleFileName : testAppFileNames) {
+        for (File moduleFileName : testAppFileNames) {
             if (isPersistentApk(moduleFileName, testInfo)) {
                 return true;
             }
@@ -656,17 +664,16 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
      * @param testInfo The {@link TestInformation}
      * @return <code>true</code> if this is a persistent apk module.
      */
-    protected boolean isPersistentApk(String filename, TestInformation testInfo)
+    protected boolean isPersistentApk(File filename, TestInformation testInfo)
             throws TargetSetupError, DeviceNotAvailableException {
-        if (!filename.endsWith(APK_SUFFIX)) {
+        if (!filename.getName().endsWith(APK_SUFFIX)) {
             return false;
         }
-        File moduleFile = getLocalPathForFilename(testInfo, filename);
         PackageInfo pkgInfo =
                 testInfo.getDevice()
                         .getAppPackageInfo(
                                 parsePackageName(
-                                        moduleFile, testInfo.getDevice().getDeviceDescriptor()));
+                                        filename, testInfo.getDevice().getDeviceDescriptor()));
         return pkgInfo.isPersistentApp();
     }
 
@@ -678,10 +685,10 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
      * @return a list containing the apexinfo of the apex modules in the input file lists
      */
     protected List<ApexInfo> collectApexInfoFromApexModules(
-            List<String> testAppFileNames, TestInformation testInfo) throws TargetSetupError {
+            Map<File, String> testAppFileNames, TestInformation testInfo) throws TargetSetupError {
         List<ApexInfo> apexInfoList = new ArrayList<>();
-        for (String appFilename : getTestsFileName()) {
-            File appFile = getLocalPathForFilename(testInfo, appFilename);
+
+        for (File appFile : testAppFileNames.keySet()) {
             if (isApex(appFile)) {
                 ApexInfo apexInfo =
                         retrieveApexInfo(appFile, testInfo.getDevice().getDeviceDescriptor());
