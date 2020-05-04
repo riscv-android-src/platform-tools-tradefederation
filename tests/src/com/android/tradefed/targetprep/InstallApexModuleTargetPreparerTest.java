@@ -100,6 +100,7 @@ public class InstallApexModuleTargetPreparerTest {
         mMockBundletoolUtil = Mockito.mock(BundletoolUtil.class);
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn(SERIAL);
         EasyMock.expect(mMockDevice.getDeviceDescriptor()).andStubReturn(null);
+        EasyMock.expect(mMockDevice.checkApiLevelAgainstNextRelease(30)).andStubReturn(true);
         IInvocationContext context = new InvocationContext();
         context.addAllocatedDevice("device", mMockDevice);
         context.addDeviceBuildInfo("device", mMockBuildInfo);
@@ -492,6 +493,37 @@ public class InstallApexModuleTargetPreparerTest {
         } finally {
             EasyMock.verify(mMockBuildInfo, mMockDevice);
         }
+    }
+
+    @Test
+    public void testSetupSuccess_activatedSuccessOnQ() throws Exception {
+        mInstallApexModuleTargetPreparer.addTestFileName(APEX_NAME);
+        mMockDevice.deleteFile(APEX_DATA_DIR + "*");
+        EasyMock.expectLastCall().times(1);
+        mMockDevice.deleteFile(SESSION_DATA_DIR + "*");
+        EasyMock.expectLastCall().times(1);
+        mMockDevice.deleteFile(STAGING_DATA_DIR + "*");
+        EasyMock.expectLastCall().times(1);
+        CommandResult res = new CommandResult();
+        res.setStdout("test.apex");
+        EasyMock.expect(mMockDevice.executeShellV2Command("ls " + APEX_DATA_DIR)).andReturn(res);
+        EasyMock.expect(mMockDevice.executeShellV2Command("ls " + SESSION_DATA_DIR)).andReturn(res);
+        EasyMock.expect(mMockDevice.executeShellV2Command("ls " + STAGING_DATA_DIR)).andReturn(res);
+        mMockDevice.reboot();
+        EasyMock.expectLastCall();
+        EasyMock.expect(mMockDevice.checkApiLevelAgainstNextRelease(EasyMock.anyInt()))
+                .andReturn(false);
+        mockSuccessfulInstallPackageAndReboot(mFakeApex);
+        Set<ApexInfo> activatedApex = new HashSet<ApexInfo>();
+        activatedApex.add(new ApexInfo("com.android.FAKE_APEX_PACKAGE_NAME", 1, ""));
+        EasyMock.expect(mMockDevice.getActiveApexes()).andReturn(activatedApex).times(3);
+        Set<String> installableModules = new HashSet<>();
+        installableModules.add(APEX_PACKAGE_NAME);
+        EasyMock.expect(mMockDevice.getInstalledPackageNames()).andReturn(installableModules);
+
+        EasyMock.replay(mMockBuildInfo, mMockDevice);
+        mInstallApexModuleTargetPreparer.setUp(mTestInfo);
+        EasyMock.verify(mMockBuildInfo, mMockDevice);
     }
 
     @Test
