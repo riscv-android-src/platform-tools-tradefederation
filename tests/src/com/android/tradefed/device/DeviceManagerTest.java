@@ -1242,6 +1242,7 @@ public class DeviceManagerTest {
                         false,
                         DeviceState.ONLINE,
                         DeviceAllocationState.Available,
+                        TestDeviceState.ONLINE,
                         "hardware_test",
                         "product_test",
                         "sdk",
