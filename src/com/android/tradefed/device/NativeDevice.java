@@ -4502,6 +4502,7 @@ public class NativeDevice implements IManagedTestDevice {
                     idevice instanceof StubDevice,
                     idevice.getState(),
                     getAllocationState(),
+                    getDeviceState(),
                     getDisplayString(selector.getDeviceProductType(idevice)),
                     getDisplayString(selector.getDeviceProductVariant(idevice)),
                     getDisplayString(idevice.getProperty(DeviceProperties.SDK_VERSION)),

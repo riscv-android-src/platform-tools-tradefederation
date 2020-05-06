@@ -131,19 +131,25 @@ class ManagedDeviceList implements Iterable<IManagedTestDevice> {
     /**
      * Update the {@link TestDevice#getDeviceState()} of devices as appropriate.
      *
-     * @param serials the devices currently on fastboot
+     * @param serials The devices currently on fastboot
+     * @param isFastbootD Whether or not the devices serials are in fastbootd
      */
-    public void updateFastbootStates(Set<String> serials) {
+    public void updateFastbootStates(Set<String> serials, boolean isFastbootD) {
         List<IManagedTestDevice> toRemove = new ArrayList<>();
         mListLock.lock();
         try {
+            TestDeviceState state = TestDeviceState.FASTBOOT;
+            if (isFastbootD) {
+                state = TestDeviceState.FASTBOOTD;
+            }
             for (IManagedTestDevice d : mList) {
-                if (serials.contains(d.getSerialNumber())) {
-                    d.setDeviceState(TestDeviceState.FASTBOOT);
-                } else if (d.getDeviceState() == TestDeviceState.FASTBOOT) {
+                String serial = d.getSerialNumber();
+                if (serials.contains(serial)) {
+                    d.setDeviceState(state);
+                } else if (state.equals(d.getDeviceState())) {
                     // device was previously on fastboot, assume its gone now
                     d.setDeviceState(TestDeviceState.NOT_AVAILABLE);
-                    CLog.d("Device %s was in fastboot and not found anymore", d.getSerialNumber());
+                    CLog.d("Device %s was in fastboot and not found anymore", serial);
                     toRemove.add(d);
                 }
             }
