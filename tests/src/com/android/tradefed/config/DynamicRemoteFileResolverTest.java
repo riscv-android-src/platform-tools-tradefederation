@@ -676,7 +676,7 @@ public class DynamicRemoteFileResolverTest {
     }
 
     private static final Correspondence<File, File> FILE_PATH_EQUIVALENCE =
-            new Correspondence<>() {
+            new Correspondence<File, File>() {
                 @Override
                 public boolean compare(File actual, File expected) {
                     return expected.getAbsolutePath().equals(actual.getAbsolutePath());
