@@ -56,12 +56,14 @@ import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.log.StdoutLogger;
 import com.android.tradefed.postprocessor.IPostProcessor;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogSaverResultForwarder;
 import com.android.tradefed.result.ResultAndLogForwarder;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.retry.ResultAggregator;
 import com.android.tradefed.retry.RetryStrategy;
@@ -363,7 +365,9 @@ public class TestInvocation implements ITestInvocation {
                                     "Invocation was interrupted due to: %s, results will be "
                                             + "affected.",
                                     mStopCause);
-                    listener.invocationFailed(new RuntimeException(message));
+                    FailureDescription failure =
+                            FailureDescription.create(message, FailureStatus.CANCELLED);
+                    listener.invocationFailed(failure);
                     PrettyPrintDelimiter.printStageDelimiter(message);
                     if (mStopRequestTime != null) {
                         // This is not 100% perfect since result reporting can still run a bit
@@ -585,14 +589,17 @@ public class TestInvocation implements ITestInvocation {
             mStatus = "(no build to test)";
             // Set the exit code to error
             buildException = new BuildRetrievalError("No build found to test.");
-            setExitCode(ExitCode.NO_BUILD, buildException);
         } catch (BuildRetrievalError | RuntimeException e) {
             buildException = e;
         }
+        setExitCode(ExitCode.NO_BUILD, buildException);
         // Report an empty invocation, so this error is sent to listeners
         startInvocation(config, testInfo.getContext(), listener);
         // Don't want to use #reportFailure, since that will call buildNotTested
-        listener.invocationFailed(buildException);
+        FailureDescription failure =
+                FailureDescription.create(buildException.getMessage(), FailureStatus.INFRA_FAILURE);
+        failure.setCause(buildException);
+        listener.invocationFailed(failure);
         for (ITestDevice device : testInfo.getContext().getDevices()) {
             invocationPath.reportLogs(device, listener, Stage.ERROR);
         }
@@ -644,7 +651,10 @@ public class TestInvocation implements ITestInvocation {
             // Report an empty invocation, so this error is sent to listeners
             startInvocation(config, context, listener);
             // Don't want to use #reportFailure, since that will call buildNotTested
-            listener.invocationFailed(e);
+            FailureDescription failure =
+                    FailureDescription.create(e.getMessage(), FailureStatus.INFRA_FAILURE);
+            failure.setCause(e);
+            listener.invocationFailed(failure);
             for (ITestDevice device : context.getDevices()) {
                 invocationPath.reportLogs(device, listener, Stage.ERROR);
             }
