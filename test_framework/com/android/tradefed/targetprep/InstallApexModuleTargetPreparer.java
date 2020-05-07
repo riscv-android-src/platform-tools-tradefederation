@@ -106,7 +106,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
             CLog.i("Activated apex: %s", info.toString());
         }
 
-        List<String> testAppFileNames = getModulesToInstall(testInfo);
+        List<File> testAppFileNames = getModulesToInstall(testInfo);
         if (testAppFileNames.isEmpty()) {
             CLog.i("No modules are preloaded on the device, so no modules will be installed.");
             return;
@@ -257,7 +257,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
      * @throws TargetSetupError when mandatory modules are not installed, or module cannot be
      *     installed.
      */
-    public List<String> getModulesToInstall(TestInformation testInfo)
+    public List<File> getModulesToInstall(TestInformation testInfo)
             throws DeviceNotAvailableException, TargetSetupError {
         // Get all preloaded modules for the device.
         ITestDevice device = testInfo.getDevice();
@@ -266,10 +266,10 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
         for (ApexInfo installedApex : installedApexes) {
             installedPackages.add(installedApex.name);
         }
-        List<String> moduleFileNames = getTestsFileName();
-        List<String> moduleNamesToInstall = new ArrayList<>();
-        for (String moduleFileName : moduleFileNames) {
-            File moduleFile = getLocalPathForFilename(testInfo, moduleFileName);
+        List<File> moduleFileNames = getTestsFileName();
+        List<File> moduleNamesToInstall = new ArrayList<>();
+        for (File moduleFileName : moduleFileNames) {
+            File moduleFile = getLocalPathForFilename(testInfo, moduleFileName.getName());
             if (moduleFile == null) {
                 throw new TargetSetupError(
                         String.format("%s not found.", moduleFileName),
@@ -408,7 +408,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
      * @param testInfo the {@link TestInformation}
      * @param testAppFileNames the filenames of the preloaded modules to install.
      */
-    protected void installUsingBundleTool(TestInformation testInfo, List<String> testAppFileNames)
+    protected void installUsingBundleTool(TestInformation testInfo, List<File> testAppFileNames)
             throws TargetSetupError, DeviceNotAvailableException {
         initBundletoolUtil(testInfo);
         initDeviceSpecFilePath(testInfo.getDevice());
@@ -429,13 +429,13 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
      *
      * @param testInfo the {@link TestInformation}
      * @param deviceSpecFilePath the spec file of the test device
-     * @param apksName the file name of the .apks
+     * @param apkFile the file of the .apks
      */
     private void installSingleModuleUsingBundletool(
-            TestInformation testInfo, String deviceSpecFilePath, String apksName)
+            TestInformation testInfo, String deviceSpecFilePath, File apkFile)
             throws TargetSetupError, DeviceNotAvailableException {
         Map<File, String> appFilesAndPackages =
-                resolveApkFiles(testInfo, Arrays.asList(new String[] {apksName}));
+                resolveApkFiles(testInfo, Arrays.asList(new File[] {apkFile}));
         if (appFilesAndPackages.size() > 1) {
             throw new RuntimeException(
                     String.format("We only expected one apk and received %s", appFilesAndPackages));
@@ -446,7 +446,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
         ITestDevice device = testInfo.getDevice();
         if (splits.isEmpty()) {
             throw new TargetSetupError(
-                    String.format("Extraction for %s failed. No apk/apex is extracted.", apksName),
+                    String.format("Extraction for %s failed. No apk/apex is extracted.", apkFile),
                     device.getDeviceDescriptor());
         }
         // Install .apks that contain apex module.
@@ -472,17 +472,17 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
      * @param testAppFileNames the list of preloaded modules to install.
      */
     private void installMultipleModuleUsingBundletool(
-            TestInformation testInfo, String deviceSpecFilePath, List<String> testAppFileNames)
+            TestInformation testInfo, String deviceSpecFilePath, List<File> testAppFileNames)
             throws TargetSetupError, DeviceNotAvailableException {
         ITestDevice device = testInfo.getDevice();
-        for (String moduleFileName : testAppFileNames) {
-            File moduleFile = getLocalPathForFilename(testInfo, moduleFileName);
-            if (moduleFileName.endsWith(SPLIT_APKS_SUFFIX)) {
+        for (File moduleFileName : testAppFileNames) {
+            File moduleFile = getLocalPathForFilename(testInfo, moduleFileName.getName());
+            if (moduleFileName.getName().endsWith(SPLIT_APKS_SUFFIX)) {
                 List<File> splits = getSplitsForApks(testInfo, moduleFile);
                 String splitsArgs = createInstallArgsForSplit(splits, device);
                 mSplitsInstallArgs.add(splitsArgs);
             } else {
-                if (moduleFileName.endsWith(APEX_SUFFIX)) {
+                if (moduleFileName.getName().endsWith(APEX_SUFFIX)) {
                     ApexInfo apexInfo = retrieveApexInfo(moduleFile, device.getDeviceDescriptor());
                     mTestApexInfoList.add(apexInfo);
                 } else {
@@ -572,9 +572,9 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
      *
      * @param testFileNames The list of the test modules
      */
-    private boolean containsApks(Collection<String> testFileNames) {
-        for (String filename : testFileNames) {
-            if (filename.endsWith(SPLIT_APKS_SUFFIX)) {
+    private boolean containsApks(List<File> testFileNames) {
+        for (File filename : testFileNames) {
+            if (filename.getName().endsWith(SPLIT_APKS_SUFFIX)) {
                 return true;
             }
         }
