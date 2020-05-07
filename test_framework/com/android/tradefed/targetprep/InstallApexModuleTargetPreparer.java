@@ -106,13 +106,13 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
             CLog.i("Activated apex: %s", info.toString());
         }
 
-        List<File> testAppFileNames = getModulesToInstall(testInfo);
-        if (testAppFileNames.isEmpty()) {
+        List<File> testAppFiles = getModulesToInstall(testInfo);
+        if (testAppFiles.isEmpty()) {
             CLog.i("No modules are preloaded on the device, so no modules will be installed.");
             return;
         }
-        if (containsApks(testAppFileNames)) {
-            installUsingBundleTool(testInfo, testAppFileNames);
+        if (containsApks(testAppFiles)) {
+            installUsingBundleTool(testInfo, testAppFiles);
             if (mTestApexInfoList.isEmpty()) {
                 CLog.i("No Apex module in the train. Skipping reboot.");
                 return;
@@ -121,7 +121,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
                 device.reboot();
             }
         } else {
-            Map<File, String> appFilesAndPackages = resolveApkFiles(testInfo, testAppFileNames);
+            Map<File, String> appFilesAndPackages = resolveApkFiles(testInfo, testAppFiles);
             installer(testInfo, appFilesAndPackages);
             if (containsApex(appFilesAndPackages.keySet())
                     || containsPersistentApk(appFilesAndPackages.keySet(), testInfo)) {
@@ -204,7 +204,6 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
      * Initializes the path to the device spec file.
      *
      * @param device the {@link ITestDevice} to install the train.
-     * @return String path to the device spec.
      * @throws TargetSetupError if fails to generate the device spec file.
      */
     private void initDeviceSpecFilePath(ITestDevice device) throws TargetSetupError {
