@@ -34,8 +34,6 @@ import com.android.tradefed.util.AaptParser;
 import com.android.tradefed.util.AbiFormatter;
 import com.android.tradefed.util.BuildTestsZipUtils;
 
-import com.google.common.base.Strings;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -173,8 +171,8 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
     }
 
     /** Returns a copy of the list of specified test apk names. */
-    public List<String> getTestsFileName() {
-        return mTestFileNames.stream().map(f -> f.getName()).collect(Collectors.toList());
+    public List<File> getTestsFileName() {
+        return mTestFileNames;
     }
 
     /** Sets whether or not the installed apk should be cleaned on tearDown */
@@ -287,13 +285,15 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
 
         for (File testAppName : mTestFileNames) {
             Map<File, String> appFilesAndPackages =
-                    resolveApkFiles(testInfo, Arrays.asList(new String[] {testAppName.getName()}));
+                    resolveApkFiles(testInfo, Arrays.asList(new File[] {testAppName}));
             installer(testInfo, appFilesAndPackages);
         }
 
         for (String testAppNames : mSplitApkFileNames) {
             List<String> apkNames = Arrays.asList(testAppNames.split(","));
-            Map<File, String> appFilesAndPackages = resolveApkFiles(testInfo, apkNames);
+            List<File> apkFileNames =
+                    apkNames.stream().map(a -> new File(a)).collect(Collectors.toList());
+            Map<File, String> appFilesAndPackages = resolveApkFiles(testInfo, apkFileNames);
             installer(testInfo, appFilesAndPackages);
         }
     }
@@ -410,22 +410,25 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
     }
 
     /** Helper to resolve some apk to their File and Package. */
-    protected Map<File, String> resolveApkFiles(TestInformation testInfo, List<String> apkNames)
+    protected Map<File, String> resolveApkFiles(TestInformation testInfo, List<File> apkFiles)
             throws TargetSetupError {
         Map<File, String> appFiles = new LinkedHashMap<>();
         ITestDevice device = testInfo.getDevice();
-        for (String name : apkNames) {
-            if (Strings.isNullOrEmpty(name)) {
-                continue;
+        for (File apkFile : apkFiles) {
+            File testAppFile = null;
+            if (apkFile.isAbsolute()) {
+                testAppFile = apkFile;
             }
-            File testAppFile = getLocalPathForFilename(testInfo, name);
+            if (testAppFile == null) {
+                testAppFile = getLocalPathForFilename(testInfo, apkFile.getName());
+            }
             if (testAppFile == null) {
                 if (mThrowIfNoFile) {
                     throw new TargetSetupError(
-                            String.format("Test app %s was not found.", name),
+                            String.format("Test app %s was not found.", apkFile.getName()),
                             device.getDeviceDescriptor());
                 } else {
-                    CLog.d("Test app %s was not found.", name);
+                    CLog.d("Test app %s was not found.", apkFile.getName());
                     continue;
                 }
             }
