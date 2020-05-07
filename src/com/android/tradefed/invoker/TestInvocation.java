@@ -242,8 +242,8 @@ public class TestInvocation implements ITestInvocation {
             CLog.e("Caught exception while running invocation");
             CLog.e(e);
             bugreportName = TARGET_SETUP_ERROR_BUGREPORT_NAME;
-            if (e.getDeviceDescriptor() != null) {
-                badDevice = context.getDeviceBySerial(e.getDeviceDescriptor().getSerial());
+            if (e.getDeviceSerial() != null) {
+                badDevice = context.getDeviceBySerial(e.getDeviceSerial());
             }
             reportFailure(e, listener, config, context, invocationPath);
         } catch (DeviceNotAvailableException e) {
