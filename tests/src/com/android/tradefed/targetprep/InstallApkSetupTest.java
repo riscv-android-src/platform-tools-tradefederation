@@ -114,7 +114,7 @@ public class InstallApkSetupTest {
             mInstallApkSetup.setUp(mMockTestDevice, mMockBuildInfo);
             fail("should have failed due to missing APK file");
         } catch (TargetSetupError expected) {
-            String refMessage = String.format("%s does not exist null", testFile.getAbsolutePath());
+            String refMessage = String.format("%s does not exist", testFile.getAbsolutePath());
             assertEquals(refMessage, expected.getMessage());
         }
         EasyMock.verify(mMockBuildInfo, mMockTestDevice);
@@ -156,9 +156,11 @@ public class InstallApkSetupTest {
             mInstallApkSetup.setUp(mMockTestDevice, mMockBuildInfo);
             fail("should have failed due to installation failure");
         } catch (TargetSetupError expected) {
-            String refMessage = String.format("Stopping test: failed to install %s on device %s. " +
-                    "Reason: %s (Permission denied) null", testFile.getAbsolutePath(),
-                    SERIAL, testFile.getAbsolutePath());
+            String refMessage =
+                    String.format(
+                            "Stopping test: failed to install %s on device %s. "
+                                    + "Reason: %s (Permission denied)",
+                            testFile.getAbsolutePath(), SERIAL, testFile.getAbsolutePath());
             assertEquals(refMessage, expected.getMessage());
         }
         EasyMock.verify(mMockBuildInfo, mMockTestDevice);
