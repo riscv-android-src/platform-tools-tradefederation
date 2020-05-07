@@ -291,7 +291,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
             }
             if (installedPackages.contains(modulePackageName)) {
                 CLog.i("Found preloaded module for %s.", modulePackageName);
-                moduleNamesToInstall.add(moduleFileName);
+                moduleNamesToInstall.add(moduleFile);
                 installedPackages.remove(modulePackageName);
             } else {
                 if (!mIgnoreIfNotPreloaded) {
@@ -434,24 +434,19 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
     private void installSingleModuleUsingBundletool(
             TestInformation testInfo, String deviceSpecFilePath, File apkFile)
             throws TargetSetupError, DeviceNotAvailableException {
-        Map<File, String> appFilesAndPackages =
-                resolveApkFiles(testInfo, Arrays.asList(new File[] {apkFile}));
-        if (appFilesAndPackages.size() > 1) {
-            throw new RuntimeException(
-                    String.format("We only expected one apk and received %s", appFilesAndPackages));
-        }
-        File apks = appFilesAndPackages.keySet().iterator().next();
+        // No need to resolve we have the single .apks file needed.
+        File apks = apkFile;
         // Rename the extracted files and add the file to filename list.
         List<File> splits = getSplitsForApks(testInfo, apks);
         ITestDevice device = testInfo.getDevice();
-        if (splits.isEmpty()) {
+        if (splits == null || splits.isEmpty()) {
             throw new TargetSetupError(
                     String.format("Extraction for %s failed. No apk/apex is extracted.", apkFile),
                     device.getDeviceDescriptor());
         }
         // Install .apks that contain apex module.
         if (containsApex(splits)) {
-            appFilesAndPackages = new LinkedHashMap<>();
+            Map<File, String> appFilesAndPackages = new LinkedHashMap<>();
             appFilesAndPackages.put(
                     splits.get(0), parsePackageName(splits.get(0), device.getDeviceDescriptor()));
             super.installer(testInfo, appFilesAndPackages);
