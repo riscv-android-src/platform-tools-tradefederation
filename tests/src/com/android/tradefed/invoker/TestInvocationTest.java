@@ -68,6 +68,7 @@ import com.android.tradefed.metrics.proto.MetricMeasurement.Metric.Builder;
 import com.android.tradefed.postprocessor.BasePostProcessor;
 import com.android.tradefed.postprocessor.IPostProcessor;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -78,6 +79,7 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestSummary;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.ITargetCleaner;
@@ -1100,11 +1102,25 @@ public class TestInvocationTest {
         // invocationFailed
         if (!status.equals(InvocationStatus.SUCCESS)) {
             if (stubFailures) {
-                mMockTestListener.invocationFailed(EasyMock.<Throwable>anyObject());
-                mMockSummaryListener.invocationFailed(EasyMock.<Throwable>anyObject());
+                if (throwable instanceof BuildRetrievalError) {
+                    mMockTestListener.invocationFailed(EasyMock.<FailureDescription>anyObject());
+                    mMockSummaryListener.invocationFailed(EasyMock.<FailureDescription>anyObject());
+                } else {
+                    mMockTestListener.invocationFailed(EasyMock.<Throwable>anyObject());
+                    mMockSummaryListener.invocationFailed(EasyMock.<Throwable>anyObject());
+                }
             } else {
-                mMockTestListener.invocationFailed(EasyMock.eq(throwable));
-                mMockSummaryListener.invocationFailed(EasyMock.eq(throwable));
+                if (throwable instanceof BuildRetrievalError) {
+                    FailureDescription failure =
+                            FailureDescription.create(
+                                    throwable.getMessage(), FailureStatus.INFRA_FAILURE);
+                    failure.setCause(throwable);
+                    mMockTestListener.invocationFailed(EasyMock.eq(failure));
+                    mMockSummaryListener.invocationFailed(EasyMock.eq(failure));
+                } else {
+                    mMockTestListener.invocationFailed(EasyMock.eq(throwable));
+                    mMockSummaryListener.invocationFailed(EasyMock.eq(throwable));
+                }
             }
         }
 
@@ -1169,8 +1185,8 @@ public class TestInvocationTest {
                     (InputStreamSource) EasyMock.anyObject());
 
             if (stopped) {
-                mMockTestListener.invocationFailed((Throwable) EasyMock.anyObject());
-                mMockSummaryListener.invocationFailed((Throwable) EasyMock.anyObject());
+                mMockTestListener.invocationFailed(EasyMock.<FailureDescription>anyObject());
+                mMockSummaryListener.invocationFailed(EasyMock.<FailureDescription>anyObject());
             }
         }
 
