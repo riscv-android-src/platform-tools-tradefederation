@@ -19,6 +19,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doReturn;
 
+import com.android.tradefed.device.DeviceAllocationState;
 import com.android.tradefed.device.IManagedTestDevice;
 
 import org.junit.Test;
@@ -47,5 +48,22 @@ public class UsbResetRunConfigRecoveryTest {
         assertTrue(res);
         res = mUsbReset.shouldSkip(mockDevice);
         assertFalse(res);
+    }
+
+    @Test
+    public void testShouldSkip_fastboot() {
+        IManagedTestDevice mockDevice = Mockito.mock(IManagedTestDevice.class);
+        doReturn("serial").when(mockDevice).getSerialNumber();
+        doReturn(true).when(mockDevice).isStateBootloaderOrFastbootd();
+        assertTrue(mUsbReset.shouldSkip(mockDevice));
+    }
+
+    @Test
+    public void testShouldSkip_available() {
+        IManagedTestDevice mockDevice = Mockito.mock(IManagedTestDevice.class);
+        doReturn("serial").when(mockDevice).getSerialNumber();
+        doReturn(false).when(mockDevice).isStateBootloaderOrFastbootd();
+        doReturn(DeviceAllocationState.Available).when(mockDevice).getAllocationState();
+        assertTrue(mUsbReset.shouldSkip(mockDevice));
     }
 }
