@@ -59,7 +59,7 @@ public class RunHostScriptTargetPreparer extends BaseTargetPreparer {
     private IRunUtil mRunUtil;
 
     @Override
-    public void setUp(TestInformation testInfo)
+    public final void setUp(TestInformation testInfo)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
         if (mScriptPath == null) {
             CLog.w("No script to execute.");
