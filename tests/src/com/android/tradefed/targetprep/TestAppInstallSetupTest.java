@@ -268,7 +268,7 @@ public class TestAppInstallSetupTest {
         } catch (TargetSetupError e) {
             String expected =
                     String.format(
-                            "Failed to install [%s] with [%s] on %s. Reason: '%s' " + "null",
+                            "Failed to install [%s] with [%s] on %s. Reason: '%s'",
                             PACKAGE_NAME, fakeApk, SERIAL, failure);
             assertEquals(expected, e.getMessage());
         }

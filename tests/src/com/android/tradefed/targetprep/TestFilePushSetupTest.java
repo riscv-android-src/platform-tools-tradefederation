@@ -147,7 +147,7 @@ public class TestFilePushSetupTest extends TestCase {
         } catch (TargetSetupError expected) {
             assertEquals(
                     "Could not find test file file-not-in-test-zip "
-                            + "directory in extracted tests.zip null",
+                            + "directory in extracted tests.zip",
                     expected.getMessage());
         }
     }
