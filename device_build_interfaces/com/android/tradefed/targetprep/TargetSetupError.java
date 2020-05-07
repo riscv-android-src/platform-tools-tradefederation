@@ -68,7 +68,23 @@ public class TargetSetupError extends Exception {
      * @param descriptor the descriptor of the device concerned, can be null.
      */
     public TargetSetupError(String reason, Throwable cause, DeviceDescriptor descriptor) {
-        super((descriptor == null) ? reason : reason + " " + descriptor, cause);
+        this(reason, cause, descriptor, true);
+    }
+
+    /**
+     * Constructs a new (@link TargetSetupError} with a meaningful error message, and a cause.
+     *
+     * @param reason a detailed error message.
+     * @param cause a {@link Throwable} capturing the original cause of the TargetSetupError
+     * @param descriptor the descriptor of the device concerned, can be null.
+     * @param deviceSide Whether or not the exception is generated due to a device side error.
+     */
+    public TargetSetupError(
+            String reason, Throwable cause, DeviceDescriptor descriptor, boolean deviceSide) {
+        super((descriptor != null && deviceSide) ? reason + " " + descriptor : reason, cause);
+        if (descriptor != null) {
+            mDeviceSerial = descriptor.getSerial();
+        }
     }
 
     /** Return the serial of the device impacted by the TargetSetupError. */
