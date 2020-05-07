@@ -38,7 +38,8 @@ public class UsbResetRunConfigRecovery extends RunConfigDeviceRecovery {
         if (!res) {
             return checkRanBefore(device);
         }
-        return false;
+        // Skip since device is available or in fastboot
+        return true;
     }
 
     private boolean checkRanBefore(IManagedTestDevice device) {
