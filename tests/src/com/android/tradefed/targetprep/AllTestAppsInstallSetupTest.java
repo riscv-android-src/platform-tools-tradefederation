@@ -44,8 +44,7 @@ public class AllTestAppsInstallSetupTest extends TestCase {
             fail("Should have thrown a TargetSetupError");
         } catch (TargetSetupError e) {
             // expected
-            assertEquals("Invalid buildInfo, expecting an IDeviceBuildInfo null",
-                    e.getMessage());
+            assertEquals("Invalid buildInfo, expecting an IDeviceBuildInfo", e.getMessage());
         }
         EasyMock.verify(mockBuildInfo, mMockTestDevice);
     }
@@ -57,8 +56,7 @@ public class AllTestAppsInstallSetupTest extends TestCase {
             mPrep.setUp(mMockTestDevice, mMockBuildInfo);
             fail("Should have thrown a TargetSetupError");
         } catch (TargetSetupError e) {
-            assertEquals("Failed to find a valid test zip directory. null",
-                    e.getMessage());
+            assertEquals("Failed to find a valid test zip directory.", e.getMessage());
         }
         EasyMock.verify(mMockBuildInfo, mMockTestDevice);
     }
@@ -70,7 +68,7 @@ public class AllTestAppsInstallSetupTest extends TestCase {
             mPrep.installApksRecursively(null, mMockTestDevice);
             fail("Should have thrown a TargetSetupError");
         } catch (TargetSetupError e) {
-            assertEquals("Invalid test zip directory! null", e.getMessage());
+            assertEquals("Invalid test zip directory!", e.getMessage());
         }
         EasyMock.verify(mMockBuildInfo, mMockTestDevice);
     }
@@ -121,8 +119,9 @@ public class AllTestAppsInstallSetupTest extends TestCase {
             mPrep.installApk(new File("TEST"), mMockTestDevice);
             fail("Should have thrown an exception");
         } catch (TargetSetupError e) {
-            String expected = String.format("Failed to install %s on %s. Reason: '%s' "
-                    + "null", file, SERIAL, failure);
+            String expected =
+                    String.format(
+                            "Failed to install %s on %s. Reason: '%s'", file, SERIAL, failure);
             assertEquals(expected, e.getMessage());
         }
         EasyMock.verify(mMockBuildInfo, mMockTestDevice);

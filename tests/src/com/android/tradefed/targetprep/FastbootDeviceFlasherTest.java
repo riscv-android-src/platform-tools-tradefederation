@@ -463,8 +463,11 @@ public class FastbootDeviceFlasherTest {
             mFlasher.downloadFlashingResources(mMockDevice, mMockBuildInfo);
             fail("Should have thrown an exception");
         } catch (TargetSetupError expected) {
-            assertEquals(String.format("Device %s is NOT_FOUND. Expected %s null",
-                    TEST_STRING, ArrayUtil.list(boardName)), expected.getMessage());
+            assertEquals(
+                    String.format(
+                            "Device %s is NOT_FOUND. Expected %s",
+                            TEST_STRING, ArrayUtil.list(boardName)),
+                    expected.getMessage());
         } finally {
             EasyMock.verify(mMockDevice, mMockParser);
         }
