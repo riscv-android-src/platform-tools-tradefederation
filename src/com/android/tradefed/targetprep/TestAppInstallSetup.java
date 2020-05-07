@@ -73,7 +73,7 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
             name = "test-file-name",
             description = "the name of an apk file to be installed on device. Can be repeated.",
             importance = Importance.IF_UNSET)
-    private List<File> mTestFileNames = new ArrayList<>();
+    private List<File> mTestFiles = new ArrayList<>();
 
     // A string made of split apk file names divided by ",".
     // See "https://developer.android.com/studio/build/configure-apk-splits" on how to split
@@ -114,15 +114,24 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
                             + "preparer does not verify if the apks are successfully removed.")
     private boolean mCleanup = true;
 
-    @Option(name = "alt-dir",
-            description = "Alternate directory to look for the apk if the apk is not in the tests "
-                    + "zip file. For each alternate dir, will look in //, //data/app, //DATA/app, "
-                    + "//DATA/app/apk_name/ and //DATA/priv-app/apk_name/. Can be repeated. "
-                    + "Look for apks in last alt-dir first.")
+    /** @deprecated use test-file-name instead now that it is a File. */
+    @Deprecated
+    @Option(
+            name = "alt-dir",
+            description =
+                    "Alternate directory to look for the apk if the apk is not in the tests "
+                            + "zip file. For each alternate dir, will look in //, //data/app, "
+                            + "//DATA/app, //DATA/app/apk_name/ and //DATA/priv-app/apk_name/. "
+                            + "Can be repeated. Look for apks in last alt-dir first.")
     private List<File> mAltDirs = new ArrayList<>();
 
-    @Option(name = "alt-dir-behavior", description = "The order of alternate directory to be used "
-            + "when searching for apks to install")
+    /** @deprecated goes in pair with alt-dir which is deprecated */
+    @Deprecated
+    @Option(
+            name = "alt-dir-behavior",
+            description =
+                    "The order of alternate directory to be used when searching for apks to "
+                            + "install")
     private AltDirBehavior mAltDirBehavior = AltDirBehavior.FALLBACK;
 
     @Option(name = "instant-mode", description = "Whether or not to install apk in instant mode.")
@@ -148,12 +157,12 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
 
     /** Adds a file name to the list of apks to installed. */
     public void addTestFileName(String fileName) {
-        mTestFileNames.add(new File(fileName));
+        mTestFiles.add(new File(fileName));
     }
 
     @VisibleForTesting
     void clearTestFile() {
-        mTestFileNames.clear();
+        mTestFiles.clear();
     }
 
     /**
@@ -172,7 +181,7 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
 
     /** Returns a copy of the list of specified test apk names. */
     public List<File> getTestsFileName() {
-        return mTestFileNames;
+        return mTestFiles;
     }
 
     /** Sets whether or not the installed apk should be cleaned on tearDown */
@@ -243,7 +252,7 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
     public void setUp(TestInformation testInfo)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
         mTestInfo = testInfo;
-        if (mTestFileNames.isEmpty() && mSplitApkFileNames.isEmpty()) {
+        if (mTestFiles.isEmpty() && mSplitApkFileNames.isEmpty()) {
             CLog.i("No test apps to install, skipping");
             return;
         }
@@ -283,7 +292,7 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
             mInstallArgs.add("--force-queryable");
         }
 
-        for (File testAppName : mTestFileNames) {
+        for (File testAppName : mTestFiles) {
             Map<File, String> appFilesAndPackages =
                     resolveApkFiles(testInfo, Arrays.asList(new File[] {testAppName}));
             installer(testInfo, appFilesAndPackages);
