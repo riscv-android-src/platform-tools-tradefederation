@@ -1080,6 +1080,14 @@ public class TestDevice extends NativeDevice {
         return action.mPkgInfoMap.get(packageName);
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public List<PackageInfo> getAppPackageInfos() throws DeviceNotAvailableException {
+        DumpPkgAction action = new DumpPkgAction();
+        performDeviceAction("dumpsys package", action, MAX_RETRY_ATTEMPTS);
+        return new ArrayList<>(action.mPkgInfoMap.values());
+    }
+
     // TODO: convert this to use DumpPkgAction
     private Set<String> getInstalledPackageNames(String packageNameSearched, String userId)
             throws DeviceNotAvailableException {
