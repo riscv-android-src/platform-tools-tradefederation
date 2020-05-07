@@ -29,7 +29,7 @@ import java.util.List;
  * <p>TODO(b/122592575): Add tests for this preparer.
  */
 @OptionClass(alias = "fastboot-command-preparer")
-public class FastbootCommandPreparer extends BaseTargetPreparer {
+public final class FastbootCommandPreparer extends BaseTargetPreparer {
 
     private enum FastbootMode {
         BOOTLOADER,
