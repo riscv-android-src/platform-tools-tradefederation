@@ -102,7 +102,7 @@ public class JUnitXmlParserTest {
         mMockListener.testFailed(
                 EasyMock.eq(test3),
                 EasyMock.eq(
-                        "error message. java.lang.NullPointerException\n    "
+                        "java.lang.NullPointerException\n    "
                                 + "at FailTest.testFail:65\n        "));
         mMockListener.testEnded(test3, new HashMap<String, Metric>());
 
@@ -117,7 +117,7 @@ public class JUnitXmlParserTest {
         mMockListener.testRunStarted("normal_integration_tests", 1);
         TestDescription test1 = new TestDescription("JUnitXmlParser", "normal_integration_tests");
         mMockListener.testStarted(test1);
-        mMockListener.testFailed(EasyMock.eq(test1), EasyMock.eq("exited with error code 134. "));
+        mMockListener.testFailed(EasyMock.eq(test1), EasyMock.eq("exited with error code 134."));
         mMockListener.testEnded(test1, new HashMap<String, Metric>());
         mMockListener.testRunEnded(0L, new HashMap<String, Metric>());
         EasyMock.replay(mMockListener);
