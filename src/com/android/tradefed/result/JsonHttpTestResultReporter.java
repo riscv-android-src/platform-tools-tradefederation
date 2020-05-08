@@ -15,6 +15,21 @@
  */
 package com.android.tradefed.result;
 
+import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.config.Option;
+import com.android.tradefed.config.Option.Importance;
+import com.android.tradefed.config.OptionClass;
+import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.util.StreamUtil;
+import com.android.tradefed.util.net.HttpHelper;
+import com.android.tradefed.util.net.IHttpHelper;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
@@ -24,19 +39,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-
-import com.android.tradefed.build.IBuildInfo;
-import com.android.tradefed.config.Option;
-import com.android.tradefed.config.Option.Importance;
-import com.android.tradefed.config.OptionClass;
-import com.android.tradefed.invoker.IInvocationContext;
-import com.android.tradefed.log.LogUtil.CLog;
-import com.android.tradefed.util.StreamUtil;
-import com.android.tradefed.util.net.HttpHelper;
-import com.android.tradefed.util.net.IHttpHelper;
-
-import org.json.JSONException;
-import org.json.JSONObject;
 
 /**
  * A result reporter that encode test metrics results and branch, device info into JSON and POST
@@ -55,6 +57,12 @@ public class JsonHttpTestResultReporter extends CollectingTestListener {
     private final static String KEY_BUILD_FLAVOR = "build_flavor";
     private final static String KEY_BUILD_ID = "build_id";
     private final static String KEY_RESULTS_NAME = "results_name";
+    private final static String KEY_DEVICE_NAME = "device_name";
+    private final static String KEY_SDK_RELEASE_NAME = "sdk_release_name";
+    private final static String DEVICE_NAME_PROPERTY = "ro.product.device";
+    private final static String SDK_VERSION_PROPERTY = "ro.build.version.sdk";
+    private final static String BUILD_ID_PROPERTY = "ro.build.id";
+    private final static String SDK_BUILDID_FORMAT = "API_%s_%c";
 
     /** timeout for HTTP connection to posting endpoint */
     private final static int CONNECTION_TIMEOUT_MS = 60 * 1000;
@@ -80,13 +88,22 @@ public class JsonHttpTestResultReporter extends CollectingTestListener {
     )
     private boolean mSkipFailedRuns = false;
 
+    @Option(name = "include-device-details", description = "Enabling this flag will parse"
+            + " additional device details such as device name, sdk version and build id.")
+    private boolean mDeviceDetails = false;
+
     private boolean mHasInvocationFailures = false;
     private IInvocationContext mInvocationContext = null;
+    private String mDeviceName = null;
+    private String mSdkBuildId = null;
 
     @Override
     public void invocationStarted(IInvocationContext context) {
         super.invocationStarted(context);
         mInvocationContext = context;
+        if (mDeviceDetails) {
+            parseAdditionalDeviceDetails(getDevice(context));
+        }
     }
 
     @Override
@@ -110,6 +127,32 @@ public class JsonHttpTestResultReporter extends CollectingTestListener {
                 CLog.e("JSONException while converting test metrics.");
                 CLog.e(e);
             }
+        }
+    }
+
+    protected ITestDevice getDevice(IInvocationContext context) {
+        return context.getDevices().get(0);
+    }
+
+    /**
+     * Retrieves the device name, sdk version number and the build id from
+     * the test device.
+     *
+     * @param testDevice device to collect the information from.
+     */
+    protected void parseAdditionalDeviceDetails(ITestDevice testDevice) {
+        try {
+            // Get the device name.
+            mDeviceName = testDevice.getProperty(DEVICE_NAME_PROPERTY);
+
+            // Get the version name and the first letter of the build id.
+            // Sample output: API_29_Q
+            mSdkBuildId = String.format(SDK_BUILDID_FORMAT,
+                    testDevice.getProperty(SDK_VERSION_PROPERTY),
+                    testDevice.getProperty(BUILD_ID_PROPERTY).charAt(0));
+        } catch (DeviceNotAvailableException e) {
+            CLog.e("Error in parsing additional additional device info.");
+            CLog.e(e);
         }
     }
 
@@ -212,6 +255,12 @@ public class JsonHttpTestResultReporter extends CollectingTestListener {
         result.put(KEY_BRANCH, buildInfo.getBuildBranch());
         result.put(KEY_BUILD_FLAVOR, buildInfo.getBuildFlavor());
         result.put(KEY_BUILD_ID, buildInfo.getBuildId());
+
+        if(mDeviceDetails) {
+            result.put(KEY_DEVICE_NAME, mDeviceName);
+            result.put(KEY_SDK_RELEASE_NAME, mSdkBuildId);
+        }
+
         return result;
     }
 }
