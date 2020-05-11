@@ -26,6 +26,7 @@ import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.FileLogger;
@@ -58,9 +59,6 @@ import java.util.Set;
 /**
  * A special runner that allows to reschedule a previous run tests that failed or where not
  * executed.
- *
- * <p>TODO: Ensure a configuration should not have several of that runner. Consider having this
- * configuration built-in TF.
  */
 public final class RetryRescheduler implements IRemoteTest, IConfigurationReceiver {
 
@@ -153,9 +151,10 @@ public final class RetryRescheduler implements IRemoteTest, IConfigurationReceiv
             originalConfig
                     .getCommandOptions()
                     .setShardIndex(mConfiguration.getCommandOptions().getShardIndex());
-            // TODO: Use serial from parent config
-            List<String> serials = mConfiguration.getDeviceRequirements().getSerials();
-            originalConfig.getDeviceRequirements().setSerial(serials.toArray(new String[0]));
+            IDeviceSelection requirements = mConfiguration.getDeviceRequirements();
+            // It should be safe to use the current requirements against the old config because
+            // There will be more checks like fingerprint if it was supposed to run.
+            originalConfig.setDeviceRequirements(requirements);
 
             // Transfer log level from retry to subconfig
             ILeveledLogOutput originalLogger = originalConfig.getLogOutput();
