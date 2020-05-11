@@ -1327,16 +1327,21 @@ public class HostTestTest extends TestCase {
                 EasyMock.eq(test1),
                 EasyMock.contains("MultipleFailureException, There were 2 errors:"));
         mListener.testEnded(EasyMock.eq(test1), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testRunFailed((String) EasyMock.anyObject());
+        Capture<String> captureRunFailure = new Capture<>();
+        mListener.testRunFailed(EasyMock.capture(captureRunFailure));
         mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
         EasyMock.replay(mListener);
         try {
             mHostTest.run(mTestInfo, mListener);
             fail("Should have thrown an exception.");
         } catch (DeviceNotAvailableException expected) {
-
+            // Expected
         }
         EasyMock.verify(mListener);
+        String failure = captureRunFailure.getValue();
+        assertTrue(
+                failure.startsWith(
+                        "Failed with trace: com.android.tradefed.device.DeviceNotAvailableException: dnae"));
     }
 
     /**
