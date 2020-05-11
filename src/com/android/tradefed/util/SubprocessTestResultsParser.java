@@ -18,8 +18,8 @@ package com.android.tradefed.util;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
-import com.android.tradefed.invoker.logger.TfObjectTracker;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
+import com.android.tradefed.invoker.logger.TfObjectTracker;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ILogSaverListener;
@@ -86,6 +86,8 @@ public class SubprocessTestResultsParser implements Closeable {
     private EventReceiverThread mEventReceiver = null;
     private IInvocationContext mContext = null;
     private Long mStartTime = null;
+    // Ignore the testLog events, rely only on logAssociation
+    private boolean mIgnoreTestLog = true;
     // Keep track of which files we received TEST_LOG event from.
     private Set<String> mTestLogged = new HashSet<>();
 
@@ -226,6 +228,11 @@ public class SubprocessTestResultsParser implements Closeable {
             return mEventReceiver.getLocalPort();
         }
         return -1;
+    }
+
+    /** Whether or not to ignore testLog events and only rely on logAssociation. */
+    public void setIgnoreTestLog(boolean ignoreTestLog) {
+        mIgnoreTestLog = ignoreTestLog;
     }
 
     @Override
@@ -497,6 +504,9 @@ public class SubprocessTestResultsParser implements Closeable {
     private class TestLogEventHandler implements EventHandler {
         @Override
         public void handleEvent(String eventJson) throws JSONException {
+            if (mIgnoreTestLog) {
+                return;
+            }
             TestLogEventInfo logInfo = new TestLogEventInfo(new JSONObject(eventJson));
             String name = String.format("subprocess-%s", logInfo.mDataName);
             try (InputStreamSource data = new FileInputStreamSource(logInfo.mDataFile, true)) {

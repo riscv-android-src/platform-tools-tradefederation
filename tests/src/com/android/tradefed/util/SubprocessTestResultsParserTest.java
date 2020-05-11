@@ -553,6 +553,7 @@ public class SubprocessTestResultsParserTest {
             serializedLogFile = SerializationUtil.serialize(logFile);
             resultParser =
                     new SubprocessTestResultsParser(mockRunListener, new InvocationContext());
+            resultParser.setIgnoreTestLog(false);
             String logAssocation =
                     String.format(
                             "TEST_LOG {\"dataType\":\"TEXT\",\"dataName\":\"dataname\","
