@@ -151,6 +151,7 @@ public class SubprocessResultsReporterTest {
                 };
         try (SubprocessTestResultsParser receiver =
                 new SubprocessTestResultsParser(mMockListener, true, new InvocationContext())) {
+            receiver.setIgnoreTestLog(false);
             OptionSetter setter = new OptionSetter(mReporter);
             setter.setOptionValue(
                     "subprocess-report-port", Integer.toString(receiver.getSocketServerPort()));
