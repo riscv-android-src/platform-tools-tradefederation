@@ -713,10 +713,37 @@ public class Configuration implements IConfiguration {
                                 QuotationAwareTokenizer.tokenizeLine(this.getCommandLine()),
                                 null,
                                 client);
-        for (String objType : objectToDeepClone) {
-            // TODO: Might need to handle internal device objects
+        boolean shouldCopyDevice = false;
+        if (objectToDeepClone.contains(Configuration.DEVICE_NAME)) {
+            shouldCopyDevice = true;
+        } else {
+            for (String objType : objectToDeepClone) {
+                if (doesBuiltInObjSupportMultiDevice(objType)) {
+                    shouldCopyDevice = true;
+                }
+            }
+        }
+        if (shouldCopyDevice) {
             clonedConfig.setConfigurationObjectList(
-                    objType, deepCopy.getConfigurationObjectList(objType));
+                    Configuration.DEVICE_NAME,
+                    deepCopy.getConfigurationObjectList(Configuration.DEVICE_NAME));
+        }
+
+        for (String objType : objectToDeepClone) {
+            if (objType.equals(Configuration.DEVICE_NAME)) {
+                continue;
+            }
+            if (doesBuiltInObjSupportMultiDevice(objType)) {
+                for (int i = 0; i < deepCopy.getDeviceConfig().size(); i++) {
+                    IDeviceConfiguration deepCopyConfig = deepCopy.getDeviceConfig().get(i);
+                    for (Object o : deepCopyConfig.getAllObjectOfType(objType)) {
+                        clonedConfig.getDeviceConfig().get(i).addSpecificConfig(o);
+                    }
+                }
+            } else {
+                clonedConfig.setConfigurationObjectList(
+                        objType, deepCopy.getConfigurationObjectList(objType));
+            }
         }
         return clonedConfig;
     }
