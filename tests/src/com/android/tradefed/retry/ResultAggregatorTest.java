@@ -510,7 +510,9 @@ public class ResultAggregatorTest {
         TestDescription test1 = new TestDescription("classname", "test1");
         TestDescription test2 = new TestDescription("classname", "test2");
         ILogSaver logger = EasyMock.createMock(ILogSaver.class);
+        LogFile afterRunLog = new LogFile("after-run", "url", LogDataType.TEXT);
 
+        mDetailedListener = EasyMock.createStrictMock(ITestDetailedReceiver.class);
         EasyMock.expect(mDetailedListener.supportGranularResults()).andStubReturn(true);
 
         // Invocation level
@@ -544,6 +546,7 @@ public class ResultAggregatorTest {
                 EasyMock.anyLong(),
                 EasyMock.<HashMap<String, Metric>>anyObject());
         mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
+        mDetailedListener.logAssociation("after-run", afterRunLog);
 
         // Aggregated listeners receives the aggregated results
         mAggListener.testRunStarted(
@@ -560,6 +563,7 @@ public class ResultAggregatorTest {
                 EasyMock.<HashMap<String, Metric>>anyObject());
         mAggListener.testRunEnded(900L, new HashMap<String, Metric>());
 
+        mAggListener.logAssociation("after-run", afterRunLog);
         mAggListener.invocationEnded(500L);
         mDetailedListener.invocationEnded(500L);
 
@@ -585,6 +589,7 @@ public class ResultAggregatorTest {
         mAggregator.testEnded(test2, new HashMap<String, Metric>());
         mAggregator.testRunEnded(450L, new HashMap<String, Metric>());
 
+        mAggregator.logAssociation("after-run", afterRunLog);
         mAggregator.invocationEnded(500L);
         EasyMock.verify(mAggListener, mDetailedListener);
         assertEquals("I failed", mAggregator.getInvocationMetricRunError());
