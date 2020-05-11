@@ -137,6 +137,10 @@ public class ResultAggregator extends CollectingTestListener {
         }
 
         forwardDetailedFailure();
+        for (Entry<String, LogFile> assos : mDetailedModuleLogs.entrySet()) {
+            mDetailedForwarder.logAssociation(assos.getKey(), assos.getValue());
+        }
+        mDetailedModuleLogs.clear();
         super.invocationEnded(elapsedTime);
         // Make sure to forward the logs for the invocation.
         forwardAggregatedInvocationLogs();
