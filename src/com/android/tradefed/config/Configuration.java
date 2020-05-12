@@ -715,20 +715,23 @@ public class Configuration implements IConfiguration {
                                 client);
         boolean shouldCopyDevice = false;
         if (objectToDeepClone.contains(Configuration.DEVICE_NAME)) {
-            shouldCopyDevice = true;
+            clonedConfig.setConfigurationObjectList(
+                    Configuration.DEVICE_NAME,
+                    deepCopy.getConfigurationObjectList(Configuration.DEVICE_NAME));
         } else {
             for (String objType : objectToDeepClone) {
                 if (doesBuiltInObjSupportMultiDevice(objType)) {
                     shouldCopyDevice = true;
                 }
             }
+            if (shouldCopyDevice) {
+                List<IDeviceConfiguration> deviceConfigs = new ArrayList<>();
+                for (IDeviceConfiguration holder : deepCopy.getDeviceConfig()) {
+                    deviceConfigs.add(holder.clone());
+                }
+                clonedConfig.setDeviceConfigList(deviceConfigs);
+            }
         }
-        if (shouldCopyDevice) {
-            clonedConfig.setConfigurationObjectList(
-                    Configuration.DEVICE_NAME,
-                    deepCopy.getConfigurationObjectList(Configuration.DEVICE_NAME));
-        }
-
         for (String objType : objectToDeepClone) {
             if (objType.equals(Configuration.DEVICE_NAME)) {
                 continue;
@@ -736,6 +739,7 @@ public class Configuration implements IConfiguration {
             if (doesBuiltInObjSupportMultiDevice(objType)) {
                 for (int i = 0; i < deepCopy.getDeviceConfig().size(); i++) {
                     IDeviceConfiguration deepCopyConfig = deepCopy.getDeviceConfig().get(i);
+                    clonedConfig.getDeviceConfig().get(i).removeObjectType(objType);
                     for (Object o : deepCopyConfig.getAllObjectOfType(objType)) {
                         clonedConfig.getDeviceConfig().get(i).addSpecificConfig(o);
                     }
