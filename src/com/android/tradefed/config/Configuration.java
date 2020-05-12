@@ -703,6 +703,7 @@ public class Configuration implements IConfiguration {
         return clone;
     }
 
+    /** {@inheritDoc} */
     @Override
     public IConfiguration partialDeepClone(List<String> objectToDeepClone, IKeyStoreClient client)
             throws ConfigurationException {
@@ -713,17 +714,19 @@ public class Configuration implements IConfiguration {
                                 QuotationAwareTokenizer.tokenizeLine(this.getCommandLine()),
                                 null,
                                 client);
-        boolean shouldCopyDevice = false;
+        // Handle the "device" object holder since it contains more objects.
         if (objectToDeepClone.contains(Configuration.DEVICE_NAME)) {
             clonedConfig.setConfigurationObjectList(
                     Configuration.DEVICE_NAME,
                     deepCopy.getConfigurationObjectList(Configuration.DEVICE_NAME));
         } else {
+            boolean shouldCopyDevice = false;
             for (String objType : objectToDeepClone) {
                 if (doesBuiltInObjSupportMultiDevice(objType)) {
                     shouldCopyDevice = true;
                 }
             }
+            // Shallow clone the device object if we only need to deep copy one of its objects.
             if (shouldCopyDevice) {
                 List<IDeviceConfiguration> deviceConfigs = new ArrayList<>();
                 for (IDeviceConfiguration holder : deepCopy.getDeviceConfig()) {
