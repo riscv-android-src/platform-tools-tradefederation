@@ -752,6 +752,7 @@ public class ConfigurationTest extends TestCase {
                 original.getDeviceConfig().get(0).getTargetPreparers().get(0),
                 copy.getDeviceConfig().get(0).getTargetPreparers().get(0));
         assertNotEquals(original.getTests().get(0), copy.getTests().get(0));
+        copy.validateOptions();
     }
 
     public void testDeepClone_innerDevice() throws Exception {
@@ -774,5 +775,6 @@ public class ConfigurationTest extends TestCase {
                 original.getDeviceConfig().get(0).getTargetPreparers().get(0),
                 copy.getDeviceConfig().get(0).getTargetPreparers().get(0));
         assertNotEquals(original.getTests().get(0), copy.getTests().get(0));
+        copy.validateOptions();
     }
 }
