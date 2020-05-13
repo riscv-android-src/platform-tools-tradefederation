@@ -83,6 +83,12 @@ public abstract class SubprocessTfLauncher
     @Option(name = "config-name", description = "The config that runs the TF tests")
     private String mConfigName;
 
+    @Option(
+            name = "local-sharding-mode",
+            description =
+                    "If sharding is requested, allow the launcher to run with local sharding.")
+    private boolean mLocalShardingMode = false;
+
     @Option(name = "use-event-streaming", description = "Use a socket to receive results as they"
             + "arrived instead of using a temporary file and parsing at the end.")
     private boolean mEventStreaming = true;
@@ -247,6 +253,12 @@ public abstract class SubprocessTfLauncher
         mCmdArgs.add(jarClasspath);
         mCmdArgs.add("com.android.tradefed.command.CommandRunner");
         mCmdArgs.add(mConfigName);
+
+        Integer shardCount = mConfig.getCommandOptions().getShardCount();
+        if (mLocalShardingMode && shardCount != null & shardCount > 1) {
+            mCmdArgs.add("--shard-count");
+            mCmdArgs.add(Integer.toString(shardCount));
+        }
 
         // clear the TF_GLOBAL_CONFIG env, so another tradefed will not reuse the global config file
         mRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
