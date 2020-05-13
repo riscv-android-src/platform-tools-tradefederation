@@ -650,23 +650,6 @@ public class InvocationExecution implements IInvocationExecution {
     }
 
     @Override
-    public boolean resetBuildAndReschedule(
-            Throwable exception,
-            ITestInvocationListener listener,
-            IConfiguration config,
-            IInvocationContext context) {
-        if (!(exception instanceof BuildError) && !(exception.getCause() instanceof BuildError)) {
-            for (String deviceName : context.getDeviceConfigNames()) {
-                config.getDeviceConfigByName(deviceName)
-                        .getBuildProvider()
-                        .buildNotTested(context.getBuildInfo(deviceName));
-            }
-            return true;
-        }
-        return false;
-    }
-
-    @Override
     public void reportLogs(ITestDevice device, ITestLogger listener, Stage stage) {
         if (device == null) {
             return;
