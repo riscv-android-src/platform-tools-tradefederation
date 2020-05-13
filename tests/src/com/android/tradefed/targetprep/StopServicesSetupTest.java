@@ -85,5 +85,20 @@ public class StopServicesSetupTest extends TestCase {
         mPreparer.setUp(mTestInfo);
         EasyMock.verify(mMockDevice);
     }
+
+    /** Test that framework and services are started during tearDown. */
+    public void testTearDown() throws DeviceNotAvailableException {
+        mPreparer.addService("service1");
+        mPreparer.addService("service2");
+
+        EasyMock.expect(mMockDevice.executeShellCommand("start")).andReturn(null);
+        mMockDevice.waitForDeviceAvailable();
+        EasyMock.expect(mMockDevice.executeShellCommand("start service1")).andReturn(null);
+        EasyMock.expect(mMockDevice.executeShellCommand("start service2")).andReturn(null);
+
+        EasyMock.replay(mMockDevice);
+        mPreparer.tearDown(mTestInfo, null);
+        EasyMock.verify(mMockDevice);
+    }
 }
 
