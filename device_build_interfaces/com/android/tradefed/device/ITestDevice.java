@@ -629,6 +629,14 @@ public interface ITestDevice extends INativeDevice {
     public PackageInfo getAppPackageInfo(String packageName) throws DeviceNotAvailableException;
 
     /**
+     * Fetch information of packages installed on the device.
+     *
+     * @return {@link List} of {@link PackageInfo}s installed on the device.
+     * @throws DeviceNotAvailableException
+     */
+    public List<PackageInfo> getAppPackageInfos() throws DeviceNotAvailableException;
+
+    /**
      * Determines if multi user is supported.
      *
      * @return true if multi user is supported, false otherwise
