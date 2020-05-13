@@ -45,6 +45,21 @@ public class StopServicesSetup extends BaseTargetPreparer {
         }
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public void tearDown(TestInformation testInformation, Throwable e)
+            throws DeviceNotAvailableException {
+        ITestDevice device = testInformation.getDevice();
+        if (mStopFramework) {
+            device.executeShellCommand("start");
+            device.waitForDeviceAvailable();
+        }
+
+        for (String service : mServices) {
+            device.executeShellCommand(String.format("start %s", service));
+        }
+    }
+
     /**
      * Specify whether to stop the framework.
      */
