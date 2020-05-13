@@ -292,15 +292,19 @@ public class ShardListener extends CollectingTestListener implements ISupportGra
 
     /** Log the content of the shard for easier debugging. */
     private void logShardContent(Collection<TestRunResult> listResults) {
-        CLog.d("=================================================");
-        CLog.d(
-                "========== Shard Primary Device %s ==========",
-                getInvocationContext().getDevices().get(0).getSerialNumber());
+        StringBuilder sb = new StringBuilder();
+        sb.append("=================================================\n");
+        sb.append(
+                String.format(
+                        "========== Shard Primary Device %s ==========\n",
+                        getInvocationContext().getDevices().get(0).getSerialNumber()));
         for (TestRunResult runRes : listResults) {
-            CLog.d(
-                    "\tRan '%s' in %s",
-                    runRes.getName(), TimeUtil.formatElapsedTime(runRes.getElapsedTime()));
+            sb.append(
+                    String.format(
+                            "\tRan '%s' in %s\n",
+                            runRes.getName(), TimeUtil.formatElapsedTime(runRes.getElapsedTime())));
         }
-        CLog.d("=================================================");
+        sb.append("=================================================\n");
+        CLog.logAndDisplay(LogLevel.DEBUG, sb.toString());
     }
 }
