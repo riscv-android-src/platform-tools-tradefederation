@@ -251,7 +251,7 @@ public class TfTestLauncherTest {
         mMockRunUtil.unsetEnvVariable(EnvVariable.ANDROID_TARGET_OUT_TESTCASES.name());
         mMockRunUtil.setEnvVariablePriority(EnvPriority.SET);
         mMockRunUtil.setEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE, SUB_GLOBAL_CONFIG);
-        EasyMock.replay(mMockBuildInfo, mMockRunUtil, mMockListener);
+        EasyMock.replay(mMockBuildInfo, mMockRunUtil, mMockListener, mMockConfig);
         try {
             mTfTestLauncher.preRun();
             EasyMock.verify(mMockBuildInfo, mMockRunUtil, mMockListener);
@@ -267,5 +267,6 @@ public class TfTestLauncherTest {
             FileUtil.recursiveDelete(mTfTestLauncher.mTmpDir);
             mTfTestLauncher.cleanTmpFile();
         }
+        EasyMock.verify(mMockBuildInfo, mMockRunUtil, mMockListener, mMockConfig);
     }
 }
