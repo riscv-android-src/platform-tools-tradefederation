@@ -221,6 +221,31 @@ public class AaptParserTest extends TestCase {
         assertFalse(p.isRequestingLegacyStorage());
     }
 
+    public void testParseXmlTree_withUsesPermissionManageExternalStorage() {
+        AaptParser p = new AaptParser();
+        p.parse(
+                "package: name='com.android.foo' versionCode='217173' versionName='1.7173' "
+                        + "platformBuildVersionName=''\n"
+                        + "install-location:'preferExternal'\n"
+                        + "sdkVersion:'10'\n"
+                        + "targetSdkVersion:'21'\n"
+                        + "uses-permission: name='android.permission.INTERNET'\n"
+                        + "uses-permission: name='android.permission.MANAGE_EXTERNAL_STORAGE'\n");
+        assertTrue(p.isUsingPermissionManageExternalStorage());
+    }
+
+    public void testParseXmlTree_withoutUsesPermissionManageExternalStorage() {
+        AaptParser p = new AaptParser();
+        p.parse(
+                "package: name='com.android.foo' versionCode='217173' versionName='1.7173' "
+                        + "platformBuildVersionName=''\n"
+                        + "install-location:'preferExternal'\n"
+                        + "sdkVersion:'10'\n"
+                        + "targetSdkVersion:'21'\n"
+                        + "uses-permission: name='android.permission.INTERNET'\n");
+        assertFalse(p.isUsingPermissionManageExternalStorage());
+    }
+
     public void testParseTargetSdkVersion() {
         AaptParser p = new AaptParser();
         p.parse(
