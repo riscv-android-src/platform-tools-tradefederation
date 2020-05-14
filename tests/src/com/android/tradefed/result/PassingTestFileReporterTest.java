@@ -45,7 +45,7 @@ public class PassingTestFileReporterTest {
         mFile = File.createTempFile("testfile", "txt");
         mResultReporter = new PassingTestFileReporter();
         OptionSetter setter = new OptionSetter(mResultReporter);
-        setter.setOptionValue("test-file", mFile.getAbsolutePath());
+        setter.setOptionValue("test-file-to-record", mFile.getAbsolutePath());
         mTest = new TestDescription("FooTest", "testFoo");
         mResultReporter.invocationStarted(null);
     }
