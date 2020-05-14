@@ -627,6 +627,7 @@ import org.junit.runners.Suite.SuiteClasses;
     TestDescriptionTest.class,
     TestFailureEmailResultReporterTest.class,
     PassingTestFileReporterTest.class,
+    TestDescriptionTest.class,
     TestResultListenerTest.class,
     TestResultTest.class,
     TestRunResultTest.class,
