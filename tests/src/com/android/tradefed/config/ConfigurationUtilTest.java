@@ -20,21 +20,21 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.command.CommandScheduler;
 import com.android.tradefed.device.DeviceManager;
 import com.android.tradefed.device.DeviceNotAvailableException;
-import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.FileUtil;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 import org.kxml2.io.KXmlSerializer;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -42,6 +42,7 @@ import java.util.List;
 import java.util.Set;
 
 /** Unit tests for {@link ConfigurationUtil} */
+@RunWith(JUnit4.class)
 public class ConfigurationUtilTest {
 
     private static final String DEVICE_MANAGER_TYPE_NAME = "device_manager";
@@ -147,10 +148,12 @@ public class ConfigurationUtilTest {
             tmpDir = FileUtil.createTempDir("test_configs_dir");
             // Test config (.config) located in the root directory
             File config1 = FileUtil.createTempFile("config", ".config", tmpDir);
+            FileUtil.writeToFile("<configuration></configuration>", config1);
             // Test config (.xml) located in a sub directory
             File subDir = FileUtil.getFileForPath(tmpDir, "sub");
             FileUtil.mkdirsRWX(subDir);
             File config2 = FileUtil.createTempFile("config", ".xml", subDir);
+            FileUtil.writeToFile("<configuration></configuration>", config2);
 
             // Test getConfigNamesFromDirs only locate configs under subPath.
             Set<String> configs =
@@ -183,6 +186,7 @@ public class ConfigurationUtilTest {
             File subDir = FileUtil.getFileForPath(tmpDir, "sub");
             FileUtil.mkdirsRWX(subDir);
             File config2 = FileUtil.createTempFile("config", ".otherext", subDir);
+            FileUtil.writeToFile("<configuration></configuration>", config2);
 
             List<String> patterns = new ArrayList<>();
             patterns.add(".*.other.*");
@@ -210,11 +214,11 @@ public class ConfigurationUtilTest {
             File targetDir = new File(tmpDir.getAbsolutePath() + "/target/testcases/");
             targetDir.mkdirs();
             File targetConfig = new File(targetDir, "test.config");
-            new FileOutputStream(targetConfig).close();
+            FileUtil.writeToFile("<configuration></configuration>", targetConfig);
             File hostDir = new File(tmpDir.getAbsolutePath() + "/host/testcases/");
             hostDir.mkdirs();
             File hostConfig = new File(hostDir, "test.config");
-            new FileOutputStream(hostConfig).close();
+            FileUtil.writeToFile("<configuration></configuration>", hostConfig);
             List<String> patterns = new ArrayList<>();
             patterns.add(".*.config.*");
 
@@ -252,7 +256,7 @@ public class ConfigurationUtilTest {
         }
     }
 
-    private class TestTargetPreparer implements ITargetPreparer {
+    static class TestTargetPreparer implements ITargetPreparer {
 
         @Option(name = "real-option")
         private boolean mReal;
@@ -262,7 +266,7 @@ public class ConfigurationUtilTest {
         private boolean mDeprecated;
 
         @Override
-        public void setUp(ITestDevice device, IBuildInfo buildInfo)
+        public void setUp(TestInformation testInfo)
                 throws TargetSetupError, BuildError, DeviceNotAvailableException {
             // Should never be called
             assertTrue(false);
