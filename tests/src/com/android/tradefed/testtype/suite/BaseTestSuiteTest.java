@@ -49,6 +49,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.Collection;
 import java.util.HashSet;
@@ -120,8 +121,7 @@ public class BaseTestSuiteTest {
     @Test
     public void testSetupFilters_match_parameterized() throws Exception {
         File tmpDir = FileUtil.createTempDir(TEST_MODULE);
-        File moduleConfig = new File(tmpDir, "CtsGestureTestCases.config");
-        moduleConfig.createNewFile();
+        createConfig(tmpDir, "CtsGestureTestCases.config");
         try {
             OptionSetter setter = new OptionSetter(mRunner);
             setter.setOptionValue("module", "Gesture");
@@ -153,8 +153,7 @@ public class BaseTestSuiteTest {
     @Test
     public void testSetupFilters_parameterized_filter() throws Exception {
         File tmpDir = FileUtil.createTempDir(TEST_MODULE);
-        File moduleConfig = new File(tmpDir, "CtsGestureTestCases.config");
-        moduleConfig.createNewFile();
+        createConfig(tmpDir, "CtsGestureTestCases.config");
         try {
             OptionSetter setter = new OptionSetter(mRunner);
             setter.setOptionValue("enable-parameterized-modules", "true");
@@ -184,8 +183,7 @@ public class BaseTestSuiteTest {
     @Test
     public void testSetupFilters_match() throws Exception {
         File tmpDir = FileUtil.createTempDir(TEST_MODULE);
-        File moduleConfig = new File(tmpDir, "CtsGestureTestCases.config");
-        moduleConfig.createNewFile();
+        createConfig(tmpDir, "CtsGestureTestCases.config");
         try {
             OptionSetter setter = new OptionSetter(mRunner);
             setter.setOptionValue("module", "Gesture");
@@ -208,10 +206,8 @@ public class BaseTestSuiteTest {
     @Test
     public void testSetupFilters_oneMatch() throws Exception {
         File tmpDir = FileUtil.createTempDir(TEST_MODULE);
-        File moduleConfig = new File(tmpDir, "module_name.config");
-        File moduleConfig2 = new File(tmpDir, "module_name2.config");
-        moduleConfig.createNewFile();
-        moduleConfig2.createNewFile();
+        createConfig(tmpDir, "module_name.config");
+        createConfig(tmpDir, "module_name2.config");
         try {
             OptionSetter setter = new OptionSetter(mRunner);
             setter.setOptionValue("module", "module_name2");
@@ -234,10 +230,8 @@ public class BaseTestSuiteTest {
     @Test
     public void testSetupFilters_multiMatchNoExactMatch() throws Exception {
         File tmpDir = FileUtil.createTempDir(TEST_MODULE);
-        File moduleConfig = new File(tmpDir, "module_name1.config");
-        File moduleConfig2 = new File(tmpDir, "module_name2.config");
-        moduleConfig.createNewFile();
-        moduleConfig2.createNewFile();
+        createConfig(tmpDir, "module_name1.config");
+        createConfig(tmpDir, "module_name2.config");
         try {
             OptionSetter setter = new OptionSetter(mRunner);
             setter.setOptionValue("module", "module_name");
@@ -259,10 +253,8 @@ public class BaseTestSuiteTest {
     @Test
     public void testSetupFilters_multiMatchOneExactMatch() throws Exception {
         File tmpDir = FileUtil.createTempDir(TEST_MODULE);
-        File moduleConfig = new File(tmpDir, "module_name.config");
-        File moduleConfig2 = new File(tmpDir, "module_name2.config");
-        moduleConfig.createNewFile();
-        moduleConfig2.createNewFile();
+        createConfig(tmpDir, "module_name.config");
+        createConfig(tmpDir, "module_name2.config");
         try {
             OptionSetter setter = new OptionSetter(mRunner);
             setter.setOptionValue("module", "module_name");
@@ -838,5 +830,10 @@ public class BaseTestSuiteTest {
         reuseTestUser.setAccessible(true);
         assertTrue(reuseTestUser.getBoolean(config.getTargetPreparers().get(0)));
         reuseTestUser.setAccessible(false);
+    }
+
+    private void createConfig(File tmpDir, String name) throws IOException {
+        File moduleConfig = new File(tmpDir, name);
+        FileUtil.writeToFile("<configuration></configuration>", moduleConfig);
     }
 }
