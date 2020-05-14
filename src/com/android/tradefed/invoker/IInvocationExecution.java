@@ -165,21 +165,6 @@ public interface IInvocationExecution {
             throws Throwable {}
 
     /**
-     * Report a failure for the invocation.
-     *
-     * @param exception The exception that should be reported.
-     * @param listener The invocation listener.
-     * @param config The configuration currently running.
-     * @param context The {@link IInvocationContext} of the invocation.
-     * @return True if the configuration should be rescheduled, False otherwise.
-     */
-    public boolean resetBuildAndReschedule(
-            Throwable exception,
-            ITestInvocationListener listener,
-            IConfiguration config,
-            IInvocationContext context);
-
-    /**
      * Report some device logs at different stage of the invocation. For example: logcat.
      *
      * @param device The device to report logs from.
