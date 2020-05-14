@@ -551,7 +551,6 @@ public class TestInvocationTest {
         test.run(EasyMock.anyObject(), EasyMock.anyObject());
         EasyMock.expectLastCall().andThrow(exception);
         setupMockFailureListeners(exception);
-        mMockBuildProvider.buildNotTested(mMockBuildInfo);
         setupNormalInvoke(test);
         EasyMock.replay(mockRescheduler);
         try {
@@ -597,7 +596,6 @@ public class TestInvocationTest {
         test.run(EasyMock.anyObject(), EasyMock.anyObject());
         EasyMock.expectLastCall().andThrow(exception);
         setupMockFailureListeners(exception);
-        mMockBuildProvider.buildNotTested(mMockBuildInfo);
         setupNormalInvoke(test);
         EasyMock.replay(mockRescheduler);
         try {
@@ -624,7 +622,6 @@ public class TestInvocationTest {
         mMockDevice.setRecoveryMode(RecoveryMode.NONE);
         EasyMock.expectLastCall();
         setupMockFailureListeners(exception);
-        mMockBuildProvider.buildNotTested(mMockBuildInfo);
         setupNormalInvoke(test);
         EasyMock.replay(mockRescheduler);
         try {
@@ -651,7 +648,6 @@ public class TestInvocationTest {
                 .andReturn(true);
         mMockDevice.postInvocationTearDown(tse);
         setupMockFailureListeners(tse);
-        mMockBuildProvider.buildNotTested(mMockBuildInfo);
         setupInvokeWithBuild();
         mStubConfiguration.setTest(test);
         mStubMultiConfiguration.setTest(test);
@@ -737,7 +733,6 @@ public class TestInvocationTest {
         EasyMock.replay(mockCleaner, mockRescheduler);
         mStubConfiguration.getTargetPreparers().add(mockCleaner);
         setupMockFailureListeners(exception);
-        mMockBuildProvider.buildNotTested(mMockBuildInfo);
         setupNormalInvoke(test);
         try {
             mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
@@ -768,7 +763,6 @@ public class TestInvocationTest {
         mockCleaner.tearDown(EasyMock.anyObject(), EasyMock.eq(exception));
         mStubConfiguration.getTargetPreparers().add(mockCleaner);
         setupMockFailureListeners(exception);
-        mMockBuildProvider.buildNotTested(mMockBuildInfo);
         setupNormalInvoke(test);
         EasyMock.replay(mockCleaner, mockRescheduler);
         try {
