@@ -15,6 +15,8 @@
  */
 package com.android.tradefed.result;
 
+import static com.google.common.truth.Truth.assertThat;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -99,5 +101,13 @@ public class TestDescriptionTest {
                 "testTransitions[BluetoothRouteTestParameters{key ='[]'}]",
                 mDescription.getTestName());
         assertEquals("testTransitions", mDescription.getTestNameWithoutParams());
+    }
+
+    @Test
+    public void testFromString() {
+        TestDescription td = new TestDescription("classname", "testname");
+        TestDescription fromString = TestDescription.fromString(td.toString());
+        assertThat(fromString).isEqualTo(td);
+        assertThat(fromString).isEquivalentAccordingToCompareTo(td);
     }
 }
