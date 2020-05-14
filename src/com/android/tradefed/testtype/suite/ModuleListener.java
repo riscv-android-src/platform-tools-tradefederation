@@ -16,6 +16,7 @@
 package com.android.tradefed.testtype.suite;
 
 import com.android.ddmlib.Log.LogLevel;
+import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.CollectingTestListener;
@@ -38,7 +39,8 @@ import java.util.HashMap;
 public class ModuleListener extends CollectingTestListener {
 
     private boolean mSkip = false;
-    private boolean mTestFailed = false;
+    private TestStatus mTestStatus;
+    private String mTrace;
     private int mTestsRan = 1;
     private ITestInvocationListener mMainListener;
 
@@ -111,28 +113,31 @@ public class ModuleListener extends CollectingTestListener {
         if (!mCollectTestsOnly) {
             CLog.d("ModuleListener.testStarted(%s)", test.toString());
         }
-        mTestFailed = false;
+        mTestStatus = TestStatus.PASSED;
+        mTrace = null;
         super.testStarted(test, startTime);
         if (mSkip) {
             super.testIgnored(test);
+            mTestStatus = TestStatus.IGNORED;
         }
     }
 
     /** Helper to log the test passed if it didn't fail. */
-    private void logTestPassed(TestDescription testName) {
-        if (!mTestFailed && !mCollectTestsOnly) {
+    private void logTestStatus(TestDescription testName, TestStatus status) {
+        if (!mCollectTestsOnly) {
             String runName = "";
             // Only print the run name in addition to test case fully qualified if different.
             if (!testName.getClassName().startsWith(getCurrentRunResults().getName())) {
                 runName = getCurrentRunResults().getName() + " ";
             }
             String runAndTestCase = String.format("%s%s", runName, testName.toString());
-            CLog.logAndDisplay(
-                    LogLevel.INFO,
-                    "[%d/%d] %s pass",
-                    mTestsRan,
-                    getExpectedTests(),
-                    runAndTestCase);
+            String message =
+                    String.format(
+                            "[%d/%d] %s %s", mTestsRan, getExpectedTests(), runAndTestCase, status);
+            if (mTrace != null) {
+                message += ": " + mTrace;
+            }
+            CLog.logAndDisplay(LogLevel.INFO, message);
         }
         mTestsRan++;
     }
@@ -146,8 +151,28 @@ public class ModuleListener extends CollectingTestListener {
     /** {@inheritDoc} */
     @Override
     public void testEnded(TestDescription test, long endTime, HashMap<String, Metric> testMetrics) {
-        logTestPassed(test);
+        logTestStatus(test, mTestStatus);
         super.testEnded(test, endTime, testMetrics);
+    }
+
+    @Override
+    public void testIgnored(TestDescription test) {
+        super.testIgnored(test);
+        mTestStatus = TestStatus.IGNORED;
+    }
+
+    @Override
+    public void testAssumptionFailure(TestDescription test, String trace) {
+        super.testAssumptionFailure(test, trace);
+        mTestStatus = TestStatus.ASSUMPTION_FAILURE;
+        mTrace = trace;
+    }
+
+    @Override
+    public void testAssumptionFailure(TestDescription test, FailureDescription failure) {
+        super.testAssumptionFailure(test, failure);
+        mTestStatus = TestStatus.ASSUMPTION_FAILURE;
+        mTrace = failure.toString();
     }
 
     /** {@inheritDoc} */
@@ -156,16 +181,19 @@ public class ModuleListener extends CollectingTestListener {
         if (mSkip) {
             return;
         }
-        CLog.logAndDisplay(
-                LogLevel.INFO,
-                "[%d/%d] %s %s fail:\n%s",
-                mTestsRan,
-                getExpectedTests(),
-                getCurrentRunResults().getName(),
-                test.toString(),
-                trace);
-        mTestFailed = true;
+        mTrace = trace;
         super.testFailed(test, trace);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void testFailed(TestDescription test, FailureDescription failure) {
+        if (mSkip) {
+            return;
+        }
+        mTestStatus = TestStatus.FAILURE;
+        mTrace = failure.toString();
+        super.testFailed(test, failure);
     }
 
     /** Whether or not to mark all the test cases skipped. */
