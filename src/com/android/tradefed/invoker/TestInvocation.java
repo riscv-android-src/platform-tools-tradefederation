@@ -238,7 +238,7 @@ public class TestInvocation implements ITestInvocation {
                     badDevice.setRecoveryMode(RecoveryMode.NONE);
                 }
             }
-            reportFailure(e, listener, config, context, invocationPath);
+            reportFailure(e, listener);
         } catch (TargetSetupError e) {
             exception = e;
             CLog.e("Caught exception while running invocation");
@@ -247,7 +247,7 @@ public class TestInvocation implements ITestInvocation {
             if (e.getDeviceSerial() != null) {
                 badDevice = context.getDeviceBySerial(e.getDeviceSerial());
             }
-            reportFailure(e, listener, config, context, invocationPath);
+            reportFailure(e, listener);
         } catch (DeviceNotAvailableException e) {
             exception = e;
             // log a warning here so its captured before reportLogs is called
@@ -259,7 +259,7 @@ public class TestInvocation implements ITestInvocation {
                 // under certain cases it might still be possible to grab a bugreport
                 bugreportName = DEVICE_UNRESPONSIVE_BUGREPORT_NAME;
             }
-            reportFailure(e, listener, config, context, invocationPath);
+            reportFailure(e, listener);
             // Upon reaching here after an exception, it is safe to assume that recovery
             // has already been attempted so we disable it to avoid re-entry during clean up.
             if (badDevice != null) {
@@ -268,18 +268,18 @@ public class TestInvocation implements ITestInvocation {
             throw e;
         } catch (RunInterruptedException e) {
             CLog.w("Invocation interrupted");
-            reportFailure(e, listener, config, context, invocationPath);
+            reportFailure(e, listener);
         } catch (AssertionError e) {
             exception = e;
             CLog.e("Caught AssertionError while running invocation: %s", e.toString());
             CLog.e(e);
-            reportFailure(e, listener, config, context, invocationPath);
+            reportFailure(e, listener);
         } catch (Throwable t) {
             exception = t;
             // log a warning here so its captured before reportLogs is called
             CLog.e("Unexpected exception when running invocation: %s", t.toString());
             CLog.e(t);
-            reportFailure(t, listener, config, context, invocationPath);
+            reportFailure(t, listener);
             throw t;
         } finally {
             // Only capture logcat for TEST if we started the test phase.
@@ -334,12 +334,7 @@ public class TestInvocation implements ITestInvocation {
                 CLog.e(tearDownException);
                 if (exception == null) {
                     // only report when the exception is new during tear down
-                    reportFailure(
-                            tearDownException,
-                            listener,
-                            config,
-                            context,
-                            invocationPath);
+                    reportFailure(tearDownException, listener);
                 }
             }
             mStatus = "done running tests";
@@ -442,17 +437,10 @@ public class TestInvocation implements ITestInvocation {
         listener.invocationStarted(context);
     }
 
-    private void reportFailure(
-            Throwable exception,
-            ITestInvocationListener listener,
-            IConfiguration config,
-            IInvocationContext context,
-            IInvocationExecution invocationPath) {
+    /** Report the exception failure as an invocation failure. */
+    private void reportFailure(Throwable exception, ITestInvocationListener listener) {
         // Always report the failure
         listener.invocationFailed(exception);
-        // Reset the build (if necessary)
-        // TODO: Remove the "Reschedule" part
-        invocationPath.resetBuildAndReschedule(exception, listener, config, context);
     }
 
     private void reportHostLog(ITestInvocationListener listener, IConfiguration config) {
