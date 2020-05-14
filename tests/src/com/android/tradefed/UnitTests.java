@@ -312,6 +312,7 @@ import com.android.tradefed.testtype.suite.TfSuiteRunnerTest;
 import com.android.tradefed.testtype.suite.ValidateSuiteConfigHelperTest;
 import com.android.tradefed.testtype.suite.module.BaseModuleControllerTest;
 import com.android.tradefed.testtype.suite.module.CarModuleControllerTest;
+import com.android.tradefed.testtype.suite.module.DeviceFeatureModuleControllerTest;
 import com.android.tradefed.testtype.suite.module.MinApiLevelModuleControllerTest;
 import com.android.tradefed.testtype.suite.module.NativeBridgeModuleControllerTest;
 import com.android.tradefed.testtype.suite.params.InstantAppHandlerTest;
@@ -796,6 +797,7 @@ import org.junit.runners.Suite.SuiteClasses;
     // testtype/suite/module
     BaseModuleControllerTest.class,
     CarModuleControllerTest.class,
+    DeviceFeatureModuleControllerTest.class,
     MinApiLevelModuleControllerTest.class,
     NativeBridgeModuleControllerTest.class,
 
