@@ -802,12 +802,18 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 // Never release stub and Tcp devices, otherwise they will disappear
                 // during deallocation since they are only placeholder.
                 deviceStates.put(device, FreeDeviceState.AVAILABLE);
-            } else if (!TestDeviceState.ONLINE.equals(device.getDeviceState())) {
-                // If the device is offline at the end of the test
-                deviceStates.put(device, FreeDeviceState.UNAVAILABLE);
-            } else if (!device.waitForDeviceShell(30000)) {
-                // If device cannot pass basic shell responsiveness test.
-                deviceStates.put(device, FreeDeviceState.UNAVAILABLE);
+            } else {
+                TestDeviceState deviceState = device.getDeviceState();
+                CLog.d(
+                        "TestDeviceState for releasing '%s' is '%s'",
+                        device.getSerialNumber(), deviceState);
+                if (!TestDeviceState.ONLINE.equals(deviceState)) {
+                    // If the device is offline at the end of the test
+                    deviceStates.put(device, FreeDeviceState.UNAVAILABLE);
+                } else if (!device.waitForDeviceShell(30000)) {
+                    // If device cannot pass basic shell responsiveness test.
+                    deviceStates.put(device, FreeDeviceState.UNAVAILABLE);
+                }
             }
             // Reset the recovery mode at the end of the invocation.
             device.setRecoveryMode(RecoveryMode.AVAILABLE);
