@@ -504,10 +504,11 @@ public class SubprocessTestResultsParser implements Closeable {
     private class TestLogEventHandler implements EventHandler {
         @Override
         public void handleEvent(String eventJson) throws JSONException {
+            TestLogEventInfo logInfo = new TestLogEventInfo(new JSONObject(eventJson));
             if (mIgnoreTestLog) {
+                FileUtil.deleteFile(logInfo.mDataFile);
                 return;
             }
-            TestLogEventInfo logInfo = new TestLogEventInfo(new JSONObject(eventJson));
             String name = String.format("subprocess-%s", logInfo.mDataName);
             try (InputStreamSource data = new FileInputStreamSource(logInfo.mDataFile, true)) {
                 mListener.testLog(name, logInfo.mLogType, data);
