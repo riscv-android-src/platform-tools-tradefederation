@@ -108,6 +108,9 @@ public abstract class SubprocessTfLauncher
             description = "Pass the invocation-data to the subprocess if enabled.")
     private boolean mInjectInvocationData = true;
 
+    @Option(name = "ignore-test-log", description = "Only rely on logAssociation for logs.")
+    private boolean mIgnoreTestLog = true;
+
     @Option(
         name = "disable-stderr-test",
         description = "Whether or not to disable the stderr validation check."
@@ -359,6 +362,7 @@ public abstract class SubprocessTfLauncher
                     mCmdArgs.add("--subprocess-report-file");
                     mCmdArgs.add(eventFile.getAbsolutePath());
                 }
+                eventParser.setIgnoreTestLog(mIgnoreTestLog);
             }
             startTime = System.currentTimeMillis();
             CommandResult result = mRunUtil.runTimedCmd(mMaxTfRunTime, stdout,
