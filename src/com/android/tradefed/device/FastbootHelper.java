@@ -21,9 +21,7 @@ import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.IRunUtil;
 
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -96,32 +94,6 @@ public class FastbootHelper {
     }
 
     /**
-     * Returns a map of device serials and whether they are in fastbootd mode or not.
-     *
-     * @return a Map of serial in bootloader or fastbootd, the boolean is true if in fastbootd
-     */
-    public Map<String, Boolean> getBootloaderAndFastbootdDevices() {
-        Map<String, Boolean> devices = new HashMap<>();
-        Set<String> fastbootDevices = getDevices();
-        for (String serial : fastbootDevices) {
-            CommandResult result =
-                    mRunUtil.runTimedCmdSilently(
-                            FASTBOOT_CMD_TIMEOUT,
-                            mFastbootPath,
-                            "-s",
-                            serial,
-                            "getvar",
-                            "is-userspace");
-            if (result.getStderr().contains("is-userspace: yes")) {
-                devices.put(serial, true);
-            } else {
-                devices.put(serial, false);
-            }
-        }
-        return devices;
-    }
-
-    /**
      * Parses the output of "fastboot devices" command.
      * Exposed for unit testing.
      *
@@ -154,5 +126,21 @@ public class FastbootHelper {
             return null;
         }
         return fastbootResult.getStdout();
+    }
+
+    /** Returns whether or not a device is in Fastbootd instead of Bootloader. */
+    public boolean isFastbootd(String serial) {
+        final CommandResult fastbootResult =
+                mRunUtil.runTimedCmd(
+                        FASTBOOT_CMD_TIMEOUT,
+                        mFastbootPath,
+                        "-s",
+                        serial,
+                        "getvar",
+                        "is-userspace");
+        if (fastbootResult.getStderr().contains("is-userspace: yes")) {
+            return true;
+        }
+        return false;
     }
 }
