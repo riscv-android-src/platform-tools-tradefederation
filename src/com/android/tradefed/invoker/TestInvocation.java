@@ -267,6 +267,7 @@ public class TestInvocation implements ITestInvocation {
             }
             throw e;
         } catch (RunInterruptedException e) {
+            exception = e;
             CLog.w("Invocation interrupted");
             reportFailure(e, listener);
         } catch (AssertionError e) {
@@ -812,11 +813,17 @@ public class TestInvocation implements ITestInvocation {
                         invocationPath.runDevicePreInvocationSetup(context, config, listener);
                     } catch (DeviceNotAvailableException | TargetSetupError e) {
                         CLog.e(e);
-                        setExitCode(ExitCode.THROWABLE_EXCEPTION, e);
+                        FailureDescription failure = FailureDescription.create(e.getMessage());
+                        failure.setCause(e).setFailureStatus(FailureStatus.INFRA_FAILURE);
+                        if (e instanceof DeviceNotAvailableException) {
+                            setExitCode(ExitCode.DEVICE_UNAVAILABLE, e);
+                        } else {
+                            setExitCode(ExitCode.THROWABLE_EXCEPTION, e);
+                        }
                         try {
                             invocationPath.runDevicePostInvocationTearDown(context, config, e);
                         } finally {
-                            listener.invocationFailed(e);
+                            listener.invocationFailed(failure);
                             // Reports the logs
                             for (ITestDevice device : context.getDevices()) {
                                 invocationPath.reportLogs(device, listener, Stage.ERROR);
