@@ -34,8 +34,14 @@ import com.android.tradefed.util.AaptParser;
 import com.android.tradefed.util.AbiFormatter;
 import com.android.tradefed.util.BuildTestsZipUtils;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableListMultimap;
+import com.google.common.collect.Multimaps;
+
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -45,6 +51,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * A {@link ITargetPreparer} that installs one or more apps from a {@link
@@ -69,9 +77,14 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
     private static final String INSTALL_FAILED_UPDATE_INCOMPATIBLE =
             "INSTALL_FAILED_UPDATE_INCOMPATIBLE";
 
+    @VisibleForTesting static final String TEST_FILE_NAME_OPTION = "test-file-name";
+
     @Option(
-            name = "test-file-name",
-            description = "the name of an apk file to be installed on device. Can be repeated.",
+            name = TEST_FILE_NAME_OPTION,
+            description =
+                    "the name of an apk file to be installed on device. Can be repeated. Items "
+                            + "that are directories will have any APKs contained therein, "
+                            + "including subdirectories, grouped by package name and installed.",
             importance = Importance.IF_UNSET)
     private List<File> mTestFiles = new ArrayList<>();
 
@@ -87,10 +100,11 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
                             + "how to split apk to several files")
     private List<String> mSplitApkFileNames = new ArrayList<>();
 
+    @VisibleForTesting static final String THROW_IF_NOT_FOUND_OPTION = "throw-if-not-found";
+
     @Option(
-        name = "throw-if-not-found",
-        description = "Throw exception if the specified file is not found."
-    )
+            name = THROW_IF_NOT_FOUND_OPTION,
+            description = "Throw exception if the specified file is not found.")
     private boolean mThrowIfNoFile = true;
 
     @Option(name = AbiFormatter.FORCE_ABI_STRING,
@@ -155,7 +169,7 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
         mTestInfo = testInfo;
     }
 
-    /** Adds a file name to the list of apks to installed. */
+    /** Adds a file or directory name to the list of apks to installed. */
     public void addTestFileName(String fileName) {
         mTestFiles.add(new File(fileName));
     }
@@ -294,7 +308,9 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
 
         for (File testAppName : mTestFiles) {
             Map<File, String> appFilesAndPackages =
-                    resolveApkFiles(testInfo, Arrays.asList(new File[] {testAppName}));
+                    resolveApkFiles(
+                            testInfo,
+                            findApkFiles(testAppName, testInfo.getDevice().getDeviceDescriptor()));
             installer(testInfo, appFilesAndPackages);
         }
 
@@ -387,34 +403,45 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
             throws TargetSetupError, DeviceNotAvailableException {
         ITestDevice device = testInfo.getDevice();
 
-        if (appFilesAndPackages.isEmpty()) {
+        // TODO(hzalek): Consider changing resolveApkFiles's return to a Multimap to avoid building
+        // it here.
+        ImmutableListMultimap<String, File> packageToFiles =
+                ImmutableListMultimap.copyOf(appFilesAndPackages.entrySet()).inverse();
+
+        for (Map.Entry<String, List<File>> e : Multimaps.asMap(packageToFiles).entrySet()) {
+            installSinglePackage(device, e.getKey(), e.getValue());
+        }
+    }
+
+    private void installSinglePackage(
+            ITestDevice testDevice, String packageName, List<File> apkFiles)
+            throws TargetSetupError, DeviceNotAvailableException {
+
+        if (apkFiles.isEmpty()) {
             return;
         }
-        CLog.d(
-                "Installing apk %s with %s ...",
-                appFilesAndPackages.values(), appFilesAndPackages.keySet());
-        String result = installPackage(device, new ArrayList<>(appFilesAndPackages.keySet()));
+
+        CLog.d("Installing apk %s with %s ...", packageName, apkFiles);
+        String result = installPackage(testDevice, apkFiles);
+
         if (result != null) {
             if (result.startsWith(INSTALL_FAILED_UPDATE_INCOMPATIBLE)) {
                 // Try to uninstall package and reinstall.
-                for (String packageName : new HashSet<>(appFilesAndPackages.values())) {
-                    uninstallPackage(device, packageName);
-                }
-                result = installPackage(device, new ArrayList<>(appFilesAndPackages.keySet()));
+                uninstallPackage(testDevice, packageName);
+                result = installPackage(testDevice, apkFiles);
             }
         }
+
         if (result != null) {
             throw new TargetSetupError(
                     String.format(
                             "Failed to install %s with %s on %s. Reason: '%s'",
-                            appFilesAndPackages.values(),
-                            appFilesAndPackages.keySet(),
-                            device.getSerialNumber(),
-                            result),
-                    device.getDeviceDescriptor());
+                            packageName, apkFiles, testDevice.getSerialNumber(), result),
+                    testDevice.getDeviceDescriptor());
         }
+
         if (mCleanup) {
-            mPackagesInstalled.addAll(appFilesAndPackages.values());
+            mPackagesInstalled.add(packageName);
         }
     }
 
@@ -451,10 +478,47 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
                     continue;
                 }
             }
-            String packageName = parsePackageName(testAppFile, device.getDeviceDescriptor());
-            appFiles.put(testAppFile, packageName);
+
+            appFiles.put(testAppFile, parsePackageName(testAppFile, device.getDeviceDescriptor()));
         }
         return appFiles;
+    }
+
+    /**
+     * Returns the provided file if not a directory or all APK files contained in the directory tree
+     * rooted at the provided path otherwise.
+     */
+    private List<File> findApkFiles(File fileOrDirectory, DeviceDescriptor deviceDescriptor)
+            throws TargetSetupError {
+
+        if (!fileOrDirectory.isDirectory()) {
+            return ImmutableList.of(fileOrDirectory);
+        }
+
+        List<File> apkFiles;
+
+        try (Stream<Path> paths = Files.walk(fileOrDirectory.toPath())) {
+            apkFiles =
+                    paths.filter(p -> p.toString().endsWith(".apk"))
+                            .filter(Files::isRegularFile)
+                            .map(Path::toFile)
+                            .collect(Collectors.toList());
+        } catch (IOException e) {
+            throw new TargetSetupError(
+                    String.format(
+                            "Could not list files of specified directory: %s", fileOrDirectory),
+                    e,
+                    deviceDescriptor);
+        }
+
+        if (mThrowIfNoFile && apkFiles.isEmpty()) {
+            throw new TargetSetupError(
+                    String.format(
+                            "Could not find any files in specified directory: %s", fileOrDirectory),
+                    deviceDescriptor);
+        }
+
+        return apkFiles;
     }
 
     /**
