@@ -3556,7 +3556,9 @@ public class NativeDevice implements IManagedTestDevice {
         if (output == null && isEncryptionSupported()) {
             CLog.w("Property ro.crypto.state is null on device %s", getSerialNumber());
         }
-
+        if (output == null) {
+            return false;
+        }
         return "encrypted".equals(output.trim());
     }
 
