@@ -464,6 +464,7 @@ public class BuildInfo implements IBuildInfo {
         }
         copy.setBuildBranch(mBuildBranch);
         copy.setBuildFlavor(mBuildFlavor);
+        copy.setDeviceSerial(mDeviceSerial);
 
         return copy;
     }
