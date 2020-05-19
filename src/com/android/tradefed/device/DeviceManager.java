@@ -566,20 +566,11 @@ public class DeviceManager implements IDeviceManager {
         }
     }
 
+    /** Representation of a device in Fastboot mode. */
     public static class FastbootDevice extends StubDevice {
-
-        private boolean mIsFastbootd = false;
 
         public FastbootDevice(String serial) {
             super(serial, false);
-        }
-
-        public void setFastbootd(boolean isFastbootd) {
-            mIsFastbootd = isFastbootd;
-        }
-
-        public boolean isFastbootD() {
-            return mIsFastbootd;
         }
     }
 

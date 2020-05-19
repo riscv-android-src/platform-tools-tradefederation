@@ -2197,6 +2197,12 @@ public class NativeDevice implements IManagedTestDevice {
         CLog.i("Bootloader recovery successful for %s", getSerialNumber());
     }
 
+    private void recoverDeviceFromFastbootd() throws DeviceNotAvailableException {
+        CLog.i("Attempting recovery on %s in fastbootd", getSerialNumber());
+        mRecovery.recoverDeviceFastbootd(mStateMonitor);
+        CLog.i("Fastbootd recovery successful for %s", getSerialNumber());
+    }
+
     private void recoverDeviceInRecovery() throws DeviceNotAvailableException {
         CLog.i("Attempting recovery on %s in recovery", getSerialNumber());
         mRecovery.recoverDeviceRecovery(mStateMonitor);
@@ -2966,8 +2972,9 @@ public class NativeDevice implements IManagedTestDevice {
         }
 
         if (RebootMode.REBOOT_INTO_FASTBOOTD.equals(mode) && getHostOptions().isFastbootdEnable()) {
-            if (!mStateMonitor.waitForDeviceFastbootd(mOptions.getFastbootTimeout())) {
-                recoverDeviceFromBootloader();
+            if (!mStateMonitor.waitForDeviceFastbootd(
+                    getFastbootPath(), mOptions.getFastbootTimeout())) {
+                recoverDeviceFromFastbootd();
             }
         } else {
             if (!mStateMonitor.waitForDeviceBootloader(mOptions.getFastbootTimeout())) {
