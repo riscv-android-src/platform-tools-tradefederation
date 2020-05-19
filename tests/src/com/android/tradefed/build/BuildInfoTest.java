@@ -64,6 +64,7 @@ public class BuildInfoTest {
     /** Test method for {@link BuildInfo#clone()}. */
     @Test
     public void testClone() throws Exception {
+        mBuildInfo.setDeviceSerial("tobecloned");
         BuildInfo copy = (BuildInfo) mBuildInfo.clone();
         assertEquals(mBuildInfo.getBuildAttributes().get(ATTRIBUTE_KEY),
                 copy.getBuildAttributes().get(ATTRIBUTE_KEY));
@@ -72,6 +73,7 @@ public class BuildInfoTest {
             assertEquals(VERSION, copy.getVersion(FILE_KEY));
             assertTrue(!mFile.getAbsolutePath().equals(copy.getFile(FILE_KEY).getAbsolutePath()));
             assertTrue(FileUtil.compareFileContents(mFile, copy.getFile(FILE_KEY)));
+            assertEquals("tobecloned", copy.getDeviceSerial());
         } finally {
             FileUtil.deleteFile(copy.getFile(FILE_KEY));
         }
