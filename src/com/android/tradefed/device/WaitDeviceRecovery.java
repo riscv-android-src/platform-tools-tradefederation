@@ -287,7 +287,7 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
         // poll and wait for device to return to valid state
         long pollTime = mBootloaderWaitTime / BOOTLOADER_POLL_ATTEMPTS;
         for (int i = 0; i < BOOTLOADER_POLL_ATTEMPTS; i++) {
-            if (monitor.waitForDeviceFastbootd(pollTime)) {
+            if (monitor.waitForDeviceFastbootd(mFastbootPath, pollTime)) {
                 handleDeviceFastbootdUnresponsive(monitor);
                 // passed above check, abort
                 return;
@@ -342,7 +342,7 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
             return;
         }
         rebootDevice(device, "fastboot");
-        if (!monitor.waitForDeviceFastbootd(mBootloaderWaitTime)) {
+        if (!monitor.waitForDeviceFastbootd(mFastbootPath, mBootloaderWaitTime)) {
             throw new DeviceNotAvailableException(
                     String.format(
                             "Device %s not in fastbootd after reboot", monitor.getSerialNumber()),
@@ -366,7 +366,7 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
                         "fastboot");
         // wait for device to reboot
         monitor.waitForDeviceNotAvailable(WAIT_FOR_DEVICE_OFFLINE);
-        if (!monitor.waitForDeviceFastbootd(mBootloaderWaitTime)) {
+        if (!monitor.waitForDeviceFastbootd(mFastbootPath, mBootloaderWaitTime)) {
             throw new DeviceNotAvailableException(
                     String.format(
                             "Device %s not in fastbootd after reboot", monitor.getSerialNumber()),
