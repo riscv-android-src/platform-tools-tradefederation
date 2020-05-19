@@ -170,7 +170,7 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
     }
 
     /** Adds a file or directory to the list of apks to installed. */
-    public final void addTestFile(File file) {
+    public void addTestFile(File file) {
         mTestFiles.add(file);
     }
 
