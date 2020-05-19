@@ -29,6 +29,7 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
 import com.android.tradefed.util.FileUtil;
 
@@ -317,11 +318,15 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
     @Override
     public final void testFailed(TestDescription test, FailureDescription failure) {
         if (!mSkipTestCase) {
-            try {
-                onTestFail(mTestData, test);
-            } catch (Throwable t) {
-                // Prevent exception from messing up the status reporting.
-                CLog.e(t);
+            // Don't collect on not_executed test case
+            if (failure.getFailureStatus() == null
+                    || !FailureStatus.NOT_EXECUTED.equals(failure.getFailureStatus())) {
+                try {
+                    onTestFail(mTestData, test);
+                } catch (Throwable t) {
+                    // Prevent exception from messing up the status reporting.
+                    CLog.e(t);
+                }
             }
         }
         mForwarder.testFailed(test, failure);
