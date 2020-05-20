@@ -536,15 +536,32 @@ public class SubprocessTestResultsParser implements Closeable {
                             assosInfo.mDataName);
                     return;
                 }
-                try (InputStreamSource source = new FileInputStreamSource(path)) {
-                    LogDataType type = file.getType();
-                    // File might have already been compressed
-                    if (file.getPath().endsWith(LogDataType.ZIP.getFileExt())) {
-                        type = LogDataType.ZIP;
+                LogDataType type = file.getType();
+                // File might have already been compressed
+                File toLog = path;
+                File extractedDir = null;
+                if (file.getPath().endsWith(LogDataType.ZIP.getFileExt())) {
+                    // If file type is compressed, then keep that type.
+                    if (!file.getType().isCompressed()) {
+                        try {
+                            extractedDir = ZipUtil2.extractZipToTemp(path, assosInfo.mDataName);
+                            File[] files = extractedDir.listFiles();
+                            if (files.length == 1) {
+                                toLog = files[0];
+                            } else {
+                                type = LogDataType.ZIP;
+                            }
+                        } catch (IOException e) {
+                            CLog.e(e);
+                        }
                     }
-                    CLog.d("Logging %s from subprocess: %s ", assosInfo.mDataName, file.getPath());
+                }
+                try (InputStreamSource source = new FileInputStreamSource(toLog)) {
+                    CLog.d("Logging %s from subprocess: %s ", assosInfo.mDataName, toLog.getPath());
                     mListener.testLog(name, type, source);
                 }
+                FileUtil.recursiveDelete(extractedDir);
+                FileUtil.deleteFile(path);
             } else {
                 CLog.d(
                         "Logging %s from subprocess. url: %s, path: %s",
