@@ -225,6 +225,7 @@ import com.android.tradefed.targetprep.DisableSELinuxTargetPreparerTest;
 import com.android.tradefed.targetprep.DynamicSystemPreparerTest;
 import com.android.tradefed.targetprep.FastbootDeviceFlasherTest;
 import com.android.tradefed.targetprep.FlashingResourcesParserTest;
+import com.android.tradefed.targetprep.GkiDeviceFlashPreparerTest;
 import com.android.tradefed.targetprep.InstallAllTestZipAppsSetupTest;
 import com.android.tradefed.targetprep.InstallApexModuleTargetPreparerTest;
 import com.android.tradefed.targetprep.InstallApkSetupTest;
@@ -668,6 +669,7 @@ import org.junit.runners.Suite.SuiteClasses;
     DynamicSystemPreparerTest.class,
     FastbootDeviceFlasherTest.class,
     FlashingResourcesParserTest.class,
+    GkiDeviceFlashPreparerTest.class,
     InstallAllTestZipAppsSetupTest.class,
     InstallApexModuleTargetPreparerTest.class,
     InstallApkSetupTest.class,
