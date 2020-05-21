@@ -63,6 +63,7 @@ public class PerfettoPullerMetricCollector extends FilePullerDeviceMetricCollect
     private static final String EXTRACTOR_SUCCESS = "1";
     private static final String EXTRACTOR_FAILURE = "0";
     private static final String EXTRACTOR_RUNTIME = "trace_extractor_runtime";
+    private static final String NSS_CACHE_ERROR = "base/nsscache-inl.h failed to lookup";
 
     public enum METRIC_FILE_FORMAT {
         text,
@@ -234,9 +235,23 @@ public class PerfettoPullerMetricCollector extends FilePullerDeviceMetricCollect
                         String.format("%s_%s", mMetricPrefix, EXTRACTOR_RUNTIME),
                         metricDurationBuilder.setType(DataType.RAW));
 
-                if (CommandStatus.SUCCESS.equals(cr.getStatus())) {
+                // Adding temporary workaround to handle the NSS cache error.
+                // TODO: Revert the NSS cache error handling after b/156924255 is fixed.
+                if (CommandStatus.SUCCESS.equals(cr.getStatus()) ||
+                        (CommandStatus.FAILED.equals(cr.getStatus()) &&
+                                cr.getStdout().contains(NSS_CACHE_ERROR))) {
                     String[] metrics = cr.getStdout().split(LINE_SEPARATOR);
+
+                    boolean isMetricStarted = false;
                     for (String metric : metrics) {
+                        // Skip until the first metric line is parsed.
+                        // Usually "trace-durations-ms" is the first metric from the output.
+                        if(isMetricStarted || metric.contains("trace-duration-ms")) {
+                            isMetricStarted = true;
+                        } else {
+                            continue;
+                        }
+
                         Pair<String, String> kv = splitKeyValue(metric);
 
                         if (kv != null) {
