@@ -342,4 +342,8 @@ public class FileSystemLogSaver implements ILogSaver {
     void setLogRetentionDays(int logRetentionDays) {
         mLogRetentionDays = logRetentionDays;
     }
+
+    public void setCompressFiles(boolean compress) {
+        mCompressFiles = compress;
+    }
 }
