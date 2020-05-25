@@ -159,7 +159,8 @@ def _get_test_reference_types(ref):
                         _REFERENCE_TYPE.INTEGRATION,
                         _REFERENCE_TYPE.MODULE_CLASS]
             # Module:some.package
-            return [_REFERENCE_TYPE.CACHE, _REFERENCE_TYPE.MODULE_PACKAGE]
+            return [_REFERENCE_TYPE.CACHE, _REFERENCE_TYPE.MODULE_PACKAGE,
+                    _REFERENCE_TYPE.MODULE_CLASS]
         # Module:Class or IntegrationName:Class
         return [_REFERENCE_TYPE.CACHE,
                 _REFERENCE_TYPE.INTEGRATION,
