@@ -127,7 +127,7 @@ public class ClusterCommandSchedulerTest {
     private ClusterOptions mMockClusterOptions;
     private IClusterEventUploader<ClusterCommandEvent> mMockEventUploader;
     private ClusterCommandScheduler mScheduler;
-    private IClusterEventUploader mMockHostUploader;
+    private IClusterEventUploader<ClusterHostEvent> mMockHostUploader;
     // Test variable to store the args of last execCommand called by CommandScheduler.
     Stack<ArrayList<String>> mExecCmdArgs = new Stack<>();
 
@@ -158,7 +158,7 @@ public class ClusterCommandSchedulerTest {
                     }
 
                     @Override
-                    public IClusterEventUploader getHostEventUploader() {
+                    public IClusterEventUploader<ClusterHostEvent> getHostEventUploader() {
                         return mMockHostUploader;
                     }
 
@@ -660,6 +660,7 @@ public class ClusterCommandSchedulerTest {
         context.addAllocatedDevice(DEVICE_SERIAL, mockTestDevice);
         context.addInvocationAttribute(InvocationMetricKey.FETCH_BUILD.toString(), "100");
         context.addInvocationAttribute(InvocationMetricKey.SETUP.toString(), "200");
+        context.addInvocationAttribute(InvocationMetricKey.DEVICE_LOST_DETECTED.toString(), "1");
         Map<ITestDevice, FreeDeviceState> releaseMap = new HashMap<>();
         releaseMap.put(mockTestDevice, FreeDeviceState.AVAILABLE);
         handler.invocationComplete(context, releaseMap);
@@ -680,6 +681,9 @@ public class ClusterCommandSchedulerTest {
         assertEquals(
                 "URI: http://uri\n",
                 capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_SUMMARY));
+        assertEquals(
+                "1",
+                capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_LOST_DEVICE_DETECTED));
     }
 
     /** Test that the error count is the proper one. */
