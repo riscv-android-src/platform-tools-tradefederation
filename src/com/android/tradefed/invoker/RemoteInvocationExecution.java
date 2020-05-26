@@ -344,6 +344,8 @@ public class RemoteInvocationExecution extends InvocationExecution {
         RunUtil.getDefault().sleep(10000L);
 
         mProtoParser = new ProtoResultParser(currentInvocationListener, context, false, "remote-");
+        // Print when parsing
+        mProtoParser.setQuiet(false);
         // Monitor the remote invocation to ensure it's completing. Block until timeout or stops
         // running.
         boolean stillRunning = true;
