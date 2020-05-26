@@ -20,11 +20,13 @@ include $(CLEAR_VARS)
 
 # makefile rules to copy jars to HOST_OUT/tradefed
 # so tradefed.sh can automatically add to classpath
+
+# Output tradefed-no-fwk as "tradefed.jar" for seamlessly replacing the jar.
 deps := $(call copy-many-files,\
-  $(call intermediates-dir-for,JAVA_LIBRARIES,tradefed,HOST)/javalib.jar:$(HOST_OUT)/tradefed/tradefed.jar)
+  $(call intermediates-dir-for,JAVA_LIBRARIES,tradefed-no-fwk,HOST)/javalib.jar:$(HOST_OUT)/tradefed/tradefed.jar)
 
 fwk_deps := $(call copy-many-files,\
-  $(call intermediates-dir-for,JAVA_LIBRARIES,tradefed,HOST)/javalib.jar:$(HOST_OUT)/tradefed/tradefed-test-framework.jar)
+  $(call intermediates-dir-for,JAVA_LIBRARIES,tradefed-test-framework,HOST)/javalib.jar:$(HOST_OUT)/tradefed/tradefed-test-framework.jar)
 
 isodeps := $(call copy-many-files,\
   $(call intermediates-dir-for,JAVA_LIBRARIES,tradefed-isolation,HOST)/javalib.jar:$(HOST_OUT)/tradefed/tradefed-isolation.jar)
