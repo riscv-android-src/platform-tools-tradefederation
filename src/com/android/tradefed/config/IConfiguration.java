@@ -41,6 +41,7 @@ import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Configuration information for a TradeFederation invocation.
@@ -522,6 +523,12 @@ public interface IConfiguration {
 
     /** Delete any files that was downloaded to resolved Option fields of remote files. */
     public void cleanConfigurationData();
+
+    /** Add files that must be cleaned during {@link #cleanConfigurationData()} */
+    public void addFilesToClean(Set<File> toBeCleaned);
+
+    /** Get the list of files that will be cleaned during {@link #cleanConfigurationData()} */
+    public Set<File> getFilesToClean();
 
     /**
      * Sets the command line used to create this {@link IConfiguration}.
