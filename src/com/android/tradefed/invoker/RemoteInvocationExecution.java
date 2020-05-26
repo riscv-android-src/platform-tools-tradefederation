@@ -50,6 +50,7 @@ import com.android.tradefed.result.proto.ProtoResultParser;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.TargetSetupError;
+import com.android.tradefed.testtype.SubprocessTfLauncher;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -614,6 +615,11 @@ public class RemoteInvocationExecution extends InvocationExecution {
                 && config.getCommandOptions().getShardIndex() == null) {
             config.getCommandOptions().setReplicateSetup(true);
         }
+
+        // Mark the remote invocation as subprocess
+        config.getCommandOptions()
+                .getInvocationData()
+                .put(SubprocessTfLauncher.SUBPROCESS_TAG_NAME, "true");
 
         // Unset remote-tf-version to avoid re-downloading from remote VM.
         OptionSetter deviceOptions =
