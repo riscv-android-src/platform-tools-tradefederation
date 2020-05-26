@@ -1240,6 +1240,19 @@ public class Configuration implements IConfiguration {
         for (File file : mRemoteFiles) {
             FileUtil.recursiveDelete(file);
         }
+        mRemoteFiles.clear();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void addFilesToClean(Set<File> toBeCleaned) {
+        mRemoteFiles.addAll(toBeCleaned);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Set<File> getFilesToClean() {
+        return mRemoteFiles;
     }
 
     /**

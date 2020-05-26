@@ -39,6 +39,7 @@ import com.android.tradefed.config.IGlobalConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.RetryConfigurationFactory;
 import com.android.tradefed.config.SandboxConfigurationFactory;
+import com.android.tradefed.config.proxy.ProxyConfiguration;
 import com.android.tradefed.device.DeviceAllocationState;
 import com.android.tradefed.device.DeviceManager;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -1177,6 +1178,22 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         return foundSandbox;
     }
 
+    private boolean isProxyCommand(IConfiguration config) {
+        return config.getConfigurationObject(ProxyConfiguration.PROXY_CONFIG_TYPE_KEY) != null;
+    }
+
+    private String[] handleProxyCommand(IConfiguration config, String[] originalArgs)
+            throws ConfigurationException {
+        ProxyConfiguration proxy =
+                (ProxyConfiguration)
+                        config.getConfigurationObject(ProxyConfiguration.PROXY_CONFIG_TYPE_KEY);
+        if (proxy.getProxyConfig() == null) {
+            throw new ConfigurationException("No proxy configuration found.");
+        }
+        originalArgs[0] = proxy.getProxyConfig().getAbsolutePath();
+        return originalArgs;
+    }
+
     /** Returns true if the configuration used is a retry one. */
     private boolean isRetryCommand(IConfiguration config) {
         // If a configuration is made of the RetryRunner only, it is meant to run as a retry.
@@ -1205,6 +1222,14 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         }
         IConfiguration config =
                 getConfigFactory().createConfigurationFromArgs(args, null, getKeyStoreClient());
+        if (isProxyCommand(config)) {
+            String[] newArgs = handleProxyCommand(config, args);
+            IConfiguration proxyConfig =
+                    getConfigFactory()
+                            .createConfigurationFromArgs(newArgs, null, getKeyStoreClient());
+            proxyConfig.addFilesToClean(config.getFilesToClean());
+            return proxyConfig;
+        }
         if (isRetryCommand(config)) {
             return RetryConfigurationFactory.getInstance().createRetryConfiguration(config);
         }
