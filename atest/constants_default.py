@@ -195,9 +195,11 @@ VTS_CORE_SUITE = 'vts'
 ATEST_TF_MODULE = 'atest-tradefed'
 
 # Build environment variable for each build on ATest
+# With RECORD_ALL_DEPS enabled, ${ANDROID_PRODUCT_OUT}/module-info.json will
+# generate modules' dependencies info when make.
 # With SOONG_COLLECT_JAVA_DEPS enabled, out/soong/module_bp_java_deps.json will
 # be generated when make.
-ATEST_BUILD_ENV = {'SOONG_COLLECT_JAVA_DEPS':'true'}
+ATEST_BUILD_ENV = {'RECORD_ALL_DEPS':'true', 'SOONG_COLLECT_JAVA_DEPS':'true'}
 
 # Atest index path and relative dirs/caches.
 INDEX_DIR = os.path.join(os.getenv(ANDROID_HOST_OUT, ''), 'indexes')
