@@ -63,6 +63,8 @@ import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.ITestFilterReceiver;
+import com.android.tradefed.testtype.retry.IAutoRetriableTest;
 import com.android.tradefed.testtype.suite.ITestSuite;
 import com.android.tradefed.testtype.suite.ModuleListener;
 import com.android.tradefed.util.CommandResult;
@@ -89,7 +91,6 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 /**
  * Class that describes all the invocation steps: build download, target_prep, run tests, clean up.
@@ -170,6 +171,13 @@ public class InvocationExecution implements IInvocationExecution {
                 testInfo.getContext().addDeviceBuildInfo(currentDeviceName, errorBuild);
             }
             throw e;
+        } catch (RuntimeException re) {
+            if (currentDeviceName != null) {
+                IBuildInfo errorBuild = new BuildInfo();
+                updateBuild(errorBuild, config);
+                testInfo.getContext().addDeviceBuildInfo(currentDeviceName, errorBuild);
+            }
+            throw re;
         }
         setBinariesVersion(testInfo.getContext());
         return true;
@@ -337,12 +345,7 @@ public class InvocationExecution implements IInvocationExecution {
             if (device instanceof ITestLoggerReceiver) {
                 ((ITestLoggerReceiver) context.getDevice(deviceName)).setTestLogger(logger);
             }
-            device.preInvocationSetup(
-                    context.getBuildInfo(deviceName),
-                    context.getBuildInfos()
-                            .stream()
-                            .filter(buildInfo -> buildInfo.isTestResourceBuild())
-                            .collect(Collectors.toList()));
+            device.preInvocationSetup(context.getBuildInfo(deviceName));
         }
     }
 
@@ -585,12 +588,15 @@ public class InvocationExecution implements IInvocationExecution {
                         || RetryStrategy.NO_RETRY.equals(decision.getRetryStrategy())
                         || test instanceof ITestSuite
                         // TODO: Handle auto-retry in local-sharding for non-suite
-                        || test instanceof TestsPoolPoller) {
+                        || test instanceof TestsPoolPoller
+                        // If test doesn't support auto-retry
+                        || (!(test instanceof ITestFilterReceiver)
+                                && !(test instanceof IAutoRetriableTest))) {
                     runTest(config, info, listener, test);
                     remainingTests.remove(test);
                     continue;
                 }
-
+                CLog.d("Using RetryLogSaverResultForwarder to forward results.");
                 ModuleListener mainGranularRunListener = new ModuleListener(null);
                 RetryLogSaverResultForwarder runListener =
                         initializeListeners(config, listener, mainGranularRunListener);
@@ -644,23 +650,6 @@ public class InvocationExecution implements IInvocationExecution {
     }
 
     @Override
-    public boolean resetBuildAndReschedule(
-            Throwable exception,
-            ITestInvocationListener listener,
-            IConfiguration config,
-            IInvocationContext context) {
-        if (!(exception instanceof BuildError) && !(exception.getCause() instanceof BuildError)) {
-            for (String deviceName : context.getDeviceConfigNames()) {
-                config.getDeviceConfigByName(deviceName)
-                        .getBuildProvider()
-                        .buildNotTested(context.getBuildInfo(deviceName));
-            }
-            return true;
-        }
-        return false;
-    }
-
-    @Override
     public void reportLogs(ITestDevice device, ITestLogger listener, Stage stage) {
         if (device == null) {
             return;
@@ -705,10 +694,6 @@ public class InvocationExecution implements IInvocationExecution {
         } else if (Strings.isNullOrEmpty(info.getTestTag())) {
             // We ensure that that a default test-tag is always available.
             info.setTestTag("stub");
-        } else {
-            CLog.w(
-                    "Using the test-tag from the build_provider. Consider updating your config to"
-                            + " have no alias/namespace in front of test-tag.");
         }
     }
 

@@ -438,6 +438,15 @@ public class TestDevice extends NativeDevice {
             if (aaptParser != null
                     && aaptParser.getTargetSdkVersion() > 29
                     && aaptParser.isRequestingLegacyStorage()) {
+                if (!aaptParser.isUsingPermissionManageExternalStorage()) {
+                    CLog.w(
+                            "App is requesting legacy storage and targets R or above, but didn't"
+                                    + " request the MANAGE_EXTERNAL_STORAGE permission so the"
+                                    + " associated app op cannot be automatically granted and the"
+                                    + " app won't have legacy external storage access: "
+                                    + aaptParser.getPackageName());
+                    continue;
+                }
                 // Set the MANAGE_EXTERNAL_STORAGE App Op to MODE_ALLOWED (Code = 0)
                 // for all users.
                 ArrayList<Integer> userIds = listUsers();
@@ -1078,6 +1087,14 @@ public class TestDevice extends NativeDevice {
         DumpPkgAction action = new DumpPkgAction();
         performDeviceAction("dumpsys package", action, MAX_RETRY_ATTEMPTS);
         return action.mPkgInfoMap.get(packageName);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public List<PackageInfo> getAppPackageInfos() throws DeviceNotAvailableException {
+        DumpPkgAction action = new DumpPkgAction();
+        performDeviceAction("dumpsys package", action, MAX_RETRY_ATTEMPTS);
+        return new ArrayList<>(action.mPkgInfoMap.values());
     }
 
     // TODO: convert this to use DumpPkgAction

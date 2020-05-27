@@ -35,6 +35,18 @@ from test_runners import atest_tf_test_runner as atf_tr
 MODULE_CLASS = '%s:%s' % (uc.MODULE_NAME, uc.CLASS_NAME)
 MODULE_PACKAGE = '%s:%s' % (uc.MODULE_NAME, uc.PACKAGE)
 CC_MODULE_CLASS = '%s:%s' % (uc.CC_MODULE_NAME, uc.CC_CLASS_NAME)
+KERNEL_TEST_CLASS = 'test_class_1'
+KERNEL_TEST_CONFIG = 'KernelTest.xml'
+KERNEL_MODULE_CLASS = '%s:%s' % (constants.REQUIRED_KERNEL_TEST_MODULES[0],
+                                 KERNEL_TEST_CLASS)
+KERNEL_CONFIG_FILE = os.path.join(uc.TEST_DATA_DIR, KERNEL_TEST_CONFIG)
+KERNEL_CLASS_FILTER = test_info.TestFilter(KERNEL_TEST_CLASS, frozenset())
+KERNEL_MODULE_CLASS_DATA = {constants.TI_REL_CONFIG: KERNEL_CONFIG_FILE,
+                            constants.TI_FILTER: frozenset([KERNEL_CLASS_FILTER])}
+KERNEL_MODULE_CLASS_INFO = test_info.TestInfo(
+    constants.REQUIRED_KERNEL_TEST_MODULES[0],
+    atf_tr.AtestTradefedTestRunner.NAME,
+    uc.CLASS_BUILD_TARGETS, KERNEL_MODULE_CLASS_DATA)
 FLAT_METHOD_INFO = test_info.TestInfo(
     uc.MODULE_NAME,
     atf_tr.AtestTradefedTestRunner.NAME,
@@ -221,6 +233,8 @@ class ModuleFinderUnittests(unittest.TestCase):
         self.mod_finder.module_info.get_module_info.return_value = mod_info
         self.assertIsNone(self.mod_finder.find_test_by_module_and_class(bad_class))
 
+    @mock.patch.object(module_finder.ModuleFinder, 'find_test_by_kernel_class_name',
+                       return_value=None)
     @mock.patch.object(module_finder.ModuleFinder, '_is_vts_module',
                        return_value=False)
     @mock.patch.object(module_finder.ModuleFinder, '_get_build_targets')
@@ -231,7 +245,7 @@ class ModuleFinderUnittests(unittest.TestCase):
     #pylint: disable=unused-argument
     def test_find_test_by_module_and_class_part_2(self, _isfile, mock_fcf,
                                                   mock_checkoutput, mock_build,
-                                                  _vts):
+                                                  _vts, _find_kernel):
         """Test find_test_by_module_and_class for MODULE:CC_CLASS."""
         # Native test was tested in test_find_test_by_cc_class_name()
         self.mod_finder.module_info.is_native_test.return_value = False
@@ -256,6 +270,34 @@ class ModuleFinderUnittests(unittest.TestCase):
         self.mod_finder.module_info.get_module_info.return_value = None
         self.mod_finder.module_info.is_testable_module.return_value = False
         self.assertIsNone(self.mod_finder.find_test_by_module_and_class(bad_module))
+
+    @mock.patch.object(module_finder.ModuleFinder, '_get_module_test_config',
+                       return_value=KERNEL_CONFIG_FILE)
+    @mock.patch.object(module_finder.ModuleFinder, '_is_vts_module',
+                       return_value=False)
+    @mock.patch.object(module_finder.ModuleFinder, '_get_build_targets')
+    @mock.patch('subprocess.check_output', return_value=uc.FIND_CC_ONE)
+    @mock.patch.object(test_finder_utils, 'find_class_file',
+                       side_effect=[None, None, '/'])
+    @mock.patch('os.path.isfile', side_effect=unittest_utils.isfile_side_effect)
+    #pylint: disable=unused-argument
+    def test_find_test_by_module_and_class_for_kernel_test(
+            self, _isfile, mock_fcf, mock_checkoutput, mock_build, _vts,
+            _test_config):
+        """Test find_test_by_module_and_class for MODULE:CC_CLASS."""
+        # Kernel test was tested in find_test_by_kernel_class_name()
+        self.mod_finder.module_info.is_native_test.return_value = False
+        self.mod_finder.module_info.is_auto_gen_test_config.return_value = False
+        self.mod_finder.module_info.is_robolectric_test.return_value = False
+        self.mod_finder.module_info.has_test_config.return_value = True
+        mock_build.return_value = uc.CLASS_BUILD_TARGETS
+        mod_info = {constants.MODULE_INSTALLED: DEFAULT_INSTALL_PATH,
+                    constants.MODULE_PATH: [uc.CC_MODULE_DIR],
+                    constants.MODULE_CLASS: [],
+                    constants.MODULE_COMPATIBILITY_SUITES: []}
+        self.mod_finder.module_info.get_module_info.return_value = mod_info
+        t_infos = self.mod_finder.find_test_by_module_and_class(KERNEL_MODULE_CLASS)
+        unittest_utils.assert_equal_testinfos(self, t_infos[0], KERNEL_MODULE_CLASS_INFO)
 
     @mock.patch.object(module_finder.ModuleFinder, '_is_vts_module',
                        return_value=False)

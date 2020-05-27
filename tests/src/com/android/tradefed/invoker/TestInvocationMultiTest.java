@@ -37,10 +37,12 @@ import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.ILogRegistry;
 import com.android.tradefed.postprocessor.IPostProcessor;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogFile;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.retry.BaseRetryDecision;
 
 import org.easymock.Capture;
@@ -192,7 +194,7 @@ public class TestInvocationMultiTest {
         mMockTestListener.invocationStarted(mContext);
         EasyMock.expect(mMockTestListener.getSummary()).andReturn(null);
         mMockLogSaver.invocationStarted(mContext);
-        mMockTestListener.invocationFailed(EasyMock.<Throwable>anyObject());
+        mMockTestListener.invocationFailed(EasyMock.<FailureDescription>anyObject());
         mMockTestListener.testLog(EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject());
         EasyMock.expect(
                         mMockLogSaver.saveLogData(
@@ -288,7 +290,10 @@ public class TestInvocationMultiTest {
         mMockTestListener.invocationStarted(mContext);
         EasyMock.expect(mMockTestListener.getSummary()).andReturn(null);
         mMockLogSaver.invocationStarted(mContext);
-        mMockTestListener.invocationFailed(EasyMock.eq(configException));
+        FailureDescription failure =
+                FailureDescription.create(
+                        configException.getMessage(), FailureStatus.INFRA_FAILURE);
+        mMockTestListener.invocationFailed(EasyMock.eq(failure));
         mMockTestListener.testLog(EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject());
         EasyMock.expect(
                         mMockLogSaver.saveLogData(
@@ -358,7 +363,7 @@ public class TestInvocationMultiTest {
         mMockTestListener.invocationStarted(mContext);
         EasyMock.expect(mMockTestListener.getSummary()).andReturn(null);
         mMockLogSaver.invocationStarted(mContext);
-        mMockTestListener.invocationFailed(EasyMock.<Throwable>anyObject());
+        mMockTestListener.invocationFailed(EasyMock.<FailureDescription>anyObject());
         mMockTestListener.testLog(EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject());
         EasyMock.expect(
                         mMockLogSaver.saveLogData(
@@ -445,7 +450,7 @@ public class TestInvocationMultiTest {
         mMockTestListener.invocationStarted(mContext);
         EasyMock.expect(mMockTestListener.getSummary()).andReturn(null);
         mMockLogSaver.invocationStarted(mContext);
-        mMockTestListener.invocationFailed(EasyMock.<Throwable>anyObject());
+        mMockTestListener.invocationFailed(EasyMock.<FailureDescription>anyObject());
         mMockTestListener.testLog(EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject());
         EasyMock.expect(
                         mMockLogSaver.saveLogData(

@@ -35,6 +35,8 @@ public class FailureDescription {
     private @Nullable String mDebugHelpMessage = null;
     // Optional: The exception that triggered the failure
     private @Nullable Throwable mCause = null;
+    // Whether or not the error is retriable by Tradefed auto-retry. By Default we retry it all.
+    private boolean mRetriable = true;
 
     FailureDescription() {}
 
@@ -86,6 +88,17 @@ public class FailureDescription {
     /** Returns the exception that caused the failure. Can be null. */
     public @Nullable Throwable getCause() {
         return mCause;
+    }
+
+    /** Sets whether or not the failure is retriable. */
+    public FailureDescription setRetriable(boolean retriable) {
+        mRetriable = retriable;
+        return this;
+    }
+
+    /** Returns whether or not the error is retriable or not. */
+    public boolean isRetriable() {
+        return mRetriable;
     }
 
     /** Sets the error message. */

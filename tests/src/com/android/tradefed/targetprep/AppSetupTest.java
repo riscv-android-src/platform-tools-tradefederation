@@ -140,8 +140,11 @@ public class AppSetupTest {
             mAppSetup.setUp(mMockDevice, mMockBuildInfo);
             fail("Should have thrown an exception.");
         } catch (TargetSetupError expected) {
-            assertEquals(String.format("Failed to extract info from '%s' using aapt null",
-                    tmpFile.getAbsolutePath()), expected.getMessage());
+            assertEquals(
+                    String.format(
+                            "Failed to extract info from '%s' using aapt",
+                            tmpFile.getAbsolutePath()),
+                    expected.getMessage());
         } finally {
             FileUtil.deleteFile(tmpFile);
             verifyMocks();
@@ -172,8 +175,11 @@ public class AppSetupTest {
             mAppSetup.setUp(mMockDevice, mMockBuildInfo);
             fail("Should have thrown an exception.");
         } catch (TargetSetupError expected) {
-            assertEquals(String.format("Failed to find package name for '%s' using aapt null",
-                    tmpFile.getAbsolutePath()), expected.getMessage());
+            assertEquals(
+                    String.format(
+                            "Failed to find package name for '%s' using aapt",
+                            tmpFile.getAbsolutePath()),
+                    expected.getMessage());
         } finally {
             FileUtil.deleteFile(tmpFile);
             verifyMocks();
@@ -204,8 +210,9 @@ public class AppSetupTest {
             mAppSetup.setUp(mMockDevice, mMockBuildInfo);
             fail("Should have thrown an exception.");
         } catch (TargetSetupError expected) {
-            assertEquals(String.format("Failed to extract info from '%s' using aapt null",
-                    tmpFile.getName()), expected.getMessage());
+            assertEquals(
+                    String.format("Failed to extract info from '%s' using aapt", tmpFile.getName()),
+                    expected.getMessage());
         } finally {
             FileUtil.deleteFile(tmpFile);
             verifyMocks();

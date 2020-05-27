@@ -273,6 +273,7 @@ public class DeviceManager implements IDeviceManager {
             // Populate the fastboot devices
             // TODO: remove when refactoring fastboot handling
             addFastbootDevices();
+            CLog.d("Using Fastboot from: '%s'", getFastbootPath());
         } else {
             CLog.w("Fastboot is not available.");
             mFastbootListeners = null;
@@ -565,7 +566,9 @@ public class DeviceManager implements IDeviceManager {
         }
     }
 
+    /** Representation of a device in Fastboot mode. */
     public static class FastbootDevice extends StubDevice {
+
         public FastbootDevice(String serial) {
             super(serial, false);
         }
@@ -615,7 +618,7 @@ public class DeviceManager implements IDeviceManager {
     @Override
     public ITestDevice forceAllocateDevice(String serial) {
         checkInit();
-        IManagedTestDevice d = mManagedDeviceList.findOrCreate(new StubDevice(serial, false));
+        IManagedTestDevice d = mManagedDeviceList.forceAllocate(serial);
         if (d != null) {
             DeviceEventResponse r = d.handleAllocationEvent(DeviceEvent.FORCE_ALLOCATE_REQUEST);
             if (r.stateChanged && r.allocationState == DeviceAllocationState.Allocated) {
@@ -836,8 +839,15 @@ public class DeviceManager implements IDeviceManager {
      */
     @Override
     public ITestDevice connectToTcpDevice(String ipAndPort) {
-        ITestDevice tcpDevice = forceAllocateDevice(ipAndPort);
+        IManagedTestDevice tcpDevice = mManagedDeviceList.findOrCreate(new StubDevice(ipAndPort));
         if (tcpDevice == null) {
+            return null;
+        }
+        DeviceEventResponse r = tcpDevice.handleAllocationEvent(DeviceEvent.FORCE_ALLOCATE_REQUEST);
+        if (r.stateChanged && r.allocationState == DeviceAllocationState.Allocated) {
+            // Wait for the fastboot state to be updated once to update the IDevice.
+            tcpDevice.getMonitor().waitForDeviceBootloaderStateUpdate();
+        } else {
             return null;
         }
         if (doAdbConnect(ipAndPort)) {
@@ -1018,6 +1028,14 @@ public class DeviceManager implements IDeviceManager {
             throw new DeviceNotAvailableException("aborted test session",
                     monitor.getSerialNumber());
         }
+
+        /** {@inheritDoc} */
+        @Override
+        public void recoverDeviceFastbootd(IDeviceStateMonitor monitor)
+                throws DeviceNotAvailableException {
+            throw new DeviceNotAvailableException(
+                    "aborted test session", monitor.getSerialNumber());
+        }
     }
 
     /**
@@ -1066,6 +1084,7 @@ public class DeviceManager implements IDeviceManager {
                                 "Battery"));
         if (includeStub) {
             headers.add("class");
+            headers.add("TestDeviceState");
         }
         displayRows.add(headers);
         List<DeviceDescriptor> deviceList = listAllDevices();
@@ -1137,6 +1156,7 @@ public class DeviceManager implements IDeviceManager {
                                     desc.getBatteryLevel()));
             if (includeStub) {
                 infos.add(desc.getDeviceClass());
+                infos.add(desc.getTestDeviceState().toString());
             }
             displayRows.add(infos);
         }
@@ -1314,7 +1334,7 @@ public class DeviceManager implements IDeviceManager {
                 Set<String> serials = fastboot.getDevices();
                 if (serials != null) {
                     // Update known fastboot devices state
-                    mManagedDeviceList.updateFastbootStates(serials);
+                    mManagedDeviceList.updateFastbootStates(serials, /* fastbootd */ false);
                     // Add new fastboot devices.
                     for (String serial : serials) {
                         FastbootDevice d = new FastbootDevice(serial);

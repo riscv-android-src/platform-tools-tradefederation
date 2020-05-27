@@ -42,8 +42,8 @@ public class CarModuleController extends BaseModuleController {
             }
         }
 
-        CLog.d("Skipping module %s because it is only applicable to automotive.", getModuleName());
+        CLog.d("Bypassing module %s because it is only applicable to automotive.", getModuleName());
 
-        return RunStrategy.SKIP_MODULE_TESTCASES;
+        return RunStrategy.FULL_MODULE_BYPASS;
     }
 }

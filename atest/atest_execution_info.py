@@ -23,6 +23,7 @@ import json
 import os
 import sys
 
+import atest_utils as au
 import constants
 
 from metrics import metrics_utils
@@ -40,6 +41,10 @@ _TEST_DETAILS_KEY = 'details'
 _TEST_RESULT_NAME = 'test_result'
 _EXIT_CODE_ATTR = 'EXIT_CODE'
 _MAIN_MODULE_KEY = '__main__'
+_UUID_LEN = 30
+_RESULT_LEN = 35
+_COMMAND_LEN = 50
+_LOGCAT_FMT = '{}/log/invocation_*/{}*logcat-on-failure*'
 
 _SUMMARY_MAP_TEMPLATE = {_STATUS_PASSED_KEY : 0,
                          _STATUS_FAILED_KEY : 0,
@@ -72,18 +77,30 @@ def symlink_latest_result(test_result_dir):
     os.symlink(test_result_dir, symlink)
 
 
-def print_test_result(root, num):
+def print_test_result(root, history_arg):
     """Make a list of latest n test result.
 
     Args:
         root: A string of the test result root path.
-        num: An integer, the number of latest results.
+        history_arg: A string of an integer or uuid. If it's an integer string,
+                     the number of lines of test result will be given; else it
+                     will be treated a uuid and print test result accordingly
+                     in detail.
     """
+    if not history_arg.isdigit():
+        path = os.path.join(constants.ATEST_RESULT_ROOT, history_arg,
+                            'test_result')
+        print_test_result_by_path(path)
+        return
     target = '%s/20*_*_*' % root
     paths = glob.glob(target)
     paths.sort(reverse=True)
-    print('{:-^22}    {:-^35}    {:-^50}'.format('uuid', 'result', 'command'))
-    for path in paths[0: num+1]:
+    print('{:-^{uuid_len}} {:-^{result_len}} {:-^{command_len}}'
+          .format('uuid', 'result', 'command',
+                  uuid_len=_UUID_LEN,
+                  result_len=_RESULT_LEN,
+                  command_len=_COMMAND_LEN))
+    for path in paths[0: int(history_arg)+1]:
         result_path = os.path.join(path, 'test_result')
         if os.path.isfile(result_path):
             try:
@@ -92,12 +109,56 @@ def print_test_result(root, num):
                     total_summary = result.get(_TOTAL_SUMMARY_KEY, {})
                     summary_str = ', '.join([k+':'+str(v)
                                              for k, v in total_summary.items()])
-                    print('{:<22}    {:<35}    {:<50}'
+                    print('{:<{uuid_len}} {:<{result_len}} {:<{command_len}}'
                           .format(os.path.basename(path),
                                   summary_str,
-                                  'atest '+result.get(_ARGS_KEY, '')))
+                                  'atest '+result.get(_ARGS_KEY, ''),
+                                  uuid_len=_UUID_LEN,
+                                  result_len=_RESULT_LEN,
+                                  command_len=_COMMAND_LEN))
             except ValueError:
                 pass
+
+
+def print_test_result_by_path(path):
+    """Print latest test result.
+
+    Args:
+        path: A string of test result path.
+    """
+    if os.path.isfile(path):
+        with open(path) as json_file:
+            result = json.load(json_file)
+            print("\natest {}".format(result.get(_ARGS_KEY, '')))
+            print('\nTotal Summary:\n--------------')
+            total_summary = result.get(_TOTAL_SUMMARY_KEY, {})
+            print(', '.join([(k+':'+str(v))
+                             for k, v in total_summary.items()]))
+            fail_num = total_summary.get(_STATUS_FAILED_KEY)
+            if fail_num > 0:
+                message = '%d test failed' % fail_num
+                print('\n')
+                print(au.colorize(message, constants.RED))
+                print('-' * len(message))
+                test_runner = result.get(_TEST_RUNNER_KEY, {})
+                for runner_name in test_runner.keys():
+                    test_dict = test_runner.get(runner_name, {})
+                    for test_name in test_dict:
+                        test_details = test_dict.get(test_name, {})
+                        for fail in test_details.get(_STATUS_FAILED_KEY):
+                            print(au.colorize('{}'.format(
+                                fail.get(_TEST_NAME_KEY)), constants.RED))
+                            failure_files = glob.glob(_LOGCAT_FMT.format(
+                                os.path.dirname(path), fail.get(_TEST_NAME_KEY)
+                                ))
+                            if failure_files:
+                                print('{} {}'.format(
+                                    au.colorize('LOGCAT-ON-FAILURES:',
+                                                constants.CYAN),
+                                    failure_files[0]))
+                            print('{} {}'.format(
+                                au.colorize('STACKTRACE:\n', constants.CYAN),
+                                fail.get(_TEST_DETAILS_KEY)))
 
 
 def has_non_test_options(args):
@@ -116,7 +177,8 @@ def has_non_test_options(args):
             or args.help
             or args.history
             or args.info
-            or args.version)
+            or args.version
+            or args.latest_result)
 
 
 class AtestExecutionInfo(object):

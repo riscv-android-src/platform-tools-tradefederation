@@ -112,7 +112,7 @@ public final class RunHostScriptTargetPreparerTest {
         mOptionSetter.setOptionValue("script-timeout", "10");
         // Verify environment, timeout, and script path
         mPreparer.setUp(mTestInfo);
-        verify(mRunUtil).setEnvVariable("SERIAL", DEVICE_SERIAL);
+        verify(mRunUtil).setEnvVariable("ANDROID_SERIAL", DEVICE_SERIAL);
         verify(mRunUtil, never()).setEnvVariable(eq("PATH"), any()); // uses default PATH
         verify(mRunUtil).runTimedCmd(10L, mScriptFile.getAbsolutePath());
         // Verify that script is executable

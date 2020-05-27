@@ -86,6 +86,9 @@ public class PythonUnitTestResultParserTest {
         assertTrue(PythonUnitTestResultParser.PATTERN_TWO_LINE_RESULT_SECOND.matcher(s).matches());
         s = "docstringfoobar ... ok";
         assertTrue(PythonUnitTestResultParser.PATTERN_TWO_LINE_RESULT_SECOND.matcher(s).matches());
+
+        s = "a (b) ... "; // Tests with failed subtest assertions could be missing the status.
+        assertTrue(PythonUnitTestResultParser.PATTERN_ONE_LINE_RESULT.matcher(s).matches());
     }
 
     @Test
@@ -93,6 +96,10 @@ public class PythonUnitTestResultParserTest {
         String s = "FAIL: a (b)";
         assertTrue(PythonUnitTestResultParser.PATTERN_FAIL_MESSAGE.matcher(s).matches());
         s = "ERROR: a (b)";
+        assertTrue(PythonUnitTestResultParser.PATTERN_FAIL_MESSAGE.matcher(s).matches());
+        s = "FAIL: a (b) (<subtest>)";
+        assertTrue(PythonUnitTestResultParser.PATTERN_FAIL_MESSAGE.matcher(s).matches());
+        s = "FAIL: a (b) (i=3)";
         assertTrue(PythonUnitTestResultParser.PATTERN_FAIL_MESSAGE.matcher(s).matches());
     }
 
@@ -154,6 +161,25 @@ public class PythonUnitTestResultParserTest {
         replay(mMockListener);
         mParser.processNewLines(output);
         verify(mMockListener);
+    }
+
+    @Test
+    public void testParsePartialSingleLineMatchSkipped() throws Exception {
+        String[] output = {
+            "b (a) ... ok bad-token",
+            "",
+            PythonUnitTestResultParser.DASH_LINE,
+            "Ran 1 test in 1s",
+            "",
+            "OK"
+        };
+        setRunListenerChecks(1, 1000);
+        // The below verifies that the listener method is never called.
+        mMockListener.testStarted(anyObject());
+        expectLastCall().andThrow(new AssertionError("unexpected"));
+        replay(mMockListener);
+
+        mParser.processNewLines(output);
     }
 
     @Test
@@ -260,6 +286,33 @@ public class PythonUnitTestResultParserTest {
         TestDescription[] ids = {new TestDescription("a", "b")};
         boolean[] didPass = {false};
         setRunListenerChecks(1, 1000);
+        setTestIdChecks(ids, didPass);
+
+        replay(mMockListener);
+        mParser.processNewLines(output);
+        verify(mMockListener);
+    }
+
+    @Test
+    public void testParseSubtestFailure() throws Exception {
+        String[] output = {
+            "b (a) ... d (c) ... ok", // Tests with failed subtests don't output a status.
+            "",
+            PythonUnitTestResultParser.EQUAL_LINE,
+            "FAIL: b (a) (i=3)",
+            PythonUnitTestResultParser.DASH_LINE,
+            "Traceback (most recent call last):",
+            "  File \"example_test.py\", line 129, in test_with_failing_subtests",
+            "    self.assertTrue(False)",
+            "",
+            PythonUnitTestResultParser.DASH_LINE,
+            "Ran 2 test in 1s",
+            "",
+            "FAILED (failures=1)"
+        };
+        TestDescription[] ids = {new TestDescription("a", "b"), new TestDescription("c", "d")};
+        boolean[] didPass = {false, true};
+        setRunListenerChecks(2, 1000);
         setTestIdChecks(ids, didPass);
 
         replay(mMockListener);
@@ -557,6 +610,35 @@ public class PythonUnitTestResultParserTest {
                 EasyMock.eq(new TestDescription("__main__.PowerTest", "test_resume_usb_kick")));
 
         mMockListener.testRunEnded(27353, new HashMap<String, Metric>());
+        replay(mMockListener);
+        mParser.processNewLines(contents);
+        verify(mMockListener);
+    }
+
+    @Test
+    public void testParseSubtestOutput() {
+        String[] contents = readInFile("python_subtest_output.txt");
+        int totalTestCount = 4;
+
+        mMockListener.testRunStarted("test", totalTestCount);
+        for (int i = 0; i < totalTestCount; i++) {
+            mMockListener.testStarted(EasyMock.anyObject());
+            mMockListener.testEnded(
+                    EasyMock.anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
+        }
+
+        mMockListener.testFailed(
+                EasyMock.eq(
+                        new TestDescription(
+                                "__main__.ExampleTest", "test_with_some_failing_subtests")),
+                (String) EasyMock.anyObject());
+        mMockListener.testFailed(
+                EasyMock.eq(
+                        new TestDescription(
+                                "__main__.ExampleTest", "test_with_more_failing_subtests")),
+                (String) EasyMock.anyObject());
+
+        mMockListener.testRunEnded(1, new HashMap<String, Metric>());
         replay(mMockListener);
         mParser.processNewLines(contents);
         verify(mMockListener);

@@ -19,6 +19,7 @@ package com.android.tradefed.command.remote;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.IDevice.DeviceState;
 import com.android.tradefed.device.DeviceAllocationState;
+import com.android.tradefed.device.TestDeviceState;
 
 import java.io.Serializable;
 
@@ -29,8 +30,9 @@ public class DeviceDescriptor implements Serializable {
     private final String mSerial;
     private final String mDisplaySerial;
     private final boolean mIsStubDevice;
-    private final DeviceState mDeviceState;
+    private final DeviceState mDeviceState; // Ddmlib updated state.
     private final DeviceAllocationState mState;
+    private final TestDeviceState mTestDeviceState; // Tradefed updated state.
     private final String mProduct;
     private final String mProductVariant;
     private final String mSdkVersion;
@@ -64,6 +66,7 @@ public class DeviceDescriptor implements Serializable {
                 isStubDevice,
                 null,
                 state,
+                null,
                 product,
                 productVariant,
                 sdkVersion,
@@ -97,6 +100,7 @@ public class DeviceDescriptor implements Serializable {
                 isStubDevice,
                 null,
                 state,
+                null,
                 product,
                 productVariant,
                 sdkVersion,
@@ -131,6 +135,7 @@ public class DeviceDescriptor implements Serializable {
                 isStubDevice,
                 deviceState,
                 state,
+                null,
                 product,
                 productVariant,
                 sdkVersion,
@@ -150,6 +155,7 @@ public class DeviceDescriptor implements Serializable {
             boolean isStubDevice,
             DeviceState deviceState,
             DeviceAllocationState state,
+            TestDeviceState testDeviceState,
             String product,
             String productVariant,
             String sdkVersion,
@@ -165,6 +171,7 @@ public class DeviceDescriptor implements Serializable {
         mDisplaySerial = displaySerial;
         mIsStubDevice = isStubDevice;
         mDeviceState = deviceState;
+        mTestDeviceState = testDeviceState;
         mState = state;
         mProduct = product;
         mProductVariant = productVariant;
@@ -187,6 +194,7 @@ public class DeviceDescriptor implements Serializable {
                 d.isStubDevice(),
                 d.getDeviceState(),
                 state,
+                d.getTestDeviceState(),
                 d.getProduct(),
                 d.getProductVariant(),
                 d.getSdkVersion(),
@@ -208,6 +216,7 @@ public class DeviceDescriptor implements Serializable {
                 d.isStubDevice(),
                 d.getDeviceState(),
                 d.getState(),
+                d.getTestDeviceState(),
                 d.getProduct(),
                 d.getProductVariant(),
                 d.getSdkVersion(),
@@ -239,6 +248,10 @@ public class DeviceDescriptor implements Serializable {
 
     public DeviceAllocationState getState() {
         return mState;
+    }
+
+    public TestDeviceState getTestDeviceState() {
+        return mTestDeviceState;
     }
 
     public String getProduct() {

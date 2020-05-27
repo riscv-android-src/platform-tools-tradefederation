@@ -79,7 +79,7 @@ public interface ITestInvocationListener extends ITestLogger, ITestLifeCycleRece
      *
      * @param failure the {@link FailureDescription} describing the cause of the failure
      */
-    public default void invocationFailed(FailureDescription failure) {
+    default void invocationFailed(FailureDescription failure) {
         if (failure.getCause() != null) {
             invocationFailed(failure.getCause());
         } else {
