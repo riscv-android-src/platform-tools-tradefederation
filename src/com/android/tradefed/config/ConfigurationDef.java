@@ -86,10 +86,8 @@ public class ConfigurationDef {
         return mDescription;
     }
 
-    /**
-     * Sets the configuration definition description
-     */
-    void setDescription(String description) {
+    /** Sets the configuration definition description */
+    public void setDescription(String description) {
         mDescription = description;
     }
 
@@ -99,11 +97,11 @@ public class ConfigurationDef {
      * @param typeName the config object type name
      * @param className the class name of the config object
      * @return the number of times this className has appeared in this {@link ConfigurationDef},
-     *         including this time.  Because all {@link ConfigurationDef} methods return these
-     *         classes with a constant ordering, this index can serve as a unique identifier for the
-     *         just-added instance of <code>clasName</code>.
+     *     including this time. Because all {@link ConfigurationDef} methods return these classes
+     *     with a constant ordering, this index can serve as a unique identifier for the just-added
+     *     instance of <code>clasName</code>.
      */
-    int addConfigObjectDef(String typeName, String className) {
+    public int addConfigObjectDef(String typeName, String className) {
         List<ConfigObjectDef> classList = mObjectClassMap.get(typeName);
         if (classList == null) {
             classList = new ArrayList<ConfigObjectDef>();
@@ -125,7 +123,7 @@ public class ConfigurationDef {
      * @param optionName the name of the option
      * @param optionValue the option value
      */
-    void addOptionDef(
+    public void addOptionDef(
             String optionName,
             String optionKey,
             String optionValue,
@@ -184,7 +182,7 @@ public class ConfigurationDef {
      * @return the created {@link IConfiguration}
      * @throws ConfigurationException if configuration could not be created
      */
-    IConfiguration createConfiguration() throws ConfigurationException {
+    public IConfiguration createConfiguration() throws ConfigurationException {
         IConfiguration config = new Configuration(getName(), getDescription());
         List<IDeviceConfiguration> deviceObjectList = new ArrayList<IDeviceConfiguration>();
         IDeviceConfiguration defaultDeviceConfig =
