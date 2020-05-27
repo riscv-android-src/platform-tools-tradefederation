@@ -67,7 +67,9 @@ public class CommandOptions implements ICommandOptions {
             "the minimum invocation time in ms when in loop mode.")
     private Long mMinLoopTime = 10L * 60L * 1000L;
 
-    @Option(name = "test-tag", description = "Identifier for the invocation during reporting.")
+    public static final String TEST_TAG_OPTION = "test-tag";
+
+    @Option(name = TEST_TAG_OPTION, description = "Identifier for the invocation during reporting.")
     private String mTestTag = "stub";
 
     @Option(name = "test-tag-suffix", description = "suffix for test-tag. appended to test-tag to "
