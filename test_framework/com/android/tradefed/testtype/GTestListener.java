@@ -67,7 +67,9 @@ final class GTestListener extends ResultForwarder {
                 errorMessage.append(String.format(" Full list: %s", mDuplicateTests));
             }
             FailureDescription error = FailureDescription.create(errorMessage.toString());
-            error.setFailureStatus(FailureStatus.TEST_FAILURE);
+            error.setFailureStatus(FailureStatus.TEST_FAILURE)
+                    // This error should not be retried
+                    .setRetriable(false);
             super.testRunFailed(error);
         }
         super.testRunEnded(elapsedTime, runMetrics);
