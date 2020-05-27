@@ -46,6 +46,7 @@ import org.mockito.junit.MockitoJUnitRunner;
 
 import java.awt.Point;
 import java.time.Duration;
+import java.util.List;
 
 /** Unit tests for {@link AoaTargetPreparer} */
 @RunWith(MockitoJUnitRunner.class)
@@ -141,35 +142,27 @@ public class AoaTargetPreparerTest {
 
     @Test
     public void testWrite() {
-        mPreparer.execute(mDevice, "write lorem ipsum");
+        mPreparer.execute(mDevice, "write Test 0123");
 
-        verify(mDevice, times(1)).write(eq("lorem ipsum"));
+        verify(mDevice).pressKeys(List.of(0x17, 0x08, 0x16, 0x17, 0x2C, 0x27, 0x1E, 0x1F, 0x20));
         verifyNoMoreInteractions(ignoreStubs(mDevice));
     }
 
     @Test
-    public void testKey() {
-        mPreparer.execute(mDevice, "key 44");
-        // accepts hexadecimal values
-        mPreparer.execute(mDevice, "key 0x2C");
+    public void testKeys() {
+        mPreparer.execute(mDevice, "key 43"); // accepts decimal values
+        mPreparer.execute(mDevice, "key 0x2B"); // accepts hexadecimal values
+        mPreparer.execute(mDevice, "key tab"); // accepts key descriptions
 
-        verify(mDevice, times(2)).key(eq(44));
+        verify(mDevice, times(3)).pressKeys(List.of(0x2B));
         verifyNoMoreInteractions(ignoreStubs(mDevice));
     }
 
     @Test
-    public void testKey_multiple() {
-        mPreparer.execute(mDevice, "key 1 2 3 4 5");
+    public void testKeys_combination() {
+        mPreparer.execute(mDevice, "key 2*a 3*down 2*0x2B");
 
-        verify(mDevice, times(1)).key(eq(1), eq(2), eq(3), eq(4), eq(5));
-        verifyNoMoreInteractions(ignoreStubs(mDevice));
-    }
-
-    @Test
-    public void testKey_repeated() {
-        mPreparer.execute(mDevice, "key 3* 0x2C");
-
-        verify(mDevice, times(1)).key(eq(44), eq(44), eq(44));
+        verify(mDevice).pressKeys(List.of(0x04, 0x04, 0x51, 0x51, 0x51, 0x2B, 0x2B));
         verifyNoMoreInteractions(ignoreStubs(mDevice));
     }
 
