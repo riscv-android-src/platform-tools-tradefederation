@@ -208,7 +208,7 @@ public class CommandOptions implements ICommandOptions {
     @Option(
             name = "early-device-release",
             description = "Feature flag to release the device as soon as done with it.")
-    private boolean mEnableEarlyDeviceRelease = false;
+    private boolean mEnableEarlyDeviceRelease = true;
 
     @Option(
             name = "dynamic-download-args",
