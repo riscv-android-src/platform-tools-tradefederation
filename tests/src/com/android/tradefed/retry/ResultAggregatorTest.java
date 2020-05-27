@@ -212,6 +212,7 @@ public class ResultAggregatorTest {
 
     @Test
     public void testForwarding_runFailure() {
+        mDetailedListener = EasyMock.createStrictMock(ITestDetailedReceiver.class);
         TestDescription test1 = new TestDescription("classname", "test1");
         TestDescription test2 = new TestDescription("classname", "test2");
         ILogSaver logger = EasyMock.createMock(ILogSaver.class);
@@ -246,7 +247,6 @@ public class ResultAggregatorTest {
                 EasyMock.eq(test2),
                 EasyMock.anyLong(),
                 EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testRunFailed(aggFailure);
         mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
         mDetailedListener.testRunStarted(
                 EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(1), EasyMock.anyLong());
@@ -255,6 +255,7 @@ public class ResultAggregatorTest {
                 EasyMock.eq(test2),
                 EasyMock.anyLong(),
                 EasyMock.<HashMap<String, Metric>>anyObject());
+        mDetailedListener.testRunFailed(aggFailure);
         mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
 
         // Aggregated listeners receives the aggregated results
