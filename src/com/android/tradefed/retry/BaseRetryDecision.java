@@ -183,10 +183,13 @@ public class BaseRetryDecision implements IRetryDecision {
     }
 
     /** Returns true if there are any run failures in the previous results. */
-    public static boolean hasRunFailures(List<TestRunResult> previousResults) {
+    private static boolean hasRunFailures(List<TestRunResult> previousResults) {
         for (TestRunResult run : previousResults) {
             if (run != null && run.isRunFailure()) {
-                return true;
+                // TODO: Needs to exclude the runs that are not retriable
+                if (run.getRunFailureDescription().isRetriable()) {
+                    return true;
+                }
             }
         }
         return false;
