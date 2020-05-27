@@ -70,7 +70,7 @@ import java.util.regex.PatternSyntaxException;
 public class OptionSetter {
     static final String BOOL_FALSE_PREFIX = "no-";
     private static final HashMap<Class<?>, Handler> handlers = new HashMap<Class<?>, Handler>();
-    static final char NAMESPACE_SEPARATOR = ':';
+    public static final char NAMESPACE_SEPARATOR = ':';
     static final Pattern USE_KEYSTORE_REGEX = Pattern.compile("USE_KEYSTORE@(.*)");
     private IKeyStoreClient mKeyStoreClient = null;
 
