@@ -399,24 +399,12 @@ public class NativeDeviceStateMonitor implements IDeviceStateMonitor {
 
     /** {@inheritDoc} */
     @Override
-    public boolean waitForDeviceFastbootd(long time) {
-        if (!mFastbootEnabled) {
+    public boolean waitForDeviceFastbootd(String fastbootPath, long time) {
+        boolean bootloader = waitForDeviceBootloader(time);
+        if (!bootloader) {
             return false;
         }
-        long startTime = System.currentTimeMillis();
-        // ensure fastboot state is updated at least once
-        waitForDeviceBootloaderStateUpdate();
-        long elapsedTime = System.currentTimeMillis() - startTime;
-        IFastbootListener listener = new StubFastbootListener();
-        mMgr.addFastbootListener(listener);
-        long waitTime = time - elapsedTime;
-        if (waitTime < 0) {
-            // wait at least 200ms
-            waitTime = 200;
-        }
-        boolean result = waitForDeviceState(TestDeviceState.FASTBOOTD, waitTime);
-        mMgr.removeFastbootListener(listener);
-        return result;
+        return new FastbootHelper(getRunUtil(), fastbootPath).isFastbootd(getSerialNumber());
     }
 
     @Override

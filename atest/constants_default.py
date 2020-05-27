@@ -195,15 +195,11 @@ VTS_CORE_SUITE = 'vts'
 ATEST_TF_MODULE = 'atest-tradefed'
 
 # Build environment variable for each build on ATest
+# With RECORD_ALL_DEPS enabled, ${ANDROID_PRODUCT_OUT}/module-info.json will
+# generate modules' dependencies info when make.
 # With SOONG_COLLECT_JAVA_DEPS enabled, out/soong/module_bp_java_deps.json will
 # be generated when make.
-ATEST_BUILD_ENV = {'SOONG_COLLECT_JAVA_DEPS':'true'}
-
-# For generating dependencies in module-info.json, appending deps-license in the
-# make command is a must. Also the environment variables PROJ_PATH and DEP_PATH
-# are necessary.
-DEPS_LICENSE = 'deps-license'
-DEPS_LICENSE_ENV = {'PROJ_PATH': '.', 'DEP_PATH': '.'}
+ATEST_BUILD_ENV = {'RECORD_ALL_DEPS':'true', 'SOONG_COLLECT_JAVA_DEPS':'true'}
 
 # Atest index path and relative dirs/caches.
 INDEX_DIR = os.path.join(os.getenv(ANDROID_HOST_OUT, ''), 'indexes')
@@ -233,3 +229,14 @@ PACKAGE_OUTPUT_RE = re.compile(r'(?P<java_dir>/.*/).*[.](java|kt)[:]\s*package\s
                                r'(?P<package>[^(;|\s)]+)\s*')
 
 ATEST_RESULT_ROOT = '/tmp/atest_result'
+LATEST_RESULT_FILE = os.path.join(ATEST_RESULT_ROOT, 'LATEST', 'test_result')
+
+# Tests list which need vts_kernel_tests as test dependency
+REQUIRED_KERNEL_TEST_MODULES = [
+    'vts_ltp_test_arm',
+    'vts_ltp_test_arm_64',
+    'vts_linux_kselftest_arm_32',
+    'vts_linux_kselftest_arm_64',
+    'vts_linux_kselftest_x86_32',
+    'vts_linux_kselftest_x86_64'
+]

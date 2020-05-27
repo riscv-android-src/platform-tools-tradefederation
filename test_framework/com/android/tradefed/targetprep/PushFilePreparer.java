@@ -21,6 +21,7 @@ import com.android.ddmlib.Log;
 import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
+import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -133,16 +134,42 @@ public class PushFilePreparer extends BaseTargetPreparer
     private String mModuleName = null;
 
     /**
-     * Helper method to only throw if mAbortOnFailure is enabled.  Callers should behave as if this
+     * Helper method to only throw if mAbortOnFailure is enabled. Callers should behave as if this
      * method may return.
      */
-    private void fail(String message, ITestDevice device) throws TargetSetupError {
-        if (mAbortOnFailure) {
-            throw new TargetSetupError(message, device.getDeviceDescriptor());
+    private void fail(String message, DeviceDescriptor descriptor) throws TargetSetupError {
+        if (shouldAbortOnFailure()) {
+            throw new TargetSetupError(message, descriptor);
         } else {
             // Log the error and return
             Log.w(LOG_TAG, message);
         }
+    }
+
+    /** Create the list of files to be pushed. */
+    public final Map<String, File> getPushSpecs(DeviceDescriptor descriptor)
+            throws TargetSetupError {
+        Map<String, File> remoteToLocalMapping = new LinkedHashMap<>();
+        for (String pushspec : mPushSpecs) {
+            String[] pair = pushspec.split("->");
+            if (pair.length != 2) {
+                fail(String.format("Invalid pushspec: '%s'", Arrays.asList(pair)), descriptor);
+                continue;
+            }
+            remoteToLocalMapping.put(pair[1], new File(pair[0]));
+        }
+        // Push the file structure
+        for (File local : mPushFileSpecs.keySet()) {
+            for (String remoteLocation : mPushFileSpecs.get(local)) {
+                remoteToLocalMapping.put(remoteLocation, local);
+            }
+        }
+        return remoteToLocalMapping;
+    }
+
+    /** Whether or not to abort on push failure. */
+    public boolean shouldAbortOnFailure() {
+        return mAbortOnFailure;
     }
 
     /** {@inheritDoc} */
@@ -286,22 +313,7 @@ public class PushFilePreparer extends BaseTargetPreparer
                     "mv \"" + entry.getKey() + "\" \"" + entry.getValue() + "\"");
         }
 
-        Map<String, File> remoteToLocalMapping = new LinkedHashMap<>();
-        for (String pushspec : mPushSpecs) {
-            String[] pair = pushspec.split("->");
-            if (pair.length != 2) {
-                fail(String.format("Invalid pushspec: '%s'", Arrays.asList(pair)), device);
-                continue;
-            }
-            remoteToLocalMapping.put(pair[1], new File(pair[0]));
-        }
-        // Push the file structure
-        for (File local : mPushFileSpecs.keySet()) {
-            for (String remoteLocation : mPushFileSpecs.get(local)) {
-                remoteToLocalMapping.put(remoteLocation, local);
-            }
-        }
-
+        Map<String, File> remoteToLocalMapping = getPushSpecs(device.getDeviceDescriptor());
         for (String remotePath : remoteToLocalMapping.keySet()) {
             File local = remoteToLocalMapping.get(remotePath);
             Log.d(
@@ -352,7 +364,9 @@ public class PushFilePreparer extends BaseTargetPreparer
             src = resolveRelativeFilePath(buildInfo, localPath);
         }
         if (src == null || !src.exists()) {
-            fail(String.format("Local source file '%s' does not exist", localPath), device);
+            fail(
+                    String.format("Local source file '%s' does not exist", localPath),
+                    device.getDeviceDescriptor());
             return;
         }
         if (src.isDirectory()) {
@@ -379,7 +393,7 @@ public class PushFilePreparer extends BaseTargetPreparer
                 fail(
                         String.format(
                                 "Failed to push local '%s' to remote '%s'", localPath, remotePath),
-                        device);
+                        device.getDeviceDescriptor());
                 return;
             } else {
                 if (deleteContentOnly) {
@@ -392,7 +406,7 @@ public class PushFilePreparer extends BaseTargetPreparer
                 fail(
                         String.format(
                                 "Failed to push local '%s' to remote '%s'", localPath, remotePath),
-                        device);
+                        device.getDeviceDescriptor());
                 return;
             } else {
                 mFilesPushed.add(remotePath);

@@ -25,9 +25,11 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
-import java.util.Map;
+import java.util.List;
 import java.util.Map.Entry;
+import java.util.Map;
 import java.util.Set;
+import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -127,7 +129,7 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
     static final Pattern PATTERN_ONE_LINE_RESULT =
             Pattern.compile(
                     "(\\S*) \\((\\S*)\\) \\.\\.\\. "
-                            + "(ok|expected failure|FAIL|ERROR|skipped '.*'|unexpected success)");
+                            + "(ok|expected failure|FAIL|ERROR|skipped '.*'|unexpected success)?");
     static final Pattern PATTERN_TWO_LINE_RESULT_FIRST = Pattern.compile(
             "(\\S*) \\((\\S*)\\)");
     static final Pattern PATTERN_TWO_LINE_RESULT_SECOND =
@@ -139,8 +141,8 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
                     "(.*) \\.\\.\\. error: (.*)"
                             + "(ok|expected failure|FAIL|ERROR|skipped '.*'|unexpected success)",
                     Pattern.DOTALL);
-    static final Pattern PATTERN_FAIL_MESSAGE = Pattern.compile(
-            "(FAIL|ERROR): (\\S*) \\((\\S*)\\)");
+    static final Pattern PATTERN_FAIL_MESSAGE =
+            Pattern.compile("(FAIL|ERROR): (\\S*) \\((\\S*)\\)( \\(.*\\))?");
     static final Pattern PATTERN_RUN_SUMMARY = Pattern.compile(
             "Ran (\\d+) tests? in (\\d+(.\\d*)?)s");
 
@@ -231,7 +233,6 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
 
     /** Parse the next result line according to current parser state. */
     void parse(String line) throws PythonUnitTestParseException {
-
         switch (mCurrentParseState) {
             case TEST_CASE:
                 processTestCase(line);
@@ -265,11 +266,40 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
             // dash line before run summary
             mCurrentParseState = ParserState.SUMMARY;
             mCurrentTestCaseString = null;
-        } else if (lineMatchesPattern(line, PATTERN_ONE_LINE_RESULT)) {
-            mCurrentTestName = mCurrentMatcher.group(1);
-            mCurrentTestClass = mCurrentMatcher.group(2);
-            mCurrentTestStatus = mCurrentMatcher.group(3);
-            reportNonFailureTestResult();
+        } else if (lineStartswithPattern(line, PATTERN_ONE_LINE_RESULT)) {
+            // The below parsing is involved due to output from tests that use Python's subTest
+            // feature. In particular, a line could contain multiple test case summary lines such
+            // as; a (T) ... b (T) ... ok.
+            // TODO(hzalek): Consider adding a Python support library for writing the output of the
+            // test in a structured format to avoid parsing string output.
+            List<MatchResult> matchResults = new ArrayList<>();
+
+            // Collect the results to avoid modifying state in case the entire line doesn't match.
+            do {
+                matchResults.add(mCurrentMatcher.toMatchResult());
+            } while (mCurrentMatcher.find());
+
+            int lastMatchEnd = matchResults.get(matchResults.size() - 1).end();
+            if (lastMatchEnd != line.length()) {
+                return; // The entire line doesn't match so just ignore it.
+            }
+
+            for (MatchResult r : matchResults) {
+                mCurrentTestName = r.group(1);
+                mCurrentTestClass = r.group(2);
+                mCurrentTestStatus = r.group(3);
+
+                // Tests with failed subtests have no status printed so we add an entry with 'FAIL'
+                // status. In any case, subsequent failed subtest assertions have the same test name
+                // and will clobber whatever status we set here. Passed subtest assertions don't
+                // appear in the output and do not risk overwriting the status.
+                if (mCurrentTestStatus == null) {
+                    mCurrentTestStatus = "FAIL";
+                }
+
+                reportNonFailureTestResult();
+            }
+
             mCurrentTestCaseString = null;
         } else if (lineMatchesPattern(line, PATTERN_TWO_LINE_RESULT_FIRST)) {
             mCurrentTestName = mCurrentMatcher.group(1);
@@ -356,6 +386,11 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
     private boolean lineMatchesPattern(String line, Pattern p) {
         mCurrentMatcher = p.matcher(line);
         return mCurrentMatcher.matches();
+    }
+
+    private boolean lineStartswithPattern(String line, Pattern p) {
+        mCurrentMatcher = p.matcher(line);
+        return mCurrentMatcher.find();
     }
 
     /** Send recorded test results to all listeners. */

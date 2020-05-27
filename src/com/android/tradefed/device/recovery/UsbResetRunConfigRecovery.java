@@ -16,14 +16,40 @@
 package com.android.tradefed.device.recovery;
 
 import com.android.tradefed.config.OptionClass;
+import com.android.tradefed.device.DeviceAllocationState;
 import com.android.tradefed.device.IManagedTestDevice;
+
+import java.util.HashSet;
+import java.util.Set;
 
 /** Allow to trigger a command to reset the USB of a device */
 @OptionClass(alias = "usb-reset-recovery")
 public class UsbResetRunConfigRecovery extends RunConfigDeviceRecovery {
 
+    private Set<String> mLastInvoked = new HashSet<>();
+
     @Override
     public boolean shouldSkip(IManagedTestDevice device) {
-        return device.isStateBootloaderOrFastbootd();
+        boolean res = device.isStateBootloaderOrFastbootd();
+        // Do not reset available devices
+        if (!res && DeviceAllocationState.Available.equals(device.getAllocationState())) {
+            res = true;
+        }
+        if (!res) {
+            return checkRanBefore(device);
+        }
+        // Skip since device is available or in fastboot
+        return true;
+    }
+
+    private boolean checkRanBefore(IManagedTestDevice device) {
+        String serial = device.getSerialNumber();
+        // Avoid running the same device twice in row of recovery request to give a chance to
+        // others recovery to start too.
+        if (!mLastInvoked.add(serial)) {
+            mLastInvoked.remove(serial);
+            return true;
+        }
+        return false;
     }
 }

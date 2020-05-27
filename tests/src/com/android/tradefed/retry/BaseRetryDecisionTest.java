@@ -24,6 +24,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestRunResult;
@@ -152,6 +153,27 @@ public class BaseRetryDecisionTest {
     }
 
     @Test
+    public void testShouldRetry_runFailure() throws Exception {
+        FailureDescription failure = FailureDescription.create("run failure");
+        TestRunResult result = createResult(false, false, failure);
+        boolean res = mRetryDecision.shouldRetry(mTestClass, 0, Arrays.asList(result));
+        assertTrue(res);
+        assertEquals(0, mTestClass.getIncludeFilters().size());
+        assertEquals(0, mTestClass.getExcludeFilters().size());
+    }
+
+    @Test
+    public void testShouldRetry_runFailure_nonRetriable() throws Exception {
+        FailureDescription failure = FailureDescription.create("run failure");
+        failure.setRetriable(false);
+        TestRunResult result = createResult(false, false, failure);
+        boolean res = mRetryDecision.shouldRetry(mTestClass, 0, Arrays.asList(result));
+        assertFalse(res);
+        assertEquals(0, mTestClass.getIncludeFilters().size());
+        assertEquals(0, mTestClass.getExcludeFilters().size());
+    }
+
+    @Test
     public void testShouldRetry_multilayer_morefailure() throws Exception {
         TestRunResult result = createResult(false, true);
         boolean res = mRetryDecision.shouldRetry(mTestClass, 0, Arrays.asList(result));
@@ -187,8 +209,16 @@ public class BaseRetryDecisionTest {
     }
 
     private TestRunResult createResult(boolean failure1, boolean failure2) {
+        return createResult(failure1, failure2, null);
+    }
+
+    private TestRunResult createResult(
+            boolean failure1, boolean failure2, FailureDescription runFailure) {
         TestRunResult result = new TestRunResult();
         result.testRunStarted("TEST", 2);
+        if (runFailure != null) {
+            result.testRunFailed(runFailure);
+        }
         TestDescription test1 = new TestDescription("class", "method");
         result.testStarted(test1);
         if (failure1) {

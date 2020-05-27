@@ -66,6 +66,8 @@ public class ResultAggregator extends CollectingTestListener {
     private TestRunResult mDetailedRunResults = null;
     private boolean mShouldReportFailure = true;
     private List<FailureDescription> mAllDetailedFailures = new ArrayList<>();
+    // Since we store some of the module level events, ensure the logs order is maintained.
+    private Map<String, LogFile> mDetailedModuleLogs = new LinkedHashMap<>();
 
     // In some configuration of non-module retry, all attempts of runs might not be adjacent. We
     // track that a special handling needs to be applied for this case.
@@ -135,6 +137,10 @@ public class ResultAggregator extends CollectingTestListener {
         }
 
         forwardDetailedFailure();
+        for (Entry<String, LogFile> assos : mDetailedModuleLogs.entrySet()) {
+            mDetailedForwarder.logAssociation(assos.getKey(), assos.getValue());
+        }
+        mDetailedModuleLogs.clear();
         super.invocationEnded(elapsedTime);
         // Make sure to forward the logs for the invocation.
         forwardAggregatedInvocationLogs();
@@ -271,7 +277,11 @@ public class ResultAggregator extends CollectingTestListener {
     @Override
     public void logAssociation(String dataName, LogFile logFile) {
         super.logAssociation(dataName, logFile);
-        mDetailedForwarder.logAssociation(dataName, logFile);
+        if (mDetailedRunResults != null) {
+            mDetailedModuleLogs.put(dataName, logFile);
+        } else {
+            mDetailedForwarder.logAssociation(dataName, logFile);
+        }
     }
 
     @Override
@@ -310,7 +320,10 @@ public class ResultAggregator extends CollectingTestListener {
     @Override
     public void testModuleEnded() {
         forwardDetailedFailure();
-
+        for (Entry<String, LogFile> assos : mDetailedModuleLogs.entrySet()) {
+            mDetailedForwarder.logAssociation(assos.getKey(), assos.getValue());
+        }
+        mDetailedModuleLogs.clear();
         mModuleInProgress = false;
         super.testModuleEnded();
         // We still forward the testModuleEnd to the detailed reporters

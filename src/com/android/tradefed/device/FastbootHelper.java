@@ -59,8 +59,8 @@ public class FastbootHelper {
     public boolean isFastbootAvailable() {
         // Run "fastboot help" to check the existence and the version of fastboot
         // (Old versions do not support "help" command).
-        CommandResult fastbootResult = mRunUtil.runTimedCmdSilently(5000, mFastbootPath, "help");
-        if (fastbootResult.getStatus() == CommandStatus.SUCCESS) {
+        CommandResult fastbootResult = mRunUtil.runTimedCmdSilently(15000, mFastbootPath, "help");
+        if (CommandStatus.SUCCESS.equals(fastbootResult.getStatus())) {
             return true;
         }
         if (fastbootResult.getStderr() != null &&
@@ -73,7 +73,6 @@ public class FastbootHelper {
                 fastbootResult.getStdout(), fastbootResult.getStderr());
         return false;
     }
-
 
     /**
      * Returns a set of device serials in fastboot mode or an empty set if no fastboot devices.
@@ -127,5 +126,21 @@ public class FastbootHelper {
             return null;
         }
         return fastbootResult.getStdout();
+    }
+
+    /** Returns whether or not a device is in Fastbootd instead of Bootloader. */
+    public boolean isFastbootd(String serial) {
+        final CommandResult fastbootResult =
+                mRunUtil.runTimedCmd(
+                        FASTBOOT_CMD_TIMEOUT,
+                        mFastbootPath,
+                        "-s",
+                        serial,
+                        "getvar",
+                        "is-userspace");
+        if (fastbootResult.getStderr().contains("is-userspace: yes")) {
+            return true;
+        }
+        return false;
     }
 }

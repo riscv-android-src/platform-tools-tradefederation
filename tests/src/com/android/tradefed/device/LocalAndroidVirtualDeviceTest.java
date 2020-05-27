@@ -18,7 +18,6 @@ package com.android.tradefed.device;
 
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log.LogLevel;
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.result.LogDataType;
@@ -29,14 +28,7 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.ZipUtil;
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.zip.GZIPOutputStream;
+
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
 import org.easymock.Capture;
@@ -48,6 +40,14 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.zip.GZIPOutputStream;
 
 /** Unit tests for {@link LocalAndroidVirtualDevice}. */
 @RunWith(JUnit4.class)
@@ -351,7 +351,7 @@ public class LocalAndroidVirtualDeviceTest {
         mLocalAvd.setTestLogger(testLogger);
         mLocalAvd.currentRunUtil = acloudCreateRunUtil;
         mLocalAvd.expectToConnect = true;
-        mLocalAvd.preInvocationSetup(mMockDeviceBuildInfo, null);
+        mLocalAvd.preInvocationSetup(mMockDeviceBuildInfo);
 
         Assert.assertEquals(ONLINE_SERIAL_NUMBER, mLocalAvd.getIDevice().getSerialNumber());
 
@@ -407,7 +407,7 @@ public class LocalAndroidVirtualDeviceTest {
         mLocalAvd.setTestLogger(testLogger);
         mLocalAvd.currentRunUtil = acloudCreateRunUtil;
         try {
-            mLocalAvd.preInvocationSetup(mMockDeviceBuildInfo, null);
+            mLocalAvd.preInvocationSetup(mMockDeviceBuildInfo);
             Assert.fail("TargetSetupError is not thrown");
         } catch (TargetSetupError e) {
             expectedException = e;
@@ -449,7 +449,7 @@ public class LocalAndroidVirtualDeviceTest {
         mLocalAvd.setTestLogger(testLogger);
         mLocalAvd.currentRunUtil = acloudCreateRunUtil;
         try {
-            mLocalAvd.preInvocationSetup(mMockDeviceBuildInfo, null);
+            mLocalAvd.preInvocationSetup(mMockDeviceBuildInfo);
             Assert.fail("TargetSetupError is not thrown");
         } catch (TargetSetupError e) {
             expectedException = e;

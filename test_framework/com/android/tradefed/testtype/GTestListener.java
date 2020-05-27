@@ -32,8 +32,10 @@ import java.util.Set;
  */
 final class GTestListener extends ResultForwarder {
 
+    private static final int MAX_PARTIAL_SET_SIZE = 20;
     private Set<TestDescription> mTests = new HashSet<>();
     private Set<TestDescription> mDuplicateTests = new HashSet<>();
+    private boolean mPartialList = false;
 
     public GTestListener(ITestInvocationListener... listeners) {
         super(listeners);
@@ -42,20 +44,32 @@ final class GTestListener extends ResultForwarder {
     @Override
     public void testStarted(TestDescription test, long startTime) {
         super.testStarted(test, startTime);
-        if (!mTests.add(test)) {
-            mDuplicateTests.add(test);
+        if (mDuplicateTests.size() < MAX_PARTIAL_SET_SIZE) {
+            if (!mTests.add(test)) {
+                mDuplicateTests.add(test);
+            }
+        } else {
+            mPartialList = true;
+            // Avoid storing too much data for too long.
+            mTests.clear();
         }
     }
 
     @Override
     public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
         if (!mDuplicateTests.isEmpty()) {
-            FailureDescription error =
-                    FailureDescription.create(
-                            String.format(
-                                    "The following tests ran more than once: %s.",
-                                    mDuplicateTests));
-            error.setFailureStatus(FailureStatus.TEST_FAILURE);
+            StringBuilder errorMessage = new StringBuilder();
+            errorMessage.append(
+                    String.format("%s tests ran more than once.", mDuplicateTests.size()));
+            if (mPartialList) {
+                errorMessage.append(String.format(" Partial list: %s", mDuplicateTests));
+            } else {
+                errorMessage.append(String.format(" Full list: %s", mDuplicateTests));
+            }
+            FailureDescription error = FailureDescription.create(errorMessage.toString());
+            error.setFailureStatus(FailureStatus.TEST_FAILURE)
+                    // This error should not be retried
+                    .setRetriable(false);
             super.testRunFailed(error);
         }
         super.testRunEnded(elapsedTime, runMetrics);

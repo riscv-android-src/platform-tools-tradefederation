@@ -68,6 +68,7 @@ public class UsbResetTestTest {
         mTest.run(mTestInfo, null);
 
         verify(usbDevice).reset();
+        verify(mDevice).waitForDeviceOnline();
         verify(mDevice).reboot();
     }
 

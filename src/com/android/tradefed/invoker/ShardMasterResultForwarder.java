@@ -15,8 +15,10 @@
  */
 package com.android.tradefed.invoker;
 
+import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
@@ -90,6 +92,13 @@ public class ShardMasterResultForwarder extends ResultForwarder implements ILogS
         super.invocationFailed(cause);
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public void invocationFailed(FailureDescription failure) {
+        // one of the shards failed. Fail the whole invocation
+        super.invocationFailed(failure);
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -102,7 +111,8 @@ public class ShardMasterResultForwarder extends ResultForwarder implements ILogS
         mShardsRemaining--;
         if (mShardsRemaining <= 0) {
             // TODO: consider logging all shard final times.
-            CLog.i(
+            CLog.logAndDisplay(
+                    LogLevel.INFO,
                     "There was %s between the first and last shard ended.",
                     TimeUtil.formatElapsedTime(System.currentTimeMillis() - mFirstShardEndTime));
             copyShardBuildInfoToMain(mOriginalContext, mShardContextList);

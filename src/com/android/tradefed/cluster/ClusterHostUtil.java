@@ -149,9 +149,6 @@ public class ClusterHostUtil {
                                         pattern, runTargetFormat));
                 }
                 if (txt == null || DeviceManager.UNKNOWN_DISPLAY_STRING.equals(txt)) {
-                    CLog.i(
-                            "No value found for pattern %s while formatting run target %s.",
-                            pattern, runTargetFormat);
                     return DeviceManager.UNKNOWN_DISPLAY_STRING;
                 }
                 m.appendReplacement(sb, Matcher.quoteReplacement(txt));
