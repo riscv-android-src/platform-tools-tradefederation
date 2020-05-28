@@ -82,6 +82,7 @@ public final class ClangCodeCoverageListener extends ResultForwarder
 
     private NativeCodeCoverageFlusher mFlusher;
 
+    private File mLlvmProfdataTool;
     private String mCurrentRunName;
 
     public ClangCodeCoverageListener(ITestDevice device, ITestInvocationListener... listeners) {
@@ -128,6 +129,13 @@ public final class ClangCodeCoverageListener extends ResultForwarder
         } finally {
             super.testRunEnded(elapsedTime, runMetrics);
         }
+    }
+
+    @Override
+    public void invocationEnded(long elapsedTime) {
+        // Clean up the llvm-profdata tool.
+        FileUtil.recursiveDelete(mLlvmProfdataTool);
+        super.invocationEnded(elapsedTime);
     }
 
     /**
@@ -193,7 +201,6 @@ public final class ClangCodeCoverageListener extends ResultForwarder
         } finally {
             FileUtil.deleteFile(coverageTarGz);
             FileUtil.recursiveDelete(untarDir);
-            FileUtil.recursiveDelete(profileTool);
             FileUtil.deleteFile(indexedProfileFile);
         }
     }
@@ -220,6 +227,19 @@ public final class ClangCodeCoverageListener extends ResultForwarder
      * @return the directory containing the profile tool and dependencies
      */
     private File getProfileTool() throws IOException {
+        // If we have a cached version of the profile tool already, use it.
+        if (mLlvmProfdataTool != null) {
+            return mLlvmProfdataTool;
+        }
+
+        // If llvm-profdata-path was set in the Configuration, pass it through. Don't save the path
+        // locally since the parent process is responsible for cleaning it up.
+        File configurationTool = mConfiguration.getCoverageOptions().getLlvmProfdataPath();
+        if (configurationTool != null) {
+            return configurationTool;
+        }
+
+        // Otherwise, try to download llvm-profdata.zip from the build and cache it.
         File profileToolZip = null;
         try {
             IBuildInfo buildInfo = mConfiguration.getBuildProvider().getBuild();
@@ -227,7 +247,8 @@ public final class ClangCodeCoverageListener extends ResultForwarder
                     verifyNotNull(
                             buildInfo.getFile("llvm-profdata.zip"),
                             "Could not get llvm-profdata.zip from the build.");
-            return ZipUtil.extractZipToTemp(profileToolZip, "llvm-profdata");
+            mLlvmProfdataTool = ZipUtil.extractZipToTemp(profileToolZip, "llvm-profdata");
+            return mLlvmProfdataTool;
         } catch (BuildRetrievalError e) {
             throw new RuntimeException(e);
         } finally {
