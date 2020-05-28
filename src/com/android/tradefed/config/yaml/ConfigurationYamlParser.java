@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.config.yaml;
 
+import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.config.ConfigurationException;
@@ -30,10 +31,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.ServiceLoader;
 import java.util.Set;
 
 /** Parser for YAML style Tradefed configurations */
-class ConfigurationYamlParser {
+public final class ConfigurationYamlParser {
 
     private static final String DESCRIPTION_KEY = "description";
     public static final String DEPENDENCIES_KEY = "dependencies";
@@ -56,6 +58,12 @@ class ConfigurationYamlParser {
         configDef.setMultiDeviceMode(false);
         Yaml yaml = new Yaml();
         try {
+            configDef.addOptionDef(
+                    CommandOptions.TEST_TAG_OPTION,
+                    null,
+                    source,
+                    source,
+                    Configuration.CMD_OPTIONS_TYPE_NAME);
             Map<String, Object> yamlObjects = (Map<String, Object>) yaml.load(yamlInput);
             translateYamlInTradefed(configDef, yamlObjects);
         } catch (YAMLException e) {
@@ -90,6 +98,13 @@ class ConfigurationYamlParser {
             missingKeys.removeAll(mSeenKeys);
             throw new ConfigurationException(
                     String.format("'%s' keys are required and were not found.", missingKeys));
+        }
+
+        // Add default configured objects
+        ServiceLoader<IDefaultObjectLoader> serviceLoader =
+                ServiceLoader.load(IDefaultObjectLoader.class);
+        for (IDefaultObjectLoader loader : serviceLoader) {
+            loader.addDefaultObjects(configDef);
         }
     }
 
