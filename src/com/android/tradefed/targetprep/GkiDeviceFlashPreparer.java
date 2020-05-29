@@ -49,8 +49,8 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
     private static final String GKI_BOOT_IMG = "gki_boot.img";
     private static final String MKBOOTIMG = "mkbootimg";
     private static final String OTATOOLS_ZIP = "otatools.zip";
-    private static final String RAMDISK_RECOVERY_IMG = "ramdisk_recovery.img";
-    private static final String KERNEL_IMAGE = "kernel_image"; // The Image.gz file key
+    private static final String RAMDISK_RECOVERY_IMG = "ramdisk-recovery.img";
+    private static final String KERNEL_IMAGE = "Image.gz";
     private static final String VENDOR_BOOT_IMG = "vendor_boot.img";
     private static final String DTBO_IMG = "dtbo.img";
     // Wait time for device state to stablize in millisecond
