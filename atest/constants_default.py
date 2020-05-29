@@ -236,9 +236,9 @@ ATEST_RESULT_ROOT = '/tmp/atest_result'
 LATEST_RESULT_FILE = os.path.join(ATEST_RESULT_ROOT, 'LATEST', 'test_result')
 
 # Tests list which need vts_kernel_tests as test dependency
-REQUIRE_KERNEL_TEST_MODULES = [
+REQUIRED_KERNEL_TEST_MODULES = [
     'vts_ltp_test_arm',
-    'vts_ltp_test_arm64',
+    'vts_ltp_test_arm_64',
     'vts_linux_kselftest_arm_32',
     'vts_linux_kselftest_arm_64',
     'vts_linux_kselftest_x86_32',
