@@ -44,15 +44,15 @@ import java.util.regex.Pattern;
  *
  * <ul>
  *   <li>Click using x and y coordinates, e.g. "click 0 0" or "longClick 360 640".
- *   <li>Scroll, fling, or drag using coordinates. The first pair of numbers indicate the starting
- *       position, and the second is the destination, e.g. "scroll 0 0 360 640".
+ *   <li>Swipe between two sets of coordinates in a specified number of milliseconds, e.g. "swipe 0
+ *       0 100 360 640" to swipe from (0, 0) to (360, 640) in 100 milliseconds.
  *   <li>Write a string of alphanumeric text, e.g. "write hello world" will type "hello world".
  *   <li>Repeated keystrokes using USB HID usages, e.g. "key 5* 0x2B" to press TAB five times.
  *   <li>Key combinations using USB HID usages, e.g. "key 0x52 0x51 0x28" to press UP, DOWN, ENTER.
  *   <li>Wake up the device with "wake".
  *   <li>Press the home button with "home".
  *   <li>Press the back button with "back".
- *   <li>Wait for a duration in ISO 8601 format, e.g. "sleep PT30S" to wait for 30 seconds.
+ *   <li>Wait for specified number of milliseconds, e.g. "sleep 1000" to wait for 1000 milliseconds.
  * </ul>
  */
 @OptionClass(alias = "aoa-preparer")
@@ -80,23 +80,13 @@ public class AoaTargetPreparer extends BaseTargetPreparer {
 
         // swipes
         ACTIONS.put(
-                (device, args) ->
-                        device.scroll(
-                                parsePoint(args.get(0), args.get(1)),
-                                parsePoint(args.get(2), args.get(3))),
-                String.format("scroll %s %s", POINT, POINT));
-        ACTIONS.put(
-                (device, args) ->
-                        device.fling(
-                                parsePoint(args.get(0), args.get(1)),
-                                parsePoint(args.get(2), args.get(3))),
-                String.format("fling %s %s", POINT, POINT));
-        ACTIONS.put(
-                (device, args) ->
-                        device.drag(
-                                parsePoint(args.get(0), args.get(1)),
-                                parsePoint(args.get(2), args.get(3))),
-                String.format("drag %s %s", POINT, POINT));
+                (device, args) -> {
+                    Point from = parsePoint(args.get(0), args.get(1));
+                    Duration duration = parseMillis(args.get(2));
+                    Point to = parsePoint(args.get(3), args.get(4));
+                    device.swipe(from, to, duration);
+                },
+                String.format("swipe %s (\\d+) %s", POINT, POINT));
 
         // keys
         ACTIONS.put((device, args) -> device.write(args.get(0)), "write ([a-zA-Z0-9 ]+)");
@@ -125,18 +115,14 @@ public class AoaTargetPreparer extends BaseTargetPreparer {
         ACTIONS.put((device, args) -> device.goBack(), "back");
         ACTIONS.put(
                 (device, args) -> {
-                    Duration duration = Duration.parse(args.get(0));
+                    Duration duration = parseMillis(args.get(0));
                     device.sleep(duration);
                 },
-                "sleep (\\S+)");
+                "sleep (\\d+)");
     }
 
-    @Option(
-        name = "device-timeout",
-        description = "Maximum time to wait for device.",
-        isTimeVal = true
-    )
-    private long mDeviceTimeout = 60 * 1000;
+    @Option(name = "device-timeout", description = "Maximum time to wait for device")
+    private Duration mDeviceTimeout = Duration.ofMinutes(1L);
 
     @Option(
         name = "wait-for-device-online",
@@ -169,8 +155,7 @@ public class AoaTargetPreparer extends BaseTargetPreparer {
     // Connect to device using its serial number and perform actions
     private void configure(String serialNumber) throws DeviceNotAvailableException {
         try (UsbHelper usb = getUsbHelper();
-                AoaDevice device =
-                        usb.getAoaDevice(serialNumber, Duration.ofMillis(mDeviceTimeout))) {
+                AoaDevice device = usb.getAoaDevice(serialNumber, mDeviceTimeout)) {
             if (device == null) {
                 throw new DeviceNotAvailableException(
                         "AOAv2-compatible device not found", serialNumber);
@@ -200,5 +185,10 @@ public class AoaTargetPreparer extends BaseTargetPreparer {
     // Construct point from string coordinates
     private static Point parsePoint(String x, String y) {
         return new Point(Integer.decode(x), Integer.decode(y));
+    }
+
+    // Construct duration from string milliseconds
+    private static Duration parseMillis(String millis) {
+        return Duration.ofMillis(Long.parseLong(millis));
     }
 }
