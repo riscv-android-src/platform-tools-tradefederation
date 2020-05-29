@@ -186,6 +186,11 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         for module_path in self.module_info.get_paths(module_name):
             mod_dir = module_path.replace('/', '-')
             targets.add(_MODULES_IN % mod_dir)
+        # (b/156457698) Force add vts_kernel_tests as build target if our test
+        # belong to REQUIRED_KERNEL_TEST_MODULES due to required_module option
+        # not working for sh_test in soong.
+        if module_name in constants.REQUIRED_KERNEL_TEST_MODULES:
+            targets.add('vts_kernel_tests')
         return targets
 
     def _get_module_test_config(self, module_name, rel_config=None):
@@ -352,6 +357,35 @@ class ModuleFinder(test_finder_base.TestFinderBase):
                 return [tinfo]
         return None
 
+    def find_test_by_kernel_class_name(self, module_name, class_name):
+        """Find kernel test for the given class name.
+
+        Args:
+            module_name: A string of the module name to use.
+            class_name: A string of the test's class name.
+
+        Returns:
+            A list of populated TestInfo namedtuple if test found, else None.
+        """
+        class_name, methods = test_finder_utils.split_methods(class_name)
+        test_config = self._get_module_test_config(module_name)
+        test_config_path = os.path.join(self.root_dir, test_config)
+        mod_info = self.module_info.get_module_info(module_name)
+        ti_filter = frozenset(
+            [test_info.TestFilter(class_name, methods)])
+        if test_finder_utils.is_test_from_kernel_xml(test_config_path, class_name):
+            tinfo = self._process_test_info(test_info.TestInfo(
+                test_name=module_name,
+                test_runner=self._TEST_RUNNER,
+                build_targets=set(),
+                data={constants.TI_REL_CONFIG: test_config,
+                      constants.TI_FILTER: ti_filter},
+                compatibility_suites=mod_info.get(
+                    constants.MODULE_COMPATIBILITY_SUITES, [])))
+            if tinfo:
+                return [tinfo]
+        return None
+
     def find_test_by_class_name(self, class_name, module_name=None,
                                 rel_config=None, is_native_test=False):
         """Find test files given a class name.
@@ -414,13 +448,19 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         module_info = module_infos[0] if module_infos else None
         if not module_info:
             return None
-        # If the target module is NATIVE_TEST, search CC classes only.
         find_result = None
+        # If the target module is NATIVE_TEST, search CC classes only.
         if not self.module_info.is_native_test(module_name):
             # Find by java class.
             find_result = self.find_test_by_class_name(
                 class_name, module_info.test_name,
                 module_info.data.get(constants.TI_REL_CONFIG))
+        # kernel target test is also define as NATIVE_TEST in build system.
+        # TODO (b/157210083) Update find_test_by_kernel_class_name method to
+        # support gen_rule use case.
+        if not find_result:
+            find_result = self.find_test_by_kernel_class_name(
+                module_name, class_name)
         # Find by cc class.
         if not find_result:
             find_result = self.find_test_by_cc_class_name(
