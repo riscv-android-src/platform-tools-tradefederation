@@ -24,5 +24,20 @@ import com.android.tradefed.config.ConfigurationDef;
 public interface IDefaultObjectLoader {
 
     /** Allows to add any default objects as necessary. */
-    public void addDefaultObjects(ConfigurationDef configDef);
+    public void addDefaultObjects(LoaderConfiguration loaderConfiguration);
+
+    /** The loading configuration object to pass information to the loader. */
+    public class LoaderConfiguration {
+
+        private ConfigurationDef mConfigDef;
+
+        public LoaderConfiguration setConfigurationDef(ConfigurationDef configDef) {
+            mConfigDef = configDef;
+            return this;
+        }
+
+        public ConfigurationDef getConfigDef() {
+            return mConfigDef;
+        }
+    }
 }
