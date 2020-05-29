@@ -186,6 +186,11 @@ class ModuleFinder(test_finder_base.TestFinderBase):
         for module_path in self.module_info.get_paths(module_name):
             mod_dir = module_path.replace('/', '-')
             targets.add(_MODULES_IN % mod_dir)
+        # (b/156457698) Force add vts_kernel_tests as build target if our test
+        # belong to REQUIRE_KERNEL_TEST_MODULES due to required_module option
+        # not working for sh_test in soong.
+        if module_name in constants.REQUIRE_KERNEL_TEST_MODULES:
+            targets.add('vts_kernel_tests')
         return targets
 
     def _get_module_test_config(self, module_name, rel_config=None):
