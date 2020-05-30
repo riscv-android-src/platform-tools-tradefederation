@@ -16,15 +16,17 @@
 package com.android.tradefed.config.yaml;
 
 import com.android.tradefed.config.Configuration;
-import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.result.suite.SuiteResultReporter;
 
 /** Loader for the default objects available in AOSP. */
 public class OpenObjectLoader implements IDefaultObjectLoader {
 
     @Override
-    public void addDefaultObjects(ConfigurationDef configDef) {
-        configDef.addConfigObjectDef(
-                Configuration.RESULT_REPORTER_TYPE_NAME, SuiteResultReporter.class.getName());
+    public void addDefaultObjects(LoaderConfiguration loadConfiguration) {
+        loadConfiguration
+                .getConfigDef()
+                .addConfigObjectDef(
+                        Configuration.RESULT_REPORTER_TYPE_NAME,
+                        SuiteResultReporter.class.getName());
     }
 }
