@@ -955,3 +955,30 @@ def get_levenshtein_distance(test_name, module_name, dir_costs=constants.COST_TY
                                       dp_matrix[row-1][col-1] + cost)
 
     return dp_matrix[row][col]
+
+
+def is_test_from_kernel_xml(xml_file, test_name):
+    """Check if test defined in xml_file.
+
+    A kernel test can be defined like:
+    <option name="test-command-line" key="test_class_1" value="command 1" />
+    where key is the name of test class and method of the runner. This method
+    returns True if the test_name was defined in the given xml_file.
+
+    Args:
+        xml_file: Absolute path to xml file.
+        test_name: test_name want to find.
+
+    Returns:
+        True if test_name in xml_file, False otherwise.
+    """
+    if not os.path.exists(xml_file):
+        raise atest_error.XmlNotExistError('%s: The xml file does'
+                                           'not exist' % xml_file)
+    xml_root = ET.parse(xml_file).getroot()
+    option_tags = xml_root.findall('.//option')
+    for option_tag in option_tags:
+        if option_tag.attrib['name'] == 'test-command-line':
+            if option_tag.attrib['key'] == test_name:
+                return True
+    return False
