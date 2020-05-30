@@ -20,6 +20,7 @@ import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.OptionSetter;
+import com.android.tradefed.config.yaml.IDefaultObjectLoader.LoaderConfiguration;
 
 import com.google.common.collect.ImmutableList;
 
@@ -101,10 +102,12 @@ public final class ConfigurationYamlParser {
         }
 
         // Add default configured objects
+        LoaderConfiguration loadConfiguration = new LoaderConfiguration();
+        loadConfiguration.setConfigurationDef(configDef);
         ServiceLoader<IDefaultObjectLoader> serviceLoader =
                 ServiceLoader.load(IDefaultObjectLoader.class);
         for (IDefaultObjectLoader loader : serviceLoader) {
-            loader.addDefaultObjects(configDef);
+            loader.addDefaultObjects(loadConfiguration);
         }
     }
 
