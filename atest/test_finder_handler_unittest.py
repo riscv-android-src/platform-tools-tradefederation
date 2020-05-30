@@ -162,7 +162,7 @@ class TestFinderHandlerUnittests(unittest.TestCase):
         )
         self.assertEqual(
             test_finder_handler._get_test_reference_types('module:a.package'),
-            [REF_TYPE.CACHE, REF_TYPE.MODULE_PACKAGE]
+            [REF_TYPE.CACHE, REF_TYPE.MODULE_PACKAGE, REF_TYPE.MODULE_CLASS]
         )
         self.assertEqual(
             test_finder_handler._get_test_reference_types('.'),
