@@ -149,7 +149,7 @@ class ManagedDeviceList implements Iterable<IManagedTestDevice> {
                 } else if (state.equals(d.getDeviceState())) {
                     // device was previously on fastboot, assume its gone now
                     d.setDeviceState(TestDeviceState.NOT_AVAILABLE);
-                    CLog.d("Device %s was in fastboot and not found anymore", serial);
+                    CLog.d("Device %s was in %s and not found anymore", serial, state);
                     toRemove.add(d);
                 }
             }
