@@ -21,7 +21,10 @@ import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.IRunUtil;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -85,7 +88,7 @@ public class FastbootHelper {
         if (fastbootResult.getStatus().equals(CommandStatus.SUCCESS)) {
             CLog.v("fastboot devices returned\n %s",
                     fastbootResult.getStdout());
-            return parseDevices(fastbootResult.getStdout());
+            return parseDevices(fastbootResult.getStdout(), false);
         } else {
             CLog.w("'fastboot devices' failed. Result: %s, stderr: %s", fastbootResult.getStatus(),
                     fastbootResult.getStderr());
@@ -94,15 +97,48 @@ public class FastbootHelper {
     }
 
     /**
-     * Parses the output of "fastboot devices" command.
-     * Exposed for unit testing.
+     * Returns a map of device serials and whether they are in fastbootd mode or not.
+     *
+     * @return a Map of serial in bootloader or fastbootd, the boolean is true if in fastbootd
+     */
+    public Map<String, Boolean> getBootloaderAndFastbootdDevices() {
+        CommandResult fastbootResult =
+                mRunUtil.runTimedCmdSilently(FASTBOOT_CMD_TIMEOUT, mFastbootPath, "devices");
+        if (fastbootResult.getStatus().equals(CommandStatus.SUCCESS)) {
+            CLog.v("fastboot devices returned\n %s", fastbootResult.getStdout());
+            Set<String> fastboot = parseDevices(fastbootResult.getStdout(), false);
+            Set<String> fastbootd = parseDevices(fastbootResult.getStdout(), true);
+            HashMap<String, Boolean> devices = new LinkedHashMap<>();
+            for (String f : fastboot) {
+                devices.put(f, false);
+            }
+            for (String f : fastbootd) {
+                devices.put(f, true);
+            }
+            return devices;
+        } else {
+            CLog.w(
+                    "'fastboot devices' failed. Result: %s, stderr: %s",
+                    fastbootResult.getStatus(), fastbootResult.getStderr());
+        }
+        return new HashMap<String, Boolean>();
+    }
+
+    /**
+     * Parses the output of "fastboot devices" command. Exposed for unit testing.
      *
      * @param fastbootOutput the output of fastboot command.
+     * @param fastbootd whether or not we parse fastbootd or fastboot output
      * @return a set of device serials.
      */
-    Set<String> parseDevices(String fastbootOutput) {
+    Set<String> parseDevices(String fastbootOutput, boolean fastbootd) {
         Set<String> serials = new HashSet<String>();
-        Pattern fastbootPattern = Pattern.compile("([\\w\\d-]+)\\s+fastboot\\s*");
+        Pattern fastbootPattern = null;
+        if (fastbootd) {
+            fastbootPattern = Pattern.compile("([\\w\\d-]+)\\s+fastbootd\\s*");
+        } else {
+            fastbootPattern = Pattern.compile("([\\w\\d-]+)\\s+fastboot\\s*");
+        }
         Matcher fastbootMatcher = fastbootPattern.matcher(fastbootOutput);
         while (fastbootMatcher.find()) {
             serials.add(fastbootMatcher.group(1));
