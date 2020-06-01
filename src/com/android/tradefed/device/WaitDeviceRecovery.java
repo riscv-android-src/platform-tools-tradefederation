@@ -19,12 +19,18 @@ import com.android.ddmlib.AdbCommandRejectedException;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log;
 import com.android.ddmlib.TimeoutException;
+import com.android.helper.aoa.UsbDevice;
+import com.android.helper.aoa.UsbHelper;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
+
+import com.google.common.annotations.VisibleForTesting;
 
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
@@ -238,8 +244,34 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
      */
     protected void handleDeviceNotAvailable(IDeviceStateMonitor monitor, boolean recoverTillOnline)
             throws DeviceNotAvailableException {
-        throw new DeviceNotAvailableException(String.format("Could not find device %s",
-                monitor.getSerialNumber()), monitor.getSerialNumber());
+        String serial = monitor.getSerialNumber();
+        try (UsbHelper usb = getUsbHelper()) {
+            try (UsbDevice usbDevice = usb.getDevice(serial)) {
+                if (usbDevice != null) {
+                    CLog.d("Resetting USB port for device '%s'", serial);
+                    usbDevice.reset();
+                    if (recoverTillOnline) {
+                        if (monitor.waitForDeviceOnline() != null) {
+
+                            // Success
+                            CLog.d("Device recovered from USB reset and is online.");
+                            InvocationMetricLogger.addInvocationMetrics(
+                                    InvocationMetricKey.DEVICE_RECOVERY, 1);
+                            return;
+                        }
+                    } else if (monitor.waitForDeviceAvailable() != null) {
+                        // Success
+                        CLog.d("Device recovered from USB reset and is available.");
+                        InvocationMetricLogger.addInvocationMetrics(
+                                InvocationMetricKey.DEVICE_RECOVERY, 1);
+                        return;
+                    }
+                    CLog.w("USB reset recovery was unsuccessful");
+                }
+            }
+        }
+        throw new DeviceNotAvailableException(
+                String.format("Could not find device %s", monitor.getSerialNumber()), serial);
     }
 
     /**
@@ -460,5 +492,10 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
             throws DeviceNotAvailableException {
         throw new DeviceNotAvailableException("device recovery not implemented",
                 monitor.getSerialNumber());
+    }
+
+    @VisibleForTesting
+    UsbHelper getUsbHelper() {
+        return new UsbHelper();
     }
 }
