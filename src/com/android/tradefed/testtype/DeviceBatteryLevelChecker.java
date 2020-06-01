@@ -288,7 +288,7 @@ public class DeviceBatteryLevelChecker implements IRemoteTest {
                                     TimeUtil.formatElapsedTime(chargingTime),
                                     speedPerHours,
                                     mChargingSpeedCheck)));
-            mTestDevice.logBugreport("low-charging-speed", listener);
+            mTestDevice.logBugreport("low-charging-speed-bugreport", listener);
         }
         CLog.d("Device charged %s%% in %s", charge, TimeUtil.formatElapsedTime(chargingTime));
     }
