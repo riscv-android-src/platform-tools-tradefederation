@@ -39,6 +39,7 @@ public class InvocationMetricLogger {
         DEVICE_DONE_TIMESTAMP("device_done_timestamp", false),
         DEVICE_RELEASE_STATE("device_release_state", false),
         DEVICE_LOST_DETECTED("device_lost_detected", false),
+        DEVICE_RECOVERY("device_recovery", true),
         SANDBOX_EXIT_CODE("sandbox_exit_code", false),
         CF_FETCH_ARTIFACT_TIME("cf_fetch_artifact_time_ms", false),
         CF_GCE_CREATE_TIME("cf_gce_create_time_ms", false),
