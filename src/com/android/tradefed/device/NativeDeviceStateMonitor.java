@@ -378,6 +378,16 @@ public class NativeDeviceStateMonitor implements IDeviceStateMonitor {
      */
     @Override
     public boolean waitForDeviceBootloader(long time) {
+        return waitForDeviceBootloaderOrFastbootd(time, false);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean waitForDeviceFastbootd(String fastbootPath, long time) {
+        return waitForDeviceBootloaderOrFastbootd(time, true);
+    }
+
+    private boolean waitForDeviceBootloaderOrFastbootd(long time, boolean fastbootd) {
         if (!mFastbootEnabled) {
             return false;
         }
@@ -392,19 +402,13 @@ public class NativeDeviceStateMonitor implements IDeviceStateMonitor {
             // wait at least 200ms
             waitTime = 200;
         }
-        boolean result =  waitForDeviceState(TestDeviceState.FASTBOOT, waitTime);
+        TestDeviceState mode = TestDeviceState.FASTBOOT;
+        if (fastbootd) {
+            mode = TestDeviceState.FASTBOOTD;
+        }
+        boolean result = waitForDeviceState(mode, waitTime);
         mMgr.removeFastbootListener(listener);
         return result;
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public boolean waitForDeviceFastbootd(String fastbootPath, long time) {
-        boolean bootloader = waitForDeviceBootloader(time);
-        if (!bootloader) {
-            return false;
-        }
-        return new FastbootHelper(getRunUtil(), fastbootPath).isFastbootd(getSerialNumber());
     }
 
     @Override
