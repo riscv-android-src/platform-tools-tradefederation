@@ -61,6 +61,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -569,8 +570,18 @@ public class DeviceManager implements IDeviceManager {
     /** Representation of a device in Fastboot mode. */
     public static class FastbootDevice extends StubDevice {
 
+        private boolean mIsFastbootd = false;
+
         public FastbootDevice(String serial) {
             super(serial, false);
+        }
+
+        public void setFastbootd(boolean isFastbootd) {
+            mIsFastbootd = isFastbootd;
+        }
+
+        public boolean isFastbootD() {
+            return mIsFastbootd;
         }
     }
 
@@ -1331,13 +1342,28 @@ public class DeviceManager implements IDeviceManager {
         public void run() {
             final FastbootHelper fastboot = new FastbootHelper(getRunUtil(), getFastbootPath());
             while (!mQuit) {
-                Set<String> serials = fastboot.getDevices();
-                if (serials != null) {
-                    // Update known fastboot devices state
-                    mManagedDeviceList.updateFastbootStates(serials, /* fastbootd */ false);
+                Map<String, Boolean> serialAndMode = fastboot.getBootloaderAndFastbootdDevices();
+                if (serialAndMode != null) {
+                    // Update known bootloader devices state
+                    Set<String> bootloader = new HashSet<>();
+                    Set<String> fastbootd = new HashSet<>();
+                    for (Entry<String, Boolean> entry : serialAndMode.entrySet()) {
+                        if (entry.getValue() && getHostOptions().isFastbootdEnable()) {
+                            fastbootd.add(entry.getKey());
+                        } else {
+                            bootloader.add(entry.getKey());
+                        }
+                    }
+                    mManagedDeviceList.updateFastbootStates(bootloader, false);
+                    if (!fastbootd.isEmpty()) {
+                        mManagedDeviceList.updateFastbootStates(fastbootd, true);
+                    }
                     // Add new fastboot devices.
-                    for (String serial : serials) {
+                    for (String serial : serialAndMode.keySet()) {
                         FastbootDevice d = new FastbootDevice(serial);
+                        if (fastbootd.contains(serial)) {
+                            d.setFastbootd(true);
+                        }
                         if (mGlobalDeviceFilter != null && mGlobalDeviceFilter.matches(d)) {
                             addAvailableDevice(d);
                         }
