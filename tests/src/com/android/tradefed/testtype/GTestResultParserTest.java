@@ -392,4 +392,28 @@ public class GTestResultParserTest extends GTestParserTestBase {
         resultParser.flush();
         EasyMock.verify(mockRunListener);
     }
+
+    /** Tests the parser for a test runs but doesn't finish run completely. */
+    @Test
+    public void testParseSimpleFileWithoutRunComplete() throws Exception {
+        String[] contents = readInFile(GTEST_OUTPUT_FILE_12);
+        ITestInvocationListener mockRunListener =
+                EasyMock.createMock(ITestInvocationListener.class);
+        mockRunListener.testRunStarted(TEST_MODULE_NAME, 11);
+        mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
+        mockRunListener.testFailed(
+                (TestDescription) EasyMock.anyObject(), (String) EasyMock.anyObject());
+        mockRunListener.testEnded(
+                (TestDescription) EasyMock.anyObject(),
+                EasyMock.<HashMap<String, Metric>>anyObject());
+        Capture<FailureDescription> captured = new Capture<>();
+        mockRunListener.testRunFailed(EasyMock.capture(captured));
+        mockRunListener.testRunEnded(
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
+        EasyMock.replay(mockRunListener);
+        GTestResultParser resultParser = new GTestResultParser(TEST_MODULE_NAME, mockRunListener);
+        resultParser.processNewLines(contents);
+        resultParser.flush();
+        EasyMock.verify(mockRunListener);
+    }
 }
