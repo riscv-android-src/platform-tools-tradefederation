@@ -266,6 +266,9 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
                                 InvocationMetricKey.DEVICE_RECOVERY, 1);
                         return;
                     }
+                    // Track the failure
+                    InvocationMetricLogger.addInvocationMetrics(
+                            InvocationMetricKey.DEVICE_RECOVERY_FAIL, 1);
                     CLog.w("USB reset recovery was unsuccessful");
                 }
             }
