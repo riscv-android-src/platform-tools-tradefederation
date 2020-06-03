@@ -190,11 +190,16 @@ public class GCSFileDownloader extends GCSCommon implements IFileDownloader {
         }
         for (String subRemoteFolder : subRemoteFolders) {
             String subFolderName = Paths.get(subRemoteFolder).getFileName().toString();
-            if (!recursiveCheckFolderFreshness(
-                    bucketName, subRemoteFolder, new File(localFolder, subFolderName))) {
+            File subFolder = new File(localFolder, subFolderName);
+            if (new File(localFolder, subFolderName).exists()
+                    && !new File(localFolder, subFolderName).isDirectory()) {
+                CLog.w("%s exists as a non-directory.", subFolder);
+                subFolder = new File(localFolder, subFolderName + "_folder");
+            }
+            if (!recursiveCheckFolderFreshness(bucketName, subRemoteFolder, subFolder)) {
                 return false;
             }
-            subFilenames.remove(subFolderName);
+            subFilenames.remove(subFolder.getName());
         }
         return subFilenames.isEmpty();
     }
@@ -310,6 +315,14 @@ public class GCSFileDownloader extends GCSCommon implements IFileDownloader {
         if (!localFolder.exists()) {
             FileUtil.mkdirsRWX(localFolder);
         }
+        if (!localFolder.isDirectory()) {
+            String error =
+                    String.format(
+                            "%s is not a folder. (gs://%s/%s)",
+                            localFolder, bucketName, remoteFolderName);
+            CLog.e(error);
+            throw new IOException(error);
+        }
         Set<String> subFilenames = new HashSet<>(Arrays.asList(localFolder.list()));
         List<String> subRemoteFolders = new ArrayList<>();
         List<StorageObject> subRemoteFiles = new ArrayList<>();
@@ -322,9 +335,14 @@ public class GCSFileDownloader extends GCSCommon implements IFileDownloader {
         }
         for (String subRemoteFolder : subRemoteFolders) {
             String subFolderName = Paths.get(subRemoteFolder).getFileName().toString();
-            recursiveDownloadFolder(
-                    bucketName, subRemoteFolder, new File(localFolder, subFolderName));
-            subFilenames.remove(subFolderName);
+            File subFolder = new File(localFolder, subFolderName);
+            if (new File(localFolder, subFolderName).exists()
+                    && !new File(localFolder, subFolderName).isDirectory()) {
+                CLog.w("%s exists as a non-directory.", subFolder);
+                subFolder = new File(localFolder, subFolderName + "_folder");
+            }
+            recursiveDownloadFolder(bucketName, subRemoteFolder, subFolder);
+            subFilenames.remove(subFolder.getName());
         }
         for (String subFilename : subFilenames) {
             FileUtil.recursiveDelete(new File(localFolder, subFilename));

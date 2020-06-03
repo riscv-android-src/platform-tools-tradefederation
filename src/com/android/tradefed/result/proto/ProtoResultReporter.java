@@ -33,12 +33,14 @@ import com.android.tradefed.result.proto.TestRecordProto.TestRecord;
 import com.android.tradefed.result.proto.TestRecordProto.TestStatus;
 import com.android.tradefed.result.retry.ISupportGranularResults;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
+import com.android.tradefed.util.SerializationUtil;
 import com.android.tradefed.util.StreamUtil;
 
 import com.google.common.base.Strings;
 import com.google.protobuf.Any;
 import com.google.protobuf.Timestamp;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Stack;
@@ -65,6 +67,7 @@ public abstract class ProtoResultReporter
     private IInvocationContext mContext;
 
     private Throwable mInvocationFailure = null;
+    private FailureDescription mInvocationFailureDescription = null;
     /** Whether or not a testModuleStart had currently been called. */
     private boolean mModuleInProgress = false;
 
@@ -175,6 +178,11 @@ public abstract class ProtoResultReporter
     }
 
     @Override
+    public void invocationFailed(FailureDescription failure) {
+        mInvocationFailureDescription = failure;
+    }
+
+    @Override
     public final void invocationEnded(long elapsedTime) {
         if (mModuleInProgress) {
             // If we had a module in progress, and a new module start occurs, complete the call
@@ -186,13 +194,9 @@ public abstract class ProtoResultReporter
         // Update the context in case it changed
         mInvocationRecordBuilder.setDescription(Any.pack(mContext.toProto()));
 
-        if (mInvocationFailure != null) {
-            DebugInfo.Builder debugBuilder = DebugInfo.newBuilder();
-            if (mInvocationFailure.getMessage() != null) {
-                debugBuilder.setErrorMessage(mInvocationFailure.getMessage());
-            }
-            debugBuilder.setTrace(StreamUtil.getStackTrace(mInvocationFailure));
-            mInvocationRecordBuilder.setDebugInfo(debugBuilder);
+        DebugInfo invocationFailure = handleInvocationFailure();
+        if (invocationFailure != null) {
+            mInvocationRecordBuilder.setDebugInfo(invocationFailure);
         }
 
         // Finalize the protobuf handling: where to put the results.
@@ -505,5 +509,40 @@ public abstract class ProtoResultReporter
             logFileBuilder.setUrl(logFile.getUrl());
         }
         return logFileBuilder.build();
+    }
+
+    private DebugInfo handleInvocationFailure() {
+        DebugInfo.Builder debugBuilder = DebugInfo.newBuilder();
+        Throwable baseException = null;
+        if (mInvocationFailureDescription != null) {
+            baseException = mInvocationFailureDescription.getCause();
+        }
+        if (baseException == null) {
+            baseException = mInvocationFailure;
+        }
+        // TODO: Handle FailureDescription without getCause.
+        if (baseException == null) {
+            // No invocation failure
+            return null;
+        }
+
+        if (baseException.getMessage() != null) {
+            debugBuilder.setErrorMessage(baseException.getMessage());
+        }
+        debugBuilder.setTrace(StreamUtil.getStackTrace(baseException));
+        if (mInvocationFailureDescription != null
+                && mInvocationFailureDescription.getFailureStatus() != null) {
+            debugBuilder.setFailureStatus(mInvocationFailureDescription.getFailureStatus());
+        }
+        DebugInfoContext.Builder debugContext = DebugInfoContext.newBuilder();
+        try {
+            debugContext.setErrorType(SerializationUtil.serializeToString(baseException));
+        } catch (IOException e) {
+            CLog.e("Failed to serialize the invocation failure:");
+            CLog.e(e);
+        }
+        debugBuilder.setDebugInfoContext(debugContext);
+
+        return debugBuilder.build();
     }
 }

@@ -293,7 +293,7 @@ public class PerfettoPullerMetricCollector extends FilePullerDeviceMetricCollect
                 }
 
             } else {
-                testLog(metricFile.getName(), LogDataType.PB, source);
+                testLog(metricFile.getName(), LogDataType.PERFETTO, source);
             }
         }
 

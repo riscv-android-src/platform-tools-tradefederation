@@ -475,18 +475,15 @@ public class GceManager {
         if (gceAvd == null || gceAvd.hostAndPort() == null) {
             return null;
         }
-        String output = "";
-        // Retry a couple of time because adb might not be started for that user.
-        // FIXME: See if we can use vsoc-01 directly to avoid this
-        for (int i = 0; i < 3; i++) {
-            output =
-                    remoteSshCommandExec(
-                            gceAvd, options, runUtil, "./bin/adb", "shell", "bugreportz");
-            Matcher match = BUGREPORTZ_RESPONSE_PATTERN.matcher(output);
-            if (match.find()) {
-                break;
-            }
-        }
+        String output =
+                remoteSshCommandExec(
+                        gceAvd,
+                        options,
+                        runUtil,
+                        "./bin/adb",
+                        "wait-for-device",
+                        "shell",
+                        "bugreportz");
         Matcher match = BUGREPORTZ_RESPONSE_PATTERN.matcher(output);
         if (!match.find()) {
             CLog.e("Something went wrong during bugreportz collection: '%s'", output);

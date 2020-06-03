@@ -177,7 +177,7 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
                 moduleConfig.setTests(allTests);
                 // Set test sources to ConfigurationDescriptor.
                 List<String> testSources = getTestSources(testInfos);
-                configDescriptor.addMetaData(TestMapping.TEST_SOURCES, testSources);
+                configDescriptor.addMetadata(TestMapping.TEST_SOURCES, testSources);
             }
         }
         return testConfigs;

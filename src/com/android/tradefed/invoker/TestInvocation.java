@@ -26,6 +26,7 @@ import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.device.DeviceManager;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.FreeDeviceState;
@@ -55,12 +56,14 @@ import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.log.StdoutLogger;
 import com.android.tradefed.postprocessor.IPostProcessor;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogSaverResultForwarder;
 import com.android.tradefed.result.ResultAndLogForwarder;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.retry.ResultAggregator;
 import com.android.tradefed.retry.RetryStrategy;
@@ -149,6 +152,7 @@ public class TestInvocation implements ITestInvocation {
     private String mStopCause = null;
     private Long mStopRequestTime = null;
     private boolean mTestStarted = false;
+    private boolean mInvocationFailed = false;
     private List<IScheduledInvocationListener> mSchedulerListeners = new ArrayList<>();
 
     /**
@@ -235,16 +239,16 @@ public class TestInvocation implements ITestInvocation {
                     badDevice.setRecoveryMode(RecoveryMode.NONE);
                 }
             }
-            reportFailure(e, listener, config, context, invocationPath);
+            reportFailure(e, listener);
         } catch (TargetSetupError e) {
             exception = e;
             CLog.e("Caught exception while running invocation");
             CLog.e(e);
             bugreportName = TARGET_SETUP_ERROR_BUGREPORT_NAME;
-            if (e.getDeviceDescriptor() != null) {
-                badDevice = context.getDeviceBySerial(e.getDeviceDescriptor().getSerial());
+            if (e.getDeviceSerial() != null) {
+                badDevice = context.getDeviceBySerial(e.getDeviceSerial());
             }
-            reportFailure(e, listener, config, context, invocationPath);
+            reportFailure(e, listener);
         } catch (DeviceNotAvailableException e) {
             exception = e;
             // log a warning here so its captured before reportLogs is called
@@ -256,7 +260,7 @@ public class TestInvocation implements ITestInvocation {
                 // under certain cases it might still be possible to grab a bugreport
                 bugreportName = DEVICE_UNRESPONSIVE_BUGREPORT_NAME;
             }
-            reportFailure(e, listener, config, context, invocationPath);
+            reportFailure(e, listener);
             // Upon reaching here after an exception, it is safe to assume that recovery
             // has already been attempted so we disable it to avoid re-entry during clean up.
             if (badDevice != null) {
@@ -264,19 +268,20 @@ public class TestInvocation implements ITestInvocation {
             }
             throw e;
         } catch (RunInterruptedException e) {
+            exception = e;
             CLog.w("Invocation interrupted");
-            reportFailure(e, listener, config, context, invocationPath);
+            reportFailure(e, listener);
         } catch (AssertionError e) {
             exception = e;
             CLog.e("Caught AssertionError while running invocation: %s", e.toString());
             CLog.e(e);
-            reportFailure(e, listener, config, context, invocationPath);
+            reportFailure(e, listener);
         } catch (Throwable t) {
             exception = t;
             // log a warning here so its captured before reportLogs is called
             CLog.e("Unexpected exception when running invocation: %s", t.toString());
             CLog.e(t);
-            reportFailure(t, listener, config, context, invocationPath);
+            reportFailure(t, listener);
             throw t;
         } finally {
             // Only capture logcat for TEST if we started the test phase.
@@ -331,27 +336,16 @@ public class TestInvocation implements ITestInvocation {
                 CLog.e(tearDownException);
                 if (exception == null) {
                     // only report when the exception is new during tear down
-                    reportFailure(
-                            tearDownException,
-                            listener,
-                            config,
-                            context,
-                            invocationPath);
+                    reportFailure(tearDownException, listener);
                 }
             }
             mStatus = "done running tests";
             // Track the timestamp when we are done with devices
-            InvocationMetricLogger.addInvocationMetrics(
+            addInvocationMetric(
                     InvocationMetricKey.DEVICE_DONE_TIMESTAMP, System.currentTimeMillis());
+            Map<ITestDevice, FreeDeviceState> devicesStates =
+                    handleAndLogReleaseState(context, exception);
             if (config.getCommandOptions().earlyDeviceRelease()) {
-                // Capture the FreeDeviceState of the primary device
-                Map<ITestDevice, FreeDeviceState> devicesStates =
-                        CommandScheduler.createReleaseMap(context, exception);
-                if (devicesStates.size() >= 1) {
-                    InvocationMetricLogger.addInvocationMetrics(
-                            InvocationMetricKey.DEVICE_RELEASE_STATE,
-                            devicesStates.values().iterator().next().toString());
-                }
                 for (IScheduledInvocationListener scheduleListener : mSchedulerListeners) {
                     scheduleListener.releaseDevices(context, devicesStates);
                 }
@@ -368,7 +362,9 @@ public class TestInvocation implements ITestInvocation {
                                     "Invocation was interrupted due to: %s, results will be "
                                             + "affected.",
                                     mStopCause);
-                    listener.invocationFailed(new RuntimeException(message));
+                    FailureDescription failure =
+                            FailureDescription.create(message, FailureStatus.CANCELLED);
+                    reportFailure(failure, listener);
                     PrettyPrintDelimiter.printStageDelimiter(message);
                     if (mStopRequestTime != null) {
                         // This is not 100% perfect since result reporting can still run a bit
@@ -443,17 +439,26 @@ public class TestInvocation implements ITestInvocation {
         listener.invocationStarted(context);
     }
 
-    private void reportFailure(
-            Throwable exception,
-            ITestInvocationListener listener,
-            IConfiguration config,
-            IInvocationContext context,
-            IInvocationExecution invocationPath) {
+    /** Report the exception failure as an invocation failure. */
+    private void reportFailure(Throwable exception, ITestInvocationListener listener) {
+        if (mInvocationFailed) {
+            CLog.e("An invocation failure was already reported, ignoring %s", exception);
+            return;
+        }
         // Always report the failure
         listener.invocationFailed(exception);
-        // Reset the build (if necessary)
-        // TODO: Remove the "Reschedule" part
-        invocationPath.resetBuildAndReschedule(exception, listener, config, context);
+        mInvocationFailed = true;
+    }
+
+    /** Report the exception failure as an invocation failure. */
+    private void reportFailure(FailureDescription failure, ITestInvocationListener listener) {
+        if (mInvocationFailed) {
+            CLog.e("An invocation failure was already reported, ignoring %s", failure);
+            return;
+        }
+        // Always report the failure
+        listener.invocationFailed(failure);
+        mInvocationFailed = true;
     }
 
     private void reportHostLog(ITestInvocationListener listener, IConfiguration config) {
@@ -590,14 +595,17 @@ public class TestInvocation implements ITestInvocation {
             mStatus = "(no build to test)";
             // Set the exit code to error
             buildException = new BuildRetrievalError("No build found to test.");
-            setExitCode(ExitCode.NO_BUILD, buildException);
-        } catch (BuildRetrievalError e) {
+        } catch (BuildRetrievalError | RuntimeException e) {
             buildException = e;
         }
+        setExitCode(ExitCode.NO_BUILD, buildException);
         // Report an empty invocation, so this error is sent to listeners
         startInvocation(config, testInfo.getContext(), listener);
         // Don't want to use #reportFailure, since that will call buildNotTested
-        listener.invocationFailed(buildException);
+        FailureDescription failure =
+                FailureDescription.create(buildException.getMessage(), FailureStatus.INFRA_FAILURE);
+        failure.setCause(buildException);
+        reportFailure(failure, listener);
         for (ITestDevice device : testInfo.getContext().getDevices()) {
             invocationPath.reportLogs(device, listener, Stage.ERROR);
         }
@@ -649,7 +657,10 @@ public class TestInvocation implements ITestInvocation {
             // Report an empty invocation, so this error is sent to listeners
             startInvocation(config, context, listener);
             // Don't want to use #reportFailure, since that will call buildNotTested
-            listener.invocationFailed(e);
+            FailureDescription failure =
+                    FailureDescription.create(e.getMessage(), FailureStatus.INFRA_FAILURE);
+            failure.setCause(e);
+            reportFailure(failure, listener);
             for (ITestDevice device : context.getDevices()) {
                 invocationPath.reportLogs(device, listener, Stage.ERROR);
             }
@@ -819,11 +830,17 @@ public class TestInvocation implements ITestInvocation {
                         invocationPath.runDevicePreInvocationSetup(context, config, listener);
                     } catch (DeviceNotAvailableException | TargetSetupError e) {
                         CLog.e(e);
-                        setExitCode(ExitCode.THROWABLE_EXCEPTION, e);
+                        FailureDescription failure = FailureDescription.create(e.getMessage());
+                        failure.setCause(e).setFailureStatus(FailureStatus.INFRA_FAILURE);
+                        if (e instanceof DeviceNotAvailableException) {
+                            setExitCode(ExitCode.DEVICE_UNAVAILABLE, e);
+                        } else {
+                            setExitCode(ExitCode.THROWABLE_EXCEPTION, e);
+                        }
                         try {
                             invocationPath.runDevicePostInvocationTearDown(context, config, e);
                         } finally {
-                            listener.invocationFailed(e);
+                            reportFailure(failure, listener);
                             // Reports the logs
                             for (ITestDevice device : context.getDevices()) {
                                 invocationPath.reportLogs(device, listener, Stage.ERROR);
@@ -919,6 +936,14 @@ public class TestInvocation implements ITestInvocation {
     protected void setExitCode(ExitCode code, Throwable stack) {
         GlobalConfiguration.getInstance().getCommandScheduler()
                 .setLastInvocationExitCode(code, stack);
+    }
+
+    protected void addInvocationMetric(InvocationMetricKey key, long value) {
+        InvocationMetricLogger.addInvocationMetrics(key, value);
+    }
+
+    protected void addInvocationMetric(InvocationMetricKey key, String value) {
+        InvocationMetricLogger.addInvocationMetrics(key, value);
     }
 
     public static String getDeviceLogName(Stage stage) {
@@ -1033,6 +1058,38 @@ public class TestInvocation implements ITestInvocation {
         FileUtil.recursiveDelete(testInfo.dependenciesFolder());
         // Delete all the execution files
         testInfo.executionFiles().clearFiles();
+    }
+
+    private Map<ITestDevice, FreeDeviceState> handleAndLogReleaseState(
+            IInvocationContext context, Throwable exception) {
+        // Capture the FreeDeviceState of the primary device
+        Map<ITestDevice, FreeDeviceState> devicesStates =
+                CommandScheduler.createReleaseMap(context, exception);
+        if (devicesStates.size() >= 1) {
+            addInvocationMetric(
+                    InvocationMetricKey.DEVICE_RELEASE_STATE,
+                    devicesStates.values().iterator().next().toString());
+        }
+        // TODO: Add Handling of virtual devices
+        int countPhysicalLost = 0;
+        for (Entry<ITestDevice, FreeDeviceState> fds : devicesStates.entrySet()) {
+            if (fds.getKey().getIDevice() instanceof StubDevice) {
+                continue;
+            }
+            if (FreeDeviceState.UNAVAILABLE.equals(fds.getValue())) {
+                countPhysicalLost++;
+            }
+        }
+        if (countPhysicalLost > 0) {
+            addInvocationMetric(InvocationMetricKey.DEVICE_LOST_DETECTED, countPhysicalLost);
+            if (GlobalConfiguration.getDeviceManagerInstance() instanceof DeviceManager) {
+                String adbOutput =
+                        ((DeviceManager) GlobalConfiguration.getDeviceManagerInstance())
+                                .executeGlobalAdbCommand("devices");
+                CLog.e("'adb devices' output:\n%s", adbOutput);
+            }
+        }
+        return devicesStates;
     }
 
     /** Helper Thread that ensures host_log is reported in case of killed JVM */

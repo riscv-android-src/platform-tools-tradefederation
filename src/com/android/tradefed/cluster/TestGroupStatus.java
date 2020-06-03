@@ -32,7 +32,6 @@ public class TestGroupStatus {
     private int mPassedTestCount;
     private boolean mIsComplete;
     private long mElapsedTime;
-    private String mFailureMessage;
 
     public TestGroupStatus(
             final String name,
@@ -41,8 +40,7 @@ public class TestGroupStatus {
             final int failedTestCount,
             final int passedTestCount,
             final boolean isComplete,
-            final long elapsedTime,
-            final String failureMessage) {
+            final long elapsedTime) {
         mName = name;
         mTotalTestCount = totalTestCount;
         mCompletedTestCount = completedTestCount;
@@ -50,7 +48,6 @@ public class TestGroupStatus {
         mPassedTestCount = passedTestCount;
         mIsComplete = isComplete;
         mElapsedTime = elapsedTime;
-        mFailureMessage = failureMessage;
     }
 
     public String getName() {
@@ -81,10 +78,6 @@ public class TestGroupStatus {
         return mElapsedTime;
     }
 
-    public String getFailureMessage() {
-        return mFailureMessage;
-    }
-
     public JSONObject toJSON() throws JSONException {
         final JSONObject json = new JSONObject();
         json.put("name", mName);
@@ -94,7 +87,6 @@ public class TestGroupStatus {
         json.put("passed_test_count", mPassedTestCount);
         json.put("is_complete", mIsComplete);
         json.put("elapsed_time", mElapsedTime);
-        json.put("failure_message", mFailureMessage);
         return json;
     }
 }
