@@ -97,7 +97,7 @@ public class WaitDeviceRecoveryTest {
         // expect initial sleep
         mMockRunUtil.sleep(EasyMock.anyLong());
         mMockMonitor.waitForDeviceBootloaderStateUpdate();
-        EasyMock.expect(mMockMonitor.getDeviceState()).andReturn(TestDeviceState.NOT_AVAILABLE);
+        EasyMock.expect(mMockMonitor.getDeviceState()).andStubReturn(TestDeviceState.NOT_AVAILABLE);
         EasyMock.expect(mMockMonitor.waitForDeviceOnline(EasyMock.anyLong())).andReturn(null);
         replayMocks();
         try {
@@ -114,7 +114,7 @@ public class WaitDeviceRecoveryTest {
         // expect initial sleep
         mMockRunUtil.sleep(EasyMock.anyLong());
         mMockMonitor.waitForDeviceBootloaderStateUpdate();
-        EasyMock.expect(mMockMonitor.getDeviceState()).andReturn(TestDeviceState.NOT_AVAILABLE);
+        EasyMock.expect(mMockMonitor.getDeviceState()).andStubReturn(TestDeviceState.NOT_AVAILABLE);
         EasyMock.expect(mMockMonitor.waitForDeviceOnline(EasyMock.anyLong())).andReturn(null);
 
         UsbDevice mockDevice = Mockito.mock(UsbDevice.class);
@@ -128,6 +128,35 @@ public class WaitDeviceRecoveryTest {
         mRecovery.recoverDevice(mMockMonitor, false);
         verifyMocks();
         verify(mockDevice).reset();
+    }
+
+    @Test
+    public void testRecoverDevice_unavailable_fastboot() throws Exception {
+        // expect initial sleep
+        mMockRunUtil.sleep(EasyMock.anyLong());
+        mMockMonitor.waitForDeviceBootloaderStateUpdate();
+        EasyMock.expect(mMockMonitor.getDeviceState()).andStubReturn(TestDeviceState.FASTBOOT);
+        CommandResult result = new CommandResult();
+        result.setStatus(CommandStatus.SUCCESS);
+        // expect reboot
+        EasyMock.expect(
+                        mMockRunUtil.runTimedCmd(
+                                EasyMock.anyLong(),
+                                EasyMock.eq("fastboot"),
+                                EasyMock.eq("-s"),
+                                EasyMock.eq("serial"),
+                                EasyMock.eq("reboot")))
+                .andReturn(result);
+
+        EasyMock.expect(mMockMonitor.waitForDeviceOnline(EasyMock.anyLong())).andReturn(null);
+        replayMocks();
+        try {
+            mRecovery.recoverDevice(mMockMonitor, false);
+            fail("DeviceNotAvailableException not thrown");
+        } catch (DeviceNotAvailableException e) {
+            // expected
+        }
+        verifyMocks();
     }
 
     /**
