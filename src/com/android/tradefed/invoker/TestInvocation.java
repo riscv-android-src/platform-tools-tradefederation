@@ -152,6 +152,7 @@ public class TestInvocation implements ITestInvocation {
     private String mStopCause = null;
     private Long mStopRequestTime = null;
     private boolean mTestStarted = false;
+    private boolean mInvocationFailed = false;
     private List<IScheduledInvocationListener> mSchedulerListeners = new ArrayList<>();
 
     /**
@@ -363,7 +364,7 @@ public class TestInvocation implements ITestInvocation {
                                     mStopCause);
                     FailureDescription failure =
                             FailureDescription.create(message, FailureStatus.CANCELLED);
-                    listener.invocationFailed(failure);
+                    reportFailure(failure, listener);
                     PrettyPrintDelimiter.printStageDelimiter(message);
                     if (mStopRequestTime != null) {
                         // This is not 100% perfect since result reporting can still run a bit
@@ -440,8 +441,24 @@ public class TestInvocation implements ITestInvocation {
 
     /** Report the exception failure as an invocation failure. */
     private void reportFailure(Throwable exception, ITestInvocationListener listener) {
+        if (mInvocationFailed) {
+            CLog.e("An invocation failure was already reported, ignoring %s", exception);
+            return;
+        }
         // Always report the failure
         listener.invocationFailed(exception);
+        mInvocationFailed = true;
+    }
+
+    /** Report the exception failure as an invocation failure. */
+    private void reportFailure(FailureDescription failure, ITestInvocationListener listener) {
+        if (mInvocationFailed) {
+            CLog.e("An invocation failure was already reported, ignoring %s", failure);
+            return;
+        }
+        // Always report the failure
+        listener.invocationFailed(failure);
+        mInvocationFailed = true;
     }
 
     private void reportHostLog(ITestInvocationListener listener, IConfiguration config) {
@@ -588,7 +605,7 @@ public class TestInvocation implements ITestInvocation {
         FailureDescription failure =
                 FailureDescription.create(buildException.getMessage(), FailureStatus.INFRA_FAILURE);
         failure.setCause(buildException);
-        listener.invocationFailed(failure);
+        reportFailure(failure, listener);
         for (ITestDevice device : testInfo.getContext().getDevices()) {
             invocationPath.reportLogs(device, listener, Stage.ERROR);
         }
@@ -643,7 +660,7 @@ public class TestInvocation implements ITestInvocation {
             FailureDescription failure =
                     FailureDescription.create(e.getMessage(), FailureStatus.INFRA_FAILURE);
             failure.setCause(e);
-            listener.invocationFailed(failure);
+            reportFailure(failure, listener);
             for (ITestDevice device : context.getDevices()) {
                 invocationPath.reportLogs(device, listener, Stage.ERROR);
             }
@@ -823,7 +840,7 @@ public class TestInvocation implements ITestInvocation {
                         try {
                             invocationPath.runDevicePostInvocationTearDown(context, config, e);
                         } finally {
-                            listener.invocationFailed(failure);
+                            reportFailure(failure, listener);
                             // Reports the logs
                             for (ITestDevice device : context.getDevices()) {
                                 invocationPath.reportLogs(device, listener, Stage.ERROR);
