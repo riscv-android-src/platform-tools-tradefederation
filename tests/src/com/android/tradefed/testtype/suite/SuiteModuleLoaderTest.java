@@ -325,6 +325,60 @@ public class SuiteModuleLoaderTest {
         assertEquals("armeabi-v7a", descriptor.getAbi().getName());
     }
 
+    @Test
+    public void testFilterParameterized_includeFilter_base() throws Exception {
+        Map<String, List<SuiteTestFilter>> includeFilters = new LinkedHashMap<>();
+        createInstantModuleConfig("basemodule");
+        SuiteTestFilter fullFilter = SuiteTestFilter.createFrom("armeabi-v7a basemodule");
+        includeFilters.put("armeabi-v7a basemodule", Arrays.asList(fullFilter));
+
+        mRepo =
+                new SuiteModuleLoader(
+                        includeFilters,
+                        new LinkedHashMap<String, List<SuiteTestFilter>>(),
+                        new ArrayList<>(),
+                        new ArrayList<>());
+        mRepo.setParameterizedModules(true);
+
+        List<String> patterns = new ArrayList<>();
+        patterns.add(".*.config");
+        patterns.add(".*.xml");
+        LinkedHashMap<String, IConfiguration> res =
+                mRepo.loadConfigsFromDirectory(
+                        Arrays.asList(mTestsDir), mAbis, null, null, patterns);
+        assertEquals(1, res.size());
+        // Parameterized module was excluded completely
+        IConfiguration baseModule = res.get("armeabi-v7a basemodule");
+        assertNotNull(baseModule);
+    }
+
+    @Test
+    public void testFilterParameterized_includeFilter_param() throws Exception {
+        Map<String, List<SuiteTestFilter>> includeFilters = new LinkedHashMap<>();
+        createInstantModuleConfig("basemodule");
+        SuiteTestFilter fullFilter = SuiteTestFilter.createFrom("armeabi-v7a basemodule[instant]");
+        includeFilters.put("armeabi-v7a basemodule[instant]", Arrays.asList(fullFilter));
+
+        mRepo =
+                new SuiteModuleLoader(
+                        includeFilters,
+                        new LinkedHashMap<String, List<SuiteTestFilter>>(),
+                        new ArrayList<>(),
+                        new ArrayList<>());
+        mRepo.setParameterizedModules(true);
+
+        List<String> patterns = new ArrayList<>();
+        patterns.add(".*.config");
+        patterns.add(".*.xml");
+        LinkedHashMap<String, IConfiguration> res =
+                mRepo.loadConfigsFromDirectory(
+                        Arrays.asList(mTestsDir), mAbis, null, null, patterns);
+        assertEquals(1, res.size());
+        // Full module was excluded completely
+        IConfiguration instantModule = res.get("armeabi-v7a basemodule[instant]");
+        assertNotNull(instantModule);
+    }
+
     /**
      * Test that the configuration can be found if specifying specific path.
      */
