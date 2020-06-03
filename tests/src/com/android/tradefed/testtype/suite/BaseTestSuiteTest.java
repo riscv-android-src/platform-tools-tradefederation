@@ -668,10 +668,9 @@ public class BaseTestSuiteTest {
                         + "exclude-annotation:android.platform.test.annotations.AppModeInstant");
         EasyMock.replay(mockDevice);
         LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
-        assertEquals(2, configMap.size());
+        assertEquals(1, configMap.size());
         // stub-parameterized-abi is parameterized and not multi_abi so it creates only one abi
         assertTrue(configMap.containsKey("arm64-v8a suite/stub-parameterized-abi4"));
-        assertTrue(configMap.containsKey("arm64-v8a suite/stub-parameterized-abi4[instant]"));
         EasyMock.verify(mockDevice);
     }
 
