@@ -18,11 +18,7 @@ package com.android.tradefed.config;
 import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.config.OptionSetter.OptionFieldsForName;
-import com.android.tradefed.config.remote.GcsRemoteFileResolver;
-import com.android.tradefed.config.remote.HttpRemoteFileResolver;
-import com.android.tradefed.config.remote.HttpsRemoteFileResolver;
 import com.android.tradefed.config.remote.IRemoteFileResolver;
-import com.android.tradefed.config.remote.LocalFileResolver;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.FileUtil;
@@ -59,12 +55,6 @@ public class DynamicRemoteFileResolver {
 
     private static final Map<String, IRemoteFileResolver> PROTOCOL_SUPPORT = new HashMap<>();
 
-    static {
-        PROTOCOL_SUPPORT.put(GcsRemoteFileResolver.PROTOCOL, new GcsRemoteFileResolver());
-        PROTOCOL_SUPPORT.put(LocalFileResolver.PROTOCOL, new LocalFileResolver());
-        PROTOCOL_SUPPORT.put(HttpRemoteFileResolver.PROTOCOL_HTTP, new HttpRemoteFileResolver());
-        PROTOCOL_SUPPORT.put(HttpsRemoteFileResolver.PROTOCOL_HTTPS, new HttpsRemoteFileResolver());
-    }
     // The configuration map being static, we only need to update it once per TF instance.
     private static AtomicBoolean sIsUpdateDone = new AtomicBoolean(false);
     // Query key for requesting to unzip a downloaded file automatically.
@@ -131,6 +121,15 @@ public class DynamicRemoteFileResolver {
                     // Keep track of the field set on each object
                     fieldSeen.put(field, obj);
 
+                    // The below contains unchecked casts that are mostly safe because we add/remove
+                    // items of a type already in the collection; assuming they're not instances of
+                    // some subclass of File. This is unlikely since we populate the items during
+                    // option injection. The possibility still exists that constructors of
+                    // initialized objects add objects that are instances of a File subclass. A
+                    // safer approach would be to have a custom type that can be deferenced to
+                    // access the resolved target file. This would also have the benefit of not
+                    // having to modify any user collections and preserve the ordering.
+
                     if (value instanceof File) {
                         File consideredFile = (File) value;
                         File downloadedFile = resolveRemoteFiles(consideredFile, option);
@@ -149,6 +148,7 @@ public class DynamicRemoteFileResolver {
                             }
                         }
                     } else if (value instanceof Collection) {
+                        @SuppressWarnings("unchecked")  // Mostly-safe, see above comment.
                         Collection<Object> c = (Collection<Object>) value;
                         Collection<Object> copy = new ArrayList<>(c);
                         for (Object o : copy) {
@@ -164,6 +164,7 @@ public class DynamicRemoteFileResolver {
                             }
                         }
                     } else if (value instanceof Map) {
+                        @SuppressWarnings("unchecked")  // Mostly-safe, see above comment.
                         Map<Object, Object> m = (Map<Object, Object>) value;
                         Map<Object, Object> copy = new LinkedHashMap<>(m);
                         for (Entry<Object, Object> entry : copy.entrySet()) {
@@ -191,6 +192,7 @@ public class DynamicRemoteFileResolver {
                             m.put(finalKey, finalVal);
                         }
                     } else if (value instanceof MultiMap) {
+                        @SuppressWarnings("unchecked")  // Mostly-safe, see above comment.
                         MultiMap<Object, Object> m = (MultiMap<Object, Object>) value;
                         synchronized (m) {
                             MultiMap<Object, Object> copy = new MultiMap<>(m);
