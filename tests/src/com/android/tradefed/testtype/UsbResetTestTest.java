@@ -18,6 +18,7 @@ package com.android.tradefed.testtype;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import com.android.helper.aoa.UsbDevice;
@@ -25,9 +26,11 @@ import com.android.helper.aoa.UsbHelper;
 import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
+import com.android.tradefed.util.IRunUtil;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -57,6 +60,11 @@ public class UsbResetTestTest {
                     UsbHelper getUsbHelper() {
                         return mUsb;
                     }
+
+                    @Override
+                    IRunUtil getRunUtil() {
+                        return Mockito.mock(IRunUtil.class);
+                    }
                 };
     }
 
@@ -69,6 +77,19 @@ public class UsbResetTestTest {
 
         verify(usbDevice).reset();
         verify(mDevice).waitForDeviceOnline();
+        verify(mDevice).reboot();
+    }
+
+    @Test
+    public void testReset_recovery() throws DeviceNotAvailableException {
+        UsbDevice usbDevice = Mockito.mock(UsbDevice.class);
+        doReturn("serial").when(mDevice).getSerialNumber();
+        doReturn(TestDeviceState.RECOVERY).when(mDevice).getDeviceState();
+        doReturn(usbDevice).when(mUsb).getDevice("serial");
+        mTest.run(mTestInfo, null);
+
+        verify(usbDevice).reset();
+        verify(mDevice, times(0)).waitForDeviceOnline();
         verify(mDevice).reboot();
     }
 
