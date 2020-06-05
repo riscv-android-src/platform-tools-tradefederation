@@ -53,6 +53,11 @@ public class HostOptions implements IHostOptions {
     )
     private File mFastbootTmpDir = null;
 
+    @Option(
+            name = "enable-fastbootd-mode",
+            description = "Feature flag to enable the support for fastbootd.")
+    private boolean mEnableFastbootdMode = false;
+
     @Option(name = "download-cache-dir", description = "the directory for caching downloaded "
             + "flashing files. Should be on the same filesystem as java.io.tmpdir.  Consider "
             + "changing the java.io.tmpdir property if you want to move downloads to a different "
@@ -107,6 +112,12 @@ public class HostOptions implements IHostOptions {
     @Override
     public File getFastbootTmpDir() {
         return mFastbootTmpDir;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean isFastbootdEnable() {
+        return mEnableFastbootdMode;
     }
 
     /** {@inheritDoc} */

@@ -40,6 +40,8 @@ import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.NativeDevice.RebootMode;
+import com.android.tradefed.host.HostOptions;
+import com.android.tradefed.host.IHostOptions;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
@@ -93,6 +95,7 @@ public class NativeDeviceTest {
     private IRunUtil mMockRunUtil;
     private IWifiHelper mMockWifi;
     private IDeviceMonitor mMockDvcMonitor;
+    private IHostOptions mHostOptions;
 
     /**
      * A {@link TestDevice} that is suitable for running tests against
@@ -114,10 +117,16 @@ public class NativeDeviceTest {
         protected IRunUtil getRunUtil() {
             return mMockRunUtil;
         }
+
+        @Override
+        IHostOptions getHostOptions() {
+            return mHostOptions;
+        }
     }
 
     @Before
     public void setUp() throws Exception {
+        mHostOptions = new HostOptions();
         mMockIDevice = EasyMock.createMock(IDevice.class);
         EasyMock.expect(mMockIDevice.getSerialNumber()).andReturn(MOCK_DEVICE_SERIAL).anyTimes();
         mMockRecovery = EasyMock.createMock(IDeviceRecovery.class);
@@ -1658,7 +1667,7 @@ public class NativeDeviceTest {
     @Test
     public void testRebootIntoBootloader() throws Exception {
         NativeDevice testDevice =
-                new NativeDevice(mMockIDevice, mMockStateMonitor, mMockDvcMonitor) {
+                new TestableAndroidNativeDevice() {
                     @Override
                     public TestDeviceState getDeviceState() {
                         return TestDeviceState.ONLINE;
@@ -1708,7 +1717,7 @@ public class NativeDeviceTest {
     @Test
     public void testRebootIntoFastbootd() throws Exception {
         NativeDevice testDevice =
-                new NativeDevice(mMockIDevice, mMockStateMonitor, mMockDvcMonitor) {
+                new TestableAndroidNativeDevice() {
                     @Override
                     public TestDeviceState getDeviceState() {
                         return TestDeviceState.ONLINE;

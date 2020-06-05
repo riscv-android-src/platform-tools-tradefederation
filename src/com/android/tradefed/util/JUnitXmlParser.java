@@ -69,6 +69,7 @@ public class JUnitXmlParser extends AbstractXmlParser {
         private static final String TESTCASE_TAG = "testcase";
         private TestDescription mCurrentTest = null;
         private StringBuffer mFailureContent = null;
+        private String mCurrentMessage = null;
         private long mRunTimeMillis = 0L;
 
         /**
@@ -78,6 +79,7 @@ public class JUnitXmlParser extends AbstractXmlParser {
         public void startElement(String uri, String localName, String name, Attributes attributes)
                 throws SAXException {
             mFailureContent = null;
+            mCurrentMessage = null;
             if (TESTSUITE_TAG.equalsIgnoreCase(name)) {
                 // top level tag - maps to a test run in TF terminology
                 String testSuiteName = getMandatoryAttribute(name, "name", attributes);
@@ -108,8 +110,7 @@ public class JUnitXmlParser extends AbstractXmlParser {
                 mFailureContent = new StringBuffer();
                 String value = attributes.getValue("message");
                 if (value != null) {
-                    mFailureContent.append(value);
-                    mFailureContent.append(". ");
+                    mCurrentMessage = value + ".";
                 }
             }
         }
@@ -130,6 +131,12 @@ public class JUnitXmlParser extends AbstractXmlParser {
          */
         @Override
         public void endElement(String uri, String localName, String name) {
+            if (mFailureContent != null && mFailureContent.length() == 0) {
+                // If there was no error content, use the error message if any.
+                if (mCurrentMessage != null) {
+                    mFailureContent.append(mCurrentMessage);
+                }
+            }
             if (TESTSUITE_TAG.equalsIgnoreCase(name)) {
                 mTestListener.testRunEnded(mRunTimeMillis, new HashMap<String, Metric>());
             }
@@ -141,6 +148,7 @@ public class JUnitXmlParser extends AbstractXmlParser {
                         mFailureContent.toString());
             }
             mFailureContent = null;
+            mCurrentMessage = null;
         }
 
         /**

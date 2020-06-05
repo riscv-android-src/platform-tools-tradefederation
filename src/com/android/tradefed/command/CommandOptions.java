@@ -67,7 +67,9 @@ public class CommandOptions implements ICommandOptions {
             "the minimum invocation time in ms when in loop mode.")
     private Long mMinLoopTime = 10L * 60L * 1000L;
 
-    @Option(name = "test-tag", description = "Identifier for the invocation during reporting.")
+    public static final String TEST_TAG_OPTION = "test-tag";
+
+    @Option(name = TEST_TAG_OPTION, description = "Identifier for the invocation during reporting.")
     private String mTestTag = "stub";
 
     @Option(name = "test-tag-suffix", description = "suffix for test-tag. appended to test-tag to "
@@ -208,7 +210,7 @@ public class CommandOptions implements ICommandOptions {
     @Option(
             name = "early-device-release",
             description = "Feature flag to release the device as soon as done with it.")
-    private boolean mEnableEarlyDeviceRelease = false;
+    private boolean mEnableEarlyDeviceRelease = true;
 
     @Option(
             name = "dynamic-download-args",

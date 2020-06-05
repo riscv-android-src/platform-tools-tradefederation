@@ -19,12 +19,18 @@ import com.android.ddmlib.AdbCommandRejectedException;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log;
 import com.android.ddmlib.TimeoutException;
+import com.android.helper.aoa.UsbDevice;
+import com.android.helper.aoa.UsbHelper;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
+
+import com.google.common.annotations.VisibleForTesting;
 
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
@@ -39,6 +45,8 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
 
     /** the time in ms to wait before beginning recovery attempts */
     protected static final long INITIAL_PAUSE_TIME = 5 * 1000;
+
+    private static final long WAIT_FOR_DEVICE_OFFLINE = 20 * 1000;
 
     /**
      * The number of attempts to check if device is in bootloader.
@@ -120,10 +128,13 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
         // ensure bootloader state is updated
         monitor.waitForDeviceBootloaderStateUpdate();
 
-        if (monitor.getDeviceState().equals(TestDeviceState.FASTBOOT)) {
-            Log.i(LOG_TAG, String.format(
-                    "Found device %s in fastboot but expected online. Rebooting...",
-                    monitor.getSerialNumber()));
+        TestDeviceState state = monitor.getDeviceState();
+        if (TestDeviceState.FASTBOOT.equals(state) || TestDeviceState.FASTBOOTD.equals(state)) {
+            Log.i(
+                    LOG_TAG,
+                    String.format(
+                            "Found device %s in %s but expected online. Rebooting...",
+                            monitor.getSerialNumber(), state));
             // TODO: retry if failed
             getRunUtil().runTimedCmd(mFastbootWaitTime, mFastbootPath, "-s",
                     monitor.getSerialNumber(), "reboot");
@@ -207,7 +218,7 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
         if (!mDisableUnresponsiveReboot) {
             Log.i(LOG_TAG, String.format(
                     "Device %s unresponsive. Rebooting...", monitor.getSerialNumber()));
-            rebootDevice(device);
+            rebootDevice(device, null);
             IDevice newdevice = monitor.waitForDeviceOnline(mOnlineWaitTime);
             if (newdevice == null) {
                 handleDeviceNotAvailable(monitor, false);
@@ -233,8 +244,37 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
      */
     protected void handleDeviceNotAvailable(IDeviceStateMonitor monitor, boolean recoverTillOnline)
             throws DeviceNotAvailableException {
-        throw new DeviceNotAvailableException(String.format("Could not find device %s",
-                monitor.getSerialNumber()), monitor.getSerialNumber());
+        String serial = monitor.getSerialNumber();
+        try (UsbHelper usb = getUsbHelper()) {
+            try (UsbDevice usbDevice = usb.getDevice(serial)) {
+                if (usbDevice != null) {
+                    CLog.d("Resetting USB port for device '%s'", serial);
+                    usbDevice.reset();
+                    if (recoverTillOnline) {
+                        if (monitor.waitForDeviceOnline() != null) {
+
+                            // Success
+                            CLog.d("Device recovered from USB reset and is online.");
+                            InvocationMetricLogger.addInvocationMetrics(
+                                    InvocationMetricKey.DEVICE_RECOVERY, 1);
+                            return;
+                        }
+                    } else if (monitor.waitForDeviceAvailable() != null) {
+                        // Success
+                        CLog.d("Device recovered from USB reset and is available.");
+                        InvocationMetricLogger.addInvocationMetrics(
+                                InvocationMetricKey.DEVICE_RECOVERY, 1);
+                        return;
+                    }
+                    // Track the failure
+                    InvocationMetricLogger.addInvocationMetrics(
+                            InvocationMetricKey.DEVICE_RECOVERY_FAIL, 1);
+                    CLog.w("USB reset recovery was unsuccessful");
+                }
+            }
+        }
+        throw new DeviceNotAvailableException(
+                String.format("Could not find device %s", monitor.getSerialNumber()), serial);
     }
 
     /**
@@ -262,30 +302,126 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
                 return;
             }
         }
-        handleDeviceBootloaderNotAvailable(monitor);
+        handleDeviceBootloaderOrFastbootNotAvailable(monitor, "bootloader");
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void recoverDeviceFastbootd(IDeviceStateMonitor monitor)
+            throws DeviceNotAvailableException {
+        // device may have just gone offline
+        // wait a small amount to give device state a chance to settle
+        // TODO - see if there is better way to handle this
+        Log.i(
+                LOG_TAG,
+                String.format(
+                        "Pausing for %d for %s to recover",
+                        INITIAL_PAUSE_TIME, monitor.getSerialNumber()));
+        getRunUtil().sleep(INITIAL_PAUSE_TIME);
+
+        // poll and wait for device to return to valid state
+        long pollTime = mBootloaderWaitTime / BOOTLOADER_POLL_ATTEMPTS;
+        for (int i = 0; i < BOOTLOADER_POLL_ATTEMPTS; i++) {
+            if (monitor.waitForDeviceFastbootd(mFastbootPath, pollTime)) {
+                handleDeviceFastbootdUnresponsive(monitor);
+                // passed above check, abort
+                return;
+            } else if (monitor.getDeviceState() == TestDeviceState.ONLINE) {
+                handleDeviceOnlineExpectedFasbootd(monitor);
+                return;
+            }
+        }
+        handleDeviceBootloaderOrFastbootNotAvailable(monitor, "fastbootd");
     }
 
     /**
      * Handle condition where device is online, but should be in bootloader state.
-     * <p/>
-     * If this method
+     *
+     * <p>If this method
+     *
      * @param monitor
      * @throws DeviceNotAvailableException
      */
-    protected void handleDeviceOnlineExpectedBootloader(final IDeviceStateMonitor monitor)
+    private void handleDeviceOnlineExpectedBootloader(final IDeviceStateMonitor monitor)
             throws DeviceNotAvailableException {
-        Log.i(LOG_TAG, String.format("Found device %s online but expected fastboot.",
-            monitor.getSerialNumber()));
+        Log.i(
+                LOG_TAG,
+                String.format(
+                        "Found device %s online but expected bootloader.",
+                        monitor.getSerialNumber()));
         // call waitForDeviceOnline to get handle to IDevice
         IDevice device = monitor.waitForDeviceOnline(mOnlineWaitTime);
         if (device == null) {
-            handleDeviceBootloaderNotAvailable(monitor);
+            handleDeviceBootloaderOrFastbootNotAvailable(monitor, "bootloader");
             return;
         }
-        rebootDeviceIntoBootloader(device);
+        rebootDevice(device, "bootloader");
         if (!monitor.waitForDeviceBootloader(mBootloaderWaitTime)) {
             throw new DeviceNotAvailableException(String.format(
                     "Device %s not in bootloader after reboot", monitor.getSerialNumber()),
+                    monitor.getSerialNumber());
+        }
+    }
+
+    private void handleDeviceOnlineExpectedFasbootd(final IDeviceStateMonitor monitor)
+            throws DeviceNotAvailableException {
+        Log.i(
+                LOG_TAG,
+                String.format(
+                        "Found device %s online but expected fastbootd.",
+                        monitor.getSerialNumber()));
+        // call waitForDeviceOnline to get handle to IDevice
+        IDevice device = monitor.waitForDeviceOnline(mOnlineWaitTime);
+        if (device == null) {
+            handleDeviceBootloaderOrFastbootNotAvailable(monitor, "fastbootd");
+            return;
+        }
+        rebootDevice(device, "fastboot");
+        if (!monitor.waitForDeviceFastbootd(mFastbootPath, mBootloaderWaitTime)) {
+            throw new DeviceNotAvailableException(
+                    String.format(
+                            "Device %s not in fastbootd after reboot", monitor.getSerialNumber()),
+                    monitor.getSerialNumber());
+        }
+    }
+
+    private void handleDeviceFastbootdUnresponsive(IDeviceStateMonitor monitor)
+            throws DeviceNotAvailableException {
+        CLog.i(
+                "Found device %s in fastbootd but potentially unresponsive.",
+                monitor.getSerialNumber());
+        // TODO: retry reboot
+        getRunUtil()
+                .runTimedCmd(
+                        mFastbootWaitTime,
+                        mFastbootPath,
+                        "-s",
+                        monitor.getSerialNumber(),
+                        "reboot",
+                        "fastboot");
+        // wait for device to reboot
+        monitor.waitForDeviceNotAvailable(WAIT_FOR_DEVICE_OFFLINE);
+        if (!monitor.waitForDeviceFastbootd(mFastbootPath, mBootloaderWaitTime)) {
+            throw new DeviceNotAvailableException(
+                    String.format(
+                            "Device %s not in fastbootd after reboot", monitor.getSerialNumber()),
+                    monitor.getSerialNumber());
+        }
+        // running a meaningless command just to see whether the device is responsive.
+        CommandResult result =
+                getRunUtil()
+                        .runTimedCmd(
+                                mFastbootWaitTime,
+                                mFastbootPath,
+                                "-s",
+                                monitor.getSerialNumber(),
+                                "getvar",
+                                "product");
+        if (result.getStatus().equals(CommandStatus.TIMED_OUT)) {
+            throw new DeviceNotAvailableException(
+                    String.format(
+                            "Device %s is in fastbootd but unresponsive",
+                            monitor.getSerialNumber()),
                     monitor.getSerialNumber());
         }
     }
@@ -294,7 +430,7 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
      * @param monitor
      * @throws DeviceNotAvailableException
      */
-    protected void handleDeviceBootloaderUnresponsive(IDeviceStateMonitor monitor)
+    private void handleDeviceBootloaderUnresponsive(IDeviceStateMonitor monitor)
             throws DeviceNotAvailableException {
         CLog.i("Found device %s in fastboot but potentially unresponsive.",
                 monitor.getSerialNumber());
@@ -319,32 +455,14 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
     }
 
     /**
-     * Reboot device into bootloader.
+     * Reboot device into given mode.
      *
      * @param device the {@link IDevice} to reboot.
+     * @param mode The mode into which to reboot the device. null being regular reboot.
      */
-    protected void rebootDeviceIntoBootloader(IDevice device) {
+    private void rebootDevice(IDevice device, String mode) {
         try {
-            device.reboot("bootloader");
-        } catch (IOException e) {
-            Log.w(LOG_TAG, String.format("failed to reboot %s: %s", device.getSerialNumber(),
-                    e.getMessage()));
-        } catch (TimeoutException e) {
-            Log.w(LOG_TAG, String.format("failed to reboot %s: timeout", device.getSerialNumber()));
-        } catch (AdbCommandRejectedException e) {
-            Log.w(LOG_TAG, String.format("failed to reboot %s: %s", device.getSerialNumber(),
-                    e.getMessage()));
-        }
-    }
-
-    /**
-     * Reboot device into bootloader.
-     *
-     * @param device the {@link IDevice} to reboot.
-     */
-    protected void rebootDevice(IDevice device) {
-        try {
-            device.reboot(null);
+            device.reboot(mode);
         } catch (IOException e) {
             Log.w(LOG_TAG, String.format("failed to reboot %s: %s", device.getSerialNumber(),
                     e.getMessage()));
@@ -362,10 +480,10 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
      * @param monitor the {@link IDeviceStateMonitor}
      * @throws DeviceNotAvailableException
      */
-    protected void handleDeviceBootloaderNotAvailable(final IDeviceStateMonitor monitor)
-            throws DeviceNotAvailableException {
-        throw new DeviceNotAvailableException(String.format(
-                "Could not find device %s in bootloader", monitor.getSerialNumber()),
+    private void handleDeviceBootloaderOrFastbootNotAvailable(
+            final IDeviceStateMonitor monitor, String mode) throws DeviceNotAvailableException {
+        throw new DeviceNotAvailableException(
+                String.format("Could not find device %s in %s", monitor.getSerialNumber(), mode),
                 monitor.getSerialNumber());
     }
 
@@ -377,5 +495,10 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
             throws DeviceNotAvailableException {
         throw new DeviceNotAvailableException("device recovery not implemented",
                 monitor.getSerialNumber());
+    }
+
+    @VisibleForTesting
+    UsbHelper getUsbHelper() {
+        return new UsbHelper();
     }
 }

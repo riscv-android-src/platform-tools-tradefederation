@@ -6,7 +6,7 @@ This document explains the practical steps for contributing code to atest.
 1. [Identify the code you should work on](#identify-the-code-you-should-work-on)
 2. [Working on the Python Code](#working-on-the-python-code)
 3. [Working on the TradeFed Code](#working-on-the-tradefed-code)
-4. [Working on the VTS-TradeFed Code](#working-on-the-vts-tradefed-code)
+4. [Working on the VTS10-TradeFed Code](#working-on-the-vts10-tradefed-code)
 5. [Working on the Robolectric Code](#working-on-the-robolectric-code)
 
 
@@ -44,7 +44,7 @@ code.
 Each test runner will have a different workflow. Atest currently
 supports the following test runners:
 - TradeFed
-- VTS-TradeFed
+- VTS10-TradeFed
 - Robolectric
 
 
@@ -121,7 +121,7 @@ To run ALL the TradeFed unittests, enter:
 
 Before submitting code you should run all the TradeFed tests.
 
-## <a name="working-on-the-vts-tradefed-code">Working on the VTS-TradeFed Code</a>
+## <a name="working-on-the-vts10-tradefed-code">Working on the VTS10-TradeFed Code</a>
 
 ##### Where does the VTS10-TradeFed code live?
 

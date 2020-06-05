@@ -36,9 +36,12 @@ import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.proto.LogFileProto.LogFileInfo;
 import com.android.tradefed.result.proto.TestRecordProto.ChildReference;
 import com.android.tradefed.result.proto.TestRecordProto.DebugInfo;
+import com.android.tradefed.result.proto.TestRecordProto.DebugInfoContext;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.result.proto.TestRecordProto.TestRecord;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
 import com.android.tradefed.util.MultiMap;
+import com.android.tradefed.util.SerializationUtil;
 import com.android.tradefed.util.proto.TestRecordProtoUtil;
 
 import com.google.common.base.Splitter;
@@ -75,6 +78,8 @@ public class ProtoResultParser {
     private boolean mInvocationStarted = false;
     private boolean mInvocationEnded = false;
     private boolean mFirstModule = true;
+    /** Track the name of the module in progress. */
+    private String mModuleInProgress = null;
 
     /** Ctor. */
     public ProtoResultParser(
@@ -187,6 +192,26 @@ public class ProtoResultParser {
         return mInvocationEnded;
     }
 
+    /** Returns the id of the module in progress. Returns null if none in progress. */
+    public String getModuleInProgress() {
+        return mModuleInProgress;
+    }
+
+    /** If needed to ensure consistent reporting, complete the events of the module. */
+    public void completeModuleEvents() {
+        if (getModuleInProgress() == null) {
+            return;
+        }
+        mListener.testRunStarted(getModuleInProgress(), 0);
+        FailureDescription failure =
+                FailureDescription.create(
+                        "Module was interrupted after starting, results are incomplete.",
+                        FailureStatus.INFRA_FAILURE);
+        mListener.testRunFailed(failure);
+        mListener.testRunEnded(0L, new HashMap<String, Metric>());
+        mListener.testModuleEnded();
+    }
+
     private void evalChildrenProto(List<ChildReference> children, boolean isInRun) {
         for (ChildReference child : children) {
             TestRecord childProto = child.getInlineTestRecord();
@@ -274,9 +299,24 @@ public class ProtoResultParser {
         }
 
         if (endInvocationProto.hasDebugInfo()) {
-            // TODO: Re-interpret the exception with proper type.
             String trace = endInvocationProto.getDebugInfo().getTrace();
-            mListener.invocationFailed(new Throwable(trace));
+            Throwable invocationError = new Throwable(trace);
+            if (endInvocationProto.getDebugInfo().hasDebugInfoContext()) {
+                DebugInfoContext failureContext =
+                        endInvocationProto.getDebugInfo().getDebugInfoContext();
+                if (!Strings.isNullOrEmpty(failureContext.getErrorType())) {
+                    try {
+                        invocationError =
+                                (Throwable)
+                                        SerializationUtil.deserialize(
+                                                failureContext.getErrorType());
+                    } catch (IOException e) {
+                        CLog.e("Failed to deserialize the invocation exception:");
+                        CLog.e(e);
+                    }
+                }
+            }
+            mListener.invocationFailed(invocationError);
         }
 
         log("Invocation ended proto");
@@ -311,12 +351,13 @@ public class ProtoResultParser {
                     InvocationContext.fromProto(anyDescription.unpack(Context.class));
             String message = "Test module started proto";
             if (moduleContext.getAttributes().containsKey(ModuleDefinition.MODULE_ID)) {
-                message +=
-                        (": "
-                                + moduleContext
-                                        .getAttributes()
-                                        .getUniqueMap()
-                                        .get(ModuleDefinition.MODULE_ID));
+                String moduleId =
+                        moduleContext
+                                .getAttributes()
+                                .getUniqueMap()
+                                .get(ModuleDefinition.MODULE_ID);
+                message += (": " + moduleId);
+                mModuleInProgress = moduleId;
             }
             log(message);
             mListener.testModuleStarted(moduleContext);
@@ -334,6 +375,7 @@ public class ProtoResultParser {
         handleLogs(moduleProto);
         log("Test module ended proto");
         mListener.testModuleEnded();
+        mModuleInProgress = null;
     }
 
     /** Handles the test run level of the invocation. */
