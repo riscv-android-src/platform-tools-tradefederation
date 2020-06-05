@@ -22,21 +22,9 @@ import com.android.tradefed.util.StreamUtil;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.HashMap;
-import java.util.Map;
 
 /** A {@link ILeveledLogOutput} that directs log messages to an output stream and to stdout. */
 public abstract class BaseStreamLogger<OS extends OutputStream> extends BaseLeveledLogOutput {
-
-    /**
-     * Map of log tag to a level they are forced at for writing to log file purpose. This ensure
-     * that some logs we have less control over can still be regulated.
-     */
-    private static final Map<String, LogLevel> FORCED_LOG_LEVEL = new HashMap<>();
-
-    static {
-        FORCED_LOG_LEVEL.put("ddms", LogLevel.WARN);
-    }
 
     @Option(name = "log-level", description = "the minimum log level to log.")
     private LogLevel mLogLevel = LogLevel.DEBUG;
@@ -109,8 +97,8 @@ public abstract class BaseStreamLogger<OS extends OutputStream> extends BaseLeve
 
     // Determines whether a message should be written to the output stream.
     private boolean shouldWrite(String tag, LogLevel messageLogLevel, LogLevel invocationLogLevel) {
-        LogLevel forcedLevel = FORCED_LOG_LEVEL.get(tag);
-        if (forcedLevel == null) {
+        LogLevel forcedLevel = getForcedVerbosityMap().get(tag);
+        if (forcedLevel == null || !shouldForceVerbosity()) {
             return true;
         }
         // Use the highest level of our forced and invocation to decide if we should log the

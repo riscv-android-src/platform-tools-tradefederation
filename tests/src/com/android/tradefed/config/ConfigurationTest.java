@@ -752,5 +752,29 @@ public class ConfigurationTest extends TestCase {
                 original.getDeviceConfig().get(0).getTargetPreparers().get(0),
                 copy.getDeviceConfig().get(0).getTargetPreparers().get(0));
         assertNotEquals(original.getTests().get(0), copy.getTests().get(0));
+        copy.validateOptions();
+    }
+
+    public void testDeepClone_innerDevice() throws Exception {
+        Configuration original =
+                (Configuration)
+                        ConfigurationFactory.getInstance()
+                                .createConfigurationFromArgs(
+                                        new String[] {"instrumentations"}, null, null);
+        IConfiguration copy =
+                original.partialDeepClone(
+                        Arrays.asList(
+                                Configuration.TARGET_PREPARER_TYPE_NAME,
+                                Configuration.TEST_TYPE_NAME),
+                        null);
+        assertNotEquals(
+                original.getDeviceConfigByName(ConfigurationDef.DEFAULT_DEVICE_NAME),
+                copy.getDeviceConfigByName(ConfigurationDef.DEFAULT_DEVICE_NAME));
+        assertNotEquals(original.getTargetPreparers().get(0), copy.getTargetPreparers().get(0));
+        assertNotEquals(
+                original.getDeviceConfig().get(0).getTargetPreparers().get(0),
+                copy.getDeviceConfig().get(0).getTargetPreparers().get(0));
+        assertNotEquals(original.getTests().get(0), copy.getTests().get(0));
+        copy.validateOptions();
     }
 }

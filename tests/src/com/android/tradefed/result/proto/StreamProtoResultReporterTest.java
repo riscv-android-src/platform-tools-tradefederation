@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.result.proto;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 import com.android.tradefed.config.ConfigurationDescriptor;
@@ -30,6 +31,7 @@ import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
+import org.easymock.Capture;
 import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
@@ -123,6 +125,29 @@ public class StreamProtoResultReporterTest {
         assertNull(receiver.getError());
     }
 
+    /** Once the join receiver is done, we don't parse any more events. */
+    @Test
+    public void testStream_stopParsing() throws Exception {
+        StreamProtoReceiver receiver =
+                new StreamProtoReceiver(mMockListener, mMainInvocationContext, true);
+        OptionSetter setter = new OptionSetter(mReporter);
+        try {
+            setter.setOptionValue(
+                    "proto-report-port", Integer.toString(receiver.getSocketServerPort()));
+            // No calls on the mocks
+            EasyMock.replay(mMockListener);
+            // If we join, then we will stop parsing events
+            receiver.joinReceiver(100);
+            mReporter.invocationStarted(mInvocationContext);
+            // Invocation ends
+            mReporter.invocationEnded(500L);
+        } finally {
+            receiver.close();
+        }
+        EasyMock.verify(mMockListener);
+        assertNull(receiver.getError());
+    }
+
     @Test
     public void testStream_noInvocationReporting() throws Exception {
         StreamProtoReceiver receiver =
@@ -186,6 +211,42 @@ public class StreamProtoResultReporterTest {
         }
         EasyMock.verify(mMockListener);
         assertNull(receiver.getError());
+    }
+
+    @Test
+    public void testStream_incompleteModule() throws Exception {
+        StreamProtoReceiver receiver =
+                new StreamProtoReceiver(mMockListener, mMainInvocationContext, true);
+        OptionSetter setter = new OptionSetter(mReporter);
+        Capture<FailureDescription> capture = new Capture<>();
+        try {
+            setter.setOptionValue(
+                    "proto-report-port", Integer.toString(receiver.getSocketServerPort()));
+            // Verify mocks
+            mMockListener.invocationStarted(EasyMock.anyObject());
+
+            mMockListener.testModuleStarted(EasyMock.anyObject());
+            mMockListener.testRunStarted(EasyMock.eq("arm64 module1"), EasyMock.eq(0));
+            mMockListener.testRunFailed(EasyMock.capture(capture));
+            mMockListener.testRunEnded(
+                    EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
+            mMockListener.testModuleEnded();
+
+            EasyMock.replay(mMockListener);
+            mReporter.invocationStarted(mInvocationContext);
+            // Run modules
+            mReporter.testModuleStarted(createModuleContext("arm64 module1"));
+            // It stops unexpectedly
+        } finally {
+            receiver.joinReceiver(2000);
+            receiver.close();
+            receiver.completeModuleEvents();
+        }
+        EasyMock.verify(mMockListener);
+        assertNull(receiver.getError());
+        assertEquals(
+                "Module was interrupted after starting, results are incomplete.",
+                capture.getValue().getErrorMessage());
     }
 
     /** Helper to create a module context. */

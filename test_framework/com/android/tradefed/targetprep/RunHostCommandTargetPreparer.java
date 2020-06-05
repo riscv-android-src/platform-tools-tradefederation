@@ -140,7 +140,7 @@ public class RunHostCommandTargetPreparer extends BaseTargetPreparer
 
     /** {@inheritDoc} */
     @Override
-    public void setUp(TestInformation testInfo)
+    public final void setUp(TestInformation testInfo)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
         if (mWorkDir != null) {
             getRunUtil().setWorkingDir(mWorkDir);

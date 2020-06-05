@@ -18,7 +18,6 @@ package com.android.tradefed.invoker;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.build.BuildInfo;
-import com.android.tradefed.build.BuildInfoKey;
 import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
@@ -42,6 +41,7 @@ import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.invoker.logger.TfObjectTracker;
 import com.android.tradefed.invoker.shard.IShardHelper;
+import com.android.tradefed.invoker.shard.TestsPoolPoller;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
@@ -63,6 +63,8 @@ import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.ITestFilterReceiver;
+import com.android.tradefed.testtype.retry.IAutoRetriableTest;
 import com.android.tradefed.testtype.suite.ITestSuite;
 import com.android.tradefed.testtype.suite.ModuleListener;
 import com.android.tradefed.util.CommandResult;
@@ -89,7 +91,6 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 /**
  * Class that describes all the invocation steps: build download, target_prep, run tests, clean up.
@@ -157,7 +158,6 @@ public class InvocationExecution implements IInvocationExecution {
                 // TODO: remove build update when reporting is done on context
                 updateBuild(info, config);
                 linkExternalDirs(info, testInfo);
-                info.setTestResourceBuild(config.isDeviceConfiguredFake(currentDeviceName));
 
                 if (config.getCommandOptions().shouldUseReplicateSetup()) {
                     buildReplicat = info;
@@ -171,8 +171,14 @@ public class InvocationExecution implements IInvocationExecution {
                 testInfo.getContext().addDeviceBuildInfo(currentDeviceName, errorBuild);
             }
             throw e;
+        } catch (RuntimeException re) {
+            if (currentDeviceName != null) {
+                IBuildInfo errorBuild = new BuildInfo();
+                updateBuild(errorBuild, config);
+                testInfo.getContext().addDeviceBuildInfo(currentDeviceName, errorBuild);
+            }
+            throw re;
         }
-        createSharedResources(testInfo);
         setBinariesVersion(testInfo.getContext());
         return true;
     }
@@ -339,12 +345,7 @@ public class InvocationExecution implements IInvocationExecution {
             if (device instanceof ITestLoggerReceiver) {
                 ((ITestLoggerReceiver) context.getDevice(deviceName)).setTestLogger(logger);
             }
-            device.preInvocationSetup(
-                    context.getBuildInfo(deviceName),
-                    context.getBuildInfos()
-                            .stream()
-                            .filter(buildInfo -> buildInfo.isTestResourceBuild())
-                            .collect(Collectors.toList()));
+            device.preInvocationSetup(context.getBuildInfo(deviceName));
         }
     }
 
@@ -585,12 +586,17 @@ public class InvocationExecution implements IInvocationExecution {
                 // Handle the no-retry use case
                 if (!decision.isAutoRetryEnabled()
                         || RetryStrategy.NO_RETRY.equals(decision.getRetryStrategy())
-                        || test instanceof ITestSuite) {
+                        || test instanceof ITestSuite
+                        // TODO: Handle auto-retry in local-sharding for non-suite
+                        || test instanceof TestsPoolPoller
+                        // If test doesn't support auto-retry
+                        || (!(test instanceof ITestFilterReceiver)
+                                && !(test instanceof IAutoRetriableTest))) {
                     runTest(config, info, listener, test);
                     remainingTests.remove(test);
                     continue;
                 }
-
+                CLog.d("Using RetryLogSaverResultForwarder to forward results.");
                 ModuleListener mainGranularRunListener = new ModuleListener(null);
                 RetryLogSaverResultForwarder runListener =
                         initializeListeners(config, listener, mainGranularRunListener);
@@ -644,23 +650,6 @@ public class InvocationExecution implements IInvocationExecution {
     }
 
     @Override
-    public boolean resetBuildAndReschedule(
-            Throwable exception,
-            ITestInvocationListener listener,
-            IConfiguration config,
-            IInvocationContext context) {
-        if (!(exception instanceof BuildError) && !(exception.getCause() instanceof BuildError)) {
-            for (String deviceName : context.getDeviceConfigNames()) {
-                config.getDeviceConfigByName(deviceName)
-                        .getBuildProvider()
-                        .buildNotTested(context.getBuildInfo(deviceName));
-            }
-            return true;
-        }
-        return false;
-    }
-
-    @Override
     public void reportLogs(ITestDevice device, ITestLogger listener, Stage stage) {
         if (device == null) {
             return;
@@ -705,10 +694,6 @@ public class InvocationExecution implements IInvocationExecution {
         } else if (Strings.isNullOrEmpty(info.getTestTag())) {
             // We ensure that that a default test-tag is always available.
             info.setTestTag("stub");
-        } else {
-            CLog.w(
-                    "Using the test-tag from the build_provider. Consider updating your config to"
-                            + " have no alias/namespace in front of test-tag.");
         }
     }
 
@@ -867,39 +852,6 @@ public class InvocationExecution implements IInvocationExecution {
             CLog.e(e);
         }
         return null;
-    }
-
-    /** Populate the shared resources directory for all non-resource build */
-    private void createSharedResources(TestInformation testInfo) {
-        List<IBuildInfo> infos = testInfo.getContext().getBuildInfos();
-        if (infos.size() <= 1) {
-            return;
-        }
-        try {
-            for (IBuildInfo info : infos) {
-                if (info.isTestResourceBuild()) {
-                    // Create a reception sub-folder for each build info resource to avoid mixing
-                    String name =
-                            String.format(
-                                    "%s_%s_%s",
-                                    info.getBuildBranch(),
-                                    info.getBuildId(),
-                                    info.getBuildFlavor());
-                    File buildDir = FileUtil.createTempDir(name, testInfo.dependenciesFolder());
-                    for (BuildInfoFileKey key : BuildInfoKey.SHARED_KEY) {
-                        File f = info.getFile(key);
-                        if (f == null) {
-                            continue;
-                        }
-                        File subDir = new File(buildDir, f.getName());
-                        FileUtil.symlinkFile(f, subDir);
-                    }
-                }
-            }
-        } catch (IOException e) {
-            CLog.e("Failed to create the shared resources dir.");
-            CLog.e(e);
-        }
     }
 
     private void setBinariesVersion(IInvocationContext context) {
