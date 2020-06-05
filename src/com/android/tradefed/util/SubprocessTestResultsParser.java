@@ -18,8 +18,8 @@ package com.android.tradefed.util;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
-import com.android.tradefed.invoker.logger.TfObjectTracker;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
+import com.android.tradefed.invoker.logger.TfObjectTracker;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ILogSaverListener;
@@ -86,6 +86,8 @@ public class SubprocessTestResultsParser implements Closeable {
     private EventReceiverThread mEventReceiver = null;
     private IInvocationContext mContext = null;
     private Long mStartTime = null;
+    // Ignore the testLog events, rely only on logAssociation
+    private boolean mIgnoreTestLog = true;
     // Keep track of which files we received TEST_LOG event from.
     private Set<String> mTestLogged = new HashSet<>();
 
@@ -226,6 +228,11 @@ public class SubprocessTestResultsParser implements Closeable {
             return mEventReceiver.getLocalPort();
         }
         return -1;
+    }
+
+    /** Whether or not to ignore testLog events and only rely on logAssociation. */
+    public void setIgnoreTestLog(boolean ignoreTestLog) {
+        mIgnoreTestLog = ignoreTestLog;
     }
 
     @Override
@@ -498,6 +505,10 @@ public class SubprocessTestResultsParser implements Closeable {
         @Override
         public void handleEvent(String eventJson) throws JSONException {
             TestLogEventInfo logInfo = new TestLogEventInfo(new JSONObject(eventJson));
+            if (mIgnoreTestLog) {
+                FileUtil.deleteFile(logInfo.mDataFile);
+                return;
+            }
             String name = String.format("subprocess-%s", logInfo.mDataName);
             try (InputStreamSource data = new FileInputStreamSource(logInfo.mDataFile, true)) {
                 mListener.testLog(name, logInfo.mLogType, data);
@@ -525,15 +536,32 @@ public class SubprocessTestResultsParser implements Closeable {
                             assosInfo.mDataName);
                     return;
                 }
-                try (InputStreamSource source = new FileInputStreamSource(path)) {
-                    LogDataType type = file.getType();
-                    // File might have already been compressed
-                    if (file.getPath().endsWith(LogDataType.ZIP.getFileExt())) {
-                        type = LogDataType.ZIP;
+                LogDataType type = file.getType();
+                // File might have already been compressed
+                File toLog = path;
+                File extractedDir = null;
+                if (file.getPath().endsWith(LogDataType.ZIP.getFileExt())) {
+                    // If file type is compressed, then keep that type.
+                    if (!file.getType().isCompressed()) {
+                        try {
+                            extractedDir = ZipUtil2.extractZipToTemp(path, assosInfo.mDataName);
+                            File[] files = extractedDir.listFiles();
+                            if (files.length == 1) {
+                                toLog = files[0];
+                            } else {
+                                type = LogDataType.ZIP;
+                            }
+                        } catch (IOException e) {
+                            CLog.e(e);
+                        }
                     }
-                    CLog.d("Logging %s from subprocess: %s ", assosInfo.mDataName, file.getPath());
+                }
+                try (InputStreamSource source = new FileInputStreamSource(toLog)) {
+                    CLog.d("Logging %s from subprocess: %s ", assosInfo.mDataName, toLog.getPath());
                     mListener.testLog(name, type, source);
                 }
+                FileUtil.recursiveDelete(extractedDir);
+                FileUtil.deleteFile(path);
             } else {
                 CLog.d(
                         "Logging %s from subprocess. url: %s, path: %s",
@@ -576,8 +604,9 @@ public class SubprocessTestResultsParser implements Closeable {
                         try {
                             InvocationMetricLogger.addInvocationMetrics(key, Long.parseLong(val));
                         } catch (NumberFormatException e) {
-                            CLog.e("Key %s should have a number value, instead was: %s", key, val);
-                            CLog.e(e);
+                            CLog.d("Key %s doesn't have a number value, was: %s.", key, val);
+                            // If it's not a number then, let the string concatenate
+                            InvocationMetricLogger.addInvocationMetrics(key, val);
                         }
                     } else {
                         InvocationMetricLogger.addInvocationMetrics(key, val);

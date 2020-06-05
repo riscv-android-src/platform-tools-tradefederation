@@ -79,6 +79,8 @@ public class RetryReschedulerTest {
                 .andStubReturn(mMockCommandOptions);
         EasyMock.expect(mRescheduledConfiguration.getDeviceRequirements())
                 .andStubReturn(mMockRequirements);
+        mRescheduledConfiguration.setDeviceRequirements(EasyMock.anyObject());
+        EasyMock.expectLastCall();
         EasyMock.expect(mRescheduledConfiguration.getLogOutput()).andStubReturn(new FileLogger());
         mMockLoader = EasyMock.createMock(ITestSuiteResultLoader.class);
         mMockRescheduler = EasyMock.createMock(IRescheduler.class);
@@ -111,7 +113,6 @@ public class RetryReschedulerTest {
         EasyMock.expect(mMockFactory.createConfigurationFromArgs(EasyMock.anyObject()))
                 .andReturn(mRescheduledConfiguration);
         EasyMock.expect(mMockLoader.loadPreviousResults()).andReturn(mFakeRecord);
-        mMockRequirements.setSerial();
 
         mRescheduledConfiguration.setTests(EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
@@ -156,7 +157,6 @@ public class RetryReschedulerTest {
         EasyMock.reset(mMockCommandOptions);
         mMockCommandOptions.setShardCount(2);
         mMockCommandOptions.setShardIndex(null);
-        mMockRequirements.setSerial("serial1", "serial2");
 
         mRescheduledConfiguration.setTests(EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);

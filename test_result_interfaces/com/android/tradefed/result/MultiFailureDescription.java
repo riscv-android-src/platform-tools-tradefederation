@@ -85,6 +85,17 @@ public final class MultiFailureDescription extends FailureDescription {
     }
 
     @Override
+    public boolean isRetriable() {
+        for (FailureDescription desc : mFailures) {
+            if (desc.isRetriable()) {
+                return true;
+            }
+        }
+        // If none of the sub-failures are retriable, don't retry.
+        return false;
+    }
+
+    @Override
     public String toString() {
         // Fallback to Single failure type
         if (mFailures.size() == 1) {

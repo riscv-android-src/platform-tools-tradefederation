@@ -49,6 +49,12 @@ public class StreamProtoReceiver implements Closeable {
     private long mExtraWaitTimeForEvents = 0L;
 
     /**
+     * Stop parsing events when this is set. This allows to avoid a thread parsing the events when
+     * we don't expect them anymore.
+     */
+    private boolean mStopParsing = false;
+
+    /**
      * Ctor.
      *
      * @param listener the {@link ITestInvocationListener} where to report the results.
@@ -184,12 +190,25 @@ public class StreamProtoReceiver implements Closeable {
             } catch (InterruptedException e) {
                 CLog.e(e);
                 throw new RuntimeException(e);
+            } finally {
+                mStopParsing = true;
             }
         }
         return true;
     }
 
+    /** If needed to ensure consistent reporting, complete the events of the module. */
+    public void completeModuleEvents() {
+        mParser.completeModuleEvents();
+    }
+
     private void parse(TestRecord receivedRecord) {
+        if (mStopParsing) {
+            CLog.i(
+                    "Skip parsing of %s. It came after joinReceiver.",
+                    receivedRecord.getTestRecordId());
+            return;
+        }
         try {
             TestLevel level = mParser.processNewProto(receivedRecord);
             if (TestLevel.MODULE.equals(level)) {

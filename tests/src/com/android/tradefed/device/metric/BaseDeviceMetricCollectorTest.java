@@ -112,7 +112,7 @@ public class BaseDeviceMetricCollectorTest {
         Mockito.verify(mMockListener, times(1)).testRunStopped(0L);
         Mockito.verify(mMockListener, times(1)).testRunEnded(0L, new HashMap<String, Metric>());
         Mockito.verify(mMockListener, times(1)).testModuleEnded();
-        Mockito.verify(mMockListener, times(1)).invocationFailed(Mockito.any());
+        Mockito.verify(mMockListener, times(1)).invocationFailed(Mockito.<Throwable>any());
         Mockito.verify(mMockListener, times(1)).invocationEnded(0L);
 
         Assert.assertSame(mMockListener, mBase.getInvocationListener());
@@ -198,7 +198,7 @@ public class BaseDeviceMetricCollectorTest {
         Mockito.verify(mMockListener, times(1)).testRunFailed("test run failed");
         Mockito.verify(mMockListener, times(1)).testRunStopped(0L);
         Mockito.verify(mMockListener, times(1)).testRunEnded(0L, new HashMap<String, Metric>());
-        Mockito.verify(mMockListener, times(1)).invocationFailed(Mockito.any());
+        Mockito.verify(mMockListener, times(1)).invocationFailed(Mockito.<Throwable>any());
         Mockito.verify(mMockListener, times(1)).invocationEnded(0L);
 
         Assert.assertSame(mMockListener, mBase.getInvocationListener());

@@ -41,10 +41,12 @@ import com.android.tradefed.invoker.sandbox.SandboxedInvocationExecution;
 import com.android.tradefed.log.ILogRegistry;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogFile;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.sandbox.ISandbox;
 import com.android.tradefed.targetprep.ITargetCleaner;
 import com.android.tradefed.targetprep.ITargetPreparer;
@@ -322,7 +324,7 @@ public class SandboxedInvocationExecutionTest {
         mContext.addInvocationAttribute("test", "test");
         // Device early preInvocationSetup was called and even if no tests run we still call tear
         // down
-        Mockito.verify(mMockDevice).preInvocationSetup(any(), any());
+        Mockito.verify(mMockDevice).preInvocationSetup(any());
         Mockito.verify(mMockDevice).postInvocationTearDown(null);
     }
 
@@ -379,18 +381,20 @@ public class SandboxedInvocationExecutionTest {
         doReturn(info).when(mMockProvider).getBuild();
 
         DeviceNotAvailableException exception = new DeviceNotAvailableException("reason", "serial");
-        doThrow(exception).when(mMockDevice).preInvocationSetup(eq(info), any());
+        doThrow(exception).when(mMockDevice).preInvocationSetup(eq(info));
 
         mInvocation.invoke(mContext, mConfig, mMockRescheduler, mMockListener);
         // No tests to run but we still call start/end
         Mockito.verify(mMockListener).invocationStarted(mContext);
-        Mockito.verify(mMockListener).invocationFailed(exception);
+        FailureDescription failure = FailureDescription.create(exception.getMessage());
+        failure.setCause(exception).setFailureStatus(FailureStatus.INFRA_FAILURE);
+        Mockito.verify(mMockListener).invocationFailed(failure);
         Mockito.verify(mMockListener).invocationEnded(0L);
         // Invocation did not start for real so context is not locked.
         mContext.addInvocationAttribute("test", "test");
         // Device early preInvocationSetup was called and even if no tests run we still call tear
         // down
-        Mockito.verify(mMockDevice).preInvocationSetup(any(), any());
+        Mockito.verify(mMockDevice).preInvocationSetup(any());
         Mockito.verify(mMockDevice).postInvocationTearDown(exception);
     }
 

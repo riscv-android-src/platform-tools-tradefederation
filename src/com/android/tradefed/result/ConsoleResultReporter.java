@@ -125,28 +125,33 @@ public class ConsoleResultReporter extends TestResultListener
     public void invocationEnded(long elapsedTime) {
         int[] results = mResultCountListener.getResultCounts();
         StringBuilder sb = new StringBuilder();
+        sb.append("========== Result Summary ==========");
         sb.append(String.format("\nResults summary for test-tag '%s': ", mTestTag));
         sb.append(mResultCountListener.getTotalTests());
         sb.append(" Tests [");
         sb.append(results[TestStatus.PASSED.ordinal()]);
-        sb.append(" Passed ");
+        sb.append(" Passed");
         if (results[TestStatus.FAILURE.ordinal()] > 0) {
+            sb.append(" ");
             sb.append(results[TestStatus.FAILURE.ordinal()]);
-            sb.append(" Failed ");
+            sb.append(" Failed");
         }
         if (results[TestStatus.IGNORED.ordinal()] > 0) {
+            sb.append(" ");
             sb.append(results[TestStatus.IGNORED.ordinal()]);
-            sb.append(" Ignored ");
+            sb.append(" Ignored");
         }
         if (results[TestStatus.ASSUMPTION_FAILURE.ordinal()] > 0) {
+            sb.append(" ");
             sb.append(results[TestStatus.ASSUMPTION_FAILURE.ordinal()]);
-            sb.append(" Assumption failures ");
+            sb.append(" Assumption failures");
         }
         if (results[TestStatus.INCOMPLETE.ordinal()] > 0) {
+            sb.append(" ");
             sb.append(results[TestStatus.INCOMPLETE.ordinal()]);
             sb.append(" Incomplete");
         }
-        sb.append("\r\n");
+        sb.append("] \r\n");
         print(sb.toString());
         if (mDisplayFailureSummary) {
             for (Entry<TestDescription, TestResult> entry : mFailures.entrySet()) {

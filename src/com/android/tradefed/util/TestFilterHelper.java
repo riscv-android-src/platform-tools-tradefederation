@@ -253,35 +253,40 @@ public class TestFilterHelper {
     public boolean shouldRun(Description desc, List<File> extraJars) {
         // We need to build the packageName for a description object
         Class<?> classObj = null;
+        URLClassLoader cl = null;
         try {
-            List<URL> urlList = new ArrayList<>();
-            for (File f : extraJars) {
-                urlList.add(f.toURI().toURL());
+            try {
+                List<URL> urlList = new ArrayList<>();
+                for (File f : extraJars) {
+                    urlList.add(f.toURI().toURL());
+                }
+                cl = URLClassLoader.newInstance(urlList.toArray(new URL[0]));
+                classObj = cl.loadClass(desc.getClassName());
+            } catch (MalformedURLException | ClassNotFoundException e) {
+                throw new IllegalArgumentException(
+                        String.format("Could not load Test class %s", classObj), e);
             }
-            URLClassLoader cl = URLClassLoader.newInstance(urlList.toArray(new URL[0]));
-            classObj = cl.loadClass(desc.getClassName());
-        } catch (MalformedURLException | ClassNotFoundException e) {
-            throw new IllegalArgumentException(String.format("Could not load Test class %s",
-                    classObj), e);
-        }
-        // If class is explicitly annotated to be excluded, exclude it.
-        if (isExcluded(Arrays.asList(classObj.getAnnotations()))) {
-            return false;
-        }
-        String packageName = classObj.getPackage().getName();
 
-        String className = desc.getClassName();
-        String methodName = String.format("%s#%s", className, desc.getMethodName());
-        if (!shouldRunFilter(packageName, className, methodName)) {
-            return false;
+            // If class is explicitly annotated to be excluded, exclude it.
+            if (isExcluded(Arrays.asList(classObj.getAnnotations()))) {
+                return false;
+            }
+            String packageName = classObj.getPackage().getName();
+            String className = desc.getClassName();
+            String methodName = String.format("%s#%s", className, desc.getMethodName());
+            if (!shouldRunFilter(packageName, className, methodName)) {
+                return false;
+            }
+            if (!shouldTestRun(desc)) {
+                return false;
+            }
+            return mIncludeFilters.isEmpty()
+                    || mIncludeFilters.contains(methodName)
+                    || mIncludeFilters.contains(className)
+                    || mIncludeFilters.contains(packageName);
+        } finally {
+            StreamUtil.close(cl);
         }
-        if (!shouldTestRun(desc)) {
-            return false;
-        }
-        return mIncludeFilters.isEmpty()
-                || mIncludeFilters.contains(methodName)
-                || mIncludeFilters.contains(className)
-                || mIncludeFilters.contains(packageName);
     }
 
     /**

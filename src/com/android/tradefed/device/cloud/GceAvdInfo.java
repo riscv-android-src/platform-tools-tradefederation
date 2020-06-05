@@ -251,5 +251,9 @@ public class GceAvdInfo {
                     InvocationMetricKey.CF_LAUNCH_CVD_TIME,
                     Double.valueOf(Double.parseDouble(launch_cvd_time) * 1000).longValue());
         }
+        if (!InvocationMetricLogger.getInvocationMetrics()
+                .containsKey(InvocationMetricKey.CF_INSTANCE_COUNT.toString())) {
+            InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.CF_INSTANCE_COUNT, 1);
+        }
     }
 }

@@ -88,7 +88,7 @@ public class ConsoleResultReporterTest {
     public void testSummary() {
         mResultReporter.testResult(mTest, createTestResult(TestStatus.PASSED));
         mResultReporter.invocationEnded(0);
-        Truth.assertThat(mOutput.toString()).contains("1 Tests [1 Passed ");
+        Truth.assertThat(mOutput.toString()).contains("1 Tests [1 Passed]");
     }
 
     @Test

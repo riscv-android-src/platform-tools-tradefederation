@@ -294,6 +294,15 @@ public class ConfigurationUtil {
     private static Set<File> dedupFiles(Set<File> origSet) {
         Map<String, File> newMap = new LinkedHashMap<>();
         for (File f : origSet) {
+            try {
+                if (!FileUtil.readStringFromFile(f).contains("<configuration")) {
+                    CLog.e("%s doesn't look like a test configuration.", f);
+                    continue;
+                }
+            } catch (IOException e) {
+                CLog.e(e);
+                continue;
+            }
             // Always keep the first found
             if (!newMap.keySet().contains(f.getName())) {
                 newMap.put(f.getName(), f);

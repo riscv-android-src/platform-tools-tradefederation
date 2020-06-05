@@ -24,7 +24,7 @@ public class TargetSetupError extends Exception {
 
     private static final long serialVersionUID = 2202987086655357201L;
 
-    private DeviceDescriptor mDescriptor = null;
+    private String mDeviceSerial = null;
 
     /**
      * Constructs a new (@link TargetSetupError} with a meaningful error message.
@@ -61,22 +61,34 @@ public class TargetSetupError extends Exception {
     }
 
     /**
-     * Constructs a new (@link TargetSetupError} with a meaningful error message, and a
-     * cause.
+     * Constructs a new (@link TargetSetupError} with a meaningful error message, and a cause.
      *
      * @param reason a detailed error message.
      * @param cause a {@link Throwable} capturing the original cause of the TargetSetupError
-     * @param descriptor the descriptor of the device concerned
+     * @param descriptor the descriptor of the device concerned, can be null.
      */
     public TargetSetupError(String reason, Throwable cause, DeviceDescriptor descriptor) {
-        super(reason + " " + descriptor, cause);
-        mDescriptor = descriptor;
+        this(reason, cause, descriptor, true);
     }
 
     /**
-     * Return the descriptor of the device associated with exception.
+     * Constructs a new (@link TargetSetupError} with a meaningful error message, and a cause.
+     *
+     * @param reason a detailed error message.
+     * @param cause a {@link Throwable} capturing the original cause of the TargetSetupError
+     * @param descriptor the descriptor of the device concerned, can be null.
+     * @param deviceSide Whether or not the exception is generated due to a device side error.
      */
-    public DeviceDescriptor getDeviceDescriptor() {
-        return mDescriptor;
+    public TargetSetupError(
+            String reason, Throwable cause, DeviceDescriptor descriptor, boolean deviceSide) {
+        super((descriptor != null && deviceSide) ? reason + " " + descriptor : reason, cause);
+        if (descriptor != null) {
+            mDeviceSerial = descriptor.getSerial();
+        }
+    }
+
+    /** Return the serial of the device impacted by the TargetSetupError. */
+    public String getDeviceSerial() {
+        return mDeviceSerial;
     }
 }

@@ -454,26 +454,34 @@ public class TestDeviceTest extends TestCase {
                 return true;
             }
         };
-        testDevice.setRecovery(new IDeviceRecovery() {
+        testDevice.setRecovery(
+                new IDeviceRecovery() {
 
-            @Override
-            public void recoverDeviceRecovery(IDeviceStateMonitor monitor)
-                    throws DeviceNotAvailableException {
-                throw new DeviceNotAvailableException();
-            }
+                    @Override
+                    public void recoverDeviceRecovery(IDeviceStateMonitor monitor)
+                            throws DeviceNotAvailableException {
+                        throw new DeviceNotAvailableException();
+                    }
 
-            @Override
-            public void recoverDeviceBootloader(IDeviceStateMonitor monitor)
-                    throws DeviceNotAvailableException {
-                throw new DeviceNotAvailableException();
-            }
+                    @Override
+                    public void recoverDeviceBootloader(IDeviceStateMonitor monitor)
+                            throws DeviceNotAvailableException {
+                        throw new DeviceNotAvailableException();
+                    }
 
-            @Override
-            public void recoverDevice(IDeviceStateMonitor monitor, boolean recoverUntilOnline)
-                    throws DeviceNotAvailableException {
-                throw new DeviceUnresponsiveException();
-            }
-        });
+                    @Override
+                    public void recoverDevice(
+                            IDeviceStateMonitor monitor, boolean recoverUntilOnline)
+                            throws DeviceNotAvailableException {
+                        throw new DeviceUnresponsiveException();
+                    }
+
+                    @Override
+                    public void recoverDeviceFastbootd(IDeviceStateMonitor monitor)
+                            throws DeviceNotAvailableException {
+                        throw new DeviceUnresponsiveException();
+                    }
+                });
         testDevice.setRecoveryMode(RecoveryMode.AVAILABLE);
         mMockIDevice.executeShellCommand((String) EasyMock.anyObject(),
                 (CollectingOutputReceiver)EasyMock.anyObject(), EasyMock.anyLong(),

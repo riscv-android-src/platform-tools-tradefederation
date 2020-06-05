@@ -47,6 +47,9 @@ public interface IHostOptions {
     /** Returns the path that fastboot should use as temporary folder. */
     File getFastbootTmpDir();
 
+    /** Returns whether or not fastbootd mode support is enabled. */
+    boolean isFastbootdEnable();
+
     /** Returns the path used for storing downloaded artifacts. */
     File getDownloadCacheDir();
 
