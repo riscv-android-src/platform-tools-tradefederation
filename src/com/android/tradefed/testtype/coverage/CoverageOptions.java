@@ -20,6 +20,7 @@ import com.android.tradefed.config.Option;
 
 import com.google.common.collect.ImmutableList;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -60,6 +61,9 @@ public final class CoverageOptions {
     )
     private List<String> mCoverageProcesses = new ArrayList<>();
 
+    @Option(name = "llvm-profdata-path", description = "Path to llvm-profdata tool.")
+    private File mLlvmProfdataPath = null;
+
     /**
      * Returns whether coverage measurements should be collected from this run.
      *
@@ -95,5 +99,14 @@ public final class CoverageOptions {
      */
     public List<String> getCoverageProcesses() {
         return ImmutableList.copyOf(mCoverageProcesses);
+    }
+
+    /**
+     * Returns the directory containing the llvm-profdata tool.
+     *
+     * @return a {@link File} containing the llvm-profdata tool and its dependencies
+     */
+    public File getLlvmProfdataPath() {
+        return mLlvmProfdataPath;
     }
 }
