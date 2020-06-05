@@ -110,13 +110,13 @@ final class JavaCodeCoverageListener extends ResultForwarder {
             // Get the path of the coverage measurement on the device.
             Metric devicePathMetric = runMetrics.get(COVERAGE_MEASUREMENT_KEY);
             if (devicePathMetric == null) {
-                super.testRunFailed("No coverage measurement.");
+                super.testRunFailed("No Java code coverage measurement.");
                 super.testRunEnded(elapsedTime, runMetrics);
                 return;
             }
             String testCoveragePath = devicePathMetric.getMeasurements().getSingleString();
             if (testCoveragePath == null) {
-                super.testRunFailed("No coverage measurement.");
+                super.testRunFailed("No Java code coverage measurement.");
                 super.testRunEnded(elapsedTime, runMetrics);
                 return;
             }
@@ -160,7 +160,7 @@ final class JavaCodeCoverageListener extends ResultForwarder {
         boolean wasRoot = mDevice.isAdbRoot();
         if (!wasRoot && !mDevice.enableAdbRoot()) {
             throw new RuntimeException(
-                    "Failed to enable root before pulling coverage files off device");
+                    "Failed to enable root before pulling Java code coverage files off device");
         }
 
         try {
@@ -168,7 +168,7 @@ final class JavaCodeCoverageListener extends ResultForwarder {
         } finally {
             if (!wasRoot && !mDevice.disableAdbRoot()) {
                 throw new RuntimeException(
-                        "Failed to disable root after pulling coverage files off device");
+                        "Failed to disable root after pulling Java code coverage files off device");
             }
         }
     }
@@ -178,7 +178,8 @@ final class JavaCodeCoverageListener extends ResultForwarder {
 
         for (String devicePath : devicePaths) {
             File coverageFile = mDevice.pullFile(devicePath);
-            verifyNotNull(coverageFile, "Failed to pull the coverage file from %s", devicePath);
+            verifyNotNull(
+                    coverageFile, "Failed to pull the Java code coverage file from %s", devicePath);
 
             // When merging, load the measurement data. Otherwise log the measurement
             // immediately.
