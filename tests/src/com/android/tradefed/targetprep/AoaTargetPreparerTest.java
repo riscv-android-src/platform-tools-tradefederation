@@ -46,6 +46,7 @@ import org.mockito.junit.MockitoJUnitRunner;
 
 import java.awt.Point;
 import java.time.Duration;
+import java.util.List;
 
 /** Unit tests for {@link AoaTargetPreparer} */
 @RunWith(MockitoJUnitRunner.class)
@@ -82,9 +83,9 @@ public class AoaTargetPreparerTest {
 
         mPreparer.setUp(mTestInfo);
         // fetched device, executed actions, and verified status
-        verify(mUsb, times(1)).getAoaDevice(any(), eq(Duration.ofSeconds(1L)));
-        verify(mPreparer, times(1)).execute(eq(mDevice), eq("wake"));
-        verify(mTestDevice, times(1)).waitForDeviceOnline();
+        verify(mUsb).getAoaDevice(any(), eq(Duration.ofSeconds(1L)));
+        verify(mPreparer).execute(eq(mDevice), eq("wake"));
+        verify(mTestDevice).waitForDeviceOnline();
     }
 
     @Test
@@ -110,7 +111,7 @@ public class AoaTargetPreparerTest {
 
         mPreparer.setUp(mTestInfo);
         // actions executed, but status check skipped
-        verify(mPreparer, times(1)).execute(eq(mDevice), eq("wake"));
+        verify(mPreparer).execute(eq(mDevice), eq("wake"));
         verify(mTestDevice, never()).waitForDeviceOnline();
     }
 
@@ -118,7 +119,7 @@ public class AoaTargetPreparerTest {
     public void testClick() {
         mPreparer.execute(mDevice, "click 1 23");
 
-        verify(mDevice, times(1)).click(eq(new Point(1, 23)));
+        verify(mDevice).click(eq(new Point(1, 23)));
         verifyNoMoreInteractions(ignoreStubs(mDevice));
     }
 
@@ -126,65 +127,42 @@ public class AoaTargetPreparerTest {
     public void testLongClick() {
         mPreparer.execute(mDevice, "longClick 23 4");
 
-        verify(mDevice, times(1)).longClick(eq(new Point(23, 4)));
+        verify(mDevice).longClick(eq(new Point(23, 4)));
         verifyNoMoreInteractions(ignoreStubs(mDevice));
     }
 
     @Test
-    public void testScroll() {
-        mPreparer.execute(mDevice, "scroll 3 45 6 78");
+    public void testSwipe() {
+        mPreparer.execute(mDevice, "swipe 3 45 123 6 78");
 
-        verify(mDevice, times(1)).scroll(eq(new Point(3, 45)), eq(new Point(6, 78)));
-        verifyNoMoreInteractions(ignoreStubs(mDevice));
-    }
-
-    @Test
-    public void testFling() {
-        mPreparer.execute(mDevice, "fling 45 6 78 9");
-
-        verify(mDevice, times(1)).fling(eq(new Point(45, 6)), eq(new Point(78, 9)));
-        verifyNoMoreInteractions(ignoreStubs(mDevice));
-    }
-
-    @Test
-    public void testDrag() {
-        mPreparer.execute(mDevice, "drag 5 67 8 90");
-
-        verify(mDevice, times(1)).drag(eq(new Point(5, 67)), eq(new Point(8, 90)));
+        verify(mDevice)
+                .swipe(eq(new Point(3, 45)), eq(new Point(6, 78)), eq(Duration.ofMillis(123)));
         verifyNoMoreInteractions(ignoreStubs(mDevice));
     }
 
     @Test
     public void testWrite() {
-        mPreparer.execute(mDevice, "write lorem ipsum");
+        mPreparer.execute(mDevice, "write Test 0123");
 
-        verify(mDevice, times(1)).write(eq("lorem ipsum"));
+        verify(mDevice).pressKeys(List.of(0x17, 0x08, 0x16, 0x17, 0x2C, 0x27, 0x1E, 0x1F, 0x20));
         verifyNoMoreInteractions(ignoreStubs(mDevice));
     }
 
     @Test
-    public void testKey() {
-        mPreparer.execute(mDevice, "key 44");
-        // accepts hexadecimal values
-        mPreparer.execute(mDevice, "key 0x2C");
+    public void testKeys() {
+        mPreparer.execute(mDevice, "key 43"); // accepts decimal values
+        mPreparer.execute(mDevice, "key 0x2B"); // accepts hexadecimal values
+        mPreparer.execute(mDevice, "key tab"); // accepts key descriptions
 
-        verify(mDevice, times(2)).key(eq(44));
+        verify(mDevice, times(3)).pressKeys(List.of(0x2B));
         verifyNoMoreInteractions(ignoreStubs(mDevice));
     }
 
     @Test
-    public void testKey_multiple() {
-        mPreparer.execute(mDevice, "key 1 2 3 4 5");
+    public void testKeys_combination() {
+        mPreparer.execute(mDevice, "key 2*a 3*down 2*0x2B");
 
-        verify(mDevice, times(1)).key(eq(1), eq(2), eq(3), eq(4), eq(5));
-        verifyNoMoreInteractions(ignoreStubs(mDevice));
-    }
-
-    @Test
-    public void testKey_repeated() {
-        mPreparer.execute(mDevice, "key 3* 0x2C");
-
-        verify(mDevice, times(1)).key(eq(44), eq(44), eq(44));
+        verify(mDevice).pressKeys(List.of(0x04, 0x04, 0x51, 0x51, 0x51, 0x2B, 0x2B));
         verifyNoMoreInteractions(ignoreStubs(mDevice));
     }
 
@@ -192,7 +170,7 @@ public class AoaTargetPreparerTest {
     public void testWake() {
         mPreparer.execute(mDevice, "wake");
 
-        verify(mDevice, times(1)).wakeUp();
+        verify(mDevice).wakeUp();
         verifyNoMoreInteractions(ignoreStubs(mDevice));
     }
 
@@ -200,7 +178,7 @@ public class AoaTargetPreparerTest {
     public void testHome() {
         mPreparer.execute(mDevice, "home");
 
-        verify(mDevice, times(1)).goHome();
+        verify(mDevice).goHome();
         verifyNoMoreInteractions(ignoreStubs(mDevice));
     }
 
@@ -208,15 +186,15 @@ public class AoaTargetPreparerTest {
     public void testBack() {
         mPreparer.execute(mDevice, "back");
 
-        verify(mDevice, times(1)).goBack();
+        verify(mDevice).goBack();
         verifyNoMoreInteractions(ignoreStubs(mDevice));
     }
 
     @Test
     public void testSleep() {
-        mPreparer.execute(mDevice, "sleep PT10M");
+        mPreparer.execute(mDevice, "sleep 123");
 
-        verify(mDevice, times(1)).sleep(eq(Duration.ofMinutes(10L)));
+        verify(mDevice).sleep(eq(Duration.ofMillis(123L)));
         verifyNoMoreInteractions(ignoreStubs(mDevice));
     }
 
@@ -237,6 +215,6 @@ public class AoaTargetPreparerTest {
 
     @Test(expected = IllegalArgumentException.class)
     public void testInvalid_tooManyCoordinates() {
-        mPreparer.execute(mDevice, "scroll 1 2 3 4 5");
+        mPreparer.execute(mDevice, "swipe 1 2 3 4 5 6");
     }
 }

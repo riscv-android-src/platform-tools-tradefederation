@@ -18,6 +18,7 @@ package com.android.tradefed.suite.checker;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.suite.checker.StatusCheckerResult.CheckStatus;
 import com.android.tradefed.util.ProcessInfo;
@@ -37,9 +38,10 @@ public class SystemServerStatusCheckerTest {
     private ITestDevice mMockDevice;
 
     @Before
-    public void setUp() {
+    public void setUp() throws DeviceNotAvailableException {
         mMockDevice = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("SERIAL");
+        EasyMock.expect(mMockDevice.getApiLevel()).andStubReturn(29);
         mChecker =
                 new SystemServerStatusChecker() {
                     @Override

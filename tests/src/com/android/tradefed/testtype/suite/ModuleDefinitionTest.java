@@ -16,6 +16,8 @@
 package com.android.tradefed.testtype.suite;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -358,6 +360,51 @@ public class ModuleDefinitionTest {
         }
     }
 
+    @Test
+    public void testCreateModule() {
+        IConfiguration config = new Configuration("", "");
+        ConfigurationDescriptor descriptor = config.getConfigurationDescription();
+        descriptor.setAbi(new Abi("armeabi-v7a", "32"));
+        descriptor.addMetadata(ITestSuite.PARAMETER_KEY, Arrays.asList("instant_app", "multi_abi"));
+        mModule =
+                new ModuleDefinition(
+                        MODULE_NAME,
+                        mTestList,
+                        mMapDeviceTargetPreparer,
+                        mMultiTargetPrepList,
+                        config);
+        assertNotNull(mModule.getModuleInvocationContext());
+        IInvocationContext moduleContext = mModule.getModuleInvocationContext();
+        assertNull(moduleContext.getAttributes().get(ModuleDefinition.MODULE_PARAMETERIZATION));
+    }
+
+    @Test
+    public void testCreateModule_withParams() {
+        IConfiguration config = new Configuration("", "");
+        ConfigurationDescriptor descriptor = config.getConfigurationDescription();
+        descriptor.setAbi(new Abi("armeabi-v7a", "32"));
+        descriptor.addMetadata(
+                ConfigurationDescriptor.ACTIVE_PARAMETER_KEY, Arrays.asList("instant"));
+        mModule =
+                new ModuleDefinition(
+                        MODULE_NAME,
+                        mTestList,
+                        mMapDeviceTargetPreparer,
+                        mMultiTargetPrepList,
+                        config);
+        assertNotNull(mModule.getModuleInvocationContext());
+        IInvocationContext moduleContext = mModule.getModuleInvocationContext();
+        assertEquals(
+                1,
+                moduleContext.getAttributes().get(ModuleDefinition.MODULE_PARAMETERIZATION).size());
+        assertEquals(
+                "instant",
+                moduleContext
+                        .getAttributes()
+                        .getUniqueMap()
+                        .get(ModuleDefinition.MODULE_PARAMETERIZATION));
+    }
+
     /**
      * Test that {@link ModuleDefinition#run(TestInformation, ITestInvocationListener)} is properly
      * going through the execution flow.
@@ -506,7 +553,7 @@ public class ModuleDefinitionTest {
     public void testParseTokens() throws Exception {
         Configuration config = new Configuration("", "");
         ConfigurationDescriptor descriptor = config.getConfigurationDescription();
-        descriptor.addMetaData(ITestSuite.TOKEN_KEY, Arrays.asList("SIM_CARD"));
+        descriptor.addMetadata(ITestSuite.TOKEN_KEY, Arrays.asList("SIM_CARD"));
         mModule =
                 new ModuleDefinition(
                         MODULE_NAME,

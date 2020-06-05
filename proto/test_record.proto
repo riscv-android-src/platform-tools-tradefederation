@@ -127,4 +127,7 @@ message DebugInfoContext {
 
   // A free-formed text that can help debugging the issue at hand.
   string debug_help_message = 10;
+
+  // The fully-qualified name of the exception class associated with the error.
+  string error_type = 20;
 }

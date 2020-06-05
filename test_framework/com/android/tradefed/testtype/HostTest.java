@@ -39,6 +39,7 @@ import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.testtype.host.PrettyTestEventLogger;
 import com.android.tradefed.testtype.junit4.CarryDnaeError;
 import com.android.tradefed.testtype.junit4.JUnit4ResultForwarder;
+import com.android.tradefed.testtype.suite.ModuleDefinition;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.JUnit4TestFilter;
 import com.android.tradefed.util.StreamUtil;
@@ -68,6 +69,7 @@ import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayDeque;
@@ -179,6 +181,8 @@ public class HostTest
     private boolean mSkipTestClassCheck = false;
 
     private List<Object> mTestMethods;
+    private List<Class<?>> mLoadedClasses = new ArrayList<>();
+    private List<URLClassLoader> mOpenClassLoaders = new ArrayList<>();
 
     // Initialized as -1 to indicate that this value needs to be recalculated
     // when test count is requested.
@@ -506,38 +510,46 @@ public class HostTest
         mFilterHelper.addAllExcludeAnnotation(mExcludeAnnotations);
 
         try {
-            List<Class<?>> classes = getClasses();
-            if (!mSkipTestClassCheck) {
-                if (classes.isEmpty()) {
-                    throw new IllegalArgumentException("No '--class' option was specified.");
+            try {
+                List<Class<?>> classes = getClasses();
+                if (!mSkipTestClassCheck) {
+                    if (classes.isEmpty()) {
+                        throw new IllegalArgumentException("No '--class' option was specified.");
+                    }
                 }
+                if (mMethodName != null && classes.size() > 1) {
+                    throw new IllegalArgumentException(
+                            String.format(
+                                    "'--method' only supports one '--class' name. Multiple were "
+                                            + "given: '%s'",
+                                    classes));
+                }
+            } catch (IllegalArgumentException e) {
+                listener.testRunStarted(this.getClass().getCanonicalName(), 0);
+                FailureDescription failureDescription =
+                        FailureDescription.create(StreamUtil.getStackTrace(e));
+                failureDescription.setFailureStatus(FailureStatus.TEST_FAILURE);
+                listener.testRunFailed(failureDescription);
+                listener.testRunEnded(0L, new HashMap<String, Metric>());
+                throw e;
             }
-            if (mMethodName != null && classes.size() > 1) {
-                throw new IllegalArgumentException(
-                        String.format(
-                                "'--method' only supports one '--class' name. Multiple were "
-                                        + "given: '%s'",
-                                classes));
-            }
-        } catch (IllegalArgumentException e) {
-            listener.testRunStarted(this.getClass().getCanonicalName(), 0);
-            FailureDescription failureDescription =
-                    FailureDescription.create(StreamUtil.getStackTrace(e));
-            failureDescription.setFailureStatus(FailureStatus.TEST_FAILURE);
-            listener.testRunFailed(failureDescription);
-            listener.testRunEnded(0L, new HashMap<String, Metric>());
-            throw e;
-        }
 
-        // Add a pretty logger to the events to mark clearly start/end of test cases.
-        if (mEnableHostDeviceLogs) {
-            PrettyTestEventLogger logger = new PrettyTestEventLogger(mTestInfo.getDevices());
-            listener = new ResultForwarder(logger, listener);
-        }
-        if (mTestMethods != null) {
-            runTestCases(listener);
-        } else {
-            runTestClasses(listener);
+            // Add a pretty logger to the events to mark clearly start/end of test cases.
+            if (mEnableHostDeviceLogs) {
+                PrettyTestEventLogger logger = new PrettyTestEventLogger(mTestInfo.getDevices());
+                listener = new ResultForwarder(logger, listener);
+            }
+            if (mTestMethods != null) {
+                runTestCases(listener);
+            } else {
+                runTestClasses(listener);
+            }
+        } finally {
+            mLoadedClasses.clear();
+            for (URLClassLoader cl : mOpenClassLoaders) {
+                StreamUtil.close(cl);
+            }
+            mOpenClassLoaders.clear();
         }
     }
 
@@ -883,21 +895,61 @@ public class HostTest
     }
 
     protected final List<Class<?>> getClasses() throws IllegalArgumentException {
+        if (!mLoadedClasses.isEmpty()) {
+            return mLoadedClasses;
+        }
         // Use a set to avoid repeat between filters and jar search
         Set<String> classNames = new HashSet<>();
-        List<Class<?>> classes = new ArrayList<>();
+        List<Class<?>> classes = mLoadedClasses;
         for (String className : mClasses) {
             if (classNames.contains(className)) {
                 continue;
             }
+            IllegalArgumentException initialError = null;
             try {
                 classes.add(Class.forName(className, true, getClassLoader()));
                 classNames.add(className);
             } catch (ClassNotFoundException e) {
-                throw new IllegalArgumentException(String.format("Could not load Test class %s",
-                        className), e);
+                initialError =
+                        new IllegalArgumentException(
+                                String.format("Could not load Test class %s", className), e);
+            }
+            if (initialError != null) {
+                // Fallback search a jar for the module under tests if any.
+                String moduleName =
+                        mTestInfo
+                                .getContext()
+                                .getAttributes()
+                                .getUniqueMap()
+                                .get(ModuleDefinition.MODULE_NAME);
+                if (moduleName != null) {
+                    URLClassLoader cl = null;
+                    try {
+                        File f = getJarFile(moduleName + ".jar", mTestInfo);
+                        URL[] urls = {f.toURI().toURL()};
+                        cl = URLClassLoader.newInstance(urls);
+                        mJUnit4JarFiles.add(f);
+                        Class<?> cls = cl.loadClass(className);
+                        classes.add(cls);
+                        classNames.add(className);
+                        initialError = null;
+                        mOpenClassLoaders.add(cl);
+                    } catch (FileNotFoundException
+                            | MalformedURLException
+                            | ClassNotFoundException fallbackSearch) {
+                        StreamUtil.close(cl);
+                        CLog.e(
+                                "Fallback search for a jar containing '%s' didn't work."
+                                        + "Consider using --jar option directly instead of using --class",
+                                className);
+                    }
+                }
+            }
+            if (initialError != null) {
+                throw initialError;
             }
         }
+        URLClassLoader cl = null;
         // Inspect for the jar files
         for (String jarName : mJars) {
             JarFile jarFile = null;
@@ -906,8 +958,9 @@ public class HostTest
                 jarFile = new JarFile(file);
                 Enumeration<JarEntry> e = jarFile.entries();
                 URL[] urls = {file.toURI().toURL()};
-                URLClassLoader cl = URLClassLoader.newInstance(urls);
+                cl = URLClassLoader.newInstance(urls);
                 mJUnit4JarFiles.add(file);
+                mOpenClassLoaders.add(cl);
 
                 while (e.hasMoreElements()) {
                     JarEntry je = e.nextElement();
@@ -1156,56 +1209,63 @@ public class HostTest
         }
         mTestInfo = testInfo;
         List<IRemoteTest> listTests = new ArrayList<>();
-        List<Class<?>> classes = getClasses();
-        if (classes.isEmpty()) {
-            throw new IllegalArgumentException("Missing Test class name");
-        }
-        if (mMethodName != null && classes.size() > 1) {
-            throw new IllegalArgumentException("Method name given with multiple test classes");
-        }
-        List<? extends Object> testObjects;
-        if (shardUnitIsMethod()) {
-            testObjects = getTestMethods();
-        } else {
-            testObjects = classes;
-            // ignore shardCount when shard unit is class;
-            // simply shard by the number of classes
-            shardCount = testObjects.size();
-        }
-        if (testObjects.size() == 1) {
-            return null;
-        }
-        int i = 0;
-        int numTotalTestCases = countTestCases();
-        for (Object testObj : testObjects) {
-            Class<?> classObj = Class.class.isInstance(testObj) ? (Class<?>)testObj : null;
-            HostTest test;
-            if (i >= listTests.size()) {
-                test = createHostTest(classObj);
-                test.mRuntimeHint = 0;
-                // Carry over non-annotation filters to shards.
-                test.addAllExcludeFilters(mFilterHelper.getExcludeFilters());
-                test.addAllIncludeFilters(mFilterHelper.getIncludeFilters());
-                listTests.add(test);
+        try {
+            List<Class<?>> classes = getClasses();
+            if (classes.isEmpty()) {
+                throw new IllegalArgumentException("Missing Test class name");
             }
-            test = (HostTest) listTests.get(i);
-            Collection<? extends Object> subTests;
-            if (classObj != null) {
-                test.addClassName(classObj.getName());
-                subTests = test.mClasses;
+            if (mMethodName != null && classes.size() > 1) {
+                throw new IllegalArgumentException("Method name given with multiple test classes");
+            }
+            List<? extends Object> testObjects;
+            if (shardUnitIsMethod()) {
+                testObjects = getTestMethods();
             } else {
-                test.addTestMethod(testObj);
-                subTests = test.mTestMethods;
+                testObjects = classes;
+                // ignore shardCount when shard unit is class;
+                // simply shard by the number of classes
+                shardCount = testObjects.size();
             }
-            if (numTotalTestCases == 0) {
-                // In case there is no tests left
-                test.mRuntimeHint = 0L;
-            } else {
-                test.mRuntimeHint = mRuntimeHint * subTests.size() / numTotalTestCases;
+            if (testObjects.size() == 1) {
+                return null;
             }
-            i = (i + 1) % shardCount;
+            int i = 0;
+            int numTotalTestCases = countTestCases();
+            for (Object testObj : testObjects) {
+                Class<?> classObj = Class.class.isInstance(testObj) ? (Class<?>) testObj : null;
+                HostTest test;
+                if (i >= listTests.size()) {
+                    test = createHostTest(classObj);
+                    test.mRuntimeHint = 0;
+                    // Carry over non-annotation filters to shards.
+                    test.addAllExcludeFilters(mFilterHelper.getExcludeFilters());
+                    test.addAllIncludeFilters(mFilterHelper.getIncludeFilters());
+                    listTests.add(test);
+                }
+                test = (HostTest) listTests.get(i);
+                Collection<? extends Object> subTests;
+                if (classObj != null) {
+                    test.addClassName(classObj.getName());
+                    subTests = test.mClasses;
+                } else {
+                    test.addTestMethod(testObj);
+                    subTests = test.mTestMethods;
+                }
+                if (numTotalTestCases == 0) {
+                    // In case there is no tests left
+                    test.mRuntimeHint = 0L;
+                } else {
+                    test.mRuntimeHint = mRuntimeHint * subTests.size() / numTotalTestCases;
+                }
+                i = (i + 1) % shardCount;
+            }
+        } finally {
+            mLoadedClasses.clear();
+            for (URLClassLoader cl : mOpenClassLoaders) {
+                StreamUtil.close(cl);
+            }
+            mOpenClassLoaders.clear();
         }
-
         return listTests;
     }
 

@@ -120,7 +120,8 @@ public class TradefedSandbox implements ISandbox {
         }
 
         long timeout = config.getCommandOptions().getInvocationTimeout();
-        mRunUtil.allowInterrupt(false);
+        // Allow interruption, subprocess should handle signals itself
+        mRunUtil.allowInterrupt(true);
         CommandResult result =
                 mRunUtil.runTimedCmd(timeout, mStdout, mStderr, mCmdArgs.toArray(new String[0]));
         // Log stdout and stderr
@@ -168,6 +169,9 @@ public class TradefedSandbox implements ISandbox {
             }
             result.setStderr(
                     String.format("Event receiver thread did not complete.:\n%s", stderrText));
+        }
+        if (mProtoReceiver != null) {
+            mProtoReceiver.completeModuleEvents();
         }
         PrettyPrintDelimiter.printStageDelimiter(
                 String.format(
@@ -378,6 +382,10 @@ public class TradefedSandbox implements ISandbox {
                 }
                 throw e;
             }
+            // Turn off some of the invocation level options that would be duplicated in the
+            // child sandbox subprocess.
+            config.getCommandOptions().setBugreportOnInvocationEnded(false);
+            config.getCommandOptions().setBugreportzOnInvocationEnded(false);
         } catch (IOException | ConfigurationException e) {
             StreamUtil.close(mEventParser);
             StreamUtil.close(mProtoReceiver);
