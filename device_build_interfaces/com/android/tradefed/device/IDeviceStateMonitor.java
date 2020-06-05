@@ -49,6 +49,14 @@ public interface IDeviceStateMonitor {
     public IDevice waitForDeviceOnline();
 
     /**
+     * Waits for the device to be in Recovery mode using standard boot timeout.
+     *
+     * @return the {@link IDevice} if device becomes recovery before time expires. <code>null</code>
+     *     otherwise.
+     */
+    public IDevice waitForDeviceInRecovery();
+
+    /**
      * Blocks until the device's boot complete flag is set
      *
      * @param waitTime the amount in ms to wait
