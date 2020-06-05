@@ -19,50 +19,33 @@ import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.invoker.IInvocationContext;
 
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.Writer;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 
 /** A {@link ITestInvocationListener} that saves the list of passing test cases to a test file */
 public class PassingTestFileReporter extends TestResultListener implements ITestInvocationListener {
     @Option(
-            name = "test-file",
+            name = "test-file-to-record",
             description = "path to test file to write results to",
             mandatory = true)
     private File mTestFilePath;
 
-    private List<String> mResults;
-    private Writer mWriter;
+    private TestDescriptionsFile mResults;
 
     @Override
     public void invocationStarted(IInvocationContext context) {
-        mResults = new ArrayList<>();
+        mResults = new TestDescriptionsFile();
     }
 
     @Override
     public void testResult(TestDescription test, TestResult result) {
         if (result.getStatus() == TestStatus.PASSED) {
-            mResults.add(String.format("%s#%s\n", test.getClassName(), test.getTestName()));
+            mResults.add(test);
         }
     }
 
     @Override
     public void invocationEnded(long elapsedTime) {
-        try {
-            mTestFilePath.getParentFile().mkdirs();
-            mWriter = new BufferedWriter(new FileWriter(mTestFilePath));
-            Collections.sort(mResults);
-            for (String result : mResults) {
-                mWriter.write(result);
-            }
-            mWriter.close();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        mTestFilePath.getParentFile().mkdirs();
+        mResults.populateTestFile(mTestFilePath);
     }
 }

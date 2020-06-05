@@ -68,8 +68,12 @@ public class ShardHelper implements IShardHelper {
         CONFIG_OBJ_TO_CLONE.add(Configuration.SYSTEM_STATUS_CHECKER_TYPE_NAME);
         CONFIG_OBJ_TO_CLONE.add(Configuration.DEVICE_METRICS_COLLECTOR_TYPE_NAME);
         // Copy all the objects under the <device> tag from
-        // {@link Configuration#getMultiDeviceSupportedTag()}.
-        CONFIG_OBJ_TO_CLONE.add(Configuration.DEVICE_NAME);
+        // {@link Configuration#getMultiDeviceSupportedTag()} except DEVICE_REQUIREMENTS_TYPE_NAME
+        // which should be shared since all shards should have the same requirements.
+        CONFIG_OBJ_TO_CLONE.add(Configuration.BUILD_PROVIDER_TYPE_NAME);
+        CONFIG_OBJ_TO_CLONE.add(Configuration.TARGET_PREPARER_TYPE_NAME);
+        CONFIG_OBJ_TO_CLONE.add(Configuration.DEVICE_RECOVERY_TYPE_NAME);
+        CONFIG_OBJ_TO_CLONE.add(Configuration.DEVICE_OPTIONS_TYPE_NAME);
 
         CONFIG_OBJ_TO_CLONE.add(Configuration.MULTI_PREPARER_TYPE_NAME);
         CONFIG_OBJ_TO_CLONE.add(Configuration.CMD_OPTIONS_TYPE_NAME);

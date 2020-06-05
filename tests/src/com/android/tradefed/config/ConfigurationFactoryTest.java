@@ -1559,9 +1559,11 @@ public class ConfigurationFactoryTest extends TestCase {
     public void testGetConfigNamesFromTestCases_subpath() throws Exception {
         File tmpDir = FileUtil.createTempDir("test-config-dir");
         try {
-            FileUtil.createTempFile("testconfig1", ".config", tmpDir);
+            File config1 = FileUtil.createTempFile("testconfig1", ".config", tmpDir);
+            FileUtil.writeToFile("<configuration></configuration>", config1);
             File subDir = FileUtil.createTempDir("subdir", tmpDir);
-            FileUtil.createTempFile("testconfig2", ".xml", subDir);
+            File config2 = FileUtil.createTempFile("testconfig2", ".xml", subDir);
+            FileUtil.writeToFile("<configuration></configuration>", config2);
             ConfigurationFactory spyFactory = Mockito.spy(mFactory);
             Mockito.doReturn(Arrays.asList(tmpDir)).when(spyFactory).getExternalTestCasesDirs();
             // looking at full path we get both configs

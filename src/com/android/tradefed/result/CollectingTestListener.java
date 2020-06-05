@@ -219,7 +219,8 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
                 result.testRunStarted(name, numTests, startTime);
                 String errorMessage =
                         String.format(
-                                "Run attempt %s of %s did not exists, but got attempt %s. This is a placeholder for the missing attempt.",
+                                "Run attempt %s of %s did not exists, but got attempt %s."
+                                        + " This is a placeholder for the missing attempt.",
                                 i, name, attemptNumber);
                 result.testRunFailed(errorMessage);
                 result.testRunEnded(0L, new HashMap<String, Metric>());
@@ -295,6 +296,12 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
     public void testFailed(TestDescription test, String trace) {
         setCountDirty();
         mCurrentTestRunResult.testFailed(test, trace);
+    }
+
+    @Override
+    public void testFailed(TestDescription test, FailureDescription failure) {
+        setCountDirty();
+        mCurrentTestRunResult.testFailed(test, failure);
     }
 
     @Override
@@ -429,7 +436,10 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
         if (mTestRunResultMap.isEmpty() && mCurrentTestRunResult.isRunFailure()) {
             // In case of early failure that is a bit untracked, still add it to the list to
             // not loose it.
-            CLog.e("Early failure resulting in no testRunStart. Results might be inconsistent.");
+            CLog.e(
+                    "Early failure resulting in no testRunStart. Results might be inconsistent:"
+                            + "\n%s",
+                    mCurrentTestRunResult.getRunFailureMessage());
             mMergedTestRunResults.add(mCurrentTestRunResult);
         } else {
             for (Entry<String, List<TestRunResult>> results : mTestRunResultMap.entrySet()) {

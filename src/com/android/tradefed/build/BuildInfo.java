@@ -64,8 +64,6 @@ public class BuildInfo implements IBuildInfo {
     private String mBuildFlavor = null;
     private String mBuildBranch = null;
     private String mDeviceSerial = null;
-    /** Whether or not the build info describes a test resource */
-    private boolean mTestResourceBuild = false;
 
     /** File handling properties: Some files of the BuildInfo might requires special handling */
     private final Set<BuildInfoProperties> mProperties = new HashSet<>();
@@ -126,18 +124,6 @@ public class BuildInfo implements IBuildInfo {
     @Override
     public void setBuildId(String buildId) {
         mBuildId = buildId;
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public boolean isTestResourceBuild() {
-        return mTestResourceBuild;
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public void setTestResourceBuild(boolean testResourceBuild) {
-        mTestResourceBuild = testResourceBuild;
     }
 
     /**
@@ -215,7 +201,6 @@ public class BuildInfo implements IBuildInfo {
         setBuildFlavor(build.getBuildFlavor());
         setBuildBranch(build.getBuildBranch());
         setTestTag(build.getTestTag());
-        setTestResourceBuild(build.isTestResourceBuild());
     }
 
     protected MultiMap<String, String> getAttributesMultiMap() {
@@ -479,6 +464,7 @@ public class BuildInfo implements IBuildInfo {
         }
         copy.setBuildBranch(mBuildBranch);
         copy.setBuildFlavor(mBuildFlavor);
+        copy.setDeviceSerial(mDeviceSerial);
 
         return copy;
     }
@@ -605,8 +591,6 @@ public class BuildInfo implements IBuildInfo {
             protoBuilder.addVersionedFile(buildFile);
         }
         protoBuilder.setBuildInfoClass(this.getClass().getCanonicalName());
-        // Test resource
-        protoBuilder.setIsTestResource(isTestResourceBuild());
         return protoBuilder.build();
     }
 
@@ -681,30 +665,7 @@ public class BuildInfo implements IBuildInfo {
                         buildFile.getVersion());
             }
         }
-        // Test resource
-        buildInfo.setTestResourceBuild(protoBuild.getIsTestResource());
         return buildInfo;
-    }
-
-    /**
-     * Get test resource from a list of builds.
-     *
-     * @param testResourceBuildInfos An list of {@link IBuildInfo}.
-     * @param testResourceName the test resource name
-     * @return the test resource file.
-     */
-    public static File getTestResource(
-            List<IBuildInfo> testResourceBuildInfos, String testResourceName) {
-        if (testResourceBuildInfos == null) {
-            return null;
-        }
-        for (IBuildInfo buildInfo : testResourceBuildInfos) {
-            File testResourceFile = buildInfo.getFile(testResourceName);
-            if (testResourceFile != null) {
-                return testResourceFile;
-            }
-        }
-        return null;
     }
 
     /** {@inheritDoc} */

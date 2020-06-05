@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.retry;
 
+import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
@@ -22,6 +23,7 @@ import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFilterReceiver;
@@ -29,7 +31,10 @@ import com.android.tradefed.testtype.retry.IAutoRetriableTest;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -171,38 +176,60 @@ public class BaseRetryDecision implements IRetryDecision {
         return mStatistics.calculateStatistics();
     }
 
-    /** Returns the set of failed test cases that should be retried. */
-    public static Set<TestDescription> getFailedTestCases(List<TestRunResult> previousResults) {
-        Set<TestDescription> failedTestCases = new HashSet<TestDescription>();
+    /** Returns the map of failed test cases that should be retried. */
+    public static Map<TestDescription, TestResult> getFailedTestCases(
+            List<TestRunResult> previousResults) {
+        Map<TestDescription, TestResult> failedTestCases = new LinkedHashMap<>();
         for (TestRunResult run : previousResults) {
             if (run != null) {
-                failedTestCases.addAll(run.getFailedTests());
+                for (Entry<TestDescription, TestResult> entry : run.getTestResults().entrySet()) {
+                    if (TestStatus.FAILURE.equals(entry.getValue().getStatus())) {
+                        failedTestCases.put(entry.getKey(), entry.getValue());
+                    }
+                }
             }
         }
         return failedTestCases;
     }
 
-    /** Returns true if there are any run failures in the previous results. */
-    public static boolean hasRunFailures(List<TestRunResult> previousResults) {
+    /** Returns the list of failure from the previous results. */
+    private static List<TestRunResult> getRunFailures(List<TestRunResult> previousResults) {
+        List<TestRunResult> runFailed = new ArrayList<>();
         for (TestRunResult run : previousResults) {
             if (run != null && run.isRunFailure()) {
-                return true;
+                runFailed.add(run);
             }
         }
-        return false;
+        return runFailed;
+    }
+
+    private static List<TestRunResult> getNonRetriableFailures(List<TestRunResult> failedRun) {
+        List<TestRunResult> nonRetriableRuns = new ArrayList<>();
+        for (TestRunResult run : failedRun) {
+            if (!run.getRunFailureDescription().isRetriable()) {
+                nonRetriableRuns.add(run);
+            }
+        }
+        return nonRetriableRuns;
     }
 
     private boolean handleRetryFailures(
             ITestFilterReceiver test, List<TestRunResult> previousResults) {
-        if (hasRunFailures(previousResults)) {
+        List<TestRunResult> runFailures = getRunFailures(previousResults);
+        List<TestRunResult> nonRetriableRunFailures = getNonRetriableFailures(runFailures);
+        if (!nonRetriableRunFailures.isEmpty()) {
+            CLog.d("Skipping retry since there was a non-retriable failure.");
+            return false;
+        }
+        if (!runFailures.isEmpty()) {
             return true;
         }
 
         // In case of test case failure, we retry with filters.
-        Set<TestDescription> previousFailedTests = getFailedTestCases(previousResults);
+        Map<TestDescription, TestResult> previousFailedTests = getFailedTestCases(previousResults);
         if (!mPreviouslyFailing.isEmpty()) {
-            previousFailedTests.retainAll(mPreviouslyFailing);
-            mPreviouslyFailing.retainAll(previousFailedTests);
+            previousFailedTests.keySet().retainAll(mPreviouslyFailing);
+            mPreviouslyFailing.retainAll(previousFailedTests.keySet());
         }
         // Abort if number of failures is high for a given one test
         if (previousFailedTests.size() > ABORT_MAX_FAILURES) {
@@ -214,7 +241,7 @@ public class BaseRetryDecision implements IRetryDecision {
 
         if (!previousFailedTests.isEmpty()) {
             CLog.d("Retrying the test case failure.");
-            addRetriedTestsToIncludeFilters(test, previousFailedTests);
+            addRetriedTestsToFilters(test, previousFailedTests);
             return true;
         }
 
@@ -233,16 +260,26 @@ public class BaseRetryDecision implements IRetryDecision {
     }
 
     /** Set the filters on the test runner for the retry. */
-    private void addRetriedTestsToIncludeFilters(
-            ITestFilterReceiver test, Set<TestDescription> testDescriptions) {
+    private void addRetriedTestsToFilters(
+            ITestFilterReceiver test, Map<TestDescription, TestResult> tests) {
         // Limit the re-run to the failure we include, so clear filters then put our failures
         test.clearIncludeFilters();
-        for (TestDescription testCase : testDescriptions) {
-            // We have to retry without the parameters since some runner don't support it.
-            String filter =
-                    String.format(
-                            "%s#%s", testCase.getClassName(), testCase.getTestNameWithoutParams());
-            test.addIncludeFilter(filter);
+        for (Entry<TestDescription, TestResult> testCaseEntry : tests.entrySet()) {
+            TestDescription testCase = testCaseEntry.getKey();
+            if (testCaseEntry.getValue().getFailure().isRetriable()) {
+                // We have to retry without the parameters since some runner don't support it.
+                String filter =
+                        String.format(
+                                "%s#%s",
+                                testCase.getClassName(), testCase.getTestNameWithoutParams());
+                test.addIncludeFilter(filter);
+            } else {
+                // If a test case failure is not retriable, track it, but don't retry it so we
+                // exclude it from the filters.
+                String filter =
+                        String.format("%s#%s", testCase.getClassName(), testCase.getTestName());
+                test.addExcludeFilter(filter);
+            }
             mPreviouslyFailing.add(testCase);
         }
     }

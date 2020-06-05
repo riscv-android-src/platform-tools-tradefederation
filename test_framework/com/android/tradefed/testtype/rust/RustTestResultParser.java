@@ -145,10 +145,7 @@ public class RustTestResultParser extends MultiLineReceiver {
 
     /** Send recorded test results to all listeners. */
     private void reportToListeners(String line) {
-        int totalTestCount = processRunSummary(line);
         for (ITestInvocationListener listener : mListeners) {
-            listener.testRunStarted(mCurrentTestFile, totalTestCount);
-
             for (Entry<TestDescription, String> test : mTestResultCache.entrySet()) {
                 listener.testStarted(test.getKey());
                 if (SKIPPED_ENTRY.equals(test.getValue())) {
@@ -162,8 +159,6 @@ public class RustTestResultParser extends MultiLineReceiver {
                 }
                 listener.testEnded(test.getKey(), new HashMap<String, Metric>());
             }
-            // TODO(chh): measure total elapsed time.
-            listener.testRunEnded(0 /*TotalElapsedTime*/, new HashMap<String, Metric>());
         }
     }
 

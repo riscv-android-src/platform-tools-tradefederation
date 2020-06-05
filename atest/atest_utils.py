@@ -16,6 +16,7 @@
 Utility functions for atest.
 """
 
+
 from __future__ import print_function
 
 import hashlib
@@ -36,13 +37,6 @@ import constants
 from metrics import metrics_base
 from metrics import metrics_utils
 
-try:
-    # If PYTHON2
-    from urllib2 import urlopen
-except ImportError:
-    metrics_utils.handle_exc_and_send_exit_event(
-        constants.IMPORT_FAILURE)
-    from urllib.request import urlopen
 
 _BASH_RESET_CODE = '\033[0m\n'
 # Arbitrary number to limit stdout for failed runs in _run_limited_output.
@@ -204,6 +198,13 @@ def _can_upload_to_result_server():
     # TODO: Also check if we have a slow connection to result server.
     if constants.RESULT_SERVER:
         try:
+            try:
+                # If PYTHON2
+                from urllib2 import urlopen
+            except ImportError:
+                metrics_utils.handle_exc_and_send_exit_event(
+                    constants.IMPORT_FAILURE)
+                from urllib.request import urlopen
             urlopen(constants.RESULT_SERVER,
                     timeout=constants.RESULT_SERVER_TIMEOUT).close()
             return True
