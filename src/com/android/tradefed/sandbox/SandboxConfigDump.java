@@ -25,6 +25,8 @@ import com.android.tradefed.config.SandboxConfigurationFactory;
 import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.log.FileLogger;
 import com.android.tradefed.log.ILeveledLogOutput;
+import com.android.tradefed.result.FileSystemLogSaver;
+import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.SubprocessResultsReporter;
 import com.android.tradefed.result.proto.StreamProtoResultReporter;
@@ -106,10 +108,12 @@ public class SandboxConfigDump {
                     // Ensure we get the stdout logging in FileLogger case.
                     ((FileLogger) logger).setLogLevelDisplay(LogLevel.VERBOSE);
                 }
-                // Turn off some of the invocation level options that would be duplicated in the
-                // parent.
-                config.getCommandOptions().setBugreportOnInvocationEnded(false);
-                config.getCommandOptions().setBugreportzOnInvocationEnded(false);
+
+                ILogSaver logSaver = config.getLogSaver();
+                if (logSaver instanceof FileSystemLogSaver) {
+                    // Send the files directly, the parent will take care of compression if needed
+                    ((FileSystemLogSaver) logSaver).setCompressFiles(false);
+                }
 
                 // Ensure in special conditions (placeholder devices) we can still allocate.
                 secureDeviceAllocation(config);

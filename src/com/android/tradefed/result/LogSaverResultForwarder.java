@@ -20,6 +20,7 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.TestInvocation;
 import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.log.StdoutLogger;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.SystemUtil;
 
@@ -73,7 +74,11 @@ public class LogSaverResultForwarder extends ResultForwarder implements ILogSave
         LogRegistry registry = (LogRegistry) LogRegistry.getLogRegistry();
         try (InputStreamSource source = registry.getLogger().getLog()) {
             if (source == null) {
-                CLog.e("%s stream was null, skip saving it.", TestInvocation.TRADEFED_END_HOST_LOG);
+                if (!(registry.getLogger() instanceof StdoutLogger)) {
+                    CLog.e(
+                            "%s stream was null, skip saving it.",
+                            TestInvocation.TRADEFED_END_HOST_LOG);
+                }
                 return;
             }
             try (InputStream stream = source.createInputStream()) {

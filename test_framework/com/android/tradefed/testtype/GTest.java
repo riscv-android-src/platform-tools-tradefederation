@@ -19,6 +19,8 @@ package com.android.tradefed.testtype;
 import static com.android.tradefed.testtype.coverage.CoverageOptions.Toolchain.CLANG;
 import static com.android.tradefed.testtype.coverage.CoverageOptions.Toolchain.GCOV;
 
+import static com.google.common.base.Verify.verify;
+
 import com.android.ddmlib.FileListingService;
 import com.android.ddmlib.IShellOutputReceiver;
 import com.android.tradefed.config.Option;
@@ -428,12 +430,16 @@ public class GTest extends GTestBase implements IDeviceTest {
         // Insert the coverage listener if code coverage collection is enabled.
         listener = addNativeCoverageListenerIfEnabled(listener);
         listener = addClangCoverageListenerIfEnabled(listener);
+        listener = getGTestListener(listener);
         NativeCodeCoverageFlusher flusher =
                 new NativeCodeCoverageFlusher(mDevice, getCoverageOptions().getCoverageProcesses());
 
         Throwable throwable = null;
         try {
             if (getCoverageOptions().isCoverageEnabled()) {
+                // Enable abd root on the device, otherwise the following commands will fail.
+                verify(mDevice.enableAdbRoot(), "Failed to enable adb root.");
+
                 flusher.resetCoverage();
 
                 // Clang will no longer create directories that are part of the GCOV_PREFIX

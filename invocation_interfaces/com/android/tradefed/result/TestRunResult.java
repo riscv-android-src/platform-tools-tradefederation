@@ -298,6 +298,10 @@ public class TestRunResult {
         updateTestResult(test, TestStatus.FAILURE, FailureDescription.create(trace));
     }
 
+    public void testFailed(TestDescription test, FailureDescription failure) {
+        updateTestResult(test, TestStatus.FAILURE, failure);
+    }
+
     public void testAssumptionFailure(TestDescription test, String trace) {
         updateTestResult(test, TestStatus.ASSUMPTION_FAILURE, FailureDescription.create(trace));
     }
@@ -555,7 +559,11 @@ public class TestRunResult {
         // Evaluate the run error status based on strategy
         boolean isRunFailure = isRunFailed(atLeastOneFailure, allFailure, strategy);
         if (isRunFailure) {
-            finalRunResult.mRunFailureError = new MultiFailureDescription(runErrors);
+            if (runErrors.size() == 1) {
+                finalRunResult.mRunFailureError = runErrors.get(0);
+            } else {
+                finalRunResult.mRunFailureError = new MultiFailureDescription(runErrors);
+            }
         }
         // Evaluate run completion from all the attempts based on strategy
         finalRunResult.mIsRunComplete =

@@ -36,6 +36,7 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.config.OptionSetter;
+import com.android.tradefed.config.proxy.ProxyConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceSelectionOptions;
 import com.android.tradefed.device.FreeDeviceState;
@@ -160,6 +161,10 @@ public class CommandSchedulerTest {
         mMockKeyStoreClient = EasyMock.createMock(IKeyStoreClient.class);
         mMockConfiguration = EasyMock.createMock(IConfiguration.class);
         EasyMock.expect(mMockConfiguration.getTests()).andStubReturn(new ArrayList<>());
+        EasyMock.expect(
+                        mMockConfiguration.getConfigurationObject(
+                                ProxyConfiguration.PROXY_CONFIG_TYPE_KEY))
+                .andStubReturn(null);
         mCommandOptions = new CommandOptions();
         // Avoid any issue related to env. variable.
         mDeviceOptions =

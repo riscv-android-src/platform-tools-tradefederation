@@ -210,8 +210,7 @@ public class InstallAllTestZipAppsSetupTest {
         } catch (TargetSetupError e) {
             String expected =
                     String.format(
-                            "Failed to install %s on %s. Reason: '%s' " + "null",
-                            file, SERIAL, failure);
+                            "Failed to install %s on %s. Reason: '%s'", file, SERIAL, failure);
             assertEquals(expected, e.getMessage());
         }
         EasyMock.verify(mMockBuildInfo, mMockTestDevice);

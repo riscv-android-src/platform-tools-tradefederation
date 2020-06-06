@@ -517,11 +517,11 @@ public class SubprocessTestResultsParserTest {
             serializedLogFile = SerializationUtil.serialize(logFile);
             resultParser =
                     new SubprocessTestResultsParser(mockRunListener, new InvocationContext());
-            String logAssocation =
+            String logAssociation =
                     String.format(
                             "LOG_ASSOCIATION {\"loggedFile\":\"%s\",\"dataName\":\"dataname\"}\n",
                             serializedLogFile.getAbsolutePath());
-            FileUtil.writeToFile(logAssocation, tmp, true);
+            FileUtil.writeToFile(logAssociation, tmp, true);
             resultParser.parseFile(tmp);
             EasyMock.verify(mockRunListener);
         } finally {
@@ -533,6 +533,75 @@ public class SubprocessTestResultsParserTest {
         assertEquals(logFile.getPath(), received.getPath());
         assertEquals(logFile.getUrl(), received.getUrl());
         assertEquals(logFile.getType(), received.getType());
+    }
+
+    /** If a log comes from subprocess but was not uploaded (no URL), we relog it. */
+    @Test
+    public void testParse_logAssociation_notUploaded() throws Exception {
+        ILogSaverListener mockRunListener = EasyMock.createMock(ILogSaverListener.class);
+        mockRunListener.testLog(
+                EasyMock.eq("subprocess-dataname"),
+                EasyMock.eq(LogDataType.TEXT),
+                EasyMock.anyObject());
+        EasyMock.replay(mockRunListener);
+        File log = FileUtil.createTempFile("dataname-log-assos", ".txt");
+        LogFile logFile = new LogFile(log.getAbsolutePath(), null, LogDataType.TEXT);
+        File serializedLogFile = null;
+        File tmp = FileUtil.createTempFile("sub", "unit");
+        SubprocessTestResultsParser resultParser = null;
+        try {
+            serializedLogFile = SerializationUtil.serialize(logFile);
+            resultParser =
+                    new SubprocessTestResultsParser(mockRunListener, new InvocationContext());
+            String logAssociation =
+                    String.format(
+                            "LOG_ASSOCIATION {\"loggedFile\":\"%s\",\"dataName\":\"dataname\"}\n",
+                            serializedLogFile.getAbsolutePath());
+            FileUtil.writeToFile(logAssociation, tmp, true);
+            resultParser.parseFile(tmp);
+            EasyMock.verify(mockRunListener);
+        } finally {
+            StreamUtil.close(resultParser);
+            FileUtil.deleteFile(serializedLogFile);
+            FileUtil.deleteFile(tmp);
+            FileUtil.deleteFile(log);
+        }
+    }
+
+    @Test
+    public void testParse_logAssociation_zipped() throws Exception {
+        ILogSaverListener mockRunListener = EasyMock.createMock(ILogSaverListener.class);
+        mockRunListener.testLog(
+                EasyMock.eq("subprocess-dataname"),
+                EasyMock.eq(LogDataType.TEXT),
+                EasyMock.anyObject());
+        EasyMock.replay(mockRunListener);
+        File logDir = FileUtil.createTempDir("log-assos-dir");
+        File log = FileUtil.createTempFile("dataname-log-assos", ".txt", logDir);
+        File zipLog = ZipUtil.createZip(logDir);
+        LogFile logFile = new LogFile(zipLog.getAbsolutePath(), null, LogDataType.TEXT);
+        File serializedLogFile = null;
+        File tmp = FileUtil.createTempFile("sub", "unit");
+        SubprocessTestResultsParser resultParser = null;
+        try {
+            serializedLogFile = SerializationUtil.serialize(logFile);
+            resultParser =
+                    new SubprocessTestResultsParser(mockRunListener, new InvocationContext());
+            String logAssociation =
+                    String.format(
+                            "LOG_ASSOCIATION {\"loggedFile\":\"%s\",\"dataName\":\"dataname\"}\n",
+                            serializedLogFile.getAbsolutePath());
+            FileUtil.writeToFile(logAssociation, tmp, true);
+            resultParser.parseFile(tmp);
+            EasyMock.verify(mockRunListener);
+        } finally {
+            StreamUtil.close(resultParser);
+            FileUtil.deleteFile(serializedLogFile);
+            FileUtil.deleteFile(tmp);
+            FileUtil.deleteFile(log);
+            FileUtil.recursiveDelete(logDir);
+            FileUtil.deleteFile(zipLog);
+        }
     }
 
     @Test
@@ -553,14 +622,15 @@ public class SubprocessTestResultsParserTest {
             serializedLogFile = SerializationUtil.serialize(logFile);
             resultParser =
                     new SubprocessTestResultsParser(mockRunListener, new InvocationContext());
-            String logAssocation =
+            resultParser.setIgnoreTestLog(false);
+            String logAssociation =
                     String.format(
                             "TEST_LOG {\"dataType\":\"TEXT\",\"dataName\":\"dataname\","
                                     + "\"dataFile\":\"%s\"}'\n"
                                     + "LOG_ASSOCIATION {\"loggedFile\":\"%s\","
                                     + "\"dataName\":\"dataname\"}\n",
                             testLogFile2.getAbsolutePath(), serializedLogFile.getAbsolutePath());
-            FileUtil.writeToFile(logAssocation, tmp, true);
+            FileUtil.writeToFile(logAssociation, tmp, true);
             resultParser.parseFile(tmp);
             EasyMock.verify(mockRunListener);
         } finally {

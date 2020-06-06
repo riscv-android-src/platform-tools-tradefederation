@@ -16,6 +16,7 @@
 package com.android.tradefed.result.suite;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -169,7 +170,7 @@ public class XmlSuiteResultFormatterTest {
         assertXmlContainsValue(
                 content,
                 "Result/Module/TestCase/Test/Failure/StackTrace",
-                XmlSuiteResultFormatter.sanitizeXmlContent("module1 failed.\nstack\nstack\0"));
+                "module1 failed.\nstack\n<null>stack[Null]");
         // Test that we can read back the informations
         SuiteResultHolder holder = mFormatter.parseResults(mResultDir, false);
         assertEquals(holder.completeModules, mResultHolder.completeModules);
@@ -182,6 +183,62 @@ public class XmlSuiteResultFormatterTest {
                 holder.modulesAbi.get("armeabi-v7a module1"),
                 mResultHolder.modulesAbi.get("module1"));
         assertEquals(holder.runResults.size(), mResultHolder.runResults.size());
+    }
+
+    @Test
+    public void testFailuresReporting_notDone() throws Exception {
+        mResultHolder.context = mContext;
+
+        List<TestRunResult> runResults = new ArrayList<>();
+        runResults.add(createFakeResult("module1", 2, 1, 0, 0));
+        runResults.get(0).testRunFailed("Failed module");
+        mResultHolder.runResults = runResults;
+
+        Map<String, IAbi> modulesAbi = new HashMap<>();
+        modulesAbi.put("module1", new Abi("armeabi-v7a", "32"));
+        mResultHolder.modulesAbi = modulesAbi;
+
+        mResultHolder.completeModules = 2;
+        mResultHolder.totalModules = 1;
+        mResultHolder.passedTests = 2;
+        mResultHolder.failedTests = 1;
+        mResultHolder.startTime = 0L;
+        mResultHolder.endTime = 10L;
+        File res = mFormatter.writeResults(mResultHolder, mResultDir);
+        String content = FileUtil.readStringFromFile(res);
+
+        assertXmlContainsNode(content, "Result/Module");
+        assertXmlContainsAttribute(content, "Result/Module", "done", "false");
+        assertXmlContainsNode(content, "Result/Module/Reason");
+        assertXmlContainsAttribute(content, "Result/Module/TestCase", "name", "com.class.module1");
+        assertXmlContainsAttribute(
+                content, "Result/Module/TestCase/Test", "name", "module1.method0");
+        assertXmlContainsAttribute(
+                content, "Result/Module/TestCase/Test", "name", "module1.method1");
+        // Check that failures are showing in the xml for the test cases
+        assertXmlContainsAttribute(
+                content, "Result/Module/TestCase/Test", "name", "module1.failed0");
+        assertXmlContainsAttribute(content, "Result/Module/TestCase/Test", "result", "fail");
+        assertXmlContainsAttribute(
+                content, "Result/Module/TestCase/Test/Failure", "message", "module1 failed.");
+        assertXmlContainsValue(
+                content,
+                "Result/Module/TestCase/Test/Failure/StackTrace",
+                "module1 failed.\nstack\n<null>stack[Null]");
+        // Test that we can read back the informations
+        SuiteResultHolder holder = mFormatter.parseResults(mResultDir, false);
+        assertEquals(holder.completeModules, mResultHolder.completeModules);
+        assertEquals(holder.totalModules, mResultHolder.totalModules);
+        assertEquals(holder.passedTests, mResultHolder.passedTests);
+        assertEquals(holder.failedTests, mResultHolder.failedTests);
+        assertEquals(holder.startTime, mResultHolder.startTime);
+        assertEquals(holder.endTime, mResultHolder.endTime);
+        assertEquals(
+                holder.modulesAbi.get("armeabi-v7a module1"),
+                mResultHolder.modulesAbi.get("module1"));
+        assertEquals(1, holder.runResults.size());
+        TestRunResult result = new ArrayList<>(holder.runResults).get(0);
+        assertFalse(result.isRunComplete());
     }
 
     /** Test that assumption failures and ignored tests are correctly reported in the xml. */
@@ -420,7 +477,7 @@ public class XmlSuiteResultFormatterTest {
         assertXmlContainsValue(
                 content,
                 "Result/Module/TestCase/Test/Failure/StackTrace",
-                XmlSuiteResultFormatter.sanitizeXmlContent("module1 failed.\nstack\nstack\0"));
+                "module1 failed.\nstack\n<null>stack[Null]");
         // Test that we can read back the informations
         SuiteResultHolder holder = mFormatter.parseResults(mResultDir, true);
         assertEquals(holder.completeModules, mResultHolder.completeModules);
@@ -614,7 +671,7 @@ public class XmlSuiteResultFormatterTest {
                     new TestDescription("com.class." + runName, runName + ".failed" + i);
             fakeRes.testStarted(description);
             // Include a null character \0 that is not XML supported
-            fakeRes.testFailed(description, runName + " failed.\nstack\nstack\0");
+            fakeRes.testFailed(description, runName + " failed.\nstack\n<null>stack\0");
             HashMap<String, Metric> metrics = new HashMap<String, Metric>();
             if (withMetrics) {
                 metrics.put("metric0" + i, TfMetricProtoUtil.stringToMetric("value0" + i));

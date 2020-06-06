@@ -410,7 +410,7 @@ public class BaseHostJUnit4TestTest {
             TestDescription description =
                     new TestDescription(InstallApkHostJUnit4Test.class.getName(), "testInstall");
             mMockListener.testStarted(description);
-            EasyMock.expect(mMockDevice.getDeviceDescriptor()).andReturn(null);
+            EasyMock.expect(mMockDevice.getDeviceDescriptor()).andReturn(null).anyTimes();
 
             EasyMock.expect(mMockDevice.installPackage(apk, true)).andReturn(null);
             // Ensure that the auto-uninstall is triggered

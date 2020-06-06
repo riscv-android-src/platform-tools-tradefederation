@@ -703,6 +703,7 @@ public class Configuration implements IConfiguration {
         return clone;
     }
 
+    /** {@inheritDoc} */
     @Override
     public IConfiguration partialDeepClone(List<String> objectToDeepClone, IKeyStoreClient client)
             throws ConfigurationException {
@@ -713,10 +714,43 @@ public class Configuration implements IConfiguration {
                                 QuotationAwareTokenizer.tokenizeLine(this.getCommandLine()),
                                 null,
                                 client);
-        for (String objType : objectToDeepClone) {
-            // TODO: Might need to handle internal device objects
+        // Handle the "device" object holder since it contains more objects.
+        if (objectToDeepClone.contains(Configuration.DEVICE_NAME)) {
             clonedConfig.setConfigurationObjectList(
-                    objType, deepCopy.getConfigurationObjectList(objType));
+                    Configuration.DEVICE_NAME,
+                    deepCopy.getConfigurationObjectList(Configuration.DEVICE_NAME));
+        } else {
+            boolean shouldCopyDevice = false;
+            for (String objType : objectToDeepClone) {
+                if (doesBuiltInObjSupportMultiDevice(objType)) {
+                    shouldCopyDevice = true;
+                }
+            }
+            // Shallow clone the device object if we only need to deep copy one of its objects.
+            if (shouldCopyDevice) {
+                List<IDeviceConfiguration> deviceConfigs = new ArrayList<>();
+                for (IDeviceConfiguration holder : deepCopy.getDeviceConfig()) {
+                    deviceConfigs.add(holder.clone());
+                }
+                clonedConfig.setDeviceConfigList(deviceConfigs);
+            }
+        }
+        for (String objType : objectToDeepClone) {
+            if (objType.equals(Configuration.DEVICE_NAME)) {
+                continue;
+            }
+            if (doesBuiltInObjSupportMultiDevice(objType)) {
+                for (int i = 0; i < deepCopy.getDeviceConfig().size(); i++) {
+                    IDeviceConfiguration deepCopyConfig = deepCopy.getDeviceConfig().get(i);
+                    clonedConfig.getDeviceConfig().get(i).removeObjectType(objType);
+                    for (Object o : deepCopyConfig.getAllObjectOfType(objType)) {
+                        clonedConfig.getDeviceConfig().get(i).addSpecificConfig(o);
+                    }
+                }
+            } else {
+                clonedConfig.setConfigurationObjectList(
+                        objType, deepCopy.getConfigurationObjectList(objType));
+            }
         }
         return clonedConfig;
     }
@@ -1206,6 +1240,19 @@ public class Configuration implements IConfiguration {
         for (File file : mRemoteFiles) {
             FileUtil.recursiveDelete(file);
         }
+        mRemoteFiles.clear();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void addFilesToClean(Set<File> toBeCleaned) {
+        mRemoteFiles.addAll(toBeCleaned);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Set<File> getFilesToClean() {
+        return mRemoteFiles;
     }
 
     /**

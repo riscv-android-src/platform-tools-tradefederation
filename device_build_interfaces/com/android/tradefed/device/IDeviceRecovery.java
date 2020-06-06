@@ -53,6 +53,15 @@ public interface IDeviceRecovery {
             throws DeviceNotAvailableException;
 
     /**
+     * Attempt to recover the given unresponsive device in fastbootd mode.
+     *
+     * @param monitor the {@link IDeviceStateMonitor} to use.
+     * @throws DeviceNotAvailableException if device could not be recovered
+     */
+    public void recoverDeviceFastbootd(final IDeviceStateMonitor monitor)
+            throws DeviceNotAvailableException;
+
+    /**
      * Sets the path to the fastboot binary to be used.
      *
      * @param fastbootPath a {@link String} defining the path to the fastboot binary.

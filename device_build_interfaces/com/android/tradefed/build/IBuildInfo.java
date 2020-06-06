@@ -293,14 +293,6 @@ public interface IBuildInfo extends Serializable {
         return null;
     }
 
-    /** Check if this build is a test resource build or not. */
-    public default boolean isTestResourceBuild() {
-        return false;
-    }
-
-    /** Set the build as test resource build. */
-    public default void setTestResourceBuild(boolean testResourceBuild) {}
-
     /** Get the paths for build artifacts that are delayed download. */
     public default Set<File> getRemoteFiles() {
         return null;

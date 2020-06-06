@@ -36,16 +36,21 @@ import com.android.tradefed.device.cloud.GceAvdInfo;
 import com.android.tradefed.device.cloud.GceManager;
 import com.android.tradefed.device.cloud.ManagedRemoteDevice;
 import com.android.tradefed.device.cloud.RemoteFileUtil;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.proto.FileProtoResultReporter;
 import com.android.tradefed.result.proto.ProtoResultParser;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.TargetSetupError;
+import com.android.tradefed.testtype.SubprocessTfLauncher;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -127,8 +132,10 @@ public class RemoteInvocationExecution extends InvocationExecution {
             TestDeviceOptions options = device.getOptions();
             // Trigger the multi-tenant start in the VM
             options.addGceDriverParams("--num-avds-per-instance");
-            options.addGceDriverParams(config.getCommandOptions().getShardCount().toString());
-            // TODO: Track how many instances we created
+            String count = config.getCommandOptions().getShardCount().toString();
+            options.addGceDriverParams(count);
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.CF_INSTANCE_COUNT, count);
         }
     }
 
@@ -156,7 +163,9 @@ public class RemoteInvocationExecution extends InvocationExecution {
                 GceManager.remoteSshCommandExecution(
                         gceInfo, options, runUtil, 120000L, "mkdir", "-p", mRemoteTradefedDir);
         if (!CommandStatus.SUCCESS.equals(createRemoteDir.getStatus())) {
-            listener.invocationFailed(new RuntimeException("Failed to create remote dir."));
+            listener.invocationFailed(
+                    createInvocationFailure(
+                            "Failed to create remote dir.", FailureStatus.INFRA_FAILURE));
             return;
         }
 
@@ -177,7 +186,9 @@ public class RemoteInvocationExecution extends InvocationExecution {
         }
         if (!result) {
             CLog.e("Failed to push Tradefed.");
-            listener.invocationFailed(new RuntimeException("Failed to push Tradefed."));
+            listener.invocationFailed(
+                    createInvocationFailure(
+                            "Failed to push Tradefed.", FailureStatus.INFRA_FAILURE));
             return;
         }
 
@@ -204,7 +215,9 @@ public class RemoteInvocationExecution extends InvocationExecution {
             if (!resultPush) {
                 CLog.e("Failed to push Tradefed Configuration.");
                 listener.invocationFailed(
-                        new RuntimeException("Failed to push Tradefed Configuration."));
+                        createInvocationFailure(
+                                "Failed to push Tradefed Configuration.",
+                                FailureStatus.INFRA_FAILURE));
                 return;
             }
 
@@ -219,7 +232,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
                         GlobalConfiguration.getInstance()
                                 .cloneConfigWithFilter(new HashSet<>(), whitelistConfigs);
             } catch (IOException e) {
-                listener.invocationFailed(e);
+                listener.invocationFailed(createInvocationFailure(e, FailureStatus.INFRA_FAILURE));
                 return;
             }
             try (InputStreamSource source = new FileInputStreamSource(globalConfig)) {
@@ -238,7 +251,9 @@ public class RemoteInvocationExecution extends InvocationExecution {
             if (!resultPushGlobal) {
                 CLog.e("Failed to push Tradefed Global Configuration.");
                 listener.invocationFailed(
-                        new RuntimeException("Failed to push Tradefed Global Configuration."));
+                        createInvocationFailure(
+                                "Failed to push Tradefed Global Configuration.",
+                                FailureStatus.INFRA_FAILURE));
                 return;
             }
 
@@ -322,13 +337,16 @@ public class RemoteInvocationExecution extends InvocationExecution {
         if (!CommandStatus.SUCCESS.equals(resultRemoteExecution.getStatus())) {
             CLog.e("Error running the remote command: %s", resultRemoteExecution.getStdout());
             currentInvocationListener.invocationFailed(
-                    new RuntimeException(resultRemoteExecution.getStderr()));
+                    createInvocationFailure(
+                            resultRemoteExecution.getStderr(), FailureStatus.INFRA_FAILURE));
             return;
         }
         // Sleep a bit to let the process start
         RunUtil.getDefault().sleep(10000L);
 
         mProtoParser = new ProtoResultParser(currentInvocationListener, context, false, "remote-");
+        // Print when parsing
+        mProtoParser.setQuiet(false);
         // Monitor the remote invocation to ensure it's completing. Block until timeout or stops
         // running.
         boolean stillRunning = true;
@@ -355,8 +373,12 @@ public class RemoteInvocationExecution extends InvocationExecution {
                             info,
                             options,
                             runUtil);
-            mRemoteConsoleStdErr = FileUtil.readStringFromFile(stderr);
-            FileUtil.recursiveDelete(stderr);
+            if (stderr != null && stderr.exists()) {
+                mRemoteConsoleStdErr = FileUtil.readStringFromFile(stderr);
+                FileUtil.recursiveDelete(stderr);
+            } else {
+                mRemoteConsoleStdErr = "Failed to fetch stderr from remote.";
+            }
         }
 
         // If not result in progress are reported, parse the full results at the end.
@@ -376,7 +398,8 @@ public class RemoteInvocationExecution extends InvocationExecution {
                                         + "of remote execution was not found. "
                                         + TRADEFED_EARLY_TERMINATION,
                                 mRemoteConsoleStdErr);
-                currentInvocationListener.invocationFailed(new RuntimeException(message));
+                currentInvocationListener.invocationFailed(
+                        createInvocationFailure(message, FailureStatus.INFRA_FAILURE));
             }
         }
     }
@@ -459,10 +482,11 @@ public class RemoteInvocationExecution extends InvocationExecution {
                 CLog.d("still running: %s", stillRunning);
                 if (endTime != null && System.currentTimeMillis() > endTime) {
                     currentInvocationListener.invocationFailed(
-                            new RuntimeException(
+                            createInvocationFailure(
                                     String.format(
                                             "Remote invocation timeout after %s",
-                                            TimeUtil.formatElapsedTime(maxTimeout))));
+                                            TimeUtil.formatElapsedTime(maxTimeout)),
+                                    FailureStatus.TIMED_OUT));
                     break;
                 }
             }
@@ -594,6 +618,11 @@ public class RemoteInvocationExecution extends InvocationExecution {
             config.getCommandOptions().setReplicateSetup(true);
         }
 
+        // Mark the remote invocation as subprocess
+        config.getCommandOptions()
+                .getInvocationData()
+                .put(SubprocessTfLauncher.SUBPROCESS_TAG_NAME, "true");
+
         // Unset remote-tf-version to avoid re-downloading from remote VM.
         OptionSetter deviceOptions =
                 new OptionSetter(config.getDeviceConfig().get(0).getDeviceOptions());
@@ -620,7 +649,9 @@ public class RemoteInvocationExecution extends InvocationExecution {
 
         String tfPath = System.getProperty("TF_JAR_DIR");
         if (tfPath == null) {
-            listener.invocationFailed(new RuntimeException("Failed to find $TF_JAR_DIR."));
+            listener.invocationFailed(
+                    createInvocationFailure(
+                            "Failed to find $TF_JAR_DIR.", FailureStatus.INFRA_FAILURE));
             return null;
         }
         File currentTf = new File(tfPath).getAbsoluteFile();
@@ -652,12 +683,13 @@ public class RemoteInvocationExecution extends InvocationExecution {
                         resultDirPath + PROTO_RESULT_NAME);
         if (resultFile == null) {
             invocationListener.invocationFailed(
-                    new RuntimeException(
+                    createInvocationFailure(
                             String.format(
                                     "Could not find remote result file at %s. "
                                             + TRADEFED_EARLY_TERMINATION,
                                     resultDirPath + PROTO_RESULT_NAME,
-                                    mRemoteConsoleStdErr)));
+                                    mRemoteConsoleStdErr),
+                            FailureStatus.INFRA_FAILURE));
             return;
         }
         CLog.d("Fetched remote result file!");
@@ -685,5 +717,19 @@ public class RemoteInvocationExecution extends InvocationExecution {
             }
         }
         return file;
+    }
+
+    private FailureDescription createInvocationFailure(String errorMessage, FailureStatus status) {
+        FailureDescription failure = FailureDescription.create(errorMessage);
+        failure.setFailureStatus(status);
+        failure.setCause(new RuntimeException(errorMessage));
+        return failure;
+    }
+
+    private FailureDescription createInvocationFailure(Exception e, FailureStatus status) {
+        FailureDescription failure = FailureDescription.create(e.getMessage());
+        failure.setFailureStatus(status);
+        failure.setCause(e);
+        return failure;
     }
 }
