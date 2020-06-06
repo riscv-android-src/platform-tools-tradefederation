@@ -46,7 +46,7 @@ final class RetryStatsHelper {
         if (!mResults.isEmpty()) {
             List<TestRunResult> attemptResults = mResults.get(mResults.size() - 1);
             Set<TestDescription> attemptFailures =
-                    BaseRetryDecision.getFailedTestCases(attemptResults);
+                    BaseRetryDecision.getFailedTestCases(attemptResults).keySet();
             mStats.mRetryFailure = attemptFailures.size();
         }
         return mStats;
@@ -56,8 +56,8 @@ final class RetryStatsHelper {
             List<TestRunResult> previousResults, List<TestRunResult> latestResults) {
         Set<TestDescription> diff =
                 Sets.difference(
-                        BaseRetryDecision.getFailedTestCases(previousResults),
-                        BaseRetryDecision.getFailedTestCases(latestResults));
+                        BaseRetryDecision.getFailedTestCases(previousResults).keySet(),
+                        BaseRetryDecision.getFailedTestCases(latestResults).keySet());
         mStats.mRetrySuccess += diff.size();
     }
 }

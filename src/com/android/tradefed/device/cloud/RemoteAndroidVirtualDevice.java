@@ -84,9 +84,9 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
 
     /** {@inheritDoc} */
     @Override
-    public void preInvocationSetup(IBuildInfo info, List<IBuildInfo> testResourceBuildInfos)
+    public void preInvocationSetup(IBuildInfo info)
             throws TargetSetupError, DeviceNotAvailableException {
-        super.preInvocationSetup(info, testResourceBuildInfos);
+        super.preInvocationSetup(info);
         try {
             mGceAvd = null;
             mGceSshMonitor = null;

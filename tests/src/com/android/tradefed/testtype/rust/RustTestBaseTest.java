@@ -15,7 +15,10 @@
  */
 package com.android.tradefed.testtype.rust;
 
+import static com.google.common.truth.Truth.assertThat;
+
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import com.android.tradefed.testtype.ITestFilterReceiver;
 
@@ -23,13 +26,14 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+import java.text.ParseException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
 /** Unit tests for {@link RustTestBase}. */
 @RunWith(JUnit4.class)
-public class RustTestBaseTest {
+public class RustTestBaseTest extends RustParserTestBase {
 
     /** Test a child class of {@link RustTestBase}. */
     static class RustTestBaseImpl extends RustTestBase {}
@@ -74,5 +78,48 @@ public class RustTestBaseTest {
         assertEquals(set0, runner.getIncludeFilters());
         runner.clearExcludeFilters();
         assertEquals(set0, runner.getExcludeFilters());
+    }
+
+    /** Test parsing of various forms of Rust test list summary output. */
+    @Test
+    public void testParseTestListSummaries() throws Exception {
+        assertEquals(0, RustTestBase.parseTestListCount(new String[] {"0 tests, 0 benchmarks"}));
+        assertEquals(1, RustTestBase.parseTestListCount(new String[] {"1 test, 0 benchmarks"}));
+        assertEquals(0, RustTestBase.parseTestListCount(new String[] {"0 tests, 1 benchmark"}));
+        assertEquals(2, RustTestBase.parseTestListCount(new String[] {"2 tests, 0 benchmarks"}));
+        assertEquals(2, RustTestBase.parseTestListCount(new String[] {"2 tests, 1 benchmark"}));
+        assertEquals(2, RustTestBase.parseTestListCount(new String[] {"2 tests, 2 benchmarks"}));
+    }
+
+    /** Test parsing of a real Rust test list. */
+    @Test
+    public void testParseTestListRealOutput() throws Exception {
+        String[] contents = readInFile(RUST_LIST_FILE_1);
+        assertEquals(42, RustTestBase.parseTestListCount(contents));
+    }
+
+    /** Test parsing of an empty Rust test list. */
+    @Test
+    public void testParseTestListEmpty() throws Exception {
+        try {
+            RustTestBase.parseTestListCount(new String[] {});
+            fail("Should have thrown an exception.");
+        } catch (ParseException e) {
+            assertThat(e).hasMessageThat().contains("Test did not return any output");
+        }
+    }
+
+    /** Test parsing of a malformed or non-standard Rust test list. */
+    @Test
+    public void testParseTestListMalformed() throws Exception {
+        String[] contents = {
+            "some other output", "that does not contain a summary line",
+        };
+        try {
+            RustTestBase.parseTestListCount(contents);
+            fail("Should have thrown an exception.");
+        } catch (ParseException e) {
+            assertThat(e).hasMessageThat().contains("Could not match total");
+        }
     }
 }

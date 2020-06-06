@@ -39,11 +39,21 @@ public class SystemServerStatusChecker implements ISystemStatusChecker {
     private boolean mShouldRecover = true;
 
     private ProcessInfo mSystemServerProcess;
+    private boolean mShouldSkip = false;
 
     /** {@inheritDoc} */
     @Override
     public StatusCheckerResult preExecutionCheck(ITestDevice device)
             throws DeviceNotAvailableException {
+        if (mShouldSkip) {
+            return new StatusCheckerResult(CheckStatus.SUCCESS);
+        }
+        // process info relies on a time function fixed after P
+        if (device.getApiLevel() < 29) {
+            mShouldSkip = true;
+            CLog.d("Api level is under 29 skipping SystemServerStatusChecker");
+            return new StatusCheckerResult(CheckStatus.SUCCESS);
+        }
         mSystemServerProcess = device.getProcessByName("system_server");
         StatusCheckerResult result = new StatusCheckerResult(CheckStatus.SUCCESS);
         if (mSystemServerProcess == null) {
@@ -64,6 +74,9 @@ public class SystemServerStatusChecker implements ISystemStatusChecker {
     @Override
     public StatusCheckerResult postExecutionCheck(ITestDevice device)
             throws DeviceNotAvailableException {
+        if (mShouldSkip) {
+            return new StatusCheckerResult(CheckStatus.SUCCESS);
+        }
         if (mSystemServerProcess == null) {
             CLog.d(
                     "No valid system_server process was found in preExecutionCheck, "

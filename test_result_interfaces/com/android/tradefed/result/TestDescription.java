@@ -25,10 +25,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /** Class representing information about a test case. */
-public final class TestDescription implements Serializable {
+public final class TestDescription implements Serializable, Comparable<TestDescription> {
 
     /** Regex for method parameterized. For example: testName[0] */
-    public static final Pattern PARAMETERIZED_TEST_REGEX = Pattern.compile("(.*)?\\[(.*)\\]$");
+    public static final Pattern PARAMETERIZED_TEST_REGEX = Pattern.compile("([^\\[]+)\\[(.*)\\]$");
 
     private final String mClassName;
     private final String mTestName;
@@ -140,8 +140,27 @@ public final class TestDescription implements Serializable {
     }
 
     @Override
+    public int compareTo(TestDescription o) {
+        return toString().compareTo(o.toString());
+    }
+
+    @Override
     public String toString() {
         return String.format("%s#%s", getClassName(), getTestName());
+    }
+
+    /**
+     * Create a {@link TestDescription} from its {@link #toString()}} representation.
+     *
+     * @param data the String representation. Expected format: classname#methodname
+     * @return the TestDescription or null if it could not be parsed
+     */
+    public static TestDescription fromString(String data) {
+        String[] segments = data.split("#");
+        if (segments.length == 2) {
+            return new TestDescription(segments[0], segments[1]);
+        }
+        return null;
     }
 
     /**
