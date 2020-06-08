@@ -155,6 +155,14 @@ public class BaseTestSuite extends ITestSuite {
     private boolean mEnableParameter = false;
 
     @Option(
+        name = "enable-mainline-parameterized-modules",
+        description =
+                "Whether or not to enable mainline parameterized modules. This is a feature flag "
+                        + "for work in development."
+    )
+    private boolean mEnableMainlineParameter = false;
+
+    @Option(
         name = "enable-optional-parameterization",
         description =
                 "Whether or not to enable optional parameters. Optional parameters are "
@@ -268,6 +276,12 @@ public class BaseTestSuite extends ITestSuite {
                         "'enable-optional-parameterization' option was specified without "
                                 + "'enable-parameterized-modules'");
             }
+
+            if (mEnableMainlineParameter) {
+                mModuleRepo.setMainlineParameterizedModules(mEnableMainlineParameter);
+                mModuleRepo.setInvocationContext(getInvocationContext());
+            }
+
             mModuleRepo.setParameterizedModules(mEnableParameter);
             mModuleRepo.setOptionalParameterizedModules(mEnableOptionalParameter);
             mModuleRepo.setModuleParameter(mForceParameter);
