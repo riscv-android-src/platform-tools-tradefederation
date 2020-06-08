@@ -33,6 +33,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.SocketException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -278,13 +279,28 @@ public class GCSFileDownloader extends GCSCommon implements IFileDownloader {
     @VisibleForTesting
     void downloadFile(String bucketName, String remoteFilename, File localFile)
             throws BuildRetrievalError {
+        int i = 0;
         try {
-            if (!isRemoteFolder(bucketName, remoteFilename)) {
-                fetchRemoteFile(bucketName, remoteFilename, localFile);
-                return;
-            }
-            remoteFilename = sanitizeDirectoryName(remoteFilename);
-            recursiveDownloadFolder(bucketName, remoteFilename, localFile);
+            do {
+                i++;
+                try {
+                    if (!isRemoteFolder(bucketName, remoteFilename)) {
+                        fetchRemoteFile(bucketName, remoteFilename, localFile);
+                        return;
+                    }
+                    remoteFilename = sanitizeDirectoryName(remoteFilename);
+                    recursiveDownloadFolder(bucketName, remoteFilename, localFile);
+                    return;
+                } catch (SocketException se) {
+                    // Allow one retry in case of flaky connection.
+                    if (i >= 2) {
+                        throw se;
+                    }
+                    CLog.e(
+                            "Error '%s' while downloading gs://%s/%s. retrying.",
+                            se.getMessage(), bucketName, remoteFilename);
+                }
+            } while (true);
         } catch (IOException e) {
             CLog.e("Failed to download gs://%s/%s, clean up.", bucketName, remoteFilename);
             throw new BuildRetrievalError(e.getMessage(), e);
