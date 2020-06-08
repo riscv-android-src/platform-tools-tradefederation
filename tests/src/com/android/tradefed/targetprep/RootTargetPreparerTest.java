@@ -124,4 +124,36 @@ public class RootTargetPreparerTest {
 
         mRootTargetPreparer.setUp(mTestInfo);
     }
+
+    @Test
+    public void testSetUpFail_forceRoot_ignoresFailure() throws Exception {
+        OptionSetter setter = new OptionSetter(mRootTargetPreparer);
+        setter.setOptionValue("throw-on-error", "false");
+
+        EasyMock.expect(mMockDevice.isAdbRoot()).andReturn(false).once();
+        EasyMock.expect(mMockDevice.enableAdbRoot()).andReturn(false).once();
+        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andReturn(null).once();
+        EasyMock.expect(mMockDevice.disableAdbRoot()).andReturn(true).once();
+        EasyMock.replay(mMockDevice, mMockBuildInfo);
+
+        mRootTargetPreparer.setUp(mTestInfo);
+        mRootTargetPreparer.tearDown(mTestInfo, null);
+    }
+
+    @Test
+    public void testSetUpFail_forceUnroot_ignoresFailure() throws Exception {
+        OptionSetter setter = new OptionSetter(mRootTargetPreparer);
+        setter.setOptionValue("force-root", "false");
+        setter.setOptionValue("throw-on-error", "false");
+
+        EasyMock.expect(mMockDevice.isAdbRoot()).andReturn(true).once();
+        EasyMock.expect(mMockDevice.disableAdbRoot()).andReturn(false).once();
+        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andReturn(null).once();
+        EasyMock.expect(mMockDevice.enableAdbRoot()).andReturn(true).once();
+        EasyMock.replay(mMockDevice, mMockBuildInfo);
+
+        mRootTargetPreparer.setUp(mTestInfo);
+        mRootTargetPreparer.tearDown(mTestInfo, null);
+        EasyMock.verify(mMockDevice, mMockBuildInfo);
+    }
 }

@@ -24,14 +24,20 @@ import com.android.tradefed.testtype.ITestFilterReceiver;
 
 import com.google.common.annotations.VisibleForTesting;
 
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /** Base class of RustBinaryHostTest and RustBinaryTest */
 @OptionClass(alias = "rust-test")
 public abstract class RustTestBase implements IRemoteTest, ITestFilterReceiver {
+
+    private static final Pattern TEST_LIST_PATTERN =
+            Pattern.compile("(\\d+) tests?, (\\d+) benchmarks?");
 
     @Option(
             name = "test-options",
@@ -51,6 +57,35 @@ public abstract class RustTestBase implements IRemoteTest, ITestFilterReceiver {
     @VisibleForTesting
     IShellOutputReceiver createParser(ITestInvocationListener listener, String runName) {
         return new RustTestResultParser(listener, runName);
+    }
+
+    /**
+     * Parse and return the number of tests from the list of tests from a Rust test harness.
+     *
+     * @param testList the output of the Rust test list (output of `test_binary --list`).
+     */
+    protected static int parseTestListCount(String[] testList) throws ParseException {
+        // Get the number of tests we are running, assuming this is a standard
+        // rust test harness. If this isn't, this command will fail and we will
+        // report 0 tests, which is fine.
+        int testCount = 0;
+        if (testList.length > 0) {
+            Matcher matcher = TEST_LIST_PATTERN.matcher(testList[testList.length - 1]);
+            if (matcher.matches()) {
+                testCount = Integer.parseInt(matcher.group(1));
+            } else {
+                throw new ParseException(
+                        "Could not match total test/benchmark count output. "
+                                + "Does this test use the standard Rust test harness?",
+                        0);
+            }
+        } else {
+            throw new ParseException(
+                    "Test did not return any output with --list argument. "
+                            + "Does this test use the standard Rust test harness?",
+                    0);
+        }
+        return testCount;
     }
 
     // TODO(b/145607401): make rust test runners accept filters

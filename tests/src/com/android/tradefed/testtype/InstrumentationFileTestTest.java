@@ -31,6 +31,7 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLifeCycleReceiver;
 import com.android.tradefed.result.TestDescription;
@@ -262,6 +263,7 @@ public class InstrumentationFileTestTest {
     @Test
     public void testRun_serialReRunOfTwoFailedToCompleteTests()
             throws DeviceNotAvailableException, ConfigurationException {
+        mMockListener = EasyMock.createStrictMock(ITestInvocationListener.class);
         final Collection<TestDescription> testsList = new ArrayList<>(1);
         final TestDescription test1 = new TestDescription("ClassFoo1", "methodBar1");
         final TestDescription test2 = new TestDescription("ClassFoo2", "methodBar2");
@@ -351,6 +353,10 @@ public class InstrumentationFileTestTest {
         mMockListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
         mMockListener.testEnded(
                 EasyMock.eq(test1), EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
+        mMockListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
+        mMockListener.testFailed(EasyMock.eq(test2), EasyMock.<FailureDescription>anyObject());
+        mMockListener.testEnded(
+                EasyMock.eq(test2), EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
         mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
         // first serial re-run:
         mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 0, 1);

@@ -113,7 +113,7 @@ public class PerfettoPullerMetricCollectorTest {
         Mockito.verify(mPerfettoMetricCollector).runHostCommand(Mockito.anyLong(),
                 Mockito.any(), Mockito.any(), Mockito.any());
         Mockito.verify(mMockListener)
-                .testLog(Mockito.eq("trace"), Mockito.eq(LogDataType.PB), Mockito.any());
+                .testLog(Mockito.eq("trace"), Mockito.eq(LogDataType.PERFETTO), Mockito.any());
         assertTrue("Expected two metrics that includes success status",
                 currentMetrics.get("perfetto_trace_extractor_status").getMeasurements()
                         .getSingleString().equals("1"));
@@ -184,7 +184,7 @@ public class PerfettoPullerMetricCollectorTest {
         Mockito.verify(mPerfettoMetricCollector).runHostCommand(Mockito.anyLong(),
                 Mockito.any(), Mockito.any(), Mockito.any());
         Mockito.verify(mMockListener)
-                .testLog(Mockito.eq("trace"), Mockito.eq(LogDataType.PB), Mockito.any());
+                .testLog(Mockito.eq("trace"), Mockito.eq(LogDataType.PERFETTO), Mockito.any());
         assertTrue("Expected two metrics that includes failure status",
                 currentMetrics.get("perfetto_trace_extractor_status").getMeasurements()
                         .getSingleString().equals("0"));

@@ -203,7 +203,7 @@ class InstrumentationFileTest implements IRemoteTest {
         } finally {
             deleteTestFileFromDevice(mFilePathOnDevice);
             Collection<TestDescription> completedTests =
-                    testTracker.getCurrentRunResults().getCompletedTests();
+                    InstrumentationTest.excludeNonExecuted(testTracker.getCurrentRunResults());
             if (mTests.removeAll(completedTests) && !mTests.isEmpty()) {
                 // re-run remaining tests from file
                 writeTestsToFileAndRun(mTests, testInfo, listener);

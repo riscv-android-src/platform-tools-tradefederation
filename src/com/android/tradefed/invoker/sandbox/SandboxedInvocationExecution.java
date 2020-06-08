@@ -25,7 +25,6 @@ import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.invoker.ExecutionFiles;
 import com.android.tradefed.invoker.ExecutionFiles.FilesKey;
-import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.InvocationExecution;
 import com.android.tradefed.invoker.TestInformation;
@@ -72,22 +71,6 @@ public class SandboxedInvocationExecution extends InvocationExecution {
         }
         backFillTestInformation(testInfo, testInfo.getBuildInfo());
         return true;
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public boolean resetBuildAndReschedule(
-            Throwable exception,
-            ITestInvocationListener listener,
-            IConfiguration config,
-            IInvocationContext context) {
-        if (!config.getConfigurationDescription().shouldUseSandbox()) {
-            throw new RuntimeException(
-                    "We should only skip resetAndReschedule if we are a sandbox. "
-                            + "Something went very wrong.");
-        }
-        // If we are sandboxed, build reset and reschedule should happen on the parents.
-        return false;
     }
 
     /**

@@ -191,7 +191,7 @@ public class ParentSandboxInvocationExecutionTest {
         } catch (TargetSetupError expected) {
             // Expected.
             assertEquals(
-                    "Check your --parent-preparer-config option: test error null",
+                    "Check your --parent-preparer-config option: test error",
                     expected.getMessage());
         }
         verify(mMockDevice, times(0)).getIDevice();

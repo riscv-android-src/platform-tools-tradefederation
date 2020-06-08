@@ -191,8 +191,7 @@ public class ClusterCommandScheduler extends CommandScheduler {
                                 result.getNumAllFailedTests(),
                                 result.getNumTestsInState(TestStatus.PASSED),
                                 result.isRunComplete(),
-                                result.getElapsedTime(),
-                                result.getRunFailureMessage());
+                                result.getElapsedTime());
                 obj.addTestGroupStatus(testGroupStatus);
             }
             mInvocationStatus = obj;
@@ -293,6 +292,7 @@ public class ClusterCommandScheduler extends CommandScheduler {
 
             String fetchBuildTimeMillis = "-1";
             String setupTimeMillis = "-1";
+            String lostDevice = null;
             if (metadata != null) {
                 fetchBuildTimeMillis =
                         metadata.getAttributes()
@@ -302,6 +302,10 @@ public class ClusterCommandScheduler extends CommandScheduler {
                         metadata.getAttributes()
                                 .getUniqueMap()
                                 .get(InvocationMetricKey.SETUP.toString());
+                lostDevice =
+                        metadata.getAttributes()
+                                .getUniqueMap()
+                                .get(InvocationMetricKey.DEVICE_LOST_DETECTED.toString());
             }
 
             // Stop heartbeat thread before sending InvocationCompleted event.
@@ -309,7 +313,7 @@ public class ClusterCommandScheduler extends CommandScheduler {
                 mHeartbeat.cancel(true);
             }
             updateInvocationStatus();
-            final ClusterCommandEvent event =
+            final ClusterCommandEvent.Builder eventBuilder =
                     createEventBuilder()
                             .setType(ClusterCommandEvent.Type.InvocationCompleted)
                             .setInvocationStatus(mInvocationStatus)
@@ -331,8 +335,11 @@ public class ClusterCommandScheduler extends CommandScheduler {
                                     Integer.toString(getNumTestsInState(TestStatus.PASSED)))
                             .setData(
                                     ClusterCommandEvent.DATA_KEY_FAILED_TEST_RUN_COUNT,
-                                    Integer.toString(getNumAllFailedTestRuns()))
-                            .build();
+                                    Integer.toString(getNumAllFailedTestRuns()));
+            if (lostDevice != null) {
+                eventBuilder.setData(ClusterCommandEvent.DATA_KEY_LOST_DEVICE_DETECTED, lostDevice);
+            }
+            final ClusterCommandEvent event = eventBuilder.build();
             getClusterClient().getCommandEventUploader().postEvent(event);
             getClusterClient().getCommandEventUploader().flush();
         }
@@ -384,8 +391,9 @@ public class ClusterCommandScheduler extends CommandScheduler {
                             // TODO: retrieve cancel reason from TFC.
                             String cause =
                                     String.format(
-                                            "Command (requestId=%s, commandId=%s) has been marked"
-                                                    + " canceled by the cluster",
+                                            "The cluster client %s has marked command "
+                                                    + "(requestId=%s, commandId=%s) canceled",
+                                            getClusterClient().getClass().getSimpleName(),
                                             mCommandTask.getRequestId(),
                                             mCommandTask.getCommandId());
                             CLog.w("Stop invocation due to: %s", cause);
