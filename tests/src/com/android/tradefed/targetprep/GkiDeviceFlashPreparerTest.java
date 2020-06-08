@@ -35,6 +35,7 @@ import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.ZipUtil;
 
 import org.easymock.EasyMock;
 import org.junit.After;
@@ -44,6 +45,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 import java.io.File;
+import java.util.List;
 
 /** Unit tests for {@link GkiDevicePreparer}. */
 @RunWith(JUnit4.class)
@@ -125,16 +127,148 @@ public class GkiDeviceFlashPreparerTest {
         mMockDevice.postBootSetup();
     }
 
-    /* Verifies that preparer will throw exception when there is no valid GKI boot.img*/
+    /* Verifies that validateGkiBootImg will throw TargetSetupError if there is no BuildInfo files */
     @Test
-    public void testNoValidGkiImage() throws Exception {
+    public void testValidateGkiBootImg_NoBuildInfoFiles() throws Exception {
+        EasyMock.replay(mMockDevice, mMockRunUtil);
+        try {
+            mPreparer.validateGkiBootImg(mMockDevice, mBuildInfo, mTmpDir);
+            fail("TargetSetupError is expected");
+        } catch (TargetSetupError e) {
+            // expected
+        }
+        EasyMock.verify(mMockDevice, mMockRunUtil);
+    }
+
+    /* Verifies that validateGkiBootImg will throw exception when there is no ramdisk-recovery.img*/
+    @Test
+    public void testValidateGkiBootImg_NoRamdiskRecoveryImg() throws Exception {
+        File kernelImage = new File(mTmpDir, "Image.gz");
+        mBuildInfo.setFile("Image.gz", kernelImage, "0");
+        EasyMock.replay(mMockDevice, mMockRunUtil);
+        try {
+            mPreparer.validateGkiBootImg(mMockDevice, mBuildInfo, mTmpDir);
+            fail("TargetSetupError is expected");
+        } catch (TargetSetupError e) {
+            // expected
+        }
+        EasyMock.verify(mMockDevice, mMockRunUtil);
+    }
+
+    /* Verifies that validateGkiBootImg will throw exception when there is no otatools.zip*/
+    @Test
+    public void testValidateGkiBootImg_NoOtatoolsZip() throws Exception {
+        File kernelImage = new File(mTmpDir, "Image.gz");
+        mBuildInfo.setFile("Image.gz", kernelImage, "0");
+        File ramdiskRecoveryImage = new File(mTmpDir, "ramdisk-recovery.img");
+        mBuildInfo.setFile("ramdisk-recovery.img", ramdiskRecoveryImage, "0");
+        EasyMock.replay(mMockDevice, mMockRunUtil);
+        try {
+            mPreparer.validateGkiBootImg(mMockDevice, mBuildInfo, mTmpDir);
+            fail("TargetSetupError is expected");
+        } catch (TargetSetupError e) {
+            // expected
+        }
+        EasyMock.verify(mMockDevice, mMockRunUtil);
+    }
+
+    /* Verifies that validateGkiBootImg will throw exception when there is no valid mkbootimg in otatools.zip*/
+    @Test
+    public void testValidateGkiBootImg_NoMkbootimgInOtatoolsZip() throws Exception {
+        File kernelImage = new File(mTmpDir, "Image.gz");
+        mBuildInfo.setFile("Image.gz", kernelImage, "0");
+        File ramdiskRecoveryImage = new File(mTmpDir, "ramdisk-recovery.img");
+        mBuildInfo.setFile("ramdisk-recovery.img", ramdiskRecoveryImage, "0");
+        File otaDir = FileUtil.createTempDir("otatool_folder", mTmpDir);
+        File tmpFile = new File(otaDir, "test");
+        File otatoolsZip = FileUtil.createTempFile("otatools", ".zip", mTmpDir);
+        ZipUtil.createZip(List.of(tmpFile), otatoolsZip);
+        mBuildInfo.setFile("otatools.zip", otatoolsZip, "0");
+        EasyMock.replay(mMockDevice, mMockRunUtil);
+        try {
+            mPreparer.validateGkiBootImg(mMockDevice, mBuildInfo, mTmpDir);
+            fail("TargetSetupError is expected");
+        } catch (TargetSetupError e) {
+            // expected
+        }
+        EasyMock.verify(mMockDevice, mMockRunUtil);
+    }
+
+    /* Verifies that validateGkiBootImg will throw exception when fail to generate GKI boot.img*/
+    @Test
+    public void testValidateGkiBootImg_FailToGenerateBootImg() throws Exception {
+        File kernelImage = new File(mTmpDir, "Image.gz");
+        mBuildInfo.setFile("Image.gz", kernelImage, "0");
+        File ramdiskRecoveryImage = new File(mTmpDir, "ramdisk-recovery.img");
+        mBuildInfo.setFile("ramdisk-recovery.img", ramdiskRecoveryImage, "0");
+        File otaDir = FileUtil.createTempDir("otatool_folder", mTmpDir);
+        File mkbootimgFile = new File(otaDir, "mkbootimg");
+        File otatoolsZip = FileUtil.createTempFile("otatools", ".zip", mTmpDir);
+        ZipUtil.createZip(List.of(mkbootimgFile), otatoolsZip);
+        mBuildInfo.setFile("otatools.zip", otatoolsZip, "0");
+        CommandResult cmdResult = new CommandResult();
+        cmdResult.setStatus(CommandStatus.FAILED);
+        cmdResult.setStdout("output");
+        EasyMock.expect(
+                        mMockRunUtil.runTimedCmd(
+                                EasyMock.anyLong(),
+                                EasyMock.matches(".*mkbootimg.*"),
+                                EasyMock.eq("--kernel"),
+                                EasyMock.eq(kernelImage.getAbsolutePath()),
+                                EasyMock.eq("--header_version"),
+                                EasyMock.eq("3"),
+                                EasyMock.eq("--base"),
+                                EasyMock.eq("0x00000000"),
+                                EasyMock.eq("--pagesize"),
+                                EasyMock.eq("4096"),
+                                EasyMock.eq("--ramdisk"),
+                                EasyMock.eq(ramdiskRecoveryImage.getAbsolutePath()),
+                                EasyMock.eq("-o"),
+                                EasyMock.matches(".*boot.*img.*")))
+                .andReturn(cmdResult);
+        EasyMock.replay(mMockDevice, mMockRunUtil);
+        try {
+            mPreparer.validateGkiBootImg(mMockDevice, mBuildInfo, mTmpDir);
+            fail("TargetSetupError is expected");
+        } catch (TargetSetupError e) {
+            // expected
+        }
+        EasyMock.verify(mMockDevice, mMockRunUtil);
+    }
+
+    /* Verifies that setUp will throw TargetSetupError if there is no gki boot.img */
+    @Test
+    public void testSetUp_NoGkiBootImg() throws Exception {
+        EasyMock.replay(mMockDevice, mMockRunUtil);
         try {
             mPreparer.setUp(mTestInfo);
             fail("TargetSetupError is expected");
         } catch (TargetSetupError e) {
             // expected
-            mPreparer.tearDown(mTestInfo, e);
         }
+        EasyMock.verify(mMockDevice, mMockRunUtil);
+    }
+
+    /* Verifies that setUp will throw exception when there is no valid mkbootimg in otatools.zip*/
+    @Test
+    public void testSetUp_NoMkbootimgInOtatoolsZip() throws Exception {
+        File kernelImage = new File(mTmpDir, "Image.gz");
+        mBuildInfo.setFile("Image.gz", kernelImage, "0");
+        File ramdiskRecoveryImage = new File(mTmpDir, "ramdisk-recovery.img");
+        mBuildInfo.setFile("ramdisk-recovery.img", ramdiskRecoveryImage, "0");
+        File otaDir = FileUtil.createTempDir("otatool_folder", mTmpDir);
+        File tmpFile = new File(otaDir, "test");
+        File otatoolsZip = FileUtil.createTempFile("otatools", ".zip", mTmpDir);
+        ZipUtil.createZip(List.of(tmpFile), otatoolsZip);
+        mBuildInfo.setFile("otatools.zip", otatoolsZip, "0");
+        EasyMock.replay(mMockDevice, mMockRunUtil);
+        try {
+            mPreparer.setUp(mTestInfo);
+            fail("TargetSetupError is expected");
+        } catch (TargetSetupError e) {
+            // expected
+        }
+        EasyMock.verify(mMockDevice, mMockRunUtil);
     }
 
     /* Verifies that preparer can flash GKI boot image */
