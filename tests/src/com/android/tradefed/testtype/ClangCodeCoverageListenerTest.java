@@ -121,6 +121,7 @@ public class ClangCodeCoverageListenerTest {
         // Simulate a test run.
         mListener.testRunStarted(RUN_NAME, TEST_COUNT);
         mListener.testRunEnded(ELAPSED_TIME, mMetrics);
+        mListener.invocationEnded(ELAPSED_TIME);
 
         // Verify testLog(...) was never called.
         assertThat(mFakeListener.getLogs()).isEmpty();
@@ -133,6 +134,7 @@ public class ClangCodeCoverageListenerTest {
         // Simulate a test run.
         mListener.testRunStarted(RUN_NAME, TEST_COUNT);
         mListener.testRunEnded(ELAPSED_TIME, mMetrics);
+        mListener.invocationEnded(ELAPSED_TIME);
 
         // Verify testLog(...) was never called.
         assertThat(mFakeListener.getLogs()).isEmpty();
@@ -152,6 +154,7 @@ public class ClangCodeCoverageListenerTest {
         // Simulate a test run.
         mListener.testRunStarted(RUN_NAME, TEST_COUNT);
         mListener.testRunEnded(ELAPSED_TIME, mMetrics);
+        mListener.invocationEnded(ELAPSED_TIME);
 
         // Verify the flush-all-coverage command was called.
         verify(mMockDevice).executeShellCommand("kill -37 -1");
@@ -178,6 +181,7 @@ public class ClangCodeCoverageListenerTest {
         // Simulate a test run.
         mListener.testRunStarted(RUN_NAME, TEST_COUNT);
         mListener.testRunEnded(ELAPSED_TIME, mMetrics);
+        mListener.invocationEnded(ELAPSED_TIME);
 
         // Verify that the command line contains the files above.
         List<String> command = mCommandArgumentCaptor.getCommand();
@@ -214,6 +218,7 @@ public class ClangCodeCoverageListenerTest {
         // Simulate a test run.
         mListener.testRunStarted(RUN_NAME, TEST_COUNT);
         mListener.testRunEnded(ELAPSED_TIME, mMetrics);
+        mListener.invocationEnded(ELAPSED_TIME);
 
         // Verify that the command line contains the files above, not including the .gcda file.
         List<String> command = mCommandArgumentCaptor.getCommand();
@@ -238,9 +243,37 @@ public class ClangCodeCoverageListenerTest {
         // Simulate a test run.
         mListener.testRunStarted(RUN_NAME, TEST_COUNT);
         mListener.testRunEnded(ELAPSED_TIME, mMetrics);
+        mListener.invocationEnded(ELAPSED_TIME);
 
         // Verify testLog(..) was never called.
         assertThat(mFakeListener.getLogs()).isEmpty();
+    }
+
+    @Test
+    public void testProfileToolInConfiguration_notFromBuild() throws Exception {
+        mCoverageOptionsSetter.setOptionValue("coverage", "true");
+        mCoverageOptionsSetter.setOptionValue("coverage-toolchain", "CLANG");
+        mCoverageOptionsSetter.setOptionValue("llvm-profdata-path", "/path/to/some/directory");
+
+        // Setup mocks.
+        doReturn(true).when(mMockDevice).enableAdbRoot();
+        File tarGz =
+                createTar(
+                        ImmutableMap.of(
+                                "path/to/coverage.profraw",
+                                ByteString.copyFromUtf8("coverage.profraw"),
+                                "path/to/.hidden/coverage2.profraw",
+                                ByteString.copyFromUtf8("coverage2.profraw")));
+        doReturn(tarGz).when(mMockDevice).pullFile(anyString());
+
+        // Simulate a test run.
+        mListener.testRunStarted(RUN_NAME, TEST_COUNT);
+        mListener.testRunEnded(ELAPSED_TIME, mMetrics);
+        mListener.invocationEnded(ELAPSED_TIME);
+
+        // Verify that the command line contains the llvm-profile-path set above.
+        List<String> command = mCommandArgumentCaptor.getCommand();
+        assertThat(command.get(0)).isEqualTo("/path/to/some/directory/bin/llvm-profdata");
     }
 
     @Test
@@ -263,6 +296,7 @@ public class ClangCodeCoverageListenerTest {
         try {
             mListener.testRunStarted(RUN_NAME, TEST_COUNT);
             mListener.testRunEnded(ELAPSED_TIME, mMetrics);
+            mListener.invocationEnded(ELAPSED_TIME);
             fail("an exception should have been thrown");
         } catch (VerifyException e) {
             // Expected.
@@ -301,6 +335,7 @@ public class ClangCodeCoverageListenerTest {
             // Expected.
             assertThat(e).hasMessageThat().contains("merge profile data");
         }
+        mListener.invocationEnded(ELAPSED_TIME);
 
         // Verify testLog(..) was never called.
         assertThat(mFakeListener.getLogs()).isEmpty();
