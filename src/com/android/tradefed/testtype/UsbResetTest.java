@@ -20,9 +20,12 @@ import com.android.helper.aoa.UsbHelper;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.RunUtil;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -47,10 +50,20 @@ public class UsbResetTest implements IRemoteTest {
                 } else {
                     CLog.d("Resetting USB port for device '%s'", serial);
                     usbDevice.reset();
-                    device.waitForDeviceOnline();
-                    // If device fails to reboot it will throw an exception and be left unavailable
-                    // again.
-                    device.reboot();
+                    getRunUtil().sleep(500);
+
+                    TestDeviceState state = device.getDeviceState();
+                    if (TestDeviceState.RECOVERY.equals(state)
+                            || device.isStateBootloaderOrFastbootd()) {
+                        CLog.d("Device state is '%s', attempting reboot.", state);
+                        device.reboot();
+                    } else {
+                        device.waitForDeviceOnline();
+                        // If device fails to reboot it will throw an exception and be left
+                        // unavailable
+                        // again.
+                        device.reboot();
+                    }
                 }
             }
         }
@@ -59,5 +72,10 @@ public class UsbResetTest implements IRemoteTest {
     @VisibleForTesting
     UsbHelper getUsbHelper() {
         return new UsbHelper();
+    }
+
+    @VisibleForTesting
+    IRunUtil getRunUtil() {
+        return RunUtil.getDefault();
     }
 }
