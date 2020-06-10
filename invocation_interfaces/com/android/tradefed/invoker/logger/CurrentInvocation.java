@@ -17,11 +17,14 @@ package com.android.tradefed.invoker.logger;
 
 import com.android.tradefed.invoker.ExecutionFiles;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.ActionInProgress;
 
 import java.io.File;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+import javax.annotation.Nullable;
 
 /**
  * A class that tracks and provides the current invocation information useful anywhere inside the
@@ -47,15 +50,19 @@ public class CurrentInvocation {
 
     private CurrentInvocation() {}
 
+    /** Internal storage of the invocation values. */
+    private static class InternalInvocationTracking {
+        public Map<InvocationInfo, File> mInvocationInfoFiles = new HashMap<>();
+        public ExecutionFiles mExecutionFiles;
+        public ActionInProgress mActionInProgress;
+    }
+
     /**
      * Track info per ThreadGroup as a proxy to invocation since an invocation run within one
      * threadgroup.
      */
-    private static final Map<ThreadGroup, Map<InvocationInfo, File>> mPerGroupInfo =
-            Collections.synchronizedMap(new HashMap<ThreadGroup, Map<InvocationInfo, File>>());
-    /** Track the {@link ExecutionFiles} of each invocation */
-    private static final Map<ThreadGroup, ExecutionFiles> mExecFilesPerGroup =
-            Collections.synchronizedMap(new HashMap<ThreadGroup, ExecutionFiles>());
+    private static final Map<ThreadGroup, InternalInvocationTracking> mPerGroupInfo =
+            new ConcurrentHashMap<ThreadGroup, CurrentInvocation.InternalInvocationTracking>();
 
     /**
      * Add one key-value to be tracked at the invocation level.
@@ -67,9 +74,9 @@ public class CurrentInvocation {
         ThreadGroup group = Thread.currentThread().getThreadGroup();
         synchronized (mPerGroupInfo) {
             if (mPerGroupInfo.get(group) == null) {
-                mPerGroupInfo.put(group, new HashMap<>());
+                mPerGroupInfo.put(group, new InternalInvocationTracking());
             }
-            mPerGroupInfo.get(group).put(key, value);
+            mPerGroupInfo.get(group).mInvocationInfoFiles.put(key, value);
         }
     }
 
@@ -78,9 +85,9 @@ public class CurrentInvocation {
         ThreadGroup group = Thread.currentThread().getThreadGroup();
         synchronized (mPerGroupInfo) {
             if (mPerGroupInfo.get(group) == null) {
-                mPerGroupInfo.put(group, new HashMap<>());
+                mPerGroupInfo.put(group, new InternalInvocationTracking());
             }
-            return mPerGroupInfo.get(group).get(key);
+            return mPerGroupInfo.get(group).mInvocationInfoFiles.get(key);
         }
     }
 
@@ -99,12 +106,16 @@ public class CurrentInvocation {
      */
     public static void registerExecutionFiles(ExecutionFiles invocFiles) {
         ThreadGroup group = Thread.currentThread().getThreadGroup();
-        synchronized (mExecFilesPerGroup) {
-            if (mExecFilesPerGroup.get(group) == null) {
-                mExecFilesPerGroup.put(group, invocFiles);
+        synchronized (mPerGroupInfo) {
+            if (mPerGroupInfo.get(group) == null) {
+                mPerGroupInfo.put(group, new InternalInvocationTracking());
+            }
+            if (mPerGroupInfo.get(group).mExecutionFiles == null) {
+                mPerGroupInfo.get(group).mExecutionFiles = invocFiles;
             } else {
                 CLog.w(
-                        "CurrentInvocation#registerExecutionFiles should only be called once per invocation.");
+                        "CurrentInvocation#registerExecutionFiles should only be called once "
+                                + "per invocation.");
             }
         }
     }
@@ -112,8 +123,27 @@ public class CurrentInvocation {
     /** Returns the {@link ExecutionFiles} for the invocation. */
     public static ExecutionFiles getInvocationFiles() {
         ThreadGroup group = Thread.currentThread().getThreadGroup();
-        synchronized (mExecFilesPerGroup) {
-            return mExecFilesPerGroup.get(group);
+        synchronized (mPerGroupInfo) {
+            return mPerGroupInfo.get(group).mExecutionFiles;
+        }
+    }
+
+    /** Sets the {@link ActionInProgress} for the invocation. */
+    public static void setActionInProgress(ActionInProgress action) {
+        ThreadGroup group = Thread.currentThread().getThreadGroup();
+        synchronized (mPerGroupInfo) {
+            if (mPerGroupInfo.get(group) == null) {
+                mPerGroupInfo.put(group, new InternalInvocationTracking());
+            }
+            mPerGroupInfo.get(group).mActionInProgress = action;
+        }
+    }
+
+    /** Returns the current {@link ActionInProgress} for the invocation. Can be null. */
+    public static @Nullable ActionInProgress getActionInProgress() {
+        ThreadGroup group = Thread.currentThread().getThreadGroup();
+        synchronized (mPerGroupInfo) {
+            return mPerGroupInfo.get(group).mActionInProgress;
         }
     }
 }
