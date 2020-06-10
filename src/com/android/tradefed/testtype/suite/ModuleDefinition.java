@@ -21,6 +21,7 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.DeviceConfigurationHolder;
 import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
@@ -118,6 +119,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     private final IInvocationContext mModuleInvocationContext;
     private final IConfiguration mModuleConfiguration;
     private IConfiguration mInternalTestConfiguration;
+    private IConfiguration mInternalTargetPreparerConfiguration;
     private ILogSaver mLogSaver;
 
     private final String mId;
@@ -354,8 +356,36 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         // Exception generated during setUp or run of the tests
         Throwable preparationException = null;
         DeviceNotAvailableException runException = null;
-        // Resolve dynamic files except for the IRemotTest ones
+        // Resolve dynamic files except for the IRemoteTest ones
         preparationException = invokeRemoteDynamic(moduleInfo.getDevice(), mModuleConfiguration);
+
+        // TODO: Clean and double check the moduleSplitter and TargetPreparers cloning.
+        if (preparationException == null) {
+            mInternalTargetPreparerConfiguration =
+                    new Configuration("tmp-download", "tmp-download");
+            mInternalTargetPreparerConfiguration
+                    .getCommandOptions()
+                    .getDynamicDownloadArgs()
+                    .putAll(mModuleConfiguration.getCommandOptions().getDynamicDownloadArgs());
+            for (String device : mPreparersPerDevice.keySet()) {
+                for (ITargetPreparer preparer : mPreparersPerDevice.get(device)) {
+                    try {
+                        mInternalTargetPreparerConfiguration.setDeviceConfig(
+                                new DeviceConfigurationHolder(device));
+                        mInternalTargetPreparerConfiguration
+                                .getDeviceConfigByName(device)
+                                .addSpecificConfig(preparer);
+                    } catch (ConfigurationException e) {
+                        // Shouldn't happen;
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
+            mInternalTargetPreparerConfiguration.setMultiTargetPreparers(mMultiPreparers);
+            preparationException =
+                    invokeRemoteDynamic(
+                            moduleInfo.getDevice(), mInternalTargetPreparerConfiguration);
+        }
         // Setup
         long prepStartTime = getCurrentTime();
         if (preparationException == null) {
@@ -480,6 +510,9 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 }
             }
         } finally {
+            // Clean target preparers dynamic files
+            mInternalTargetPreparerConfiguration.cleanConfigurationData();
+            mInternalTargetPreparerConfiguration = null;
             long cleanStartTime = getCurrentTime();
             RuntimeException tearDownException = null;
             try {
