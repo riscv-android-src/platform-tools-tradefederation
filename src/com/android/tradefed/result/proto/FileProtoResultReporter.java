@@ -29,6 +29,13 @@ import java.io.IOException;
 /** Proto reporter that dumps the {@link TestRecord} into a file. */
 public class FileProtoResultReporter extends ProtoResultReporter {
 
+    public static final String USE_DELIMITED_API = "use-delimited-api";
+
+    @Option(
+            name = USE_DELIMITED_API,
+            description = "Use Proto.useDelimitedApi to save proto, otherwise use default api.")
+    private boolean mUseDelimitedApi = true;
+
     public static final String PROTO_OUTPUT_FILE = "proto-output-file";
 
     @Option(
@@ -99,7 +106,11 @@ public class FileProtoResultReporter extends ProtoResultReporter {
             }
             // Write to the tmp file
             output = new FileOutputStream(tmpFile);
-            record.writeDelimitedTo(output);
+            if (mUseDelimitedApi) {
+                record.writeDelimitedTo(output);
+            } else {
+                record.writeTo(output);
+            }
             if (mPeriodicWriting) {
                 nextOutputFile();
             }

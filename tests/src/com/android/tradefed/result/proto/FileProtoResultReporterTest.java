@@ -163,4 +163,25 @@ public class FileProtoResultReporterTest {
         context.setConfigurationDescriptor(new ConfigurationDescriptor());
         return context;
     }
+
+    @Test
+    public void testWriteReadAtestResults() throws Exception {
+        assertEquals(0L, mOutput.length());
+        OptionSetter setter = new OptionSetter(mReporter);
+        setter.setOptionValue("use-delimited-api", "false");
+        setter.setOptionValue("proto-output-file", mOutput.getAbsolutePath());
+        TestRecord.Builder testRecord = TestRecord.newBuilder();
+        TestRecordProto.ChildReference.Builder child1 = TestRecordProto.ChildReference.newBuilder();
+        child1.setTestRecordId("child record1");
+
+        TestRecordProto.ChildReference.Builder child2 = TestRecordProto.ChildReference.newBuilder();
+        child2.setTestRecordId("child record2");
+        testRecord.setTestRecordId("record id").addChildren(child1).addChildren(child2);
+        mReporter.processFinalProto(testRecord.build());
+
+        TestRecord record = TestRecordProtoUtil.readFromFile(mOutput, false);
+        assertEquals("record id", record.getTestRecordId());
+        assertEquals("child record1", record.getChildren(0).getTestRecordId());
+        assertEquals("child record2", record.getChildren(1).getTestRecordId());
+    }
 }
