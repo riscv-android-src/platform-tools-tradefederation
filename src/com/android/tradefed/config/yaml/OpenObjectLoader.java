@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.config.yaml;
 
+import com.android.tradefed.build.BootstrapBuildProvider;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.result.suite.SuiteResultReporter;
 
@@ -28,5 +29,11 @@ public class OpenObjectLoader implements IDefaultObjectLoader {
                 .addConfigObjectDef(
                         Configuration.RESULT_REPORTER_TYPE_NAME,
                         SuiteResultReporter.class.getName());
+        // TODO: Replace by a provider that can handle both local and remote
+        loadConfiguration
+                .getConfigDef()
+                .addConfigObjectDef(
+                        Configuration.BUILD_PROVIDER_TYPE_NAME,
+                        BootstrapBuildProvider.class.getName());
     }
 }
