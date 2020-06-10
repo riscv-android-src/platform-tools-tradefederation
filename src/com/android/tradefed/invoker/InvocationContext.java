@@ -67,6 +67,7 @@ public class InvocationContext implements IInvocationContext {
     private Map<Integer, List<String>> mShardSerials;
 
     private boolean mLocked;
+    private boolean mReleasedEarly = false;
 
     /**
      * Creates a {@link BuildInfo} using default attribute values.
@@ -282,6 +283,16 @@ public class InvocationContext implements IInvocationContext {
     @Override
     public void setTestTag(String testTag) {
         mTestTag = testTag;
+    }
+
+    @Override
+    public boolean wasReleasedEarly() {
+        return mReleasedEarly;
+    }
+
+    @Override
+    public void markReleasedEarly() {
+        mReleasedEarly = true;
     }
 
     /**

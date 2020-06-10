@@ -764,11 +764,16 @@ public class GTestResultParser extends MultiLineReceiver {
     @Override
     public void done() {
         super.done();
-        if (mNumTestsExpected > mNumTestsRun) {
+        // To make sure the test fail run will only be reported for this run.
+        if (mTestRunStartReported && (mNumTestsExpected > mNumTestsRun)) {
             handleTestRunFailed(String.format("Test run incomplete. Expected %d tests, received %d",
                     mNumTestsExpected, mNumTestsRun));
+            // Reset TestRunStart flag to prevent report twice in the same run.
+            mTestRunStartReported = false;
+            mTestRunInProgress = false;
         } else if (mTestRunInProgress) {
             handleTestRunFailed("No test results");
+            mTestRunInProgress = false;
         } else if (!mSeenOneTestRunStart) {
             for (ITestInvocationListener listener : mTestListeners) {
                 listener.testRunStarted(mTestRunName, 0);

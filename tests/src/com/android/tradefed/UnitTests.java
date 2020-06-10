@@ -23,7 +23,6 @@ import com.android.tradefed.build.DeviceBuildDescriptorTest;
 import com.android.tradefed.build.DeviceBuildInfoTest;
 import com.android.tradefed.build.DeviceFolderBuildInfoTest;
 import com.android.tradefed.build.FileDownloadCacheTest;
-import com.android.tradefed.build.GCSTestResourceProviderTest;
 import com.android.tradefed.build.LocalDeviceBuildProviderTest;
 import com.android.tradefed.build.OtaZipfileBuildProviderTest;
 import com.android.tradefed.clearcut.ClearcutClientTest;
@@ -66,6 +65,7 @@ import com.android.tradefed.config.gcs.GCSConfigurationServerTest;
 import com.android.tradefed.config.remote.GcsRemoteFileResolverTest;
 import com.android.tradefed.config.remote.HttpRemoteFileResolverTest;
 import com.android.tradefed.config.remote.LocalFileResolverTest;
+import com.android.tradefed.config.yaml.ConfigurationYamlParserTest;
 import com.android.tradefed.device.AndroidDebugBridgeWrapperTest;
 import com.android.tradefed.device.BackgroundDeviceActionTest;
 import com.android.tradefed.device.DeviceManagerTest;
@@ -123,6 +123,7 @@ import com.android.tradefed.device.metric.TraceMetricCollectorTest;
 import com.android.tradefed.device.recovery.BatteryUnavailableDeviceRecoveryTest;
 import com.android.tradefed.device.recovery.RunConfigDeviceRecoveryTest;
 import com.android.tradefed.device.recovery.UsbResetMultiDeviceRecoveryTest;
+import com.android.tradefed.device.recovery.UsbResetRunConfigRecoveryTest;
 import com.android.tradefed.guice.InvocationScopeTest;
 import com.android.tradefed.host.LocalHostResourceManagerTest;
 import com.android.tradefed.host.gcs.GCSHostResourceManagerTest;
@@ -225,6 +226,7 @@ import com.android.tradefed.targetprep.DisableSELinuxTargetPreparerTest;
 import com.android.tradefed.targetprep.DynamicSystemPreparerTest;
 import com.android.tradefed.targetprep.FastbootDeviceFlasherTest;
 import com.android.tradefed.targetprep.FlashingResourcesParserTest;
+import com.android.tradefed.targetprep.GkiDeviceFlashPreparerTest;
 import com.android.tradefed.targetprep.InstallAllTestZipAppsSetupTest;
 import com.android.tradefed.targetprep.InstallApexModuleTargetPreparerTest;
 import com.android.tradefed.targetprep.InstallApkSetupTest;
@@ -236,6 +238,7 @@ import com.android.tradefed.targetprep.RestartSystemServerTargetPreparerTest;
 import com.android.tradefed.targetprep.RootTargetPreparerTest;
 import com.android.tradefed.targetprep.RunCommandTargetPreparerTest;
 import com.android.tradefed.targetprep.RunHostCommandTargetPreparerTest;
+import com.android.tradefed.targetprep.RunHostScriptTargetPreparerTest;
 import com.android.tradefed.targetprep.StopServicesSetupTest;
 import com.android.tradefed.targetprep.SwitchUserTargetPreparerTest;
 import com.android.tradefed.targetprep.SystemUpdaterDeviceFlasherTest;
@@ -257,6 +260,7 @@ import com.android.tradefed.testtype.DeviceTestCaseTest;
 import com.android.tradefed.testtype.DeviceTestSuiteTest;
 import com.android.tradefed.testtype.FakeTestTest;
 import com.android.tradefed.testtype.GTestListTestParserTest;
+import com.android.tradefed.testtype.GTestListenerTest;
 import com.android.tradefed.testtype.GTestResultParserTest;
 import com.android.tradefed.testtype.GTestTest;
 import com.android.tradefed.testtype.GTestXmlResultParserTest;
@@ -279,6 +283,7 @@ import com.android.tradefed.testtype.NoisyDryRunTestTest;
 import com.android.tradefed.testtype.PythonUnitTestResultParserTest;
 import com.android.tradefed.testtype.PythonUnitTestRunnerTest;
 import com.android.tradefed.testtype.TfTestLauncherTest;
+import com.android.tradefed.testtype.UsbResetTestTest;
 import com.android.tradefed.testtype.binary.ExecutableHostTestTest;
 import com.android.tradefed.testtype.binary.ExecutableTargetTestTest;
 import com.android.tradefed.testtype.host.CoverageMeasurementForwarderTest;
@@ -309,9 +314,11 @@ import com.android.tradefed.testtype.suite.TfSuiteRunnerTest;
 import com.android.tradefed.testtype.suite.ValidateSuiteConfigHelperTest;
 import com.android.tradefed.testtype.suite.module.BaseModuleControllerTest;
 import com.android.tradefed.testtype.suite.module.CarModuleControllerTest;
+import com.android.tradefed.testtype.suite.module.DeviceFeatureModuleControllerTest;
 import com.android.tradefed.testtype.suite.module.MinApiLevelModuleControllerTest;
 import com.android.tradefed.testtype.suite.module.NativeBridgeModuleControllerTest;
 import com.android.tradefed.testtype.suite.params.InstantAppHandlerTest;
+import com.android.tradefed.testtype.suite.params.MainlineModuleHandlerTest;
 import com.android.tradefed.testtype.suite.params.ModuleParametersHelperTest;
 import com.android.tradefed.testtype.suite.params.SecondaryUserHandlerTest;
 import com.android.tradefed.testtype.suite.retry.ResultsPlayerTest;
@@ -413,7 +420,6 @@ import org.junit.runners.Suite.SuiteClasses;
     DeviceBuildDescriptorTest.class,
     DeviceFolderBuildInfoTest.class,
     FileDownloadCacheTest.class,
-    GCSTestResourceProviderTest.class,
     LocalDeviceBuildProviderTest.class,
     OtaZipfileBuildProviderTest.class,
 
@@ -470,6 +476,9 @@ import org.junit.runners.Suite.SuiteClasses;
     GcsRemoteFileResolverTest.class,
     HttpRemoteFileResolverTest.class,
     LocalFileResolverTest.class,
+
+    // config.yaml
+    ConfigurationYamlParserTest.class,
 
     // device
     AndroidDebugBridgeWrapperTest.class,
@@ -541,6 +550,7 @@ import org.junit.runners.Suite.SuiteClasses;
     BatteryUnavailableDeviceRecoveryTest.class,
     RunConfigDeviceRecoveryTest.class,
     UsbResetMultiDeviceRecoveryTest.class,
+    UsbResetRunConfigRecoveryTest.class,
 
     // Guice
     InvocationScopeTest.class,
@@ -624,6 +634,7 @@ import org.junit.runners.Suite.SuiteClasses;
     TestDescriptionTest.class,
     TestFailureEmailResultReporterTest.class,
     PassingTestFileReporterTest.class,
+    TestDescriptionTest.class,
     TestResultListenerTest.class,
     TestResultTest.class,
     TestRunResultTest.class,
@@ -663,6 +674,7 @@ import org.junit.runners.Suite.SuiteClasses;
     DynamicSystemPreparerTest.class,
     FastbootDeviceFlasherTest.class,
     FlashingResourcesParserTest.class,
+    GkiDeviceFlashPreparerTest.class,
     InstallAllTestZipAppsSetupTest.class,
     InstallApexModuleTargetPreparerTest.class,
     InstallApkSetupTest.class,
@@ -674,6 +686,7 @@ import org.junit.runners.Suite.SuiteClasses;
     RootTargetPreparerTest.class,
     RunCommandTargetPreparerTest.class,
     RunHostCommandTargetPreparerTest.class,
+    RunHostScriptTargetPreparerTest.class,
     StopServicesSetupTest.class,
     SystemUpdaterDeviceFlasherTest.class,
     TargetSetupErrorTest.class,
@@ -728,6 +741,7 @@ import org.junit.runners.Suite.SuiteClasses;
     GoogleBenchmarkResultParserTest.class,
     GoogleBenchmarkTestTest.class,
     GTestListTestParserTest.class,
+    GTestListenerTest.class,
     GTestResultParserTest.class,
     GTestTest.class,
     GTestXmlResultParserTest.class,
@@ -748,6 +762,7 @@ import org.junit.runners.Suite.SuiteClasses;
     PythonUnitTestResultParserTest.class,
     PythonUnitTestRunnerTest.class,
     TfTestLauncherTest.class,
+    UsbResetTestTest.class,
 
     // testtype/binary
     ExecutableHostTestTest.class,
@@ -789,11 +804,13 @@ import org.junit.runners.Suite.SuiteClasses;
     // testtype/suite/module
     BaseModuleControllerTest.class,
     CarModuleControllerTest.class,
+    DeviceFeatureModuleControllerTest.class,
     MinApiLevelModuleControllerTest.class,
     NativeBridgeModuleControllerTest.class,
 
     // testtype/suite/params
     InstantAppHandlerTest.class,
+    MainlineModuleHandlerTest.class,
     ModuleParametersHelperTest.class,
     SecondaryUserHandlerTest.class,
 

@@ -84,16 +84,14 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
 
     /** {@inheritDoc} */
     @Override
-    public void preInvocationSetup(IBuildInfo info, List<IBuildInfo> testResourceBuildInfos)
+    public void preInvocationSetup(IBuildInfo info)
             throws TargetSetupError, DeviceNotAvailableException {
-        super.preInvocationSetup(info, testResourceBuildInfos);
+        super.preInvocationSetup(info);
         try {
             mGceAvd = null;
             mGceSshMonitor = null;
             // We create a brand new GceManager each time to ensure clean state.
-            mGceHandler =
-                    new GceManager(
-                            getDeviceDescriptor(), getOptions(), info, testResourceBuildInfos);
+            mGceHandler = new GceManager(getDeviceDescriptor(), getOptions(), info);
             getGceHandler().logStableHostImageInfos(info);
             setFastbootEnabled(false);
 

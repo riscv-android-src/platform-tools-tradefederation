@@ -27,7 +27,7 @@ public class InvocationMetricLogger {
     /** Some special named key that we will always populate for the invocation. */
     public enum InvocationMetricKey {
         WIFI_AP_NAME("wifi_ap_name", false),
-        CLEARED_RUN_ERROR("cleared_run_error", false),
+        CLEARED_RUN_ERROR("cleared_run_error", true),
         FETCH_BUILD("fetch_build_time_ms", true),
         SETUP("setup_time_ms", true),
         SHARDING_DEVICE_SETUP_TIME("remote_device_sharding_setup_ms", true),
@@ -39,6 +39,9 @@ public class InvocationMetricLogger {
         DEVICE_DONE_TIMESTAMP("device_done_timestamp", false),
         DEVICE_RELEASE_STATE("device_release_state", false),
         DEVICE_LOST_DETECTED("device_lost_detected", false),
+        DEVICE_RECOVERY("device_recovery", true),
+        DEVICE_RECOVERY_FROM_RECOVERY("device_recovery_from_recovery", true),
+        DEVICE_RECOVERY_FAIL("device_recovery_fail", true),
         SANDBOX_EXIT_CODE("sandbox_exit_code", false),
         CF_FETCH_ARTIFACT_TIME("cf_fetch_artifact_time_ms", false),
         CF_GCE_CREATE_TIME("cf_gce_create_time_ms", false),

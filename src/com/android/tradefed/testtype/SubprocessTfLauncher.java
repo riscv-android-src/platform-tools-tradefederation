@@ -83,6 +83,12 @@ public abstract class SubprocessTfLauncher
     @Option(name = "config-name", description = "The config that runs the TF tests")
     private String mConfigName;
 
+    @Option(
+            name = "local-sharding-mode",
+            description =
+                    "If sharding is requested, allow the launcher to run with local sharding.")
+    private boolean mLocalShardingMode = false;
+
     @Option(name = "use-event-streaming", description = "Use a socket to receive results as they"
             + "arrived instead of using a temporary file and parsing at the end.")
     private boolean mEventStreaming = true;
@@ -101,6 +107,9 @@ public abstract class SubprocessTfLauncher
             name = "inject-invocation-data",
             description = "Pass the invocation-data to the subprocess if enabled.")
     private boolean mInjectInvocationData = true;
+
+    @Option(name = "ignore-test-log", description = "Only rely on logAssociation for logs.")
+    private boolean mIgnoreTestLog = true;
 
     @Option(
         name = "disable-stderr-test",
@@ -133,6 +142,7 @@ public abstract class SubprocessTfLauncher
                             "loganalysis-tests.jar",
                             // Aosp Tf jars
                             "tradefed.jar",
+                            "tradefed-test-framework.jar",
                             "tradefed-tests.jar",
                             // libs
                             "tools-common-prebuilt.jar",
@@ -248,6 +258,12 @@ public abstract class SubprocessTfLauncher
         mCmdArgs.add("com.android.tradefed.command.CommandRunner");
         mCmdArgs.add(mConfigName);
 
+        Integer shardCount = mConfig.getCommandOptions().getShardCount();
+        if (mLocalShardingMode && shardCount != null & shardCount > 1) {
+            mCmdArgs.add("--shard-count");
+            mCmdArgs.add(Integer.toString(shardCount));
+        }
+
         // clear the TF_GLOBAL_CONFIG env, so another tradefed will not reuse the global config file
         mRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
         mRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
@@ -347,6 +363,7 @@ public abstract class SubprocessTfLauncher
                     mCmdArgs.add("--subprocess-report-file");
                     mCmdArgs.add(eventFile.getAbsolutePath());
                 }
+                eventParser.setIgnoreTestLog(mIgnoreTestLog);
             }
             startTime = System.currentTimeMillis();
             CommandResult result = mRunUtil.runTimedCmd(mMaxTfRunTime, stdout,
