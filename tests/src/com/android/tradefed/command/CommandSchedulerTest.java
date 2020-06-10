@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.command;
 
+import static org.easymock.EasyMock.getCurrentArguments;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -36,6 +37,7 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.config.OptionSetter;
+import com.android.tradefed.config.proxy.ProxyConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceSelectionOptions;
 import com.android.tradefed.device.FreeDeviceState;
@@ -160,6 +162,10 @@ public class CommandSchedulerTest {
         mMockKeyStoreClient = EasyMock.createMock(IKeyStoreClient.class);
         mMockConfiguration = EasyMock.createMock(IConfiguration.class);
         EasyMock.expect(mMockConfiguration.getTests()).andStubReturn(new ArrayList<>());
+        EasyMock.expect(
+                        mMockConfiguration.getConfigurationObject(
+                                ProxyConfiguration.PROXY_CONFIG_TYPE_KEY))
+                .andStubReturn(null);
         mCommandOptions = new CommandOptions();
         // Avoid any issue related to env. variable.
         mDeviceOptions =
@@ -748,6 +754,113 @@ public class CommandSchedulerTest {
         mScheduler.join();
         verifyMocks();
         assertTrue(mMockManager.getQueueOfAvailableDeviceSize() == 1);
+    }
+
+    /**
+     * Test that if device is released properly and marked as such, the next invocation can run
+     * without issues.
+     */
+    @Test
+    public void testDeviceReleasedEarly() throws Throwable {
+        String[] args = new String[] {"test"};
+        mMockManager.setNumDevices(1);
+        assertTrue(mMockManager.getQueueOfAvailableDeviceSize() == 1);
+        setCreateConfigExpectations(args, 2);
+
+        mMockInvocation.invoke(
+                (IInvocationContext) EasyMock.anyObject(),
+                (IConfiguration) EasyMock.anyObject(),
+                (IRescheduler) EasyMock.anyObject(),
+                (ITestInvocationListener) EasyMock.anyObject());
+        EasyMock.expectLastCall()
+                .andAnswer(
+                        new IAnswer<Object>() {
+                            @Override
+                            public Object answer() throws Throwable {
+                                IInvocationContext context =
+                                        (IInvocationContext) getCurrentArguments()[0];
+                                IScheduledInvocationListener listener =
+                                        (IScheduledInvocationListener) getCurrentArguments()[3];
+                                Map<ITestDevice, FreeDeviceState> deviceStates = new HashMap<>();
+                                for (ITestDevice device : context.getDevices()) {
+                                    deviceStates.put(device, FreeDeviceState.AVAILABLE);
+                                }
+                                context.markReleasedEarly();
+                                listener.releaseDevices(context, deviceStates);
+                                RunUtil.getDefault().sleep(500);
+                                return null;
+                            }
+                        });
+        // Second invocation runs properly
+        setExpectedInvokeCalls(1);
+
+        mMockConfiguration.validateOptions();
+        EasyMock.expectLastCall().times(2);
+        replayMocks();
+        mScheduler.start();
+        mScheduler.addCommand(args);
+        RunUtil.getDefault().sleep(100);
+        mScheduler.addCommand(args);
+        RunUtil.getDefault().sleep(200);
+        mScheduler.shutdown();
+        mScheduler.join();
+        verifyMocks();
+        assertTrue(mMockManager.getQueueOfAvailableDeviceSize() == 1);
+        assertNull(mScheduler.getLastInvocationThrowable());
+    }
+
+    /**
+     * If for any reasons the device is released early and it's unexpected, we still release it in
+     * the next invocation properly.
+     */
+    @Test
+    public void testDeviceReleasedEarly_conflict() throws Throwable {
+        String[] args = new String[] {"test"};
+        mMockManager.setNumDevices(1);
+        assertTrue(mMockManager.getQueueOfAvailableDeviceSize() == 1);
+        setCreateConfigExpectations(args, 2);
+
+        mMockInvocation.invoke(
+                (IInvocationContext) EasyMock.anyObject(),
+                (IConfiguration) EasyMock.anyObject(),
+                (IRescheduler) EasyMock.anyObject(),
+                (ITestInvocationListener) EasyMock.anyObject());
+        EasyMock.expectLastCall()
+                .andAnswer(
+                        new IAnswer<Object>() {
+                            @Override
+                            public Object answer() throws Throwable {
+                                IInvocationContext context =
+                                        (IInvocationContext) getCurrentArguments()[0];
+                                IScheduledInvocationListener listener =
+                                        (IScheduledInvocationListener) getCurrentArguments()[3];
+                                Map<ITestDevice, FreeDeviceState> deviceStates = new HashMap<>();
+                                for (ITestDevice device : context.getDevices()) {
+                                    deviceStates.put(device, FreeDeviceState.AVAILABLE);
+                                }
+                                // Device is released early but this is not marked properly in
+                                // context
+                                listener.releaseDevices(context, deviceStates);
+                                RunUtil.getDefault().sleep(500);
+                                return null;
+                            }
+                        });
+        mMockConfiguration.validateOptions();
+        EasyMock.expectLastCall().times(2);
+        replayMocks();
+        mScheduler.start();
+        mScheduler.addCommand(args);
+        RunUtil.getDefault().sleep(100);
+        mScheduler.addCommand(args);
+        RunUtil.getDefault().sleep(200);
+        mScheduler.shutdown();
+        mScheduler.join();
+        verifyMocks();
+        assertTrue(mMockManager.getQueueOfAvailableDeviceSize() == 1);
+        assertNotNull(mScheduler.getLastInvocationThrowable());
+        assertEquals(
+                "Attempting invocation on device serial0 when one is already running",
+                mScheduler.getLastInvocationThrowable().getMessage());
     }
 
     /**

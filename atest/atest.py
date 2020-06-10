@@ -577,11 +577,12 @@ def main(argv, results_dir, args):
     _configure_logging(args.verbose)
     _validate_args(args)
     metrics_utils.get_start_time()
+    os_pyver = '{}:{}'.format(platform.platform(), platform.python_version())
     metrics.AtestStartEvent(
         command_line=' '.join(argv),
         test_references=args.tests,
         cwd=os.getcwd(),
-        os=platform.platform())
+        os=os_pyver)
     if args.version:
         if os.path.isfile(constants.VERSION_FILE):
             with open(constants.VERSION_FILE) as version_file:
@@ -598,6 +599,10 @@ def main(argv, results_dir, args):
     if args.history:
         atest_execution_info.print_test_result(constants.ATEST_RESULT_ROOT,
                                                args.history)
+        return constants.EXIT_CODE_SUCCESS
+    if args.latest_result:
+        atest_execution_info.print_test_result_by_path(
+            constants.LATEST_RESULT_FILE)
         return constants.EXIT_CODE_SUCCESS
     mod_info = module_info.ModuleInfo(force_build=args.rebuild_module_info)
     if args.rebuild_module_info:
@@ -655,15 +660,8 @@ def main(argv, results_dir, args):
         # Add module-info.json target to the list of build targets to keep the
         # file up to date.
         build_targets.add(mod_info.module_info_target)
-        # Build the deps-license to generate dependencies data in
-        # module-info.json.
-        build_targets.add(constants.DEPS_LICENSE)
-        # The environment variables PROJ_PATH and DEP_PATH are necessary for the
-        # deps-license.
-        build_env = dict(constants.DEPS_LICENSE_ENV)
         build_start = time.time()
-        success = atest_utils.build(build_targets, verbose=args.verbose,
-                                    env_vars=build_env)
+        success = atest_utils.build(build_targets, verbose=args.verbose)
         metrics.BuildFinishEvent(
             duration=metrics_utils.convert_duration(time.time() - build_start),
             success=success,

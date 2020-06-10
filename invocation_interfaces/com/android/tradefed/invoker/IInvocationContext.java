@@ -180,6 +180,12 @@ public interface IInvocationContext extends Serializable {
      */
     public void setTestTag(String testTag);
 
+    /** Returns whether or not the devices were released early and won't be used anymore. */
+    public boolean wasReleasedEarly();
+
+    /** Mark the devices are getting released early. */
+    public void markReleasedEarly();
+
     /**
      * Sets the {@link RecoveryMode} of all the devices part of the context
      */

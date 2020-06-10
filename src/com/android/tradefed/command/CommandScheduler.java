@@ -39,6 +39,7 @@ import com.android.tradefed.config.IGlobalConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.RetryConfigurationFactory;
 import com.android.tradefed.config.SandboxConfigurationFactory;
+import com.android.tradefed.config.proxy.ProxyConfiguration;
 import com.android.tradefed.device.DeviceAllocationState;
 import com.android.tradefed.device.DeviceManager;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -495,8 +496,13 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         public void invocationComplete(
                 IInvocationContext context, Map<ITestDevice, FreeDeviceState> devicesStates) {
             for (ITestInvocationListener listener : getListeners()) {
-                ((IScheduledInvocationListener) listener)
-                        .invocationComplete(context, devicesStates);
+                try {
+                    ((IScheduledInvocationListener) listener)
+                            .invocationComplete(context, devicesStates);
+                } catch (Exception e) {
+                    CLog.e("Exception during invocationComplete:");
+                    CLog.e(e);
+                }
             }
             releaseDevices(context, devicesStates);
         }
@@ -562,6 +568,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
         @Override
         public void run() {
+            if (mClient != null) {
+                mClient.notifyTradefedInvocationStartEvent();
+            }
             mStartTime = System.currentTimeMillis();
             ITestInvocation instance = getInvocation();
             IConfiguration config = mCmd.getConfiguration();
@@ -794,12 +803,18 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 // Never release stub and Tcp devices, otherwise they will disappear
                 // during deallocation since they are only placeholder.
                 deviceStates.put(device, FreeDeviceState.AVAILABLE);
-            } else if (!TestDeviceState.ONLINE.equals(device.getDeviceState())) {
-                // If the device is offline at the end of the test
-                deviceStates.put(device, FreeDeviceState.UNAVAILABLE);
-            } else if (!device.waitForDeviceShell(30000)) {
-                // If device cannot pass basic shell responsiveness test.
-                deviceStates.put(device, FreeDeviceState.UNAVAILABLE);
+            } else {
+                TestDeviceState deviceState = device.getDeviceState();
+                CLog.d(
+                        "TestDeviceState for releasing '%s' is '%s'",
+                        device.getSerialNumber(), deviceState);
+                if (!TestDeviceState.ONLINE.equals(deviceState)) {
+                    // If the device is offline at the end of the test
+                    deviceStates.put(device, FreeDeviceState.UNAVAILABLE);
+                } else if (!device.waitForDeviceShell(30000)) {
+                    // If device cannot pass basic shell responsiveness test.
+                    deviceStates.put(device, FreeDeviceState.UNAVAILABLE);
+                }
             }
             // Reset the recovery mode at the end of the invocation.
             device.setRecoveryMode(RecoveryMode.AVAILABLE);
@@ -1163,6 +1178,22 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         return foundSandbox;
     }
 
+    private boolean isProxyCommand(IConfiguration config) {
+        return config.getConfigurationObject(ProxyConfiguration.PROXY_CONFIG_TYPE_KEY) != null;
+    }
+
+    private String[] handleProxyCommand(IConfiguration config, String[] originalArgs)
+            throws ConfigurationException {
+        ProxyConfiguration proxy =
+                (ProxyConfiguration)
+                        config.getConfigurationObject(ProxyConfiguration.PROXY_CONFIG_TYPE_KEY);
+        if (proxy.getProxyConfig() == null) {
+            throw new ConfigurationException("No proxy configuration found.");
+        }
+        originalArgs[0] = proxy.getProxyConfig().getAbsolutePath();
+        return originalArgs;
+    }
+
     /** Returns true if the configuration used is a retry one. */
     private boolean isRetryCommand(IConfiguration config) {
         // If a configuration is made of the RetryRunner only, it is meant to run as a retry.
@@ -1191,6 +1222,14 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         }
         IConfiguration config =
                 getConfigFactory().createConfigurationFromArgs(args, null, getKeyStoreClient());
+        if (isProxyCommand(config)) {
+            String[] newArgs = handleProxyCommand(config, args);
+            IConfiguration proxyConfig =
+                    getConfigFactory()
+                            .createConfigurationFromArgs(newArgs, null, getKeyStoreClient());
+            proxyConfig.addFilesToClean(config.getFilesToClean());
+            return proxyConfig;
+        }
         if (isRetryCommand(config)) {
             return RetryConfigurationFactory.getInstance().createRetryConfiguration(config);
         }
@@ -1526,7 +1565,15 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             ExecutableCommand cmd,
             IScheduledInvocationListener... listeners) {
         // Check if device is not used in another invocation.
-        throwIfDeviceInInvocationThread(context.getDevices());
+        try {
+            throwIfDeviceInInvocationThread(context.getDevices());
+        } catch (Exception e) {
+            setLastInvocationExitCode(ExitCode.THROWABLE_EXCEPTION, e);
+            for (ITestDevice device : context.getDevices()) {
+                getDeviceManager().freeDevice(device, FreeDeviceState.AVAILABLE);
+            }
+            throw e;
+        }
 
         int invocationId = cmd.getCommandTracker().getId();
         CLog.d("starting invocation for command id %d", invocationId);
@@ -1565,6 +1612,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         for (ITestDevice device : devices) {
             for (IInvocationContext context : mInvocationThreadMap.keySet()) {
                 if (context.getDevices().contains(device)) {
+                    if (context.wasReleasedEarly()) {
+                        return;
+                    }
                     throw new IllegalStateException(
                             String.format(
                                     "Attempting invocation on device %s when one is already "

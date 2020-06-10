@@ -447,8 +447,7 @@ public class NativeDevice implements IManagedTestDevice {
         String propValue = getProperty(propName);
         if (propValue != null) {
             return propValue;
-        } else if (TestDeviceState.FASTBOOT.equals(getDeviceState()) &&
-                fastbootVar != null) {
+        } else if (isStateBootloaderOrFastbootd() && fastbootVar != null) {
             CLog.i("%s for device %s is null, re-querying in fastboot", description,
                     getSerialNumber());
             return getFastbootVariable(fastbootVar);
@@ -2198,6 +2197,12 @@ public class NativeDevice implements IManagedTestDevice {
         CLog.i("Bootloader recovery successful for %s", getSerialNumber());
     }
 
+    private void recoverDeviceFromFastbootd() throws DeviceNotAvailableException {
+        CLog.i("Attempting recovery on %s in fastbootd", getSerialNumber());
+        mRecovery.recoverDeviceFastbootd(mStateMonitor);
+        CLog.i("Fastbootd recovery successful for %s", getSerialNumber());
+    }
+
     private void recoverDeviceInRecovery() throws DeviceNotAvailableException {
         CLog.i("Attempting recovery on %s in recovery", getSerialNumber());
         mRecovery.recoverDeviceRecovery(mStateMonitor);
@@ -2940,7 +2945,7 @@ public class NativeDevice implements IManagedTestDevice {
     /**
      * Reboots the device into bootloader or fastbootd mode.
      *
-     * @param isBootloader: true to boot the device into bootloader mode, false to boot the device
+     * @param isBootloader true to boot the device into bootloader mode, false to boot the device
      *     into fastbootd mode.
      * @throws DeviceNotAvailableException if connection with device is lost and cannot be
      *     recovered.
@@ -2948,7 +2953,7 @@ public class NativeDevice implements IManagedTestDevice {
     private void rebootIntoFastbootInternal(boolean isBootloader)
             throws DeviceNotAvailableException {
         final RebootMode mode =
-                isBootloader ? RebootMode.REBOOT_INTO_BOOTLOADER : RebootMode.REBOOT_INTO_FASTBOOT;
+                isBootloader ? RebootMode.REBOOT_INTO_BOOTLOADER : RebootMode.REBOOT_INTO_FASTBOOTD;
         if (!mFastbootEnabled) {
             throw new UnsupportedOperationException(
                     String.format("Fastboot is not available and cannot reboot into %s", mode));
@@ -2958,20 +2963,31 @@ public class NativeDevice implements IManagedTestDevice {
         CLog.i(
                 "Rebooting device %s in state %s into %s",
                 getSerialNumber(), getDeviceState(), mode);
-        if (TestDeviceState.FASTBOOT.equals(getDeviceState())) {
+        if (isStateBootloaderOrFastbootd()) {
             CLog.i("device %s already in fastboot. Rebooting anyway", getSerialNumber());
             executeFastbootCommand(String.format("reboot-%s", mode));
         } else {
             CLog.i("Booting device %s into %s", getSerialNumber(), mode);
             doAdbReboot(mode, null);
         }
-        if (!mStateMonitor.waitForDeviceBootloader(mOptions.getFastbootTimeout())) {
-            recoverDeviceFromBootloader();
+
+        if (RebootMode.REBOOT_INTO_FASTBOOTD.equals(mode) && getHostOptions().isFastbootdEnable()) {
+            if (!mStateMonitor.waitForDeviceFastbootd(
+                    getFastbootPath(), mOptions.getFastbootTimeout())) {
+                recoverDeviceFromFastbootd();
+            }
+        } else {
+            if (!mStateMonitor.waitForDeviceBootloader(mOptions.getFastbootTimeout())) {
+                recoverDeviceFromBootloader();
+            }
         }
     }
 
-    private void doAdbRebootBootloader() throws DeviceNotAvailableException {
-        doAdbReboot(RebootMode.REBOOT_INTO_BOOTLOADER, null);
+    /** {@inheritDoc} */
+    @Override
+    public boolean isStateBootloaderOrFastbootd() {
+        return TestDeviceState.FASTBOOT.equals(getDeviceState())
+                || TestDeviceState.FASTBOOTD.equals(getDeviceState());
     }
 
     /**
@@ -3060,7 +3076,7 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public void rebootIntoRecovery() throws DeviceNotAvailableException {
-        if (TestDeviceState.FASTBOOT == getDeviceState()) {
+        if (isStateBootloaderOrFastbootd()) {
             CLog.w("device %s in fastboot when requesting boot to recovery. " +
                     "Rebooting to userspace first.", getSerialNumber());
             rebootUntilOnline();
@@ -3080,7 +3096,7 @@ public class NativeDevice implements IManagedTestDevice {
     /** {@inheritDoc} */
     @Override
     public void rebootIntoSideload(boolean autoReboot) throws DeviceNotAvailableException {
-        if (TestDeviceState.FASTBOOT == getDeviceState()) {
+        if (isStateBootloaderOrFastbootd()) {
             CLog.w(
                     "device %s in fastboot when requesting boot to sideload. "
                             + "Rebooting to userspace first.",
@@ -3117,7 +3133,7 @@ public class NativeDevice implements IManagedTestDevice {
     protected enum RebootMode {
         REBOOT_FULL(""),
         REBOOT_USERSPACE("userspace"),
-        REBOOT_INTO_FASTBOOT("fastboot"),
+        REBOOT_INTO_FASTBOOTD("fastboot"),
         REBOOT_INTO_BOOTLOADER("bootloader"),
         REBOOT_INTO_SIDELOAD("sideload"),
         REBOOT_INTO_SIDELOAD_AUTO_REBOOT("sideload-auto-reboot"),
@@ -3158,8 +3174,8 @@ public class NativeDevice implements IManagedTestDevice {
         // Track Tradefed reboot time
         mLastTradefedRebootTime = System.currentTimeMillis();
 
-        if (TestDeviceState.FASTBOOT == getDeviceState()) {
-            CLog.i("device %s in fastboot. Rebooting to userspace.", getSerialNumber());
+        if (isStateBootloaderOrFastbootd()) {
+            CLog.i("device %s in %s. Rebooting to userspace.", getSerialNumber(), getDeviceState());
             executeFastbootCommand("reboot");
         } else {
             if (mOptions.shouldDisableReboot()) {
@@ -3540,7 +3556,9 @@ public class NativeDevice implements IManagedTestDevice {
         if (output == null && isEncryptionSupported()) {
             CLog.w("Property ro.crypto.state is null on device %s", getSerialNumber());
         }
-
+        if (output == null) {
+            return false;
+        }
         return "encrypted".equals(output.trim());
     }
 
@@ -3727,7 +3745,7 @@ public class NativeDevice implements IManagedTestDevice {
         if (!deviceState.equals(getDeviceState())) {
             // disable state changes while fastboot lock is held, because issuing fastboot command
             // will disrupt state
-            if (getDeviceState().equals(TestDeviceState.FASTBOOT) && mFastbootLock.isLocked()) {
+            if (isStateBootloaderOrFastbootd() && mFastbootLock.isLocked()) {
                 return;
             }
             mState = deviceState;
@@ -3864,6 +3882,12 @@ public class NativeDevice implements IManagedTestDevice {
     /** {@inheritDoc} */
     @Override
     public Set<ApexInfo> getActiveApexes() throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for Package's feature");
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public List<PackageInfo> getAppPackageInfos() throws DeviceNotAvailableException {
         throw new UnsupportedOperationException("No support for Package's feature");
     }
 
@@ -4389,7 +4413,7 @@ public class NativeDevice implements IManagedTestDevice {
 
     /** {@inheritDoc} */
     @Override
-    public void preInvocationSetup(IBuildInfo info, List<IBuildInfo> testResourceBuildInfos)
+    public void preInvocationSetup(IBuildInfo info)
             throws TargetSetupError, DeviceNotAvailableException {
         // Default implementation
         mContentProvider = null;
@@ -4493,6 +4517,7 @@ public class NativeDevice implements IManagedTestDevice {
                     idevice instanceof StubDevice,
                     idevice.getState(),
                     getAllocationState(),
+                    getDeviceState(),
                     getDisplayString(selector.getDeviceProductType(idevice)),
                     getDisplayString(selector.getDeviceProductVariant(idevice)),
                     getDisplayString(idevice.getProperty(DeviceProperties.SDK_VERSION)),
@@ -4866,7 +4891,7 @@ public class NativeDevice implements IManagedTestDevice {
         if (getIDevice() instanceof StubDevice) {
             return null;
         }
-        if (TestDeviceState.FASTBOOT.equals(getDeviceState())) {
+        if (isStateBootloaderOrFastbootd()) {
             return null;
         }
         try {

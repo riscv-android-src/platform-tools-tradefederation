@@ -1,0 +1,14 @@
+description: "Human friendly description of the test"
+infra_run: false
+
+dependencies:
+   - apks: ["test.apk", "test2.apk"]
+   - apks: ["test1.apk"]
+   - files: ["file1.txt", "file2.txt"]
+   - device_files: {"tobepushed.txt": "/sdcard", "tobepushed2.txt": "/sdcard/"}
+
+tests:
+   - test:
+       name: "com.android.tradefed.testtype.AndroidJUnitTest"
+       options:
+         - package: "android.package"

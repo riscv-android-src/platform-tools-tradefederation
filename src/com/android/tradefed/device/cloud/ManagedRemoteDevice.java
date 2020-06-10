@@ -44,7 +44,6 @@ import com.google.common.annotations.VisibleForTesting;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.List;
 
 /**
  * A device running inside a virtual machine that we manage remotely via a Tradefed instance inside
@@ -72,14 +71,14 @@ public class ManagedRemoteDevice extends TestDevice implements ITestLoggerReceiv
     }
 
     @Override
-    public void preInvocationSetup(IBuildInfo info, List<IBuildInfo> testResourceBuildInfos)
+    public void preInvocationSetup(IBuildInfo info)
             throws TargetSetupError, DeviceNotAvailableException {
-        super.preInvocationSetup(info, testResourceBuildInfos);
+        super.preInvocationSetup(info);
         mGceAvd = null;
         // First get the options
         TestDeviceOptions options = getOptions();
         // We create a brand new GceManager each time to ensure clean state.
-        mGceHandler = new GceManager(getDeviceDescriptor(), options, info, testResourceBuildInfos);
+        mGceHandler = new GceManager(getDeviceDescriptor(), options, info);
         getGceHandler().logStableHostImageInfos(info);
         setFastbootEnabled(false);
 

@@ -51,8 +51,15 @@ public class JUnit4ResultForwarder extends RunListener {
     public void testFailure(Failure failure) throws Exception {
         Description description = failure.getDescription();
         if (description.getMethodName() == null) {
+            String trace = failure.getTrace();
+            if (failure.getException() instanceof CarryDnaeError) {
+                trace =
+                        StreamUtil.getStackTrace(
+                                ((CarryDnaeError) failure.getException())
+                                        .getDeviceNotAvailableException());
+            }
             // In case of exception in @BeforeClass, the method name will be null
-            mListener.testRunFailed(String.format("Failed with trace: %s", failure.getTrace()));
+            mListener.testRunFailed(String.format("Failed with trace: %s", trace));
             // If the exception is ours thrown from before, rethrow it
             if (failure.getException() instanceof CarryDnaeError) {
                 throw ((CarryDnaeError) failure.getException()).getDeviceNotAvailableException();

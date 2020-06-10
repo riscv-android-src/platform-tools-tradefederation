@@ -124,6 +124,11 @@ public abstract class DeviceFlashPreparer extends BaseTargetPreparer {
         mDeviceBootTime = bootTime;
     }
 
+    /** Gets the device boot wait time */
+    protected long getDeviceBootWaitTime() {
+        return mDeviceBootTime;
+    }
+
     /**
      * Gets the interval between device boot poll attempts.
      * <p/>

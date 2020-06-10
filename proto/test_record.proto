@@ -118,6 +118,8 @@ enum FailureStatus {
   SYSTEM_UNDER_TEST_CRASHED = 20;
   // The test was expected to run but did not.
   NOT_EXECUTED = 30;
+  // System under test became unavailable and never came back available again.
+  LOST_SYSTEM_UNDER_TEST = 35;
 }
 
 // A context to DebugInfo that allows to optionally specify some debugging context.

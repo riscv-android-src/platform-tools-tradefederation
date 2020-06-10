@@ -303,4 +303,59 @@ public class ExecutableTargetTestTest {
                         Mockito.eq(testDescription3),
                         Mockito.eq(new HashMap<String, MetricMeasurement.Metric>()));
     }
+
+    /** Test the run method for a couple commands with IncludeFilter */
+    @Test
+    public void testRun_add_description_IncludeFilter()
+            throws DeviceNotAvailableException, ConfigurationException {
+        mExecutableTargetTest =
+                new ExecutableTargetTest() {
+                    @Override
+                    public String findBinary(String binary) {
+                        return binary;
+                    }
+
+                    @Override
+                    protected void checkCommandResult(
+                            CommandResult result,
+                            ITestInvocationListener listener,
+                            TestDescription description) {}
+                };
+        mExecutableTargetTest.setDevice(mMockITestDevice);
+        // Set test commands
+        OptionSetter setter = new OptionSetter(mExecutableTargetTest);
+        setter.setOptionValue("test-command-line", testName1, testCmd1);
+        setter.setOptionValue("test-command-line", testName2, testCmd2);
+        setter.setOptionValue("test-command-line", testName3, testCmd3);
+        TestDescription testDescription = new TestDescription(testName1, testName1);
+        TestDescription testDescription2 = new TestDescription(testName2, testName2);
+        TestDescription testDescription3 = new TestDescription(testName3, testName3);
+        mExecutableTargetTest.addIncludeFilter(testDescription2.toString());
+        mExecutableTargetTest.run(mTestInfo, mListener);
+        // testName1 should NOT run.
+        Mockito.verify(mListener, Mockito.never()).testRunStarted(eq(testName1), eq(1));
+        Mockito.verify(mListener, Mockito.never()).testStarted(Mockito.eq(testDescription));
+        Mockito.verify(mListener, Mockito.never())
+                .testEnded(
+                        Mockito.eq(testDescription),
+                        Mockito.eq(new HashMap<String, MetricMeasurement.Metric>()));
+        // run cmd2 test
+        Mockito.verify(mListener, Mockito.times(1)).testRunStarted(eq(testName2), eq(1));
+        Mockito.verify(mListener, Mockito.times(1)).testStarted(Mockito.eq(testDescription2));
+        Mockito.verify(mListener, Mockito.times(1))
+                .testEnded(
+                        Mockito.eq(testDescription2),
+                        Mockito.eq(new HashMap<String, MetricMeasurement.Metric>()));
+        Mockito.verify(mListener, Mockito.times(1))
+                .testRunEnded(
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, MetricMeasurement.Metric>>any());
+        // testName3 should NOT run.
+        Mockito.verify(mListener, Mockito.never()).testRunStarted(eq(testName3), eq(1));
+        Mockito.verify(mListener, Mockito.never()).testStarted(Mockito.eq(testDescription3));
+        Mockito.verify(mListener, Mockito.never())
+                .testEnded(
+                        Mockito.eq(testDescription3),
+                        Mockito.eq(new HashMap<String, MetricMeasurement.Metric>()));
+    }
 }

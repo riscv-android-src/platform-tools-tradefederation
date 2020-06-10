@@ -27,6 +27,7 @@ public class CarryDnaeError extends RuntimeException {
     private DeviceNotAvailableException mException;
 
     public CarryDnaeError(DeviceNotAvailableException e) {
+        super(e);
         mException = e;
     }
 
