@@ -34,13 +34,7 @@ public final class MultiFailureDescription extends FailureDescription {
 
     public MultiFailureDescription(List<FailureDescription> failures) {
         super();
-        for (FailureDescription failure : failures) {
-            if (failure instanceof MultiFailureDescription) {
-                mFailures.addAll(((MultiFailureDescription) failure).getFailures());
-            } else {
-                mFailures.add(failure);
-            }
-        }
+        addMultiFailures(failures);
     }
 
     public MultiFailureDescription(FailureDescription... failures) {
@@ -124,5 +118,16 @@ public final class MultiFailureDescription extends FailureDescription {
             }
         }
         return true;
+    }
+
+    /** Un-nest all the sub-MultiFailureDescription for ease of tracking. */
+    private void addMultiFailures(List<FailureDescription> failures) {
+        for (FailureDescription failure : failures) {
+            if (failure instanceof MultiFailureDescription) {
+                addMultiFailures(((MultiFailureDescription) failure).getFailures());
+            } else {
+                mFailures.add(failure);
+            }
+        }
     }
 }
