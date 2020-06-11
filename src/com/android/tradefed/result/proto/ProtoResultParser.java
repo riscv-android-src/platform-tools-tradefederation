@@ -36,7 +36,6 @@ import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.proto.LogFileProto.LogFileInfo;
 import com.android.tradefed.result.proto.TestRecordProto.ChildReference;
 import com.android.tradefed.result.proto.TestRecordProto.DebugInfo;
-import com.android.tradefed.result.proto.TestRecordProto.DebugInfoContext;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.result.proto.TestRecordProto.TestRecord;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
@@ -299,24 +298,28 @@ public class ProtoResultParser {
         }
 
         if (endInvocationProto.hasDebugInfo()) {
-            String trace = endInvocationProto.getDebugInfo().getTrace();
-            Throwable invocationError = new Throwable(trace);
+            DebugInfo debugInfo = endInvocationProto.getDebugInfo();
+            FailureDescription failure = FailureDescription.create(debugInfo.getErrorMessage());
+            if (!TestRecordProto.FailureStatus.UNSET.equals(
+                    endInvocationProto.getDebugInfo().getFailureStatus())) {
+                failure.setFailureStatus(debugInfo.getFailureStatus());
+            }
+            parseDebugInfoContext(endInvocationProto.getDebugInfo(), failure);
             if (endInvocationProto.getDebugInfo().hasDebugInfoContext()) {
-                DebugInfoContext failureContext =
-                        endInvocationProto.getDebugInfo().getDebugInfoContext();
-                if (!Strings.isNullOrEmpty(failureContext.getErrorType())) {
+                String errorType =
+                        endInvocationProto.getDebugInfo().getDebugInfoContext().getErrorType();
+                if (!Strings.isNullOrEmpty(errorType)) {
                     try {
-                        invocationError =
-                                (Throwable)
-                                        SerializationUtil.deserialize(
-                                                failureContext.getErrorType());
+                        Throwable invocationError =
+                                (Throwable) SerializationUtil.deserialize(errorType);
+                        failure.setCause(invocationError);
                     } catch (IOException e) {
                         CLog.e("Failed to deserialize the invocation exception:");
                         CLog.e(e);
                     }
                 }
             }
-            mListener.invocationFailed(invocationError);
+            mListener.invocationFailed(failure);
         }
 
         log("Invocation ended proto");
