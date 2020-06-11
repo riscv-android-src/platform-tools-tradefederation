@@ -34,7 +34,19 @@ public class MultiFailureDescriptionTest {
         mMultiFailureDesc = new MultiFailureDescription(failure1, failure2);
         assertEquals(2, mMultiFailureDesc.getFailures().size());
         assertEquals(
-                "There were 2 failures:\n" + "  error message 1\n" + "  error message 2",
+                "There were 2 failures:\n  error message 1\n  error message 2",
+                mMultiFailureDesc.toString());
+    }
+
+    @Test
+    public void testCreation_nested() {
+        FailureDescription failure1 = FailureDescription.create("error message 1");
+        FailureDescription failure2 = FailureDescription.create("error message 2");
+        MultiFailureDescription nested = new MultiFailureDescription(failure2);
+        mMultiFailureDesc = new MultiFailureDescription(failure1, nested);
+        assertEquals(2, mMultiFailureDesc.getFailures().size());
+        assertEquals(
+                "There were 2 failures:\n  error message 1\n  error message 2",
                 mMultiFailureDesc.toString());
     }
 }
