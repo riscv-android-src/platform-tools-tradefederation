@@ -56,6 +56,7 @@ import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.log.StdoutLogger;
 import com.android.tradefed.postprocessor.IPostProcessor;
+import com.android.tradefed.result.ActionInProgress;
 import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -584,12 +585,14 @@ public class TestInvocation implements ITestInvocation {
             ITestInvocationListener listener,
             IInvocationExecution invocationPath)
             throws DeviceNotAvailableException {
+        CurrentInvocation.setActionInProgress(ActionInProgress.BUILD_FETCHING);
         Exception buildException = null;
         boolean res = false;
         try {
             res = invocationPath.fetchBuild(testInfo, config, rescheduler, listener);
             if (res) {
                 // Successful fetch of build.
+                CurrentInvocation.setActionInProgress(ActionInProgress.UNSET);
                 return true;
             }
             // In case of build not found issues.
@@ -604,8 +607,9 @@ public class TestInvocation implements ITestInvocation {
         startInvocation(config, testInfo.getContext(), listener);
         // Don't want to use #reportFailure, since that will call buildNotTested
         FailureDescription failure =
-                FailureDescription.create(buildException.getMessage(), FailureStatus.INFRA_FAILURE);
-        failure.setCause(buildException);
+                CurrentInvocation.createFailure(buildException.getMessage())
+                        .setFailureStatus(FailureStatus.INFRA_FAILURE)
+                        .setCause(buildException);
         reportFailure(failure, listener);
         for (ITestDevice device : testInfo.getContext().getDevices()) {
             invocationPath.reportLogs(device, listener, Stage.ERROR);

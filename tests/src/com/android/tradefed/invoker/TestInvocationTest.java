@@ -67,6 +67,7 @@ import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric.Builder;
 import com.android.tradefed.postprocessor.BasePostProcessor;
 import com.android.tradefed.postprocessor.IPostProcessor;
+import com.android.tradefed.result.ActionInProgress;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ILogSaver;
@@ -1124,8 +1125,9 @@ public class TestInvocationTest {
                 if (throwable instanceof BuildRetrievalError) {
                     FailureDescription failure =
                             FailureDescription.create(
-                                    throwable.getMessage(), FailureStatus.INFRA_FAILURE);
-                    failure.setCause(throwable);
+                                            throwable.getMessage(), FailureStatus.INFRA_FAILURE)
+                                    .setActionInProgress(ActionInProgress.BUILD_FETCHING)
+                                    .setCause(throwable);
                     mMockTestListener.invocationFailed(EasyMock.eq(failure));
                     mMockSummaryListener.invocationFailed(EasyMock.eq(failure));
                 } else {
