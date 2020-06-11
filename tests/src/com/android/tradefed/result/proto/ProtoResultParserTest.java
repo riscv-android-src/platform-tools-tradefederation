@@ -167,7 +167,7 @@ public class ProtoResultParserTest {
         mMockListener.logAssociation(
                 EasyMock.eq("subprocess-invocation_log1"), EasyMock.anyObject());
         // Invocation failure is replayed
-        Capture<Throwable> captureInvocFailure = new Capture<>();
+        Capture<FailureDescription> captureInvocFailure = new Capture<>();
         mMockListener.invocationFailed(EasyMock.capture(captureInvocFailure));
         mMockListener.invocationEnded(500L);
 
@@ -227,8 +227,8 @@ public class ProtoResultParserTest {
         assertEquals(logFile.getType(), capturedFile.getType());
         assertEquals(logFile.getSize(), capturedFile.getSize());
 
-        Throwable invocFailureCaptured = captureInvocFailure.getValue();
-        assertTrue(invocFailureCaptured instanceof RuntimeException);
+        FailureDescription invocFailureCaptured = captureInvocFailure.getValue();
+        assertTrue(invocFailureCaptured.getCause() instanceof RuntimeException);
 
         // Check Context at the end
         assertEquals(
