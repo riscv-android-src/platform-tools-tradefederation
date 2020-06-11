@@ -1690,7 +1690,7 @@ public class ModuleDefinitionTest {
         mMockPrep.tearDown(EasyMock.eq(mModuleInfo), EasyMock.isNull());
         EasyMock.expect(mMockDevice.getIDevice())
                 .andReturn(EasyMock.createMock(IDevice.class))
-                .times(3);
+                .times(2);
         // We expect a total count on the run start so 4, all aggregated under the same run
         for (int attempt = 0; attempt < 3; attempt++) {
             if (attempt == 0) {
