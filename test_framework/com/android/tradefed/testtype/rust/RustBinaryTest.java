@@ -24,13 +24,10 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
-import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.IDeviceTest;
 
 import java.io.File;
-import java.text.ParseException;
-import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
 
 /** A Test that runs a rust binary on given device. */
@@ -112,7 +109,7 @@ public class RustBinaryTest extends RustTestBase implements IDeviceTest {
         } else if (shouldSkipFile(root)) {
             CLog.d("Skip rust test %s on %s", root, testDevice.getSerialNumber());
         } else {
-            runTest(testDevice, listener, createParser(listener, new File(root).getName()), root);
+            runTest(testDevice, createParser(listener, new File(root).getName()), root);
         }
     }
 
@@ -126,35 +123,14 @@ public class RustBinaryTest extends RustTestBase implements IDeviceTest {
      */
     private void runTest(
             final ITestDevice testDevice,
-            final ITestInvocationListener listener,
             final IShellOutputReceiver resultParser,
             final String fullPath)
             throws DeviceNotAvailableException {
         // TODO(chh): add rerun support
         CLog.d("RustBinaryTest runTest: " + fullPath);
         String cmd = fullPath; // TODO(chh): add LD_LIBRARY_PATH
-
-        int testCount = 0;
-        try {
-            String[] testList = testDevice.executeShellCommand(cmd + " --list").split("\n");
-            testCount = parseTestListCount(testList);
-        } catch (DeviceNotAvailableException e) {
-            CLog.e("Could not retrieve tests list from device: %s", e.getMessage());
-            throw e;
-        } catch (ParseException e) {
-            CLog.w("Parsing test list failed: %s", e.getMessage());
-        }
-        long startTimeMs = System.currentTimeMillis();
-        listener.testRunStarted(new File(fullPath).getName(), testCount, 0, startTimeMs);
-        try {
-            testDevice.executeShellCommand(
-                    cmd, resultParser, mTestTimeout, TimeUnit.MILLISECONDS, 0 /* retryAttempts */);
-        } catch (DeviceNotAvailableException e) {
-            listener.testRunFailed(String.format("Device not available: %s", e.getMessage()));
-        } finally {
-            listener.testRunEnded(
-                    System.currentTimeMillis() - startTimeMs, new HashMap<String, Metric>());
-        }
+        testDevice.executeShellCommand(
+                cmd, resultParser, mTestTimeout, TimeUnit.MILLISECONDS, 0 /* retryAttempts */);
     }
 
     /** {@inheritDoc} */
