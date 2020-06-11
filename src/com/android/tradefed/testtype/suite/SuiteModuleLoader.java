@@ -43,6 +43,7 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
 
 import com.google.common.base.Strings;
+import com.google.common.net.UrlEscapers;
 
 import java.io.File;
 import java.io.FilenameFilter;
@@ -493,8 +494,7 @@ public class SuiteModuleLoader {
     private void addTestIncludes(
             ITestFilterReceiver test, List<SuiteTestFilter> includes, String moduleId) {
         if (test instanceof ITestFileFilterReceiver) {
-            // module id can contain spaces, avoid them for file names.
-            String escapedFileName = moduleId.replaceAll(" ", "_");
+            String escapedFileName = escapeFilterFileName(moduleId);
             File includeFile = createFilterFile(escapedFileName, ".include", includes);
             ((ITestFileFilterReceiver) test).setIncludeTestFile(includeFile);
         } else {
@@ -509,9 +509,10 @@ public class SuiteModuleLoader {
     }
 
     private void addTestExcludes(
-            ITestFilterReceiver test, List<SuiteTestFilter> excludes, String name) {
+            ITestFilterReceiver test, List<SuiteTestFilter> excludes, String moduleId) {
         if (test instanceof ITestFileFilterReceiver) {
-            File excludeFile = createFilterFile(name, ".exclude", excludes);
+            String escapedFileName = escapeFilterFileName(moduleId);
+            File excludeFile = createFilterFile(escapedFileName, ".exclude", excludes);
             ((ITestFileFilterReceiver) test).setExcludeTestFile(excludeFile);
         } else {
             // add test excludes one at a time
@@ -519,6 +520,12 @@ public class SuiteModuleLoader {
                 test.addExcludeFilter(exclude.getTest());
             }
         }
+    }
+
+    /** module id can contain special characters, avoid them for file names. */
+    private String escapeFilterFileName(String moduleId) {
+        String escaped = UrlEscapers.urlPathSegmentEscaper().escape(moduleId);
+        return escaped;
     }
 
     private File createFilterFile(String prefix, String suffix, List<SuiteTestFilter> filters) {
