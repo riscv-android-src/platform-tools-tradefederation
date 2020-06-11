@@ -368,10 +368,10 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                     .getDynamicDownloadArgs()
                     .putAll(mModuleConfiguration.getCommandOptions().getDynamicDownloadArgs());
             for (String device : mPreparersPerDevice.keySet()) {
+                mInternalTargetPreparerConfiguration.setDeviceConfig(
+                        new DeviceConfigurationHolder(device));
                 for (ITargetPreparer preparer : mPreparersPerDevice.get(device)) {
                     try {
-                        mInternalTargetPreparerConfiguration.setDeviceConfig(
-                                new DeviceConfigurationHolder(device));
                         mInternalTargetPreparerConfiguration
                                 .getDeviceConfigByName(device)
                                 .addSpecificConfig(preparer);
