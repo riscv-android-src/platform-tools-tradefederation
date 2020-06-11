@@ -535,6 +535,15 @@ public abstract class ProtoResultReporter
             debugBuilder.setFailureStatus(mInvocationFailureDescription.getFailureStatus());
         }
         DebugInfoContext.Builder debugContext = DebugInfoContext.newBuilder();
+        if (mInvocationFailureDescription != null
+                && mInvocationFailureDescription.getActionInProgress() != null) {
+            debugContext.setActionInProgress(
+                    mInvocationFailureDescription.getActionInProgress().toString());
+        }
+        if (mInvocationFailureDescription != null
+                && !Strings.isNullOrEmpty(mInvocationFailureDescription.getDebugHelpMessage())) {
+            debugContext.setDebugHelpMessage(mInvocationFailureDescription.getDebugHelpMessage());
+        }
         try {
             debugContext.setErrorType(SerializationUtil.serializeToString(baseException));
         } catch (IOException e) {
