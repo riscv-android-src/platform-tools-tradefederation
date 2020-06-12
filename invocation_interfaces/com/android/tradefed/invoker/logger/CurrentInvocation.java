@@ -18,6 +18,7 @@ package com.android.tradefed.invoker.logger;
 import com.android.tradefed.invoker.ExecutionFiles;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ActionInProgress;
+import com.android.tradefed.result.FailureDescription;
 
 import java.io.File;
 import java.util.HashMap;
@@ -54,7 +55,7 @@ public class CurrentInvocation {
     private static class InternalInvocationTracking {
         public Map<InvocationInfo, File> mInvocationInfoFiles = new HashMap<>();
         public ExecutionFiles mExecutionFiles;
-        public ActionInProgress mActionInProgress;
+        public ActionInProgress mActionInProgress = ActionInProgress.UNSET;
     }
 
     /**
@@ -145,5 +146,15 @@ public class CurrentInvocation {
         synchronized (mPerGroupInfo) {
             return mPerGroupInfo.get(group).mActionInProgress;
         }
+    }
+
+    /**
+     * Create a failure associated with the invocation action in progress. Convenience utility to
+     * avoid calling {@link FailureDescription#setActionInProgress(ActionInProgress)}.
+     */
+    public static FailureDescription createFailure(String errorMessage) {
+        FailureDescription failure = FailureDescription.create(errorMessage);
+        failure.setActionInProgress(getActionInProgress());
+        return failure;
     }
 }
