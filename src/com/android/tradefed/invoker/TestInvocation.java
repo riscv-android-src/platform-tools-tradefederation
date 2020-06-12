@@ -644,10 +644,12 @@ public class TestInvocation implements ITestInvocation {
             if (RunMode.REMOTE_INVOCATION.equals(mode)) {
                 return true;
             }
+            CurrentInvocation.setActionInProgress(ActionInProgress.RESOLVING_DYNAMIC_LINKS);
             DynamicRemoteFileResolver resolver = new DynamicRemoteFileResolver();
             resolver.setDevice(context.getDevices().get(0));
             resolver.addExtraArgs(config.getCommandOptions().getDynamicDownloadArgs());
             config.resolveDynamicOptions(resolver);
+            CurrentInvocation.setActionInProgress(ActionInProgress.UNSET);
             return true;
         } catch (RuntimeException | BuildRetrievalError | ConfigurationException e) {
             // In case of build not found issues.
@@ -663,8 +665,9 @@ public class TestInvocation implements ITestInvocation {
             startInvocation(config, context, listener);
             // Don't want to use #reportFailure, since that will call buildNotTested
             FailureDescription failure =
-                    FailureDescription.create(e.getMessage(), FailureStatus.INFRA_FAILURE);
-            failure.setCause(e);
+                    CurrentInvocation.createFailure(e.getMessage())
+                            .setFailureStatus(FailureStatus.INFRA_FAILURE)
+                            .setCause(e);
             reportFailure(failure, listener);
             for (ITestDevice device : context.getDevices()) {
                 invocationPath.reportLogs(device, listener, Stage.ERROR);
