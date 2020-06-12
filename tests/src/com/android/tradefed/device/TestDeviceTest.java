@@ -4592,7 +4592,7 @@ public class TestDeviceTest extends TestCase {
 
                     @Override
                     IWifiHelper createWifiHelper() throws DeviceNotAvailableException {
-                        super.createWifiHelper();
+                        super.createWifiHelper(true);
                         return mMockWifi;
                     }
 
@@ -4607,6 +4607,7 @@ public class TestDeviceTest extends TestCase {
                         return null;
                     }
                 };
+        EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable()).andReturn(mMockIDevice);
         mMockIDevice.executeShellCommand(
                 EasyMock.eq("dumpsys package com.android.tradefed.utils.wifi"),
                 EasyMock.anyObject(),
