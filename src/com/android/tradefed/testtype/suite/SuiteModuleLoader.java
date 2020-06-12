@@ -59,8 +59,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.SortedSet;
-import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -673,32 +671,54 @@ public class SuiteModuleLoader {
             return params;
         }
 
-        return new ArrayList<>(dedupMainlineParameters(parameters));
+        return new ArrayList<>(dedupMainlineParameters(parameters, config.getName()));
     }
 
     /**
      * De-duplicate the given mainline parameters.
      *
      * @param parameters The list of given mainline parameters.
+     * @param configName The test configuration name.
      * @return The de-duplicated mainline modules list.
      */
     @VisibleForTesting
-    Set<String> dedupMainlineParameters(List<String> parameters) {
+    Set<String> dedupMainlineParameters(List<String> parameters, String configName)
+            throws ConfigurationException {
         Set<String> results = new HashSet<>();
         for (String param : parameters) {
-            SortedSet<String> mainlineModules = new TreeSet<>();
             if (!isValidMainlineParam(param)) {
-                throw new RuntimeException(
+                throw new ConfigurationException(
                         String.format(
                                 "Illegal mainline module parameter: \"%s\" configured in the " +
-                                "test config. Parameter must either end with .apk/.apex/.apks " +
-                                "and have no any spaces configured.", param)
+                                "test config: %s. Parameter must end with .apk/.apex/.apks and " +
+                                "have no any spaces configured.", param, configName)
                 );
             }
-            mainlineModules.addAll(Arrays.asList(param.split(String.format("\\+"))));
-            results.add(String.join("+", mainlineModules));
+            if (!isInAlphabeticalOrder(param)) {
+                throw new ConfigurationException(
+                        String.format(
+                                "Illegal mainline module parameter: \"%s\" configured in the " +
+                                "test config: %s. Parameter must be configured in alphabetical " +
+                                "order or with no duplicated modules.", param, configName)
+                );
+            }
+            results.add(param);
         }
         return results;
+    }
+
+    /** Whether a mainline parameter configured in a test config is in alphabetical order or not. */
+    @VisibleForTesting
+    boolean isInAlphabeticalOrder(String param) {
+        String previousString = "";
+        for (String currentString : param.split(String.format("\\+"))) {
+            // This is to check if the parameter is in alphabetical order or duplicated.
+            if (currentString.compareTo(previousString) <= 0) {
+                return false;
+            }
+            previousString = currentString;
+        }
+        return true;
     }
 
     /** Whether the mainline parameter configured in the test config is valid or not. */
