@@ -25,6 +25,7 @@ import static org.junit.Assert.fail;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.config.ConfigurationDescriptor;
+import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.Option;
@@ -85,9 +86,9 @@ public class SuiteModuleLoaderTest {
                     + "    <option name=\"config-descriptor:metadata\" key=\"mainline-param\" value=\"mod1.apk\" />"
                     // Duplicate parameter should not have impact
                     + "    <option name=\"config-descriptor:metadata\" key=\"mainline-param\" value=\"mod2.apk\" />"
-                    + "    <option name=\"config-descriptor:metadata\" key=\"mainline-param\" value=\"mod2.apk+mod2.apk+mod2.apk\" />"
                     + "    <option name=\"config-descriptor:metadata\" key=\"mainline-param\" value=\"mod1.apk+mod2.apk\" />"
-                    + "    <option name=\"config-descriptor:metadata\" key=\"mainline-param\" value=\"mod2.apk+mod1.apk+mod1.apk\" />"
+                    + "    <option name=\"config-descriptor:metadata\" key=\"mainline-param\" value=\"mod1.apk+mod2.apk\" />"
+                    + "    <option name=\"config-descriptor:metadata\" key=\"mainline-param\" value=\"mod1.apk\" />"
                     + "    <test class=\"com.android.tradefed.testtype.suite.TestSuiteStub\" />\n"
                     + "</configuration>";
 
@@ -565,10 +566,8 @@ public class SuiteModuleLoaderTest {
         parameters.add("mod1.apk");
         parameters.add("mod1.apk");
         parameters.add("mod1.apk+mod2.apk");
-        parameters.add("mod2.apk+mod1.apk");
-        parameters.add("mod2.apk+mod1.apk");
-        parameters.add("mod1.apk+mod1.apk+mod2.apk");
-        Set<String> results = mRepo.dedupMainlineParameters(parameters);
+        parameters.add("mod1.apk+mod2.apk");
+        Set<String> results = mRepo.dedupMainlineParameters(parameters, "configName");
         assertEquals(2, results.size());
 
         boolean IsEqual = true;
@@ -590,9 +589,9 @@ public class SuiteModuleLoaderTest {
         parameters.add(" mod1.apk");
         parameters.add("mod1.apk+mod2.apk ");
         try {
-            mRepo.dedupMainlineParameters(parameters);
+            mRepo.dedupMainlineParameters(parameters, "configName");
             fail("Should have thrown an exception.");
-        } catch (RuntimeException expected) {
+        } catch (ConfigurationException expected) {
             // expected
             assertTrue(expected.getMessage().contains("Illegal mainline module parameter:"));
         }
@@ -607,9 +606,9 @@ public class SuiteModuleLoaderTest {
         parameters.add("mod1.apk");
         parameters.add("mod1.apk+mod2.unknown");
         try {
-            mRepo.dedupMainlineParameters(parameters);
+            mRepo.dedupMainlineParameters(parameters, "configName");
             fail("Should have thrown an exception.");
-        } catch (RuntimeException expected) {
+        } catch (ConfigurationException expected) {
             // expected
             assertTrue(expected.getMessage().contains("Illegal mainline module parameter:"));
         }
@@ -624,9 +623,42 @@ public class SuiteModuleLoaderTest {
         parameters.add("mod1.apk");
         parameters.add("+mod2.apex");
         try {
-            mRepo.dedupMainlineParameters(parameters);
+            mRepo.dedupMainlineParameters(parameters, "configName");
             fail("Should have thrown an exception.");
-        } catch (RuntimeException expected) {
+        } catch (ConfigurationException expected) {
+            // expected
+            assertTrue(expected.getMessage().contains("Illegal mainline module parameter:"));
+        }
+    }
+
+    /**
+     * Test deduplicate the given mainline parameter with duplicated modules configured.
+     */
+    @Test
+    public void testDedupMainlineParameters_WithDuplicatedMainlineModules() throws Exception {
+        List<String> parameters = new ArrayList<>();
+        parameters.add("mod1.apk+mod1.apk");
+        try {
+            mRepo.dedupMainlineParameters(parameters, "configName");
+            fail("Should have thrown an exception.");
+        } catch (ConfigurationException expected) {
+            // expected
+            assertTrue(expected.getMessage().contains("Illegal mainline module parameter:"));
+        }
+    }
+
+    /**
+     * Test deduplicate the given mainline parameters are not configured in alphabetical order.
+     */
+    @Test
+    public void testDedupMainlineParameters_ParameterNotInAlphabeticalOrder() throws Exception {
+        List<String> parameters = new ArrayList<>();
+        parameters.add("mod1.apk");
+        parameters.add("mod2.apex+mod1.apk");
+        try {
+            mRepo.dedupMainlineParameters(parameters, "configName");
+            fail("Should have thrown an exception.");
+        } catch (ConfigurationException expected) {
             // expected
             assertTrue(expected.getMessage().contains("Illegal mainline module parameter:"));
         }
@@ -780,5 +812,22 @@ public class SuiteModuleLoaderTest {
         assertFalse(mRepo.isValidMainlineParam("mod1.apeks"));
         assertFalse(mRepo.isValidMainlineParam("mod1.apk +mod2.apex"));
         assertFalse(mRepo.isValidMainlineParam("mod1.apk+mod2.apex "));
+    }
+
+    /**
+     * Test that the mainline parameter configured in the test config is in alphabetical order.
+     */
+    @Test
+    public void testIsInAlphabeticalOrder() throws Exception {
+        assertTrue(mRepo.isInAlphabeticalOrder("mod1.apk"));
+        assertTrue(mRepo.isInAlphabeticalOrder("mod1.apk+mod2.apex"));
+        assertFalse(mRepo.isInAlphabeticalOrder("mod2.apk+mod1.apex"));
+        assertFalse(mRepo.isInAlphabeticalOrder("mod1.apk+mod1.apk"));
+        assertTrue(mRepo.isInAlphabeticalOrder(
+                "com.android.cellbroadcast.apex+com.android.ipsec.apex+com.android.permission.apex")
+        );
+        assertFalse(mRepo.isInAlphabeticalOrder(
+                "com.android.permission.apex+com.android.ipsec.apex+com.android.cellbroadcast.apex")
+        );
     }
 }
