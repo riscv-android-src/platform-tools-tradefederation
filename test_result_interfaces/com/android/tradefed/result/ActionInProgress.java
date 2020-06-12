@@ -17,5 +17,7 @@ package com.android.tradefed.result;
 
 /** The general action in progress. Used to give more context to failures. */
 public enum ActionInProgress {
+    UNSET,
+    BUILD_FETCHING,
     INSTALL_APK
 }

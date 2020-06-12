@@ -30,7 +30,7 @@ public class FailureDescription {
     private @Nullable TestRecordProto.FailureStatus mFailureStatus =
             TestRecordProto.FailureStatus.UNSET;
     // Optional: Context of the action in progress during the failure
-    private @Nullable ActionInProgress mActionInProgress = null;
+    private @Nullable ActionInProgress mActionInProgress = ActionInProgress.UNSET;
     // Optional: A free-formed text that help debugging the failure
     private @Nullable String mDebugHelpMessage = null;
     // Optional: The exception that triggered the failure
