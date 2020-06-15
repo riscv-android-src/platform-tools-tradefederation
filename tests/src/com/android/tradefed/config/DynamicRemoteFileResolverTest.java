@@ -584,6 +584,25 @@ public class DynamicRemoteFileResolverTest {
     }
 
     @Test
+    public void canResolveLocalFileUris() throws Exception {
+        File fake = temporaryFolder.newFile();
+        RemoteFileOption object = new RemoteFileOption();
+        OptionSetter setter = new OptionSetter(object);
+        setter.setOptionValue("remote-file", fake.toURI().toString());
+        DynamicRemoteFileResolver resolver =
+                new DynamicRemoteFileResolver() {
+                    @Override
+                    protected boolean updateProtocols() {
+                        return false; // Prevents setting static variables.
+                    }
+                };
+
+        Set<File> downloadedFile = setter.validateRemoteFilePath(resolver);
+
+        assertThat(object.remoteFile).isEqualTo(fake);
+    }
+
+    @Test
     public void testMultiDevices() throws Exception {
         IConfiguration configuration = new Configuration("test", "test");
 
