@@ -166,6 +166,10 @@ final class JavaCodeCoverageListener extends ResultForwarder {
         try {
             collectAndLogCoverageMeasurements(devicePaths);
         } finally {
+            for (String devicePath : devicePaths) {
+                mDevice.deleteFile(devicePath);
+            }
+
             if (!wasRoot && !mDevice.disableAdbRoot()) {
                 throw new RuntimeException(
                         "Failed to disable root after pulling coverage files off device");
