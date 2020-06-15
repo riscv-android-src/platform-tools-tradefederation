@@ -341,7 +341,7 @@ public class SuiteModuleLoader {
                         }
                         String fullId =
                                 String.format("%s[%s]", baseId, param.getParameterIdentifier());
-                        if (shouldRunParameterized(fullId)) {
+                        if (shouldRunParameterized(baseId, fullId, mForcedParameter)) {
                             IConfiguration paramConfig =
                                     mConfigFactory.createConfigurationFromArgs(pathArg);
                             // Mark the parameter in the metadata
@@ -367,7 +367,7 @@ public class SuiteModuleLoader {
                     // If we find any parameterized combination for mainline modules.
                     for (String param : mainlineParams) {
                         String fullId = String.format("%s[%s]", baseId, param);
-                        if (!shouldRunParameterized(fullId)) {
+                        if (!shouldRunParameterized(baseId, fullId, null)) {
                             continue;
                         }
                         // Create mainline handler for each defined mainline parameter.
@@ -475,11 +475,20 @@ public class SuiteModuleLoader {
      * Except if the parameterized module is explicitly excluded, including the base module result
      * in including its parameterization variant.
      */
-    private boolean shouldRunParameterized(String parameterModuleId) {
+    private boolean shouldRunParameterized(
+            String baseModuleId, String parameterModuleId, IModuleParameter forcedModuleParameter) {
         // Explicitly excluded
         List<SuiteTestFilter> excluded = getFilterList(mExcludeFilters, parameterModuleId);
         if (containsModuleExclude(excluded)) {
             return false;
+        }
+
+        // Implicitly included due to forced parameter
+        if (forcedModuleParameter != null) {
+            List<SuiteTestFilter> baseInclude = getFilterList(mIncludeFilters, baseModuleId);
+            if (!baseInclude.isEmpty()) {
+                return true;
+            }
         }
         // Explicitly included
         List<SuiteTestFilter> included = getFilterList(mIncludeFilters, parameterModuleId);
