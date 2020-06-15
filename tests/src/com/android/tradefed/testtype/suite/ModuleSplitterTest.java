@@ -27,6 +27,7 @@ import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.StubTargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.StubTest;
@@ -35,6 +36,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 
@@ -56,6 +58,7 @@ public class ModuleSplitterTest {
 
         IConfiguration config = new Configuration("fakeConfig", "desc");
         config.setTargetPreparer(new StubTargetPreparer());
+        List<ITargetPreparer> initialPreparers = new ArrayList<>(config.getTargetPreparers());
         StubTest test = new StubTest();
         OptionSetter setterTest = new OptionSetter(test);
         // allow StubTest to shard in 6 sub tests
@@ -71,12 +74,13 @@ public class ModuleSplitterTest {
         assertEquals(1, res.size());
         // The original target preparer is changed since we split multiple <test> tags.
         assertNotSame(
-                config.getTargetPreparers().get(0),
+                initialPreparers.get(0),
                 res.get(0).getTargetPreparerForDevice(DEFAULT_DEVICE).get(0));
         // The original IRemoteTest is still there because we use a pool.
         assertSame(test, res.get(0).getTests().get(0));
         // Original config is stripped from the IRemoteTest reference
         assertTrue(config.getTests().isEmpty());
+        assertTrue(config.getTargetPreparers().isEmpty());
     }
 
     /**
@@ -90,6 +94,7 @@ public class ModuleSplitterTest {
 
         IConfiguration config = new Configuration("fakeConfig", "desc");
         config.setTargetPreparer(new StubTargetPreparer());
+        List<ITargetPreparer> initialPreparers = new ArrayList<>(config.getTargetPreparers());
         StubTest test = new StubTest();
         OptionSetter setterTest = new OptionSetter(test);
         // allow StubTest to shard in 6 sub tests
@@ -105,11 +110,12 @@ public class ModuleSplitterTest {
         assertEquals(10, res.size());
         // The original target preparer is changed since we split multiple <test> tags.
         assertNotSame(
-                config.getTargetPreparers().get(0),
+                initialPreparers.get(0),
                 res.get(0).getTargetPreparerForDevice(DEFAULT_DEVICE).get(0));
         // The original IRemoteTest is changed since it was sharded
         assertNotSame(test, res.get(0).getTests().get(0));
         assertTrue(config.getTests().isEmpty());
+        assertTrue(config.getTargetPreparers().isEmpty());
     }
 
     /**
@@ -123,6 +129,7 @@ public class ModuleSplitterTest {
 
         IConfiguration config = new Configuration("fakeConfig", "desc");
         config.setTargetPreparer(new StubTargetPreparer());
+        List<ITargetPreparer> initialPreparers = new ArrayList<>(config.getTargetPreparers());
         StubTest test = new StubTest();
         OptionSetter setterTest = new OptionSetter(test);
         // allow StubTest to shard in 6 sub tests
@@ -138,11 +145,12 @@ public class ModuleSplitterTest {
         assertEquals(1, res.size());
         // The original target preparer is changed since we split multiple <test> tags.
         assertNotSame(
-                config.getTargetPreparers().get(0),
+                initialPreparers.get(0),
                 res.get(0).getTargetPreparerForDevice(DEFAULT_DEVICE).get(0));
         // The original IRemoteTest is still there because we use a pool.
         assertSame(test, res.get(0).getTests().get(0));
         assertTrue(config.getTests().isEmpty());
+        assertTrue(config.getTargetPreparers().isEmpty());
     }
 
     /** Test when no-intra-module-sharding is set, in which case the module is not splitted. */
@@ -152,6 +160,7 @@ public class ModuleSplitterTest {
 
         IConfiguration config = new Configuration("fakeConfig", "desc");
         config.setTargetPreparer(new StubTargetPreparer());
+        List<ITargetPreparer> initialPreparers = new ArrayList<>(config.getTargetPreparers());
         StubTest test = new StubTest();
         OptionSetter setterTest = new OptionSetter(test);
         // allow StubTest to shard in 6 sub tests
@@ -165,11 +174,12 @@ public class ModuleSplitterTest {
         assertEquals(1, res.size());
         // The original target preparer is changed since we split multiple <test> tags.
         assertNotSame(
-                config.getTargetPreparers().get(0),
+                initialPreparers.get(0),
                 res.get(0).getTargetPreparerForDevice(DEFAULT_DEVICE).get(0));
         // The original IRemoteTest is still there because we use a pool.
         assertSame(test, res.get(0).getTests().get(0));
         assertTrue(config.getTests().isEmpty());
+        assertTrue(config.getTargetPreparers().isEmpty());
     }
 
     /**
@@ -192,6 +202,7 @@ public class ModuleSplitterTest {
                 };
         config.setTest(test);
         config.setTargetPreparer(new StubTargetPreparer());
+        List<ITargetPreparer> initialPreparers = new ArrayList<>(config.getTargetPreparers());
 
         runConfig.put("module1", config);
         List<ModuleDefinition> res =
@@ -200,14 +211,15 @@ public class ModuleSplitterTest {
         assertEquals(1, res.size());
         // The original target preparer is not there, it has been copied
         assertNotSame(
-                config.getTargetPreparers().get(0),
+                initialPreparers.get(0),
                 res.get(0).getTargetPreparerForDevice(DEFAULT_DEVICE).get(0));
         assertEquals(
-                config.getTargetPreparers().get(0).getClass(),
+                initialPreparers.get(0).getClass(),
                 res.get(0).getTargetPreparerForDevice(DEFAULT_DEVICE).get(0).getClass());
         // The original IRemoteTest is still there
         assertSame(test, res.get(0).getTests().get(0));
         assertTrue(config.getTests().isEmpty());
+        assertTrue(config.getTargetPreparers().isEmpty());
     }
 
     /**
@@ -223,6 +235,7 @@ public class ModuleSplitterTest {
         IRemoteTest test = new StubTest();
         config.setTest(test);
         config.setTargetPreparer(new StubTargetPreparer());
+        List<ITargetPreparer> initialPreparers = new ArrayList<>(config.getTargetPreparers());
 
         runConfig.put("module1", config);
         List<ModuleDefinition> res =
@@ -231,14 +244,15 @@ public class ModuleSplitterTest {
         assertEquals(1, res.size());
         // The original target preparer is not there, it has been copied
         assertNotSame(
-                config.getTargetPreparers().get(0),
+                initialPreparers.get(0),
                 res.get(0).getTargetPreparerForDevice(DEFAULT_DEVICE).get(0));
         assertEquals(
-                config.getTargetPreparers().get(0).getClass(),
+                initialPreparers.get(0).getClass(),
                 res.get(0).getTargetPreparerForDevice(DEFAULT_DEVICE).get(0).getClass());
         // The original IRemoteTest is still there
         assertSame(test, res.get(0).getTests().get(0));
         assertTrue(config.getTests().isEmpty());
+        assertTrue(config.getTargetPreparers().isEmpty());
     }
 
     /**
