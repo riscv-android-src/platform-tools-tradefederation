@@ -124,15 +124,6 @@ public class TradefedSandbox implements ISandbox {
         mRunUtil.allowInterrupt(true);
         CommandResult result =
                 mRunUtil.runTimedCmd(timeout, mStdout, mStderr, mCmdArgs.toArray(new String[0]));
-        // Log stdout and stderr
-        if (mStdoutFile != null) {
-            try (InputStreamSource sourceStdOut = new FileInputStreamSource(mStdoutFile)) {
-                logger.testLog("sandbox-stdout", LogDataType.TEXT, sourceStdOut);
-            }
-        }
-        try (InputStreamSource sourceStdErr = new FileInputStreamSource(mStderrFile)) {
-            logger.testLog("sandbox-stderr", LogDataType.TEXT, sourceStdErr);
-        }
         // Collect heap dump if any
         logAndCleanHeapDump(mHeapDump, logger);
 
@@ -147,37 +138,50 @@ public class TradefedSandbox implements ISandbox {
             failedStatus = true;
             result.setStderr(stderrText);
         }
-        // Log the configuration used to run
-        try (InputStreamSource configFile = new FileInputStreamSource(mSerializedConfiguration)) {
-            logger.testLog("sandbox-config", LogDataType.XML, configFile);
-        }
-        try (InputStreamSource contextFile = new FileInputStreamSource(mSerializedContext)) {
-            logger.testLog("sandbox-context", LogDataType.PB, contextFile);
-        }
 
-        boolean joinResult = false;
-        long waitTime = getSandboxOptions(config).getWaitForEventsTimeout();
-        if (mProtoReceiver != null) {
-            joinResult = mProtoReceiver.joinReceiver(waitTime);
-        } else {
-            joinResult = mEventParser.joinReceiver(waitTime);
-        }
-
-        if (!joinResult) {
-            if (!failedStatus) {
-                result.setStatus(CommandStatus.EXCEPTION);
+        try {
+            boolean joinResult = false;
+            long waitTime = getSandboxOptions(config).getWaitForEventsTimeout();
+            if (mProtoReceiver != null) {
+                joinResult = mProtoReceiver.joinReceiver(waitTime);
+            } else {
+                joinResult = mEventParser.joinReceiver(waitTime);
             }
-            result.setStderr(
-                    String.format("Event receiver thread did not complete.:\n%s", stderrText));
+
+            if (!joinResult) {
+                if (!failedStatus) {
+                    result.setStatus(CommandStatus.EXCEPTION);
+                }
+                result.setStderr(
+                        String.format("Event receiver thread did not complete.:\n%s", stderrText));
+            }
+            if (mProtoReceiver != null) {
+                mProtoReceiver.completeModuleEvents();
+            }
+            PrettyPrintDelimiter.printStageDelimiter(
+                    String.format(
+                            "Execution of the tests occurred in the sandbox, you can find its logs "
+                                    + "under the name pattern '%s*'",
+                            SANDBOX_PREFIX));
+        } finally {
+            // Log the configuration used to run
+            try (InputStreamSource configFile =
+                    new FileInputStreamSource(mSerializedConfiguration)) {
+                logger.testLog("sandbox-config", LogDataType.XML, configFile);
+            }
+            try (InputStreamSource contextFile = new FileInputStreamSource(mSerializedContext)) {
+                logger.testLog("sandbox-context", LogDataType.PB, contextFile);
+            }
+            // Log stdout and stderr
+            if (mStdoutFile != null) {
+                try (InputStreamSource sourceStdOut = new FileInputStreamSource(mStdoutFile)) {
+                    logger.testLog("sandbox-stdout", LogDataType.TEXT, sourceStdOut);
+                }
+            }
+            try (InputStreamSource sourceStdErr = new FileInputStreamSource(mStderrFile)) {
+                logger.testLog("sandbox-stderr", LogDataType.TEXT, sourceStdErr);
+            }
         }
-        if (mProtoReceiver != null) {
-            mProtoReceiver.completeModuleEvents();
-        }
-        PrettyPrintDelimiter.printStageDelimiter(
-                String.format(
-                        "Execution of the tests occurred in the sandbox, you can find its logs "
-                                + "under the name pattern '%s*'",
-                        SANDBOX_PREFIX));
 
         return result;
     }
