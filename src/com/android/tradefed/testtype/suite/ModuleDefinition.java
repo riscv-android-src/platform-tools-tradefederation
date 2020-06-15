@@ -359,7 +359,6 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         // Resolve dynamic files except for the IRemoteTest ones
         preparationException = invokeRemoteDynamic(moduleInfo.getDevice(), mModuleConfiguration);
 
-        // TODO: Clean and double check the moduleSplitter and TargetPreparers cloning.
         if (preparationException == null) {
             mInternalTargetPreparerConfiguration =
                     new Configuration("tmp-download", "tmp-download");
