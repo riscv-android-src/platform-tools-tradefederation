@@ -50,7 +50,8 @@ tradefed-all: tradefed-core tradefed-tests tradefed_win loganalysis-tests
 ########################################################
 # Zip up the built files and dist it as tradefed.zip
 
-tradefed_dist_host_jars := tradefed tradefed-tests loganalysis loganalysis-tests tf-remote-client tradefed-contrib tf-contrib-tests tradefed-isolation
+# Do not include "tradefed" in here, it's created below from tradefed-no-fwk
+tradefed_dist_host_jars := tradefed-test-framework tradefed-tests loganalysis loganalysis-tests tf-remote-client tradefed-contrib tf-contrib-tests tradefed-isolation
 tradefed_dist_host_exes := tradefed.sh tradefed_win.bat script_help.sh run_tf_cmd.sh atest_tradefed.sh
 tradefed_dist_test_apks := TradeFedUiTestApp TradeFedTestApp DeviceSetupUtil
 
@@ -58,7 +59,10 @@ tradefed_dist_test_apks := TradeFedUiTestApp TradeFedTestApp DeviceSetupUtil
 # The source should always be an intermediate / source location, not the
 # installed location, as that will force installation, and cause this zip to be
 # regenerated too often during incremental builds.
-tradefed_dist_copy_pairs := $(foreach m, $(tradefed_dist_host_jars), $(call intermediates-dir-for,JAVA_LIBRARIES,$(m),HOST,COMMON)/javalib.jar:$(m).jar)
+
+# Copy tradefed-no-fwk to tradefed.jar to be an inplace replacement
+tradefed_dist_copy_pairs := $(call intermediates-dir-for,JAVA_LIBRARIES,tradefed-no-fwk,HOST,COMMON)/javalib.jar:tradefed.jar
+tradefed_dist_copy_pairs += $(foreach m, $(tradefed_dist_host_jars), $(call intermediates-dir-for,JAVA_LIBRARIES,$(m),HOST,COMMON)/javalib.jar:$(m).jar)
 tradefed_dist_copy_pairs += $(foreach m, $(tradefed_dist_host_exes), $(LOCAL_PATH)/$(m):$(m))
 tradefed_dist_copy_pairs += $(foreach m, $(tradefed_dist_test_apks), $(call intermediates-dir-for,APPS,$(m))/package.apk:$(m).apk)
 
