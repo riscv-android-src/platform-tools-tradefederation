@@ -26,6 +26,8 @@ import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.ZipUtil;
 import com.android.tradefed.util.ZipUtil2;
 
+import com.google.common.collect.ImmutableMap;
+
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -37,11 +39,15 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
+
+import javax.annotation.Nullable;
+import javax.annotation.concurrent.GuardedBy;
+import javax.annotation.concurrent.ThreadSafe;
 
 /**
  * Class that helps resolving path to remote files.
@@ -53,19 +59,29 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class DynamicRemoteFileResolver {
 
-    private static final Map<String, IRemoteFileResolver> PROTOCOL_SUPPORT = new HashMap<>();
-
-    // The configuration map being static, we only need to update it once per TF instance.
-    private static AtomicBoolean sIsUpdateDone = new AtomicBoolean(false);
     // Query key for requesting to unzip a downloaded file automatically.
     public static final String UNZIP_KEY = "unzip";
     // Query key for requesting a download to be optional, so if it fails we don't replace it.
     public static final String OPTIONAL_KEY = "optional";
 
+    private static final FileResolverLoader DEFAULT_FILE_RESOLVER_LOADER =
+            new ServiceFileResolverLoader();
+
+    private final FileResolverLoader mFileResolverLoader;
+
     private Map<String, OptionFieldsForName> mOptionMap;
     // Populated from {@link ICommandOptions#getDynamicDownloadArgs()}
     private Map<String, String> mExtraArgs = new LinkedHashMap<>();
     private ITestDevice mDevice;
+
+    public DynamicRemoteFileResolver() {
+        this(DEFAULT_FILE_RESOLVER_LOADER);
+    }
+
+    @VisibleForTesting
+    public DynamicRemoteFileResolver(FileResolverLoader loader) {
+        this.mFileResolverLoader = loader;
+    }
 
     /** Sets the map of options coming from {@link OptionSetter} */
     public void setOptionMap(Map<String, OptionFieldsForName> optionMap) {
@@ -290,22 +306,8 @@ public class DynamicRemoteFileResolver {
         }
     }
 
-    @VisibleForTesting
     protected IRemoteFileResolver getResolver(String protocol) {
-        if (updateProtocols()) {
-            // Use the service loader to find all the implementations.
-            ServiceLoader<IRemoteFileResolver> serviceLoader =
-                    ServiceLoader.load(IRemoteFileResolver.class);
-            for (IRemoteFileResolver resolver : serviceLoader) {
-                PROTOCOL_SUPPORT.putIfAbsent(resolver.getSupportedProtocol(), resolver);
-            }
-        }
-        return PROTOCOL_SUPPORT.get(protocol);
-    }
-
-    @VisibleForTesting
-    protected boolean updateProtocols() {
-        return sIsUpdateDone.compareAndSet(false, true);
+        return mFileResolverLoader.load(protocol, mExtraArgs);
     }
 
     @VisibleForTesting
@@ -396,5 +398,66 @@ public class DynamicRemoteFileResolver {
             return false;
         }
         return "true".equals(value.toLowerCase());
+    }
+
+    /** Loads implementations of {@link IRemoteFileResolver}. */
+    @VisibleForTesting
+    public interface FileResolverLoader {
+        /**
+         * Loads a resolver that can handle the provided scheme.
+         *
+         * @param scheme the URI scheme that the loaded resolver is expected to handle.
+         * @param config a map of all dynamic resolver configuration key-value pairs specified by
+         *     the 'dynamic-resolver-args' TF command-line flag.
+         */
+        IRemoteFileResolver load(String scheme, Map<String, String> config);
+    }
+
+    /**
+     * Loads and caches file resolvers using the service loading facility.
+     *
+     * <p>This implementation uses the service loading facility to find and cache available
+     * resolvers on the first call to {@code load}.
+     *
+     * <p>This implementation is thread-safe and ensures that any loaded resolvers are loaded at
+     * most once per instance unless an exception is thrown.
+     */
+    @ThreadSafe
+    @VisibleForTesting
+    static final class ServiceFileResolverLoader implements FileResolverLoader {
+        // We need the indirection since in production we use the context class loader that is
+        // defined when loading and not the one at construction.
+        private final Supplier<ClassLoader> mClassLoaderSupplier;
+
+        @GuardedBy("this")
+        private @Nullable ImmutableMap<String, IRemoteFileResolver> mResolvers;
+
+        ServiceFileResolverLoader() {
+            mClassLoaderSupplier = () -> Thread.currentThread().getContextClassLoader();
+        }
+
+        ServiceFileResolverLoader(ClassLoader classLoader) {
+            mClassLoaderSupplier = () -> classLoader;
+        }
+
+        @Override
+        public synchronized IRemoteFileResolver load(String scheme, Map<String, String> config) {
+            if (mResolvers != null) {
+                return mResolvers.get(scheme);
+            }
+
+            // We use an intermediate map because the ImmutableMap builder throws if we add multiple
+            // entries with the same key.
+            Map<String, IRemoteFileResolver> resolvers = new HashMap<>();
+            ServiceLoader<IRemoteFileResolver> serviceLoader =
+                    ServiceLoader.load(IRemoteFileResolver.class, mClassLoaderSupplier.get());
+
+            for (IRemoteFileResolver resolver : serviceLoader) {
+                resolvers.putIfAbsent(resolver.getSupportedProtocol(), resolver);
+            }
+
+            mResolvers = ImmutableMap.copyOf(resolvers);
+            return resolvers.get(scheme);
+        }
     }
 }
