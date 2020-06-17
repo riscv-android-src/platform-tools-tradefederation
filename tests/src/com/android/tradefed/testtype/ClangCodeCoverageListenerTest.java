@@ -333,7 +333,7 @@ public class ClangCodeCoverageListenerTest {
             fail("an exception should have been thrown");
         } catch (RuntimeException e) {
             // Expected.
-            assertThat(e).hasMessageThat().contains("merge profile data");
+            assertThat(e).hasMessageThat().contains("merge Clang profile data");
         }
         mListener.invocationEnded(ELAPSED_TIME);
 
