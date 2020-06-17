@@ -27,6 +27,8 @@ import static org.junit.Assert.fail;
 import com.android.tradefed.build.BootstrapBuildProvider;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.StubBuildProvider;
+import com.android.tradefed.config.DynamicRemoteFileResolver.FileResolverLoader;
+import com.android.tradefed.config.DynamicRemoteFileResolver.ServiceFileResolverLoader;
 import com.android.tradefed.config.remote.GcsRemoteFileResolver;
 import com.android.tradefed.config.remote.IRemoteFileResolver;
 import com.android.tradefed.device.ITestDevice;
@@ -34,6 +36,8 @@ import com.android.tradefed.invoker.shard.ParentShardReplicate;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.executor.ParallelDeviceExecutor;
+
+import com.google.common.collect.ImmutableMap;
 
 import org.easymock.EasyMock;
 import org.easymock.IAnswer;
@@ -46,6 +50,13 @@ import org.junit.runners.JUnit4;
 import org.mockito.Mockito;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -57,6 +68,8 @@ import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
+import java.util.jar.JarEntry;
+import java.util.jar.JarOutputStream;
 
 /** Unit tests for {@link DynamicRemoteFileResolver}. */
 @RunWith(JUnit4.class)
@@ -91,22 +104,15 @@ public class DynamicRemoteFileResolverTest {
     @Before
     public void setUp() {
         mMockResolver = EasyMock.createNiceMock(IRemoteFileResolver.class);
-        mResolver =
-                new DynamicRemoteFileResolver() {
+        FileResolverLoader resolverLoader =
+                new FileResolverLoader() {
                     @Override
-                    protected IRemoteFileResolver getResolver(String protocol) {
-                        if (GcsRemoteFileResolver.PROTOCOL.equals(protocol)) {
-                            return mMockResolver;
-                        }
-                        return null;
-                    }
-
-                    @Override
-                    protected boolean updateProtocols() {
-                        // Do not set the static variable
-                        return false;
+                    public IRemoteFileResolver load(String scheme, Map<String, String> config) {
+                        return ImmutableMap.of(GcsRemoteFileResolver.PROTOCOL, mMockResolver)
+                                .get(scheme);
                     }
                 };
+        mResolver = new DynamicRemoteFileResolver(resolverLoader);
     }
 
     @Test
@@ -589,17 +595,62 @@ public class DynamicRemoteFileResolverTest {
         RemoteFileOption object = new RemoteFileOption();
         OptionSetter setter = new OptionSetter(object);
         setter.setOptionValue("remote-file", fake.toURI().toString());
-        DynamicRemoteFileResolver resolver =
-                new DynamicRemoteFileResolver() {
-                    @Override
-                    protected boolean updateProtocols() {
-                        return false; // Prevents setting static variables.
-                    }
-                };
+        DynamicRemoteFileResolver resolver = new DynamicRemoteFileResolver();
 
         Set<File> downloadedFile = setter.validateRemoteFilePath(resolver);
 
         assertThat(object.remoteFile).isEqualTo(fake);
+    }
+
+    @Test
+    public void canResolveUsingCustomResolvers() throws Exception {
+        RemoteFileOption object = new RemoteFileOption();
+        OptionSetter setter = new OptionSetter(object);
+        setter.setOptionValue("remote-file", NullFileResolver.PROTOCOL + "://a-file");
+        ClassLoader classLoader = classLoaderWithProviders(NullFileResolver.class.getName());
+        DynamicRemoteFileResolver resolver =
+                new DynamicRemoteFileResolver(new ServiceFileResolverLoader(classLoader));
+
+        Set<File> downloadedFile = setter.validateRemoteFilePath(resolver);
+
+        assertThat(object.remoteFile).isEqualTo(NullFileResolver.NULL_FILE);
+    }
+
+    @Test
+    public void resolverLoader_multipleCallsReturnTheSameResolver() throws Exception {
+        ClassLoader classLoader = classLoaderWithProviders(NullFileResolver.class.getName());
+        FileResolverLoader loader = new ServiceFileResolverLoader(classLoader);
+        IRemoteFileResolver expected = loader.load(NullFileResolver.PROTOCOL, ImmutableMap.of());
+
+        IRemoteFileResolver actual = loader.load(NullFileResolver.PROTOCOL, ImmutableMap.of());
+
+        assertThat(actual).isSameAs(expected);
+    }
+
+    @Test
+    public void resolverLoader_differentInstancesReturnDifferentResolvers() throws Exception {
+        ClassLoader classLoader = classLoaderWithProviders(NullFileResolver.class.getName());
+        FileResolverLoader loader1 = new ServiceFileResolverLoader(classLoader);
+        FileResolverLoader loader2 = new ServiceFileResolverLoader(classLoader);
+
+        IRemoteFileResolver resolver1 = loader1.load(NullFileResolver.PROTOCOL, ImmutableMap.of());
+        IRemoteFileResolver resolver2 = loader2.load(NullFileResolver.PROTOCOL, ImmutableMap.of());
+
+        assertThat(resolver1).isNotSameAs(resolver2);
+    }
+
+    @Test
+    public void resolverLoader_canHandleMultipleResolversWithSameScheme() throws Exception {
+        ClassLoader classLoader =
+                classLoaderWithProviders(
+                        NullFileResolver.class.getName(),
+                        DuplicateNullFileResolver.class.getName());
+        FileResolverLoader loader = new ServiceFileResolverLoader(classLoader);
+
+        IRemoteFileResolver resolver = loader.load(NullFileResolver.PROTOCOL, ImmutableMap.of());
+
+        assertThat(resolver.getClass())
+                .isAnyOf(NullFileResolver.class, DuplicateNullFileResolver.class);
     }
 
     @Test
@@ -693,6 +744,44 @@ public class DynamicRemoteFileResolverTest {
         }
         EasyMock.verify(mMockResolver);
     }
+
+    private ClassLoader classLoaderWithProviders(String... lines) throws IOException {
+        String service = IRemoteFileResolver.class.getName();
+        File jar = temporaryFolder.newFile();
+
+        try (JarOutputStream out = new JarOutputStream(new FileOutputStream(jar))) {
+            JarEntry jarEntry = new JarEntry("META-INF/services/" + service);
+
+            out.putNextEntry(jarEntry);
+            PrintWriter writer =
+                    new PrintWriter(new OutputStreamWriter(out, StandardCharsets.UTF_8));
+
+            for (String line : lines) {
+                writer.println(line);
+            }
+
+            writer.flush();
+        }
+
+        return new URLClassLoader(new URL[] {jar.toURI().toURL()});
+    }
+
+    public static class NullFileResolver implements IRemoteFileResolver {
+        private static final String PROTOCOL = "null";
+        private static final File NULL_FILE = new File("/dev/null");
+
+        @Override
+        public String getSupportedProtocol() {
+            return PROTOCOL;
+        }
+
+        @Override
+        public File resolveRemoteFiles(File consideredFile, Map<String, String> queryArgs) {
+            return NULL_FILE;
+        }
+    }
+
+    public static final class DuplicateNullFileResolver extends NullFileResolver {}
 
     private static final Correspondence<File, File> FILE_PATH_EQUIVALENCE =
             new Correspondence<File, File>() {
