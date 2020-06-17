@@ -132,6 +132,9 @@ public class JavaCodeCoverageListenerTest {
         // Verify testLog(..) was called with the coverage file.
         verify(mFakeListener)
                 .testLog(anyString(), eq(LogDataType.COVERAGE), eq(COVERAGE_MEASUREMENT));
+
+        // Verify the device coverage file was deleted.
+        verify(mMockDevice).deleteFile(anyString());
     }
 
     @Test
@@ -180,6 +183,7 @@ public class JavaCodeCoverageListenerTest {
         InOrder inOrder = inOrder(mMockDevice);
         inOrder.verify(mMockDevice).enableAdbRoot();
         inOrder.verify(mMockDevice).pullFile(anyString());
+        inOrder.verify(mMockDevice).deleteFile(anyString());
     }
 
     @Test
@@ -209,6 +213,7 @@ public class JavaCodeCoverageListenerTest {
 
         InOrder inOrder = inOrder(mMockDevice);
         inOrder.verify(mMockDevice).pullFile(anyString());
+        inOrder.verify(mMockDevice).deleteFile(anyString());
         inOrder.verify(mMockDevice).disableAdbRoot();
     }
 
