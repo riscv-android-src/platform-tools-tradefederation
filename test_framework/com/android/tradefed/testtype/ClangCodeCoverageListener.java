@@ -155,7 +155,10 @@ public final class ClangCodeCoverageListener extends ResultForwarder
             // Compress coverage measurements on the device before pulling.
             mDevice.executeShellCommand(ZIP_CLANG_FILES_COMMAND);
             coverageTarGz = mDevice.pullFile(COVERAGE_TAR_PATH);
-            verifyNotNull(coverageTarGz, "Failed to pull the coverage file %s", COVERAGE_TAR_PATH);
+            verifyNotNull(
+                    coverageTarGz,
+                    "Failed to pull the Clang code coverage file %s",
+                    COVERAGE_TAR_PATH);
             mDevice.deleteFile(COVERAGE_TAR_PATH);
 
             untarDir = FileUtil.createTempDir("clang_coverage");
@@ -163,11 +166,11 @@ public final class ClangCodeCoverageListener extends ResultForwarder
             Set<String> rawProfileFiles = FileUtil.findFiles(untarDir, ".*\\.profraw");
 
             if (rawProfileFiles.isEmpty()) {
-                CLog.i("No Clang coverage measurements found.");
+                CLog.i("No Clang code coverage measurements found.");
                 return;
             }
 
-            CLog.i("Received coverage measurements: %s", rawProfileFiles);
+            CLog.i("Received Clang code coverage measurements: %s", rawProfileFiles);
 
             // Get the llvm-profdata tool from the build. This tool must match the same one used to
             // compile the build, otherwise this action will fail.
@@ -191,7 +194,8 @@ public final class ClangCodeCoverageListener extends ResultForwarder
 
             CommandResult result = mRunUtil.runTimedCmd(0, command.toArray(new String[0]));
             if (result.getStatus() != CommandStatus.SUCCESS) {
-                throw new IOException("Failed to merge profile data in " + command.toString());
+                throw new IOException(
+                        "Failed to merge Clang profile data in " + command.toString());
             }
 
             try (FileInputStreamSource source =
