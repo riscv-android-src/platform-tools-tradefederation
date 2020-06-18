@@ -431,6 +431,7 @@ public class NativeDeviceStateMonitor implements IDeviceStateMonitor {
                 listener.wait();
             } catch (InterruptedException e) {
                 CLog.w("wait for device bootloader state update interrupted");
+                CLog.w(e);
                 throw new RuntimeException(e);
             } finally {
                 mMgr.removeFastbootListener(listener);
@@ -453,6 +454,7 @@ public class NativeDeviceStateMonitor implements IDeviceStateMonitor {
                 listener.wait(time);
             } catch (InterruptedException e) {
                 CLog.w("wait for device state interrupted");
+                CLog.w(e);
                 throw new RuntimeException(e);
             } finally {
                 removeDeviceStateListener(listener);
