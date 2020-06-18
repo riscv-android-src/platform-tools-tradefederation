@@ -23,11 +23,9 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.invoker.TestInformation;
-import com.android.tradefed.invoker.logger.CurrentInvocation;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.LogUtil.CLog;
-import com.android.tradefed.result.ActionInProgress;
 import com.android.tradefed.util.BinaryState;
 import com.android.tradefed.util.MultiMap;
 
@@ -899,12 +897,10 @@ public class DeviceSetup extends BaseTargetPreparer {
             return;
         }
 
-        CurrentInvocation.setActionInProgress(ActionInProgress.WIFI_CONNECT);
         String wifiPsk = Strings.emptyToNull(mWifiPsk);
         if (mWifiSsid != null && device.connectToWifiNetwork(mWifiSsid, wifiPsk)) {
             InvocationMetricLogger.addInvocationMetrics(
                     InvocationMetricKey.WIFI_AP_NAME, mWifiSsid);
-            CurrentInvocation.setActionInProgress(ActionInProgress.UNSET);
             return;
         }
         for (Map.Entry<String, String> ssidToPsk : mWifiSsidToPsk.entrySet()) {
@@ -912,7 +908,6 @@ public class DeviceSetup extends BaseTargetPreparer {
             if (device.connectToWifiNetwork(ssidToPsk.getKey(), psk)) {
                 InvocationMetricLogger.addInvocationMetrics(
                         InvocationMetricKey.WIFI_AP_NAME, ssidToPsk.getKey());
-                CurrentInvocation.setActionInProgress(ActionInProgress.UNSET);
                 return;
             }
         }
