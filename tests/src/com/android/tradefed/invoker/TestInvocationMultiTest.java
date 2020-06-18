@@ -36,6 +36,7 @@ import com.android.tradefed.invoker.shard.ShardHelper;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.ILogRegistry;
 import com.android.tradefed.postprocessor.IPostProcessor;
+import com.android.tradefed.result.ActionInProgress;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ILogSaver;
@@ -291,8 +292,8 @@ public class TestInvocationMultiTest {
         EasyMock.expect(mMockTestListener.getSummary()).andReturn(null);
         mMockLogSaver.invocationStarted(mContext);
         FailureDescription failure =
-                FailureDescription.create(
-                        configException.getMessage(), FailureStatus.INFRA_FAILURE);
+                FailureDescription.create(configException.getMessage(), FailureStatus.INFRA_FAILURE)
+                        .setActionInProgress(ActionInProgress.RESOLVING_DYNAMIC_LINKS);
         mMockTestListener.invocationFailed(EasyMock.eq(failure));
         mMockTestListener.testLog(EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject());
         EasyMock.expect(
