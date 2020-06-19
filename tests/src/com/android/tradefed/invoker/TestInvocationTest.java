@@ -1126,7 +1126,7 @@ public class TestInvocationTest {
                     FailureDescription failure =
                             FailureDescription.create(
                                             throwable.getMessage(), FailureStatus.INFRA_FAILURE)
-                                    .setActionInProgress(ActionInProgress.BUILD_FETCHING)
+                                    .setActionInProgress(ActionInProgress.FETCHING_ARTIFACTS)
                                     .setCause(throwable);
                     mMockTestListener.invocationFailed(EasyMock.eq(failure));
                     mMockSummaryListener.invocationFailed(EasyMock.eq(failure));
