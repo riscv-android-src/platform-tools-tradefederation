@@ -20,11 +20,9 @@ import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.TestInformation;
-import com.android.tradefed.invoker.logger.CurrentInvocation;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.LogUtil.CLog;
-import com.android.tradefed.result.ActionInProgress;
 
 /**
  * A {@link ITargetPreparer} that configures wifi on the device if necessary.
@@ -77,13 +75,11 @@ public class WifiPreparer extends BaseTargetPreparer {
             throw new TargetSetupError("wifi-network not specified", device.getDeviceDescriptor());
         }
 
-        CurrentInvocation.setActionInProgress(ActionInProgress.WIFI_CONNECT);
         InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.WIFI_AP_NAME, mWifiNetwork);
         if (!device.connectToWifiNetworkIfNeeded(mWifiNetwork, mWifiPsk)) {
             throw new TargetSetupError(String.format("Failed to connect to wifi network %s on %s",
                     mWifiNetwork, device.getSerialNumber()), device.getDeviceDescriptor());
         }
-        CurrentInvocation.setActionInProgress(ActionInProgress.UNSET);
         if (mMonitorNetwork) {
             device.enableNetworkMonitor();
         }

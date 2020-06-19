@@ -293,7 +293,7 @@ public class TestInvocationMultiTest {
         mMockLogSaver.invocationStarted(mContext);
         FailureDescription failure =
                 FailureDescription.create(configException.getMessage(), FailureStatus.INFRA_FAILURE)
-                        .setActionInProgress(ActionInProgress.RESOLVING_DYNAMIC_LINKS);
+                        .setActionInProgress(ActionInProgress.FETCHING_ARTIFACTS);
         mMockTestListener.invocationFailed(EasyMock.eq(failure));
         mMockTestListener.testLog(EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject());
         EasyMock.expect(
