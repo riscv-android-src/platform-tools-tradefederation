@@ -318,6 +318,7 @@ import com.android.tradefed.testtype.suite.module.DeviceFeatureModuleControllerT
 import com.android.tradefed.testtype.suite.module.MinApiLevelModuleControllerTest;
 import com.android.tradefed.testtype.suite.module.NativeBridgeModuleControllerTest;
 import com.android.tradefed.testtype.suite.params.InstantAppHandlerTest;
+import com.android.tradefed.testtype.suite.params.MainlineModuleHandlerTest;
 import com.android.tradefed.testtype.suite.params.ModuleParametersHelperTest;
 import com.android.tradefed.testtype.suite.params.SecondaryUserHandlerTest;
 import com.android.tradefed.testtype.suite.retry.ResultsPlayerTest;
@@ -809,6 +810,7 @@ import org.junit.runners.Suite.SuiteClasses;
 
     // testtype/suite/params
     InstantAppHandlerTest.class,
+    MainlineModuleHandlerTest.class,
     ModuleParametersHelperTest.class,
     SecondaryUserHandlerTest.class,
 
