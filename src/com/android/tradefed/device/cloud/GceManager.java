@@ -351,15 +351,24 @@ public class GceManager {
                             "GCE launcher %s is invalid",
                             getTestDeviceOptions().getAvdDriverBinary()));
         }
-        if (mGceAvdInfo == null) {
+        String instanceName = null;
+        boolean notFromGceAvd = false;
+        if (mGceAvdInfo != null) {
+            instanceName = mGceAvdInfo.instanceName();
+        }
+        if (instanceName == null) {
+            instanceName = mBuildInfo.getBuildAttributes().get(GCE_INSTANCE_NAME_KEY);
+            notFromGceAvd = true;
+        }
+        if (instanceName == null) {
             CLog.d("No instance to shutdown.");
             return false;
         }
         try {
-            boolean res =
-                    AcloudShutdown(
-                            getTestDeviceOptions(), getRunUtil(), mGceAvdInfo.instanceName());
-            if (res) {
+            boolean res = AcloudShutdown(getTestDeviceOptions(), getRunUtil(), instanceName);
+            // Be more lenient if instance name was not reported officially and we still attempt
+            // to clean it.
+            if (res || notFromGceAvd) {
                 mBuildInfo.addBuildAttribute(GCE_INSTANCE_CLEANED_KEY, "true");
             }
             return res;
