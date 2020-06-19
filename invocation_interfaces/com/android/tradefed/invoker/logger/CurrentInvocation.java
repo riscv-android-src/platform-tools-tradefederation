@@ -163,7 +163,7 @@ public class CurrentInvocation {
         return failure;
     }
 
-    static <T> @Nullable T getLocal(InvocationLocal<T> local) {
+    static <T> T getLocal(InvocationLocal<T> local) {
         ThreadGroup group = Thread.currentThread().getThreadGroup();
         Map<InvocationLocal<?>, Optional<?>> locals =
                 mInvocationLocals.computeIfAbsent(group, unused -> new ConcurrentHashMap<>());
