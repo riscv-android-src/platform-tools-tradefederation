@@ -611,7 +611,7 @@ public class TestInvocation implements ITestInvocation {
         startInvocation(config, testInfo.getContext(), listener);
         // Don't want to use #reportFailure, since that will call buildNotTested
         FailureDescription failure =
-                CurrentInvocation.createFailure(buildException.getMessage())
+                CurrentInvocation.createFailure(buildException.getMessage(), null)
                         .setFailureStatus(FailureStatus.INFRA_FAILURE)
                         .setCause(buildException);
         reportFailure(failure, listener);
@@ -669,7 +669,7 @@ public class TestInvocation implements ITestInvocation {
             startInvocation(config, context, listener);
             // Don't want to use #reportFailure, since that will call buildNotTested
             FailureDescription failure =
-                    CurrentInvocation.createFailure(e.getMessage())
+                    CurrentInvocation.createFailure(e.getMessage(), null)
                             .setFailureStatus(FailureStatus.INFRA_FAILURE)
                             .setCause(e);
             reportFailure(failure, listener);

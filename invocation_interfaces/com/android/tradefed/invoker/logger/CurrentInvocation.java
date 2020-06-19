@@ -19,8 +19,10 @@ import com.android.tradefed.invoker.ExecutionFiles;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ActionInProgress;
 import com.android.tradefed.result.FailureDescription;
+import com.android.tradefed.result.error.ErrorIdentifier;
 
 import java.io.File;
+import java.lang.StackWalker.Option;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -149,6 +151,9 @@ public class CurrentInvocation {
     public static @Nullable ActionInProgress getActionInProgress() {
         ThreadGroup group = Thread.currentThread().getThreadGroup();
         synchronized (mPerGroupInfo) {
+            if (mPerGroupInfo.get(group) == null) {
+                return null;
+            }
             return mPerGroupInfo.get(group).mActionInProgress;
         }
     }
@@ -157,9 +162,19 @@ public class CurrentInvocation {
      * Create a failure associated with the invocation action in progress. Convenience utility to
      * avoid calling {@link FailureDescription#setActionInProgress(ActionInProgress)}.
      */
-    public static FailureDescription createFailure(String errorMessage) {
+    public static FailureDescription createFailure(
+            String errorMessage, ErrorIdentifier errorIdentifier) {
         FailureDescription failure = FailureDescription.create(errorMessage);
-        failure.setActionInProgress(getActionInProgress());
+        ActionInProgress action = getActionInProgress();
+        if (action != null) {
+            failure.setActionInProgress(action);
+        }
+        if (errorIdentifier != null) {
+            failure.setErrorIdentifier(errorIdentifier);
+        }
+        // Automatically populate the origin
+        Class<?> clazz = StackWalker.getInstance(Option.RETAIN_CLASS_REFERENCE).getCallerClass();
+        failure.setOrigin(clazz.getCanonicalName());
         return failure;
     }
 
