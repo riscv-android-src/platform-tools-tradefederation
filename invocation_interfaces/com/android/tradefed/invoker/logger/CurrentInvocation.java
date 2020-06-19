@@ -23,6 +23,7 @@ import com.android.tradefed.result.FailureDescription;
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 import javax.annotation.Nullable;
@@ -65,6 +66,9 @@ public class CurrentInvocation {
     private static final Map<ThreadGroup, InternalInvocationTracking> mPerGroupInfo =
             new ConcurrentHashMap<ThreadGroup, CurrentInvocation.InternalInvocationTracking>();
 
+    private static final Map<ThreadGroup, Map<InvocationLocal<?>, Optional<?>>> mInvocationLocals =
+            new ConcurrentHashMap<>();
+
     /**
      * Add one key-value to be tracked at the invocation level.
      *
@@ -98,6 +102,7 @@ public class CurrentInvocation {
         synchronized (mPerGroupInfo) {
             mPerGroupInfo.remove(group);
         }
+        mInvocationLocals.remove(group);
     }
 
     /**
@@ -156,5 +161,20 @@ public class CurrentInvocation {
         FailureDescription failure = FailureDescription.create(errorMessage);
         failure.setActionInProgress(getActionInProgress());
         return failure;
+    }
+
+    static <T> @Nullable T getLocal(InvocationLocal<T> local) {
+        ThreadGroup group = Thread.currentThread().getThreadGroup();
+        Map<InvocationLocal<?>, Optional<?>> locals =
+                mInvocationLocals.computeIfAbsent(group, unused -> new ConcurrentHashMap<>());
+
+        // Note that ConcurrentHashMap guarantees that the function is atomic and called at-most
+        // once.
+        Optional<?> holder =
+                locals.computeIfAbsent(local, unused -> Optional.ofNullable(local.initialValue()));
+
+        @SuppressWarnings("unchecked")
+        T value = (T) holder.orElse(null);
+        return value;
     }
 }
