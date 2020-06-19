@@ -121,6 +121,8 @@ public abstract class ITestSuite
     public static final String SKIP_HOST_ARCH_CHECK = "skip-host-arch-check";
     public static final String PRIMARY_ABI_RUN = "primary-abi-only";
     public static final String PARAMETER_KEY = "parameter";
+    public static final String MAINLINE_PARAMETER_KEY = "mainline-param";
+    public static final String ACTIVE_MAINLINE_PARAMETER_KEY = "active-mainline-parameter";
     public static final String TOKEN_KEY = "token";
     public static final String MODULE_METADATA_INCLUDE_FILTER = "module-metadata-include-filter";
     public static final String MODULE_METADATA_EXCLUDE_FILTER = "module-metadata-exclude-filter";
@@ -1073,6 +1075,13 @@ public abstract class ITestSuite
     @Override
     public void setInvocationContext(IInvocationContext invocationContext) {
         mContext = invocationContext;
+    }
+
+    /**
+     * Returns the invocation context.
+     */
+    public IInvocationContext getInvocationContext() {
+        return mContext;
     }
 
     /** {@inheritDoc} */

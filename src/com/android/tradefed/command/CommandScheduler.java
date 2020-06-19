@@ -1565,7 +1565,15 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             ExecutableCommand cmd,
             IScheduledInvocationListener... listeners) {
         // Check if device is not used in another invocation.
-        throwIfDeviceInInvocationThread(context.getDevices());
+        try {
+            throwIfDeviceInInvocationThread(context.getDevices());
+        } catch (Exception e) {
+            setLastInvocationExitCode(ExitCode.THROWABLE_EXCEPTION, e);
+            for (ITestDevice device : context.getDevices()) {
+                getDeviceManager().freeDevice(device, FreeDeviceState.AVAILABLE);
+            }
+            throw e;
+        }
 
         int invocationId = cmd.getCommandTracker().getId();
         CLog.d("starting invocation for command id %d", invocationId);
@@ -1604,6 +1612,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         for (ITestDevice device : devices) {
             for (IInvocationContext context : mInvocationThreadMap.keySet()) {
                 if (context.getDevices().contains(device)) {
+                    if (context.wasReleasedEarly()) {
+                        return;
+                    }
                     throw new IllegalStateException(
                             String.format(
                                     "Attempting invocation on device %s when one is already "
