@@ -391,7 +391,7 @@ public class ProtoResultParserTest {
         mMockListener.testRunFailed(
                 FailureDescription.create("run failure")
                         .setFailureStatus(FailureStatus.INFRA_FAILURE)
-                        .setActionInProgress(ActionInProgress.INSTALL_APK)
+                        .setActionInProgress(ActionInProgress.TEST)
                         .setDebugHelpMessage("help message"));
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
@@ -408,7 +408,7 @@ public class ProtoResultParserTest {
         mFinalTestParser.testRunFailed(
                 FailureDescription.create("run failure")
                         .setFailureStatus(FailureStatus.INFRA_FAILURE)
-                        .setActionInProgress(ActionInProgress.INSTALL_APK)
+                        .setActionInProgress(ActionInProgress.TEST)
                         .setDebugHelpMessage("help message"));
 
         mFinalTestParser.testEnded(test1, 10L, new HashMap<String, Metric>());
