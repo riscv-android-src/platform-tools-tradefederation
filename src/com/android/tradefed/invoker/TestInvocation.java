@@ -291,6 +291,7 @@ public class TestInvocation implements ITestInvocation {
                     invocationPath.reportLogs(device, listener, Stage.TEST);
                 }
             }
+            CurrentInvocation.setActionInProgress(ActionInProgress.TEAR_DOWN);
             getRunUtil().allowInterrupt(false);
             if (config.getCommandOptions().takeBugreportOnInvocationEnded() ||
                     config.getCommandOptions().takeBugreportzOnInvocationEnded()) {
@@ -341,6 +342,7 @@ public class TestInvocation implements ITestInvocation {
                 }
             }
             mStatus = "done running tests";
+            CurrentInvocation.setActionInProgress(ActionInProgress.FREE_RESOURCES);
             // Track the timestamp when we are done with devices
             addInvocationMetric(
                     InvocationMetricKey.DEVICE_DONE_TIMESTAMP, System.currentTimeMillis());
@@ -419,12 +421,14 @@ public class TestInvocation implements ITestInvocation {
             throws Throwable {
         getRunUtil().allowInterrupt(true);
         logDeviceBatteryLevel(testInfo.getContext(), "initial -> setup");
-        // TODO: Use TestInformation in setup
+        CurrentInvocation.setActionInProgress(ActionInProgress.SETUP);
         invocationPath.doSetup(testInfo, config, listener);
         logDeviceBatteryLevel(testInfo.getContext(), "setup -> test");
         mTestStarted = true;
+        CurrentInvocation.setActionInProgress(ActionInProgress.TEST);
         invocationPath.runTests(testInfo, config, listener);
         logDeviceBatteryLevel(testInfo.getContext(), "after test");
+        CurrentInvocation.setActionInProgress(ActionInProgress.UNSET);
     }
 
     /**
@@ -585,7 +589,7 @@ public class TestInvocation implements ITestInvocation {
             ITestInvocationListener listener,
             IInvocationExecution invocationPath)
             throws DeviceNotAvailableException {
-        CurrentInvocation.setActionInProgress(ActionInProgress.BUILD_FETCHING);
+        CurrentInvocation.setActionInProgress(ActionInProgress.FETCHING_ARTIFACTS);
         Exception buildException = null;
         boolean res = false;
         try {
@@ -644,7 +648,7 @@ public class TestInvocation implements ITestInvocation {
             if (RunMode.REMOTE_INVOCATION.equals(mode)) {
                 return true;
             }
-            CurrentInvocation.setActionInProgress(ActionInProgress.RESOLVING_DYNAMIC_LINKS);
+            CurrentInvocation.setActionInProgress(ActionInProgress.FETCHING_ARTIFACTS);
             DynamicRemoteFileResolver resolver = new DynamicRemoteFileResolver();
             resolver.setDevice(context.getDevices().get(0));
             resolver.addExtraArgs(config.getCommandOptions().getDynamicDownloadArgs());
