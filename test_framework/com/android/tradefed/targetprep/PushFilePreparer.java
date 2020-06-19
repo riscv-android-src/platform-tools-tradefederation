@@ -239,6 +239,16 @@ public class PushFilePreparer extends BaseTargetPreparer
                             // Search the module directory if it exists use it in priority
                             src = FileUtil.findFile(fileName, null, moduleDir);
                             if (src != null) {
+                                // Search again with filtering on ABI
+                                File srcWithAbi = FileUtil.findFile(fileName, mAbi, moduleDir);
+                                if (srcWithAbi != null
+                                        && !srcWithAbi
+                                                .getAbsolutePath()
+                                                .startsWith(src.getAbsolutePath())) {
+                                    // When multiple matches are found, return the one with matching
+                                    // ABI unless src is its parent directory.
+                                    return srcWithAbi;
+                                }
                                 return src;
                             }
                         } else {
@@ -278,6 +288,18 @@ public class PushFilePreparer extends BaseTargetPreparer
             try {
                 // Search the full tests dir if no target dir is available.
                 src = FileUtil.findFile(fileName, null, scanDirs.toArray(new File[] {}));
+                if (src != null) {
+                    // Search again with filtering on ABI
+                    File srcWithAbi =
+                            FileUtil.findFile(fileName, mAbi, scanDirs.toArray(new File[] {}));
+                    if (srcWithAbi != null
+                            && !srcWithAbi.getAbsolutePath().startsWith(src.getAbsolutePath())) {
+                        // When multiple matches are found, return the one with matching
+                        // ABI unless src is its parent directory.
+                        return srcWithAbi;
+                    }
+                    return src;
+                }
             } catch (IOException e) {
                 CLog.w("Failed to find test files from directory.");
                 src = null;
