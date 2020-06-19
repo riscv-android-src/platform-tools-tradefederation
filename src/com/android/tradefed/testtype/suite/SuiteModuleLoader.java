@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.testtype.suite;
 
+import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
@@ -23,6 +24,7 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.config.OptionDef;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.testtype.IAbi;
@@ -31,6 +33,7 @@ import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFileFilterReceiver;
 import com.android.tradefed.testtype.ITestFilterReceiver;
 import com.android.tradefed.testtype.suite.params.IModuleParameter;
+import com.android.tradefed.testtype.suite.params.MainlineModuleHandler;
 import com.android.tradefed.testtype.suite.params.ModuleParameters;
 import com.android.tradefed.testtype.suite.params.ModuleParametersHelper;
 import com.android.tradefed.testtype.suite.params.NegativeHandler;
@@ -55,6 +58,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -71,11 +76,16 @@ public class SuiteModuleLoader {
     private Map<String, List<SuiteTestFilter>> mIncludeFilters = new HashMap<>();
     private Map<String, List<SuiteTestFilter>> mExcludeFilters = new HashMap<>();
     private IConfigurationFactory mConfigFactory = ConfigurationFactory.getInstance();
+    private IInvocationContext mContext;
 
     private boolean mAllowParameterizedModules = false;
+    private boolean mAllowMainlineParameterizedModules = false;
     private boolean mAllowOptionalParameterizedModules = false;
     private ModuleParameters mForcedModuleParameter = null;
     private Set<ModuleParameters> mExcludedModuleParameters = new HashSet<>();
+    // Check the mainline parameter configured in a test config must end with .apk, .apks, or .apex.
+    private static final Set<String> MAINLINE_PARAMETERS_TO_VALIDATE =
+            new HashSet<>(Arrays.asList(".apk", ".apks", ".apex"));
 
     /**
      * Ctor for the SuiteModuleLoader.
@@ -98,9 +108,18 @@ public class SuiteModuleLoader {
         parseArgs(moduleArgs, mModuleOptions);
     }
 
+    public final void setInvocationContext(IInvocationContext context) {
+        mContext = context;
+    }
+
     /** Sets whether or not to allow parameterized modules. */
     public final void setParameterizedModules(boolean allowed) {
         mAllowParameterizedModules = allowed;
+    }
+
+    /** Sets whether or not to allow parameterized mainline modules. */
+    public final void setMainlineParameterizedModules(boolean allowed) {
+        mAllowMainlineParameterizedModules = allowed;
     }
 
     /** Sets whether or not to allow optional parameterized modules. */
@@ -270,8 +289,10 @@ public class SuiteModuleLoader {
 
                 boolean skipCreatingBaseConfig = false;
                 List<IModuleParameter> params = null;
+                List<String> mainlineParams = new ArrayList<>();
                 try {
                     params = getModuleParameters(name, config);
+                    mainlineParams = getMainlineModuleParameters(config);
                 } catch (ConfigurationException e) {
                     // If the module should not have been running in the first place, give it a
                     // pass on the configuration failure.
@@ -321,7 +342,7 @@ public class SuiteModuleLoader {
                         }
                         String fullId =
                                 String.format("%s[%s]", baseId, param.getParameterIdentifier());
-                        if (shouldRunParameterized(baseId, fullId)) {
+                        if (shouldRunParameterized(fullId)) {
                             IConfiguration paramConfig =
                                     mConfigFactory.createConfigurationFromArgs(pathArg);
                             // Mark the parameter in the metadata
@@ -337,6 +358,40 @@ public class SuiteModuleLoader {
                         }
                     }
                 }
+
+                if (mAllowMainlineParameterizedModules) {
+                    // If no options defined in a test config, skip generating.
+                    // TODO(easoncylee) This is still under discussion.
+                    if (mainlineParams.isEmpty()) {
+                        continue;
+                    }
+                    // If we find any parameterized combination for mainline modules.
+                    for (String param : mainlineParams) {
+                        String fullId = String.format("%s[%s]", baseId, param);
+                        if (!shouldRunParameterized(fullId)) {
+                            continue;
+                        }
+                        // Create mainline handler for each defined mainline parameter.
+                        MainlineModuleHandler handler =
+                                new MainlineModuleHandler(
+                                        param,
+                                        abi,
+                                        mContext
+                                );
+                        skipCreatingBaseConfig = true;
+                        IConfiguration paramConfig =
+                                mConfigFactory.createConfigurationFromArgs(pathArg);
+                        paramConfig
+                                .getConfigurationDescription()
+                                .addMetadata(
+                                        ITestSuite.ACTIVE_MAINLINE_PARAMETER_KEY,
+                                        param);
+                        setUpConfig(name, baseId, fullId, paramConfig, abi);
+                        handler.applySetup(paramConfig);
+                        toRun.put(fullId, paramConfig);
+                    }
+                }
+
                 primaryAbi = false;
                 // If a parameterized form of the module was forced, we don't create the standard
                 // version of it.
@@ -421,16 +476,15 @@ public class SuiteModuleLoader {
      * Except if the parameterized module is explicitly excluded, including the base module result
      * in including its parameterization variant.
      */
-    private boolean shouldRunParameterized(String baseId, String parameterModuleId) {
+    private boolean shouldRunParameterized(String parameterModuleId) {
         // Explicitly excluded
-        List<SuiteTestFilter> mdExcludes = getFilterList(mExcludeFilters, parameterModuleId);
-        if (containsModuleExclude(mdExcludes)) {
+        List<SuiteTestFilter> excluded = getFilterList(mExcludeFilters, parameterModuleId);
+        if (containsModuleExclude(excluded)) {
             return false;
         }
-        // itself or its base is included
-        List<SuiteTestFilter> mdIncludes = getFilterList(mIncludeFilters, baseId);
-        List<SuiteTestFilter> mParamIncludes = getFilterList(mIncludeFilters, parameterModuleId);
-        if (mIncludeAll || !mdIncludes.isEmpty() || !mParamIncludes.isEmpty()) {
+        // Explicitly included
+        List<SuiteTestFilter> included = getFilterList(mIncludeFilters, parameterModuleId);
+        if (mIncludeAll || !included.isEmpty()) {
             return true;
         }
         return false;
@@ -598,6 +652,60 @@ public class SuiteModuleLoader {
             }
         }
         return params;
+    }
+
+    /** Gets the list of parameterized mainline modules associated with a module. */
+    @VisibleForTesting
+    List<String> getMainlineModuleParameters(IConfiguration config)
+            throws ConfigurationException {
+        List<String> params = new ArrayList<>();
+
+        List<String> parameters =
+                config.getConfigurationDescription().getMetaData(ITestSuite.MAINLINE_PARAMETER_KEY);
+        if (parameters == null || parameters.isEmpty()) {
+            return params;
+        }
+
+        return new ArrayList<>(dedupMainlineParameters(parameters));
+    }
+
+    /**
+     * De-duplicate the given mainline parameters.
+     *
+     * @param parameters The list of given mainline parameters.
+     * @return The de-duplicated mainline modules list.
+     */
+    @VisibleForTesting
+    Set<String> dedupMainlineParameters(List<String> parameters) {
+        Set<String> results = new HashSet<>();
+        for (String param : parameters) {
+            SortedSet<String> mainlineModules = new TreeSet<>();
+            if (!isValidMainlineParam(param)) {
+                throw new RuntimeException(
+                        String.format(
+                                "Illegal mainline module parameter: \"%s\" configured in the " +
+                                "test config. Parameter must either end with .apk/.apex/.apks " +
+                                "and have no any spaces configured.", param)
+                );
+            }
+            mainlineModules.addAll(Arrays.asList(param.split(String.format("\\+"))));
+            results.add(String.join("+", mainlineModules));
+        }
+        return results;
+    }
+
+    /** Whether the mainline parameter configured in the test config is valid or not. */
+    @VisibleForTesting
+    boolean isValidMainlineParam(String param) {
+        if (param.contains(" ")) {
+            return false;
+        }
+        for (String m : param.split(String.format("\\+"))) {
+            if (!MAINLINE_PARAMETERS_TO_VALIDATE.stream().anyMatch(entry -> m.endsWith(entry))) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
