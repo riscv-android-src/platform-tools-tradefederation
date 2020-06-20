@@ -105,6 +105,14 @@ public class NativeDeviceStateMonitor implements IDeviceStateMonitor {
         return null;
     }
 
+    @Override
+    public IDevice waitForDeviceInRecovery() {
+        if (waitForDeviceState(TestDeviceState.RECOVERY, mDefaultOnlineTimeout)) {
+            return getIDevice();
+        }
+        return null;
+    }
+
     /**
      * @return {@link IDevice} associate with the state monitor
      */
