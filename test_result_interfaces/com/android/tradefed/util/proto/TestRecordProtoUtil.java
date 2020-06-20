@@ -19,7 +19,6 @@ import com.android.tradefed.result.proto.TestRecordProto.TestRecord;
 import com.android.tradefed.util.ByteArrayList;
 
 import com.google.protobuf.CodedInputStream;
-import com.google.protobuf.InvalidProtocolBufferException;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -42,20 +41,36 @@ public class TestRecordProtoUtil {
      * @return a {@link TestRecord} created from the file.
      * @throws IOException, InvalidProtocolBufferException
      */
-    public static TestRecord readFromFile(File protoFile)
-            throws IOException, InvalidProtocolBufferException {
+    public static TestRecord readFromFile(File protoFile) throws IOException {
+        return readFromFile(protoFile, true);
+    }
+
+    /**
+     * Read {@link TestRecord} from a file and return it.
+     *
+     * @param protoFile The {@link File} containing the record
+     * @param readDelimited True if the proto file in delimited format. False if the file is default
+     *     format.
+     * @throws IOException, InvalidProtocolBufferException
+     */
+    public static TestRecord readFromFile(File protoFile, boolean readDelimited)
+            throws IOException {
         TestRecord record = null;
         try (InputStream stream = new FileInputStream(protoFile)) {
             CodedInputStream is = CodedInputStream.newInstance(stream);
-            is.setSizeLimit(Integer.MAX_VALUE);
-            ByteArrayList data = new ByteArrayList(DEFAULT_SIZE_BYTES);
-            while (!is.isAtEnd()) {
-                int size = is.readRawVarint32();
-                byte[] dataByte = is.readRawBytes(size);
-                data.addAll(dataByte);
+            if (readDelimited) {
+                is.setSizeLimit(Integer.MAX_VALUE);
+                ByteArrayList data = new ByteArrayList(DEFAULT_SIZE_BYTES);
+                while (!is.isAtEnd()) {
+                    int size = is.readRawVarint32();
+                    byte[] dataByte = is.readRawBytes(size);
+                    data.addAll(dataByte);
+                }
+                record = TestRecord.parseFrom(data.getContents());
+                data.clear();
+            } else {
+                record = TestRecord.parseFrom(is);
             }
-            record = TestRecord.parseFrom(data.getContents());
-            data.clear();
         }
         return record;
     }
