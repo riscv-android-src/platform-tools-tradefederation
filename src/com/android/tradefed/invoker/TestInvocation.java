@@ -346,6 +346,7 @@ public class TestInvocation implements ITestInvocation {
             Map<ITestDevice, FreeDeviceState> devicesStates =
                     handleAndLogReleaseState(context, exception);
             if (config.getCommandOptions().earlyDeviceRelease()) {
+                context.markReleasedEarly();
                 for (IScheduledInvocationListener scheduleListener : mSchedulerListeners) {
                     scheduleListener.releaseDevices(context, devicesStates);
                 }
