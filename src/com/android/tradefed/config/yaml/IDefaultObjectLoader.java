@@ -17,6 +17,9 @@ package com.android.tradefed.config.yaml;
 
 import com.android.tradefed.config.ConfigurationDef;
 
+import java.util.LinkedHashSet;
+import java.util.Set;
+
 /**
  * Interface for loading the default objects that should be part of our YAML configuration. This
  * allows to customize the YAML configuration with any objects we need based on the context.
@@ -30,14 +33,29 @@ public interface IDefaultObjectLoader {
     public class LoaderConfiguration {
 
         private ConfigurationDef mConfigDef;
+        private Set<String> mDependencies = new LinkedHashSet<>();
 
         public LoaderConfiguration setConfigurationDef(ConfigurationDef configDef) {
             mConfigDef = configDef;
             return this;
         }
 
+        public LoaderConfiguration addDependencies(Set<String> dependencies) {
+            mDependencies.addAll(dependencies);
+            return this;
+        }
+
+        public LoaderConfiguration addDependency(String dependency) {
+            mDependencies.add(dependency);
+            return this;
+        }
+
         public ConfigurationDef getConfigDef() {
             return mConfigDef;
+        }
+
+        public Set<String> getDependencies() {
+            return mDependencies;
         }
     }
 }
