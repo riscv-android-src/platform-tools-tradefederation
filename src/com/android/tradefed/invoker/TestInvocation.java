@@ -64,6 +64,7 @@ import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogSaverResultForwarder;
 import com.android.tradefed.result.ResultAndLogForwarder;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.retry.ResultAggregator;
@@ -602,7 +603,9 @@ public class TestInvocation implements ITestInvocation {
             // In case of build not found issues.
             mStatus = "(no build to test)";
             // Set the exit code to error
-            buildException = new BuildRetrievalError("No build found to test.");
+            buildException =
+                    new BuildRetrievalError(
+                            "No build found to test.", InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
         } catch (BuildRetrievalError | RuntimeException e) {
             buildException = e;
         }
