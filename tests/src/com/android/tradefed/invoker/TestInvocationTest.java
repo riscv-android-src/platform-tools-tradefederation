@@ -80,6 +80,7 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestSummary;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.targetprep.BuildError;
@@ -428,7 +429,9 @@ public class TestInvocationTest {
         EasyMock.expect(mMockBuildProvider.getBuild()).andThrow(runtimeException);
         setupInvoke();
         // For the mocks to be properly done, stub a BuildRetrievalError.
-        setupMockFailureListenersAny(new BuildRetrievalError("fake"), true);
+        setupMockFailureListenersAny(
+                new BuildRetrievalError("fake", InfraErrorIdentifier.ARTIFACT_DOWNLOAD_ERROR),
+                true);
 
         EasyMock.reset(mMockLogger, mMockLogRegistry);
         mMockLogRegistry.registerLogger(mMockLogger);
@@ -459,7 +462,10 @@ public class TestInvocationTest {
     public void testInvoke_noBuild() throws Throwable {
         EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(null);
         setupInvoke();
-        setupMockFailureListenersAny(new BuildRetrievalError("No build found to test."), true);
+        setupMockFailureListenersAny(
+                new BuildRetrievalError(
+                        "No build found to test.", InfraErrorIdentifier.ARTIFACT_NOT_FOUND),
+                true);
 
         EasyMock.reset(mMockLogger, mMockLogRegistry);
         mMockLogRegistry.registerLogger(mMockLogger);
@@ -493,7 +499,8 @@ public class TestInvocationTest {
         EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(null);
         setupInvoke();
         setupMockFailureListeners(
-                new BuildRetrievalError("No build found to test."),
+                new BuildRetrievalError(
+                        "No build found to test.", InfraErrorIdentifier.ARTIFACT_NOT_FOUND),
                 true, /* don't expect host log */
                 false);
 
