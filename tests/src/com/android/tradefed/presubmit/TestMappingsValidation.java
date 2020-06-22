@@ -33,7 +33,9 @@ import com.android.tradefed.util.ZipUtil2;
 import com.android.tradefed.util.testmapping.TestInfo;
 import com.android.tradefed.util.testmapping.TestMapping;
 import com.android.tradefed.util.testmapping.TestOption;
+
 import com.google.common.base.Joiner;
+import com.google.common.base.Strings;
 
 import java.io.File;
 import java.io.IOException;
@@ -151,7 +153,11 @@ public class TestMappingsValidation implements IBuildReceiver {
                 }
                 else if (firstIndex != -1 && lastIndex != -1) {
                     String mainlineParam = testName.substring(firstIndex+1, lastIndex);
-                    errors.add(validateMainlineModuleConfig(mainlineParam, testInfo.getSources()));
+                    String error =
+                            validateMainlineModuleConfig(mainlineParam, testInfo.getSources());
+                    if (!Strings.isNullOrEmpty(error)){
+                        errors.add(error);
+                    }
                 }
                 else {
                     errors.add(
