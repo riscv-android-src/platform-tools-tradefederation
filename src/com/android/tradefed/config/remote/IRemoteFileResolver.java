@@ -17,6 +17,7 @@ package com.android.tradefed.config.remote;
 
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 
 import java.io.File;
 import java.util.Map;
@@ -38,7 +39,8 @@ public interface IRemoteFileResolver {
      */
     public default @Nonnull File resolveRemoteFiles(File consideredFile)
             throws BuildRetrievalError {
-        throw new BuildRetrievalError("Should not have been called");
+        throw new BuildRetrievalError(
+                "Should not have been called", InfraErrorIdentifier.ARTIFACT_UNSUPPORTED_PATH);
     }
 
     /**
