@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.result;
 
+import com.android.tradefed.result.error.ErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto;
 
 import javax.annotation.Nullable;
@@ -37,6 +38,12 @@ public class FailureDescription {
     private @Nullable Throwable mCause = null;
     // Whether or not the error is retriable by Tradefed auto-retry. By Default we retry it all.
     private boolean mRetriable = true;
+
+    // Error identifiers
+    // Optional: The error identifier and its code
+    private @Nullable ErrorIdentifier mErrorId = null;
+    // Optional: The class that raised the error
+    private @Nullable String mOrigin = null;
 
     FailureDescription() {}
 
@@ -99,6 +106,28 @@ public class FailureDescription {
     /** Returns whether or not the error is retriable or not. */
     public boolean isRetriable() {
         return mRetriable;
+    }
+
+    /** Sets the {@link ErrorIdentifier} representing the failure. */
+    public FailureDescription setErrorIdentifier(ErrorIdentifier errorId) {
+        mErrorId = errorId;
+        return this;
+    }
+
+    /** Returns the {@link ErrorIdentifier} representing the failure. Can be null. */
+    public ErrorIdentifier getErrorIdentifier() {
+        return mErrorId;
+    }
+
+    /** Sets the origin of the error. */
+    public FailureDescription setOrigin(String origin) {
+        mOrigin = origin;
+        return this;
+    }
+
+    /** Returns the origin of the error. Can be null. */
+    public String getOrigin() {
+        return mOrigin;
     }
 
     /** Sets the error message. */
