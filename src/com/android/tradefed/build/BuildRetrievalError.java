@@ -15,10 +15,11 @@
  */
 package com.android.tradefed.build;
 
-/**
- * A fatal error occurred while retrieving the build for testing.
- */
-public class BuildRetrievalError extends Exception {
+import com.android.tradefed.error.HarnessException;
+import com.android.tradefed.result.error.ErrorIdentifier;
+
+/** A fatal error occurred while retrieving the build for testing. */
+public class BuildRetrievalError extends HarnessException {
 
     private static final long serialVersionUID = -1636070073516175229L;
     private IBuildInfo mBuildInfo = new BuildInfo();
@@ -29,7 +30,17 @@ public class BuildRetrievalError extends Exception {
      * @param reason a error message describing the cause of the error
      */
     public BuildRetrievalError(String reason) {
-        super(reason);
+        super(reason, null);
+    }
+
+    /**
+     * Constructs a new {@link BuildRetrievalError} with a meaningful error message.
+     *
+     * @param reason a error message describing the cause of the error
+     * @param errorId the error identifier for this error.
+     */
+    public BuildRetrievalError(String reason, ErrorIdentifier errorId) {
+        super(reason, errorId);
     }
 
     /**
@@ -40,7 +51,18 @@ public class BuildRetrievalError extends Exception {
      * @param cause a {@link Throwable} capturing the original cause of the ProvideBuildError
      */
     public BuildRetrievalError(String reason, Throwable cause) {
-        super(reason, cause);
+        super(reason, cause, null);
+    }
+
+    /**
+     * Constructs a new {@link BuildRetrievalError} with a meaningful error message, and a cause.
+     *
+     * @param reason a detailed error message.
+     * @param cause a {@link Throwable} capturing the original cause of the ProvideBuildError
+     * @param errorId the error identifier for this error.
+     */
+    public BuildRetrievalError(String reason, Throwable cause, ErrorIdentifier errorId) {
+        super(reason, cause, errorId);
     }
 
     /**
@@ -52,7 +74,7 @@ public class BuildRetrievalError extends Exception {
      * @param build details about the build that was attempted to be retrieved
      */
     public BuildRetrievalError(String reason, Throwable cause, IBuildInfo build) {
-        super(reason, cause);
+        super(reason, cause, null);
         mBuildInfo = build;
     }
 

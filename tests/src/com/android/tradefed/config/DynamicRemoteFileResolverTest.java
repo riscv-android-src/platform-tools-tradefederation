@@ -33,6 +33,7 @@ import com.android.tradefed.config.remote.GcsRemoteFileResolver;
 import com.android.tradefed.config.remote.IRemoteFileResolver;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.shard.ParentShardReplicate;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.executor.ParallelDeviceExecutor;
@@ -208,9 +209,11 @@ public class DynamicRemoteFileResolverTest {
         testMap.put("optional", "true");
         EasyMock.expect(
                         mMockResolver.resolveRemoteFiles(
-                                EasyMock.eq(new File("gs:/fake/path")),
-                                EasyMock.eq(testMap)))
-                .andThrow(new BuildRetrievalError("Failed to download"));
+                                EasyMock.eq(new File("gs:/fake/path")), EasyMock.eq(testMap)))
+                .andThrow(
+                        new BuildRetrievalError(
+                                "Failed to download",
+                                InfraErrorIdentifier.ARTIFACT_DOWNLOAD_ERROR));
         EasyMock.replay(mMockResolver);
 
         Set<File> downloadedFile = setter.validateRemoteFilePath(mResolver);
@@ -272,9 +275,10 @@ public class DynamicRemoteFileResolverTest {
                 .andReturn(fake);
         EasyMock.expect(
                         mMockResolver.resolveRemoteFiles(
-                                EasyMock.eq(new File("gs://failure/test")),
-                                EasyMock.anyObject()))
-                .andThrow(new BuildRetrievalError("retrieval error"));
+                                EasyMock.eq(new File("gs://failure/test")), EasyMock.anyObject()))
+                .andThrow(
+                        new BuildRetrievalError(
+                                "retrieval error", InfraErrorIdentifier.ARTIFACT_DOWNLOAD_ERROR));
         EasyMock.replay(mMockResolver);
         try {
             setter.validateRemoteFilePath(mResolver);
@@ -494,7 +498,10 @@ public class DynamicRemoteFileResolverTest {
                         mMockResolver.resolveRemoteFiles(
                                 EasyMock.eq(new File("gs:/fake/path?optional=true")),
                                 EasyMock.eq(queryArgs)))
-                .andThrow(new BuildRetrievalError("should not throw this exception."));
+                .andThrow(
+                        new BuildRetrievalError(
+                                "should not throw this exception.",
+                                InfraErrorIdentifier.ARTIFACT_UNSUPPORTED_PATH));
         EasyMock.replay(mMockResolver);
 
         mResolver.resolvePartialDownloadZip(

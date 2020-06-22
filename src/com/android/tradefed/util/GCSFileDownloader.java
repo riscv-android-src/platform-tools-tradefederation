@@ -19,6 +19,7 @@ package com.android.tradefed.util;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IFileDownloader;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.google.api.services.storage.Storage;
@@ -242,7 +243,8 @@ public class GCSFileDownloader extends GCSCommon implements IFileDownloader {
         Matcher m = GCS_PATH_PATTERN.matcher(remotePath);
         if (!m.find()) {
             throw new BuildRetrievalError(
-                    String.format("Only GCS path is supported, %s is not supported", remotePath));
+                    String.format("Only GCS path is supported, %s is not supported", remotePath),
+                    InfraErrorIdentifier.ARTIFACT_UNSUPPORTED_PATH);
         }
         return new String[] {m.group(1), m.group(2)};
     }
