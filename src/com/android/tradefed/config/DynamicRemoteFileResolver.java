@@ -21,6 +21,7 @@ import com.android.tradefed.config.OptionSetter.OptionFieldsForName;
 import com.android.tradefed.config.remote.IRemoteFileResolver;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.ZipUtil;
@@ -39,8 +40,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map.Entry;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.function.Supplier;
@@ -128,7 +129,8 @@ public class DynamicRemoteFileResolver {
                         }
                     } catch (IllegalAccessException e) {
                         throw new BuildRetrievalError(
-                                String.format("internal error: %s", e.getMessage()));
+                                String.format("internal error: %s", e.getMessage()),
+                                InfraErrorIdentifier.ARTIFACT_UNSUPPORTED_PATH);
                     }
 
                     if (fieldSeen.get(field) != null && fieldSeen.get(field).equals(obj)) {

@@ -33,6 +33,7 @@ import com.android.tradefed.device.DeviceSelectionOptions;
 import com.android.tradefed.device.DeviceSelectionOptions.DeviceRequestedType;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.result.proto.ProtoResultReporter;
 import com.android.tradefed.util.FileUtil;
 
@@ -69,7 +70,9 @@ public class RemoteInvocationExecutionTest {
                     @Override
                     public IBuildInfo getBuild() throws BuildRetrievalError {
                         // The original provider is never called.
-                        throw new BuildRetrievalError("should not be called.");
+                        throw new BuildRetrievalError(
+                                "should not be called.",
+                                InfraErrorIdentifier.ARTIFACT_UNSUPPORTED_PATH);
                     }
                 };
         mConfiguration.setBuildProvider(originalProvider);
