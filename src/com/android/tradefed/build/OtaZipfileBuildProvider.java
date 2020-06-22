@@ -19,6 +19,7 @@ package com.android.tradefed.build;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.device.DeviceProperties;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.ZipUtil;
 
 import java.io.BufferedReader;
@@ -72,7 +73,8 @@ public class OtaZipfileBuildProvider implements IBuildProvider {
             if (buildPropEntry == null) {
                 // no build.prop in the zip file
                 throw new BuildRetrievalError(
-                        "Couldn't find a build.prop file in OTA zip file " + getOtaPath());
+                        "Couldn't find a build.prop file in OTA zip file " + getOtaPath(),
+                        InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
             }
             StringBuilder body = new StringBuilder();
             BufferedReader reader = new BufferedReader(
@@ -85,7 +87,10 @@ public class OtaZipfileBuildProvider implements IBuildProvider {
 
             return body.toString();
         } catch (IOException e) {
-            throw new BuildRetrievalError("Failure while getting build.prop from OTA zipfile", e);
+            throw new BuildRetrievalError(
+                    "Failure while getting build.prop from OTA zipfile",
+                    e,
+                    InfraErrorIdentifier.FAIL_TO_CREATE_FILE);
         } finally {
             ZipUtil.closeZip(otaZip);
         }
