@@ -23,14 +23,14 @@ public enum InfraErrorIdentifier implements ErrorIdentifier {
     // ********************************************************************************************
     UNDETERMINED(20_000);
 
-    private final int code;
+    private final long code;
 
     InfraErrorIdentifier(int code) {
         this.code = code;
     }
 
     @Override
-    public int code() {
+    public long code() {
         return code;
     }
 }
