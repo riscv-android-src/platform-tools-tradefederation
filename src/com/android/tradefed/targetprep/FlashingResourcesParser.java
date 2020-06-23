@@ -17,6 +17,7 @@
 package com.android.tradefed.targetprep;
 
 import com.android.tradefed.command.remote.DeviceDescriptor;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.MultiMap;
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
 import org.apache.commons.compress.archivers.zip.ZipFile;
@@ -260,8 +261,7 @@ public class FlashingResourcesParser implements IFlashingResourcesParser {
             throw new TargetSetupError(
                     String.format(
                             "Device image zip %s doesn't not exist", deviceImgZipFile.getName()),
-                    null,
-                    null);
+                    InfraErrorIdentifier.UNDETERMINED);
         }
 
         ZipFile deviceZip = null;
@@ -279,11 +279,15 @@ public class FlashingResourcesParser implements IFlashingResourcesParser {
 
             return parseAndroidInfo(infoReader, constraints);
         } catch (ZipException e) {
-            throw new TargetSetupError(String.format("Could not read device image zip %s",
-                    deviceImgZipFile.getName()), e, null);
+            throw new TargetSetupError(
+                    String.format("Could not read device image zip %s", deviceImgZipFile.getName()),
+                    e,
+                    InfraErrorIdentifier.UNDETERMINED);
         } catch (IOException e) {
-            throw new TargetSetupError(String.format("Could not read device image zip %s",
-                    deviceImgZipFile.getName()), e, null);
+            throw new TargetSetupError(
+                    String.format("Could not read device image zip %s", deviceImgZipFile.getName()),
+                    e,
+                    InfraErrorIdentifier.UNDETERMINED);
         } finally {
             if (deviceZip != null) {
                 try {
