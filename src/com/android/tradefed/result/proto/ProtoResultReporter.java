@@ -314,6 +314,13 @@ public abstract class ProtoResultReporter
         if (!Strings.isNullOrEmpty(failure.getDebugHelpMessage())) {
             debugContext.setDebugHelpMessage(failure.getDebugHelpMessage());
         }
+        if (!Strings.isNullOrEmpty(failure.getOrigin())) {
+            debugContext.setOrigin(failure.getOrigin());
+        }
+        if (failure.getErrorIdentifier() != null) {
+            debugContext.setErrorName(failure.getErrorIdentifier().name());
+            debugContext.setErrorCode(failure.getErrorIdentifier().code());
+        }
         debugBuilder.setDebugInfoContext(debugContext.build());
 
         if (TestStatus.UNKNOWN.equals(current.getStatus())) {
@@ -535,14 +542,24 @@ public abstract class ProtoResultReporter
             debugBuilder.setFailureStatus(mInvocationFailureDescription.getFailureStatus());
         }
         DebugInfoContext.Builder debugContext = DebugInfoContext.newBuilder();
-        if (mInvocationFailureDescription != null
-                && mInvocationFailureDescription.getActionInProgress() != null) {
-            debugContext.setActionInProgress(
-                    mInvocationFailureDescription.getActionInProgress().toString());
-        }
-        if (mInvocationFailureDescription != null
-                && !Strings.isNullOrEmpty(mInvocationFailureDescription.getDebugHelpMessage())) {
-            debugContext.setDebugHelpMessage(mInvocationFailureDescription.getDebugHelpMessage());
+        if (mInvocationFailureDescription != null) {
+            if (mInvocationFailureDescription.getActionInProgress() != null) {
+                debugContext.setActionInProgress(
+                        mInvocationFailureDescription.getActionInProgress().toString());
+            }
+            if (!Strings.isNullOrEmpty(mInvocationFailureDescription.getDebugHelpMessage())) {
+                debugContext.setDebugHelpMessage(
+                        mInvocationFailureDescription.getDebugHelpMessage());
+            }
+            if (!Strings.isNullOrEmpty(mInvocationFailureDescription.getOrigin())) {
+                debugContext.setOrigin(mInvocationFailureDescription.getOrigin());
+            }
+            if (mInvocationFailureDescription.getErrorIdentifier() != null) {
+                debugContext.setErrorName(
+                        mInvocationFailureDescription.getErrorIdentifier().name());
+                debugContext.setErrorCode(
+                        mInvocationFailureDescription.getErrorIdentifier().code());
+            }
         }
         try {
             debugContext.setErrorType(SerializationUtil.serializeToString(baseException));

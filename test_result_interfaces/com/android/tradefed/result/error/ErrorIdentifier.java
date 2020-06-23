@@ -22,5 +22,5 @@ public interface ErrorIdentifier {
     public String name();
 
     /** The unique code identifying the error. */
-    public int code();
+    public long code();
 }
