@@ -16,11 +16,11 @@
 package com.android.tradefed.targetprep;
 
 import com.android.tradefed.command.remote.DeviceDescriptor;
+import com.android.tradefed.error.HarnessException;
+import com.android.tradefed.result.error.ErrorIdentifier;
 
-/**
- * Thrown if the provided build fails to run.
- */
-public class BuildError extends Exception {
+/** Thrown if the provided build fails to run. */
+public class BuildError extends HarnessException {
 
     private static final long serialVersionUID = 2202987086655357201L;
     private String mDeviceSerial = null;
@@ -30,9 +30,11 @@ public class BuildError extends Exception {
      *
      * @param reason an error message giving more details on the build error
      * @param descriptor the descriptor of the device concerned
+     * @deprecated use {@link #BuildError(String, DeviceDescriptor, ErrorIdentifier)} instead.
      */
+    @Deprecated
     public BuildError(String reason, DeviceDescriptor descriptor) {
-        super(reason + " " + descriptor);
+        super(reason + " " + descriptor, null);
         if (descriptor != null) {
             mDeviceSerial = descriptor.getSerial();
         }
@@ -42,11 +44,25 @@ public class BuildError extends Exception {
      * Constructs a new (@link BuildError} with a detailed error message.
      *
      * @param reason an error message giving more details on the build error
-     * @deprecated use {@link #BuildError(String, DeviceDescriptor)} instead.
+     * @param descriptor the descriptor of the device concerned
+     * @param errorId the error identifier for this error.
+     */
+    public BuildError(String reason, DeviceDescriptor descriptor, ErrorIdentifier errorId) {
+        super(reason + " " + descriptor, errorId);
+        if (descriptor != null) {
+            mDeviceSerial = descriptor.getSerial();
+        }
+    }
+
+    /**
+     * Constructs a new (@link BuildError} with a detailed error message.
+     *
+     * @param reason an error message giving more details on the build error
+     * @deprecated use {@link #BuildError(String, DeviceDescriptor, ErrorIdentifier)} instead.
      */
     @Deprecated
     public BuildError(String reason) {
-        super(reason);
+        super(reason, null);
     }
 
     /** Return the serial of the device impacted by the BuildError. */
