@@ -670,6 +670,11 @@ public class ProtoResultParser {
                         public long code() {
                             return errorCode;
                         }
+
+                        @Override
+                        public FailureStatus status() {
+                            return failure.getFailureStatus();
+                        }
                     };
             failure.setErrorIdentifier(errorId);
         }
