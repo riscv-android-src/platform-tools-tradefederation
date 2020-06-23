@@ -15,6 +15,8 @@
  */
 package com.android.tradefed.result.error;
 
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
+
 /** Error Identifiers from Trade Federation infra, and dependent infra (like Build infra). */
 public enum InfraErrorIdentifier implements ErrorIdentifier {
 
@@ -22,24 +24,31 @@ public enum InfraErrorIdentifier implements ErrorIdentifier {
     // Infra: 10_001 ~ 20_000
     // ********************************************************************************************
     // 10_001 - 10_500: General errors
-    ARTIFACT_NOT_FOUND(10_001),
-    FAIL_TO_CREATE_FILE(10_002),
+    ARTIFACT_NOT_FOUND(10_001, FailureStatus.INFRA_FAILURE),
+    FAIL_TO_CREATE_FILE(10_002, FailureStatus.INFRA_FAILURE),
 
     // 10_501 - 11_000: Build, Artifacts download related errors
-    ARTIFACT_REMOTE_PATH_NULL(10_501),
-    ARTIFACT_UNSUPPORTED_PATH(10_502),
-    ARTIFACT_DOWNLOAD_ERROR(10_503),
+    ARTIFACT_REMOTE_PATH_NULL(10_501, FailureStatus.INFRA_FAILURE),
+    ARTIFACT_UNSUPPORTED_PATH(10_502, FailureStatus.INFRA_FAILURE),
+    ARTIFACT_DOWNLOAD_ERROR(10_503, FailureStatus.INFRA_FAILURE),
 
-    UNDETERMINED(20_000);
+    UNDETERMINED(20_000, FailureStatus.UNSET);
 
     private final long code;
+    private final FailureStatus status;
 
-    InfraErrorIdentifier(int code) {
+    InfraErrorIdentifier(int code, FailureStatus status) {
         this.code = code;
+        this.status = status;
     }
 
     @Override
     public long code() {
         return code;
+    }
+
+    @Override
+    public FailureStatus status() {
+        return status;
     }
 }
