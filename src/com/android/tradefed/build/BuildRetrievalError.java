@@ -30,7 +30,7 @@ public class BuildRetrievalError extends HarnessException {
      * @param reason a error message describing the cause of the error
      */
     public BuildRetrievalError(String reason) {
-        super(reason, null);
+        this(reason, null, null, null);
     }
 
     /**
@@ -40,7 +40,7 @@ public class BuildRetrievalError extends HarnessException {
      * @param errorId the error identifier for this error.
      */
     public BuildRetrievalError(String reason, ErrorIdentifier errorId) {
-        super(reason, errorId);
+        this(reason, null, errorId, null);
     }
 
     /**
@@ -51,7 +51,7 @@ public class BuildRetrievalError extends HarnessException {
      * @param cause a {@link Throwable} capturing the original cause of the ProvideBuildError
      */
     public BuildRetrievalError(String reason, Throwable cause) {
-        super(reason, cause, null);
+        this(reason, cause, null, null);
     }
 
     /**
@@ -62,7 +62,7 @@ public class BuildRetrievalError extends HarnessException {
      * @param errorId the error identifier for this error.
      */
     public BuildRetrievalError(String reason, Throwable cause, ErrorIdentifier errorId) {
-        super(reason, cause, errorId);
+        this(reason, cause, errorId, null);
     }
 
     /**
@@ -74,8 +74,24 @@ public class BuildRetrievalError extends HarnessException {
      * @param build details about the build that was attempted to be retrieved
      */
     public BuildRetrievalError(String reason, Throwable cause, IBuildInfo build) {
-        super(reason, cause, null);
-        mBuildInfo = build;
+        this(reason, cause, null, build);
+    }
+
+    /**
+     * Constructs a new {@link BuildRetrievalError} with a meaningful error message, a cause, and
+     * build details.
+     *
+     * @param reason a detailed error message.
+     * @param cause a {@link Throwable} capturing the original cause of the ProvideBuildError
+     * @param errorId the error identifier for this error.
+     * @param build details about the build that was attempted to be retrieved
+     */
+    public BuildRetrievalError(
+            String reason, Throwable cause, ErrorIdentifier errorId, IBuildInfo build) {
+        super(reason, cause, errorId);
+        if (build != null) {
+            mBuildInfo = build;
+        }
     }
 
     /**
