@@ -15,6 +15,9 @@
  */
 package com.android.tradefed.result.error;
 
+import com.android.tradefed.result.FailureDescription;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
+
 /** This interface describes a specific error and its properties. */
 public interface ErrorIdentifier {
 
@@ -23,4 +26,10 @@ public interface ErrorIdentifier {
 
     /** The unique code identifying the error. */
     public long code();
+
+    /**
+     * The failure status associated with the identifier, this status is expected to align with the
+     * {@link FailureDescription} one.
+     */
+    public FailureStatus status();
 }
