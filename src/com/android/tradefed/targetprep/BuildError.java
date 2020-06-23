@@ -20,10 +20,10 @@ import com.android.tradefed.command.remote.DeviceDescriptor;
 /**
  * Thrown if the provided build fails to run.
  */
-@SuppressWarnings("serial")
 public class BuildError extends Exception {
 
-    private DeviceDescriptor mDescriptor = null;
+    private static final long serialVersionUID = 2202987086655357201L;
+    private String mDeviceSerial = null;
 
     /**
      * Constructs a new (@link BuildError} with a detailed error message.
@@ -33,7 +33,9 @@ public class BuildError extends Exception {
      */
     public BuildError(String reason, DeviceDescriptor descriptor) {
         super(reason + " " + descriptor);
-        mDescriptor = descriptor;
+        if (descriptor != null) {
+            mDeviceSerial = descriptor.getSerial();
+        }
     }
 
     /**
@@ -47,10 +49,8 @@ public class BuildError extends Exception {
         super(reason);
     }
 
-    /**
-     * Return the descriptor of the device associated with exception.
-     */
-    public DeviceDescriptor getDeviceDescriptor() {
-        return mDescriptor;
+    /** Return the serial of the device impacted by the BuildError. */
+    public String getDeviceSerial() {
+        return mDeviceSerial;
     }
 }
