@@ -228,11 +228,10 @@ public class TestInvocation implements ITestInvocation {
             prepareAndRun(config, testInfo, invocationPath, listener);
         } catch (BuildError e) {
             exception = e;
-            CLog.w("Build failed on device '%s'. Reason: %s", e.getDeviceDescriptor(),
-                    e.toString());
+            CLog.w("BuildError on device '%s'. Reason: %s", e.getDeviceSerial(), e.toString());
             bugreportName = BUILD_ERROR_BUGREPORT_NAME;
-            if (e.getDeviceDescriptor() != null) {
-                badDevice = context.getDeviceBySerial(e.getDeviceDescriptor().getSerial());
+            if (e.getDeviceSerial() != null) {
+                badDevice = context.getDeviceBySerial(e.getDeviceSerial());
             }
             if (e instanceof DeviceFailedToBootError) {
                 if (badDevice == null) {
