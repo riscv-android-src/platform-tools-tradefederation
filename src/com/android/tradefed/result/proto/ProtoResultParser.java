@@ -33,9 +33,11 @@ import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.error.ErrorIdentifier;
 import com.android.tradefed.result.proto.LogFileProto.LogFileInfo;
 import com.android.tradefed.result.proto.TestRecordProto.ChildReference;
 import com.android.tradefed.result.proto.TestRecordProto.DebugInfo;
+import com.android.tradefed.result.proto.TestRecordProto.DebugInfoContext;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.result.proto.TestRecordProto.TestRecord;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
@@ -634,18 +636,42 @@ public class ProtoResultParser {
         if (!debugInfo.hasDebugInfoContext()) {
             return;
         }
-        if (!Strings.isNullOrEmpty(debugInfo.getDebugInfoContext().getActionInProgress())) {
+        DebugInfoContext debugContext = debugInfo.getDebugInfoContext();
+        if (!Strings.isNullOrEmpty(debugContext.getActionInProgress())) {
             try {
                 ActionInProgress value =
-                        ActionInProgress.valueOf(
-                                debugInfo.getDebugInfoContext().getActionInProgress());
+                        ActionInProgress.valueOf(debugContext.getActionInProgress());
                 failure.setActionInProgress(value);
             } catch (IllegalArgumentException parseError) {
                 CLog.e(parseError);
             }
         }
-        if (!Strings.isNullOrEmpty(debugInfo.getDebugInfoContext().getDebugHelpMessage())) {
-            failure.setDebugHelpMessage(debugInfo.getDebugInfoContext().getDebugHelpMessage());
+        if (!Strings.isNullOrEmpty(debugContext.getDebugHelpMessage())) {
+            failure.setDebugHelpMessage(debugContext.getDebugHelpMessage());
+        }
+        if (!Strings.isNullOrEmpty(debugContext.getOrigin())) {
+            failure.setOrigin(debugContext.getOrigin());
+        }
+        String errorName = debugContext.getErrorName();
+        long errorCode = debugContext.getErrorCode();
+        if (!Strings.isNullOrEmpty(errorName)) {
+            // Most of the implementations will be Enums which represent the name/code.
+            // But since there might be several Enum implementation of ErrorIdentifier, we can't
+            // parse back the name to the Enum so instead we stub create a pre-populated
+            // ErrorIdentifier to carry the infos.
+            ErrorIdentifier errorId =
+                    new ErrorIdentifier() {
+                        @Override
+                        public String name() {
+                            return errorName;
+                        }
+
+                        @Override
+                        public long code() {
+                            return errorCode;
+                        }
+                    };
+            failure.setErrorIdentifier(errorId);
         }
     }
 }
