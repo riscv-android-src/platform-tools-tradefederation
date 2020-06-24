@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.result;
 
+import com.android.tradefed.result.error.ErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 
 import java.util.ArrayList;
@@ -76,6 +77,24 @@ public final class MultiFailureDescription extends FailureDescription {
         }
         // Default to the first reported failure
         return toString();
+    }
+
+    @Override
+    public ErrorIdentifier getErrorIdentifier() {
+        if (mFailures.isEmpty()) {
+            return null;
+        }
+        // Default to the first reported failure
+        return mFailures.get(0).getErrorIdentifier();
+    }
+
+    @Override
+    public String getOrigin() {
+        if (mFailures.isEmpty()) {
+            return null;
+        }
+        // Default to the first reported failure
+        return mFailures.get(0).getOrigin();
     }
 
     @Override

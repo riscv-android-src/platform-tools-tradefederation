@@ -542,8 +542,7 @@ public class ModuleDefinitionTest {
                         .getRunFailureDescription()
                         .getErrorMessage()
                         .contains(
-                                "There were 3 failures:\n  unresponsive\n  "
-                                        + "Module fakeName only ran 1 out of 4 expected tests.\n  "
+                                "There were 2 failures:\n  unresponsive\n  "
                                         + "java.lang.RuntimeException: teardown failed"));
         assertTrue(captured.getValue() instanceof MultiFailureDescription);
     }
@@ -1360,11 +1359,7 @@ public class ModuleDefinitionTest {
                     EasyMock.<HashMap<String, Metric>>anyObject());
         }
         mMockListener.testFailed(EasyMock.anyObject(), (String) EasyMock.anyObject());
-        MultiFailureDescription issues =
-                new MultiFailureDescription(
-                        FailureDescription.create("unresponsive"),
-                        FailureDescription.create(
-                                "Module fakeName only ran 1 out of 4 expected tests."));
+        FailureDescription issues = FailureDescription.create("unresponsive");
         mMockListener.testRunFailed(issues);
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
