@@ -31,6 +31,7 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.testtype.Abi;
+import com.android.tradefed.testtype.GTest;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.StubTest;
@@ -41,6 +42,7 @@ import com.android.tradefed.util.testmapping.TestInfo;
 import com.android.tradefed.util.testmapping.TestMapping;
 
 import com.android.tradefed.util.testmapping.TestOption;
+import java.io.IOException;
 import java.util.ArrayList;
 import org.easymock.EasyMock;
 import org.junit.Before;
@@ -76,10 +78,21 @@ public class TestMappingSuiteRunnerTest {
 
     private TestMappingSuiteRunner mRunner;
     private OptionSetter mOptionSetter;
+    private OptionSetter mMainlineOptionSetter;
     private TestMappingSuiteRunner mRunner2;
+    private TestMappingSuiteRunner mMainlineRunner;
     private IDeviceBuildInfo mBuildInfo;
     private ITestDevice mMockDevice;
     private TestInformation mTestInfo;
+
+    private static final String TEST_MAINLINE_CONFIG =
+        "<configuration description=\"Runs a stub tests part of some suite\">\n"
+            + "    <option name=\"config-descriptor:metadata\" key=\"mainline-param\" value=\"mod1.apk\" />"
+            + "    <option name=\"config-descriptor:metadata\" key=\"mainline-param\" value=\"mod2.apk\" />"
+            + "    <option name=\"config-descriptor:metadata\" key=\"mainline-param\" value=\"mod1.apk+mod2.apk\" />"
+            + "    <option name=\"config-descriptor:metadata\" key=\"mainline-param\" value=\"mod1.apk+mod2.apk+mod3.apk\" />"
+            + "    <test class=\"com.android.tradefed.testtype.GTest\" />\n"
+            + "</configuration>";
 
     @Before
     public void setUp() throws Exception {
@@ -95,6 +108,11 @@ public class TestMappingSuiteRunnerTest {
         mRunner2 = new FakeTestMappingSuiteRunner();
         mRunner2.setBuild(mBuildInfo);
         mRunner2.setDevice(mMockDevice);
+
+        mMainlineRunner = new FakeMainlineTMSR();
+        mMainlineRunner.setBuild(mBuildInfo);
+        mMainlineRunner.setDevice(mMockDevice);
+        mMainlineOptionSetter = new OptionSetter(mMainlineRunner);
 
         IInvocationContext context = new InvocationContext();
         context.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
@@ -157,6 +175,18 @@ public class TestMappingSuiteRunnerTest {
                 throw new RuntimeException(e);
             }
             return testConfig;
+        }
+    }
+
+    /**
+     * Test TestMappingSuiteRunner that create a fake IConfiguration with fake a test object.
+     */
+    public static class FakeMainlineTMSR extends TestMappingSuiteRunner {
+        @Override
+        public Set<IAbi> getAbis(ITestDevice device) throws DeviceNotAvailableException {
+            Set<IAbi> abis = new HashSet<>();
+            abis.add(new Abi(ABI_1, AbiUtils.getBitness(ABI_1)));
+            return abis;
         }
     }
 
@@ -749,6 +779,61 @@ public class TestMappingSuiteRunnerTest {
     }
 
     /**
+     * Test for {@link TestMappingSuiteRunner#loadTests()} that IRemoteTest
+     * object are created according to the test infos with multiple test options.
+     */
+    @Test
+    public void testLoadTestsForMainline() throws Exception {
+        File tempDir = null;
+        File tempTestsDir = null;
+        try {
+            tempDir = FileUtil.createTempDir("test_mapping");
+            tempTestsDir = FileUtil.createTempDir("test_mapping_testcases");
+
+            File zipFile = createTestMappingZip(tempDir);
+            createMainlineModuleConfig(tempTestsDir.getAbsolutePath());
+
+            IDeviceBuildInfo mockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
+            EasyMock.expect(mockBuildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR))
+                    .andReturn(null).anyTimes();
+            EasyMock.expect(mockBuildInfo.getTestsDir()).andReturn(tempTestsDir).anyTimes();
+            EasyMock.expect(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).andReturn(zipFile).anyTimes();
+            EasyMock.expect(mockBuildInfo.getBuildBranch()).andReturn("branch").anyTimes();
+            EasyMock.expect(mockBuildInfo.getBuildFlavor()).andReturn("flavor").anyTimes();
+            EasyMock.expect(mockBuildInfo.getBuildId()).andReturn("id").anyTimes();
+
+            IInvocationContext mContext = new InvocationContext();
+            mContext.addDeviceBuildInfo(ConfigurationDef.DEFAULT_DEVICE_NAME, mockBuildInfo);
+            mMainlineRunner.setInvocationContext(mContext);
+            mMainlineRunner.setBuild(mockBuildInfo);
+            EasyMock.replay(mockBuildInfo);
+
+            mMainlineOptionSetter.setOptionValue("enable-mainline-parameterized-modules", "true");
+            mMainlineOptionSetter.setOptionValue("skip-loading-config-jar", "true");
+            mMainlineOptionSetter.setOptionValue("test-mapping-test-group", "mainline-presubmit");
+            LinkedHashMap<String, IConfiguration> configMap = mMainlineRunner.loadTests();
+
+            assertEquals(3, configMap.size());
+            assertTrue(configMap.containsKey(ABI_1 + " test[mod1.apk]"));
+            assertTrue(configMap.containsKey(ABI_1 + " test[mod2.apk]"));
+            assertTrue(configMap.containsKey(ABI_1 + " test[mod1.apk+mod2.apk]"));
+            GTest test = (GTest) configMap.get(ABI_1 + " test[mod1.apk]").getTests().get(0);
+            assertTrue(test.getIncludeFilters().contains("test-filter"));
+
+            test = (GTest) configMap.get(ABI_1 + " test[mod2.apk]").getTests().get(0);
+            assertTrue(test.getIncludeFilters().contains("test-filter2"));
+
+            test = (GTest) configMap.get(ABI_1 + " test[mod1.apk+mod2.apk]").getTests().get(0);
+            assertTrue(test.getIncludeFilters().isEmpty());
+
+            EasyMock.verify(mockBuildInfo);
+        } finally {
+            FileUtil.recursiveDelete(tempDir);
+            FileUtil.recursiveDelete(tempTestsDir);
+        }
+    }
+
+    /**
      * Test for {@link TestMappingSuiteRunner#createIndividualTests(Set, String)} that IRemoteTest
      * object are created according to the test infos with the same test options and name.
      */
@@ -778,5 +863,36 @@ public class TestMappingSuiteRunnerTest {
         info.addOption(new TestOption("exclude-filter", name));
         info.addOption(new TestOption("other", name));
         return info;
+    }
+
+    /** Helper to create test_mappings.zip . */
+    private File createTestMappingZip(File tempDir) throws IOException {
+        File srcDir = FileUtil.createTempDir("src", tempDir);
+        String srcFile =
+            File.separator + TEST_DATA_DIR + File.separator + DISABLED_PRESUBMIT_TESTS;
+        InputStream resourceStream = this.getClass().getResourceAsStream(srcFile);
+        FileUtil.saveResourceFile(resourceStream, srcDir, DISABLED_PRESUBMIT_TESTS);
+
+        srcFile = File.separator + TEST_DATA_DIR + File.separator + "test_mapping_with_mainline";
+        resourceStream = this.getClass().getResourceAsStream(srcFile);
+        FileUtil.saveResourceFile(resourceStream, srcDir, TEST_MAPPING);
+        File subDir = FileUtil.createTempDir("sub_dir", srcDir);
+        srcFile = File.separator + TEST_DATA_DIR + File.separator + "test_mapping_2";
+        resourceStream = this.getClass().getResourceAsStream(srcFile);
+        FileUtil.saveResourceFile(resourceStream, subDir, TEST_MAPPING);
+
+        List<File> filesToZip =
+            Arrays.asList(srcDir, new File(tempDir, DISABLED_PRESUBMIT_TESTS));
+        File zipFile = Paths.get(tempDir.getAbsolutePath(), TEST_MAPPINGS_ZIP).toFile();
+        ZipUtil.createZip(filesToZip, zipFile);
+
+        return zipFile;
+    }
+
+    /** Helper to create module config with parameterized mainline modules . */
+    private File createMainlineModuleConfig(String tempTestsDir) throws IOException {
+        File moduleConfig = new File(tempTestsDir, "test" + SuiteModuleLoader.CONFIG_EXT);
+        FileUtil.writeToFile(TEST_MAINLINE_CONFIG, moduleConfig);
+        return moduleConfig;
     }
 }
