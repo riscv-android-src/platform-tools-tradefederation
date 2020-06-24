@@ -32,9 +32,11 @@ import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.LogcatOnFailureCollector;
 import com.android.tradefed.device.metric.ScreenshotOnFailureCollector;
+import com.android.tradefed.error.HarnessException;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
+import com.android.tradefed.invoker.logger.CurrentInvocation;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.invoker.logger.TfObjectTracker;
@@ -55,6 +57,7 @@ import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
+import com.android.tradefed.result.error.ErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.retry.RetryStatistics;
@@ -648,7 +651,6 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             forwardTestResults(runResult.getTestResults(), listener);
             if (runResult.isRunFailure()) {
                 runFailureMessages.add(runResult.getRunFailureDescription());
-                mIsFailedModule = true;
             }
             elapsedTime += runResult.getElapsedTime();
             // put metrics from the tests
@@ -677,19 +679,21 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                     RETRY_FAIL_COUNT, TfMetricProtoUtil.createSingleValue(agg.mRetryFailure, ""));
         }
 
-        if (totalExpectedTests != numResults) {
+        // Only report the mismatch if there were no error during the run.
+        if (runFailureMessages.isEmpty() && totalExpectedTests != numResults) {
             String error =
                     String.format(
                             "Module %s only ran %d out of %d expected tests.",
                             getId(), numResults, totalExpectedTests);
             runFailureMessages.add(FailureDescription.create(error));
             CLog.e(error);
-            mIsFailedModule = true;
         }
 
         if (tearDownException != null) {
-            runFailureMessages.add(
-                    FailureDescription.create(StreamUtil.getStackTrace(tearDownException)));
+            FailureDescription failure =
+                    CurrentInvocation.createFailure(
+                            StreamUtil.getStackTrace(tearDownException), null);
+            runFailureMessages.add(failure);
         }
         // If there is any errors report them all at once
         if (!runFailureMessages.isEmpty()) {
@@ -698,6 +702,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             } else {
                 listener.testRunFailed(new MultiFailureDescription(runFailureMessages));
             }
+            mIsFailedModule = true;
         }
 
         // Provide a strong association of the run to its logs.
@@ -1101,8 +1106,16 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         // similar to InitializationError of JUnit.
         forwarder.testRunStarted(getId(), 1, 0, System.currentTimeMillis());
         FailureDescription failureDescription =
-                FailureDescription.create(StreamUtil.getStackTrace(setupException));
-        failureDescription.setFailureStatus(FailureStatus.TEST_FAILURE);
+                CurrentInvocation.createFailure(StreamUtil.getStackTrace(setupException), null);
+        if (setupException instanceof HarnessException
+                && ((HarnessException) setupException).getErrorId() != null) {
+            ErrorIdentifier id = ((HarnessException) setupException).getErrorId();
+            failureDescription.setErrorIdentifier(id);
+            failureDescription.setFailureStatus(id.status());
+        } else {
+            failureDescription.setFailureStatus(FailureStatus.UNSET);
+        }
+        failureDescription.setCause(setupException);
         forwarder.testRunFailed(failureDescription);
         HashMap<String, Metric> metricsProto = new HashMap<>();
         metricsProto.put(TEST_TIME, TfMetricProtoUtil.createSingleValue(0L, "milliseconds"));
