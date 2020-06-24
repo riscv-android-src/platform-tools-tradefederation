@@ -49,7 +49,7 @@ public final class InvocationLocalTest {
     public void getReturnsCustomInitialValue() {
         String expected = "!";
         InvocationLocal<String> local =
-                new InvocationLocal<>() {
+                new InvocationLocal<String>() {
                     @Override
                     protected String initialValue() {
                         return expected;
@@ -64,7 +64,7 @@ public final class InvocationLocalTest {
     @Test
     public void getReturnsSameInitialValue() {
         InvocationLocal<Object> local =
-                new InvocationLocal<>() {
+                new InvocationLocal<Object>() {
                     @Override
                     protected Object initialValue() {
                         return new Object();
@@ -79,7 +79,7 @@ public final class InvocationLocalTest {
     @Test
     public void getReturnsDifferentValuePerInvocation() throws Exception {
         InvocationLocal<Object> local =
-                new InvocationLocal<>() {
+                new InvocationLocal<Object>() {
                     @Override
                     protected Object initialValue() {
                         return new Object();
