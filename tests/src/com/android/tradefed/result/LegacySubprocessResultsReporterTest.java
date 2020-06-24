@@ -18,6 +18,7 @@ package com.android.tradefed.result;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.util.SubprocessTestResultsParser;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
@@ -73,7 +74,8 @@ public class LegacySubprocessResultsReporterTest {
             // mirror calls between receiver and sender.
             mMockListener.testIgnored(testDescrip);
             mMockListener.testAssumptionFailure(testDescrip, "fake trace");
-            mMockListener.testRunFailed("no reason");
+            mMockListener.testRunFailed(
+                    FailureDescription.create("no reason", FailureStatus.UNSET));
             mMockListener.invocationFailed((Throwable) EasyMock.anyObject());
             EasyMock.replay(mMockListener);
             mReporter.testIgnored(testId);
