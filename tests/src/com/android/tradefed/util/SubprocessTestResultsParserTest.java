@@ -26,6 +26,7 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
@@ -144,7 +145,7 @@ public class SubprocessTestResultsParserTest {
                 EasyMock.anyLong(),
                 EasyMock.<HashMap<String, Metric>>anyObject());
         EasyMock.expectLastCall().times(3);
-        mockRunListener.testRunFailed((String)EasyMock.anyObject());
+        mockRunListener.testRunFailed((FailureDescription) EasyMock.anyObject());
         EasyMock.expectLastCall().times(1);
         mockRunListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());

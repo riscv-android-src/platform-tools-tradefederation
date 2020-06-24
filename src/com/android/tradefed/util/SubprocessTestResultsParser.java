@@ -391,7 +391,11 @@ public class SubprocessTestResultsParser implements Closeable {
         @Override
         public void handleEvent(String eventJson) throws JSONException {
             TestRunFailedEventInfo rfi = new TestRunFailedEventInfo(new JSONObject(eventJson));
-            mListener.testRunFailed(rfi.mReason);
+            if (rfi.mFailure != null) {
+                mListener.testRunFailed(rfi.mFailure);
+            } else {
+                mListener.testRunFailed(rfi.mReason);
+            }
         }
     }
 
@@ -414,7 +418,11 @@ public class SubprocessTestResultsParser implements Closeable {
         public void handleEvent(String eventJson) throws JSONException {
             InvocationFailedEventInfo ifi =
                     new InvocationFailedEventInfo(new JSONObject(eventJson));
-            mListener.invocationFailed(ifi.mCause);
+            if (ifi.mFailure != null) {
+                mListener.invocationFailed(ifi.mFailure);
+            } else {
+                mListener.invocationFailed(ifi.mCause);
+            }
         }
     }
 
