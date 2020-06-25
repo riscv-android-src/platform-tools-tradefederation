@@ -26,43 +26,31 @@ import java.lang.StackWalker.Option;
 public class HarnessException extends Exception {
     static final long serialVersionUID = 100L;
 
-    private final String mOrigin;
+    private String mOrigin;
     private ErrorIdentifier mErrorId;
 
     public HarnessException(ErrorIdentifier errorId) {
         super();
         mErrorId = errorId;
-        mOrigin =
-                StackWalker.getInstance(Option.RETAIN_CLASS_REFERENCE)
-                        .getCallerClass()
-                        .getCanonicalName();
+        setCallerClass(StackWalker.getInstance(Option.RETAIN_CLASS_REFERENCE).getCallerClass());
     }
 
     public HarnessException(String message, ErrorIdentifier errorId) {
         super(message);
         mErrorId = errorId;
-        mOrigin =
-                StackWalker.getInstance(Option.RETAIN_CLASS_REFERENCE)
-                        .getCallerClass()
-                        .getCanonicalName();
+        setCallerClass(StackWalker.getInstance(Option.RETAIN_CLASS_REFERENCE).getCallerClass());
     }
 
     public HarnessException(Throwable cause, ErrorIdentifier errorId) {
         super(cause);
         mErrorId = errorId;
-        mOrigin =
-                StackWalker.getInstance(Option.RETAIN_CLASS_REFERENCE)
-                        .getCallerClass()
-                        .getCanonicalName();
+        setCallerClass(StackWalker.getInstance(Option.RETAIN_CLASS_REFERENCE).getCallerClass());
     }
 
     public HarnessException(String message, Throwable cause, ErrorIdentifier errorId) {
         super(message, cause);
         mErrorId = errorId;
-        mOrigin =
-                StackWalker.getInstance(Option.RETAIN_CLASS_REFERENCE)
-                        .getCallerClass()
-                        .getCanonicalName();
+        setCallerClass(StackWalker.getInstance(Option.RETAIN_CLASS_REFERENCE).getCallerClass());
     }
 
     /** Returns the {@link ErrorIdentifier} associated with the exception. Can be null. */
@@ -73,5 +61,11 @@ public class HarnessException extends Exception {
     /** Returns the origin of the exception. */
     public String getOrigin() {
         return mOrigin;
+    }
+
+    protected final void setCallerClass(Class<?> clazz) {
+        if (clazz != null) {
+            mOrigin = clazz.getCanonicalName();
+        }
     }
 }
