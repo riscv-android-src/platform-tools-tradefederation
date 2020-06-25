@@ -25,8 +25,10 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.proto.TestRecordProto;
 
 import com.android.tradefed.testtype.mobly.MoblyYamlResultControllerInfoHandler.ControllerInfo;
 import com.android.tradefed.testtype.mobly.MoblyYamlResultRecordHandler.Record;
@@ -129,7 +131,7 @@ public class MoblyYamlResultParserTest {
     private ArgumentCaptor<TestDescription> mStartedDescCaptor;
     private ArgumentCaptor<Long> mBeginTimeCaptor;
     private ArgumentCaptor<TestDescription> mFailedDescCaptor;
-    private ArgumentCaptor<String> mStacktrackCaptor;
+    private ArgumentCaptor<FailureDescription> mFailureDescriptionCaptor;
     private ArgumentCaptor<TestDescription> mEndDescCaptor;
     private ArgumentCaptor<Long> mEndTimeCaptor;
     private ArgumentCaptor<Long> mElapseTimeCaptor;
@@ -156,10 +158,10 @@ public class MoblyYamlResultParserTest {
                 .testStarted(mStartedDescCaptor.capture(), mBeginTimeCaptor.capture());
         // Setup testFailed
         mFailedDescCaptor = ArgumentCaptor.forClass(TestDescription.class);
-        mStacktrackCaptor = ArgumentCaptor.forClass(String.class);
+        mFailureDescriptionCaptor = ArgumentCaptor.forClass(FailureDescription.class);
         Mockito.doNothing()
                 .when(mMockListener)
-                .testFailed(mFailedDescCaptor.capture(), mStacktrackCaptor.capture());
+                .testFailed(mFailedDescCaptor.capture(), mFailureDescriptionCaptor.capture());
         // Setup testEnded
         mEndDescCaptor = ArgumentCaptor.forClass(TestDescription.class);
         mEndTimeCaptor = ArgumentCaptor.forClass(Long.class);
@@ -225,7 +227,16 @@ public class MoblyYamlResultParserTest {
         assertEquals(Long.parseLong(DEFAULT_BEGIN_TIME), (long) mBeginTimeCaptor.getValue());
         assertEquals(DEFAULT_TEST_CLASS, mFailedDescCaptor.getValue().getClassName());
         assertEquals(DEFAULT_TEST_NAME, mFailedDescCaptor.getValue().getTestName());
-        assertTrue(mStacktrackCaptor.getValue().contains("Traceback (most recent call last)"));
+        assertTrue(
+                mFailureDescriptionCaptor
+                        .getValue()
+                        .getErrorMessage()
+                        .contains("Traceback (most recent call last)"));
+        assertTrue(
+                mFailureDescriptionCaptor
+                        .getValue()
+                        .getFailureStatus()
+                        .equals(TestRecordProto.FailureStatus.TEST_FAILURE));
         assertEquals(DEFAULT_TEST_CLASS, mEndDescCaptor.getValue().getClassName());
         assertEquals(DEFAULT_TEST_NAME, mEndDescCaptor.getValue().getTestName());
         assertEquals(Long.parseLong(DEFAULT_END_TIME), (long) mEndTimeCaptor.getValue());
