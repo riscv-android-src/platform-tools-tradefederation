@@ -16,6 +16,8 @@
 
 package com.android.tradefed.testtype.mobly;
 
+import com.android.tradefed.result.FailureDescription;
+import com.android.tradefed.result.proto.TestRecordProto;
 import com.android.tradefed.testtype.mobly.IMoblyYamlResultHandler.ITestResult;
 import com.android.tradefed.testtype.mobly.MoblyYamlResultHandlerFactory.InvalidResultTypeException;
 import com.android.tradefed.log.LogUtil;
@@ -89,6 +91,10 @@ public class MoblyYamlResultParser {
                             (MoblyYamlResultRecordHandler.Record) result;
                     TestDescription testDescription =
                             new TestDescription(record.getTestClass(), record.getTestName());
+                    FailureDescription failureDescription =
+                            FailureDescription.create(
+                                    record.getStackTrace(),
+                                    TestRecordProto.FailureStatus.TEST_FAILURE);
                     mRunStartTime =
                             mRunStartTime == 0L
                                     ? record.getBeginTime()
@@ -97,7 +103,7 @@ public class MoblyYamlResultParser {
                     for (ITestInvocationListener listener : listeners) {
                         listener.testStarted(testDescription, record.getBeginTime());
                         if (record.getResult() != MoblyYamlResultRecordHandler.RecordResult.PASS) {
-                            listener.testFailed(testDescription, record.getStackTrace());
+                            listener.testFailed(testDescription, failureDescription);
                         }
                         listener.testEnded(
                                 testDescription,
