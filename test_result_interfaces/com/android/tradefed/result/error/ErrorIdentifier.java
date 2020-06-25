@@ -18,7 +18,11 @@ package com.android.tradefed.result.error;
 import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 
-/** This interface describes a specific error and its properties. */
+/**
+ * This interface describes a specific error and its properties.
+ *
+ * <p>Do not create implementation of this class outside of Trade Federation.
+ */
 public interface ErrorIdentifier {
 
     /** The name identifying the error. */
