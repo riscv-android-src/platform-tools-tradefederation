@@ -23,6 +23,7 @@ import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.util.AaptParser;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -134,10 +135,12 @@ public class AppSetup extends BaseTargetPreparer {
                     // typically install failures means something is wrong with apk.
                     // TODO: in future add more logic to throw targetsetup vs build vs
                     // devicenotavail depending on error code
-                    throw new BuildError(String.format(
-                            "Failed to install %s on %s. Reason: %s",
-                            apkFile.getFile().getName(), device.getSerialNumber(), result),
-                            device.getDeviceDescriptor());
+                    throw new BuildError(
+                            String.format(
+                                    "Failed to install %s on %s. Reason: %s",
+                                    apkFile.getFile().getName(), device.getSerialNumber(), result),
+                            device.getDeviceDescriptor(),
+                            DeviceErrorIdentifier.APK_INSTALLATION_FAILED);
                 }
                 if (mUninstall && !mUninstallAll) {
                     addPackageNameToUninstall(apkFile.getFile(), device);
