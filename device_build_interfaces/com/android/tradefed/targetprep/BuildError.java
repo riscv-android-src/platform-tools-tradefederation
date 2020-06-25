@@ -19,6 +19,8 @@ import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.error.HarnessException;
 import com.android.tradefed.result.error.ErrorIdentifier;
 
+import java.lang.StackWalker.Option;
+
 /** Thrown if the provided build fails to run. */
 public class BuildError extends HarnessException {
 
@@ -38,6 +40,7 @@ public class BuildError extends HarnessException {
         if (descriptor != null) {
             mDeviceSerial = descriptor.getSerial();
         }
+        setCallerClass(StackWalker.getInstance(Option.RETAIN_CLASS_REFERENCE).getCallerClass());
     }
 
     /**
@@ -52,17 +55,7 @@ public class BuildError extends HarnessException {
         if (descriptor != null) {
             mDeviceSerial = descriptor.getSerial();
         }
-    }
-
-    /**
-     * Constructs a new (@link BuildError} with a detailed error message.
-     *
-     * @param reason an error message giving more details on the build error
-     * @deprecated use {@link #BuildError(String, DeviceDescriptor, ErrorIdentifier)} instead.
-     */
-    @Deprecated
-    public BuildError(String reason) {
-        super(reason, null);
+        setCallerClass(StackWalker.getInstance(Option.RETAIN_CLASS_REFERENCE).getCallerClass());
     }
 
     /** Return the serial of the device impacted by the BuildError. */
