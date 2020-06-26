@@ -22,6 +22,7 @@ import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -60,7 +61,8 @@ public class DynamicSystemPreparer extends BaseTargetPreparer {
         if (systemImageZipFile == null) {
             throw new BuildError(
                     "Cannot find " + mSystemImageZipName + " in build info.",
-                    device.getDeviceDescriptor());
+                    device.getDeviceDescriptor(),
+                    InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
         }
 
         ZipFile zipFile = null;
