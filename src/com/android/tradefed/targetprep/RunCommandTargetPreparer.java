@@ -24,6 +24,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.RunUtil;
@@ -95,7 +96,8 @@ public class RunCommandTargetPreparer extends BaseTargetPreparer {
                             String.format(
                                     "Failed to run '%s' without error. stdout: '%s'\nstderr: '%s'",
                                     cmd, result.getStdout(), result.getStderr()),
-                            device.getDeviceDescriptor());
+                            device.getDeviceDescriptor(),
+                            DeviceErrorIdentifier.SHELL_COMMAND_ERROR);
                 } else {
                     CLog.d(
                             "cmd: '%s' failed, returned:\nstdout:%s\nstderr:%s",
