@@ -15,6 +15,8 @@
  */
 package com.android.tradefed.testtype.suite;
 
+import static com.google.common.truth.Truth.assertThat;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -27,6 +29,7 @@ import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
@@ -299,12 +302,12 @@ public class ModuleDefinitionTest {
         mMockLogSaver = EasyMock.createMock(ILogSaver.class);
         mMockLogSaverListener = EasyMock.createStrictMock(ILogSaverListener.class);
 
-        mMockListener = EasyMock.createMock(ITestInvocationListener.class);
+        mMockListener = EasyMock.createNiceMock(ITestInvocationListener.class);
         mTestList = new ArrayList<>();
-        mMockTest = EasyMock.createMock(ITestInterface.class);
+        mMockTest = EasyMock.createNiceMock(ITestInterface.class);
         mTestList.add(mMockTest);
         mTargetPrepList = new ArrayList<>();
-        mMockPrep = EasyMock.createMock(ITargetPreparer.class);
+        mMockPrep = EasyMock.createNiceMock(ITargetPreparer.class);
         mTargetPrepList.add(mMockPrep);
         mMapDeviceTargetPreparer = new LinkedHashMap<>();
         mMapDeviceTargetPreparer.put(DEFAULT_DEVICE_NAME, mTargetPrepList);
@@ -429,6 +432,32 @@ public class ModuleDefinitionTest {
         replayMocks();
         mModule.run(mModuleInfo, mMockListener);
         verifyMocks();
+    }
+
+    @Test
+    public void testDynamicDownloadThrows_ReportsRunFailed() throws Exception {
+        String expectedMessage = "Ooops!";
+        ModuleDefinition module =
+                new ModuleDefinition(
+                        MODULE_NAME,
+                        mTestList,
+                        mMapDeviceTargetPreparer,
+                        mMultiTargetPrepList,
+                        new Configuration("", "") {
+                            @Override
+                            public void resolveDynamicOptions(DynamicRemoteFileResolver resolver) {
+                                throw new RuntimeException(expectedMessage);
+                            }
+                        });
+        module.setEnableDynamicDownload(true);
+        module.getModuleInvocationContext().addAllocatedDevice(DEFAULT_DEVICE_NAME, mMockDevice);
+        Capture<FailureDescription> failureDescription = new Capture<>();
+        mMockListener.testRunFailed(EasyMock.capture(failureDescription));
+        replayMocks();
+
+        module.run(mModuleInfo, mMockListener);
+
+        assertThat(failureDescription.getValue().getErrorMessage()).contains(expectedMessage);
     }
 
     /**
