@@ -25,6 +25,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 
 import java.io.File;
 import java.util.concurrent.TimeUnit;
@@ -64,7 +65,8 @@ public abstract class DeviceUpdateTargetPreparer extends DeviceBuildInfoBootStra
         if (!deviceUpdateImage.exists()) {
             throw new TargetSetupError(
                     "Device image file not found: " + deviceUpdateImage.getAbsolutePath(),
-                    device.getDeviceDescriptor());
+                    device.getDeviceDescriptor(),
+                    InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
         }
         preUpdateActions(deviceUpdateImage, device);
         // flashing concurrency control

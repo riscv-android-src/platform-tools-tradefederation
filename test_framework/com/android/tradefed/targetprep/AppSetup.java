@@ -23,6 +23,7 @@ import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.util.AaptParser;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -115,8 +116,11 @@ public class AppSetup extends BaseTargetPreparer {
                     AaptParser aaptParser = doAaptParse(apkFile.getFile());
                     if (aaptParser == null) {
                         throw new TargetSetupError(
-                                String.format("Failed to extract info from '%s' using aapt",
-                                        apkFile.getFile().getName()), device.getDeviceDescriptor());
+                                String.format(
+                                        "Failed to extract info from '%s' using aapt",
+                                        apkFile.getFile().getName()),
+                                device.getDeviceDescriptor(),
+                                DeviceErrorIdentifier.AAPT_PARSER_FAILED);
                     }
                     if (device.getApiLevel() < aaptParser.getSdkVersion()) {
                         CLog.w("Skipping installing apk %s on device %s because " +
@@ -168,13 +172,20 @@ public class AppSetup extends BaseTargetPreparer {
             throws TargetSetupError {
         AaptParser aaptParser = doAaptParse(apkFile);
         if (aaptParser == null) {
-            throw new TargetSetupError(String.format("Failed to extract info from '%s' using aapt",
-                    apkFile.getAbsolutePath()), device.getDeviceDescriptor());
+            throw new TargetSetupError(
+                    String.format(
+                            "Failed to extract info from '%s' using aapt",
+                            apkFile.getAbsolutePath()),
+                    device.getDeviceDescriptor(),
+                    DeviceErrorIdentifier.AAPT_PARSER_FAILED);
         }
         if (aaptParser.getPackageName() == null) {
-            throw new TargetSetupError(String.format(
-                    "Failed to find package name for '%s' using aapt", apkFile.getAbsolutePath()),
-                    device.getDeviceDescriptor());
+            throw new TargetSetupError(
+                    String.format(
+                            "Failed to find package name for '%s' using aapt",
+                            apkFile.getAbsolutePath()),
+                    device.getDeviceDescriptor(),
+                    DeviceErrorIdentifier.AAPT_PARSER_FAILED);
         }
         mInstalledPkgs.add(aaptParser.getPackageName());
     }

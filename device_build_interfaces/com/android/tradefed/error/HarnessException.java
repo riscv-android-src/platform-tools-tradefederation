@@ -21,7 +21,7 @@ import java.lang.StackWalker.Option;
 
 /**
  * Base exception class for exception thrown within the harness. This class help carry {@link
- * ErrorIdentifier} to be report the failure details.
+ * ErrorIdentifier} to report the failure details.
  */
 public class HarnessException extends Exception {
     static final long serialVersionUID = 100L;
