@@ -373,7 +373,7 @@ public class GkiDeviceFlashPreparerTest {
         mMockRunUtil.allowInterrupt(true);
         mMockRunUtil.sleep(EasyMock.anyLong());
         mMockDevice.rebootUntilOnline();
-        EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException());
+        EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException("test", "serial"));
         EasyMock.replay(mMockDevice, mMockRunUtil);
         try {
             mPreparer.setUp(mTestInfo);

@@ -373,7 +373,7 @@ public class TestsPoolPollerTest {
         poller.setMetricCollectors(mMetricCollectors);
         poller.setLogRegistry(mMockRegistry);
 
-        Mockito.doThrow(new DeviceNotAvailableException())
+        Mockito.doThrow(new DeviceNotAvailableException("test", "serial"))
                 .when(mDevice)
                 .waitForDeviceAvailable(Mockito.anyLong());
         try {
