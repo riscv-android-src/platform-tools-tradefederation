@@ -107,7 +107,7 @@ public class TestSuiteStub
             TestDescription tid2 = new TestDescription("TestStub", "test2");
             listener.testStarted(tid2);
             if (mThrow) {
-                throw new DeviceNotAvailableException();
+                throw new DeviceNotAvailableException("test", "serial");
             }
             if (mLogFiles) {
                 listener.testLog(
