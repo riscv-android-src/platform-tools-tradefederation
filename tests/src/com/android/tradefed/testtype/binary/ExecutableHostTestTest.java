@@ -181,7 +181,9 @@ public class ExecutableHostTestTest {
                             Mockito.any(),
                             Mockito.eq(tmpBinary.getAbsolutePath()));
 
-            doThrow(new DeviceNotAvailableException()).when(mMockDevice).waitForDeviceAvailable();
+            doThrow(new DeviceNotAvailableException("test", "serial"))
+                    .when(mMockDevice)
+                    .waitForDeviceAvailable();
             try {
                 mExecutableTest.run(mTestInfo, mMockListener);
                 fail("Should have thrown an exception.");
