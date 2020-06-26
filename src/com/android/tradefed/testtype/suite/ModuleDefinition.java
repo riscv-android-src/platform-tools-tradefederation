@@ -512,9 +512,11 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 }
             }
         } finally {
-            // Clean target preparers dynamic files
-            mInternalTargetPreparerConfiguration.cleanConfigurationData();
-            mInternalTargetPreparerConfiguration = null;
+            // Clean target preparers dynamic files.
+            if (mInternalTargetPreparerConfiguration != null) {
+                mInternalTargetPreparerConfiguration.cleanConfigurationData();
+                mInternalTargetPreparerConfiguration = null;
+            }
             long cleanStartTime = getCurrentTime();
             RuntimeException tearDownException = null;
             try {
