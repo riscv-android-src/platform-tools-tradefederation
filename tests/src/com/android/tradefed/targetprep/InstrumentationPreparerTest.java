@@ -81,9 +81,6 @@ public class InstrumentationPreparerTest {
                 return mMockITest;
             }
         };
-        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andReturn(new DeviceDescriptor("SERIAL",
-                false, DeviceAllocationState.Available, "unknown", "unknown", "unknown", "unknown",
-                "unknown"));
         EasyMock.replay(mMockDevice);
         mInstrumentationPreparer.setUp(mTestInfo);
         EasyMock.verify(mMockDevice);

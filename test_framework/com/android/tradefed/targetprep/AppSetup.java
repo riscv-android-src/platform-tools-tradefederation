@@ -138,10 +138,12 @@ public class AppSetup extends BaseTargetPreparer {
                     // typically install failures means something is wrong with apk.
                     // TODO: in future add more logic to throw targetsetup vs build vs
                     // devicenotavail depending on error code
-                    throw new BuildError(String.format(
-                            "Failed to install %s on %s. Reason: %s",
-                            apkFile.getFile().getName(), device.getSerialNumber(), result),
-                            device.getDeviceDescriptor());
+                    throw new BuildError(
+                            String.format(
+                                    "Failed to install %s on %s. Reason: %s",
+                                    apkFile.getFile().getName(), device.getSerialNumber(), result),
+                            device.getDeviceDescriptor(),
+                            DeviceErrorIdentifier.APK_INSTALLATION_FAILED);
                 }
                 if (mUninstall && !mUninstallAll) {
                     addPackageNameToUninstall(apkFile.getFile(), device);
