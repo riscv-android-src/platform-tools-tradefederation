@@ -24,6 +24,8 @@ import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IAbiReceiver;
 import com.android.tradefed.util.AaptParser;
@@ -76,14 +78,18 @@ public class AllTestAppsInstallSetup extends BaseTargetPreparer implements IAbiR
     public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
             DeviceNotAvailableException {
         if (!(buildInfo instanceof IDeviceBuildInfo)) {
-            throw new TargetSetupError("Invalid buildInfo, expecting an IDeviceBuildInfo",
-                    device.getDeviceDescriptor());
+            throw new TargetSetupError(
+                    "Invalid buildInfo, expecting an IDeviceBuildInfo",
+                    device.getDeviceDescriptor(),
+                    InfraErrorIdentifier.UNDETERMINED);
         }
         // Locate test dir where the test zip file was unzip to.
         File testsDir = ((IDeviceBuildInfo) buildInfo).getTestsDir();
         if (testsDir == null || !testsDir.exists()) {
-            throw new TargetSetupError("Failed to find a valid test zip directory.",
-                    device.getDeviceDescriptor());
+            throw new TargetSetupError(
+                    "Failed to find a valid test zip directory.",
+                    device.getDeviceDescriptor(),
+                    InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
         }
         if (mForceQueryable && device.isAppEnumerationSupported()) {
             mInstallArgs.add("--force-queryable");
@@ -103,7 +109,10 @@ public class AllTestAppsInstallSetup extends BaseTargetPreparer implements IAbiR
     void installApksRecursively(File directory, ITestDevice device)
             throws TargetSetupError, DeviceNotAvailableException {
         if (directory == null || !directory.isDirectory()) {
-            throw new TargetSetupError("Invalid test zip directory!", device.getDeviceDescriptor());
+            throw new TargetSetupError(
+                    "Invalid test zip directory!",
+                    device.getDeviceDescriptor(),
+                    InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
         }
         CLog.d("Installing all apks found in dir %s ...", directory.getAbsolutePath());
         File[] files = directory.listFiles();
@@ -137,15 +146,21 @@ public class AllTestAppsInstallSetup extends BaseTargetPreparer implements IAbiR
             if (mCleanup) {
                 AaptParser parser = AaptParser.parse(appFile);
                 if (parser == null) {
-                    throw new TargetSetupError("apk installed but AaptParser failed",
-                            device.getDeviceDescriptor());
+                    throw new TargetSetupError(
+                            "apk installed but AaptParser failed",
+                            device.getDeviceDescriptor(),
+                            DeviceErrorIdentifier.AAPT_PARSER_FAILED);
                 }
                 mPackagesInstalled.add(parser.getPackageName());
             }
         } else if (mStopInstallOnFailure) {
             // if flag is true, we stop the sequence for an exception.
-            throw new TargetSetupError(String.format("Failed to install %s on %s. Reason: '%s'",
-                    appFile, device.getSerialNumber(), result), device.getDeviceDescriptor());
+            throw new TargetSetupError(
+                    String.format(
+                            "Failed to install %s on %s. Reason: '%s'",
+                            appFile, device.getSerialNumber(), result),
+                    device.getDeviceDescriptor(),
+                    DeviceErrorIdentifier.APK_INSTALLATION_FAILED);
         } else {
             CLog.e("Failed to install %s on %s. Reason: '%s'", appFile,
                     device.getSerialNumber(), result);
