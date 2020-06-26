@@ -47,6 +47,7 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.result.StubTestRunListener;
 import com.android.tradefed.result.ddmlib.TestRunToTestInvocationForwarder;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.Bugreport;
@@ -4423,7 +4424,10 @@ public class NativeDevice implements IManagedTestDevice {
                     FileUtil.createTempFile("TestDevice_ExecuteShellCommands", ".txt");
         } catch (IOException e) {
             throw new TargetSetupError(
-                    "Failed to create the executeShellCommand log file.", e, getDeviceDescriptor());
+                    "Failed to create the executeShellCommand log file.",
+                    e,
+                    getDeviceDescriptor(),
+                    InfraErrorIdentifier.FAIL_TO_CREATE_FILE);
         }
     }
 

@@ -23,7 +23,11 @@ public enum DeviceErrorIdentifier implements ErrorIdentifier {
     // ********************************************************************************************
     // Device Errors: 30_001 ~ 40_000
     // ********************************************************************************************
-    APK_INSTALLATION_FAILED(30_001, FailureStatus.UNSET);
+    APK_INSTALLATION_FAILED(30_001, FailureStatus.UNSET),
+
+    AAPT_PARSER_FAILED(30_050, FailureStatus.UNSET),
+
+    SHELL_COMMAND_ERROR(30_100, FailureStatus.UNSET);
 
     private final long code;
     private final FailureStatus status;
