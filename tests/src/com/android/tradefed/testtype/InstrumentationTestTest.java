@@ -849,7 +849,7 @@ public class InstrumentationTestTest {
                     listener.testEnded(TEST1, EMPTY_STRING_MAP);
                     listener.testRunFailed(RUN_ERROR_MSG);
                     listener.testRunEnded(1, EMPTY_STRING_MAP);
-                    throw new DeviceNotAvailableException();
+                    throw new DeviceNotAvailableException("test", "serial");
                 };
         RunInstrumentationTestsAnswer rerun =
                 (runner, listener) -> {
