@@ -34,6 +34,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.zip.GZIPInputStream;
@@ -43,6 +44,25 @@ import java.util.zip.GZIPOutputStream;
  * Utility to manipulate a tar file. It wraps the commons-compress in order to provide tar support.
  */
 public class TarUtil {
+
+    private static final byte[] GZIP_SIGNATURE = {0x1f, (byte) 0x8b};
+
+    /**
+     * Determine whether a file is a gzip.
+     *
+     * @param file the file to check.
+     * @return whether the file is a gzip.
+     * @throws IOException if the file could not be read.
+     */
+    public static boolean isGzip(File file) throws IOException {
+        byte[] signature = new byte[GZIP_SIGNATURE.length];
+        try (InputStream stream = new FileInputStream(file)) {
+            if (stream.read(signature) != signature.length) {
+                return false;
+            }
+        }
+        return Arrays.equals(GZIP_SIGNATURE, signature);
+    }
 
     /**
      * Untar a tar file into a directory.
