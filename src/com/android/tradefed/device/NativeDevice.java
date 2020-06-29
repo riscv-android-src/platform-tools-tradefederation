@@ -47,6 +47,7 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.result.StubTestRunListener;
 import com.android.tradefed.result.ddmlib.TestRunToTestInvocationForwarder;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.ArrayUtil;
@@ -583,9 +584,12 @@ public class NativeDevice implements IManagedTestDevice {
             }
 
             if (Strings.isNullOrEmpty(productType)) {
-                throw new DeviceNotAvailableException(String.format(
-                        "Could not determine product type for device %s.", getSerialNumber()),
-                        getSerialNumber());
+                throw new DeviceNotAvailableException(
+                        String.format(
+                                "Could not determine product type for device %s.",
+                                getSerialNumber()),
+                        getSerialNumber(),
+                        DeviceErrorIdentifier.DEVICE_UNEXPECTED_RESPONSE);
             }
         }
 

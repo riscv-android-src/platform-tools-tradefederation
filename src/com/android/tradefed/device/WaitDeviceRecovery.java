@@ -25,6 +25,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.IRunUtil;
@@ -195,7 +196,8 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
                 // device
                 throw new DeviceNotAvailableException(
                         "Cannot read battery level but a min is required",
-                        device.getSerialNumber());
+                        device.getSerialNumber(),
+                        DeviceErrorIdentifier.DEVICE_UNEXPECTED_RESPONSE);
             } else if (level < mRequiredMinBattery) {
                 throw new DeviceNotAvailableException(String.format(
                         "After recovery, device battery level %d is lower than required minimum %d",
@@ -249,7 +251,9 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
         }
         String serial = monitor.getSerialNumber();
         throw new DeviceNotAvailableException(
-                String.format("Could not find device %s", serial), serial);
+                String.format("Could not find device %s", serial),
+                serial,
+                DeviceErrorIdentifier.DEVICE_UNAVAILABLE);
     }
 
     /**
@@ -459,7 +463,8 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
             final IDeviceStateMonitor monitor, String mode) throws DeviceNotAvailableException {
         throw new DeviceNotAvailableException(
                 String.format("Could not find device %s in %s", monitor.getSerialNumber(), mode),
-                monitor.getSerialNumber());
+                monitor.getSerialNumber(),
+                DeviceErrorIdentifier.DEVICE_UNAVAILABLE);
     }
 
     /**
