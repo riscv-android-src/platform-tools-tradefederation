@@ -477,7 +477,7 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
             IDeviceStateMonitor monitor, boolean recoverTillOnline) {
         TestDeviceState state = monitor.getDeviceState();
         if (TestDeviceState.FASTBOOT.equals(state) || TestDeviceState.FASTBOOTD.equals(state)) {
-            CLog.d("Device is in '%s' state skipping USB reset attempt.");
+            CLog.d("Device is in '%s' state skipping USB reset attempt.", state);
             return false;
         }
         String serial = monitor.getSerialNumber();
