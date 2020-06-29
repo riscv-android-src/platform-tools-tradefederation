@@ -35,6 +35,7 @@ import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestLoggerReceiver;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
@@ -103,7 +104,8 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
                 throw new DeviceNotAvailableException(
                         String.format(
                                 "Failed to launch GCE after %sms", getOptions().getGceCmdTimeout()),
-                        getSerialNumber());
+                        getSerialNumber(),
+                        DeviceErrorIdentifier.FAILED_TO_LAUNCH_GCE);
             }
             CLog.d("%sms left before timeout after GCE launch returned", remainingTime);
             // Wait for device to be ready.
@@ -132,7 +134,8 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
                 throw new DeviceNotAvailableException(
                         String.format(
                                 "AVD device booted but was in %s state", getIDevice().getState()),
-                        getSerialNumber());
+                        getSerialNumber(),
+                        DeviceErrorIdentifier.FAILED_TO_LAUNCH_GCE);
             }
             enableAdbRoot();
         } catch (DeviceNotAvailableException | TargetSetupError e) {
@@ -321,7 +324,8 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
         }
         throw new DeviceNotAvailableException(
                 String.format("Tunnel did not come back online after %sms", waitTime),
-                getSerialNumber());
+                getSerialNumber(),
+                DeviceErrorIdentifier.FAILED_TO_CONNECT_TO_GCE);
     }
 
     @Override
