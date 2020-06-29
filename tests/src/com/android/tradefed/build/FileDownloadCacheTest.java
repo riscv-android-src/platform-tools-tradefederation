@@ -22,6 +22,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -172,7 +173,10 @@ public class FileDownloadCacheTest {
     public void testFetchRemoteFile_downloadFailed() throws Exception {
         mMockDownloader.downloadFile(EasyMock.eq(REMOTE_PATH),
                 (File)EasyMock.anyObject());
-        EasyMock.expectLastCall().andThrow(new BuildRetrievalError("download error"));
+        EasyMock.expectLastCall()
+                .andThrow(
+                        new BuildRetrievalError(
+                                "download error", InfraErrorIdentifier.ARTIFACT_DOWNLOAD_ERROR));
         EasyMock.replay(mMockDownloader);
         try {
             mCache.fetchRemoteFile(mMockDownloader, REMOTE_PATH);

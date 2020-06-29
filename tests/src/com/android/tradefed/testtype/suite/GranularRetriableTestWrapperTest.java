@@ -859,14 +859,14 @@ public class GranularRetriableTestWrapperTest {
         OptionSetter setter = new OptionSetter(decision);
         setter.setOptionValue("reboot-at-last-retry", "true");
         setter.setOptionValue("retry-strategy", "RETRY_ANY_FAILURE");
-        setter.setOptionValue("max-testcase-run-count", Integer.toString(3));
+        setter.setOptionValue("max-testcase-run-count", Integer.toString(2));
         decision.setInvocationContext(mModuleInvocationContext);
         FakeTest test = new FakeTest();
         test.setRunFailure("I failed!");
         ITestDevice mMockDevice = EasyMock.createMock(ITestDevice.class);
         test.setDevice(mMockDevice);
         mModuleInvocationContext.addAllocatedDevice("default-device1", mMockDevice);
-        GranularRetriableTestWrapper granularTestWrapper = createGranularTestWrapper(test, 3);
+        GranularRetriableTestWrapper granularTestWrapper = createGranularTestWrapper(test, 2);
         granularTestWrapper.setRetryDecision(decision);
         EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(EasyMock.createMock(IDevice.class));
         mMockDevice.reboot();

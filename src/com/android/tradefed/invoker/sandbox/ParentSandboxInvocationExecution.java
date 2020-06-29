@@ -35,6 +35,7 @@ import com.android.tradefed.invoker.TestInvocation.Stage;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.sandbox.SandboxInvocationRunner;
 import com.android.tradefed.sandbox.SandboxOptions;
 import com.android.tradefed.targetprep.BuildError;
@@ -190,7 +191,7 @@ public class ParentSandboxInvocationExecution extends InvocationExecution {
                                 SandboxOptions.PARENT_PREPARER_CONFIG, e.getMessage());
                 CLog.e(message);
                 CLog.e(e);
-                throw new TargetSetupError(message, e, null);
+                throw new TargetSetupError(message, e, InfraErrorIdentifier.UNDETERMINED);
             }
         }
         return null;

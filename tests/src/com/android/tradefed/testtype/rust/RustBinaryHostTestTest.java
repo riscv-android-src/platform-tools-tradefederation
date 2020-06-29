@@ -164,10 +164,7 @@ public class RustBinaryHostTestTest {
         }
     }
 
-    /**
-     * If the binary returns an exception status, we should throw a runtime exception since
-     * something went wrong with the binary setup.
-     */
+    /** If the binary returns an exception status, it is treated as a failed test. */
     @Test
     public void testRunFail_exception() throws Exception {
         File binary = FileUtil.createTempFile("rust-dir", "");
@@ -178,6 +175,7 @@ public class RustBinaryHostTestTest {
             mockRunTest(
                     binary, CommandStatus.EXCEPTION, "Count not execute.", "Could not execute.");
             mMockListener.testRunFailed((String) EasyMock.anyObject());
+            mMockListener.testRunFailed((String) EasyMock.anyObject());
             mockTestRunEnded();
             callReplayRunVerify();
         } finally {
@@ -185,10 +183,7 @@ public class RustBinaryHostTestTest {
         }
     }
 
-    /**
-     * If we can't parse a test list from the binary, we should continue but expect 0 tests. This
-     * may occur if the test binary does not use the standard Rust test harness.
-     */
+    /** If the binary reports a FAILED status, it is treated as a failed test. */
     @Test
     public void testRunFail_list() throws Exception {
         File binary = FileUtil.createTempFile("rust-dir", "");
@@ -215,6 +210,7 @@ public class RustBinaryHostTestTest {
                     CommandStatus.FAILED,
                     "",
                     "test result: ok. 6 passed; 1 failed; 2 ignored;");
+            mMockListener.testRunFailed((String) EasyMock.anyObject());
             mockTestRunEnded();
             callReplayRunVerify();
         } finally {
@@ -222,10 +218,7 @@ public class RustBinaryHostTestTest {
         }
     }
 
-    /**
-     * If the binary reports a FAILED status but the output actually have some tests, it most likely
-     * means that some tests failed. So we simply continue with parsing the results.
-     */
+    /** If the binary reports a FAILED status, it is treated as a failed test. */
     @Test
     public void testRunFail_failureOnly() throws Exception {
         File binary = FileUtil.createTempFile("rust-dir", "");
@@ -238,6 +231,7 @@ public class RustBinaryHostTestTest {
                     CommandStatus.FAILED,
                     "",
                     "test result: ok. 6 passed; 1 failed; 2 ignored;");
+            mMockListener.testRunFailed((String) EasyMock.anyObject());
             mockTestRunEnded();
             callReplayRunVerify();
         } finally {

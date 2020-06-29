@@ -33,6 +33,7 @@ import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.error.ErrorIdentifier;
 import com.android.tradefed.result.proto.LogFileProto.LogFileInfo;
 import com.android.tradefed.result.proto.TestRecordProto.ChildReference;
 import com.android.tradefed.result.proto.TestRecordProto.DebugInfo;
@@ -299,24 +300,28 @@ public class ProtoResultParser {
         }
 
         if (endInvocationProto.hasDebugInfo()) {
-            String trace = endInvocationProto.getDebugInfo().getTrace();
-            Throwable invocationError = new Throwable(trace);
+            DebugInfo debugInfo = endInvocationProto.getDebugInfo();
+            FailureDescription failure = FailureDescription.create(debugInfo.getErrorMessage());
+            if (!TestRecordProto.FailureStatus.UNSET.equals(
+                    endInvocationProto.getDebugInfo().getFailureStatus())) {
+                failure.setFailureStatus(debugInfo.getFailureStatus());
+            }
+            parseDebugInfoContext(endInvocationProto.getDebugInfo(), failure);
             if (endInvocationProto.getDebugInfo().hasDebugInfoContext()) {
-                DebugInfoContext failureContext =
-                        endInvocationProto.getDebugInfo().getDebugInfoContext();
-                if (!Strings.isNullOrEmpty(failureContext.getErrorType())) {
+                String errorType =
+                        endInvocationProto.getDebugInfo().getDebugInfoContext().getErrorType();
+                if (!Strings.isNullOrEmpty(errorType)) {
                     try {
-                        invocationError =
-                                (Throwable)
-                                        SerializationUtil.deserialize(
-                                                failureContext.getErrorType());
+                        Throwable invocationError =
+                                (Throwable) SerializationUtil.deserialize(errorType);
+                        failure.setCause(invocationError);
                     } catch (IOException e) {
                         CLog.e("Failed to deserialize the invocation exception:");
                         CLog.e(e);
                     }
                 }
             }
-            mListener.invocationFailed(invocationError);
+            mListener.invocationFailed(failure);
         }
 
         log("Invocation ended proto");
@@ -631,18 +636,47 @@ public class ProtoResultParser {
         if (!debugInfo.hasDebugInfoContext()) {
             return;
         }
-        if (!Strings.isNullOrEmpty(debugInfo.getDebugInfoContext().getActionInProgress())) {
+        DebugInfoContext debugContext = debugInfo.getDebugInfoContext();
+        if (!Strings.isNullOrEmpty(debugContext.getActionInProgress())) {
             try {
                 ActionInProgress value =
-                        ActionInProgress.valueOf(
-                                debugInfo.getDebugInfoContext().getActionInProgress());
+                        ActionInProgress.valueOf(debugContext.getActionInProgress());
                 failure.setActionInProgress(value);
             } catch (IllegalArgumentException parseError) {
                 CLog.e(parseError);
             }
         }
-        if (!Strings.isNullOrEmpty(debugInfo.getDebugInfoContext().getDebugHelpMessage())) {
-            failure.setDebugHelpMessage(debugInfo.getDebugInfoContext().getDebugHelpMessage());
+        if (!Strings.isNullOrEmpty(debugContext.getDebugHelpMessage())) {
+            failure.setDebugHelpMessage(debugContext.getDebugHelpMessage());
+        }
+        if (!Strings.isNullOrEmpty(debugContext.getOrigin())) {
+            failure.setOrigin(debugContext.getOrigin());
+        }
+        String errorName = debugContext.getErrorName();
+        long errorCode = debugContext.getErrorCode();
+        if (!Strings.isNullOrEmpty(errorName)) {
+            // Most of the implementations will be Enums which represent the name/code.
+            // But since there might be several Enum implementation of ErrorIdentifier, we can't
+            // parse back the name to the Enum so instead we stub create a pre-populated
+            // ErrorIdentifier to carry the infos.
+            ErrorIdentifier errorId =
+                    new ErrorIdentifier() {
+                        @Override
+                        public String name() {
+                            return errorName;
+                        }
+
+                        @Override
+                        public long code() {
+                            return errorCode;
+                        }
+
+                        @Override
+                        public FailureStatus status() {
+                            return failure.getFailureStatus();
+                        }
+                    };
+            failure.setErrorIdentifier(errorId);
         }
     }
 }

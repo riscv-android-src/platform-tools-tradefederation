@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.result;
 
+import com.android.tradefed.result.error.ErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 
 import java.util.ArrayList;
@@ -34,13 +35,7 @@ public final class MultiFailureDescription extends FailureDescription {
 
     public MultiFailureDescription(List<FailureDescription> failures) {
         super();
-        for (FailureDescription failure : failures) {
-            if (failure instanceof MultiFailureDescription) {
-                mFailures.addAll(((MultiFailureDescription) failure).getFailures());
-            } else {
-                mFailures.add(failure);
-            }
-        }
+        addMultiFailures(failures);
     }
 
     public MultiFailureDescription(FailureDescription... failures) {
@@ -85,6 +80,24 @@ public final class MultiFailureDescription extends FailureDescription {
     }
 
     @Override
+    public ErrorIdentifier getErrorIdentifier() {
+        if (mFailures.isEmpty()) {
+            return null;
+        }
+        // Default to the first reported failure
+        return mFailures.get(0).getErrorIdentifier();
+    }
+
+    @Override
+    public String getOrigin() {
+        if (mFailures.isEmpty()) {
+            return null;
+        }
+        // Default to the first reported failure
+        return mFailures.get(0).getOrigin();
+    }
+
+    @Override
     public boolean isRetriable() {
         for (FailureDescription desc : mFailures) {
             if (desc.isRetriable()) {
@@ -124,5 +137,16 @@ public final class MultiFailureDescription extends FailureDescription {
             }
         }
         return true;
+    }
+
+    /** Un-nest all the sub-MultiFailureDescription for ease of tracking. */
+    private void addMultiFailures(List<FailureDescription> failures) {
+        for (FailureDescription failure : failures) {
+            if (failure instanceof MultiFailureDescription) {
+                addMultiFailures(((MultiFailureDescription) failure).getFailures());
+            } else {
+                mFailures.add(failure);
+            }
+        }
     }
 }

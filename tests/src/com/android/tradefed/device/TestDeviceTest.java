@@ -460,26 +460,26 @@ public class TestDeviceTest extends TestCase {
                     @Override
                     public void recoverDeviceRecovery(IDeviceStateMonitor monitor)
                             throws DeviceNotAvailableException {
-                        throw new DeviceNotAvailableException();
+                        throw new DeviceNotAvailableException("test", "serial");
                     }
 
                     @Override
                     public void recoverDeviceBootloader(IDeviceStateMonitor monitor)
                             throws DeviceNotAvailableException {
-                        throw new DeviceNotAvailableException();
+                        throw new DeviceNotAvailableException("test", "serial");
                     }
 
                     @Override
                     public void recoverDevice(
                             IDeviceStateMonitor monitor, boolean recoverUntilOnline)
                             throws DeviceNotAvailableException {
-                        throw new DeviceUnresponsiveException();
+                        throw new DeviceUnresponsiveException("test", "serial");
                     }
 
                     @Override
                     public void recoverDeviceFastbootd(IDeviceStateMonitor monitor)
                             throws DeviceNotAvailableException {
-                        throw new DeviceUnresponsiveException();
+                        throw new DeviceUnresponsiveException("test", "serial");
                     }
                 });
         testDevice.setRecoveryMode(RecoveryMode.AVAILABLE);
@@ -540,7 +540,7 @@ public class TestDeviceTest extends TestCase {
                 EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject());
         EasyMock.expectLastCall().andThrow(new IOException());
         mMockRecovery.recoverDevice(EasyMock.eq(mMockStateMonitor), EasyMock.eq(false));
-        EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException());
+        EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException("test", "serial"));
         EasyMock.replay(mMockIDevice);
         EasyMock.replay(mMockRecovery);
         try {
@@ -899,7 +899,7 @@ public class TestDeviceTest extends TestCase {
         EasyMock.expect(mockRunner.getPackageName()).andReturn("foo");
         listener.testRunFailed((String)EasyMock.anyObject());
         mMockRecovery.recoverDevice(EasyMock.eq(mMockStateMonitor), EasyMock.eq(false));
-        EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException());
+        EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException("test", "serial"));
         EasyMock.replay(listener, mockRunner, mMockIDevice, mMockRecovery);
         try {
             mRecoveryTestDevice.runInstrumentationTests(mockRunner, listeners);
@@ -4592,7 +4592,7 @@ public class TestDeviceTest extends TestCase {
 
                     @Override
                     IWifiHelper createWifiHelper() throws DeviceNotAvailableException {
-                        super.createWifiHelper();
+                        super.createWifiHelper(true);
                         return mMockWifi;
                     }
 
@@ -4607,6 +4607,7 @@ public class TestDeviceTest extends TestCase {
                         return null;
                     }
                 };
+        EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable()).andReturn(mMockIDevice);
         mMockIDevice.executeShellCommand(
                 EasyMock.eq("dumpsys package com.android.tradefed.utils.wifi"),
                 EasyMock.anyObject(),

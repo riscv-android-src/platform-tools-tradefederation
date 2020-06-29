@@ -118,8 +118,10 @@ public class WifiHelper implements IWifiHelper {
                 // Installed successfully; good to go.
                 return;
             } else {
-                throw new RuntimeException(String.format(
-                        "Unable to install WifiUtil utility: %s", error));
+                throw new RuntimeException(
+                        String.format(
+                                "Unable to install WifiUtil utility: %s on %s",
+                                error, mDevice.getSerialNumber()));
             }
         } catch (IOException e) {
             throw new RuntimeException(String.format(
