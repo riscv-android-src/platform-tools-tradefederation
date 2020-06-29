@@ -19,6 +19,7 @@ import com.android.ddmlib.IDevice;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.device.TestDeviceOptions.InstanceType;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -251,7 +252,9 @@ public class RemoteAndroidDevice extends TestDevice {
             getRunUtil().sleep(RETRY_INTERVAL_MS);
         }
         throw new DeviceNotAvailableException(
-                String.format("No adb connection after %sms.", waitTime), getSerialNumber());
+                String.format("No adb connection after %sms.", waitTime),
+                getSerialNumber(),
+                DeviceErrorIdentifier.FAILED_TO_CONNECT_TO_GCE);
     }
 
     /**

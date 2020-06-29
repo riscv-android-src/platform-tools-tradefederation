@@ -28,6 +28,7 @@ import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.host.IHostOptions;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.targetprep.IDeviceFlasher.UserDataFlashOption;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.IRunUtil;
@@ -315,8 +316,11 @@ public abstract class DeviceFlashPreparer extends BaseTargetPreparer {
             // throw DNAE - assume device hardware problem - we think flash was successful but
             // device is not running right bits
             throw new DeviceNotAvailableException(
-                    String.format("Unexpected build after flashing. Expected %s, actual %s",
-                            expectedBuildAttr, actualBuildAttr), serial);
+                    String.format(
+                            "Unexpected build after flashing. Expected %s, actual %s",
+                            expectedBuildAttr, actualBuildAttr),
+                    serial,
+                    DeviceErrorIdentifier.DEVICE_UNEXPECTED_RESPONSE);
         }
     }
 
