@@ -139,6 +139,8 @@ public class TestInvocationTest {
     /** The {@link TestInvocation} under test, with all dependencies mocked out */
     private TestInvocation mTestInvocation;
 
+    private FailureStatus mExceptedStatus = null;
+
     private IConfiguration mStubConfiguration;
     private IConfiguration mStubMultiConfiguration;
     private IGlobalConfiguration mGlobalConfiguration;
@@ -559,6 +561,7 @@ public class TestInvocationTest {
     @Test
     public void testInvoke_testFail() throws Throwable {
         IllegalArgumentException exception = new IllegalArgumentException("testInvoke_testFail");
+        mExceptedStatus = FailureStatus.UNSET;
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
         test.run(EasyMock.anyObject(), EasyMock.anyObject());
         EasyMock.expectLastCall().andThrow(exception);
@@ -606,6 +609,7 @@ public class TestInvocationTest {
     @Test
     public void testInvoke_fatalError() throws Throwable {
         FatalHostError exception = new FatalHostError("testInvoke_fatalError");
+        mExceptedStatus = FailureStatus.UNSET;
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
         test.run(EasyMock.anyObject(), EasyMock.anyObject());
         EasyMock.expectLastCall().andThrow(exception);
@@ -685,7 +689,9 @@ public class TestInvocationTest {
      */
     @Test
     public void testInvoke_buildError() throws Throwable {
-        BuildError exception = new BuildError("error", mFakeDescriptor);
+        BuildError exception =
+                new BuildError(
+                        "error", mFakeDescriptor, InfraErrorIdentifier.ARTIFACT_DOWNLOAD_ERROR);
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
         mStubConfiguration.setTest(test);
         EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
@@ -772,6 +778,7 @@ public class TestInvocationTest {
     @Test
     public void testInvoke_tearDown_runtime() throws Throwable {
         RuntimeException exception = new RuntimeException("testInvoke_tearDown_runtime");
+        mExceptedStatus = FailureStatus.UNSET;
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
         test.run(EasyMock.anyObject(), EasyMock.anyObject());
         EasyMock.expectLastCall().andThrow(exception);
@@ -1121,26 +1128,26 @@ public class TestInvocationTest {
         // invocationFailed
         if (!status.equals(InvocationStatus.SUCCESS)) {
             if (stubFailures) {
-                if (throwable instanceof BuildRetrievalError) {
-                    mMockTestListener.invocationFailed(EasyMock.<FailureDescription>anyObject());
-                    mMockSummaryListener.invocationFailed(EasyMock.<FailureDescription>anyObject());
-                } else {
-                    mMockTestListener.invocationFailed(EasyMock.<Throwable>anyObject());
-                    mMockSummaryListener.invocationFailed(EasyMock.<Throwable>anyObject());
-                }
+                mMockTestListener.invocationFailed(EasyMock.<FailureDescription>anyObject());
+                mMockSummaryListener.invocationFailed(EasyMock.<FailureDescription>anyObject());
             } else {
+                FailureDescription failure =
+                        FailureDescription.create(
+                                        throwable.getMessage(), FailureStatus.INFRA_FAILURE)
+                                .setCause(throwable);
                 if (throwable instanceof BuildRetrievalError) {
-                    FailureDescription failure =
-                            FailureDescription.create(
-                                            throwable.getMessage(), FailureStatus.INFRA_FAILURE)
-                                    .setActionInProgress(ActionInProgress.FETCHING_ARTIFACTS)
-                                    .setCause(throwable);
-                    mMockTestListener.invocationFailed(EasyMock.eq(failure));
-                    mMockSummaryListener.invocationFailed(EasyMock.eq(failure));
+                    failure.setActionInProgress(ActionInProgress.FETCHING_ARTIFACTS);
+                } else if (throwable instanceof BuildError
+                        || throwable instanceof TargetSetupError) {
+                    failure.setActionInProgress(ActionInProgress.SETUP);
                 } else {
-                    mMockTestListener.invocationFailed(EasyMock.eq(throwable));
-                    mMockSummaryListener.invocationFailed(EasyMock.eq(throwable));
+                    failure.setActionInProgress(ActionInProgress.TEST);
                 }
+                if (mExceptedStatus != null) {
+                    failure.setFailureStatus(mExceptedStatus);
+                }
+                mMockTestListener.invocationFailed(EasyMock.eq(failure));
+                mMockSummaryListener.invocationFailed(EasyMock.eq(failure));
             }
         }
 
