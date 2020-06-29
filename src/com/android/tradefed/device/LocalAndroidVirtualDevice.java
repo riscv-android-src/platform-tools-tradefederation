@@ -18,8 +18,8 @@ package com.android.tradefed.device;
 
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log.LogLevel;
+import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.IBuildInfo;
-import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.device.cloud.GceAvdInfo;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -53,7 +53,6 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
 
     // Environment variables.
     private static final String ANDROID_HOST_OUT = "ANDROID_HOST_OUT";
-    private static final String TARGET_PRODUCT = "TARGET_PRODUCT";
     private static final String TMPDIR = "TMPDIR";
 
     // The name of the GZIP file containing launch_cvd and stop_cvd.
@@ -64,10 +63,10 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
 
     private ITestLogger mTestLogger = null;
 
-    // Temporary directories for runtime files, host package, and images.
-    private File mHostPackageDir = null;
-    private boolean mShouldDeleteHostPackageDir = false;
+    // Temporary directories for images and tools.
     private File mImageDir = null;
+    private File mHostPackageDir = null;
+    private List<File> mTempDirs = new ArrayList<File>();
 
     private GceAvdInfo mGceAvdInfo = null;
 
@@ -83,13 +82,13 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
         // The setup method in super class does not require the device to be online.
         super.preInvocationSetup(info);
 
-        createTempDirs((IDeviceBuildInfo) info);
+        createTempDirs(info);
 
         CommandResult result = null;
         File report = null;
         try {
             report = FileUtil.createTempFile("report", ".json");
-            result = acloudCreate(info.getBuildFlavor(), report, getOptions());
+            result = acloudCreate(report, getOptions());
             loadAvdInfo(report);
         } catch (IOException ex) {
             throw new TargetSetupError(
@@ -155,6 +154,7 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
                         "Skip deleting the temporary directories.\n"
                                 + "Address: %s\nName: %s\nHost package: %s\nImage: %s",
                         hostAndPort, instanceName, mHostPackageDir, mImageDir);
+                mTempDirs.clear();
                 mHostPackageDir = null;
                 mImageDir = null;
             }
@@ -171,56 +171,93 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
     }
 
     /**
-     * Initialize mHostPackageDir and mImageDir.
+     * Extract a file if the format is tar.gz or zip.
      *
-     * @param deviceBuildInfo the {@link IDeviceBuildInfo} that provides host package and image zip.
-     * @throws TargetSetupError if any file is not found or cannot be extracted.
+     * @param file the file to be extracted.
+     * @return a temporary directory containing the extracted content if the file is an archive;
+     *     otherwise return the input file.
+     * @throws IOException if the file cannot be extracted.
      */
-    private void createTempDirs(IDeviceBuildInfo deviceBuildInfo) throws TargetSetupError {
-        // Extract host package to mHostPackageDir.
-        File hostPackageGzip = deviceBuildInfo.getFile(CVD_HOST_PACKAGE_NAME);
-        if (hostPackageGzip != null) {
+    private File extractArchive(File file) throws IOException {
+        if (file.isDirectory()) {
+            return file;
+        }
+        if (TarUtil.isGzip(file)) {
+            file = TarUtil.extractTarGzipToTemp(file, file.getName());
+            mTempDirs.add(file);
+        } else if (ZipUtil.isZipFileValid(file, false)) {
+            file = ZipUtil.extractZipToTemp(file, file.getName());
+            mTempDirs.add(file);
+        } else {
+            CLog.w("Cannot extract %s.", file);
+        }
+        return file;
+    }
+
+    /** Find host package in build info and extract to a temporary directory. */
+    private File findHostPackage(IBuildInfo buildInfo) throws TargetSetupError {
+        File hostPackageDir = null;
+        File hostPackage = buildInfo.getFile(CVD_HOST_PACKAGE_NAME);
+        if (hostPackage != null) {
             try {
-                mHostPackageDir = TarUtil.extractTarGzipToTemp(hostPackageGzip, "CvdHostPackage");
+                hostPackageDir = extractArchive(hostPackage);
             } catch (IOException ex) {
                 throw new TargetSetupError(
                         "Cannot extract host package.", ex, getDeviceDescriptor());
             }
-            mShouldDeleteHostPackageDir = true;
-            FileUtil.chmodRWXRecursively(new File(mHostPackageDir, "bin"));
-        } else {
-            mShouldDeleteHostPackageDir = false;
-            CLog.i(
-                    "Use the host tools in %s as build info does not provide %s.",
-                    ANDROID_HOST_OUT, CVD_HOST_PACKAGE_NAME);
-            String androidHostOut = System.getenv(ANDROID_HOST_OUT);
-            if (Strings.isNullOrEmpty(androidHostOut) || !new File(androidHostOut).isDirectory()) {
-                throw new TargetSetupError(
-                        String.format(
-                                "%s is not in build info, and %s is not set.",
-                                CVD_HOST_PACKAGE_NAME, ANDROID_HOST_OUT),
-                        getDeviceDescriptor());
-            }
-            mHostPackageDir = new File(androidHostOut);
         }
+        if (hostPackageDir == null) {
+            String androidHostOut = System.getenv(ANDROID_HOST_OUT);
+            if (!Strings.isNullOrEmpty(androidHostOut)) {
+                CLog.i(
+                        "Use the host tools in %s as the build info does not provide host package.",
+                        androidHostOut);
+                hostPackageDir = new File(androidHostOut);
+            }
+        }
+        if (hostPackageDir == null || !hostPackageDir.isDirectory()) {
+            throw new TargetSetupError(
+                    String.format(
+                            "Cannot find %s in build info and %s.",
+                            CVD_HOST_PACKAGE_NAME, ANDROID_HOST_OUT),
+                    getDeviceDescriptor());
+        }
+        FileUtil.chmodRWXRecursively(new File(hostPackageDir, "bin"));
+        return hostPackageDir;
+    }
 
-        // Extract images to mImageDir.
+    /** Find device images in build info and extract to a temporary directory. */
+    private File findDeviceImages(IBuildInfo buildInfo) throws TargetSetupError {
+        File imageZip = buildInfo.getFile(BuildInfoFileKey.DEVICE_IMAGE);
+        if (imageZip == null) {
+            throw new TargetSetupError(
+                    "Cannot find image zip in build info.", getDeviceDescriptor());
+        }
         try {
-            mImageDir =
-                    ZipUtil.extractZipToTemp(deviceBuildInfo.getDeviceImageFile(), "LocalAvdImage");
+            return extractArchive(imageZip);
         } catch (IOException ex) {
             throw new TargetSetupError("Cannot extract image zip.", ex, getDeviceDescriptor());
         }
     }
 
-    /** Delete mHostPackageDir and mImageDir. */
+    /** Get the necessary files to create the instance. */
+    void createTempDirs(IBuildInfo info) throws TargetSetupError {
+        try {
+            mHostPackageDir = findHostPackage(info);
+            mImageDir = findDeviceImages(info);
+        } catch (TargetSetupError ex) {
+            deleteTempDirs();
+            throw ex;
+        }
+    }
+
+    /** Delete all temporary directories. */
     @VisibleForTesting
     void deleteTempDirs() {
-        FileUtil.recursiveDelete(mImageDir);
-        if (mShouldDeleteHostPackageDir) {
-            mShouldDeleteHostPackageDir = false;
-            FileUtil.recursiveDelete(mHostPackageDir);
+        for (File tempDir : mTempDirs) {
+            FileUtil.recursiveDelete(tempDir);
         }
+        mTempDirs.clear();
         mImageDir = null;
         mHostPackageDir = null;
     }
@@ -255,7 +292,7 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
         }
     }
 
-    private CommandResult acloudCreate(String buildFlavor, File report, TestDeviceOptions options) {
+    private CommandResult acloudCreate(File report, TestDeviceOptions options) {
         CommandResult result = null;
 
         File acloud = options.getAvdDriverBinary();
@@ -272,7 +309,6 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
                     acloudCreate(
                             options.getGceCmdTimeout(),
                             acloud,
-                            buildFlavor,
                             report,
                             options.getGceDriverLogLevel(),
                             options.getGceDriverParams());
@@ -289,14 +325,12 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
     private CommandResult acloudCreate(
             long timeout,
             File acloud,
-            String buildFlavor,
             File report,
             LogLevel logLevel,
             List<String> args) {
         IRunUtil runUtil = createRunUtil();
         // The command creates the instance directory under TMPDIR.
         runUtil.setEnvVariable(TMPDIR, getTmpDir().getAbsolutePath());
-        runUtil.setEnvVariable(TARGET_PRODUCT, buildFlavor);
 
         List<String> command =
                 new ArrayList<String>(
