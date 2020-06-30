@@ -565,9 +565,11 @@ public class TestInvocationTest {
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
         test.run(EasyMock.anyObject(), EasyMock.anyObject());
         EasyMock.expectLastCall().andThrow(exception);
+        mMockPreparer.tearDown(EasyMock.anyObject(), EasyMock.eq(exception));
         setupMockFailureListeners(exception);
         setEarlyDeviceReleaseExpectation();
         setupNormalInvoke(test);
+
         EasyMock.replay(mockRescheduler);
         try {
             mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
@@ -702,8 +704,6 @@ public class TestInvocationTest {
         EasyMock.expect(mMockDevice.getBugreport()).andReturn(EMPTY_STREAM_SOURCE);
         setEarlyDeviceReleaseExpectation();
         setupInvokeWithBuild();
-
-        mMockDevice.postInvocationTearDown(exception);
 
         replayMocks(test);
         EasyMock.replay(mockRescheduler);
@@ -1105,6 +1105,9 @@ public class TestInvocationTest {
 
         if (throwable == null) {
             mMockDevice.postInvocationTearDown(null);
+            EasyMock.expectLastCall().anyTimes();
+        } else {
+            mMockDevice.postInvocationTearDown(throwable);
             EasyMock.expectLastCall().anyTimes();
         }
 
