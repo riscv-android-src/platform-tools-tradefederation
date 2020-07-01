@@ -1049,12 +1049,13 @@ public class NativeDeviceTest {
     /** Unit test for {@link NativeDevice#takeBugreport()}. */
     @Test
     public void testTakeBugreport_apiLevelFail() {
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public int getApiLevel() throws DeviceNotAvailableException {
-                throw new DeviceNotAvailableException();
-            }
-        };
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        throw new DeviceNotAvailableException("test", "serial");
+                    }
+                };
         // If we can't check API level it should return null.
         assertNull(mTestDevice.takeBugreport());
     }
@@ -1136,7 +1137,7 @@ public class NativeDeviceTest {
 
         // FIXME: this isn't actually causing a DeviceNotAvailableException to be thrown
         mMockRecovery.recoverDevice(EasyMock.eq(mMockStateMonitor), EasyMock.eq(false));
-        EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException());
+        EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException("test", "serial"));
         EasyMock.replay(mMockRecovery, mMockIDevice);
         assertEquals(expectedOutput, StreamUtil.getStringFromStream(
                 mTestDevice.getBugreport().createInputStream()));
@@ -1144,23 +1145,29 @@ public class NativeDeviceTest {
 
     @Test
     public void testGetBugreport_compatibility_deviceUnavail() throws Exception {
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public void executeShellCommand(
-                    String command, IShellOutputReceiver receiver,
-                    long maxTimeToOutputShellResponse, TimeUnit timeUnit, int retryAttempts)
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public void executeShellCommand(
+                            String command,
+                            IShellOutputReceiver receiver,
+                            long maxTimeToOutputShellResponse,
+                            TimeUnit timeUnit,
+                            int retryAttempts)
                             throws DeviceNotAvailableException {
-                throw new DeviceNotAvailableException();
-            }
-            @Override
-            public int getApiLevel() throws DeviceNotAvailableException {
-                return 24;
-            }
-            @Override
-            public IFileEntry getFileEntry(String path) throws DeviceNotAvailableException {
-                return null;
-            }
-        };
+                        throw new DeviceNotAvailableException("test", "serial");
+                    }
+
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        return 24;
+                    }
+
+                    @Override
+                    public IFileEntry getFileEntry(String path) throws DeviceNotAvailableException {
+                        return null;
+                    }
+                };
         EasyMock.replay(mMockRecovery, mMockIDevice);
         assertEquals(0, mTestDevice.getBugreport().size());
         EasyMock.verify(mMockRecovery, mMockIDevice);
@@ -1169,31 +1176,38 @@ public class NativeDeviceTest {
     @Test
     public void testGetBugreport_deviceUnavail_fallback() throws Exception {
         final IFileEntry fakeEntry = EasyMock.createMock(IFileEntry.class);
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public void executeShellCommand(
-                    String command, IShellOutputReceiver receiver,
-                    long maxTimeToOutputShellResponse, TimeUnit timeUnit, int retryAttempts)
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public void executeShellCommand(
+                            String command,
+                            IShellOutputReceiver receiver,
+                            long maxTimeToOutputShellResponse,
+                            TimeUnit timeUnit,
+                            int retryAttempts)
                             throws DeviceNotAvailableException {
-                throw new DeviceNotAvailableException();
-            }
-            @Override
-            public int getApiLevel() throws DeviceNotAvailableException {
-                return 24;
-            }
-            @Override
-            public IFileEntry getFileEntry(String path) throws DeviceNotAvailableException {
-                return fakeEntry;
-            }
-            @Override
-            public File pullFile(String remoteFilePath) throws DeviceNotAvailableException {
-                try {
-                    return FileUtil.createTempFile("bugreport", ".txt");
-                } catch (IOException e) {
-                    return null;
-                }
-            }
-        };
+                        throw new DeviceNotAvailableException("test", "serial");
+                    }
+
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        return 24;
+                    }
+
+                    @Override
+                    public IFileEntry getFileEntry(String path) throws DeviceNotAvailableException {
+                        return fakeEntry;
+                    }
+
+                    @Override
+                    public File pullFile(String remoteFilePath) throws DeviceNotAvailableException {
+                        try {
+                            return FileUtil.createTempFile("bugreport", ".txt");
+                        } catch (IOException e) {
+                            return null;
+                        }
+                    }
+                };
         List<IFileEntry> list = new ArrayList<>();
         list.add(fakeEntry);
         EasyMock.expect(fakeEntry.getChildren(false)).andReturn(list);
@@ -2871,7 +2885,7 @@ public class NativeDeviceTest {
                     @Override
                     public String executeShellCommand(String command)
                             throws DeviceNotAvailableException {
-                        throw new DeviceNotAvailableException();
+                        throw new DeviceNotAvailableException("test", "serial");
                     }
                 };
         assertEquals(expectSize, mTestDevice.getTotalMemory());

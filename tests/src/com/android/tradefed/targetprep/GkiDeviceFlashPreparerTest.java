@@ -295,6 +295,32 @@ public class GkiDeviceFlashPreparerTest {
         EasyMock.verify(mMockDevice, mMockRunUtil);
     }
 
+    /* Verifies that preparer can flash GKI boot image from a Zip file*/
+    @Test
+    public void testSetup_Success_FromZip() throws Exception {
+        File gkiDir = FileUtil.createTempDir("gki_folder", mTmpDir);
+        File bootImg = new File(gkiDir, "boot-5.4.img");
+        FileUtil.writeToFile("ddd", bootImg);
+        File gkiZip = FileUtil.createTempFile("gki_image", ".zip", mTmpDir);
+        ZipUtil.createZip(List.of(bootImg), gkiZip);
+        mBuildInfo.setFile("gki_boot.img", gkiZip, "0");
+        mMockDevice.waitForDeviceOnline();
+        mMockDevice.rebootIntoBootloader();
+        mMockRunUtil.allowInterrupt(false);
+        EasyMock.expect(
+                        mMockDevice.executeLongFastbootCommand(
+                                EasyMock.eq("flash"),
+                                EasyMock.eq("boot"),
+                                EasyMock.matches(".*boot-5.4.img")))
+                .andReturn(mSuccessResult);
+        mMockRunUtil.allowInterrupt(true);
+        doSetupExpectations();
+        EasyMock.replay(mMockDevice, mMockRunUtil);
+        mPreparer.setUp(mTestInfo);
+        mPreparer.tearDown(mTestInfo, null);
+        EasyMock.verify(mMockDevice, mMockRunUtil);
+    }
+
     /* Verifies that preparer will throw TargetSetupError with GKI flash failure*/
     @Test
     public void testSetUp_GkiFlashFailure() throws Exception {
@@ -347,7 +373,7 @@ public class GkiDeviceFlashPreparerTest {
         mMockRunUtil.allowInterrupt(true);
         mMockRunUtil.sleep(EasyMock.anyLong());
         mMockDevice.rebootUntilOnline();
-        EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException());
+        EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException("test", "serial"));
         EasyMock.replay(mMockDevice, mMockRunUtil);
         try {
             mPreparer.setUp(mTestInfo);

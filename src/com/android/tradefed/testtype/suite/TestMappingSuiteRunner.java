@@ -166,7 +166,9 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
             IConfiguration moduleConfig = entry.getValue();
             ConfigurationDescriptor configDescriptor =
                     moduleConfig.getConfigurationDescription();
-            String moduleName = configDescriptor.getModuleName();
+            String abi = configDescriptor.getAbi().getName();
+            // Get the parameterized module name by striping the abi information out.
+            String moduleName = entry.getKey().replace(String.format("%s ", abi), "");
             String configPath = moduleConfig.getName();
             Set<TestInfo> testInfos = getTestInfos(testInfosToRun, moduleName);
             allTests.addAll(

@@ -124,6 +124,7 @@ import com.android.tradefed.device.recovery.BatteryUnavailableDeviceRecoveryTest
 import com.android.tradefed.device.recovery.RunConfigDeviceRecoveryTest;
 import com.android.tradefed.device.recovery.UsbResetMultiDeviceRecoveryTest;
 import com.android.tradefed.device.recovery.UsbResetRunConfigRecoveryTest;
+import com.android.tradefed.error.HarnessExceptionTest;
 import com.android.tradefed.guice.InvocationScopeTest;
 import com.android.tradefed.host.LocalHostResourceManagerTest;
 import com.android.tradefed.host.gcs.GCSHostResourceManagerTest;
@@ -136,6 +137,8 @@ import com.android.tradefed.invoker.ShardMasterResultForwarderTest;
 import com.android.tradefed.invoker.TestInvocationMultiTest;
 import com.android.tradefed.invoker.TestInvocationTest;
 import com.android.tradefed.invoker.UnexecutedTestReporterThreadTest;
+import com.android.tradefed.invoker.logger.CurrentInvocationTest;
+import com.android.tradefed.invoker.logger.InvocationLocalTest;
 import com.android.tradefed.invoker.logger.InvocationMetricLoggerTest;
 import com.android.tradefed.invoker.logger.TfObjectTrackerTest;
 import com.android.tradefed.invoker.sandbox.ParentSandboxInvocationExecutionTest;
@@ -189,6 +192,7 @@ import com.android.tradefed.result.TestSummaryTest;
 import com.android.tradefed.result.XmlResultReporterTest;
 import com.android.tradefed.result.ddmlib.InstrumentationResultProtoParserTest;
 import com.android.tradefed.result.ddmlib.TestRunToTestInvocationForwarderTest;
+import com.android.tradefed.result.error.ErrorIdentifierTest;
 import com.android.tradefed.result.proto.FileProtoResultReporterTest;
 import com.android.tradefed.result.proto.ProtoResultParserTest;
 import com.android.tradefed.result.proto.ProtoResultReporterTest;
@@ -227,6 +231,7 @@ import com.android.tradefed.targetprep.DynamicSystemPreparerTest;
 import com.android.tradefed.targetprep.FastbootDeviceFlasherTest;
 import com.android.tradefed.targetprep.FlashingResourcesParserTest;
 import com.android.tradefed.targetprep.GkiDeviceFlashPreparerTest;
+import com.android.tradefed.targetprep.GsiDeviceFlashPreparerTest;
 import com.android.tradefed.targetprep.InstallAllTestZipAppsSetupTest;
 import com.android.tradefed.targetprep.InstallApexModuleTargetPreparerTest;
 import com.android.tradefed.targetprep.InstallApkSetupTest;
@@ -252,6 +257,7 @@ import com.android.tradefed.targetprep.multi.MergeMultiBuildTargetPreparerTest;
 import com.android.tradefed.targetprep.multi.MixImageZipPreparerTest;
 import com.android.tradefed.targetprep.suite.SuiteApkInstallerTest;
 import com.android.tradefed.testtype.AndroidJUnitTestTest;
+import com.android.tradefed.testtype.ArtRunTestTest;
 import com.android.tradefed.testtype.ClangCodeCoverageListenerTest;
 import com.android.tradefed.testtype.DeviceBatteryLevelCheckerTest;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunnerTest;
@@ -290,6 +296,8 @@ import com.android.tradefed.testtype.host.CoverageMeasurementForwarderTest;
 import com.android.tradefed.testtype.junit4.BaseHostJUnit4TestTest;
 import com.android.tradefed.testtype.junit4.DeviceParameterizedRunnerTest;
 import com.android.tradefed.testtype.junit4.LongevityHostRunnerTest;
+import com.android.tradefed.testtype.mobly.MoblyBinaryHostTestTest;
+import com.android.tradefed.testtype.mobly.MoblyYamlResultParserTest;
 import com.android.tradefed.testtype.python.PythonBinaryHostTestTest;
 import com.android.tradefed.testtype.rust.RustBinaryHostTestTest;
 import com.android.tradefed.testtype.rust.RustBinaryTestTest;
@@ -552,6 +560,9 @@ import org.junit.runners.Suite.SuiteClasses;
     UsbResetMultiDeviceRecoveryTest.class,
     UsbResetRunConfigRecoveryTest.class,
 
+    // error
+    HarnessExceptionTest.class,
+
     // Guice
     InvocationScopeTest.class,
 
@@ -573,6 +584,8 @@ import org.junit.runners.Suite.SuiteClasses;
     UnexecutedTestReporterThreadTest.class,
 
     // invoker.logger
+    CurrentInvocationTest.class,
+    InvocationLocalTest.class,
     InvocationMetricLoggerTest.class,
     TfObjectTrackerTest.class,
 
@@ -645,6 +658,9 @@ import org.junit.runners.Suite.SuiteClasses;
     InstrumentationResultProtoParserTest.class,
     TestRunToTestInvocationForwarderTest.class,
 
+    // result.error
+    ErrorIdentifierTest.class,
+
     // result.proto
     FileProtoResultReporterTest.class,
     ProtoResultParserTest.class,
@@ -675,6 +691,7 @@ import org.junit.runners.Suite.SuiteClasses;
     FastbootDeviceFlasherTest.class,
     FlashingResourcesParserTest.class,
     GkiDeviceFlashPreparerTest.class,
+    GsiDeviceFlashPreparerTest.class,
     InstallAllTestZipAppsSetupTest.class,
     InstallApexModuleTargetPreparerTest.class,
     InstallApkSetupTest.class,
@@ -730,6 +747,7 @@ import org.junit.runners.Suite.SuiteClasses;
 
     // testtype
     AndroidJUnitTestTest.class,
+    ArtRunTestTest.class,
     ClangCodeCoverageListenerTest.class,
     CoverageMeasurementForwarderTest.class,
     DeviceBatteryLevelCheckerTest.class,
@@ -772,6 +790,10 @@ import org.junit.runners.Suite.SuiteClasses;
     BaseHostJUnit4TestTest.class,
     DeviceParameterizedRunnerTest.class,
     LongevityHostRunnerTest.class,
+
+    // testtype/mobly
+    MoblyBinaryHostTestTest.class,
+    MoblyYamlResultParserTest.class,
 
     // testtype/python
     PythonBinaryHostTestTest.class,

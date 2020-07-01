@@ -471,23 +471,25 @@ public class RemoteManagerFuncTest extends TestCase {
         };
         mMockScheduler.execCommand((IScheduledInvocationListener)EasyMock.anyObject(),
                 EasyMock.eq(device), EasyMock.aryEq(args));
-        IAnswer<Void> invErrorAnswer = new IAnswer<Void>() {
-            @Override
-            public Void answer() throws Throwable {
-                IScheduledInvocationListener listener =
-                        (IScheduledInvocationListener)EasyMock.getCurrentArguments()[0];
-                IInvocationContext nullMeta = new InvocationContext();
-                nullMeta.addAllocatedDevice("device", device);
-                nullMeta.addDeviceBuildInfo("device", new BuildInfo());
-                listener.invocationStarted(nullMeta);
-                listener.invocationFailed(new DeviceNotAvailableException());
-                listener.invocationEnded(1);
-                Map<ITestDevice, FreeDeviceState> state = new HashMap<>();
-                state.put(device, FreeDeviceState.UNAVAILABLE);
-                listener.invocationComplete(nullMeta, state);
-                return null;
-            }
-        };
+        IAnswer<Void> invErrorAnswer =
+                new IAnswer<Void>() {
+                    @Override
+                    public Void answer() throws Throwable {
+                        IScheduledInvocationListener listener =
+                                (IScheduledInvocationListener) EasyMock.getCurrentArguments()[0];
+                        IInvocationContext nullMeta = new InvocationContext();
+                        nullMeta.addAllocatedDevice("device", device);
+                        nullMeta.addDeviceBuildInfo("device", new BuildInfo());
+                        listener.invocationStarted(nullMeta);
+                        listener.invocationFailed(
+                                new DeviceNotAvailableException("test", "serial"));
+                        listener.invocationEnded(1);
+                        Map<ITestDevice, FreeDeviceState> state = new HashMap<>();
+                        state.put(device, FreeDeviceState.UNAVAILABLE);
+                        listener.invocationComplete(nullMeta, state);
+                        return null;
+                    }
+                };
         EasyMock.expectLastCall().andAnswer(invErrorAnswer);
 
         EasyMock.replay(mMockDeviceManager, device, mMockScheduler, mockHandler);
