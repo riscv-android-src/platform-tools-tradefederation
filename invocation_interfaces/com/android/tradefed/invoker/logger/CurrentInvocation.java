@@ -132,6 +132,9 @@ public class CurrentInvocation {
     public static ExecutionFiles getInvocationFiles() {
         ThreadGroup group = Thread.currentThread().getThreadGroup();
         synchronized (mPerGroupInfo) {
+            if (mPerGroupInfo.get(group) == null) {
+                mPerGroupInfo.put(group, new InternalInvocationTracking());
+            }
             return mPerGroupInfo.get(group).mExecutionFiles;
         }
     }
