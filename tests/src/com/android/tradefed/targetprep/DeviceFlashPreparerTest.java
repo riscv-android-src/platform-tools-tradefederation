@@ -241,7 +241,7 @@ public class DeviceFlashPreparerTest {
         mMockFlasher.setDataWipeSkipList(Arrays.asList(new String[]{}));
         mMockFlasher.setShouldFlashRamdisk(false);
         mMockFlasher.flash(mMockDevice, mMockBuildInfo);
-        EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException());
+        EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException("test", "serial"));
         mMockFlasher.setWipeTimeout(EasyMock.anyLong());
         // report exception
         EasyMock.expect(mMockFlasher.getSystemFlashingStatus())

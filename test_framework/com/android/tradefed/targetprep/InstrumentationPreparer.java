@@ -100,7 +100,7 @@ public class InstrumentationPreparer extends BaseTargetPreparer {
             return;
         }
         ITestDevice device = testInfo.getDevice();
-        BuildError e = new BuildError("unknown error", device.getDeviceDescriptor());
+        BuildError e = null;
         for (int i = 0; i < mAttempts; i++) {
             try {
                 runInstrumentation(testInfo);

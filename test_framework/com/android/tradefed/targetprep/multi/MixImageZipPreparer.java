@@ -25,6 +25,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.CommandResult;
@@ -252,7 +253,8 @@ public class MixImageZipPreparer extends BaseMultiTargetPreparer {
                 if (miscInfoFile == null) {
                     throw new BuildError(
                             "Cannot get " + MISC_INFO_FILE_NAME + " from device build.",
-                            device.getDeviceDescriptor());
+                            device.getDeviceDescriptor(),
+                            InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
                 }
 
                 File otaToolsZip = mOtaToolsZip;
@@ -262,7 +264,8 @@ public class MixImageZipPreparer extends BaseMultiTargetPreparer {
                 if (otaToolsZip == null) {
                     throw new BuildError(
                             "Cannot get " + OTATOOLS_ZIP_NAME + " from system build.",
-                            systemNullDevice.getDeviceDescriptor());
+                            systemNullDevice.getDeviceDescriptor(),
+                            InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
                 }
 
                 File repackSuperImageFile = mRepackSuperImageFile;
@@ -272,7 +275,8 @@ public class MixImageZipPreparer extends BaseMultiTargetPreparer {
                 if (repackSuperImageFile == null) {
                     throw new BuildError(
                             "Cannot get " + REPACK_SUPER_IMAGE_FILE_NAME + " from system build.",
-                            systemNullDevice.getDeviceDescriptor());
+                            systemNullDevice.getDeviceDescriptor(),
+                            InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
                 }
 
                 mixedSuperImage = FileUtil.createTempFile("super", ".img");

@@ -28,6 +28,7 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 
@@ -47,6 +48,25 @@ public class TarUtilTest {
     @After
     public void tearDown() {
         FileUtil.recursiveDelete(mWorkDir);
+    }
+
+    /** Test that {@link TarUtil#isGzip(File)} determines the file type. */
+    @Test
+    public void testIsGzip() throws IOException {
+        InputStream logTarGz = getClass().getResourceAsStream(EMMA_METADATA_RESOURCE_PATH);
+        File tmpFile = FileUtil.createTempFile("log_tarutil_test", ".tar.gz");
+        try {
+            FileUtil.writeToFile(logTarGz, tmpFile);
+            assertTrue(TarUtil.isGzip(tmpFile));
+
+            FileUtil.writeToFile("test", tmpFile);
+            assertFalse(TarUtil.isGzip(tmpFile));
+
+            FileUtil.writeToFile("", tmpFile);
+            assertFalse(TarUtil.isGzip(tmpFile));
+        } finally {
+            FileUtil.deleteFile(tmpFile);
+        }
     }
 
     /**
