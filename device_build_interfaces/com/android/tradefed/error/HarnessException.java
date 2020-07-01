@@ -23,7 +23,7 @@ import java.lang.StackWalker.Option;
  * Base exception class for exception thrown within the harness. This class help carry {@link
  * ErrorIdentifier} to report the failure details.
  */
-public class HarnessException extends Exception {
+public class HarnessException extends Exception implements IHarnessException {
     static final long serialVersionUID = 100L;
 
     private String mOrigin;
@@ -54,11 +54,13 @@ public class HarnessException extends Exception {
     }
 
     /** Returns the {@link ErrorIdentifier} associated with the exception. Can be null. */
+    @Override
     public ErrorIdentifier getErrorId() {
         return mErrorId;
     }
 
     /** Returns the origin of the exception. */
+    @Override
     public String getOrigin() {
         return mOrigin;
     }
