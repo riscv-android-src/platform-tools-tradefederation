@@ -18,17 +18,16 @@ package com.android.tradefed.config;
 import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.config.OptionSetter.OptionFieldsForName;
-import com.android.tradefed.config.remote.GcsRemoteFileResolver;
-import com.android.tradefed.config.remote.HttpRemoteFileResolver;
-import com.android.tradefed.config.remote.HttpsRemoteFileResolver;
 import com.android.tradefed.config.remote.IRemoteFileResolver;
-import com.android.tradefed.config.remote.LocalFileResolver;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.ZipUtil;
 import com.android.tradefed.util.ZipUtil2;
+
+import com.google.common.collect.ImmutableMap;
 
 import java.io.File;
 import java.io.IOException;
@@ -45,7 +44,11 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.ServiceLoader;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
+
+import javax.annotation.Nullable;
+import javax.annotation.concurrent.GuardedBy;
+import javax.annotation.concurrent.ThreadSafe;
 
 /**
  * Class that helps resolving path to remote files.
@@ -57,25 +60,29 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class DynamicRemoteFileResolver {
 
-    private static final Map<String, IRemoteFileResolver> PROTOCOL_SUPPORT = new HashMap<>();
-
-    static {
-        PROTOCOL_SUPPORT.put(GcsRemoteFileResolver.PROTOCOL, new GcsRemoteFileResolver());
-        PROTOCOL_SUPPORT.put(LocalFileResolver.PROTOCOL, new LocalFileResolver());
-        PROTOCOL_SUPPORT.put(HttpRemoteFileResolver.PROTOCOL_HTTP, new HttpRemoteFileResolver());
-        PROTOCOL_SUPPORT.put(HttpsRemoteFileResolver.PROTOCOL_HTTPS, new HttpsRemoteFileResolver());
-    }
-    // The configuration map being static, we only need to update it once per TF instance.
-    private static AtomicBoolean sIsUpdateDone = new AtomicBoolean(false);
     // Query key for requesting to unzip a downloaded file automatically.
     public static final String UNZIP_KEY = "unzip";
     // Query key for requesting a download to be optional, so if it fails we don't replace it.
     public static final String OPTIONAL_KEY = "optional";
 
+    private static final FileResolverLoader DEFAULT_FILE_RESOLVER_LOADER =
+            new ServiceFileResolverLoader();
+
+    private final FileResolverLoader mFileResolverLoader;
+
     private Map<String, OptionFieldsForName> mOptionMap;
     // Populated from {@link ICommandOptions#getDynamicDownloadArgs()}
     private Map<String, String> mExtraArgs = new LinkedHashMap<>();
     private ITestDevice mDevice;
+
+    public DynamicRemoteFileResolver() {
+        this(DEFAULT_FILE_RESOLVER_LOADER);
+    }
+
+    @VisibleForTesting
+    public DynamicRemoteFileResolver(FileResolverLoader loader) {
+        this.mFileResolverLoader = loader;
+    }
 
     /** Sets the map of options coming from {@link OptionSetter} */
     public void setOptionMap(Map<String, OptionFieldsForName> optionMap) {
@@ -122,7 +129,8 @@ public class DynamicRemoteFileResolver {
                         }
                     } catch (IllegalAccessException e) {
                         throw new BuildRetrievalError(
-                                String.format("internal error: %s", e.getMessage()));
+                                String.format("internal error: %s", e.getMessage()),
+                                InfraErrorIdentifier.ARTIFACT_UNSUPPORTED_PATH);
                     }
 
                     if (fieldSeen.get(field) != null && fieldSeen.get(field).equals(obj)) {
@@ -130,6 +138,15 @@ public class DynamicRemoteFileResolver {
                     }
                     // Keep track of the field set on each object
                     fieldSeen.put(field, obj);
+
+                    // The below contains unchecked casts that are mostly safe because we add/remove
+                    // items of a type already in the collection; assuming they're not instances of
+                    // some subclass of File. This is unlikely since we populate the items during
+                    // option injection. The possibility still exists that constructors of
+                    // initialized objects add objects that are instances of a File subclass. A
+                    // safer approach would be to have a custom type that can be deferenced to
+                    // access the resolved target file. This would also have the benefit of not
+                    // having to modify any user collections and preserve the ordering.
 
                     if (value instanceof File) {
                         File consideredFile = (File) value;
@@ -149,6 +166,7 @@ public class DynamicRemoteFileResolver {
                             }
                         }
                     } else if (value instanceof Collection) {
+                        @SuppressWarnings("unchecked")  // Mostly-safe, see above comment.
                         Collection<Object> c = (Collection<Object>) value;
                         Collection<Object> copy = new ArrayList<>(c);
                         for (Object o : copy) {
@@ -164,6 +182,7 @@ public class DynamicRemoteFileResolver {
                             }
                         }
                     } else if (value instanceof Map) {
+                        @SuppressWarnings("unchecked")  // Mostly-safe, see above comment.
                         Map<Object, Object> m = (Map<Object, Object>) value;
                         Map<Object, Object> copy = new LinkedHashMap<>(m);
                         for (Entry<Object, Object> entry : copy.entrySet()) {
@@ -191,6 +210,7 @@ public class DynamicRemoteFileResolver {
                             m.put(finalKey, finalVal);
                         }
                     } else if (value instanceof MultiMap) {
+                        @SuppressWarnings("unchecked")  // Mostly-safe, see above comment.
                         MultiMap<Object, Object> m = (MultiMap<Object, Object>) value;
                         synchronized (m) {
                             MultiMap<Object, Object> copy = new MultiMap<>(m);
@@ -288,22 +308,8 @@ public class DynamicRemoteFileResolver {
         }
     }
 
-    @VisibleForTesting
     protected IRemoteFileResolver getResolver(String protocol) {
-        if (updateProtocols()) {
-            // Use the service loader to find all the implementations.
-            ServiceLoader<IRemoteFileResolver> serviceLoader =
-                    ServiceLoader.load(IRemoteFileResolver.class);
-            for (IRemoteFileResolver resolver : serviceLoader) {
-                PROTOCOL_SUPPORT.putIfAbsent(resolver.getSupportedProtocol(), resolver);
-            }
-        }
-        return PROTOCOL_SUPPORT.get(protocol);
-    }
-
-    @VisibleForTesting
-    protected boolean updateProtocols() {
-        return sIsUpdateDone.compareAndSet(false, true);
+        return mFileResolverLoader.load(protocol, mExtraArgs);
     }
 
     @VisibleForTesting
@@ -394,5 +400,66 @@ public class DynamicRemoteFileResolver {
             return false;
         }
         return "true".equals(value.toLowerCase());
+    }
+
+    /** Loads implementations of {@link IRemoteFileResolver}. */
+    @VisibleForTesting
+    public interface FileResolverLoader {
+        /**
+         * Loads a resolver that can handle the provided scheme.
+         *
+         * @param scheme the URI scheme that the loaded resolver is expected to handle.
+         * @param config a map of all dynamic resolver configuration key-value pairs specified by
+         *     the 'dynamic-resolver-args' TF command-line flag.
+         */
+        IRemoteFileResolver load(String scheme, Map<String, String> config);
+    }
+
+    /**
+     * Loads and caches file resolvers using the service loading facility.
+     *
+     * <p>This implementation uses the service loading facility to find and cache available
+     * resolvers on the first call to {@code load}.
+     *
+     * <p>This implementation is thread-safe and ensures that any loaded resolvers are loaded at
+     * most once per instance unless an exception is thrown.
+     */
+    @ThreadSafe
+    @VisibleForTesting
+    static final class ServiceFileResolverLoader implements FileResolverLoader {
+        // We need the indirection since in production we use the context class loader that is
+        // defined when loading and not the one at construction.
+        private final Supplier<ClassLoader> mClassLoaderSupplier;
+
+        @GuardedBy("this")
+        private @Nullable ImmutableMap<String, IRemoteFileResolver> mResolvers;
+
+        ServiceFileResolverLoader() {
+            mClassLoaderSupplier = () -> Thread.currentThread().getContextClassLoader();
+        }
+
+        ServiceFileResolverLoader(ClassLoader classLoader) {
+            mClassLoaderSupplier = () -> classLoader;
+        }
+
+        @Override
+        public synchronized IRemoteFileResolver load(String scheme, Map<String, String> config) {
+            if (mResolvers != null) {
+                return mResolvers.get(scheme);
+            }
+
+            // We use an intermediate map because the ImmutableMap builder throws if we add multiple
+            // entries with the same key.
+            Map<String, IRemoteFileResolver> resolvers = new HashMap<>();
+            ServiceLoader<IRemoteFileResolver> serviceLoader =
+                    ServiceLoader.load(IRemoteFileResolver.class, mClassLoaderSupplier.get());
+
+            for (IRemoteFileResolver resolver : serviceLoader) {
+                resolvers.putIfAbsent(resolver.getSupportedProtocol(), resolver);
+            }
+
+            mResolvers = ImmutableMap.copyOf(resolvers);
+            return resolvers.get(scheme);
+        }
     }
 }

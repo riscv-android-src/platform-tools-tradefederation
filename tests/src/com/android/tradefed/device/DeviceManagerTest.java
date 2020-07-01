@@ -749,7 +749,7 @@ public class DeviceManagerTest {
         final String ipAndPort = "ip:5555";
         setConnectToTcpDeviceExpectations(ipAndPort);
         mMockTestDevice.waitForDeviceOnline();
-        EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException());
+        EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException("test", "serial"));
         mMockTestDevice.stopLogcat();
         EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.FREE_UNKNOWN)).andReturn(
                 new DeviceEventResponse(DeviceAllocationState.Unknown, false));
@@ -840,7 +840,7 @@ public class DeviceManagerTest {
         EasyMock.expect(mMockTestDevice.switchToAdbTcp()).andReturn(ipAndPort);
         setConnectToTcpDeviceExpectations(ipAndPort);
         mMockTestDevice.waitForDeviceOnline();
-        EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException());
+        EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException("test", "serial"));
         // expect recover to be attempted on usb device
         mMockTestDevice.recoverDevice();
         mMockTestDevice.stopLogcat();

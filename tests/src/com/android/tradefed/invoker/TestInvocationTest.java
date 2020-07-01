@@ -67,6 +67,7 @@ import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric.Builder;
 import com.android.tradefed.postprocessor.BasePostProcessor;
 import com.android.tradefed.postprocessor.IPostProcessor;
+import com.android.tradefed.result.ActionInProgress;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ILogSaver;
@@ -79,6 +80,7 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestSummary;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.targetprep.BuildError;
@@ -427,7 +429,9 @@ public class TestInvocationTest {
         EasyMock.expect(mMockBuildProvider.getBuild()).andThrow(runtimeException);
         setupInvoke();
         // For the mocks to be properly done, stub a BuildRetrievalError.
-        setupMockFailureListenersAny(new BuildRetrievalError("fake"), true);
+        setupMockFailureListenersAny(
+                new BuildRetrievalError("fake", InfraErrorIdentifier.ARTIFACT_DOWNLOAD_ERROR),
+                true);
 
         EasyMock.reset(mMockLogger, mMockLogRegistry);
         mMockLogRegistry.registerLogger(mMockLogger);
@@ -458,7 +462,10 @@ public class TestInvocationTest {
     public void testInvoke_noBuild() throws Throwable {
         EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(null);
         setupInvoke();
-        setupMockFailureListenersAny(new BuildRetrievalError("No build found to test."), true);
+        setupMockFailureListenersAny(
+                new BuildRetrievalError(
+                        "No build found to test.", InfraErrorIdentifier.ARTIFACT_NOT_FOUND),
+                true);
 
         EasyMock.reset(mMockLogger, mMockLogRegistry);
         mMockLogRegistry.registerLogger(mMockLogger);
@@ -492,7 +499,8 @@ public class TestInvocationTest {
         EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(null);
         setupInvoke();
         setupMockFailureListeners(
-                new BuildRetrievalError("No build found to test."),
+                new BuildRetrievalError(
+                        "No build found to test.", InfraErrorIdentifier.ARTIFACT_NOT_FOUND),
                 true, /* don't expect host log */
                 false);
 
@@ -1124,8 +1132,9 @@ public class TestInvocationTest {
                 if (throwable instanceof BuildRetrievalError) {
                     FailureDescription failure =
                             FailureDescription.create(
-                                    throwable.getMessage(), FailureStatus.INFRA_FAILURE);
-                    failure.setCause(throwable);
+                                            throwable.getMessage(), FailureStatus.INFRA_FAILURE)
+                                    .setActionInProgress(ActionInProgress.FETCHING_ARTIFACTS)
+                                    .setCause(throwable);
                     mMockTestListener.invocationFailed(EasyMock.eq(failure));
                     mMockSummaryListener.invocationFailed(EasyMock.eq(failure));
                 } else {

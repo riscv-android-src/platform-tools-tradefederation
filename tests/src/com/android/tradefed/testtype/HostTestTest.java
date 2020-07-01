@@ -20,6 +20,7 @@ import static org.mockito.Mockito.doReturn;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.DynamicRemoteFileResolver;
+import com.android.tradefed.config.DynamicRemoteFileResolver.FileResolverLoader;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.config.remote.GcsRemoteFileResolver;
@@ -42,6 +43,8 @@ import com.android.tradefed.testtype.junit4.AfterClassWithInfo;
 import com.android.tradefed.testtype.junit4.BeforeClassWithInfo;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
+
+import com.google.common.collect.ImmutableMap;
 
 import junit.framework.Test;
 import junit.framework.TestCase;
@@ -566,23 +569,16 @@ public class HostTestTest extends TestCase {
 
         @Override
         protected DynamicRemoteFileResolver createResolver() {
-            DynamicRemoteFileResolver mResolver =
-                    new DynamicRemoteFileResolver() {
+            FileResolverLoader resolverLoader =
+                    new FileResolverLoader() {
                         @Override
-                        protected IRemoteFileResolver getResolver(String protocol) {
-                            if (GcsRemoteFileResolver.PROTOCOL.equals(protocol)) {
-                                return mRemoteFileResolver;
-                            }
-                            return null;
-                        }
-
-                        @Override
-                        protected boolean updateProtocols() {
-                            // Do not set the static variable
-                            return false;
+                        public IRemoteFileResolver load(String scheme, Map<String, String> config) {
+                            return ImmutableMap.of(
+                                            GcsRemoteFileResolver.PROTOCOL, mRemoteFileResolver)
+                                    .get(scheme);
                         }
                     };
-            return mResolver;
+            return new DynamicRemoteFileResolver(resolverLoader);
         }
     }
 

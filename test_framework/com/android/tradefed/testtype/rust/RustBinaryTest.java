@@ -101,18 +101,28 @@ public class RustBinaryTest extends RustTestBase implements IDeviceTest {
      * @param listener the {@link ITestInvocationListener}
      * @throws DeviceNotAvailableException
      */
-    private void doRunAllTestsInSubdirectory(
+    private boolean doRunAllTestsInSubdirectory(
             String root, ITestDevice testDevice, ITestInvocationListener listener)
             throws DeviceNotAvailableException {
+        // returns true iff some test is found
         if (testDevice.isDirectory(root)) {
             // recursively run tests in all subdirectories
+            CLog.d("Look into rust directory %s on %s", root, testDevice.getSerialNumber());
+            boolean found = false;
             for (String child : testDevice.getChildren(root)) {
-                doRunAllTestsInSubdirectory(root + "/" + child, testDevice, listener);
+                CLog.d("Look into child path %s", (root + "/" + child));
+                if (doRunAllTestsInSubdirectory(root + "/" + child, testDevice, listener)) {
+                    found = true;
+                }
             }
+            return found;
         } else if (shouldSkipFile(root)) {
             CLog.d("Skip rust test %s on %s", root, testDevice.getSerialNumber());
+            return false;
         } else {
+            CLog.d("To run rust test %s on %s", root, testDevice.getSerialNumber());
             runTest(testDevice, listener, createParser(listener, new File(root).getName()), root);
+            return true;
         }
     }
 
@@ -157,6 +167,15 @@ public class RustBinaryTest extends RustTestBase implements IDeviceTest {
         }
     }
 
+    private void wrongTestPath(String msg, String testPath, ITestInvocationListener listener) {
+        CLog.e(msg + testPath);
+        // mock a test run start+fail+end
+        long startTimeMs = System.currentTimeMillis();
+        listener.testRunStarted(testPath, 1, 0, startTimeMs);
+        listener.testRunFailed(msg + testPath);
+        listener.testRunEnded(0, new HashMap<String, Metric>());
+    }
+
     /** {@inheritDoc} */
     @Override
     public void run(TestInformation testInfo, ITestInvocationListener listener)
@@ -167,15 +186,13 @@ public class RustBinaryTest extends RustTestBase implements IDeviceTest {
 
         String testPath = getTestPath();
         if (!mDevice.doesFileExist(testPath)) {
-            CLog.d(
-                    "Could not find test directory %s in device %s!",
-                    testPath, mDevice.getSerialNumber());
+            wrongTestPath("Could not find test directory ", testPath, listener);
             return;
         }
-        CLog.d(
-                "Found and run test directory %s in device %s!",
-                testPath, mDevice.getSerialNumber());
+        CLog.d("To run tests in directory " + testPath);
 
-        doRunAllTestsInSubdirectory(testPath, mDevice, listener);
+        if (!doRunAllTestsInSubdirectory(testPath, mDevice, listener)) {
+            wrongTestPath("No test found under ", testPath, listener);
+        }
     }
 }
