@@ -36,12 +36,14 @@ import com.android.tradefed.invoker.shard.ShardHelper;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.ILogRegistry;
 import com.android.tradefed.postprocessor.IPostProcessor;
+import com.android.tradefed.result.ActionInProgress;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogFile;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.retry.BaseRetryDecision;
 
@@ -291,8 +293,8 @@ public class TestInvocationMultiTest {
         EasyMock.expect(mMockTestListener.getSummary()).andReturn(null);
         mMockLogSaver.invocationStarted(mContext);
         FailureDescription failure =
-                FailureDescription.create(
-                        configException.getMessage(), FailureStatus.INFRA_FAILURE);
+                FailureDescription.create(configException.getMessage(), FailureStatus.INFRA_FAILURE)
+                        .setActionInProgress(ActionInProgress.FETCHING_ARTIFACTS);
         mMockTestListener.invocationFailed(EasyMock.eq(failure));
         mMockTestListener.testLog(EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject());
         EasyMock.expect(
@@ -382,7 +384,10 @@ public class TestInvocationMultiTest {
         IBuildInfo build1 = new BuildInfo();
         EasyMock.expect(mProvider1.getBuild()).andReturn(build1);
         // Second build is not found
-        EasyMock.expect(mProvider2.getBuild()).andThrow(new BuildRetrievalError("fail"));
+        EasyMock.expect(mProvider2.getBuild())
+                .andThrow(
+                        new BuildRetrievalError(
+                                "fail", InfraErrorIdentifier.ARTIFACT_DOWNLOAD_ERROR));
         // The downloaded build is cleaned
         mProvider1.cleanUp(build1);
         // A second build from the BuildRetrievalError is generated but still cleaned.
@@ -469,7 +474,10 @@ public class TestInvocationMultiTest {
         IBuildInfo build1 = new BuildInfo();
         EasyMock.expect(mProvider1.getBuild()).andReturn(build1);
         // Second build is not found
-        EasyMock.expect(mProvider2.getBuild()).andThrow(new BuildRetrievalError("fail"));
+        EasyMock.expect(mProvider2.getBuild())
+                .andThrow(
+                        new BuildRetrievalError(
+                                "fail", InfraErrorIdentifier.ARTIFACT_DOWNLOAD_ERROR));
         // The downloaded build is cleaned
         mProvider1.cleanUp(build1);
         EasyMock.expectLastCall().andThrow(new RuntimeException("I failed to clean!"));

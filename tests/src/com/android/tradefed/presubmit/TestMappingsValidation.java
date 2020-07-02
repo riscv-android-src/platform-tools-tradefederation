@@ -19,14 +19,23 @@ import static org.junit.Assert.fail;
 
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
+import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.ConfigurationFactory;
+import com.android.tradefed.config.ConfigurationUtil;
+import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner;
 import com.android.tradefed.testtype.IBuildReceiver;
+import com.android.tradefed.testtype.suite.ITestSuite;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.ZipUtil2;
 import com.android.tradefed.util.testmapping.TestInfo;
 import com.android.tradefed.util.testmapping.TestMapping;
 import com.android.tradefed.util.testmapping.TestOption;
+
 import com.google.common.base.Joiner;
+import com.google.common.base.Strings;
 
 import java.io.File;
 import java.io.IOException;
@@ -75,7 +84,15 @@ public class TestMappingsValidation implements IBuildReceiver {
     private static final Set<String> TEST_GROUPS_TO_VALIDATE =
             new HashSet<>(Arrays.asList("presubmit", "postsubmit"));
 
+    private static final Set<String> MAINLINE_TEST_GROUPS_TO_VALIDATE =
+            new HashSet<>(Arrays.asList("mainline-presubmit", "mainline-postsubmit"));
+
+    // Check the mainline parameter configured in a test config must end with .apk, .apks, or .apex.
+    private static final Set<String> MAINLINE_PARAMETERS_TO_VALIDATE =
+            new HashSet<>(Arrays.asList(".apk", ".apks", ".apex"));
+
     private File testMappingsDir = null;
+    private IConfigurationFactory mConfigFactory = null;
     private IDeviceBuildInfo deviceBuildInfo = null;
     private IBuildInfo mBuild;
     private JSONObject moduleInfo = null;
@@ -99,6 +116,7 @@ public class TestMappingsValidation implements IBuildReceiver {
     @Before
     public void setUp() throws IOException, JSONException {
         Assume.assumeTrue(mBuild instanceof IDeviceBuildInfo);
+        mConfigFactory = ConfigurationFactory.getInstance();
         deviceBuildInfo = (IDeviceBuildInfo) mBuild;
         testMappingsDir =
                 TestMapping.extractTestMappingsZip(deviceBuildInfo.getFile(TEST_MAPPINGS_ZIP));
@@ -110,6 +128,84 @@ public class TestMappingsValidation implements IBuildReceiver {
     @After
     public void tearDown() {
         FileUtil.recursiveDelete(testMappingsDir);
+    }
+
+    /**
+     * Test all the TEST_MAPPING files and make sure they are properly configured with
+     * parameterized mainline modules.
+     */
+    @Test
+    public void testValidTestMappingForParameterizedMainlineModules() {
+        List<String> errors = new ArrayList<>();
+        for (String testGroup : allTests.keySet()) {
+            if (!MAINLINE_TEST_GROUPS_TO_VALIDATE.contains(testGroup)) {
+                CLog.d("Check mainline group only, skip checking tests with group: %s", testGroup);
+                continue;
+            }
+            for (TestInfo testInfo : allTests.get(testGroup)) {
+                // If there are brackets existing in the name, that means it's for parameterized
+                // mainline modules, so try to get the modules by indexing the brackets.
+                String testName = testInfo.getName();
+                int firstIndex = testName.indexOf("[");
+                int lastIndex = testName.indexOf("]");
+                if (firstIndex == -1 && lastIndex == -1) {
+                    continue;
+                }
+                else if (firstIndex != -1 && lastIndex != -1) {
+                    String mainlineParam = testName.substring(firstIndex+1, lastIndex);
+                    String error =
+                            validateMainlineModuleConfig(mainlineParam, testInfo.getSources());
+                    if (!Strings.isNullOrEmpty(error)){
+                        errors.add(error);
+                    }
+                }
+                else {
+                    errors.add(
+                            String.format("Unmatched \"[]\" for \"%s\" configured in the %s. " +
+                                "Parameter must contain [].", testName, testInfo.getSources()));
+                }
+            }
+        }
+        if (!errors.isEmpty()) {
+            fail(String.format("Fail TEST_MAPPING check for parameterized mainline modules: \n%s",
+                    Joiner.on("\n").join(errors)));
+        }
+    }
+
+    /**
+     * Test all the test config files and make sure they are properly configured with parameterized
+     * mainline modules.
+     */
+    @Test
+    public void testValidTestConfigForParameterizedMainlineModules() throws IOException {
+        File configZip = deviceBuildInfo.getFile("general-tests_configs.zip");
+        Assume.assumeTrue(configZip != null);
+        List<String> errors = new ArrayList<>();
+        List<String> testConfigs = new ArrayList<>();
+        File testConfigDir = ZipUtil2.extractZipToTemp(configZip, "general-tests_configs");
+        testConfigs.addAll(
+                ConfigurationUtil.getConfigNamesFromDirs(null, Arrays.asList(testConfigDir)));
+        for (String configName : testConfigs) {
+            try {
+                IConfiguration config =
+                        mConfigFactory.createConfigurationFromArgs(new String[] {configName});
+                List<String> params = config.getConfigurationDescription().getMetaData(
+                        ITestSuite.MAINLINE_PARAMETER_KEY);
+                if (params == null || params.isEmpty()) {
+                    continue;
+                }
+                for (String param : params) {
+                    errors.add(validateMainlineModuleConfig(param, Set.of(configName)));
+                }
+            } catch (ConfigurationException e) {
+                errors.add(String.format("\t%s: %s", configName, e.getMessage()));
+            }
+        }
+
+        if (!errors.isEmpty()) {
+            fail(String.format("Fail Test config check for parameterized mainline module: \n%s",
+                    Joiner.on("\n").join(errors)));
+        }
     }
 
     /**
@@ -245,6 +341,58 @@ public class TestMappingsValidation implements IBuildReceiver {
             return Filters.CLASS_OR_METHOD;
         }
         return Filters.PACKAGE;
+    }
+
+    /**
+     * Validate if the mainline module parameter is properly configured in the config.
+     *
+     * @param param A {@code String} name of the mainline module parameter.
+     * @param paths A {@code Set<String>} path of the test config or TEST_MAPPING file.
+     * @return A {@code String} of the errors.
+     */
+    private String validateMainlineModuleConfig(String param, Set<String> paths) {
+        StringBuilder errors = new StringBuilder("");
+        if (!isInAlphabeticalOrder(param)) {
+            errors.append(
+                    String.format(
+                            "Illegal mainline module parameter: \"%s\" configured in the %s. " +
+                                "Parameter must be configured in alphabetical order and with no " +
+                                "duplicated modules.", param, paths));
+        }
+        else if (!isValidMainlineParam(param)) {
+            errors.append(
+                    String.format(
+                            "Illegal mainline module parameter: \"%s\" configured in the %s. " +
+                                "Parameter must end with .apk/.apex/.apks and have no any spaces " +
+                                "configured.", param, paths));
+        }
+        return errors.toString();
+    }
+
+    /** Whether a mainline parameter configured in a test config is in alphabetical order or not. */
+    boolean isInAlphabeticalOrder(String param) {
+        String previousString = "";
+        for (String currentString : param.split(String.format("\\+"))) {
+            // This is to check if the parameter is in alphabetical order or duplicated.
+            if (currentString.compareTo(previousString) <= 0) {
+                return false;
+            }
+            previousString = currentString;
+        }
+        return true;
+    }
+
+    /** Whether the mainline parameter configured in the test config is valid or not. */
+    boolean isValidMainlineParam(String param) {
+        if (param.contains(" ")) {
+            return false;
+        }
+        for (String m : param.split(String.format("\\+"))) {
+            if (!MAINLINE_PARAMETERS_TO_VALIDATE.stream().anyMatch(entry -> m.endsWith(entry))) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**

@@ -80,7 +80,6 @@ public class WifiPreparer extends BaseTargetPreparer {
             throw new TargetSetupError(String.format("Failed to connect to wifi network %s on %s",
                     mWifiNetwork, device.getSerialNumber()), device.getDeviceDescriptor());
         }
-
         if (mMonitorNetwork) {
             device.enableNetworkMonitor();
         }

@@ -18,7 +18,8 @@ package com.android.tradefed.device;
 
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log.LogLevel;
-import com.android.tradefed.build.IDeviceBuildInfo;
+import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
+import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.targetprep.TargetSetupError;
@@ -104,7 +105,6 @@ public class LocalAndroidVirtualDeviceTest {
     private static final String PORT = "6520";
     private static final String ONLINE_SERIAL_NUMBER = IP_ADDRESS + ":" + PORT;
     private static final String INSTANCE_NAME = "local-instance-1";
-    private static final String BUILD_FLAVOR = "cf_x86_phone-userdebug";
     private static final long ACLOUD_TIMEOUT = 12345;
     private static final String SUCCESS_REPORT_STRING =
             String.format(
@@ -146,7 +146,7 @@ public class LocalAndroidVirtualDeviceTest {
     private File mTmpDir;
 
     // Mock object.
-    private IDeviceBuildInfo mMockDeviceBuildInfo;
+    private IBuildInfo mMockBuildInfo;
 
     // The object under test.
     private TestableLocalAndroidVirtualDevice mLocalAvd;
@@ -159,16 +159,16 @@ public class LocalAndroidVirtualDeviceTest {
         createHostPackage(mHostPackageTarGzip);
         mTmpDir = FileUtil.createTempDir("LocalAvdTmp");
 
-        mMockDeviceBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
-        EasyMock.expect(mMockDeviceBuildInfo.getDeviceImageFile()).andReturn(mImageZip);
-        EasyMock.expect(mMockDeviceBuildInfo.getFile(EasyMock.eq("cvd-host_package.tar.gz")))
+        mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
+        EasyMock.expect(mMockBuildInfo.getFile(EasyMock.eq(BuildInfoFileKey.DEVICE_IMAGE)))
+                .andReturn(mImageZip);
+        EasyMock.expect(mMockBuildInfo.getFile(EasyMock.eq("cvd-host_package.tar.gz")))
                 .andReturn(mHostPackageTarGzip);
-        EasyMock.expect(mMockDeviceBuildInfo.getBuildFlavor()).andReturn(BUILD_FLAVOR);
         IDeviceStateMonitor mockDeviceStateMonitor = EasyMock.createMock(IDeviceStateMonitor.class);
         mockDeviceStateMonitor.setIDevice(EasyMock.anyObject());
         EasyMock.expectLastCall().anyTimes();
         IDeviceMonitor mockDeviceMonitor = EasyMock.createMock(IDeviceMonitor.class);
-        EasyMock.replay(mMockDeviceBuildInfo, mockDeviceStateMonitor, mockDeviceMonitor);
+        EasyMock.replay(mMockBuildInfo, mockDeviceStateMonitor, mockDeviceMonitor);
 
         mLocalAvd =
                 new TestableLocalAndroidVirtualDevice(
@@ -224,7 +224,6 @@ public class LocalAndroidVirtualDeviceTest {
             Capture<String> imageDir) {
         IRunUtil runUtil = EasyMock.createMock(IRunUtil.class);
         runUtil.setEnvVariable(EasyMock.eq("TMPDIR"), EasyMock.eq(mTmpDir.getAbsolutePath()));
-        runUtil.setEnvVariable(EasyMock.eq("TARGET_PRODUCT"), EasyMock.eq(BUILD_FLAVOR));
 
         IAnswer<CommandResult> writeToReportFile =
                 new IAnswer() {
@@ -351,7 +350,7 @@ public class LocalAndroidVirtualDeviceTest {
         mLocalAvd.setTestLogger(testLogger);
         mLocalAvd.currentRunUtil = acloudCreateRunUtil;
         mLocalAvd.expectToConnect = true;
-        mLocalAvd.preInvocationSetup(mMockDeviceBuildInfo);
+        mLocalAvd.preInvocationSetup(mMockBuildInfo);
 
         Assert.assertEquals(ONLINE_SERIAL_NUMBER, mLocalAvd.getIDevice().getSerialNumber());
 
@@ -407,7 +406,7 @@ public class LocalAndroidVirtualDeviceTest {
         mLocalAvd.setTestLogger(testLogger);
         mLocalAvd.currentRunUtil = acloudCreateRunUtil;
         try {
-            mLocalAvd.preInvocationSetup(mMockDeviceBuildInfo);
+            mLocalAvd.preInvocationSetup(mMockBuildInfo);
             Assert.fail("TargetSetupError is not thrown");
         } catch (TargetSetupError e) {
             expectedException = e;
@@ -449,7 +448,7 @@ public class LocalAndroidVirtualDeviceTest {
         mLocalAvd.setTestLogger(testLogger);
         mLocalAvd.currentRunUtil = acloudCreateRunUtil;
         try {
-            mLocalAvd.preInvocationSetup(mMockDeviceBuildInfo);
+            mLocalAvd.preInvocationSetup(mMockBuildInfo);
             Assert.fail("TargetSetupError is not thrown");
         } catch (TargetSetupError e) {
             expectedException = e;
