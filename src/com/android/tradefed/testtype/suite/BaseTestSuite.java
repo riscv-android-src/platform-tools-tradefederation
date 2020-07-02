@@ -63,17 +63,21 @@ public class BaseTestSuite extends ITestSuite {
     private static final int MAX_FILTER_DISPLAY = 20;
 
     @Option(
-        name = INCLUDE_FILTER_OPTION,
-        description = "the include module filters to apply.",
-        importance = Importance.ALWAYS
-    )
+            name = INCLUDE_FILTER_OPTION,
+            description =
+                    "the include module filters to apply. Format: '[abi] <module-name> [test]'."
+                            + " See documentation:"
+                            + "https://source.android.com/devices/tech/test_infra/tradefed/testing/through-suite/option-passing",
+            importance = Importance.ALWAYS)
     private Set<String> mIncludeFilters = new HashSet<>();
 
     @Option(
-        name = EXCLUDE_FILTER_OPTION,
-        description = "the exclude module filters to apply.",
-        importance = Importance.ALWAYS
-    )
+            name = EXCLUDE_FILTER_OPTION,
+            description =
+                    "the exclude module filters to apply. Format: '[abi] <module-name> [test]'."
+                            + " See documentation:"
+                            + "https://source.android.com/devices/tech/test_infra/tradefed/testing/through-suite/option-passing",
+            importance = Importance.ALWAYS)
     private Set<String> mExcludeFilters = new HashSet<>();
 
     @Option(

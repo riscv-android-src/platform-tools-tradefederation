@@ -98,7 +98,7 @@ public class FastbootDeviceFlasherTest {
             // TODO: this is fixed to two arguments - how to set to expect a variable arg amount ?
             mMockDevice.executeFastbootCommand((String)EasyMock.anyObject(),
                     (String)EasyMock.anyObject());
-            EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException());
+            EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException("test", "serial"));
             EasyMock.replay(mMockDevice);
             mFlasher.flash(mMockDevice, mMockBuildInfo);
             fail("TargetSetupError not thrown");
@@ -727,9 +727,11 @@ public class FastbootDeviceFlasherTest {
             EasyMock.expect(mockBuild.getDeviceImageFile()).andStubReturn(deviceImage);
             CommandResult res = new CommandResult(CommandStatus.SUCCESS);
             res.setStderr("flashing");
-            EasyMock.expect(mMockDevice.executeLongFastbootCommand(EasyMock.eq("update"),
-                    EasyMock.eq(deviceImage.getAbsolutePath())))
-                    .andThrow(new DeviceNotAvailableException());
+            EasyMock.expect(
+                            mMockDevice.executeLongFastbootCommand(
+                                    EasyMock.eq("update"),
+                                    EasyMock.eq(deviceImage.getAbsolutePath())))
+                    .andThrow(new DeviceNotAvailableException("test", "serial"));
             EasyMock.replay(mMockDevice, mockBuild);
             try {
                 mFlasher.checkAndFlashSystem(mMockDevice, buildId, null, mockBuild);

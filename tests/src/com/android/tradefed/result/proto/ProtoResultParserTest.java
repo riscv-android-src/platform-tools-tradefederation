@@ -17,6 +17,7 @@ package com.android.tradefed.result.proto;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import com.android.tradefed.build.BuildInfo;
@@ -32,6 +33,7 @@ import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.result.proto.TestRecordProto.TestRecord;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
@@ -167,7 +169,7 @@ public class ProtoResultParserTest {
         mMockListener.logAssociation(
                 EasyMock.eq("subprocess-invocation_log1"), EasyMock.anyObject());
         // Invocation failure is replayed
-        Capture<Throwable> captureInvocFailure = new Capture<>();
+        Capture<FailureDescription> captureInvocFailure = new Capture<>();
         mMockListener.invocationFailed(EasyMock.capture(captureInvocFailure));
         mMockListener.invocationEnded(500L);
 
@@ -227,8 +229,8 @@ public class ProtoResultParserTest {
         assertEquals(logFile.getType(), capturedFile.getType());
         assertEquals(logFile.getSize(), capturedFile.getSize());
 
-        Throwable invocFailureCaptured = captureInvocFailure.getValue();
-        assertTrue(invocFailureCaptured instanceof RuntimeException);
+        FailureDescription invocFailureCaptured = captureInvocFailure.getValue();
+        assertTrue(invocFailureCaptured.getCause() instanceof RuntimeException);
 
         // Check Context at the end
         assertEquals(
@@ -241,6 +243,83 @@ public class ProtoResultParserTest {
         assertEquals(
                 "build_value",
                 context.getBuildInfos().get(0).getBuildAttributes().get("after_start"));
+    }
+
+    @Test
+    public void testEvents_invocationFailure() {
+        Throwable failure = new RuntimeException("invoc failure");
+        FailureDescription invocFailure =
+                FailureDescription.create(failure.getMessage())
+                        .setCause(failure)
+                        .setActionInProgress(ActionInProgress.FETCHING_ARTIFACTS)
+                        .setErrorIdentifier(InfraErrorIdentifier.UNDETERMINED)
+                        .setOrigin("origin");
+
+        // Verify Mocks
+        mMockListener.invocationStarted(EasyMock.anyObject());
+        // Invocation failure is replayed
+        Capture<FailureDescription> captureInvocFailure = new Capture<>();
+        mMockListener.invocationFailed(EasyMock.capture(captureInvocFailure));
+        mMockListener.invocationEnded(500L);
+
+        EasyMock.replay(mMockListener);
+        // Invocation start
+        mInvocationContext.getBuildInfos().get(0).addBuildAttribute("early_key", "build_value");
+        mInvocationContext.addInvocationAttribute("early_context_key", "context_value");
+        mTestParser.invocationStarted(mInvocationContext);
+        mTestParser.invocationFailed(invocFailure);
+        // Invocation ends
+        mTestParser.invocationEnded(500L);
+        EasyMock.verify(mMockListener);
+
+        // Check capture
+        FailureDescription invocFailureCaptured = captureInvocFailure.getValue();
+        assertTrue(invocFailureCaptured.getCause() instanceof RuntimeException);
+        assertEquals(
+                ActionInProgress.FETCHING_ARTIFACTS, invocFailureCaptured.getActionInProgress());
+        assertEquals(
+                InfraErrorIdentifier.UNDETERMINED.name(),
+                invocFailureCaptured.getErrorIdentifier().name());
+        assertEquals(
+                InfraErrorIdentifier.UNDETERMINED.code(),
+                invocFailureCaptured.getErrorIdentifier().code());
+        assertEquals("origin", invocFailureCaptured.getOrigin());
+    }
+
+    @Test
+    public void testEvents_invocationFailure_errorNotSet() {
+        Throwable failure = new RuntimeException("invoc failure");
+        // Error with not ErrorIdentifier set.
+        FailureDescription invocFailure =
+                FailureDescription.create(failure.getMessage())
+                        .setCause(failure)
+                        .setActionInProgress(ActionInProgress.FETCHING_ARTIFACTS)
+                        .setOrigin("origin");
+
+        // Verify Mocks
+        mMockListener.invocationStarted(EasyMock.anyObject());
+        // Invocation failure is replayed
+        Capture<FailureDescription> captureInvocFailure = new Capture<>();
+        mMockListener.invocationFailed(EasyMock.capture(captureInvocFailure));
+        mMockListener.invocationEnded(500L);
+
+        EasyMock.replay(mMockListener);
+        // Invocation start
+        mInvocationContext.getBuildInfos().get(0).addBuildAttribute("early_key", "build_value");
+        mInvocationContext.addInvocationAttribute("early_context_key", "context_value");
+        mTestParser.invocationStarted(mInvocationContext);
+        mTestParser.invocationFailed(invocFailure);
+        // Invocation ends
+        mTestParser.invocationEnded(500L);
+        EasyMock.verify(mMockListener);
+
+        // Check capture
+        FailureDescription invocFailureCaptured = captureInvocFailure.getValue();
+        assertTrue(invocFailureCaptured.getCause() instanceof RuntimeException);
+        assertEquals(
+                ActionInProgress.FETCHING_ARTIFACTS, invocFailureCaptured.getActionInProgress());
+        assertEquals("origin", invocFailureCaptured.getOrigin());
+        assertNull(invocFailureCaptured.getErrorIdentifier());
     }
 
     /** Test that a run failure occurring inside a test case pair is handled properly. */
@@ -391,7 +470,7 @@ public class ProtoResultParserTest {
         mMockListener.testRunFailed(
                 FailureDescription.create("run failure")
                         .setFailureStatus(FailureStatus.INFRA_FAILURE)
-                        .setActionInProgress(ActionInProgress.INSTALL_APK)
+                        .setActionInProgress(ActionInProgress.TEST)
                         .setDebugHelpMessage("help message"));
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
@@ -408,7 +487,7 @@ public class ProtoResultParserTest {
         mFinalTestParser.testRunFailed(
                 FailureDescription.create("run failure")
                         .setFailureStatus(FailureStatus.INFRA_FAILURE)
-                        .setActionInProgress(ActionInProgress.INSTALL_APK)
+                        .setActionInProgress(ActionInProgress.TEST)
                         .setDebugHelpMessage("help message"));
 
         mFinalTestParser.testEnded(test1, 10L, new HashMap<String, Metric>());

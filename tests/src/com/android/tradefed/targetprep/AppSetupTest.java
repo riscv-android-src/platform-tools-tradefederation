@@ -369,7 +369,8 @@ public class AppSetupTest {
     @Test
     public void testTearDown_DNAE() throws Exception {
         replayMocks();
-        mAppSetup.tearDown(mMockDevice, mMockBuildInfo, new DeviceNotAvailableException());
+        mAppSetup.tearDown(
+                mMockDevice, mMockBuildInfo, new DeviceNotAvailableException("test", "serial"));
         verifyMocks();
     }
 

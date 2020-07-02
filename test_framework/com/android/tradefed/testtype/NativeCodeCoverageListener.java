@@ -127,7 +127,10 @@ public final class NativeCodeCoverageListener extends ResultForwarder {
             // Compress coverage measurements on the device before pulling.
             mDevice.executeShellCommand(ZIP_COVERAGE_FILES_COMMAND);
             coverageTar = mDevice.pullFile(COVERAGE_TAR_PATH);
-            verifyNotNull(coverageTar, "Failed to pull the coverage file %s", COVERAGE_TAR_PATH);
+            verifyNotNull(
+                    coverageTar,
+                    "Failed to pull the native code coverage file %s",
+                    COVERAGE_TAR_PATH);
             mDevice.deleteFile(COVERAGE_TAR_PATH);
 
             coverageZip = convertTarToZip(coverageTar);

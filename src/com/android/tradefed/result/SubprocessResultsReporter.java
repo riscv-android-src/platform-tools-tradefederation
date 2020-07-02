@@ -147,6 +147,13 @@ public class SubprocessResultsReporter
 
     /** {@inheritDoc} */
     @Override
+    public void testRunFailed(FailureDescription failure) {
+        TestRunFailedEventInfo info = new TestRunFailedEventInfo(failure);
+        printEvent(SubprocessTestResultsParser.StatusKeys.TEST_RUN_FAILED, info);
+    }
+
+    /** {@inheritDoc} */
+    @Override
     public void testRunStarted(String runName, int testCount) {
         testRunStarted(runName, testCount, 0);
     }
@@ -254,6 +261,13 @@ public class SubprocessResultsReporter
     @Override
     public void invocationFailed(Throwable cause) {
         InvocationFailedEventInfo info = new InvocationFailedEventInfo(cause);
+        printEvent(SubprocessTestResultsParser.StatusKeys.INVOCATION_FAILED, info);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void invocationFailed(FailureDescription failure) {
+        InvocationFailedEventInfo info = new InvocationFailedEventInfo(failure);
         printEvent(SubprocessTestResultsParser.StatusKeys.INVOCATION_FAILED, info);
     }
 

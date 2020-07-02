@@ -226,20 +226,26 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
                 mTest, 0, mMainGranularRunListener.getTestRunForAttempts(0))) {
             return;
         }
+        // Avoid rechecking the shouldRetry below the first time as it could retrigger reboot.
+        boolean firstCheck = true;
 
         // Deal with retried attempted
         long startTime = System.currentTimeMillis();
         try {
             CLog.d("Starting intra-module retry.");
             for (int attemptNumber = 1; attemptNumber < mMaxRunLimit; attemptNumber++) {
-                boolean retry =
-                        mRetryDecision.shouldRetry(
-                                mTest,
-                                attemptNumber - 1,
-                                mMainGranularRunListener.getTestRunForAttempts(attemptNumber - 1));
-                if (!retry) {
-                    return;
+                if (!firstCheck) {
+                    boolean retry =
+                            mRetryDecision.shouldRetry(
+                                    mTest,
+                                    attemptNumber - 1,
+                                    mMainGranularRunListener.getTestRunForAttempts(
+                                            attemptNumber - 1));
+                    if (!retry) {
+                        return;
+                    }
                 }
+                firstCheck = false;
                 CLog.d("Intra-module retry attempt number %s", attemptNumber);
                 // Run the tests again
                 intraModuleRun(testInfo, allListeners);
