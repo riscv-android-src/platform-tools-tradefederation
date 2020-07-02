@@ -132,4 +132,12 @@ message DebugInfoContext {
 
   // The fully-qualified name of the exception class associated with the error.
   string error_type = 20;
+
+  // Error Identifiers
+  // The name identifying the error
+  string error_name = 30;
+  // The class that raised the error
+  string origin = 31;
+  // The error code associated with the error_name
+  int64 error_code = 32;
 }

@@ -157,7 +157,8 @@ public abstract class BaseHostJUnit4Test implements IAbiReceiver, ITestInformati
         } catch (BuildError e) {
             // For some reason we forgot the BuildError part of the interface so it's hard to add
             // it now
-            throw new TargetSetupError(e.getMessage(), e, device.getDeviceDescriptor());
+            throw new TargetSetupError(
+                    e.getMessage(), e, device.getDeviceDescriptor(), e.getErrorId());
         }
     }
 
@@ -208,7 +209,8 @@ public abstract class BaseHostJUnit4Test implements IAbiReceiver, ITestInformati
         } catch (BuildError e) {
             // For some reason we forgot the BuildError part of the interface so it's hard to add
             // it now
-            throw new TargetSetupError(e.getMessage(), e, device.getDeviceDescriptor());
+            throw new TargetSetupError(
+                    e.getMessage(), e, device.getDeviceDescriptor(), e.getErrorId());
         }
     }
 

@@ -16,6 +16,7 @@
 package com.android.tradefed.config.remote;
 
 import com.android.tradefed.build.BuildRetrievalError;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 
 import java.io.File;
 
@@ -35,7 +36,9 @@ public class LocalFileResolver implements IRemoteFileResolver {
         if (localFile.exists()) {
             return localFile;
         }
-        throw new BuildRetrievalError(String.format("Failed to find local file %s.", localFile));
+        throw new BuildRetrievalError(
+                String.format("Failed to find local file %s.", localFile),
+                InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
     }
 
     @Override

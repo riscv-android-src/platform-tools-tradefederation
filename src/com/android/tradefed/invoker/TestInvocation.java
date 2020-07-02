@@ -56,6 +56,7 @@ import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.log.StdoutLogger;
 import com.android.tradefed.postprocessor.IPostProcessor;
+import com.android.tradefed.result.ActionInProgress;
 import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -63,6 +64,7 @@ import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogSaverResultForwarder;
 import com.android.tradefed.result.ResultAndLogForwarder;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.retry.ResultAggregator;
@@ -226,11 +228,10 @@ public class TestInvocation implements ITestInvocation {
             prepareAndRun(config, testInfo, invocationPath, listener);
         } catch (BuildError e) {
             exception = e;
-            CLog.w("Build failed on device '%s'. Reason: %s", e.getDeviceDescriptor(),
-                    e.toString());
+            CLog.w("BuildError on device '%s'. Reason: %s", e.getDeviceSerial(), e.toString());
             bugreportName = BUILD_ERROR_BUGREPORT_NAME;
-            if (e.getDeviceDescriptor() != null) {
-                badDevice = context.getDeviceBySerial(e.getDeviceDescriptor().getSerial());
+            if (e.getDeviceSerial() != null) {
+                badDevice = context.getDeviceBySerial(e.getDeviceSerial());
             }
             if (e instanceof DeviceFailedToBootError) {
                 if (badDevice == null) {
@@ -290,6 +291,7 @@ public class TestInvocation implements ITestInvocation {
                     invocationPath.reportLogs(device, listener, Stage.TEST);
                 }
             }
+            CurrentInvocation.setActionInProgress(ActionInProgress.TEAR_DOWN);
             getRunUtil().allowInterrupt(false);
             if (config.getCommandOptions().takeBugreportOnInvocationEnded() ||
                     config.getCommandOptions().takeBugreportzOnInvocationEnded()) {
@@ -340,6 +342,7 @@ public class TestInvocation implements ITestInvocation {
                 }
             }
             mStatus = "done running tests";
+            CurrentInvocation.setActionInProgress(ActionInProgress.FREE_RESOURCES);
             // Track the timestamp when we are done with devices
             addInvocationMetric(
                     InvocationMetricKey.DEVICE_DONE_TIMESTAMP, System.currentTimeMillis());
@@ -418,12 +421,14 @@ public class TestInvocation implements ITestInvocation {
             throws Throwable {
         getRunUtil().allowInterrupt(true);
         logDeviceBatteryLevel(testInfo.getContext(), "initial -> setup");
-        // TODO: Use TestInformation in setup
+        CurrentInvocation.setActionInProgress(ActionInProgress.SETUP);
         invocationPath.doSetup(testInfo, config, listener);
         logDeviceBatteryLevel(testInfo.getContext(), "setup -> test");
         mTestStarted = true;
+        CurrentInvocation.setActionInProgress(ActionInProgress.TEST);
         invocationPath.runTests(testInfo, config, listener);
         logDeviceBatteryLevel(testInfo.getContext(), "after test");
+        CurrentInvocation.setActionInProgress(ActionInProgress.UNSET);
     }
 
     /**
@@ -584,18 +589,22 @@ public class TestInvocation implements ITestInvocation {
             ITestInvocationListener listener,
             IInvocationExecution invocationPath)
             throws DeviceNotAvailableException {
+        CurrentInvocation.setActionInProgress(ActionInProgress.FETCHING_ARTIFACTS);
         Exception buildException = null;
         boolean res = false;
         try {
             res = invocationPath.fetchBuild(testInfo, config, rescheduler, listener);
             if (res) {
                 // Successful fetch of build.
+                CurrentInvocation.setActionInProgress(ActionInProgress.UNSET);
                 return true;
             }
             // In case of build not found issues.
             mStatus = "(no build to test)";
             // Set the exit code to error
-            buildException = new BuildRetrievalError("No build found to test.");
+            buildException =
+                    new BuildRetrievalError(
+                            "No build found to test.", InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
         } catch (BuildRetrievalError | RuntimeException e) {
             buildException = e;
         }
@@ -604,8 +613,9 @@ public class TestInvocation implements ITestInvocation {
         startInvocation(config, testInfo.getContext(), listener);
         // Don't want to use #reportFailure, since that will call buildNotTested
         FailureDescription failure =
-                FailureDescription.create(buildException.getMessage(), FailureStatus.INFRA_FAILURE);
-        failure.setCause(buildException);
+                CurrentInvocation.createFailure(buildException.getMessage(), null)
+                        .setFailureStatus(FailureStatus.INFRA_FAILURE)
+                        .setCause(buildException);
         reportFailure(failure, listener);
         for (ITestDevice device : testInfo.getContext().getDevices()) {
             invocationPath.reportLogs(device, listener, Stage.ERROR);
@@ -640,10 +650,12 @@ public class TestInvocation implements ITestInvocation {
             if (RunMode.REMOTE_INVOCATION.equals(mode)) {
                 return true;
             }
+            CurrentInvocation.setActionInProgress(ActionInProgress.FETCHING_ARTIFACTS);
             DynamicRemoteFileResolver resolver = new DynamicRemoteFileResolver();
             resolver.setDevice(context.getDevices().get(0));
             resolver.addExtraArgs(config.getCommandOptions().getDynamicDownloadArgs());
             config.resolveDynamicOptions(resolver);
+            CurrentInvocation.setActionInProgress(ActionInProgress.UNSET);
             return true;
         } catch (RuntimeException | BuildRetrievalError | ConfigurationException e) {
             // In case of build not found issues.
@@ -659,8 +671,9 @@ public class TestInvocation implements ITestInvocation {
             startInvocation(config, context, listener);
             // Don't want to use #reportFailure, since that will call buildNotTested
             FailureDescription failure =
-                    FailureDescription.create(e.getMessage(), FailureStatus.INFRA_FAILURE);
-            failure.setCause(e);
+                    CurrentInvocation.createFailure(e.getMessage(), null)
+                            .setFailureStatus(FailureStatus.INFRA_FAILURE)
+                            .setCause(e);
             reportFailure(failure, listener);
             for (ITestDevice device : context.getDevices()) {
                 invocationPath.reportLogs(device, listener, Stage.ERROR);

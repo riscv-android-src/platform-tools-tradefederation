@@ -43,6 +43,7 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
 
 import com.google.common.base.Strings;
+import com.google.common.net.UrlEscapers;
 
 import java.io.File;
 import java.io.FilenameFilter;
@@ -58,8 +59,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.SortedSet;
-import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -342,7 +341,7 @@ public class SuiteModuleLoader {
                         }
                         String fullId =
                                 String.format("%s[%s]", baseId, param.getParameterIdentifier());
-                        if (shouldRunParameterized(fullId)) {
+                        if (shouldRunParameterized(baseId, fullId, mForcedParameter)) {
                             IConfiguration paramConfig =
                                     mConfigFactory.createConfigurationFromArgs(pathArg);
                             // Mark the parameter in the metadata
@@ -368,7 +367,7 @@ public class SuiteModuleLoader {
                     // If we find any parameterized combination for mainline modules.
                     for (String param : mainlineParams) {
                         String fullId = String.format("%s[%s]", baseId, param);
-                        if (!shouldRunParameterized(fullId)) {
+                        if (!shouldRunParameterized(baseId, fullId, null)) {
                             continue;
                         }
                         // Create mainline handler for each defined mainline parameter.
@@ -476,11 +475,20 @@ public class SuiteModuleLoader {
      * Except if the parameterized module is explicitly excluded, including the base module result
      * in including its parameterization variant.
      */
-    private boolean shouldRunParameterized(String parameterModuleId) {
+    private boolean shouldRunParameterized(
+            String baseModuleId, String parameterModuleId, IModuleParameter forcedModuleParameter) {
         // Explicitly excluded
         List<SuiteTestFilter> excluded = getFilterList(mExcludeFilters, parameterModuleId);
         if (containsModuleExclude(excluded)) {
             return false;
+        }
+
+        // Implicitly included due to forced parameter
+        if (forcedModuleParameter != null) {
+            List<SuiteTestFilter> baseInclude = getFilterList(mIncludeFilters, baseModuleId);
+            if (!baseInclude.isEmpty()) {
+                return true;
+            }
         }
         // Explicitly included
         List<SuiteTestFilter> included = getFilterList(mIncludeFilters, parameterModuleId);
@@ -493,8 +501,7 @@ public class SuiteModuleLoader {
     private void addTestIncludes(
             ITestFilterReceiver test, List<SuiteTestFilter> includes, String moduleId) {
         if (test instanceof ITestFileFilterReceiver) {
-            // module id can contain spaces, avoid them for file names.
-            String escapedFileName = moduleId.replaceAll(" ", "_");
+            String escapedFileName = escapeFilterFileName(moduleId);
             File includeFile = createFilterFile(escapedFileName, ".include", includes);
             ((ITestFileFilterReceiver) test).setIncludeTestFile(includeFile);
         } else {
@@ -509,9 +516,10 @@ public class SuiteModuleLoader {
     }
 
     private void addTestExcludes(
-            ITestFilterReceiver test, List<SuiteTestFilter> excludes, String name) {
+            ITestFilterReceiver test, List<SuiteTestFilter> excludes, String moduleId) {
         if (test instanceof ITestFileFilterReceiver) {
-            File excludeFile = createFilterFile(name, ".exclude", excludes);
+            String escapedFileName = escapeFilterFileName(moduleId);
+            File excludeFile = createFilterFile(escapedFileName, ".exclude", excludes);
             ((ITestFileFilterReceiver) test).setExcludeTestFile(excludeFile);
         } else {
             // add test excludes one at a time
@@ -519,6 +527,12 @@ public class SuiteModuleLoader {
                 test.addExcludeFilter(exclude.getTest());
             }
         }
+    }
+
+    /** module id can contain special characters, avoid them for file names. */
+    private String escapeFilterFileName(String moduleId) {
+        String escaped = UrlEscapers.urlPathSegmentEscaper().escape(moduleId);
+        return escaped;
     }
 
     private File createFilterFile(String prefix, String suffix, List<SuiteTestFilter> filters) {
@@ -666,32 +680,54 @@ public class SuiteModuleLoader {
             return params;
         }
 
-        return new ArrayList<>(dedupMainlineParameters(parameters));
+        return new ArrayList<>(dedupMainlineParameters(parameters, config.getName()));
     }
 
     /**
      * De-duplicate the given mainline parameters.
      *
      * @param parameters The list of given mainline parameters.
+     * @param configName The test configuration name.
      * @return The de-duplicated mainline modules list.
      */
     @VisibleForTesting
-    Set<String> dedupMainlineParameters(List<String> parameters) {
+    Set<String> dedupMainlineParameters(List<String> parameters, String configName)
+            throws ConfigurationException {
         Set<String> results = new HashSet<>();
         for (String param : parameters) {
-            SortedSet<String> mainlineModules = new TreeSet<>();
             if (!isValidMainlineParam(param)) {
-                throw new RuntimeException(
+                throw new ConfigurationException(
                         String.format(
                                 "Illegal mainline module parameter: \"%s\" configured in the " +
-                                "test config. Parameter must either end with .apk/.apex/.apks " +
-                                "and have no any spaces configured.", param)
+                                "test config: %s. Parameter must end with .apk/.apex/.apks and " +
+                                "have no any spaces configured.", param, configName)
                 );
             }
-            mainlineModules.addAll(Arrays.asList(param.split(String.format("\\+"))));
-            results.add(String.join("+", mainlineModules));
+            if (!isInAlphabeticalOrder(param)) {
+                throw new ConfigurationException(
+                        String.format(
+                                "Illegal mainline module parameter: \"%s\" configured in the " +
+                                "test config: %s. Parameter must be configured in alphabetical " +
+                                "order or with no duplicated modules.", param, configName)
+                );
+            }
+            results.add(param);
         }
         return results;
+    }
+
+    /** Whether a mainline parameter configured in a test config is in alphabetical order or not. */
+    @VisibleForTesting
+    boolean isInAlphabeticalOrder(String param) {
+        String previousString = "";
+        for (String currentString : param.split(String.format("\\+"))) {
+            // This is to check if the parameter is in alphabetical order or duplicated.
+            if (currentString.compareTo(previousString) <= 0) {
+                return false;
+            }
+            previousString = currentString;
+        }
+        return true;
     }
 
     /** Whether the mainline parameter configured in the test config is valid or not. */

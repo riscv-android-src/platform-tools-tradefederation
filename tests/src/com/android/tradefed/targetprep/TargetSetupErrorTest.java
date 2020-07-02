@@ -21,6 +21,7 @@ import static org.junit.Assert.assertTrue;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.device.DeviceAllocationState;
 import com.android.tradefed.device.StubDevice;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.SerializationUtil;
 
@@ -33,6 +34,13 @@ import java.io.File;
 /** Unit tests for {@link TargetSetupError}. */
 @RunWith(JUnit4.class)
 public class TargetSetupErrorTest {
+
+    @Test
+    public void testOrigin() {
+        TargetSetupError error =
+                new TargetSetupError("reason", null, null, true, InfraErrorIdentifier.UNDETERMINED);
+        assertEquals("com.android.tradefed.targetprep.TargetSetupErrorTest", error.getOrigin());
+    }
 
     @Test
     public void testSerialization() throws Exception {
