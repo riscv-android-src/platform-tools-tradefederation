@@ -115,11 +115,12 @@ public class RustBinaryTestTest {
     /** Test run when the test dir is not found on the device. */
     @Test
     public void testRun_noTestDir() throws DeviceNotAvailableException {
-        EasyMock.expect(mMockITestDevice.doesFileExist(RustBinaryTest.DEFAULT_TEST_PATH))
-                .andReturn(false);
-        replayMocks();
-        mRustBinaryTest.run(mTestInfo, mMockInvocationListener);
-        verifyMocks();
+        String testPath = RustBinaryTest.DEFAULT_TEST_PATH;
+        EasyMock.expect(mMockITestDevice.doesFileExist(testPath)).andReturn(false);
+        mockTestRunStarted(testPath, 1);
+        mMockInvocationListener.testRunFailed("Could not find test directory " + testPath);
+        mockTestRunEnded();
+        callReplayRunVerify();
     }
 
     /** Test run when no device is set should throw an exception. */
@@ -136,9 +137,51 @@ public class RustBinaryTestTest {
         verifyMocks();
     }
 
+    /** Test the run method for not-found tests */
+    @Test
+    public void testNotFound() throws DeviceNotAvailableException {
+        final String testPath = RustBinaryTest.DEFAULT_TEST_PATH;
+
+        MockFileUtil.setMockDirContents(mMockITestDevice, testPath);
+        EasyMock.expect(mMockITestDevice.doesFileExist(testPath)).andReturn(true);
+        EasyMock.expect(mMockITestDevice.isDirectory(testPath)).andReturn(true);
+        EasyMock.expect(mMockITestDevice.getChildren(testPath)).andReturn(new String[0]);
+        mockTestRunStarted(testPath, 1);
+        mMockInvocationListener.testRunFailed("No test found under " + testPath);
+        mockTestRunEnded();
+
+        callReplayRunVerify();
+    }
+
+    /** Test the run method for not-found tests in nested directories */
+    @Test
+    public void testNotFound2() throws DeviceNotAvailableException {
+        final String testPath = RustBinaryTest.DEFAULT_TEST_PATH;
+        final String[] dirs = new String[] {"d1", "d2"};
+        final String[] d1dirs = new String[] {"d1_1"};
+        final String[] nofiles = new String[0];
+
+        MockFileUtil.setMockDirContents(mMockITestDevice, testPath, "d1", "d2");
+        MockFileUtil.setMockDirContents(mMockITestDevice, testPath + "/d1", "d1_1");
+        EasyMock.expect(mMockITestDevice.doesFileExist(testPath)).andReturn(true);
+        EasyMock.expect(mMockITestDevice.isDirectory(testPath)).andReturn(true);
+        EasyMock.expect(mMockITestDevice.getChildren(testPath)).andReturn(dirs);
+        EasyMock.expect(mMockITestDevice.isDirectory(testPath + "/d1")).andReturn(true);
+        EasyMock.expect(mMockITestDevice.getChildren(testPath + "/d1")).andReturn(d1dirs);
+        EasyMock.expect(mMockITestDevice.isDirectory(testPath + "/d1/d1_1")).andReturn(true);
+        EasyMock.expect(mMockITestDevice.getChildren(testPath + "/d1/d1_1")).andReturn(nofiles);
+        EasyMock.expect(mMockITestDevice.isDirectory(testPath + "/d2")).andReturn(true);
+        EasyMock.expect(mMockITestDevice.getChildren(testPath + "/d2")).andReturn(nofiles);
+        mockTestRunStarted(testPath, 1);
+        mMockInvocationListener.testRunFailed("No test found under " + testPath);
+        mockTestRunEnded();
+
+        callReplayRunVerify();
+    }
+
     /** Test the run method for a couple tests */
     @Test
-    public void testRun() throws DeviceNotAvailableException { // FAILED
+    public void testRun() throws DeviceNotAvailableException {
         final String testPath = RustBinaryTest.DEFAULT_TEST_PATH;
         final String test1 = "test1";
         final String test2 = "test2";
@@ -170,7 +213,7 @@ public class RustBinaryTestTest {
 
     /** Test the run method when module name is specified */
     @Test
-    public void testRun_moduleName() throws DeviceNotAvailableException { // FAILED
+    public void testRun_moduleName() throws DeviceNotAvailableException {
         final String module = "test1";
         final String modulePath =
                 String.format(
@@ -194,7 +237,7 @@ public class RustBinaryTestTest {
 
     /** Test the run method for a test in a subdirectory */
     @Test
-    public void testRun_nested() throws DeviceNotAvailableException { // FAILED
+    public void testRun_nested() throws DeviceNotAvailableException {
         final String testPath = RustBinaryTest.DEFAULT_TEST_PATH;
         final String subFolderName = "subFolder";
         final String subDirPath = testPath + "/" + subFolderName;

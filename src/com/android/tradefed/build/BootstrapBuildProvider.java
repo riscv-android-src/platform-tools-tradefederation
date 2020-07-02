@@ -27,6 +27,7 @@ import com.android.tradefed.invoker.ExecutionFiles;
 import com.android.tradefed.invoker.ExecutionFiles.FilesKey;
 import com.android.tradefed.invoker.logger.CurrentInvocation;
 import com.android.tradefed.invoker.logger.CurrentInvocation.InvocationInfo;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.BuildInfoUtil;
 import com.android.tradefed.util.FileUtil;
 
@@ -125,7 +126,8 @@ public class BootstrapBuildProvider implements IDeviceBuildProvider {
                                 "bootstrap-test-dir",
                                 CurrentInvocation.getInfo(InvocationInfo.WORK_FOLDER));
             } catch (IOException e) {
-                throw new BuildRetrievalError(e.getMessage(), e);
+                throw new BuildRetrievalError(
+                        e.getMessage(), e, InfraErrorIdentifier.FAIL_TO_CREATE_FILE);
             }
             ((IDeviceBuildInfo) info).setTestsDir(mTestsDir, "1");
         }

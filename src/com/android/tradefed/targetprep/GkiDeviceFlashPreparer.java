@@ -62,6 +62,18 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
             isTimeVal = true)
     private long mDeviceBootTime = 5 * 60 * 1000;
 
+    @Option(
+            name = "boot-image-file-name",
+            description =
+                    "The boot image file name to search for if gki_boot.img is provided in "
+                            + "BuildInfo and the provided file is a zip file or directory, for "
+                            + "example boot-5.4.img. By default when gki_boot.img is provided in "
+                            + "BuildInfo with a zip file or file directory, the target preparer "
+                            + "will use the first found file that matches boot(.*).img.")
+    private String mBootImageFileName = "boot(.*).img";
+
+    private File mBootImg = null;
+
     /** {@inheritDoc} */
     @Override
     public void setUp(TestInformation testInfo)
@@ -151,8 +163,7 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
                 executeFastbootCmd(
                         device, "flash", "dtbo", buildInfo.getFile(DTBO_IMG).getAbsolutePath());
             }
-            executeFastbootCmd(
-                    device, "flash", "boot", buildInfo.getFile(GKI_BOOT_IMG).getAbsolutePath());
+            executeFastbootCmd(device, "flash", "boot", mBootImg.getAbsolutePath());
         } finally {
             deviceManager.returnFlashingPermit();
             // Allow interruption at the end no matter what.
@@ -185,10 +196,13 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
      * @param tmpDir the temporary directory {@link File}
      * @throws TargetSetupError if there is no valid gki boot.img
      */
-    public void validateGkiBootImg(ITestDevice device, IDeviceBuildInfo buildInfo, File tmpDir)
+    @VisibleForTesting
+    protected void validateGkiBootImg(ITestDevice device, IDeviceBuildInfo buildInfo, File tmpDir)
             throws TargetSetupError {
-        if (buildInfo.getFile(GKI_BOOT_IMG) != null
-                && buildInfo.getFile(GKI_BOOT_IMG).length() > 0) {
+        if (buildInfo.getFile(GKI_BOOT_IMG) != null && mBootImageFileName != null) {
+            mBootImg =
+                    getRequestedFile(
+                            device, mBootImageFileName, buildInfo.getFile(GKI_BOOT_IMG), tmpDir);
             return;
         }
         if (buildInfo.getFile(KERNEL_IMAGE) == null) {
@@ -209,7 +223,7 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
         try {
             File mkbootimg =
                     getRequestedFile(device, MKBOOTIMG, buildInfo.getFile(OTATOOLS_ZIP), tmpDir);
-            File gkiBootImg = FileUtil.createTempFile("boot", ".img", tmpDir);
+            mBootImg = FileUtil.createTempFile("boot", ".img", tmpDir);
             String cmd =
                     String.format(
                             "%s --kernel %s --header_version 3 --base 0x00000000 "
@@ -217,12 +231,10 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
                             mkbootimg.getAbsolutePath(),
                             buildInfo.getFile(KERNEL_IMAGE),
                             buildInfo.getFile(RAMDISK_RECOVERY_IMG),
-                            gkiBootImg.getAbsolutePath());
+                            mBootImg.getAbsolutePath());
             executeHostCommand(device, cmd);
-            CLog.i("The GKI boot.img is of size %d", gkiBootImg.length());
-            if (gkiBootImg.length() > 0) {
-                buildInfo.setFile(GKI_BOOT_IMG, gkiBootImg, "0");
-            } else {
+            CLog.i("The GKI boot.img is of size %d", mBootImg.length());
+            if (mBootImg.length() == 0) {
                 throw new TargetSetupError(
                         "The mkbootimg tool didn't generate a valid boot.img.",
                         device.getDeviceDescriptor());
@@ -313,19 +325,25 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
      * @param requestedFileName the requeste file name String
      * @param sourceFile the source file
      * @return the file that is specified by the requested file name
-     * @throws TargetSetupError, IOException
+     * @throws TargetSetupError
      */
     private File getRequestedFile(
             ITestDevice device, String requestedFileName, File sourceFile, File tmpDir)
-            throws TargetSetupError, IOException {
+            throws TargetSetupError {
         File requestedFile = null;
         if (sourceFile.getName().endsWith(".zip")) {
-            File destDir =
-                    FileUtil.createTempDir(FileUtil.getBaseName(sourceFile.getName()), tmpDir);
-            ZipUtil2.extractZip(sourceFile, destDir);
-            requestedFile = FileUtil.findFile(destDir, requestedFileName);
+            try {
+                File destDir =
+                        FileUtil.createTempDir(FileUtil.getBaseName(sourceFile.getName()), tmpDir);
+                ZipUtil2.extractZip(sourceFile, destDir);
+                requestedFile = FileUtil.findFile(destDir, requestedFileName);
+            } catch (IOException e) {
+                throw new TargetSetupError(e.getMessage(), e, device.getDeviceDescriptor());
+            }
         } else if (sourceFile.isDirectory()) {
             requestedFile = FileUtil.findFile(sourceFile, requestedFileName);
+        } else {
+            requestedFile = sourceFile;
         }
         if (requestedFile == null || !requestedFile.exists()) {
             throw new TargetSetupError(

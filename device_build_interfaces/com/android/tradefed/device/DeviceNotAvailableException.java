@@ -15,34 +15,43 @@
  */
 package com.android.tradefed.device;
 
+import com.android.tradefed.error.HarnessException;
+import com.android.tradefed.result.error.ErrorIdentifier;
+
+import java.lang.StackWalker.Option;
 
 /**
- * Thrown when a device is no longer available for testing.
- * e.g. the adb connection to the device has been lost, device has stopped responding to commands,
- * etc
+ * Thrown when a device is no longer available for testing. e.g. the adb connection to the device
+ * has been lost, device has stopped responding to commands, etc
  */
-@SuppressWarnings("serial")
-public class DeviceNotAvailableException extends Exception {
+public class DeviceNotAvailableException extends HarnessException {
 
+    private static final long serialVersionUID = 2202987086655357202L;
     private String mSerial = null;
 
     /**
      * Creates a {@link DeviceNotAvailableException}.
+     *
+     * @deprecated Use {@link #DeviceNotAvailableException(String, String, ErrorIdentifier)}
+     *     instead.
      */
+    @Deprecated
     public DeviceNotAvailableException() {
-        super();
+        super(null);
+        setCallerClass(StackWalker.getInstance(Option.RETAIN_CLASS_REFERENCE).getCallerClass());
     }
 
     /**
      * Creates a {@link DeviceNotAvailableException}.
      *
      * @param msg a descriptive message.
-     *
-     * @deprecated use {@link #DeviceNotAvailableException(String msg, String serial)} instead
+     * @deprecated Use {@link #DeviceNotAvailableException(String, String, ErrorIdentifier)}
+     *     instead.
      */
     @Deprecated
     public DeviceNotAvailableException(String msg) {
-        super(msg);
+        this(msg, null, null, null);
+        setCallerClass(StackWalker.getInstance(Option.RETAIN_CLASS_REFERENCE).getCallerClass());
     }
 
     /**
@@ -52,22 +61,20 @@ public class DeviceNotAvailableException extends Exception {
      * @param serial the serial of the device concerned
      */
     public DeviceNotAvailableException(String msg, String serial) {
-        super(msg);
-        mSerial = serial;
+        this(msg, null, serial, null);
+        setCallerClass(StackWalker.getInstance(Option.RETAIN_CLASS_REFERENCE).getCallerClass());
     }
 
     /**
      * Creates a {@link DeviceNotAvailableException}.
      *
      * @param msg a descriptive message.
-     * @param cause the root {@link Throwable} that caused the device to become unavailable.
-     *
-     * @deprecated use
-     * {@link #DeviceNotAvailableException(String msg, Throwable cause, String serial)} instead
+     * @param serial the serial of the device concerned
+     * @param errorId the error identifier for this error.
      */
-    @Deprecated
-    public DeviceNotAvailableException(String msg, Throwable cause) {
-        super(msg, cause);
+    public DeviceNotAvailableException(String msg, String serial, ErrorIdentifier errorId) {
+        this(msg, null, serial, errorId);
+        setCallerClass(StackWalker.getInstance(Option.RETAIN_CLASS_REFERENCE).getCallerClass());
     }
 
     /**
@@ -78,8 +85,23 @@ public class DeviceNotAvailableException extends Exception {
      * @param serial the serial of the device concerned by the exception
      */
     public DeviceNotAvailableException(String msg, Throwable cause, String serial) {
-        super(msg, cause);
+        this(msg, cause, serial, null);
+        setCallerClass(StackWalker.getInstance(Option.RETAIN_CLASS_REFERENCE).getCallerClass());
+    }
+
+    /**
+     * Creates a {@link DeviceNotAvailableException}.
+     *
+     * @param msg a descriptive message.
+     * @param cause the root {@link Throwable} that caused the device to become unavailable.
+     * @param serial the serial of the device concerned by the exception
+     * @param errorId the error identifier for this error.
+     */
+    public DeviceNotAvailableException(
+            String msg, Throwable cause, String serial, ErrorIdentifier errorId) {
+        super(msg, cause, errorId);
         mSerial = serial;
+        setCallerClass(StackWalker.getInstance(Option.RETAIN_CLASS_REFERENCE).getCallerClass());
     }
 
     /**
