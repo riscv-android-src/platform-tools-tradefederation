@@ -74,6 +74,7 @@ import com.android.tradefed.testtype.IRuntimeHintProvider;
 import com.android.tradefed.testtype.ITestCollector;
 import com.android.tradefed.testtype.suite.module.BaseModuleController;
 import com.android.tradefed.testtype.suite.module.IModuleController.RunStrategy;
+import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
@@ -84,7 +85,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
@@ -646,7 +646,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             listener.testRunStarted(getId(), totalExpectedTests, 0, mStartTestTime);
         }
         int numResults = 0;
-        Map<String, LogFile> aggLogFiles = new LinkedHashMap<>();
+        MultiMap<String, LogFile> aggLogFiles = new MultiMap<>();
         List<FailureDescription> runFailureMessages = new ArrayList<>();
         for (TestRunResult runResult : listResults) {
             numResults += runResult.getTestResults().size();
@@ -708,9 +708,11 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         }
 
         // Provide a strong association of the run to its logs.
-        for (Entry<String, LogFile> logFile : aggLogFiles.entrySet()) {
-            if (listener instanceof ILogSaverListener) {
-                ((ILogSaverListener) listener).logAssociation(logFile.getKey(), logFile.getValue());
+        for (String key : aggLogFiles.keySet()) {
+            for (LogFile logFile : aggLogFiles.get(key)) {
+                if (listener instanceof ILogSaverListener) {
+                    ((ILogSaverListener) listener).logAssociation(key, logFile);
+                }
             }
         }
         // Allow each attempt to have its own start/end time
