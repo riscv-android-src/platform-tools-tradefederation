@@ -126,7 +126,7 @@ public class ShardHelper implements IShardHelper {
         LastShardDetector lastShard = new LastShardDetector();
         ShardMasterResultForwarder resultCollector =
                 new ShardMasterResultForwarder(
-                        buildMasterShardListeners(config, lastShard), expectedShard);
+                        buildMainShardListeners(config, lastShard), expectedShard);
 
         config.getLogSaver().invocationStarted(context);
         resultCollector.invocationStarted(context);
@@ -318,7 +318,7 @@ public class ShardHelper implements IShardHelper {
      * Builds the {@link ITestInvocationListener} listeners that will collect the results from all
      * shards. Currently excludes {@link IShardableListener}s.
      */
-    private static List<ITestInvocationListener> buildMasterShardListeners(
+    private static List<ITestInvocationListener> buildMainShardListeners(
             IConfiguration config, LastShardDetector lastShardDetector) {
         List<ITestInvocationListener> newListeners = new ArrayList<ITestInvocationListener>();
         for (ITestInvocationListener l : config.getTestInvocationListeners()) {
@@ -332,7 +332,7 @@ public class ShardHelper implements IShardHelper {
 
     /**
      * Builds the list of {@link ITestInvocationListener}s for each shard. Currently includes any
-     * {@link IShardableListener}, plus a single listener that will forward results to the master
+     * {@link IShardableListener}, plus a single listener that will forward results to the main
      * shard collector.
      */
     private static List<ITestInvocationListener> buildShardListeners(
