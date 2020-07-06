@@ -19,6 +19,7 @@ import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.retry.MergeStrategy;
+import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import java.util.ArrayList;
@@ -48,7 +49,7 @@ public class TestRunResult {
     private Map<String, String> mRunMetrics = new HashMap<>();
     private HashMap<String, Metric> mRunProtoMetrics = new HashMap<>();
     // Log files associated with the test run itself (testRunStart / testRunEnd).
-    private Map<String, LogFile> mRunLoggedFiles;
+    private MultiMap<String, LogFile> mRunLoggedFiles;
     private boolean mIsRunComplete = false;
     private long mElapsedTime = 0L;
     private long mStartTime = 0L;
@@ -69,7 +70,7 @@ public class TestRunResult {
     /** Create an empty{@link TestRunResult}. */
     public TestRunResult() {
         mTestRunName = "not started";
-        mRunLoggedFiles = new LinkedHashMap<String, LogFile>();
+        mRunLoggedFiles = new MultiMap<String, LogFile>();
     }
 
     public void setAggregateMetrics(boolean metricAggregation) {
@@ -452,8 +453,8 @@ public class TestRunResult {
     }
 
     /** Returns a copy of the map containing all the logged file associated with that test case. */
-    public Map<String, LogFile> getRunLoggedFiles() {
-        return new LinkedHashMap<>(mRunLoggedFiles);
+    public MultiMap<String, LogFile> getRunLoggedFiles() {
+        return new MultiMap<>(mRunLoggedFiles);
     }
 
     /** @see #merge(List, MergeStrategy) */
@@ -488,7 +489,7 @@ public class TestRunResult {
         String testRunName = testRunResults.get(0).getName();
         Map<String, String> finalRunMetrics = new HashMap<>();
         HashMap<String, Metric> finalRunProtoMetrics = new HashMap<>();
-        Map<String, LogFile> finalRunLoggedFiles = new HashMap<>();
+        MultiMap<String, LogFile> finalRunLoggedFiles = new MultiMap<>();
         Map<TestDescription, List<TestResult>> testResultsAttempts = new LinkedHashMap<>();
 
         // Keep track of if one of the run is not complete
@@ -536,9 +537,7 @@ public class TestRunResult {
             maxExpectedTestCount =
                     Math.max(maxExpectedTestCount, eachRunResult.getExpectedTestCount());
 
-            // Keep the last TestRunResult's RunMetrics, ProtoMetrics and logFiles.
-            // TODO: Currently we keep a single item when multiple TestRunResult have the same
-            // keys. In the future, we may want to improve this logic.
+            // Keep the last TestRunResult's RunMetrics, ProtoMetrics
             finalRunMetrics.putAll(eachRunResult.getRunMetrics());
             finalRunProtoMetrics.putAll(eachRunResult.getRunProtoMetrics());
             finalRunLoggedFiles.putAll(eachRunResult.getRunLoggedFiles());
