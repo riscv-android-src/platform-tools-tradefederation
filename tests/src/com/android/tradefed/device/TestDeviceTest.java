@@ -1275,6 +1275,7 @@ public class TestDeviceTest extends TestCase {
                 EasyMock.eq(TimeUnit.MINUTES),
                 EasyMock.eq("-l"),
                 EasyMock.contains(apkFile));
+        setMockIDeviceAppOpsToPersist();
         EasyMock.expectLastCall();
         mMockIDevice.removeRemotePackage(certFile);
         mMockIDevice.removeRemotePackage(apkFile);
@@ -1282,6 +1283,21 @@ public class TestDeviceTest extends TestCase {
         replayMocks();
 
         assertNull(mTestDevice.installPackage(new File(apkFile), new File(certFile), true, "-l"));
+    }
+
+    private void setMockIDeviceAppOpsToPersist() {
+        EasyMock.expect(
+                        mMockRunUtil.runTimedCmd(
+                                EasyMock.anyLong(),
+                                (OutputStream) EasyMock.isNull(),
+                                (OutputStream) EasyMock.isNull(),
+                                EasyMock.eq("adb"),
+                                EasyMock.eq("-s"),
+                                EasyMock.eq("serial"),
+                                EasyMock.eq("shell"),
+                                EasyMock.eq("appops"),
+                                EasyMock.eq("write-settings")))
+                .andReturn(new CommandResult(CommandStatus.SUCCESS));
     }
 
     /** Test when a timeout during installation with certificat is thrown. */
@@ -1292,6 +1308,7 @@ public class TestDeviceTest extends TestCase {
                 .andReturn(certFile);
         EasyMock.expect(mMockIDevice.syncPackageToDevice(EasyMock.contains(apkFile)))
                 .andReturn(apkFile);
+        setMockIDeviceAppOpsToPersist();
 
         // expect apk path to be passed as extra arg
         mMockIDevice.installRemotePackage(
@@ -1408,6 +1425,7 @@ public class TestDeviceTest extends TestCase {
                 };
         final String apkFile = "foo.apk";
         setMockIDeviceRuntimePermissionNotSupported();
+        setMockIDeviceAppOpsToPersist();
         mMockIDevice.installPackage(
                 EasyMock.contains(apkFile),
                 EasyMock.eq(true),
@@ -1424,6 +1442,7 @@ public class TestDeviceTest extends TestCase {
     public void testInstallPackage_default_timeout() throws Exception {
         final String apkFile = "foo.apk";
         setMockIDeviceRuntimePermissionNotSupported();
+        setMockIDeviceAppOpsToPersist();
         mMockIDevice.installPackage(
                 EasyMock.contains(apkFile),
                 EasyMock.eq(true),
@@ -1457,6 +1476,7 @@ public class TestDeviceTest extends TestCase {
                 };
         final String apkFile = "foo.apk";
         setMockIDeviceRuntimePermissionSupported();
+        setMockIDeviceAppOpsToPersist();
         mMockIDevice.installPackage(
                 EasyMock.contains(apkFile),
                 EasyMock.eq(true),
@@ -1488,6 +1508,7 @@ public class TestDeviceTest extends TestCase {
         final String apkFile = "foo.apk";
         int uid = 123;
         setMockIDeviceRuntimePermissionNotSupported();
+        setMockIDeviceAppOpsToPersist();
         mMockIDevice.installPackage(
                 EasyMock.contains(apkFile),
                 EasyMock.eq(true),
@@ -1520,6 +1541,7 @@ public class TestDeviceTest extends TestCase {
         final String apkFile = "foo.apk";
         int uid = 123;
         setMockIDeviceRuntimePermissionSupported();
+        setMockIDeviceAppOpsToPersist();
         mMockIDevice.installPackage(
                 EasyMock.contains(apkFile),
                 EasyMock.eq(true),
@@ -1570,6 +1592,7 @@ public class TestDeviceTest extends TestCase {
                 };
         final String apkFile = "foo.apk";
         setMockIDeviceRuntimePermissionSupported();
+        setMockIDeviceAppOpsToPersist();
         mMockIDevice.installPackage(
                 EasyMock.contains(apkFile),
                 EasyMock.eq(true),
@@ -1596,6 +1619,7 @@ public class TestDeviceTest extends TestCase {
                 };
         final String apkFile = "foo.apk";
         setMockIDeviceRuntimePermissionSupported();
+        setMockIDeviceAppOpsToPersist();
         mMockIDevice.installPackage(
                 EasyMock.contains(apkFile),
                 EasyMock.eq(true),
@@ -1628,6 +1652,7 @@ public class TestDeviceTest extends TestCase {
                 };
         final String apkFile = "foo.apk";
         setMockIDeviceRuntimePermissionSupported();
+        setMockIDeviceAppOpsToPersist();
         mMockIDevice.installPackage(
                 EasyMock.contains(apkFile),
                 EasyMock.eq(true),
@@ -1676,6 +1701,7 @@ public class TestDeviceTest extends TestCase {
         final String apkFile = "foo.apk";
         int uid = 123;
         setMockIDeviceRuntimePermissionSupported();
+        setMockIDeviceAppOpsToPersist();
         mMockIDevice.installPackage(
                 EasyMock.contains(apkFile),
                 EasyMock.eq(true),
@@ -1709,6 +1735,7 @@ public class TestDeviceTest extends TestCase {
         final String apkFile = "foo.apk";
         int uid = 123;
         setMockIDeviceRuntimePermissionSupported();
+        setMockIDeviceAppOpsToPersist();
         mMockIDevice.installPackage(
                 EasyMock.contains(apkFile),
                 EasyMock.eq(true),
@@ -1739,6 +1766,7 @@ public class TestDeviceTest extends TestCase {
                 };
         final String apexFile = "foo.apex";
         setMockIDeviceRuntimePermissionNotSupported();
+        setMockIDeviceAppOpsToPersist();
         mMockIDevice.installPackage(
                 EasyMock.contains(apexFile),
                 EasyMock.eq(true),
@@ -1815,6 +1843,7 @@ public class TestDeviceTest extends TestCase {
         Capture<List<File>> filesCapture = new Capture<List<File>>();
         Capture<List<String>> optionsCapture = new Capture<List<String>>();
         setMockIDeviceRuntimePermissionNotSupported();
+        setMockIDeviceAppOpsToPersist();
         mMockIDevice.installPackages(
                 EasyMock.capture(filesCapture),
                 EasyMock.eq(true),
@@ -1847,6 +1876,7 @@ public class TestDeviceTest extends TestCase {
         Capture<List<String>> optionsCapture = new Capture<List<String>>();
         setMockIDeviceRuntimePermissionSupported();
         setMockIDeviceRuntimePermissionSupported();
+        setMockIDeviceAppOpsToPersist();
 
         mMockIDevice.installPackages(
                 EasyMock.capture(filesCapture),
@@ -1876,6 +1906,7 @@ public class TestDeviceTest extends TestCase {
         try {
             Capture<List<String>> optionsCapture = new Capture<List<String>>();
             setMockIDeviceRuntimePermissionNotSupported();
+            setMockIDeviceAppOpsToPersist();
             mMockIDevice.installPackages(
                     EasyMock.eq(mLocalApks),
                     EasyMock.eq(true),
@@ -1911,6 +1942,7 @@ public class TestDeviceTest extends TestCase {
             Capture<List<String>> optionsCapture = new Capture<List<String>>();
             setMockIDeviceRuntimePermissionSupported();
             setMockIDeviceRuntimePermissionSupported();
+            setMockIDeviceAppOpsToPersist();
 
             mMockIDevice.installPackages(
                     EasyMock.eq(mLocalApks),
@@ -1947,6 +1979,7 @@ public class TestDeviceTest extends TestCase {
         Capture<List<String>> optionsCapture = new Capture<List<String>>();
         setMockIDeviceRuntimePermissionSupported();
         setMockIDeviceRuntimePermissionSupported();
+        setMockIDeviceAppOpsToPersist();
 
         mMockIDevice.installPackages(
                 EasyMock.capture(filesCapture),
