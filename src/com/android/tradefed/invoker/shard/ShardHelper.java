@@ -27,7 +27,7 @@ import com.android.tradefed.config.IGlobalConfiguration;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.ShardListener;
-import com.android.tradefed.invoker.ShardMasterResultForwarder;
+import com.android.tradefed.invoker.ShardMainResultForwarder;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.invoker.shard.token.ITokenRequest;
 import com.android.tradefed.log.ITestLogger;
@@ -124,8 +124,8 @@ public class ShardHelper implements IShardHelper {
         }
         // Add a tracker so we know in invocation if the last shard is done running.
         LastShardDetector lastShard = new LastShardDetector();
-        ShardMasterResultForwarder resultCollector =
-                new ShardMasterResultForwarder(
+        ShardMainResultForwarder resultCollector =
+                new ShardMainResultForwarder(
                         buildMainShardListeners(config, lastShard), expectedShard);
 
         config.getLogSaver().invocationStarted(context);
@@ -199,7 +199,7 @@ public class ShardHelper implements IShardHelper {
             IConfiguration config,
             TestInformation testInfo,
             IRescheduler rescheduler,
-            ShardMasterResultForwarder resultCollector,
+            ShardMainResultForwarder resultCollector,
             int index) {
         validateOptions(testInfo, shardConfig);
         ShardBuildCloner.cloneBuildInfos(config, shardConfig, testInfo);
