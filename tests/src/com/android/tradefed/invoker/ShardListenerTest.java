@@ -318,10 +318,10 @@ public class ShardListenerTest {
         // Setup of sharding
         LogSaverResultForwarder originalInvocation =
                 new LogSaverResultForwarder(mMockSaver, Arrays.asList(mockListener));
-        ShardMasterResultForwarder masterForwarder =
+        ShardMasterResultForwarder mainForwarder =
                 new ShardMasterResultForwarder(Arrays.asList(originalInvocation), 1);
-        masterForwarder.invocationStarted(mContext);
-        ShardListener shard1 = new ShardListener(masterForwarder);
+        mainForwarder.invocationStarted(mContext);
+        ShardListener shard1 = new ShardListener(mainForwarder);
         LogSaverResultForwarder shardedInvocation =
                 new LogSaverResultForwarder(mMockSaver, Arrays.asList(shard1));
 
