@@ -341,7 +341,9 @@ public class SuiteModuleLoader {
                         }
                         String fullId =
                                 String.format("%s[%s]", baseId, param.getParameterIdentifier());
-                        if (shouldRunParameterized(baseId, fullId, mForcedParameter)) {
+                        String nameWithParam =
+                                String.format("%s[%s]", name, param.getParameterIdentifier());
+                        if (shouldRunParameterized(baseId, fullId, nameWithParam, mForcedParameter)) {
                             IConfiguration paramConfig =
                                     mConfigFactory.createConfigurationFromArgs(pathArg);
                             // Mark the parameter in the metadata
@@ -351,7 +353,7 @@ public class SuiteModuleLoader {
                                             ConfigurationDescriptor.ACTIVE_PARAMETER_KEY,
                                             param.getParameterIdentifier());
                             param.addParameterSpecificConfig(paramConfig);
-                            setUpConfig(name, baseId, fullId, paramConfig, abi);
+                            setUpConfig(name, nameWithParam, baseId, fullId, paramConfig, abi);
                             param.applySetup(paramConfig);
                             toRun.put(fullId, paramConfig);
                         }
@@ -367,7 +369,8 @@ public class SuiteModuleLoader {
                     // If we find any parameterized combination for mainline modules.
                     for (String param : mainlineParams) {
                         String fullId = String.format("%s[%s]", baseId, param);
-                        if (!shouldRunParameterized(baseId, fullId, null)) {
+                        String nameWithParam = String.format("%s[%s]", name, param);
+                        if (!shouldRunParameterized(baseId, fullId, nameWithParam, null)) {
                             continue;
                         }
                         // Create mainline handler for each defined mainline parameter.
@@ -385,7 +388,7 @@ public class SuiteModuleLoader {
                                 .addMetadata(
                                         ITestSuite.ACTIVE_MAINLINE_PARAMETER_KEY,
                                         param);
-                        setUpConfig(name, baseId, fullId, paramConfig, abi);
+                        setUpConfig(name, nameWithParam, baseId, fullId, paramConfig, abi);
                         handler.applySetup(paramConfig);
                         toRun.put(fullId, paramConfig);
                     }
@@ -399,7 +402,9 @@ public class SuiteModuleLoader {
                 }
                 if (shouldRunModule(baseId)) {
                     // Always add the base regular configuration to the execution.
-                    setUpConfig(name, baseId, baseId, config, abi);
+                    // Do not pass the nameWithParam in because it would cause the module args be
+                    // injected into config twice if we pass nameWithParam using name.
+                    setUpConfig(name, null, baseId, baseId, config, abi);
                     toRun.put(baseId, config);
                 }
             }
@@ -476,10 +481,14 @@ public class SuiteModuleLoader {
      * in including its parameterization variant.
      */
     private boolean shouldRunParameterized(
-            String baseModuleId, String parameterModuleId, IModuleParameter forcedModuleParameter) {
+            String baseModuleId,
+            String parameterModuleId,
+            String nameWithParam,
+            IModuleParameter forcedModuleParameter) {
         // Explicitly excluded
         List<SuiteTestFilter> excluded = getFilterList(mExcludeFilters, parameterModuleId);
-        if (containsModuleExclude(excluded)) {
+        List<SuiteTestFilter> excludedParam = getFilterList(mExcludeFilters, nameWithParam);
+        if (containsModuleExclude(excluded) || containsModuleExclude(excludedParam)) {
             return false;
         }
 
@@ -492,7 +501,8 @@ public class SuiteModuleLoader {
         }
         // Explicitly included
         List<SuiteTestFilter> included = getFilterList(mIncludeFilters, parameterModuleId);
-        if (mIncludeAll || !included.isEmpty()) {
+        List<SuiteTestFilter> includedParam = getFilterList(mIncludeFilters, nameWithParam);
+        if (mIncludeAll || !included.isEmpty() || !includedParam.isEmpty()) {
             return true;
         }
         return false;
@@ -748,17 +758,22 @@ public class SuiteModuleLoader {
      * Setup the options for the module configuration.
      *
      * @param name The base name of the module
+     * @param nameWithParam The id of the parameterized mainline module (module name + parameters)
      * @param id The base id name of the module.
      * @param fullId The full id of the module (usually abi + module name + parameters)
      * @param config The module configuration.
      * @param abi The abi of the module.
      * @throws ConfigurationException
      */
-    private void setUpConfig(String name, String id, String fullId, IConfiguration config, IAbi abi)
-            throws ConfigurationException {
+    private void setUpConfig(String name, String nameWithParam, String id, String fullId,
+            IConfiguration config, IAbi abi)
+        throws ConfigurationException {
         List<OptionDef> optionsToInject = new ArrayList<>();
         if (mModuleOptions.containsKey(name)) {
             optionsToInject.addAll(mModuleOptions.get(name));
+        }
+        if (nameWithParam != null && mModuleOptions.containsKey(nameWithParam)) {
+            optionsToInject.addAll(mModuleOptions.get(nameWithParam));
         }
         if (mModuleOptions.containsKey(id)) {
             optionsToInject.addAll(mModuleOptions.get(id));
@@ -800,6 +815,7 @@ public class SuiteModuleLoader {
 
         config.validateOptions();
     }
+
 
     /** Whether or not the base configuration should be created for all abis or not. */
     private boolean shouldCreateMultiAbiForBase(List<IModuleParameter> params) {
