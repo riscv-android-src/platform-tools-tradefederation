@@ -39,6 +39,7 @@ public class InvocationMetricLogger {
         DEVICE_DONE_TIMESTAMP("device_done_timestamp", false),
         DEVICE_RELEASE_STATE("device_release_state", false),
         DEVICE_LOST_DETECTED("device_lost_detected", false),
+        VIRTUAL_DEVICE_LOST_DETECTED("virtual_device_lost_detected", false),
         DEVICE_RECOVERY("device_recovery", true),
         DEVICE_RECOVERY_FROM_RECOVERY("device_recovery_from_recovery", true),
         DEVICE_RECOVERY_FAIL("device_recovery_fail", true),
