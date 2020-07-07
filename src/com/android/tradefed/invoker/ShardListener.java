@@ -112,10 +112,10 @@ public class ShardListener extends CollectingTestListener implements ISupportGra
     public void testLog(String dataName, LogDataType dataType, InputStreamSource dataStream) {
         // forward testLog results immediately, since result reporters might take action on it.
         synchronized (mMainListener) {
-            if (mMainListener instanceof ShardMasterResultForwarder) {
+            if (mMainListener instanceof ShardMainResultForwarder) {
                 // If the listener is a log saver, we should simply forward the testLog not save
                 // again.
-                ((ShardMasterResultForwarder) mMainListener)
+                ((ShardMainResultForwarder) mMainListener)
                         .testLogForward(dataName, dataType, dataStream);
             } else {
                 mMainListener.testLog(dataName, dataType, dataStream);
