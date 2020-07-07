@@ -41,6 +41,34 @@ public class HarnessRuntimeException extends RuntimeException implements IHarnes
                         .getCanonicalName();
     }
 
+    /**
+     * Constructor for the exception.
+     *
+     * @param message The message associated with the exception
+     * @param cause The {@link IHarnessException} that caused the exception.
+     */
+    public HarnessRuntimeException(String message, IHarnessException cause) {
+        super(message);
+        mErrorId = cause.getErrorId();
+        mOrigin = cause.getOrigin();
+    }
+
+    /**
+     * Constructor for the exception.
+     *
+     * @param message The message associated with the exception
+     * @param cause The cause of the exception
+     * @param errorId The {@link ErrorIdentifier} categorizing the exception.
+     */
+    public HarnessRuntimeException(String message, Throwable cause, ErrorIdentifier errorId) {
+        super(message, cause);
+        mErrorId = errorId;
+        mOrigin =
+                StackWalker.getInstance(Option.RETAIN_CLASS_REFERENCE)
+                        .getCallerClass()
+                        .getCanonicalName();
+    }
+
     @Override
     public ErrorIdentifier getErrorId() {
         return mErrorId;
