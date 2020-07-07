@@ -820,10 +820,15 @@ public class FastbootDeviceFlasher implements IDeviceFlasher {
             mFbCmdStatus = CommandStatus.FAILED;
         }
         if (mFbCmdStatus != CommandStatus.SUCCESS) {
-            throw new TargetSetupError(String.format(
-                    "fastboot command %s failed in device %s. stdout: %s, stderr: %s", cmdArgs[0],
-                    device.getSerialNumber(), result.getStdout(), result.getStderr()),
-                    device.getDeviceDescriptor());
+            throw new TargetSetupError(
+                    String.format(
+                            "fastboot command %s failed in device %s. stdout: %s, stderr: %s",
+                            cmdArgs[0],
+                            device.getSerialNumber(),
+                            result.getStdout(),
+                            result.getStderr()),
+                    device.getDeviceDescriptor(),
+                    DeviceErrorIdentifier.ERROR_AFTER_FLASHING);
         }
         if (result.getStderr().length() > 0) {
             return result.getStderr();

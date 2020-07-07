@@ -35,6 +35,7 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.device.contentprovider.ContentProviderHandler;
+import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.host.IHostOptions;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil;
@@ -4483,7 +4484,10 @@ public class NativeDevice implements IManagedTestDevice {
                         + "Must be API %d.", feature, getSerialNumber(), strictMinLevel));
             }
         } catch (DeviceNotAvailableException e) {
-            throw new RuntimeException("Device became unavailable while checking API level", e);
+            throw new HarnessRuntimeException(
+                    "Device became unavailable while checking API level",
+                    e,
+                    DeviceErrorIdentifier.DEVICE_UNAVAILABLE);
         }
     }
 

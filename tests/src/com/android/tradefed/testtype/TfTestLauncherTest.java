@@ -22,6 +22,7 @@ import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.OptionSetter;
+import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
@@ -92,7 +93,7 @@ public class TfTestLauncherTest {
 
     /** Test {@link TfTestLauncher#run(TestInformation, ITestInvocationListener)} */
     @Test
-    public void testRun() {
+    public void testRun() throws DeviceNotAvailableException {
         CommandResult cr = new CommandResult(CommandStatus.SUCCESS);
         EasyMock.expect(
                         mMockRunUtil.runTimedCmd(
