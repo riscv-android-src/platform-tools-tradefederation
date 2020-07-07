@@ -18,9 +18,7 @@ package com.android.tradefed.invoker.shard;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.doThrow;
 
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.IBuildInfo;
@@ -374,60 +372,6 @@ public class ShardHelperTest {
                                         return true;
                                     }
                                 }));
-    }
-
-    /**
-     * Test that even when sharding, configuration are loaded with the global keystore if needed. If
-     * the keystore fails to load a key, the invocation will be stopped.
-     */
-    @Test
-    public void testClone_withKeystore_loadingFails() throws Exception {
-        IKeyStoreClient mockClient = Mockito.mock(IKeyStoreClient.class);
-        mHelper =
-                new ShardHelper() {
-                    @Override
-                    protected IGlobalConfiguration getGlobalConfiguration() {
-                        try {
-                            IGlobalConfiguration config =
-                                    ConfigurationFactory.getInstance()
-                                            .createGlobalConfigurationFromArgs(
-                                                    new String[] {"empty"}, new ArrayList<>());
-                            config.setKeyStoreFactory(
-                                    new StubKeyStoreFactory() {
-                                        @Override
-                                        public IKeyStoreClient createKeyStoreClient()
-                                                throws KeyStoreException {
-                                            return mockClient;
-                                        }
-                                    });
-                            return config;
-                        } catch (ConfigurationException e) {
-                            throw new RuntimeException(e);
-                        }
-                    }
-                };
-        CommandOptions options = new CommandOptions();
-        HostTest stubTest = new HostTest();
-        OptionSetter setter = new OptionSetter(options, stubTest);
-        // shard-count is the number of shards we are requesting
-        setter.setOptionValue("shard-count", "2");
-        setter.setOptionValue("class", SuccessTestCase.class.getName());
-        setter.setOptionValue("class", TestMetricTestCase.class.getName());
-        mConfig.setCommandOptions(options);
-        mConfig.setCommandLine(new String[] {"host", "--class", "USE_KEYSTORE@test"});
-        mConfig.setTest(stubTest);
-
-        assertEquals(1, mConfig.getTests().size());
-
-        doReturn(true).when(mockClient).isAvailable();
-        doReturn(SuccessTestCase.class.getName()).when(mockClient).fetchKey("test");
-        doThrow(new RuntimeException()).when(mockClient).fetchKey("test");
-        try {
-            mHelper.shardConfig(mConfig, mTestInfo, mRescheduler, null);
-            fail("Should have thrown an exception.");
-        } catch (RuntimeException expected) {
-            // expected
-        }
     }
 
     /**
