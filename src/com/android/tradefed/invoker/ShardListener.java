@@ -30,6 +30,7 @@ import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.result.retry.ISupportGranularResults;
+import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.TimeUtil;
 
 import java.util.ArrayList;
@@ -281,6 +282,18 @@ public class ShardListener extends CollectingTestListener implements ISupportGra
     }
 
     /** Forward to the listener the logAssociated callback on the files. */
+    private void forwardLogAssociation(
+            MultiMap<String, LogFile> loggedFiles, ITestInvocationListener listener) {
+        for (String key : loggedFiles.keySet()) {
+            for (LogFile logFile : loggedFiles.get(key)) {
+                if (listener instanceof ILogSaverListener) {
+                    ((ILogSaverListener) listener).logAssociation(key, logFile);
+                }
+            }
+        }
+    }
+
+    /** Forward test cases logged files. */
     private void forwardLogAssociation(
             Map<String, LogFile> loggedFiles, ITestInvocationListener listener) {
         for (Entry<String, LogFile> logFile : loggedFiles.entrySet()) {
