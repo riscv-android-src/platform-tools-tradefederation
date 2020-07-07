@@ -39,6 +39,7 @@ import com.android.tradefed.device.cloud.ManagedRemoteDevice;
 import com.android.tradefed.device.cloud.NestedRemoteDevice;
 import com.android.tradefed.device.cloud.RemoteAndroidVirtualDevice;
 import com.android.tradefed.error.HarnessException;
+import com.android.tradefed.error.IHarnessException;
 import com.android.tradefed.guice.InvocationScope;
 import com.android.tradefed.invoker.logger.CurrentInvocation;
 import com.android.tradefed.invoker.logger.CurrentInvocation.InvocationInfo;
@@ -466,12 +467,12 @@ public class TestInvocation implements ITestInvocation {
      *
      * @param exception The exception to convert
      * @param defaultStatus The status to use by default if the exception is not a {@link
-     *     HarnessException}.
+     *     IHarnessException}.
      */
     private FailureDescription createFailureFromException(
             Throwable exception, FailureStatus defaultStatus) {
         ErrorIdentifier id = null;
-        if (exception instanceof HarnessException) {
+        if (exception instanceof IHarnessException) {
             id = ((HarnessException) exception).getErrorId();
         }
         FailureDescription failure =
