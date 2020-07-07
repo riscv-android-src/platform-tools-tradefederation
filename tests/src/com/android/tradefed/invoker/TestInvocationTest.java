@@ -35,6 +35,7 @@ import com.android.tradefed.command.ICommandOptions;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationDef;
+import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.DeviceConfigurationHolder;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
@@ -94,6 +95,7 @@ import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.testtype.StubTest;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.SystemUtil.EnvVariable;
+import com.android.tradefed.util.keystore.IKeyStoreClient;
 import com.android.tradefed.util.keystore.StubKeyStoreFactory;
 
 import org.easymock.Capture;
@@ -174,7 +176,15 @@ public class TestInvocationTest {
 
     @Before
     public void setUp() throws Exception {
-        mStubConfiguration = new Configuration("foo", "bar");
+        mStubConfiguration =
+                new Configuration("foo", "bar") {
+                    @Override
+                    public IConfiguration partialDeepClone(
+                            List<String> objectToDeepClone, IKeyStoreClient client)
+                            throws ConfigurationException {
+                        return new Configuration(this.getName(), this.getDescription());
+                    }
+                };
         mStubMultiConfiguration = new Configuration("foo", "bar");
 
         mGlobalConfiguration = EasyMock.createMock(IGlobalConfiguration.class);
