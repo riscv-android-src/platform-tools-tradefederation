@@ -34,6 +34,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.NativeDevice;
 import com.android.tradefed.device.StubDevice;
+import com.android.tradefed.device.TcpDevice;
 import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.device.cloud.ManagedRemoteDevice;
 import com.android.tradefed.device.cloud.NestedRemoteDevice;
@@ -1095,9 +1096,15 @@ public class TestInvocation implements ITestInvocation {
                     InvocationMetricKey.DEVICE_RELEASE_STATE,
                     devicesStates.values().iterator().next().toString());
         }
-        // TODO: Add Handling of virtual devices
         int countPhysicalLost = 0;
+        int countVirtualLost = 0;
         for (Entry<ITestDevice, FreeDeviceState> fds : devicesStates.entrySet()) {
+            // TODO: Rely on the FailureStatus for lost devices instead
+            if (fds.getKey().getIDevice() instanceof TcpDevice
+                    && exception instanceof DeviceNotAvailableException) {
+                countVirtualLost++;
+                continue;
+            }
             if (fds.getKey().getIDevice() instanceof StubDevice) {
                 continue;
             }
@@ -1113,6 +1120,8 @@ public class TestInvocation implements ITestInvocation {
                                 .executeGlobalAdbCommand("devices");
                 CLog.e("'adb devices' output:\n%s", adbOutput);
             }
+        } else if (countVirtualLost > 0) {
+            addInvocationMetric(InvocationMetricKey.VIRTUAL_DEVICE_LOST_DETECTED, countVirtualLost);
         }
         return devicesStates;
     }
