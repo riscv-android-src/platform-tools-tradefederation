@@ -320,7 +320,7 @@ public abstract class DeviceFlashPreparer extends BaseTargetPreparer {
                             "Unexpected build after flashing. Expected %s, actual %s",
                             expectedBuildAttr, actualBuildAttr),
                     serial,
-                    DeviceErrorIdentifier.DEVICE_UNEXPECTED_RESPONSE);
+                    DeviceErrorIdentifier.ERROR_AFTER_FLASHING);
         }
     }
 
