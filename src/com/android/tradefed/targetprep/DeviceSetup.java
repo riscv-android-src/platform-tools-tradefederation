@@ -26,6 +26,7 @@ import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.BinaryState;
 import com.android.tradefed.util.MultiMap;
 
@@ -918,7 +919,8 @@ public class DeviceSetup extends BaseTargetPreparer {
                     String.format(
                             "Failed to connect to wifi network %s on %s",
                             mWifiSsid, device.getSerialNumber()),
-                    device.getDeviceDescriptor());
+                    device.getDeviceDescriptor(),
+                    InfraErrorIdentifier.WIFI_FAILED_CONNECT);
         }
     }
 
