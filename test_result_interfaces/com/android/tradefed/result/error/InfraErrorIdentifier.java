@@ -32,6 +32,12 @@ public enum InfraErrorIdentifier implements ErrorIdentifier {
     ARTIFACT_UNSUPPORTED_PATH(10_502, FailureStatus.INFRA_FAILURE),
     ARTIFACT_DOWNLOAD_ERROR(10_503, FailureStatus.INFRA_FAILURE),
 
+    // 11_001 - 11_500: environment issues: For example: lab wifi
+    WIFI_FAILED_CONNECT(11_001, FailureStatus.UNSET), // TODO: switch to dependency_issue
+
+    // 12_000 - 12_100: Test issues detected by infra
+    EXPECTED_TESTS_MISMATCH(12_000, FailureStatus.TEST_FAILURE),
+
     UNDETERMINED(20_000, FailureStatus.UNSET);
 
     private final long code;
