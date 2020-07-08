@@ -128,6 +128,7 @@ public class RustBinaryHostTest extends RustTestBase implements IBuildReceiver {
     private void runSingleRustFile(ITestInvocationListener listener, File file) {
         List<String> commandLine = new ArrayList<>();
         commandLine.add(file.getAbsolutePath());
+        CLog.d("Run single Rust File: " + file.getAbsolutePath());
 
         // Add all the other options
         commandLine.addAll(mTestOptions);
@@ -161,6 +162,7 @@ public class RustBinaryHostTest extends RustTestBase implements IBuildReceiver {
                 getRunUtil().runTimedCmd(mTestTimeout, commandLine.toArray(new String[0]));
         long testTimeMs = System.currentTimeMillis() - startTimeMs;
         if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
+            listener.testRunFailed("Fail to run: " + file.getAbsolutePath());
             CLog.e(
                     "Something went wrong when running the rust binary:\nstdout: "
                             + "%s\nstderr:%s",

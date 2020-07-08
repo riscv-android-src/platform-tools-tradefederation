@@ -19,12 +19,19 @@ import com.android.ddmlib.AdbCommandRejectedException;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log;
 import com.android.ddmlib.TimeoutException;
+import com.android.helper.aoa.UsbDevice;
+import com.android.helper.aoa.UsbHelper;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
+
+import com.google.common.annotations.VisibleForTesting;
 
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
@@ -189,7 +196,8 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
                 // device
                 throw new DeviceNotAvailableException(
                         "Cannot read battery level but a min is required",
-                        device.getSerialNumber());
+                        device.getSerialNumber(),
+                        DeviceErrorIdentifier.DEVICE_UNEXPECTED_RESPONSE);
             } else if (level < mRequiredMinBattery) {
                 throw new DeviceNotAvailableException(String.format(
                         "After recovery, device battery level %d is lower than required minimum %d",
@@ -238,8 +246,14 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
      */
     protected void handleDeviceNotAvailable(IDeviceStateMonitor monitor, boolean recoverTillOnline)
             throws DeviceNotAvailableException {
-        throw new DeviceNotAvailableException(String.format("Could not find device %s",
-                monitor.getSerialNumber()), monitor.getSerialNumber());
+        if (attemptDeviceUnavailableRecovery(monitor, recoverTillOnline)) {
+            return;
+        }
+        String serial = monitor.getSerialNumber();
+        throw new DeviceNotAvailableException(
+                String.format("Could not find device %s", serial),
+                serial,
+                DeviceErrorIdentifier.DEVICE_UNAVAILABLE);
     }
 
     /**
@@ -449,7 +463,8 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
             final IDeviceStateMonitor monitor, String mode) throws DeviceNotAvailableException {
         throw new DeviceNotAvailableException(
                 String.format("Could not find device %s in %s", monitor.getSerialNumber(), mode),
-                monitor.getSerialNumber());
+                monitor.getSerialNumber(),
+                DeviceErrorIdentifier.DEVICE_UNAVAILABLE);
     }
 
     /**
@@ -460,5 +475,80 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
             throws DeviceNotAvailableException {
         throw new DeviceNotAvailableException("device recovery not implemented",
                 monitor.getSerialNumber());
+    }
+
+    /** Recovery routine for device unavailable errors. */
+    private boolean attemptDeviceUnavailableRecovery(
+            IDeviceStateMonitor monitor, boolean recoverTillOnline) {
+        TestDeviceState state = monitor.getDeviceState();
+        if (TestDeviceState.FASTBOOT.equals(state) || TestDeviceState.FASTBOOTD.equals(state)) {
+            CLog.d("Device is in '%s' state skipping USB reset attempt.", state);
+            return false;
+        }
+        String serial = monitor.getSerialNumber();
+        boolean recoveryAttempted = false;
+        // First try to do a USB reset to get the device back
+        try (UsbHelper usb = getUsbHelper()) {
+            try (UsbDevice usbDevice = usb.getDevice(serial)) {
+                if (usbDevice != null) {
+                    CLog.d("Resetting USB port for device '%s'", serial);
+                    usbDevice.reset();
+                    recoveryAttempted = true;
+                    if (waitForDevice(monitor, recoverTillOnline)) {
+                        // Success
+                        CLog.d("Device recovered from USB reset and is online.");
+                        InvocationMetricLogger.addInvocationMetrics(
+                                InvocationMetricKey.DEVICE_RECOVERY, 1);
+                        return true;
+                    }
+                }
+            }
+        }
+        if (recoveryAttempted) {
+            // Sometimes device come back visible but in recovery
+            if (TestDeviceState.RECOVERY.equals(monitor.getDeviceState())) {
+                IDevice device = monitor.waitForDeviceInRecovery();
+                if (device != null) {
+                    CLog.d("Device came back in 'RECOVERY' mode when we expected 'ONLINE'");
+                    rebootDevice(
+                            device, null
+                            /** regular mode */
+                            );
+                    if (waitForDevice(monitor, recoverTillOnline)) {
+                        // Success
+                        CLog.d("Device recovered from recovery mode and is online.");
+                        InvocationMetricLogger.addInvocationMetrics(
+                                InvocationMetricKey.DEVICE_RECOVERY, 1);
+                        // Individually track this too
+                        InvocationMetricLogger.addInvocationMetrics(
+                                InvocationMetricKey.DEVICE_RECOVERY_FROM_RECOVERY, 1);
+                        return true;
+                    }
+                }
+            }
+            // Track the failure
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.DEVICE_RECOVERY_FAIL, 1);
+            CLog.w("USB reset recovery was unsuccessful");
+        }
+        return false;
+    }
+
+    private boolean waitForDevice(IDeviceStateMonitor monitor, boolean recoverTillOnline) {
+        if (recoverTillOnline) {
+            if (monitor.waitForDeviceOnline() != null) {
+                // Success
+                return true;
+            }
+        } else if (monitor.waitForDeviceAvailable() != null) {
+            // Success
+            return true;
+        }
+        return false;
+    }
+
+    @VisibleForTesting
+    UsbHelper getUsbHelper() {
+        return new UsbHelper();
     }
 }

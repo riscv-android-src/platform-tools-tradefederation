@@ -21,6 +21,7 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.DeviceConfigurationHolder;
 import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
@@ -31,9 +32,11 @@ import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.LogcatOnFailureCollector;
 import com.android.tradefed.device.metric.ScreenshotOnFailureCollector;
+import com.android.tradefed.error.IHarnessException;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
+import com.android.tradefed.invoker.logger.CurrentInvocation;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.invoker.logger.TfObjectTracker;
@@ -54,6 +57,7 @@ import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
+import com.android.tradefed.result.error.ErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.retry.RetryStatistics;
@@ -70,6 +74,7 @@ import com.android.tradefed.testtype.IRuntimeHintProvider;
 import com.android.tradefed.testtype.ITestCollector;
 import com.android.tradefed.testtype.suite.module.BaseModuleController;
 import com.android.tradefed.testtype.suite.module.IModuleController.RunStrategy;
+import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
@@ -80,7 +85,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
@@ -118,6 +122,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     private final IInvocationContext mModuleInvocationContext;
     private final IConfiguration mModuleConfiguration;
     private IConfiguration mInternalTestConfiguration;
+    private IConfiguration mInternalTargetPreparerConfiguration;
     private ILogSaver mLogSaver;
 
     private final String mId;
@@ -354,8 +359,35 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         // Exception generated during setUp or run of the tests
         Throwable preparationException = null;
         DeviceNotAvailableException runException = null;
-        // Resolve dynamic files except for the IRemotTest ones
+        // Resolve dynamic files except for the IRemoteTest ones
         preparationException = invokeRemoteDynamic(moduleInfo.getDevice(), mModuleConfiguration);
+
+        if (preparationException == null) {
+            mInternalTargetPreparerConfiguration =
+                    new Configuration("tmp-download", "tmp-download");
+            mInternalTargetPreparerConfiguration
+                    .getCommandOptions()
+                    .getDynamicDownloadArgs()
+                    .putAll(mModuleConfiguration.getCommandOptions().getDynamicDownloadArgs());
+            for (String device : mPreparersPerDevice.keySet()) {
+                mInternalTargetPreparerConfiguration.setDeviceConfig(
+                        new DeviceConfigurationHolder(device));
+                for (ITargetPreparer preparer : mPreparersPerDevice.get(device)) {
+                    try {
+                        mInternalTargetPreparerConfiguration
+                                .getDeviceConfigByName(device)
+                                .addSpecificConfig(preparer);
+                    } catch (ConfigurationException e) {
+                        // Shouldn't happen;
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
+            mInternalTargetPreparerConfiguration.setMultiTargetPreparers(mMultiPreparers);
+            preparationException =
+                    invokeRemoteDynamic(
+                            moduleInfo.getDevice(), mInternalTargetPreparerConfiguration);
+        }
         // Setup
         long prepStartTime = getCurrentTime();
         if (preparationException == null) {
@@ -480,6 +512,11 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 }
             }
         } finally {
+            // Clean target preparers dynamic files.
+            if (mInternalTargetPreparerConfiguration != null) {
+                mInternalTargetPreparerConfiguration.cleanConfigurationData();
+                mInternalTargetPreparerConfiguration = null;
+            }
             long cleanStartTime = getCurrentTime();
             RuntimeException tearDownException = null;
             try {
@@ -609,14 +646,13 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             listener.testRunStarted(getId(), totalExpectedTests, 0, mStartTestTime);
         }
         int numResults = 0;
-        Map<String, LogFile> aggLogFiles = new LinkedHashMap<>();
+        MultiMap<String, LogFile> aggLogFiles = new MultiMap<>();
         List<FailureDescription> runFailureMessages = new ArrayList<>();
         for (TestRunResult runResult : listResults) {
             numResults += runResult.getTestResults().size();
             forwardTestResults(runResult.getTestResults(), listener);
             if (runResult.isRunFailure()) {
                 runFailureMessages.add(runResult.getRunFailureDescription());
-                mIsFailedModule = true;
             }
             elapsedTime += runResult.getElapsedTime();
             // put metrics from the tests
@@ -645,19 +681,21 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                     RETRY_FAIL_COUNT, TfMetricProtoUtil.createSingleValue(agg.mRetryFailure, ""));
         }
 
-        if (totalExpectedTests != numResults) {
+        // Only report the mismatch if there were no error during the run.
+        if (runFailureMessages.isEmpty() && totalExpectedTests != numResults) {
             String error =
                     String.format(
                             "Module %s only ran %d out of %d expected tests.",
                             getId(), numResults, totalExpectedTests);
             runFailureMessages.add(FailureDescription.create(error));
             CLog.e(error);
-            mIsFailedModule = true;
         }
 
         if (tearDownException != null) {
-            runFailureMessages.add(
-                    FailureDescription.create(StreamUtil.getStackTrace(tearDownException)));
+            FailureDescription failure =
+                    CurrentInvocation.createFailure(
+                            StreamUtil.getStackTrace(tearDownException), null);
+            runFailureMessages.add(failure);
         }
         // If there is any errors report them all at once
         if (!runFailureMessages.isEmpty()) {
@@ -666,12 +704,15 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             } else {
                 listener.testRunFailed(new MultiFailureDescription(runFailureMessages));
             }
+            mIsFailedModule = true;
         }
 
         // Provide a strong association of the run to its logs.
-        for (Entry<String, LogFile> logFile : aggLogFiles.entrySet()) {
-            if (listener instanceof ILogSaverListener) {
-                ((ILogSaverListener) listener).logAssociation(logFile.getKey(), logFile.getValue());
+        for (String key : aggLogFiles.keySet()) {
+            for (LogFile logFile : aggLogFiles.get(key)) {
+                if (listener instanceof ILogSaverListener) {
+                    ((ILogSaverListener) listener).logAssociation(key, logFile);
+                }
             }
         }
         // Allow each attempt to have its own start/end time
@@ -1069,8 +1110,17 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         // similar to InitializationError of JUnit.
         forwarder.testRunStarted(getId(), 1, 0, System.currentTimeMillis());
         FailureDescription failureDescription =
-                FailureDescription.create(StreamUtil.getStackTrace(setupException));
-        failureDescription.setFailureStatus(FailureStatus.TEST_FAILURE);
+                CurrentInvocation.createFailure(StreamUtil.getStackTrace(setupException), null);
+        if (setupException instanceof IHarnessException
+                && ((IHarnessException) setupException).getErrorId() != null) {
+            ErrorIdentifier id = ((IHarnessException) setupException).getErrorId();
+            failureDescription.setErrorIdentifier(id);
+            failureDescription.setFailureStatus(id.status());
+            failureDescription.setOrigin(((IHarnessException) setupException).getOrigin());
+        } else {
+            failureDescription.setFailureStatus(FailureStatus.UNSET);
+        }
+        failureDescription.setCause(setupException);
         forwarder.testRunFailed(failureDescription);
         HashMap<String, Metric> metricsProto = new HashMap<>();
         metricsProto.put(TEST_TIME, TfMetricProtoUtil.createSingleValue(0L, "milliseconds"));

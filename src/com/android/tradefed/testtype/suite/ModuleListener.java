@@ -181,6 +181,7 @@ public class ModuleListener extends CollectingTestListener {
         if (mSkip) {
             return;
         }
+        mTestStatus = TestStatus.FAILURE;
         mTrace = trace;
         super.testFailed(test, trace);
     }

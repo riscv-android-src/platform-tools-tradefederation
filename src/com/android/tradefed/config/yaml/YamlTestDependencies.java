@@ -40,6 +40,9 @@ class YamlTestDependencies {
 
     public YamlTestDependencies(List<Map<String, Object>> dependencies)
             throws ConfigurationException {
+        if (dependencies == null) {
+            return;
+        }
         for (Map<String, Object> dependencyEntry : dependencies) {
             if (dependencyEntry.containsKey(APKS_KEY)) {
                 for (String apk : (List<String>) dependencyEntry.get(APKS_KEY)) {

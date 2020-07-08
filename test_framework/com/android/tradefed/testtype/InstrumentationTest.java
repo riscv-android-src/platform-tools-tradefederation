@@ -22,6 +22,7 @@ import static com.android.tradefed.testtype.coverage.CoverageOptions.Toolchain.J
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
+import static com.google.common.base.Verify.verify;
 
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log;
@@ -707,7 +708,7 @@ public class InstrumentationTest
             runOptions += "--no-window-animation ";
         }
 
-        if (abiName != null) {
+        if (abiName != null && getDevice().getApiLevel() > 20) {
             mInstallArgs.add(String.format("--abi %s", abiName));
             runOptions += String.format("--abi %s", abiName);
         }
@@ -921,6 +922,9 @@ public class InstrumentationTest
 
                 if (options.getCoverageToolchains().contains(GCOV)
                         || options.getCoverageToolchains().contains(CLANG)) {
+                    // Enable abd root on the device, otherwise the following commands will fail.
+                    verify(mDevice.enableAdbRoot(), "Failed to enable adb root.");
+
                     NativeCodeCoverageFlusher flusher =
                             new NativeCodeCoverageFlusher(mDevice, options.getCoverageProcesses());
                     flusher.resetCoverage();

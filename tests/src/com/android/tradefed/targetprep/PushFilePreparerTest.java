@@ -579,6 +579,72 @@ public class PushFilePreparerTest {
         }
     }
 
+    /** Test that if multiple files exists, push the one with matching ABI. */
+    @Test
+    public void testPush_moduleName_files_abi_32bit() throws Exception {
+        mOptionSetter.setOptionValue("push", "file->/data/local/tmp/file");
+        mPreparer.setAbi(new Abi("x86", "32"));
+
+        mPreparer.setInvocationContext(createModuleWithName("aaaaa"));
+        IDeviceBuildInfo info = new DeviceBuildInfo();
+        File tmpFolder = FileUtil.createTempDir("push-file-tests-dir");
+        try {
+            File beforeName = new File(tmpFolder, "target/testcases/aaaaa/x86_64/file");
+            FileUtil.mkdirsRWX(beforeName.getParentFile());
+            beforeName.createNewFile();
+            File x86File = new File(tmpFolder, "target/testcases/aaaaa/x86/file");
+            FileUtil.mkdirsRWX(x86File.getParentFile());
+            x86File.createNewFile();
+            info.setFile(BuildInfoFileKey.TESTDIR_IMAGE, tmpFolder, "v1");
+            EasyMock.expect(
+                            mMockDevice.pushFile(
+                                    EasyMock.eq(
+                                            new File(tmpFolder, "target/testcases/aaaaa/x86/file")),
+                                    EasyMock.eq("/data/local/tmp/file")))
+                    .andReturn(true);
+            mTestInfo.getContext().addDeviceBuildInfo("device", info);
+            EasyMock.replay(mMockDevice);
+            mPreparer.setUp(mTestInfo);
+            EasyMock.verify(mMockDevice);
+        } finally {
+            FileUtil.recursiveDelete(tmpFolder);
+        }
+    }
+
+    /** Test that if multiple files exists, push the one with matching ABI. */
+    @Test
+    public void testPush_moduleName_files_abi_64bit() throws Exception {
+        mOptionSetter.setOptionValue("push", "file->/data/local/tmp/file");
+        mPreparer.setAbi(new Abi("x86_64", "64"));
+
+        mPreparer.setInvocationContext(createModuleWithName("aaaaa"));
+        IDeviceBuildInfo info = new DeviceBuildInfo();
+        File tmpFolder = FileUtil.createTempDir("push-file-tests-dir");
+        try {
+            File beforeName = new File(tmpFolder, "target/testcases/aaaaa/x86_64/file");
+            FileUtil.mkdirsRWX(beforeName.getParentFile());
+            beforeName.createNewFile();
+            File x86File = new File(tmpFolder, "target/testcases/aaaaa/x86/file");
+            FileUtil.mkdirsRWX(x86File.getParentFile());
+            x86File.createNewFile();
+            info.setFile(BuildInfoFileKey.TESTDIR_IMAGE, tmpFolder, "v1");
+            EasyMock.expect(
+                            mMockDevice.pushFile(
+                                    EasyMock.eq(
+                                            new File(
+                                                    tmpFolder,
+                                                    "target/testcases/aaaaa/x86_64/file")),
+                                    EasyMock.eq("/data/local/tmp/file")))
+                    .andReturn(true);
+            mTestInfo.getContext().addDeviceBuildInfo("device", info);
+            EasyMock.replay(mMockDevice);
+            mPreparer.setUp(mTestInfo);
+            EasyMock.verify(mMockDevice);
+        } finally {
+            FileUtil.recursiveDelete(tmpFolder);
+        }
+    }
+
     @Test
     public void testPush_moduleName_ignored() throws Exception {
         mOptionSetter.setOptionValue("push", "lib64->/data/local/tmp/lib");

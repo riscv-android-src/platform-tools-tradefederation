@@ -30,6 +30,7 @@ import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.result.retry.ISupportGranularResults;
+import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.TimeUtil;
 
 import java.util.ArrayList;
@@ -46,7 +47,7 @@ import java.util.Map.Entry;
  */
 public class ShardListener extends CollectingTestListener implements ISupportGranularResults {
 
-    private ITestInvocationListener mMasterListener;
+    private ITestInvocationListener mMainListener;
     private IInvocationContext mModuleContext = null;
     private int mAttemptInProgress = 0;
     private boolean mEnableGranularResults = false;
@@ -54,13 +55,13 @@ public class ShardListener extends CollectingTestListener implements ISupportGra
     /**
      * Create a {@link ShardListener}.
      *
-     * @param master the {@link ITestInvocationListener} the results should be forwarded. To prevent
+     * @param main the {@link ITestInvocationListener} the results should be forwarded. To prevent
      *     collisions with other {@link ShardListener}s, this object will synchronize on
-     *     <var>master</var> when forwarding results. And results will only be sent once the
+     *     <var>main</var> when forwarding results. And results will only be sent once the
      *     invocation shard completes.
      */
-    public ShardListener(ITestInvocationListener master) {
-        mMasterListener = master;
+    public ShardListener(ITestInvocationListener main) {
+        mMainListener = main;
     }
 
     /** {@inheritDoc} */
@@ -79,8 +80,8 @@ public class ShardListener extends CollectingTestListener implements ISupportGra
     @Override
     public void invocationStarted(IInvocationContext context) {
         super.invocationStarted(context);
-        synchronized (mMasterListener) {
-            mMasterListener.invocationStarted(context);
+        synchronized (mMainListener) {
+            mMainListener.invocationStarted(context);
         }
     }
 
@@ -90,8 +91,8 @@ public class ShardListener extends CollectingTestListener implements ISupportGra
     @Override
     public void invocationFailed(Throwable cause) {
         super.invocationFailed(cause);
-        synchronized (mMasterListener) {
-            mMasterListener.invocationFailed(cause);
+        synchronized (mMainListener) {
+            mMainListener.invocationFailed(cause);
         }
     }
 
@@ -99,8 +100,8 @@ public class ShardListener extends CollectingTestListener implements ISupportGra
     @Override
     public void invocationFailed(FailureDescription failure) {
         super.invocationFailed(failure);
-        synchronized (mMasterListener) {
-            mMasterListener.invocationFailed(failure);
+        synchronized (mMainListener) {
+            mMainListener.invocationFailed(failure);
         }
     }
 
@@ -110,14 +111,14 @@ public class ShardListener extends CollectingTestListener implements ISupportGra
     @Override
     public void testLog(String dataName, LogDataType dataType, InputStreamSource dataStream) {
         // forward testLog results immediately, since result reporters might take action on it.
-        synchronized (mMasterListener) {
-            if (mMasterListener instanceof ShardMasterResultForwarder) {
+        synchronized (mMainListener) {
+            if (mMainListener instanceof ShardMainResultForwarder) {
                 // If the listener is a log saver, we should simply forward the testLog not save
                 // again.
-                ((ShardMasterResultForwarder) mMasterListener)
+                ((ShardMainResultForwarder) mMainListener)
                         .testLogForward(dataName, dataType, dataStream);
             } else {
-                mMasterListener.testLog(dataName, dataType, dataStream);
+                mMainListener.testLog(dataName, dataType, dataStream);
             }
         }
     }
@@ -128,9 +129,9 @@ public class ShardListener extends CollectingTestListener implements ISupportGra
             String dataName, LogDataType dataType, InputStreamSource dataStream, LogFile logFile) {
         super.testLogSaved(dataName, dataType, dataStream, logFile);
         // Forward the testLogSaved callback.
-        synchronized (mMasterListener) {
-            if (mMasterListener instanceof ILogSaverListener) {
-                ((ILogSaverListener) mMasterListener)
+        synchronized (mMainListener) {
+            if (mMainListener instanceof ILogSaverListener) {
+                ((ILogSaverListener) mMainListener)
                         .testLogSaved(dataName, dataType, dataStream, logFile);
             }
         }
@@ -180,7 +181,7 @@ public class ShardListener extends CollectingTestListener implements ISupportGra
         if (mModuleContext == null) {
             // testRunEnded only forwards if it's not part of a module. If it's a module
             // testModuleEnded is in charge of forwarding all run results.
-            synchronized (mMasterListener) {
+            synchronized (mMainListener) {
                 forwardRunResults(getCurrentRunResults(), mAttemptInProgress);
             }
             mAttemptInProgress = 0;
@@ -193,8 +194,8 @@ public class ShardListener extends CollectingTestListener implements ISupportGra
     public void testModuleEnded() {
         super.testModuleEnded();
 
-        synchronized (mMasterListener) {
-            mMasterListener.testModuleStarted(mModuleContext);
+        synchronized (mMainListener) {
+            mMainListener.testModuleStarted(mModuleContext);
             List<String> resultNames = new ArrayList<String>();
             if (mEnableGranularResults) {
                 for (int i = 0; i < mAttemptInProgress + 1; i++) {
@@ -216,7 +217,7 @@ public class ShardListener extends CollectingTestListener implements ISupportGra
             for (String name : resultNames) {
                 clearResultsForName(name);
             }
-            mMasterListener.testModuleEnded();
+            mMainListener.testModuleEnded();
         }
         mModuleContext = null;
     }
@@ -225,54 +226,53 @@ public class ShardListener extends CollectingTestListener implements ISupportGra
     @Override
     public void invocationEnded(long elapsedTime) {
         super.invocationEnded(elapsedTime);
-        synchronized (mMasterListener) {
+        synchronized (mMainListener) {
             logShardContent(getMergedTestRunResults());
             // Report all logs not associated with test runs
-            forwardLogAssociation(getNonAssociatedLogFiles(), mMasterListener);
-            mMasterListener.invocationEnded(elapsedTime);
+            forwardLogAssociation(getNonAssociatedLogFiles(), mMainListener);
+            mMainListener.invocationEnded(elapsedTime);
         }
     }
 
     private void forwardRunResults(TestRunResult runResult, int attempt) {
-        mMasterListener.testRunStarted(
+        mMainListener.testRunStarted(
                 runResult.getName(),
                 runResult.getExpectedTestCount(),
                 attempt,
                 runResult.getStartTime());
         forwardTestResults(runResult.getTestResults());
         if (runResult.isRunFailure()) {
-            mMasterListener.testRunFailed(runResult.getRunFailureDescription());
+            mMainListener.testRunFailed(runResult.getRunFailureDescription());
         }
 
         // Provide a strong association of the run to its logs.
-        forwardLogAssociation(runResult.getRunLoggedFiles(), mMasterListener);
+        forwardLogAssociation(runResult.getRunLoggedFiles(), mMainListener);
 
-        mMasterListener.testRunEnded(runResult.getElapsedTime(), runResult.getRunProtoMetrics());
+        mMainListener.testRunEnded(runResult.getElapsedTime(), runResult.getRunProtoMetrics());
     }
 
     private void forwardTestResults(Map<TestDescription, TestResult> testResults) {
         for (Map.Entry<TestDescription, TestResult> testEntry : testResults.entrySet()) {
-            mMasterListener.testStarted(testEntry.getKey(), testEntry.getValue().getStartTime());
+            mMainListener.testStarted(testEntry.getKey(), testEntry.getValue().getStartTime());
             switch (testEntry.getValue().getStatus()) {
                 case FAILURE:
-                    mMasterListener.testFailed(
-                            testEntry.getKey(), testEntry.getValue().getFailure());
+                    mMainListener.testFailed(testEntry.getKey(), testEntry.getValue().getFailure());
                     break;
                 case ASSUMPTION_FAILURE:
-                    mMasterListener.testAssumptionFailure(testEntry.getKey(),
-                            testEntry.getValue().getStackTrace());
+                    mMainListener.testAssumptionFailure(
+                            testEntry.getKey(), testEntry.getValue().getStackTrace());
                     break;
                 case IGNORED:
-                    mMasterListener.testIgnored(testEntry.getKey());
+                    mMainListener.testIgnored(testEntry.getKey());
                     break;
                 default:
                     break;
             }
             // Provide a strong association of the test to its logs.
-            forwardLogAssociation(testEntry.getValue().getLoggedFiles(), mMasterListener);
+            forwardLogAssociation(testEntry.getValue().getLoggedFiles(), mMainListener);
 
             if (!testEntry.getValue().getStatus().equals(TestStatus.INCOMPLETE)) {
-                mMasterListener.testEnded(
+                mMainListener.testEnded(
                         testEntry.getKey(),
                         testEntry.getValue().getEndTime(),
                         testEntry.getValue().getProtoMetrics());
@@ -281,6 +281,18 @@ public class ShardListener extends CollectingTestListener implements ISupportGra
     }
 
     /** Forward to the listener the logAssociated callback on the files. */
+    private void forwardLogAssociation(
+            MultiMap<String, LogFile> loggedFiles, ITestInvocationListener listener) {
+        for (String key : loggedFiles.keySet()) {
+            for (LogFile logFile : loggedFiles.get(key)) {
+                if (listener instanceof ILogSaverListener) {
+                    ((ILogSaverListener) listener).logAssociation(key, logFile);
+                }
+            }
+        }
+    }
+
+    /** Forward test cases logged files. */
     private void forwardLogAssociation(
             Map<String, LogFile> loggedFiles, ITestInvocationListener listener) {
         for (Entry<String, LogFile> logFile : loggedFiles.entrySet()) {

@@ -82,6 +82,7 @@ public final class ClangCodeCoverageListener extends ResultForwarder
 
     private NativeCodeCoverageFlusher mFlusher;
 
+    private File mLlvmProfdataTool;
     private String mCurrentRunName;
 
     public ClangCodeCoverageListener(ITestDevice device, ITestInvocationListener... listeners) {
@@ -130,6 +131,13 @@ public final class ClangCodeCoverageListener extends ResultForwarder
         }
     }
 
+    @Override
+    public void invocationEnded(long elapsedTime) {
+        // Clean up the llvm-profdata tool.
+        FileUtil.recursiveDelete(mLlvmProfdataTool);
+        super.invocationEnded(elapsedTime);
+    }
+
     /**
      * Logs Clang coverage measurements from the device.
      *
@@ -147,7 +155,10 @@ public final class ClangCodeCoverageListener extends ResultForwarder
             // Compress coverage measurements on the device before pulling.
             mDevice.executeShellCommand(ZIP_CLANG_FILES_COMMAND);
             coverageTarGz = mDevice.pullFile(COVERAGE_TAR_PATH);
-            verifyNotNull(coverageTarGz, "Failed to pull the coverage file %s", COVERAGE_TAR_PATH);
+            verifyNotNull(
+                    coverageTarGz,
+                    "Failed to pull the Clang code coverage file %s",
+                    COVERAGE_TAR_PATH);
             mDevice.deleteFile(COVERAGE_TAR_PATH);
 
             untarDir = FileUtil.createTempDir("clang_coverage");
@@ -155,11 +166,11 @@ public final class ClangCodeCoverageListener extends ResultForwarder
             Set<String> rawProfileFiles = FileUtil.findFiles(untarDir, ".*\\.profraw");
 
             if (rawProfileFiles.isEmpty()) {
-                CLog.i("No Clang coverage measurements found.");
+                CLog.i("No Clang code coverage measurements found.");
                 return;
             }
 
-            CLog.i("Received coverage measurements: %s", rawProfileFiles);
+            CLog.i("Received Clang code coverage measurements: %s", rawProfileFiles);
 
             // Get the llvm-profdata tool from the build. This tool must match the same one used to
             // compile the build, otherwise this action will fail.
@@ -183,7 +194,11 @@ public final class ClangCodeCoverageListener extends ResultForwarder
 
             CommandResult result = mRunUtil.runTimedCmd(0, command.toArray(new String[0]));
             if (result.getStatus() != CommandStatus.SUCCESS) {
-                throw new IOException("Failed to merge profile data in " + command.toString());
+                throw new IOException(
+                        "Failed to merge Clang profile data in "
+                                + command.toString()
+                                + " "
+                                + result.toString());
             }
 
             try (FileInputStreamSource source =
@@ -193,7 +208,6 @@ public final class ClangCodeCoverageListener extends ResultForwarder
         } finally {
             FileUtil.deleteFile(coverageTarGz);
             FileUtil.recursiveDelete(untarDir);
-            FileUtil.recursiveDelete(profileTool);
             FileUtil.deleteFile(indexedProfileFile);
         }
     }
@@ -220,6 +234,19 @@ public final class ClangCodeCoverageListener extends ResultForwarder
      * @return the directory containing the profile tool and dependencies
      */
     private File getProfileTool() throws IOException {
+        // If we have a cached version of the profile tool already, use it.
+        if (mLlvmProfdataTool != null) {
+            return mLlvmProfdataTool;
+        }
+
+        // If llvm-profdata-path was set in the Configuration, pass it through. Don't save the path
+        // locally since the parent process is responsible for cleaning it up.
+        File configurationTool = mConfiguration.getCoverageOptions().getLlvmProfdataPath();
+        if (configurationTool != null) {
+            return configurationTool;
+        }
+
+        // Otherwise, try to download llvm-profdata.zip from the build and cache it.
         File profileToolZip = null;
         try {
             IBuildInfo buildInfo = mConfiguration.getBuildProvider().getBuild();
@@ -227,7 +254,8 @@ public final class ClangCodeCoverageListener extends ResultForwarder
                     verifyNotNull(
                             buildInfo.getFile("llvm-profdata.zip"),
                             "Could not get llvm-profdata.zip from the build.");
-            return ZipUtil.extractZipToTemp(profileToolZip, "llvm-profdata");
+            mLlvmProfdataTool = ZipUtil.extractZipToTemp(profileToolZip, "llvm-profdata");
+            return mLlvmProfdataTool;
         } catch (BuildRetrievalError e) {
             throw new RuntimeException(e);
         } finally {

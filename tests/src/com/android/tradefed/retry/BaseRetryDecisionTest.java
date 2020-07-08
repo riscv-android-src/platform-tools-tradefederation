@@ -112,14 +112,14 @@ public class BaseRetryDecisionTest {
 
     @Test
     public void testShouldRetry() throws Exception {
-        TestRunResult result = createResult(false, false);
+        TestRunResult result = createResult(null, null);
         boolean res = mRetryDecision.shouldRetry(mTestClass, 0, Arrays.asList(result));
         assertFalse(res);
     }
 
     @Test
     public void testShouldRetry_failure() throws Exception {
-        TestRunResult result = createResult(false, true);
+        TestRunResult result = createResult(null, FailureDescription.create("failure2"));
         boolean res = mRetryDecision.shouldRetry(mTestClass, 0, Arrays.asList(result));
         assertTrue(res);
         assertEquals(1, mTestClass.getIncludeFilters().size());
@@ -127,27 +127,41 @@ public class BaseRetryDecisionTest {
     }
 
     @Test
+    public void testShouldRetry_failure_nonRetriable() throws Exception {
+        TestRunResult result =
+                createResult(
+                        FailureDescription.create("failure"),
+                        FailureDescription.create("failure2").setRetriable(false));
+        boolean res = mRetryDecision.shouldRetry(mTestClass, 0, Arrays.asList(result));
+        assertTrue(res);
+        assertEquals(1, mTestClass.getIncludeFilters().size());
+        assertTrue(mTestClass.getIncludeFilters().contains("class#method"));
+        assertEquals(1, mTestClass.getExcludeFilters().size());
+        assertTrue(mTestClass.getExcludeFilters().contains("class#method2"));
+    }
+
+    @Test
     public void testShouldRetry_success() throws Exception {
-        TestRunResult result = createResult(false, true);
+        TestRunResult result = createResult(null, FailureDescription.create("failure2"));
         boolean res = mRetryDecision.shouldRetry(mTestClass, 0, Arrays.asList(result));
         assertTrue(res);
         assertEquals(1, mTestClass.getIncludeFilters().size());
         assertTrue(mTestClass.getIncludeFilters().contains("class#method2"));
         // Following retry is successful
-        TestRunResult result2 = createResult(false, false);
+        TestRunResult result2 = createResult(null, null);
         boolean res2 = mRetryDecision.shouldRetry(mTestClass, 0, Arrays.asList(result2));
         assertFalse(res2);
     }
 
     @Test
     public void testShouldRetry_morefailure() throws Exception {
-        TestRunResult result = createResult(false, true);
+        TestRunResult result = createResult(null, FailureDescription.create("failure2"));
         boolean res = mRetryDecision.shouldRetry(mTestClass, 0, Arrays.asList(result));
         assertTrue(res);
         assertEquals(1, mTestClass.getIncludeFilters().size());
         assertTrue(mTestClass.getIncludeFilters().contains("class#method2"));
         // Following retry clear the originally failing method, so we don't retry more
-        TestRunResult result2 = createResult(true, false);
+        TestRunResult result2 = createResult(FailureDescription.create("failure"), null);
         boolean res2 = mRetryDecision.shouldRetry(mTestClass, 0, Arrays.asList(result2));
         assertFalse(res2);
     }
@@ -155,7 +169,7 @@ public class BaseRetryDecisionTest {
     @Test
     public void testShouldRetry_runFailure() throws Exception {
         FailureDescription failure = FailureDescription.create("run failure");
-        TestRunResult result = createResult(false, false, failure);
+        TestRunResult result = createResult(null, null, failure);
         boolean res = mRetryDecision.shouldRetry(mTestClass, 0, Arrays.asList(result));
         assertTrue(res);
         assertEquals(0, mTestClass.getIncludeFilters().size());
@@ -166,28 +180,50 @@ public class BaseRetryDecisionTest {
     public void testShouldRetry_runFailure_nonRetriable() throws Exception {
         FailureDescription failure = FailureDescription.create("run failure");
         failure.setRetriable(false);
-        TestRunResult result = createResult(false, false, failure);
-        boolean res = mRetryDecision.shouldRetry(mTestClass, 0, Arrays.asList(result));
+        TestRunResult result = createResult(null, null, failure);
+
+        FailureDescription failure2 = FailureDescription.create("run failure2");
+        failure2.setRetriable(false);
+        TestRunResult result2 = createResult(null, null, failure2);
+
+        boolean res = mRetryDecision.shouldRetry(mTestClass, 0, Arrays.asList(result, result2));
         assertFalse(res);
         assertEquals(0, mTestClass.getIncludeFilters().size());
         assertEquals(0, mTestClass.getExcludeFilters().size());
     }
 
     @Test
+    public void testShouldRetry_multi_runFailure_nonRetriable() throws Exception {
+        FailureDescription failure = FailureDescription.create("run failure");
+        failure.setRetriable(false);
+        TestRunResult result = createResult(null, null, failure);
+
+        FailureDescription failure2 = FailureDescription.create("run failure2");
+        TestRunResult result2 = createResult(null, null, failure2);
+
+        boolean res = mRetryDecision.shouldRetry(mTestClass, 0, Arrays.asList(result, result2));
+        // Skip retry due to the non-retriable failure.
+        assertFalse(res);
+    }
+
+    @Test
     public void testShouldRetry_multilayer_morefailure() throws Exception {
-        TestRunResult result = createResult(false, true);
+        TestRunResult result = createResult(null, FailureDescription.create("failure2"));
         boolean res = mRetryDecision.shouldRetry(mTestClass, 0, Arrays.asList(result));
         assertTrue(res);
         assertEquals(1, mTestClass.getIncludeFilters().size());
         assertTrue(mTestClass.getIncludeFilters().contains("class#method2"));
 
-        TestRunResult result2 = createResult(true, true);
+        TestRunResult result2 =
+                createResult(
+                        FailureDescription.create("failure"),
+                        FailureDescription.create("failure2"));
         boolean res2 = mRetryDecision.shouldRetry(mTestClass, 0, Arrays.asList(result2));
         assertTrue(res2);
         assertEquals(1, mTestClass.getIncludeFilters().size());
         assertTrue(mTestClass.getIncludeFilters().contains("class#method2"));
 
-        TestRunResult result3 = createResult(true, false);
+        TestRunResult result3 = createResult(FailureDescription.create("failure"), null);
         boolean res3 = mRetryDecision.shouldRetry(mTestClass, 0, Arrays.asList(result3));
         assertFalse(res3);
     }
@@ -208,12 +244,14 @@ public class BaseRetryDecisionTest {
         assertFalse(res);
     }
 
-    private TestRunResult createResult(boolean failure1, boolean failure2) {
+    private TestRunResult createResult(FailureDescription failure1, FailureDescription failure2) {
         return createResult(failure1, failure2, null);
     }
 
     private TestRunResult createResult(
-            boolean failure1, boolean failure2, FailureDescription runFailure) {
+            FailureDescription failure1,
+            FailureDescription failure2,
+            FailureDescription runFailure) {
         TestRunResult result = new TestRunResult();
         result.testRunStarted("TEST", 2);
         if (runFailure != null) {
@@ -221,14 +259,14 @@ public class BaseRetryDecisionTest {
         }
         TestDescription test1 = new TestDescription("class", "method");
         result.testStarted(test1);
-        if (failure1) {
-            result.testFailed(test1, "failure1");
+        if (failure1 != null) {
+            result.testFailed(test1, failure1);
         }
         result.testEnded(test1, new HashMap<String, Metric>());
         TestDescription test2 = new TestDescription("class", "method2");
         result.testStarted(test2);
-        if (failure2) {
-            result.testFailed(test2, "failure2");
+        if (failure2 != null) {
+            result.testFailed(test2, failure2);
         }
         result.testEnded(test2, new HashMap<String, Metric>());
         result.testRunEnded(500, new HashMap<String, Metric>());

@@ -82,5 +82,8 @@ public final class NativeCodeCoverageFlusher {
                         String.format(COVERAGE_FLUSH_COMMAND_FORMAT, pidString.toString()));
             }
         }
+
+        // Wait up to 5 minutes for the device to be available after flushing coverage data.
+        mDevice.waitForDeviceAvailable(5 * 60 * 1000);
     }
 }

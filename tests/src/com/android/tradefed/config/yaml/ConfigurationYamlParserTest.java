@@ -20,8 +20,11 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import com.android.tradefed.build.BootstrapBuildProvider;
 import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.suite.SuiteResultReporter;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.PushFilePreparer;
 import com.android.tradefed.targetprep.suite.SuiteApkInstaller;
@@ -34,6 +37,7 @@ import org.junit.runners.JUnit4;
 
 import java.io.File;
 import java.io.InputStream;
+import java.util.List;
 
 /** Unit tests for {@link ConfigurationYamlParser}. */
 @RunWith(JUnit4.class)
@@ -57,6 +61,8 @@ public class ConfigurationYamlParserTest {
             // Create the configuration to test the flow
             IConfiguration config = mConfigDef.createConfiguration();
             config.validateOptions();
+            // build provider
+            assertTrue(config.getBuildProvider() instanceof BootstrapBuildProvider);
             // Test
             assertEquals(1, config.getTests().size());
             assertTrue(config.getTests().get(0) instanceof AndroidJUnitTest);
@@ -81,6 +87,9 @@ public class ConfigurationYamlParserTest {
                             new File("tobepushed2.txt"),
                             "/sdcard",
                             new File("tobepushed.txt"));
+            // Result reporters
+            List<ITestInvocationListener> listeners = config.getTestInvocationListeners();
+            assertTrue(listeners.get(0) instanceof SuiteResultReporter);
         }
     }
 

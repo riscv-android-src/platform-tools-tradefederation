@@ -417,7 +417,8 @@ public class TestRunResultTest {
         assertTrue(runMetrics.get("metric2").equals("5000"));
 
         assertTrue(result.getRunLoggedFiles().containsKey("run log"));
-        assertEquals("path2", result.getRunLoggedFiles().get("run log").getPath());
+        assertEquals("path1", result.getRunLoggedFiles().get("run log").get(0).getPath());
+        assertEquals("path2", result.getRunLoggedFiles().get("run log").get(1).getPath());
         assertFalse(result.isRunFailure());
         assertNull(result.getRunFailureMessage());
         assertNull(result.getRunFailureDescription());

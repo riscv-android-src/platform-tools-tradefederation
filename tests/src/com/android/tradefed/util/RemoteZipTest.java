@@ -42,7 +42,7 @@ import java.util.List;
 public class RemoteZipTest {
 
     private static final String REMOTE_FILE =
-            "aosp_master-linux-yakju-userdebug/P123/device-tests.zip";
+            "aosp_main-linux-yakju-userdebug/P123/device-tests.zip";
 
     private IFileDownloader mDownloader;
     private List<CentralDirectoryInfo> mExpectedEntries;

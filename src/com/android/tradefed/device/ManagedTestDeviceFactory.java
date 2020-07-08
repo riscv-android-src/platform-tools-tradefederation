@@ -130,7 +130,11 @@ public class ManagedTestDeviceFactory implements IManagedTestDeviceFactory {
         }
 
         if (idevice instanceof FastbootDevice) {
-            testDevice.setDeviceState(TestDeviceState.FASTBOOT);
+            if (((FastbootDevice) idevice).isFastbootD()) {
+                testDevice.setDeviceState(TestDeviceState.FASTBOOTD);
+            } else {
+                testDevice.setDeviceState(TestDeviceState.FASTBOOT);
+            }
         } else if (idevice instanceof StubDevice) {
             testDevice.setDeviceState(TestDeviceState.NOT_AVAILABLE);
         }

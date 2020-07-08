@@ -18,6 +18,7 @@ package com.android.tradefed.config;
 
 import com.android.ddmlib.Log;
 import com.android.tradefed.command.CommandOptions;
+import com.android.tradefed.config.yaml.ConfigurationYamlParser;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.ClassPathScanner;
 import com.android.tradefed.util.ClassPathScanner.IClassPathFilter;
@@ -418,6 +419,10 @@ public class ConfigurationFactory implements IConfigurationFactory {
                     ConfigurationXmlParser parser =
                             new ConfigurationXmlParser(this, deviceTagObject);
                     parser.parse(def, name, bufStream, templateMap, templateSeen);
+                    break;
+                case ".tf_yaml":
+                    ConfigurationYamlParser yamlParser = new ConfigurationYamlParser();
+                    yamlParser.parse(def, name, bufStream);
                     break;
                 default:
                     throw new ConfigurationException(

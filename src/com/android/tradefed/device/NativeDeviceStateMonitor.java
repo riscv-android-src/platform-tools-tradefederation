@@ -105,6 +105,14 @@ public class NativeDeviceStateMonitor implements IDeviceStateMonitor {
         return null;
     }
 
+    @Override
+    public IDevice waitForDeviceInRecovery() {
+        if (waitForDeviceState(TestDeviceState.RECOVERY, mDefaultOnlineTimeout)) {
+            return getIDevice();
+        }
+        return null;
+    }
+
     /**
      * @return {@link IDevice} associate with the state monitor
      */
@@ -378,6 +386,16 @@ public class NativeDeviceStateMonitor implements IDeviceStateMonitor {
      */
     @Override
     public boolean waitForDeviceBootloader(long time) {
+        return waitForDeviceBootloaderOrFastbootd(time, false);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean waitForDeviceFastbootd(String fastbootPath, long time) {
+        return waitForDeviceBootloaderOrFastbootd(time, true);
+    }
+
+    private boolean waitForDeviceBootloaderOrFastbootd(long time, boolean fastbootd) {
         if (!mFastbootEnabled) {
             return false;
         }
@@ -392,19 +410,13 @@ public class NativeDeviceStateMonitor implements IDeviceStateMonitor {
             // wait at least 200ms
             waitTime = 200;
         }
-        boolean result =  waitForDeviceState(TestDeviceState.FASTBOOT, waitTime);
+        TestDeviceState mode = TestDeviceState.FASTBOOT;
+        if (fastbootd) {
+            mode = TestDeviceState.FASTBOOTD;
+        }
+        boolean result = waitForDeviceState(mode, waitTime);
         mMgr.removeFastbootListener(listener);
         return result;
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public boolean waitForDeviceFastbootd(String fastbootPath, long time) {
-        boolean bootloader = waitForDeviceBootloader(time);
-        if (!bootloader) {
-            return false;
-        }
-        return new FastbootHelper(getRunUtil(), fastbootPath).isFastbootd(getSerialNumber());
     }
 
     @Override
@@ -419,6 +431,7 @@ public class NativeDeviceStateMonitor implements IDeviceStateMonitor {
                 listener.wait();
             } catch (InterruptedException e) {
                 CLog.w("wait for device bootloader state update interrupted");
+                CLog.w(e);
                 throw new RuntimeException(e);
             } finally {
                 mMgr.removeFastbootListener(listener);
@@ -441,6 +454,7 @@ public class NativeDeviceStateMonitor implements IDeviceStateMonitor {
                 listener.wait(time);
             } catch (InterruptedException e) {
                 CLog.w("wait for device state interrupted");
+                CLog.w(e);
                 throw new RuntimeException(e);
             } finally {
                 removeDeviceStateListener(listener);
