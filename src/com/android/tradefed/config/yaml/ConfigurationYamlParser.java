@@ -15,10 +15,12 @@
  */
 package com.android.tradefed.config.yaml;
 
+import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.OptionSetter;
+import com.android.tradefed.config.yaml.IDefaultObjectLoader.LoaderConfiguration;
 
 import com.google.common.collect.ImmutableList;
 
@@ -27,13 +29,15 @@ import org.yaml.snakeyaml.error.YAMLException;
 
 import java.io.InputStream;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.ServiceLoader;
 import java.util.Set;
 
 /** Parser for YAML style Tradefed configurations */
-class ConfigurationYamlParser {
+public final class ConfigurationYamlParser {
 
     private static final String DESCRIPTION_KEY = "description";
     public static final String DEPENDENCIES_KEY = "dependencies";
@@ -56,6 +60,12 @@ class ConfigurationYamlParser {
         configDef.setMultiDeviceMode(false);
         Yaml yaml = new Yaml();
         try {
+            configDef.addOptionDef(
+                    CommandOptions.TEST_TAG_OPTION,
+                    null,
+                    source,
+                    source,
+                    Configuration.CMD_OPTIONS_TYPE_NAME);
             Map<String, Object> yamlObjects = (Map<String, Object>) yaml.load(yamlInput);
             translateYamlInTradefed(configDef, yamlObjects);
         } catch (YAMLException e) {
@@ -71,11 +81,12 @@ class ConfigurationYamlParser {
             configDef.setDescription((String) yamlObjects.get(DESCRIPTION_KEY));
             mSeenKeys.add(DESCRIPTION_KEY);
         }
+        Set<String> dependencyFiles = new LinkedHashSet<>();
         if (yamlObjects.containsKey(DEPENDENCIES_KEY)) {
             YamlTestDependencies testDeps =
                     new YamlTestDependencies(
                             (List<Map<String, Object>>) yamlObjects.get(DEPENDENCIES_KEY));
-            convertDependenciesToObjects(configDef, testDeps);
+            dependencyFiles = convertDependenciesToObjects(configDef, testDeps);
             mSeenKeys.add(DEPENDENCIES_KEY);
         }
         if (yamlObjects.containsKey(TESTS_KEY)) {
@@ -91,14 +102,27 @@ class ConfigurationYamlParser {
             throw new ConfigurationException(
                     String.format("'%s' keys are required and were not found.", missingKeys));
         }
+
+        // Add default configured objects
+        LoaderConfiguration loadConfiguration = new LoaderConfiguration();
+        loadConfiguration.setConfigurationDef(configDef).addDependencies(dependencyFiles);
+        ServiceLoader<IDefaultObjectLoader> serviceLoader =
+                ServiceLoader.load(IDefaultObjectLoader.class);
+        for (IDefaultObjectLoader loader : serviceLoader) {
+            loader.addDefaultObjects(loadConfiguration);
+        }
     }
 
     /**
      * Converts the test dependencies into target_preparer objects.
      *
      * <p>TODO: Figure out a more robust way to map to target_preparers options.
+     *
+     * @return returns a list of all the dependency files.
      */
-    private void convertDependenciesToObjects(ConfigurationDef def, YamlTestDependencies testDeps) {
+    private Set<String> convertDependenciesToObjects(
+            ConfigurationDef def, YamlTestDependencies testDeps) {
+        Set<String> dependencies = new LinkedHashSet<>();
         List<String> apks = testDeps.apks();
         if (!apks.isEmpty()) {
             String className = "com.android.tradefed.targetprep.suite.SuiteApkInstaller";
@@ -120,6 +144,7 @@ class ConfigurationYamlParser {
                         def.getName(),
                         Configuration.TARGET_PREPARER_TYPE_NAME);
             }
+            dependencies.addAll(apks);
         }
 
         Map<String, String> deviceFiles = testDeps.deviceFiles();
@@ -142,8 +167,12 @@ class ConfigurationYamlParser {
                         toPush.getValue(),
                         def.getName(),
                         Configuration.TARGET_PREPARER_TYPE_NAME);
+                dependencies.add(toPush.getKey());
             }
         }
+        // Add the non-apk and non-device files
+        dependencies.addAll(testDeps.files());
+        return dependencies;
     }
 
     private void convertTestsToObjects(ConfigurationDef def, YamlTestRunners tests) {

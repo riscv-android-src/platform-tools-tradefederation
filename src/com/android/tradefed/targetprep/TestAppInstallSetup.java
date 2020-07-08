@@ -28,6 +28,8 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IAbiReceiver;
 import com.android.tradefed.util.AaptParser;
@@ -50,7 +52,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -249,7 +250,8 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
                             "failed to resolve apk path for apk %s in build %s",
                             apkFileName, testInfo.getBuildInfo().toString()),
                     ioe,
-                    testInfo.getDevice().getDeviceDescriptor());
+                    testInfo.getDevice().getDeviceDescriptor(),
+                    InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
         }
     }
 
@@ -291,7 +293,7 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
         }
 
         // Set all the extra install args outside the loop to avoid adding them several times.
-        if (abiName != null) {
+        if (abiName != null && testInfo.getDevice().getApiLevel() > 20) {
             mInstallArgs.add(String.format("--abi %s", abiName));
         }
         // Handle instant mode: if we are forced in one installation mode or not.
@@ -442,7 +444,8 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
                     String.format(
                             "Failed to install %s with %s on %s. Reason: '%s'",
                             packageName, apkFiles, testDevice.getSerialNumber(), result),
-                    testDevice.getDeviceDescriptor());
+                    testDevice.getDeviceDescriptor(),
+                    DeviceErrorIdentifier.APK_INSTALLATION_FAILED);
         }
 
         if (mCleanup) {
@@ -467,7 +470,8 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
                 if (mThrowIfNoFile) {
                     throw new TargetSetupError(
                             String.format("Test app %s was not found.", apkFile.getName()),
-                            device.getDeviceDescriptor());
+                            device.getDeviceDescriptor(),
+                            InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
                 } else {
                     CLog.d("Test app %s was not found.", apkFile.getName());
                     continue;
@@ -586,7 +590,10 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
             throws TargetSetupError {
         AaptParser parser = AaptParser.parse(testAppFile);
         if (parser == null) {
-            throw new TargetSetupError("apk installed but AaptParser failed", deviceDescriptor);
+            throw new TargetSetupError(
+                    "apk installed but AaptParser failed",
+                    deviceDescriptor,
+                    DeviceErrorIdentifier.AAPT_PARSER_FAILED);
         }
         return parser.getPackageName();
     }

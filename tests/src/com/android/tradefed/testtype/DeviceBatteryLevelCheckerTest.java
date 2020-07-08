@@ -175,7 +175,7 @@ public class DeviceBatteryLevelCheckerTest {
         mMockListener.testFailed(
                 EasyMock.eq(mTestDescription2), EasyMock.<FailureDescription>anyObject());
         mMockListener.testLog(
-                EasyMock.eq("low-charging-speed"),
+                EasyMock.eq("low-charging-speed-bugreport"),
                 EasyMock.eq(LogDataType.BUGREPORT),
                 EasyMock.anyObject());
         mMockListener.testEnded(mTestDescription2, new HashMap<String, Metric>());

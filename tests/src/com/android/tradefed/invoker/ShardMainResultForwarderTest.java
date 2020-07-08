@@ -41,10 +41,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-/** Unit tests for {@link ShardMasterResultForwarder}. */
+/** Unit tests for {@link ShardMainResultForwarder}. */
 @RunWith(JUnit4.class)
-public class ShardMasterResultForwarderTest {
-    private ShardMasterResultForwarder mShardMaster;
+public class ShardMainResultForwarderTest {
+    private ShardMainResultForwarder mShardPrimary;
     @Mock private ITestInvocationListener mMockListener;
     @Mock private LogListenerTestInterface mMockLogListener;
     @Mock private ILogSaver mMockLogSaver;
@@ -54,7 +54,7 @@ public class ShardMasterResultForwarderTest {
         MockitoAnnotations.initMocks(this);
         List<ITestInvocationListener> listListener = new ArrayList<>();
         listListener.add(mMockListener);
-        mShardMaster = new ShardMasterResultForwarder(listListener, 2);
+        mShardPrimary = new ShardMainResultForwarder(listListener, 2);
     }
 
     /**
@@ -81,11 +81,11 @@ public class ShardMasterResultForwarderTest {
         shard2.addDeviceBuildInfo("device1", shardBuild2);
         shardBuild2.addBuildAttribute("shard2", "value2");
 
-        mShardMaster.invocationStarted(main);
-        mShardMaster.invocationStarted(shard1);
-        mShardMaster.invocationStarted(shard2);
-        mShardMaster.invocationEnded(0l);
-        mShardMaster.invocationEnded(1l);
+        mShardPrimary.invocationStarted(main);
+        mShardPrimary.invocationStarted(shard1);
+        mShardPrimary.invocationStarted(shard2);
+        mShardPrimary.invocationEnded(0l);
+        mShardPrimary.invocationEnded(1l);
 
         assertEquals("value1", mainBuild.getBuildAttributes().get("shard1"));
         assertEquals("value2", mainBuild.getBuildAttributes().get("shard2"));
@@ -130,11 +130,11 @@ public class ShardMasterResultForwarderTest {
         shard2.addDeviceBuildInfo("device2", shardBuild2_2);
         shardBuild2_2.addBuildAttribute("shard2_device2", "value2_device2");
 
-        mShardMaster.invocationStarted(main);
-        mShardMaster.invocationStarted(shard1);
-        mShardMaster.invocationStarted(shard2);
-        mShardMaster.invocationEnded(0l);
-        mShardMaster.invocationEnded(1l);
+        mShardPrimary.invocationStarted(main);
+        mShardPrimary.invocationStarted(shard1);
+        mShardPrimary.invocationStarted(shard2);
+        mShardPrimary.invocationEnded(0l);
+        mShardPrimary.invocationEnded(1l);
 
         assertEquals("value1", mainBuild1.getBuildAttributes().get("shard1"));
         assertEquals("value2", mainBuild1.getBuildAttributes().get("shard2"));
@@ -152,8 +152,8 @@ public class ShardMasterResultForwarderTest {
     @Test
     public void testForward_Sharded() throws Exception {
         // Setup the reporters like in a sharding session
-        ShardMasterResultForwarder reporter =
-                new ShardMasterResultForwarder(Arrays.asList(mMockLogListener), 1);
+        ShardMainResultForwarder reporter =
+                new ShardMainResultForwarder(Arrays.asList(mMockLogListener), 1);
         ShardListener shardListener = new ShardListener(reporter);
         LogSaverResultForwarder invocationLogger =
                 new LogSaverResultForwarder(mMockLogSaver, Arrays.asList(shardListener));

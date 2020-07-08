@@ -79,6 +79,7 @@ public class GeneralTestsConfigValidation implements IBuildReceiver {
                             "com.android.tradefed.testtype.rust.RustBinaryHostTest",
                             "com.android.tradefed.testtype.rust.RustBinaryTest",
                             "com.android.tradefed.testtype.StubTest",
+                            "com.android.tradefed.testtype.ArtRunTest",
                             // Others
                             "com.google.android.deviceconfig.RebootTest"));
 

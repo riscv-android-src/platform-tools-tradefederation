@@ -467,6 +467,13 @@ public class TestDevice extends NativeDevice {
                 }
             }
         }
+        CommandResult persistFileManagerAppOpResult =
+                executeShellV2Command("appops write-settings");
+        if (!CommandStatus.SUCCESS.equals(persistFileManagerAppOpResult.getStatus())) {
+            CLog.e(
+                    "Failed to persist MANAGE_EXTERNAL_STORAGE App Op over `adb reboot`: %s",
+                    persistFileManagerAppOpResult.getStderr());
+        }
     }
 
     /** {@inheritDoc} */
@@ -1698,8 +1705,7 @@ public class TestDevice extends NativeDevice {
      */
     @Override
     IWifiHelper createWifiHelper() throws DeviceNotAvailableException {
-        mWasWifiHelperInstalled = true;
-        return new WifiHelper(this, mOptions.getWifiUtilAPKPath());
+        return createWifiHelper(true);
     }
 
     /**
@@ -1710,6 +1716,8 @@ public class TestDevice extends NativeDevice {
     IWifiHelper createWifiHelper(boolean doSetup) throws DeviceNotAvailableException {
         if (doSetup) {
             mWasWifiHelperInstalled = true;
+            // Ensure device is ready before attempting wifi setup
+            waitForDeviceAvailable();
         }
         return new WifiHelper(this, mOptions.getWifiUtilAPKPath(), doSetup);
     }

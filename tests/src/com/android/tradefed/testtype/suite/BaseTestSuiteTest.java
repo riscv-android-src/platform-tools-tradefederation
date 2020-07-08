@@ -39,6 +39,7 @@ import com.android.tradefed.targetprep.CreateUserPreparer;
 import com.android.tradefed.testtype.Abi;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.suite.params.ModuleParameters;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.FileUtil;
 
@@ -503,6 +504,31 @@ public class BaseTestSuiteTest {
     }
 
     /**
+     * If include-filters specify a base module id but we forced a specific parameter we can
+     * implicitly decide to match it as a parameterized one.
+     */
+    @Test
+    public void testLoadTests_forcedModule_load_with_filter_param() throws Exception {
+        ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
+        mRunner.setDevice(mockDevice);
+        mRunner.setModuleParameter(ModuleParameters.INSTANT_APP);
+        Set<String> includeModule = new HashSet<>();
+        includeModule.add("arm64-v8a suite/load-filter-test");
+        mRunner.setIncludeFilter(includeModule);
+        OptionSetter setter = new OptionSetter(mRunner);
+        setter.setOptionValue("suite-config-prefix", "suite");
+        setter.setOptionValue("run-suite-tag", "test-filter-load");
+        setter.setOptionValue("enable-parameterized-modules", "true");
+        EasyMock.replay(mockDevice);
+        LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
+        assertEquals(1, configMap.size());
+        // Config main abi parameterized is filtered, this shouldn't prevent the non-parameterized
+        // version from being created, and the other abi.
+        assertTrue(configMap.containsKey("arm64-v8a suite/load-filter-test[instant]"));
+        EasyMock.verify(mockDevice);
+    }
+
+    /**
      * Test loading a parameterized config with a multi_abi specification. In this case all abis are
      * created.
      */
@@ -668,10 +694,9 @@ public class BaseTestSuiteTest {
                         + "exclude-annotation:android.platform.test.annotations.AppModeInstant");
         EasyMock.replay(mockDevice);
         LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
-        assertEquals(2, configMap.size());
+        assertEquals(1, configMap.size());
         // stub-parameterized-abi is parameterized and not multi_abi so it creates only one abi
         assertTrue(configMap.containsKey("arm64-v8a suite/stub-parameterized-abi4"));
-        assertTrue(configMap.containsKey("arm64-v8a suite/stub-parameterized-abi4[instant]"));
         EasyMock.verify(mockDevice);
     }
 

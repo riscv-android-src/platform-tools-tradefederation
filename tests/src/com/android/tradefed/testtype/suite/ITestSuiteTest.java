@@ -683,11 +683,7 @@ public class ITestSuiteTest {
         mMockListener.testRunStarted(
                 EasyMock.eq(TEST_CONFIG_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         EasyMock.expectLastCall().times(1);
-        mMockListener.testRunFailed(
-                new MultiFailureDescription(
-                        FailureDescription.create("unresponsive"),
-                        FailureDescription.create(
-                                "Module test only ran 0 out of 1 expected tests.")));
+        mMockListener.testRunFailed(FailureDescription.create("unresponsive"));
         EasyMock.expect(
                         mMockDevice.logBugreport(
                                 EasyMock.eq("module-test-failure-SERIAL-bugreport"),
@@ -746,12 +742,7 @@ public class ITestSuiteTest {
         mMockListener.testRunStarted(
                 EasyMock.eq(TEST_CONFIG_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         EasyMock.expectLastCall().times(1);
-        mMockListener.testRunFailed(
-                new MultiFailureDescription(
-                        FailureDescription.create(
-                                "Run in progress was not completed due to: I failed"),
-                        FailureDescription.create(
-                                "Module test only ran 0 out of 1 expected tests.")));
+        mMockListener.testRunFailed(FailureDescription.create("I failed"));
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         EasyMock.expectLastCall().times(1);
@@ -834,10 +825,7 @@ public class ITestSuiteTest {
         verifyMocks();
         FailureDescription exception = captured.getValue();
         assertTrue(exception.getErrorMessage().contains("runtime"));
-        assertTrue(
-                exception
-                        .getErrorMessage()
-                        .contains("Module test only ran 0 out of 1 expected tests."));
+        assertFalse(exception instanceof MultiFailureDescription);
     }
 
     /**

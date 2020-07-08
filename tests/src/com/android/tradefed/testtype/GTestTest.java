@@ -503,10 +503,13 @@ public class GTestTest {
         final String testPath2 = String.format("%s/%s", nativeTestPath, test2);
 
         MockFileUtil.setMockDirContents(mMockITestDevice, nativeTestPath, test1, test2);
+        EasyMock.expect(mMockITestDevice.enableAdbRoot()).andReturn(true);
         EasyMock.expect(mMockITestDevice.executeShellCommand("mkdir /data/misc/trace/testcoverage"))
                 .andReturn("");
         EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
         EasyMock.expect(mMockITestDevice.executeShellCommand("kill -37 -1")).andReturn("");
+        // Wait up to 5 minutes for the device to be available after flushing coverage data.
+        mMockITestDevice.waitForDeviceAvailable(5 * 60 * 1000);
         EasyMock.expect(mMockITestDevice.executeShellCommand("rm -rf /data/misc/trace/*"))
                 .andReturn("");
         EasyMock.expect(mMockITestDevice.doesFileExist(nativeTestPath)).andReturn(true);
@@ -560,6 +563,7 @@ public class GTestTest {
         final String testPath2 = String.format("%s/%s", nativeTestPath, test2);
 
         MockFileUtil.setMockDirContents(mMockITestDevice, nativeTestPath, test1, test2);
+        EasyMock.expect(mMockITestDevice.enableAdbRoot()).andReturn(true);
         EasyMock.expect(mMockITestDevice.executeShellCommand("mkdir /data/misc/trace/testcoverage"))
                 .andReturn("");
         // Get the pids to flush coverage data.
@@ -567,6 +571,8 @@ public class GTestTest {
         EasyMock.expect(mMockITestDevice.getProcessPid(processNames.get(0))).andReturn("1");
         EasyMock.expect(mMockITestDevice.getProcessPid(processNames.get(1))).andReturn("1000");
         EasyMock.expect(mMockITestDevice.executeShellCommand("kill -37 1 1000")).andReturn("");
+        // Wait up to 5 minutes for the device to be available after flushing coverage data.
+        mMockITestDevice.waitForDeviceAvailable(5 * 60 * 1000);
 
         // Clear the coverage data.
         EasyMock.expect(mMockITestDevice.executeShellCommand("rm -rf /data/misc/trace/*"))

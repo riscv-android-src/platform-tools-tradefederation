@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.testtype.suite;
 
+import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IDeviceConfiguration;
@@ -133,6 +134,7 @@ public class ModuleSplitter {
                     addModuleToListFromSingleTest(currentList, tests.get(i), moduleName, config);
                 }
             }
+            clearPreparersFromConfig(config);
             return;
         }
 
@@ -168,6 +170,7 @@ public class ModuleSplitter {
             // test is not shardable or did not shard
             addModuleToListFromSingleTest(currentList, test, moduleName, config);
         }
+        clearPreparersFromConfig(config);
     }
 
     /**
@@ -229,5 +232,16 @@ public class ModuleSplitter {
             preparers.addAll(clonePreparers(holder.getTargetPreparers()));
         }
         return res;
+    }
+
+    private static void clearPreparersFromConfig(IConfiguration config) {
+        try {
+            for (IDeviceConfiguration holder : config.getDeviceConfig()) {
+                holder.removeObjectType(Configuration.TARGET_PREPARER_TYPE_NAME);
+            }
+            config.setMultiTargetPreparers(new ArrayList<>());
+        } catch (ConfigurationException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
