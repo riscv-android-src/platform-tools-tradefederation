@@ -88,17 +88,15 @@ public class MoblyBinaryHostTestTest {
         Mockito.doReturn(mMockRunUtil).when(mSpyTest).getRunUtil();
         Mockito.doReturn(DEFAULT_TIME_OUT).when(mSpyTest).getTestTimeout();
         Mockito.doReturn("not_adb").when(mSpyTest).getAdbPath();
-        mMoblyBinary = new File(TEMP_DIR, "mobly_binary.par");
-        FileUtils.createFile(mMoblyBinary, "");
-        mMoblyBinary2 = new File(TEMP_DIR, "mobly_binary_2.par");
-        FileUtils.createFile(mMoblyBinary2, "");
+        mMoblyBinary = FileUtil.createTempFile("mobly_binary", ".par");
+        mMoblyBinary2 = FileUtil.createTempFile("mobly_binary_2", ".par");
         mSpyTest.setBuild(mMockBuildInfo);
     }
 
     @After
     public void tearDown() throws Exception {
-        FileUtils.deleteIfExists(mMoblyBinary);
-        FileUtils.deleteIfExists(mMoblyBinary2);
+        FileUtil.deleteFile(mMoblyBinary);
+        FileUtil.deleteFile(mMoblyBinary2);
     }
 
     @Test
