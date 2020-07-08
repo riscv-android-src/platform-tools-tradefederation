@@ -467,6 +467,13 @@ public class TestDevice extends NativeDevice {
                 }
             }
         }
+        CommandResult persistFileManagerAppOpResult =
+                executeShellV2Command("appops write-settings");
+        if (!CommandStatus.SUCCESS.equals(persistFileManagerAppOpResult.getStatus())) {
+            CLog.e(
+                    "Failed to persist MANAGE_EXTERNAL_STORAGE App Op over `adb reboot`: %s",
+                    persistFileManagerAppOpResult.getStderr());
+        }
     }
 
     /** {@inheritDoc} */
