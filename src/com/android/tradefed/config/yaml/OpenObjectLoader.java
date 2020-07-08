@@ -18,6 +18,7 @@ package com.android.tradefed.config.yaml;
 import com.android.tradefed.build.DependenciesResolver;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.OptionSetter;
+import com.android.tradefed.log.FileLogger;
 import com.android.tradefed.result.suite.SuiteResultReporter;
 
 /** Loader for the default objects available in AOSP. */
@@ -25,11 +26,17 @@ public class OpenObjectLoader implements IDefaultObjectLoader {
 
     @Override
     public void addDefaultObjects(LoaderConfiguration loadConfiguration) {
+        // Logger
+        loadConfiguration
+                .getConfigDef()
+                .addConfigObjectDef(Configuration.LOGGER_TYPE_NAME, FileLogger.class.getName());
+        // Result Reporters
         loadConfiguration
                 .getConfigDef()
                 .addConfigObjectDef(
                         Configuration.RESULT_REPORTER_TYPE_NAME,
                         SuiteResultReporter.class.getName());
+        // Build
         int classCount =
                 loadConfiguration
                         .getConfigDef()
