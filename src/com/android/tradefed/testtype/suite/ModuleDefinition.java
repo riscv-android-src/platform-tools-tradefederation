@@ -58,6 +58,7 @@ import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.result.error.ErrorIdentifier;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.retry.RetryStatistics;
@@ -687,14 +688,19 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                     String.format(
                             "Module %s only ran %d out of %d expected tests.",
                             getId(), numResults, totalExpectedTests);
-            runFailureMessages.add(FailureDescription.create(error));
+            FailureDescription mismatch =
+                    FailureDescription.create(error)
+                            .setFailureStatus(FailureStatus.TEST_FAILURE)
+                            .setErrorIdentifier(InfraErrorIdentifier.EXPECTED_TESTS_MISMATCH);
+            runFailureMessages.add(mismatch);
             CLog.e(error);
         }
 
         if (tearDownException != null) {
             FailureDescription failure =
                     CurrentInvocation.createFailure(
-                            StreamUtil.getStackTrace(tearDownException), null);
+                                    StreamUtil.getStackTrace(tearDownException), null)
+                            .setCause(tearDownException);
             runFailureMessages.add(failure);
         }
         // If there is any errors report them all at once

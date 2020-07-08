@@ -30,6 +30,8 @@ public enum DeviceErrorIdentifier implements ErrorIdentifier {
     SHELL_COMMAND_ERROR(30_100, FailureStatus.UNSET),
     DEVICE_UNEXPECTED_RESPONSE(30_101, FailureStatus.UNSET),
 
+    INSTRUMENATION_CRASH(30_200, FailureStatus.UNSET),
+
     FAILED_TO_LAUNCH_GCE(30_500, FailureStatus.LOST_SYSTEM_UNDER_TEST),
     FAILED_TO_CONNECT_TO_GCE(30_501, FailureStatus.LOST_SYSTEM_UNDER_TEST),
     ERROR_AFTER_FLASHING(30_502, FailureStatus.LOST_SYSTEM_UNDER_TEST),
