@@ -20,7 +20,7 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import com.android.tradefed.build.BootstrapBuildProvider;
+import com.android.tradefed.build.DependenciesResolver;
 import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -62,7 +62,18 @@ public class ConfigurationYamlParserTest {
             IConfiguration config = mConfigDef.createConfiguration();
             config.validateOptions();
             // build provider
-            assertTrue(config.getBuildProvider() instanceof BootstrapBuildProvider);
+            assertTrue(config.getBuildProvider() instanceof DependenciesResolver);
+            DependenciesResolver resolver = (DependenciesResolver) config.getBuildProvider();
+            assertEquals(7, resolver.getDependencies().size());
+            assertThat(resolver.getDependencies())
+                    .containsExactly(
+                            new File("test.apk"),
+                            new File("test2.apk"),
+                            new File("test1.apk"),
+                            new File("tobepushed2.txt"),
+                            new File("tobepushed.txt"),
+                            new File("file1.txt"),
+                            new File("file2.txt"));
             // Test
             assertEquals(1, config.getTests().size());
             assertTrue(config.getTests().get(0) instanceof AndroidJUnitTest);
