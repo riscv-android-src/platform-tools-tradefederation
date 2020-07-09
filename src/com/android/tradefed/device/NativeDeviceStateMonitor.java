@@ -23,6 +23,7 @@ import com.android.ddmlib.TimeoutException;
 import com.android.tradefed.device.IDeviceManager.IFastbootListener;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.RunInterruptedException;
 import com.android.tradefed.util.RunUtil;
 
 import java.io.IOException;
@@ -432,7 +433,7 @@ public class NativeDeviceStateMonitor implements IDeviceStateMonitor {
             } catch (InterruptedException e) {
                 CLog.w("wait for device bootloader state update interrupted");
                 CLog.w(e);
-                throw new RuntimeException(e);
+                throw new RunInterruptedException(e);
             } finally {
                 mMgr.removeFastbootListener(listener);
             }
@@ -455,7 +456,7 @@ public class NativeDeviceStateMonitor implements IDeviceStateMonitor {
             } catch (InterruptedException e) {
                 CLog.w("wait for device state interrupted");
                 CLog.w(e);
-                throw new RuntimeException(e);
+                throw new RunInterruptedException(e);
             } finally {
                 removeDeviceStateListener(listener);
             }

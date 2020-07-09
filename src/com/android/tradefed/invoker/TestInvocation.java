@@ -275,7 +275,11 @@ public class TestInvocation implements ITestInvocation {
         } catch (RunInterruptedException e) {
             exception = e;
             CLog.w("Invocation interrupted");
-            reportFailure(createFailureFromException(e, FailureStatus.UNSET), listener);
+            // if a stop cause was set, the interruption is most likely due to the invocation being
+            // cancelled
+            if (mStopCause == null) {
+                reportFailure(createFailureFromException(e, FailureStatus.UNSET), listener);
+            }
         } catch (AssertionError e) {
             exception = e;
             CLog.e("Caught AssertionError while running invocation: %s", e.toString());
