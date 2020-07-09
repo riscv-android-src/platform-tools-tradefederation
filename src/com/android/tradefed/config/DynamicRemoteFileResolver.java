@@ -22,6 +22,7 @@ import com.android.tradefed.config.remote.IRemoteFileResolver;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.logger.CurrentInvocation;
 import com.android.tradefed.invoker.logger.CurrentInvocation.InvocationInfo;
+import com.android.tradefed.invoker.logger.InvocationLocal;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.FileUtil;
@@ -67,8 +68,26 @@ public class DynamicRemoteFileResolver {
     // Query key for requesting a download to be optional, so if it fails we don't replace it.
     public static final String OPTIONAL_KEY = "optional";
 
+    /**
+     * Loads file resolvers using a dedicated {@link ServiceFileResolverLoader} that is scoped to
+     * each invocation.
+     */
+    // TODO(hzalek): Store a DynamicRemoteFileResolver instance per invocation to avoid locals.
     private static final FileResolverLoader DEFAULT_FILE_RESOLVER_LOADER =
-            new ServiceFileResolverLoader();
+            new FileResolverLoader() {
+                private final InvocationLocal<FileResolverLoader> mInvocationLoader =
+                        new InvocationLocal<>() {
+                            @Override
+                            protected FileResolverLoader initialValue() {
+                                return new ServiceFileResolverLoader();
+                            }
+                        };
+
+                @Override
+                public IRemoteFileResolver load(String scheme, Map<String, String> config) {
+                    return mInvocationLoader.get().load(scheme, config);
+                }
+            };
 
     private final FileResolverLoader mFileResolverLoader;
 
