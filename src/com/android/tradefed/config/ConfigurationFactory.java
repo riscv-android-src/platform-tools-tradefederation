@@ -422,7 +422,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
                     break;
                 case ".tf_yaml":
                     ConfigurationYamlParser yamlParser = new ConfigurationYamlParser();
-                    yamlParser.parse(def, name, bufStream);
+                    yamlParser.parse(def, name, bufStream, false);
                     break;
                 default:
                     throw new ConfigurationException(
