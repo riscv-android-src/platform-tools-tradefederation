@@ -43,6 +43,8 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.utils.FileUtils;
 
+import com.google.common.base.Throwables;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -175,6 +177,9 @@ public class MoblyBinaryHostTestTest {
         } catch (RuntimeException e) {
             verify(mSpyTest, never()).reportLogs(any(), any());
             assertEquals(
+                    String.format(
+                            "An unexpected exception was thrown, full stack trace: %s",
+                            Throwables.getStackTraceAsString(e)),
                     e.getMessage(),
                     String.format("Couldn't find a par file %s", mMoblyBinary2.getName()));
         }
