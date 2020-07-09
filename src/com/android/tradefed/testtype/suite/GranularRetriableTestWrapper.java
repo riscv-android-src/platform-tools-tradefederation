@@ -303,7 +303,10 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
             // TODO: See if it's possible to report IReportNotExecuted
             CLog.e("Run in progress was not completed due to:");
             CLog.e(dnae);
-            runListener.testRunFailed(createFromException(dnae));
+            // If it already was marked as failure do not remark it.
+            if (!mMainGranularRunListener.hasLastAttemptFailed()) {
+                runListener.testRunFailed(createFromException(dnae));
+            }
             // Device Not Available Exception are rethrown.
             throw dnae;
         } finally {
