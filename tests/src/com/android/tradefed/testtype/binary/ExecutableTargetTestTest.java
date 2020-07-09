@@ -24,8 +24,11 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.util.CommandResult;
 
 import org.junit.Before;
@@ -133,12 +136,20 @@ public class ExecutableTargetTestTest {
         mExecutableTargetTest.run(mTestInfo, mListener);
         // run cmd1 test
         Mockito.verify(mListener, Mockito.times(0)).testRunStarted(eq(testName1), eq(1));
-        Mockito.verify(mListener, Mockito.times(1))
-                .testRunFailed(String.format(NO_BINARY_ERROR, testCmd1));
+        FailureDescription failure1 =
+                FailureDescription.create(
+                                String.format(ExecutableBaseTest.NO_BINARY_ERROR, testCmd1),
+                                FailureStatus.TEST_FAILURE)
+                        .setErrorIdentifier(InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
+        Mockito.verify(mListener, Mockito.times(1)).testRunFailed(failure1);
         // run cmd2 test
         Mockito.verify(mListener, Mockito.times(0)).testRunStarted(eq(testName2), eq(1));
-        Mockito.verify(mListener, Mockito.times(1))
-                .testRunFailed(String.format(NO_BINARY_ERROR, testCmd2));
+        FailureDescription failure2 =
+                FailureDescription.create(
+                                String.format(ExecutableBaseTest.NO_BINARY_ERROR, testCmd2),
+                                FailureStatus.TEST_FAILURE)
+                        .setErrorIdentifier(InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
+        Mockito.verify(mListener, Mockito.times(1)).testRunFailed(failure2);
         Mockito.verify(mListener, Mockito.times(2))
                 .testRunEnded(
                         Mockito.anyLong(),
