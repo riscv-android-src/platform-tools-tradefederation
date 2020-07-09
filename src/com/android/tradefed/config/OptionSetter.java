@@ -328,10 +328,18 @@ public class OptionSetter {
     }
 
     private OptionFieldsForName fieldsForArg(String name) throws ConfigurationException {
-        OptionFieldsForName fields = mOptionMap.get(name);
-        if (fields == null || fields.size() == 0) {
+        OptionFieldsForName fields = fieldsForArgNoThrow(name);
+        if (fields == null) {
             throw new ConfigurationException(String.format("Could not find option with name %s",
                     name));
+        }
+        return fields;
+    }
+
+    OptionFieldsForName fieldsForArgNoThrow(String name) throws ConfigurationException {
+        OptionFieldsForName fields = mOptionMap.get(name);
+        if (fields == null || fields.size() == 0) {
+            return null;
         }
         return fields;
     }
