@@ -17,7 +17,9 @@ package com.android.tradefed.result.suite;
 
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
+import com.android.tradefed.error.IHarnessException;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.suite.retry.ResultsPlayer;
@@ -68,11 +70,23 @@ public abstract class FormattedGeneratorReporter extends SuiteResultReporter
 
     @Override
     public void invocationFailed(Throwable cause) {
+        FailureDescription description =
+                FailureDescription.create(cause.getMessage()).setCause(cause);
+        if (cause instanceof IHarnessException) {
+            description.setErrorIdentifier(((IHarnessException) cause).getErrorId());
+        }
+        invocationFailed(description);
+    }
+
+    @Override
+    public void invocationFailed(FailureDescription failure) {
         // Some exception indicate a harness level issue, the tests result cannot be trusted at
         // that point so we should skip the reporting.
-        if (cause instanceof TargetSetupError
-                || cause instanceof RuntimeException
-                || cause instanceof OutOfMemoryError) {
+        Throwable cause = failure.getCause();
+        if (cause != null
+                && (cause instanceof TargetSetupError
+                        || cause instanceof RuntimeException
+                        || cause instanceof OutOfMemoryError)) {
             mTestHarnessError = cause;
         }
         super.invocationFailed(cause);

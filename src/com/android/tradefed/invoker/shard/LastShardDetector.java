@@ -15,14 +15,14 @@
  */
 package com.android.tradefed.invoker.shard;
 
-import com.android.tradefed.invoker.ShardMasterResultForwarder;
+import com.android.tradefed.invoker.ShardMainResultForwarder;
 import com.android.tradefed.result.ITestInvocationListener;
 
 /**
  * When running local sharding, sometimes we only want to execute some actions when the last shard
  * reaches {@link #invocationEnded(long)}. This reporter allows to detect it.
  *
- * @see ShardMasterResultForwarder
+ * @see ShardMainResultForwarder
  */
 public final class LastShardDetector implements ITestInvocationListener {
 

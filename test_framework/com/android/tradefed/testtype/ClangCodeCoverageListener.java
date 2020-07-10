@@ -195,7 +195,10 @@ public final class ClangCodeCoverageListener extends ResultForwarder
             CommandResult result = mRunUtil.runTimedCmd(0, command.toArray(new String[0]));
             if (result.getStatus() != CommandStatus.SUCCESS) {
                 throw new IOException(
-                        "Failed to merge Clang profile data in " + command.toString());
+                        "Failed to merge Clang profile data in "
+                                + command.toString()
+                                + " "
+                                + result.toString());
             }
 
             try (FileInputStreamSource source =

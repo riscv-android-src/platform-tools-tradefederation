@@ -22,6 +22,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.TestInformation;
+import com.android.tradefed.invoker.ExecutionFiles.FilesKey;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -31,6 +32,7 @@ import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.FileUtil;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -141,8 +143,8 @@ public class ArtRunTest implements IDeviceTest, IRemoteTest, IAbiReceiver {
             // Check the output producted by the test.
             if (output != null) {
                 try {
-                    File expectedFile =
-                            testInfo.getDependencyFile("expected.txt", /* targetFirst */ false);
+                    File expectedFile = getDependencyFileFromRunTestDir(testInfo, "expected.txt");
+                    CLog.i("Found expected output for run-test %s: %s", mRunTestName, expectedFile);
                     String expected = FileUtil.readStringFromFile(expectedFile);
                     if (!output.equals(expected)) {
                         String error = String.format("'%s' instead of '%s'", output, expected);
@@ -173,5 +175,25 @@ public class ArtRunTest implements IDeviceTest, IRemoteTest, IAbiReceiver {
     /** Create an output receiver for the test command executed on the device. */
     protected CollectingOutputReceiver createTestOutputReceiver() {
         return new CollectingOutputReceiver();
+    }
+
+    /** Search for a dependency/artifact file in the run-test's directory. */
+    protected File getDependencyFileFromRunTestDir(TestInformation testInfo, String fileName)
+            throws FileNotFoundException {
+        File testsDir = testInfo.executionFiles().get(FilesKey.TARGET_TESTS_DIRECTORY);
+        if (testsDir == null || !testsDir.exists()) {
+            throw new FileNotFoundException(
+                    String.format(
+                            "Could not find target tests directory for test %s.", mRunTestName));
+        }
+        File runTestDir = new File(testsDir, mRunTestName);
+        File file = FileUtil.findFile(runTestDir, fileName);
+        if (file == null) {
+            throw new FileNotFoundException(
+                    String.format(
+                            "Could not find an artifact file associated with %s in directory %s.",
+                            fileName, runTestDir));
+        }
+        return file;
     }
 }
