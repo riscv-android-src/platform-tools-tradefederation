@@ -390,8 +390,6 @@ public class DynamicRemoteFileResolver {
             }
 
             CLog.d("Considering option '%s' with path: '%s' for download.", option.name(), path);
-            // Overrides query args
-            query.putAll(mExtraArgs);
             resolver.setPrimaryDevice(mDevice);
             return resolver.resolveRemoteFiles(fileToResolve, query);
         } catch (BuildRetrievalError e) {
