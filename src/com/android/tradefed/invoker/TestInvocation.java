@@ -26,6 +26,7 @@ import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.proxy.AutomatedReporters;
 import com.android.tradefed.device.DeviceManager;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
@@ -707,6 +708,10 @@ public class TestInvocation implements ITestInvocation {
             IRescheduler rescheduler,
             ITestInvocationListener... extraListeners)
             throws DeviceNotAvailableException, Throwable {
+        // Handle the automated reporting
+        AutomatedReporters autoReport = new AutomatedReporters();
+        autoReport.applyAutomatedReporters(config);
+
         for (ITestInvocationListener listener : extraListeners) {
             if (listener instanceof IScheduledInvocationListener) {
                 mSchedulerListeners.add((IScheduledInvocationListener) listener);
