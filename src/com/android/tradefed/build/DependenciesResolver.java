@@ -71,6 +71,7 @@ public class DependenciesResolver
         IDeviceBuildInfo build =
                 new DeviceBuildInfo(
                         mBuildId, String.format("%s-%s-%s", mBranch, mBuildOs, mBuildFlavor));
+        build.setBuildBranch(mBranch);
         build.setBuildFlavor(mBuildFlavor);
         for (File dependency : mDependencies) {
             File f =
