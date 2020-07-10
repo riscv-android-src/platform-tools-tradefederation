@@ -32,7 +32,7 @@ import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.LogcatOnFailureCollector;
 import com.android.tradefed.device.metric.ScreenshotOnFailureCollector;
-import com.android.tradefed.error.HarnessException;
+import com.android.tradefed.error.IHarnessException;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
@@ -58,6 +58,7 @@ import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.result.error.ErrorIdentifier;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.retry.RetryStatistics;
@@ -687,14 +688,19 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                     String.format(
                             "Module %s only ran %d out of %d expected tests.",
                             getId(), numResults, totalExpectedTests);
-            runFailureMessages.add(FailureDescription.create(error));
+            FailureDescription mismatch =
+                    FailureDescription.create(error)
+                            .setFailureStatus(FailureStatus.TEST_FAILURE)
+                            .setErrorIdentifier(InfraErrorIdentifier.EXPECTED_TESTS_MISMATCH);
+            runFailureMessages.add(mismatch);
             CLog.e(error);
         }
 
         if (tearDownException != null) {
             FailureDescription failure =
                     CurrentInvocation.createFailure(
-                            StreamUtil.getStackTrace(tearDownException), null);
+                                    StreamUtil.getStackTrace(tearDownException), null)
+                            .setCause(tearDownException);
             runFailureMessages.add(failure);
         }
         // If there is any errors report them all at once
@@ -1111,11 +1117,12 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         forwarder.testRunStarted(getId(), 1, 0, System.currentTimeMillis());
         FailureDescription failureDescription =
                 CurrentInvocation.createFailure(StreamUtil.getStackTrace(setupException), null);
-        if (setupException instanceof HarnessException
-                && ((HarnessException) setupException).getErrorId() != null) {
-            ErrorIdentifier id = ((HarnessException) setupException).getErrorId();
+        if (setupException instanceof IHarnessException
+                && ((IHarnessException) setupException).getErrorId() != null) {
+            ErrorIdentifier id = ((IHarnessException) setupException).getErrorId();
             failureDescription.setErrorIdentifier(id);
             failureDescription.setFailureStatus(id.status());
+            failureDescription.setOrigin(((IHarnessException) setupException).getOrigin());
         } else {
             failureDescription.setFailureStatus(FailureStatus.UNSET);
         }

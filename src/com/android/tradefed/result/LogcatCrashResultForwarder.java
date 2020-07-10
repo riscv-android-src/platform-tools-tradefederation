@@ -21,6 +21,7 @@ import com.android.loganalysis.parser.LogcatParser;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.util.StreamUtil;
 
@@ -103,6 +104,9 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
             errorMessage = extractCrashAndAddToMessage(errorMessage, mLastStartTime);
         }
         error.setErrorMessage(errorMessage);
+        if (isCrash(errorMessage)) {
+            error.setErrorIdentifier(DeviceErrorIdentifier.INSTRUMENATION_CRASH);
+        }
         super.testRunFailed(error);
     }
 
@@ -114,12 +118,15 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
 
     /** Attempt to extract the crash from the logcat if the test was seen as started. */
     private String extractCrashAndAddToMessage(String errorMessage, Long startTime) {
-        if ((errorMessage.contains(ERROR_MESSAGE) || errorMessage.contains(SYSTEM_CRASH_MESSAGE))
-                && startTime != null) {
+        if (isCrash(errorMessage) && startTime != null) {
             mLogcatItem = extractLogcat(mDevice, startTime);
             errorMessage = addJavaCrashToString(mLogcatItem, errorMessage);
         }
         return errorMessage;
+    }
+
+    private boolean isCrash(String errorMessage) {
+        return errorMessage.contains(ERROR_MESSAGE) || errorMessage.contains(SYSTEM_CRASH_MESSAGE);
     }
 
     /**

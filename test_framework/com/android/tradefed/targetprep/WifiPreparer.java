@@ -23,6 +23,7 @@ import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 
 /**
  * A {@link ITargetPreparer} that configures wifi on the device if necessary.
@@ -77,8 +78,12 @@ public class WifiPreparer extends BaseTargetPreparer {
 
         InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.WIFI_AP_NAME, mWifiNetwork);
         if (!device.connectToWifiNetworkIfNeeded(mWifiNetwork, mWifiPsk)) {
-            throw new TargetSetupError(String.format("Failed to connect to wifi network %s on %s",
-                    mWifiNetwork, device.getSerialNumber()), device.getDeviceDescriptor());
+            throw new TargetSetupError(
+                    String.format(
+                            "Failed to connect to wifi network %s on %s",
+                            mWifiNetwork, device.getSerialNumber()),
+                    device.getDeviceDescriptor(),
+                    InfraErrorIdentifier.WIFI_FAILED_CONNECT);
         }
         if (mMonitorNetwork) {
             device.enableNetworkMonitor();
