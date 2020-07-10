@@ -77,7 +77,7 @@ public class DynamicRemoteFileResolver {
     private static final FileResolverLoader DEFAULT_FILE_RESOLVER_LOADER =
             new FileResolverLoader() {
                 private final InvocationLocal<FileResolverLoader> mInvocationLoader =
-                        new InvocationLocal<>() {
+                        new InvocationLocal<FileResolverLoader>() {
                             @Override
                             protected FileResolverLoader initialValue() {
                                 return new ServiceFileResolverLoader();
