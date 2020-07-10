@@ -1,5 +1,4 @@
 description: "Human friendly description of the test"
-infra_run: false
 
 dependencies:
    - apks: ["test.apk", "test2.apk"]

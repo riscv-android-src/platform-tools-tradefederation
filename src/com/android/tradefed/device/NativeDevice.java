@@ -35,6 +35,7 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.device.contentprovider.ContentProviderHandler;
+import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.host.IHostOptions;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil;
@@ -47,6 +48,7 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.SnapshotInputStreamSource;
 import com.android.tradefed.result.StubTestRunListener;
 import com.android.tradefed.result.ddmlib.TestRunToTestInvocationForwarder;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.ArrayUtil;
@@ -583,9 +585,12 @@ public class NativeDevice implements IManagedTestDevice {
             }
 
             if (Strings.isNullOrEmpty(productType)) {
-                throw new DeviceNotAvailableException(String.format(
-                        "Could not determine product type for device %s.", getSerialNumber()),
-                        getSerialNumber());
+                throw new DeviceNotAvailableException(
+                        String.format(
+                                "Could not determine product type for device %s.",
+                                getSerialNumber()),
+                        getSerialNumber(),
+                        DeviceErrorIdentifier.DEVICE_UNEXPECTED_RESPONSE);
             }
         }
 
@@ -4479,7 +4484,10 @@ public class NativeDevice implements IManagedTestDevice {
                         + "Must be API %d.", feature, getSerialNumber(), strictMinLevel));
             }
         } catch (DeviceNotAvailableException e) {
-            throw new RuntimeException("Device became unavailable while checking API level", e);
+            throw new HarnessRuntimeException(
+                    "Device became unavailable while checking API level",
+                    e,
+                    DeviceErrorIdentifier.DEVICE_UNAVAILABLE);
         }
     }
 
