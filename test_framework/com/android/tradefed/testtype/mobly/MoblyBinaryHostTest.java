@@ -146,9 +146,12 @@ public class MoblyBinaryHostTest
                 continue;
             }
             parFile.setExecutable(true);
-            runSingleParFile(listener, parFile.getAbsolutePath());
-            processTestResults(listener, parFile.getName());
-            reportLogs(getLogDir(), listener);
+            try {
+                runSingleParFile(listener, parFile.getAbsolutePath());
+                processTestResults(listener, parFile.getName());
+            } finally {
+                reportLogs(getLogDir(), listener);
+            }
         }
     }
 
@@ -319,7 +322,6 @@ public class MoblyBinaryHostTest
         yaml.dump(configMap, writer);
     }
 
-    // TODO(b/159369745): clean up tmp dir after test run.
     private File getLogDir() {
         if (mLogDir == null) {
             try {
@@ -375,6 +377,7 @@ public class MoblyBinaryHostTest
                 }
             }
         }
+        FileUtil.deleteFile(logDir);
     }
 
     @VisibleForTesting

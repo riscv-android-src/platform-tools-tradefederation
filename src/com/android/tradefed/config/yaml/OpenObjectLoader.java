@@ -15,8 +15,9 @@
  */
 package com.android.tradefed.config.yaml;
 
-import com.android.tradefed.build.BootstrapBuildProvider;
+import com.android.tradefed.build.DependenciesResolver;
 import com.android.tradefed.config.Configuration;
+import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.result.suite.SuiteResultReporter;
 
 /** Loader for the default objects available in AOSP. */
@@ -29,11 +30,30 @@ public class OpenObjectLoader implements IDefaultObjectLoader {
                 .addConfigObjectDef(
                         Configuration.RESULT_REPORTER_TYPE_NAME,
                         SuiteResultReporter.class.getName());
-        // TODO: Replace by a provider that can handle both local and remote
-        loadConfiguration
-                .getConfigDef()
-                .addConfigObjectDef(
-                        Configuration.BUILD_PROVIDER_TYPE_NAME,
-                        BootstrapBuildProvider.class.getName());
+        int classCount =
+                loadConfiguration
+                        .getConfigDef()
+                        .addConfigObjectDef(
+                                Configuration.BUILD_PROVIDER_TYPE_NAME,
+                                DependenciesResolver.class.getName());
+        // Set all the dependencies on the provider
+        for (String depencency : loadConfiguration.getDependencies()) {
+            String optionName =
+                    String.format(
+                            "%s%c%d%c%s",
+                            DependenciesResolver.class.getName(),
+                            OptionSetter.NAMESPACE_SEPARATOR,
+                            classCount,
+                            OptionSetter.NAMESPACE_SEPARATOR,
+                            "dependency");
+            loadConfiguration
+                    .getConfigDef()
+                    .addOptionDef(
+                            optionName,
+                            null,
+                            depencency,
+                            loadConfiguration.getConfigDef().getName(),
+                            Configuration.BUILD_PROVIDER_TYPE_NAME);
+        }
     }
 }

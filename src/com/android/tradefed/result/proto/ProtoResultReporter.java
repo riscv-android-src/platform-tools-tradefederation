@@ -17,6 +17,7 @@ package com.android.tradefed.result.proto;
 
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
+import com.android.tradefed.error.HarnessException;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -66,7 +67,6 @@ public abstract class ProtoResultReporter
     private long mInvocationStartTime;
     private IInvocationContext mContext;
 
-    private Throwable mInvocationFailure = null;
     private FailureDescription mInvocationFailureDescription = null;
     /** Whether or not a testModuleStart had currently been called. */
     private boolean mModuleInProgress = false;
@@ -174,7 +174,14 @@ public abstract class ProtoResultReporter
 
     @Override
     public void invocationFailed(Throwable cause) {
-        mInvocationFailure = cause;
+        // Translate the exception into a FailureDescription
+        mInvocationFailureDescription =
+                FailureDescription.create(cause.getMessage()).setCause(cause);
+        if (cause instanceof HarnessException) {
+            mInvocationFailureDescription.setErrorIdentifier(
+                    ((HarnessException) cause).getErrorId());
+            mInvocationFailureDescription.setOrigin(((HarnessException) cause).getOrigin());
+        }
     }
 
     @Override
@@ -520,21 +527,13 @@ public abstract class ProtoResultReporter
 
     private DebugInfo handleInvocationFailure() {
         DebugInfo.Builder debugBuilder = DebugInfo.newBuilder();
-        Throwable baseException = null;
-        if (mInvocationFailureDescription != null) {
-            baseException = mInvocationFailureDescription.getCause();
-        }
-        if (baseException == null) {
-            baseException = mInvocationFailure;
-        }
-        // TODO: Handle FailureDescription without getCause.
-        if (baseException == null) {
-            // No invocation failure
+        if (mInvocationFailureDescription == null) {
             return null;
         }
 
-        if (baseException.getMessage() != null) {
-            debugBuilder.setErrorMessage(baseException.getMessage());
+        Throwable baseException = mInvocationFailureDescription.getCause();
+        if (mInvocationFailureDescription.getErrorMessage() != null) {
+            debugBuilder.setErrorMessage(mInvocationFailureDescription.getErrorMessage());
         }
         debugBuilder.setTrace(StreamUtil.getStackTrace(baseException));
         if (mInvocationFailureDescription != null
