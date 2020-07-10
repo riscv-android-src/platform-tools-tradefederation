@@ -26,6 +26,11 @@ public class OpenObjectLoader implements IDefaultObjectLoader {
 
     @Override
     public void addDefaultObjects(LoaderConfiguration loadConfiguration) {
+        // Only add the objects below if it's created as a stand alone configuration, in suite as
+        // a module, it will be resolving object from the top level suite.
+        if (loadConfiguration.createdAsModule()) {
+            return;
+        }
         // Logger
         loadConfiguration
                 .getConfigDef()
