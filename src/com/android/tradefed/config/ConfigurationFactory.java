@@ -520,6 +520,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
         if (arrayArgs.length == 0) {
             throw new ConfigurationException("Configuration to run was not specified");
         }
+
         List<String> listArgs = new ArrayList<String>(arrayArgs.length);
         // FIXME: Update parsing to not care about arg order.
         String[] reorderedArrayArgs = reorderArgs(arrayArgs);
@@ -616,6 +617,14 @@ public class ConfigurationFactory implements IConfigurationFactory {
                     }
                 }
                 return parserSettings.templateMap.getUniqueMap();
+            case ".tf_yaml":
+                // We parse the arguments but don't support template for YAML
+                final ArgsOptionParser allArgsParser = new ArgsOptionParser();
+                if (keyStoreClient != null) {
+                    allArgsParser.setKeyStore(keyStoreClient);
+                }
+                optionArgsRef.addAll(allArgsParser.parseBestEffort(listArgs));
+                return new HashMap<>();
             default:
                 return new HashMap<>();
         }
