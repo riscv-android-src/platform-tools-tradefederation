@@ -21,9 +21,8 @@ import static com.android.tradefed.targetprep.TestAppInstallSetup.THROW_IF_NOT_F
 
 import static com.google.common.truth.Truth.assertThat;
 
-import static org.easymock.EasyMock.anyObject;
 import static org.easymock.EasyMock.anyBoolean;
-
+import static org.easymock.EasyMock.anyObject;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -223,6 +222,7 @@ public class TestAppInstallSetupTest {
         // Install the apk twice
         mSetter.setOptionValue("test-file-name", APK_NAME);
         mPrep.setAbi(new Abi("arm32", "32"));
+        EasyMock.expect(mMockTestDevice.getApiLevel()).andReturn(25);
         EasyMock.expect(
                         mMockTestDevice.installPackage(
                                 EasyMock.eq(fakeApk),

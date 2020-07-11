@@ -36,6 +36,7 @@ import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestLoggerReceiver;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
@@ -89,7 +90,8 @@ public class ManagedRemoteDevice extends TestDevice implements ITestLoggerReceiv
         if (remainingTime < 0) {
             throw new DeviceNotAvailableException(
                     String.format("Failed to launch GCE after %sms", options.getGceCmdTimeout()),
-                    getSerialNumber());
+                    getSerialNumber(),
+                    DeviceErrorIdentifier.FAILED_TO_LAUNCH_GCE);
         }
     }
 

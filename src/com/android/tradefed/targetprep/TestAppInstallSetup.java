@@ -293,7 +293,7 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
         }
 
         // Set all the extra install args outside the loop to avoid adding them several times.
-        if (abiName != null) {
+        if (abiName != null && testInfo.getDevice().getApiLevel() > 20) {
             mInstallArgs.add(String.format("--abi %s", abiName));
         }
         // Handle instant mode: if we are forced in one installation mode or not.

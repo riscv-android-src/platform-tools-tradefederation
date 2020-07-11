@@ -55,8 +55,8 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -98,7 +98,7 @@ public class TfSuiteRunnerTest {
     public static class TestTfSuiteRunner extends TfSuiteRunner {
         @Override
         public Set<IAbi> getAbis(ITestDevice device) throws DeviceNotAvailableException {
-            Set<IAbi> abis = new HashSet<>();
+            Set<IAbi> abis = new LinkedHashSet<>();
             abis.add(new Abi("arm64-v8a", AbiUtils.getBitness("arm64-v8a")));
             abis.add(new Abi("armeabi-v7a", AbiUtils.getBitness("armeabi-v7a")));
             return abis;
@@ -114,9 +114,11 @@ public class TfSuiteRunnerTest {
         setter.setOptionValue("suite-config-prefix", "suite");
         setter.setOptionValue("run-suite-tag", "example-suite");
         LinkedHashMap <String, IConfiguration> configMap = mRunner.loadTests();
-        assertEquals(2, configMap.size());
-        assertTrue(configMap.containsKey("suite/stub1"));
-        assertTrue(configMap.containsKey("suite/stub2"));
+        assertEquals(4, configMap.size());
+        assertTrue(configMap.containsKey("arm64-v8a suite/stub1"));
+        assertTrue(configMap.containsKey("armeabi-v7a suite/stub1"));
+        assertTrue(configMap.containsKey("arm64-v8a suite/stub2"));
+        assertTrue(configMap.containsKey("armeabi-v7a suite/stub2"));
     }
 
     /**
@@ -129,8 +131,9 @@ public class TfSuiteRunnerTest {
         setter.setOptionValue("suite-config-prefix", "suite");
         setter.setOptionValue("run-suite-tag", "example-suite2");
         LinkedHashMap <String, IConfiguration> configMap = mRunner.loadTests();
-        assertEquals(1, configMap.size());
-        assertTrue(configMap.containsKey("suite/stub1"));
+        assertEquals(2, configMap.size());
+        assertTrue(configMap.containsKey("arm64-v8a suite/stub1"));
+        assertTrue(configMap.containsKey("armeabi-v7a suite/stub1"));
     }
 
     /** Test that when splitting, the instance of the implementation is used. */
@@ -140,7 +143,7 @@ public class TfSuiteRunnerTest {
         setter.setOptionValue("suite-config-prefix", "suite");
         setter.setOptionValue("run-suite-tag", "example-suite");
         Collection<IRemoteTest> tests = mRunner.split(2, mTestInfo);
-        assertEquals(2, tests.size());
+        assertEquals(4, tests.size());
         for (IRemoteTest test : tests) {
             assertTrue(test instanceof TfSuiteRunner);
         }
@@ -181,13 +184,16 @@ public class TfSuiteRunnerTest {
         setter.setOptionValue("suite-config-prefix", "suite");
         setter.setOptionValue("run-suite-tag", "test-sub-suite");
         LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
-        assertEquals(3, configMap.size());
-        // 2 test configs loaded from the sub-suite
-        assertTrue(configMap.containsKey("suite/stub1"));
-        assertTrue(configMap.containsKey("suite/stub2"));
-        // 1 config from the left over <test> that was not a suite.
-        assertTrue(configMap.containsKey("suite/sub-suite"));
-        IConfiguration config = configMap.get("suite/sub-suite");
+        assertEquals(6, configMap.size());
+        // 4 test configs loaded from the sub-suite
+        assertTrue(configMap.containsKey("arm64-v8a suite/stub1"));
+        assertTrue(configMap.containsKey("armeabi-v7a suite/stub1"));
+        assertTrue(configMap.containsKey("arm64-v8a suite/stub2"));
+        assertTrue(configMap.containsKey("armeabi-v7a suite/stub2"));
+        // 2 config from the left over <test> that was not a suite.
+        assertTrue(configMap.containsKey("arm64-v8a suite/sub-suite"));
+        assertTrue(configMap.containsKey("armeabi-v7a suite/sub-suite"));
+        IConfiguration config = configMap.get("arm64-v8a suite/sub-suite");
         // assert that the TfSuiteRunner was removed from the config, only the stubTest remains
         assertTrue(config.getTests().size() == 1);
         assertTrue(config.getTests().get(0) instanceof StubTest);
@@ -231,7 +237,18 @@ public class TfSuiteRunnerTest {
         // runs the expanded suite
         listener.testModuleStarted(EasyMock.anyObject());
         listener.testRunStarted(
-                EasyMock.eq("suite/stub1"), EasyMock.eq(0), EasyMock.eq(0), EasyMock.anyLong());
+                EasyMock.eq("arm64-v8a suite/stub1"),
+                EasyMock.eq(0),
+                EasyMock.eq(0),
+                EasyMock.anyLong());
+        listener.testRunEnded(EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
+        listener.testModuleEnded();
+        listener.testModuleStarted(EasyMock.anyObject());
+        listener.testRunStarted(
+                EasyMock.eq("armeabi-v7a suite/stub1"),
+                EasyMock.eq(0),
+                EasyMock.eq(0),
+                EasyMock.anyLong());
         listener.testRunEnded(EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         listener.testModuleEnded();
         EasyMock.replay(listener);
@@ -274,14 +291,18 @@ public class TfSuiteRunnerTest {
 
             EasyMock.replay(deviceBuildInfo);
             LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
-            assertEquals(4, configMap.size());
+            assertEquals(8, configMap.size());
             // The keySet should be stable and always ensure the same order of files.
             List<String> keyList = new ArrayList<>(configMap.keySet());
             // test1 and test2 name was sanitized to look like the included configs.
-            assertEquals("suite/test1", keyList.get(0));
-            assertEquals("suite/test2", keyList.get(1));
-            assertEquals("suite/stub1", keyList.get(2));
-            assertEquals("suite/stub2", keyList.get(3));
+            assertEquals("arm64-v8a suite/test1", keyList.get(0));
+            assertEquals("armeabi-v7a suite/test1", keyList.get(1));
+            assertEquals("arm64-v8a suite/test2", keyList.get(2));
+            assertEquals("armeabi-v7a suite/test2", keyList.get(3));
+            assertEquals("arm64-v8a suite/stub1", keyList.get(4));
+            assertEquals("armeabi-v7a suite/stub1", keyList.get(5));
+            assertEquals("arm64-v8a suite/stub2", keyList.get(6));
+            assertEquals("armeabi-v7a suite/stub2", keyList.get(7));
             EasyMock.verify(deviceBuildInfo);
         } finally {
             FileUtil.recursiveDelete(deviceTestDir);
