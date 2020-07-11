@@ -34,7 +34,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 
 /** No-op empty test implementation. */
-public class StubTest implements IShardableTest, IConfigurationReceiver {
+public class StubTest implements IShardableTest, IConfigurationReceiver, IAbiReceiver {
 
     public static final String DNAE_MESSAGE = "StubTest DeviceNotAvailableException";
 
@@ -75,6 +75,7 @@ public class StubTest implements IShardableTest, IConfigurationReceiver {
     private boolean mRunTest = false;
 
     private IConfiguration mConfig;
+    private IAbi mAbi;
 
     /* Get whether the stub test trigger some test callbacks on the invocation. */
     public boolean getRunTest() {
@@ -126,5 +127,20 @@ public class StubTest implements IShardableTest, IConfigurationReceiver {
 
     public IConfiguration getConfiguration() {
         return mConfig;
+    }
+
+    @Override
+    public void setAbi(IAbi abi) {
+        mAbi = abi;
+    }
+
+    @Override
+    public IAbi getAbi() {
+        return mAbi;
+    }
+
+    @Override
+    public String toString() {
+        return super.toString() + mAbi;
     }
 }

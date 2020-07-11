@@ -35,6 +35,7 @@ import com.android.tradefed.command.ICommandOptions;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationDef;
+import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.DeviceConfigurationHolder;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
@@ -94,6 +95,7 @@ import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.testtype.StubTest;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.SystemUtil.EnvVariable;
+import com.android.tradefed.util.keystore.IKeyStoreClient;
 import com.android.tradefed.util.keystore.StubKeyStoreFactory;
 
 import org.easymock.Capture;
@@ -139,6 +141,8 @@ public class TestInvocationTest {
     /** The {@link TestInvocation} under test, with all dependencies mocked out */
     private TestInvocation mTestInvocation;
 
+    private FailureStatus mExceptedStatus = null;
+
     private IConfiguration mStubConfiguration;
     private IConfiguration mStubMultiConfiguration;
     private IGlobalConfiguration mGlobalConfiguration;
@@ -172,7 +176,15 @@ public class TestInvocationTest {
 
     @Before
     public void setUp() throws Exception {
-        mStubConfiguration = new Configuration("foo", "bar");
+        mStubConfiguration =
+                new Configuration("foo", "bar") {
+                    @Override
+                    public IConfiguration partialDeepClone(
+                            List<String> objectToDeepClone, IKeyStoreClient client)
+                            throws ConfigurationException {
+                        return new Configuration(this.getName(), this.getDescription());
+                    }
+                };
         mStubMultiConfiguration = new Configuration("foo", "bar");
 
         mGlobalConfiguration = EasyMock.createMock(IGlobalConfiguration.class);
@@ -559,12 +571,15 @@ public class TestInvocationTest {
     @Test
     public void testInvoke_testFail() throws Throwable {
         IllegalArgumentException exception = new IllegalArgumentException("testInvoke_testFail");
+        mExceptedStatus = FailureStatus.UNSET;
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
         test.run(EasyMock.anyObject(), EasyMock.anyObject());
         EasyMock.expectLastCall().andThrow(exception);
+        mMockPreparer.tearDown(EasyMock.anyObject(), EasyMock.eq(exception));
         setupMockFailureListeners(exception);
         setEarlyDeviceReleaseExpectation();
         setupNormalInvoke(test);
+
         EasyMock.replay(mockRescheduler);
         try {
             mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
@@ -606,6 +621,7 @@ public class TestInvocationTest {
     @Test
     public void testInvoke_fatalError() throws Throwable {
         FatalHostError exception = new FatalHostError("testInvoke_fatalError");
+        mExceptedStatus = FailureStatus.UNSET;
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
         test.run(EasyMock.anyObject(), EasyMock.anyObject());
         EasyMock.expectLastCall().andThrow(exception);
@@ -685,7 +701,9 @@ public class TestInvocationTest {
      */
     @Test
     public void testInvoke_buildError() throws Throwable {
-        BuildError exception = new BuildError("error", mFakeDescriptor);
+        BuildError exception =
+                new BuildError(
+                        "error", mFakeDescriptor, InfraErrorIdentifier.ARTIFACT_DOWNLOAD_ERROR);
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
         mStubConfiguration.setTest(test);
         EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
@@ -696,8 +714,6 @@ public class TestInvocationTest {
         EasyMock.expect(mMockDevice.getBugreport()).andReturn(EMPTY_STREAM_SOURCE);
         setEarlyDeviceReleaseExpectation();
         setupInvokeWithBuild();
-
-        mMockDevice.postInvocationTearDown(exception);
 
         replayMocks(test);
         EasyMock.replay(mockRescheduler);
@@ -772,6 +788,7 @@ public class TestInvocationTest {
     @Test
     public void testInvoke_tearDown_runtime() throws Throwable {
         RuntimeException exception = new RuntimeException("testInvoke_tearDown_runtime");
+        mExceptedStatus = FailureStatus.UNSET;
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
         test.run(EasyMock.anyObject(), EasyMock.anyObject());
         EasyMock.expectLastCall().andThrow(exception);
@@ -1099,6 +1116,9 @@ public class TestInvocationTest {
         if (throwable == null) {
             mMockDevice.postInvocationTearDown(null);
             EasyMock.expectLastCall().anyTimes();
+        } else {
+            mMockDevice.postInvocationTearDown(throwable);
+            EasyMock.expectLastCall().anyTimes();
         }
 
         if (!(throwable instanceof BuildRetrievalError)) {
@@ -1121,26 +1141,26 @@ public class TestInvocationTest {
         // invocationFailed
         if (!status.equals(InvocationStatus.SUCCESS)) {
             if (stubFailures) {
-                if (throwable instanceof BuildRetrievalError) {
-                    mMockTestListener.invocationFailed(EasyMock.<FailureDescription>anyObject());
-                    mMockSummaryListener.invocationFailed(EasyMock.<FailureDescription>anyObject());
-                } else {
-                    mMockTestListener.invocationFailed(EasyMock.<Throwable>anyObject());
-                    mMockSummaryListener.invocationFailed(EasyMock.<Throwable>anyObject());
-                }
+                mMockTestListener.invocationFailed(EasyMock.<FailureDescription>anyObject());
+                mMockSummaryListener.invocationFailed(EasyMock.<FailureDescription>anyObject());
             } else {
+                FailureDescription failure =
+                        FailureDescription.create(
+                                        throwable.getMessage(), FailureStatus.INFRA_FAILURE)
+                                .setCause(throwable);
                 if (throwable instanceof BuildRetrievalError) {
-                    FailureDescription failure =
-                            FailureDescription.create(
-                                            throwable.getMessage(), FailureStatus.INFRA_FAILURE)
-                                    .setActionInProgress(ActionInProgress.FETCHING_ARTIFACTS)
-                                    .setCause(throwable);
-                    mMockTestListener.invocationFailed(EasyMock.eq(failure));
-                    mMockSummaryListener.invocationFailed(EasyMock.eq(failure));
+                    failure.setActionInProgress(ActionInProgress.FETCHING_ARTIFACTS);
+                } else if (throwable instanceof BuildError
+                        || throwable instanceof TargetSetupError) {
+                    failure.setActionInProgress(ActionInProgress.SETUP);
                 } else {
-                    mMockTestListener.invocationFailed(EasyMock.eq(throwable));
-                    mMockSummaryListener.invocationFailed(EasyMock.eq(throwable));
+                    failure.setActionInProgress(ActionInProgress.TEST);
                 }
+                if (mExceptedStatus != null) {
+                    failure.setFailureStatus(mExceptedStatus);
+                }
+                mMockTestListener.invocationFailed(EasyMock.eq(failure));
+                mMockSummaryListener.invocationFailed(EasyMock.eq(failure));
             }
         }
 

@@ -22,12 +22,16 @@ import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.metric.CollectorHelper;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
+import com.android.tradefed.error.IHarnessException;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.TestInformation;
+import com.android.tradefed.invoker.logger.CurrentInvocation;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestRunResult;
+import com.android.tradefed.result.error.ErrorIdentifier;
 import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.retry.MergeStrategy;
 import com.android.tradefed.retry.RetryLogSaverResultForwarder;
@@ -35,7 +39,6 @@ import com.android.tradefed.retry.RetryStatistics;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestCollector;
 import com.android.tradefed.testtype.ITestFilterReceiver;
-import com.android.tradefed.util.StreamUtil;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -286,7 +289,7 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
             CLog.e("Module '%s' - test '%s' threw exception:", mModuleId, mTest.getClass());
             CLog.e(re);
             CLog.e("Proceeding to the next test.");
-            runListener.testRunFailed(StreamUtil.getStackTrace(re));
+            runListener.testRunFailed(createFromException(re));
         } catch (DeviceUnresponsiveException due) {
             // being able to catch a DeviceUnresponsiveException here implies that recovery was
             // successful, and test execution should proceed to next module.
@@ -295,11 +298,15 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
                             + "successful, proceeding with next module. Stack trace:");
             CLog.w(due);
             CLog.w("Proceeding to the next test.");
-            runListener.testRunFailed(due.getMessage());
+            runListener.testRunFailed(createFromException(due));
         } catch (DeviceNotAvailableException dnae) {
             // TODO: See if it's possible to report IReportNotExecuted
-            runListener.testRunFailed(
-                    "Run in progress was not completed due to: " + dnae.getMessage());
+            CLog.e("Run in progress was not completed due to:");
+            CLog.e(dnae);
+            // If it already was marked as failure do not remark it.
+            if (!mMainGranularRunListener.hasLastAttemptFailed()) {
+                runListener.testRunFailed(createFromException(dnae));
+            }
             // Device Not Available Exception are rethrown.
             throw dnae;
         } finally {
@@ -344,5 +351,19 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
     @Override
     public void setCollectTestsOnly(boolean shouldCollectTest) {
         mCollectTestsOnly = shouldCollectTest;
+    }
+
+    private FailureDescription createFromException(Throwable exception) {
+        FailureDescription failure =
+                CurrentInvocation.createFailure(exception.getMessage(), null).setCause(exception);
+        if (exception instanceof IHarnessException) {
+            ErrorIdentifier id = ((IHarnessException) exception).getErrorId();
+            failure.setErrorIdentifier(id);
+            if (id != null) {
+                failure.setFailureStatus(id.status());
+            }
+            failure.setOrigin(((IHarnessException) exception).getOrigin());
+        }
+        return failure;
     }
 }

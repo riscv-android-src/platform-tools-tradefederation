@@ -20,6 +20,8 @@ import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.config.OptionSetter.OptionFieldsForName;
 import com.android.tradefed.config.remote.IRemoteFileResolver;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.logger.CurrentInvocation;
+import com.android.tradefed.invoker.logger.CurrentInvocation.InvocationInfo;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.FileUtil;
@@ -326,11 +328,13 @@ public class DynamicRemoteFileResolver {
         if (unzipValue != null && "true".equals(unzipValue.toLowerCase())) {
             // File was requested to be unzipped.
             if (ZipUtil.isZipFileValid(downloadedFile, false)) {
-                File unzipped =
-                        ZipUtil2.extractZipToTemp(
-                                downloadedFile, FileUtil.getBaseName(downloadedFile.getName()));
+                File extractedDir =
+                        FileUtil.createTempDir(
+                                FileUtil.getBaseName(downloadedFile.getName()),
+                                CurrentInvocation.getInfo(InvocationInfo.WORK_FOLDER));
+                ZipUtil2.extractZip(downloadedFile, extractedDir);
                 FileUtil.deleteFile(downloadedFile);
-                return unzipped;
+                return extractedDir;
             } else {
                 CLog.w("%s was requested to be unzipped but is not a valid zip.", downloadedFile);
             }

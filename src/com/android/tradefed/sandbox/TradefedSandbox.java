@@ -26,6 +26,8 @@ import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.config.IGlobalConfiguration;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.logger.CurrentInvocation;
+import com.android.tradefed.invoker.logger.CurrentInvocation.InvocationInfo;
 import com.android.tradefed.invoker.proto.InvocationContext.Context;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -95,7 +97,7 @@ public class TradefedSandbox implements ISandbox {
         mCmdArgs.add(String.format("-DTF_JAR_DIR=%s", mRootFolder.getAbsolutePath()));
         // Setup heap dump collection
         try {
-            mHeapDump = FileUtil.createTempDir("heap-dump");
+            mHeapDump = FileUtil.createTempDir("heap-dump", getWorkFolder());
             mCmdArgs.add("-XX:+HeapDumpOnOutOfMemoryError");
             mCmdArgs.add(String.format("-XX:HeapDumpPath=%s", mHeapDump.getAbsolutePath()));
         } catch (IOException e) {
@@ -124,8 +126,6 @@ public class TradefedSandbox implements ISandbox {
         mRunUtil.allowInterrupt(true);
         CommandResult result =
                 mRunUtil.runTimedCmd(timeout, mStdout, mStderr, mCmdArgs.toArray(new String[0]));
-        // Collect heap dump if any
-        logAndCleanHeapDump(mHeapDump, logger);
 
         boolean failedStatus = false;
         String stderrText;
@@ -181,6 +181,9 @@ public class TradefedSandbox implements ISandbox {
             try (InputStreamSource sourceStdErr = new FileInputStreamSource(mStderrFile)) {
                 logger.testLog("sandbox-stderr", LogDataType.TEXT, sourceStdErr);
             }
+            // Collect heap dump if any
+            logAndCleanHeapDump(mHeapDump, logger);
+            mHeapDump = null;
         }
 
         return result;
@@ -198,7 +201,8 @@ public class TradefedSandbox implements ISandbox {
         // Create our temp directories.
         try {
             if (mCollectStdout) {
-                mStdoutFile = FileUtil.createTempFile("stdout_subprocess_", ".log");
+                mStdoutFile =
+                        FileUtil.createTempFile("stdout_subprocess_", ".log", getWorkFolder());
                 mStdout = new FileOutputStream(mStdoutFile);
             } else {
                 mStdout =
@@ -210,10 +214,10 @@ public class TradefedSandbox implements ISandbox {
                         };
             }
 
-            mStderrFile = FileUtil.createTempFile("stderr_subprocess_", ".log");
+            mStderrFile = FileUtil.createTempFile("stderr_subprocess_", ".log", getWorkFolder());
             mStderr = new FileOutputStream(mStderrFile);
 
-            mSandboxTmpFolder = FileUtil.createTempDir("tradefed-container");
+            mSandboxTmpFolder = FileUtil.createTempDir("tradefed-container", getWorkFolder());
         } catch (IOException e) {
             return e;
         }
@@ -501,5 +505,13 @@ public class TradefedSandbox implements ISandbox {
         } finally {
             FileUtil.recursiveDelete(heapDumpDir);
         }
+    }
+
+    private File getWorkFolder() {
+        File workfolder = CurrentInvocation.getInfo(InvocationInfo.WORK_FOLDER);
+        if (workfolder == null || !workfolder.exists()) {
+            return null;
+        }
+        return workfolder;
     }
 }
