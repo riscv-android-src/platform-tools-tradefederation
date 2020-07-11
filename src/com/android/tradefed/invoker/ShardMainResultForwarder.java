@@ -39,7 +39,7 @@ import java.util.Map.Entry;
  * <p>This class is not thread safe. It is expected that clients will lock on this class when
  * sending test results, to prevent invocation callbacks from being called out of order.
  */
-public class ShardMasterResultForwarder extends ResultForwarder implements ILogSaverListener {
+public class ShardMainResultForwarder extends ResultForwarder implements ILogSaverListener {
 
     private final int mInitCount;
     private int mShardsRemaining;
@@ -52,13 +52,13 @@ public class ShardMasterResultForwarder extends ResultForwarder implements ILogS
     private int shardIndex = 0;
 
     /**
-     * Create a {@link ShardMasterResultForwarder}.
+     * Create a {@link ShardMainResultForwarder}.
      *
      * @param listeners the list of {@link ITestInvocationListener} to forward results to when all
      *     shards are completed
      * @param expectedShards the number of shards
      */
-    public ShardMasterResultForwarder(List<ITestInvocationListener> listeners, int expectedShards) {
+    public ShardMainResultForwarder(List<ITestInvocationListener> listeners, int expectedShards) {
         super(listeners);
         mShardsRemaining = expectedShards;
         mInitCount = expectedShards;

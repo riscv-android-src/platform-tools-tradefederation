@@ -27,7 +27,7 @@ import com.android.tradefed.config.IGlobalConfiguration;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.ShardListener;
-import com.android.tradefed.invoker.ShardMasterResultForwarder;
+import com.android.tradefed.invoker.ShardMainResultForwarder;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.invoker.shard.token.ITokenRequest;
 import com.android.tradefed.log.ITestLogger;
@@ -124,9 +124,9 @@ public class ShardHelper implements IShardHelper {
         }
         // Add a tracker so we know in invocation if the last shard is done running.
         LastShardDetector lastShard = new LastShardDetector();
-        ShardMasterResultForwarder resultCollector =
-                new ShardMasterResultForwarder(
-                        buildMasterShardListeners(config, lastShard), expectedShard);
+        ShardMainResultForwarder resultCollector =
+                new ShardMainResultForwarder(
+                        buildMainShardListeners(config, lastShard), expectedShard);
 
         config.getLogSaver().invocationStarted(context);
         resultCollector.invocationStarted(context);
@@ -199,7 +199,7 @@ public class ShardHelper implements IShardHelper {
             IConfiguration config,
             TestInformation testInfo,
             IRescheduler rescheduler,
-            ShardMasterResultForwarder resultCollector,
+            ShardMainResultForwarder resultCollector,
             int index) {
         validateOptions(testInfo, shardConfig);
         ShardBuildCloner.cloneBuildInfos(config, shardConfig, testInfo);
@@ -318,7 +318,7 @@ public class ShardHelper implements IShardHelper {
      * Builds the {@link ITestInvocationListener} listeners that will collect the results from all
      * shards. Currently excludes {@link IShardableListener}s.
      */
-    private static List<ITestInvocationListener> buildMasterShardListeners(
+    private static List<ITestInvocationListener> buildMainShardListeners(
             IConfiguration config, LastShardDetector lastShardDetector) {
         List<ITestInvocationListener> newListeners = new ArrayList<ITestInvocationListener>();
         for (ITestInvocationListener l : config.getTestInvocationListeners()) {
@@ -332,7 +332,7 @@ public class ShardHelper implements IShardHelper {
 
     /**
      * Builds the list of {@link ITestInvocationListener}s for each shard. Currently includes any
-     * {@link IShardableListener}, plus a single listener that will forward results to the master
+     * {@link IShardableListener}, plus a single listener that will forward results to the main
      * shard collector.
      */
     private static List<ITestInvocationListener> buildShardListeners(
