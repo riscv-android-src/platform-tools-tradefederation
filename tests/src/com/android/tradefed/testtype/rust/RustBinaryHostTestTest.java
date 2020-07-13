@@ -20,6 +20,7 @@ import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.util.CommandResult;
@@ -184,7 +185,7 @@ public class RustBinaryHostTestTest {
             CommandResult res = newCommandResult(CommandStatus.EXCEPTION, "Err.", "Exception.");
             mockTestRunExpect(binary, res);
             mMockListener.testRunFailed((String) EasyMock.anyObject());
-            mMockListener.testRunFailed((String) EasyMock.anyObject());
+            mMockListener.testRunFailed((FailureDescription) EasyMock.anyObject());
             mockTestRunEnded();
             callReplayRunVerify();
         } finally {
@@ -214,7 +215,7 @@ public class RustBinaryHostTestTest {
             mockListenerLog(binary);
             CommandResult res = newCommandResult(CommandStatus.FAILED, "", resultCount(6, 1, 2));
             mockTestRunExpect(binary, res);
-            mMockListener.testRunFailed((String) EasyMock.anyObject());
+            mMockListener.testRunFailed((FailureDescription) EasyMock.anyObject());
             mockTestRunEnded();
             callReplayRunVerify();
         } finally {
@@ -234,7 +235,7 @@ public class RustBinaryHostTestTest {
             mockListenerLog(binary);
             CommandResult res = newCommandResult(CommandStatus.FAILED, "", resultCount(6, 1, 2));
             mockTestRunExpect(binary, res);
-            mMockListener.testRunFailed((String) EasyMock.anyObject());
+            mMockListener.testRunFailed((FailureDescription) EasyMock.anyObject());
             mockTestRunEnded();
             callReplayRunVerify();
         } finally {
