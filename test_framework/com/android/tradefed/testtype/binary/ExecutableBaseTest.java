@@ -30,6 +30,8 @@ import com.android.tradefed.testtype.IRuntimeHintProvider;
 import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.testtype.ITestCollector;
 import com.android.tradefed.testtype.ITestFilterReceiver;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.util.StreamUtil;
 
 import java.io.File;
@@ -152,7 +154,12 @@ public abstract class ExecutableBaseTest
             if (shouldSkipCurrentTest(description)) continue;
             if (path == null) {
                 listener.testRunStarted(testName, 0);
-                listener.testRunFailed(String.format(NO_BINARY_ERROR, cmd));
+                FailureDescription failure =
+                        FailureDescription.create(
+                                        String.format(NO_BINARY_ERROR, cmd),
+                                        FailureStatus.TEST_FAILURE)
+                                .setErrorIdentifier(InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
+                listener.testRunFailed(failure);
                 listener.testRunEnded(0L, new HashMap<String, Metric>());
             } else {
                 listener.testRunStarted(testName, 1);
