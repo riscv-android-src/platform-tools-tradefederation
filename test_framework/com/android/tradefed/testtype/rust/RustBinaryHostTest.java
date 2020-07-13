@@ -130,8 +130,9 @@ public class RustBinaryHostTest extends RustTestBase implements IBuildReceiver {
         commandLine.add(file.getAbsolutePath());
         CLog.d("Run single Rust File: " + file.getAbsolutePath());
 
-        // Add all the other options
+        // Add all the other options and include/exclude filters.
         commandLine.addAll(mTestOptions);
+        addFiltersToArgs(commandLine);
 
         List<String> listCommandLine = new ArrayList<>(commandLine);
         listCommandLine.add("--list");
