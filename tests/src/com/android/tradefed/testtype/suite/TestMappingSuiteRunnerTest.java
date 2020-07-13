@@ -31,7 +31,7 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.testtype.Abi;
-import com.android.tradefed.testtype.GTest;
+import com.android.tradefed.testtype.HostTest;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IAbiReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
@@ -93,7 +93,7 @@ public class TestMappingSuiteRunnerTest {
             + "    <option name=\"config-descriptor:metadata\" key=\"mainline-param\" value=\"mod2.apk\" />"
             + "    <option name=\"config-descriptor:metadata\" key=\"mainline-param\" value=\"mod1.apk+mod2.apk\" />"
             + "    <option name=\"config-descriptor:metadata\" key=\"mainline-param\" value=\"mod1.apk+mod2.apk+mod3.apk\" />"
-            + "    <test class=\"com.android.tradefed.testtype.GTest\" />\n"
+            + "    <test class=\"com.android.tradefed.testtype.HostTest\" />\n"
             + "</configuration>";
 
     @Before
@@ -870,14 +870,16 @@ public class TestMappingSuiteRunnerTest {
             assertTrue(configMap.containsKey(ABI_1 + " test[mod1.apk]"));
             assertTrue(configMap.containsKey(ABI_1 + " test[mod2.apk]"));
             assertTrue(configMap.containsKey(ABI_1 + " test[mod1.apk+mod2.apk]"));
-            GTest test = (GTest) configMap.get(ABI_1 + " test[mod1.apk]").getTests().get(0);
+            HostTest test = (HostTest) configMap.get(ABI_1 + " test[mod1.apk]").getTests().get(0);
             assertTrue(test.getIncludeFilters().contains("test-filter"));
 
-            test = (GTest) configMap.get(ABI_1 + " test[mod2.apk]").getTests().get(0);
+            test = (HostTest) configMap.get(ABI_1 + " test[mod2.apk]").getTests().get(0);
             assertTrue(test.getIncludeFilters().contains("test-filter2"));
 
-            test = (GTest) configMap.get(ABI_1 + " test[mod1.apk+mod2.apk]").getTests().get(0);
+            test = (HostTest) configMap.get(ABI_1 + " test[mod1.apk+mod2.apk]").getTests().get(0);
             assertTrue(test.getIncludeFilters().isEmpty());
+            assertEquals(1, test.getExcludeAnnotations().size());
+            assertEquals("test-annotation", test.getExcludeAnnotations().iterator().next());
 
             EasyMock.verify(mockBuildInfo);
         } finally {
