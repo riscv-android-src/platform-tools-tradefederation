@@ -525,7 +525,8 @@ public class ConfigurationFactory implements IConfigurationFactory {
         // FIXME: Update parsing to not care about arg order.
         String[] reorderedArrayArgs = reorderArgs(arrayArgs);
         IConfiguration config =
-                internalCreateConfigurationFromArgs(reorderedArrayArgs, listArgs, keyStoreClient);
+                internalCreateConfigurationFromArgs(
+                        reorderedArrayArgs, listArgs, keyStoreClient, null);
         config.setCommandLine(arrayArgs);
         if (listArgs.contains("--" + CommandOptions.DRY_RUN_OPTION)
                 || listArgs.contains("--" + CommandOptions.NOISY_DRY_RUN_OPTION)) {
@@ -550,23 +551,43 @@ public class ConfigurationFactory implements IConfigurationFactory {
         return config;
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public IConfiguration createPartialConfigurationFromArgs(
+            String[] arrayArgs, IKeyStoreClient keyStoreClient, Set<String> allowedObjects)
+            throws ConfigurationException {
+        if (arrayArgs.length == 0) {
+            throw new ConfigurationException("Configuration to run was not specified");
+        }
+
+        List<String> listArgs = new ArrayList<String>(arrayArgs.length);
+        String[] reorderedArrayArgs = reorderArgs(arrayArgs);
+        IConfiguration config =
+                internalCreateConfigurationFromArgs(
+                        reorderedArrayArgs, listArgs, keyStoreClient, allowedObjects);
+        config.setCommandLine(arrayArgs);
+        config.setBestEffortOptionsFromCommandLineArgs(listArgs, keyStoreClient);
+        return config;
+    }
+
     /**
      * Creates a {@link Configuration} from the name given in arguments.
-     * <p/>
-     * Note will not populate configuration with values from options
      *
-     * @param arrayArgs the full list of command line arguments, including the
-     *            config name
-     * @param optionArgsRef an empty list, that will be populated with the
-     *            option arguments left to be interpreted
-     * @param keyStoreClient {@link IKeyStoreClient} keystore client to use if
-     *            any.
-     * @return An {@link IConfiguration} object representing the configuration
-     *         that was loaded
+     * <p>Note will not populate configuration with values from options
+     *
+     * @param arrayArgs the full list of command line arguments, including the config name
+     * @param optionArgsRef an empty list, that will be populated with the option arguments left to
+     *     be interpreted
+     * @param keyStoreClient {@link IKeyStoreClient} keystore client to use if any.
+     * @param allowedObjects config object that are allowed to be created.
+     * @return An {@link IConfiguration} object representing the configuration that was loaded
      * @throws ConfigurationException
      */
-    private IConfiguration internalCreateConfigurationFromArgs(String[] arrayArgs,
-            List<String> optionArgsRef, IKeyStoreClient keyStoreClient)
+    private IConfiguration internalCreateConfigurationFromArgs(
+            String[] arrayArgs,
+            List<String> optionArgsRef,
+            IKeyStoreClient keyStoreClient,
+            Set<String> allowedObjects)
             throws ConfigurationException {
         final List<String> listArgs = new ArrayList<>(Arrays.asList(arrayArgs));
         // first arg is config name
@@ -587,7 +608,7 @@ public class ConfigurationFactory implements IConfigurationFactory {
             throw new ConfigurationException(
                     String.format("Unused template:map parameters: %s", uniqueMap.toString()));
         }
-        return configDef.createConfiguration();
+        return configDef.createConfiguration(allowedObjects);
     }
 
     private Map<String, String> extractTemplates(
@@ -801,8 +822,9 @@ public class ConfigurationFactory implements IConfigurationFactory {
     @Override
     public void printHelpForConfig(String[] args, boolean importantOnly, PrintStream out) {
         try {
-            IConfiguration config = internalCreateConfigurationFromArgs(args,
-                    new ArrayList<String>(args.length), null);
+            IConfiguration config =
+                    internalCreateConfigurationFromArgs(
+                            args, new ArrayList<String>(args.length), null, null);
             config.printCommandUsage(importantOnly, out);
         } catch (ConfigurationException e) {
             // config must not be specified. Print generic help
