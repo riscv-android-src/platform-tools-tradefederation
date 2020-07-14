@@ -67,6 +67,7 @@ import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ResultForwarder;
+import com.android.tradefed.result.suite.SuiteResultReporter;
 import com.android.tradefed.sandbox.ISandbox;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.suite.retry.RetryRescheduler;
@@ -1224,7 +1225,8 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         argsParser.parseBestEffort(argsList);
         if (delegator.shouldUseDelegation()) {
             String[] argsWithoutDelegation = TradefedDelegator.clearCommandline(args);
-            CLog.e(
+            delegator.setCommandLine(argsWithoutDelegation);
+            CLog.d(
                     "Using commandline arguments as starting command: %s",
                     Arrays.asList(argsWithoutDelegation));
             IConfiguration config =
@@ -1236,7 +1238,8 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                                             Configuration.DEVICE_REQUIREMENTS_TYPE_NAME,
                                             Configuration.LOGGER_TYPE_NAME,
                                             Configuration.LOG_SAVER_TYPE_NAME));
-            config.setConfigurationObject("DELEGATE", delegator);
+            config.setConfigurationObject(TradefedDelegator.DELEGATE_OBJECT, delegator);
+            config.setTestInvocationListener(new SuiteResultReporter());
             return config;
         }
 
