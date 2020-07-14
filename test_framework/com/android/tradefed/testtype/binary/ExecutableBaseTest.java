@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.testtype.binary;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -88,6 +89,16 @@ public abstract class ExecutableBaseTest
     private TestInformation mTestInfo;
     private Set<String> mIncludeFilters = new LinkedHashSet<>();
     private Set<String> mExcludeFilters = new LinkedHashSet<>();
+
+    /**
+     * Get test commands.
+     *
+     * @return the test commands.
+     */
+    @VisibleForTesting
+    Map<String, String> getTestCommands() {
+        return mTestCommands;
+    }
 
     /** @return the timeout applied to each binary for their execution. */
     protected long getTimeoutPerBinaryMs() {
@@ -254,26 +265,44 @@ public abstract class ExecutableBaseTest
     /** {@inheritDoc} */
     @Override
     public final Collection<IRemoteTest> split() {
-        if (mBinaryPaths.size() <= 2) {
+        int testCount = mBinaryPaths.size() + mTestCommands.size();
+        if (testCount <= 2) {
             return null;
         }
         Collection<IRemoteTest> tests = new ArrayList<>();
         for (String path : mBinaryPaths) {
-            tests.add(getTestShard(path));
+            tests.add(getTestShard(path, null, null));
+        }
+        Map<String, String> testCommands = new LinkedHashMap<>(mTestCommands);
+        for (String testName : testCommands.keySet()) {
+            String cmd = testCommands.get(testName);
+            tests.add(getTestShard(null, testName, cmd));
         }
         return tests;
     }
 
-    private IRemoteTest getTestShard(String path) {
+    /**
+     * Get a testShard of ExecutableBaseTest.
+     *
+     * @param binaryPath the binary path for ExecutableHostTest.
+     * @param testName the test name for ExecutableTargetTest.
+     * @param cmd the test command for ExecutableTargetTest.
+     * @return a shard{@link IRemoteTest} of ExecutableBaseTest{@link ExecutableBaseTest}
+     */
+    private IRemoteTest getTestShard(String binaryPath, String testName, String cmd) {
         ExecutableBaseTest shard = null;
         try {
             shard = this.getClass().getDeclaredConstructor().newInstance();
             OptionCopier.copyOptionsNoThrow(this, shard);
-            // We approximate the runtime of each shard to be equal since we can't know.
-            shard.mRuntimeHintMs = mRuntimeHintMs / shard.mBinaryPaths.size();
-            // Set one binary per shard
             shard.mBinaryPaths.clear();
-            shard.mBinaryPaths.add(path);
+            shard.mTestCommands.clear();
+            if (binaryPath != null) {
+                // Set one binary per shard
+                shard.mBinaryPaths.add(binaryPath);
+            } else if (testName != null && cmd != null) {
+                // Set one test command per shard
+                shard.mTestCommands.put(testName, cmd);
+            }
         } catch (InstantiationException
                 | IllegalAccessException
                 | InvocationTargetException
