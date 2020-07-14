@@ -1156,7 +1156,7 @@ public class Configuration implements IConfiguration {
         if (keyStoreClient != null) {
             parser.setKeyStore(keyStoreClient);
         }
-        return parser.parseBestEffort(listArgs);
+        return parser.parseBestEffort(listArgs, /* Force continue */ true);
     }
 
     /**
