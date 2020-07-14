@@ -36,7 +36,8 @@ public enum DeviceErrorIdentifier implements ErrorIdentifier {
     FAILED_TO_CONNECT_TO_GCE(30_501, FailureStatus.LOST_SYSTEM_UNDER_TEST),
     ERROR_AFTER_FLASHING(30_502, FailureStatus.LOST_SYSTEM_UNDER_TEST),
 
-    DEVICE_UNAVAILABLE(30_750, FailureStatus.LOST_SYSTEM_UNDER_TEST);
+    DEVICE_UNAVAILABLE(30_750, FailureStatus.LOST_SYSTEM_UNDER_TEST),
+    DEVICE_UNRESPONSIVE(30_751, FailureStatus.LOST_SYSTEM_UNDER_TEST);
 
     private final long code;
     private final FailureStatus status;
