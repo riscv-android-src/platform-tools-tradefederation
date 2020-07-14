@@ -22,25 +22,40 @@ import static org.hamcrest.CoreMatchers.hasItems;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.core.StringStartsWith.startsWith;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import com.android.tradefed.build.DeviceBuildInfo;
+import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil;
+import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
+import com.android.utils.FileUtils;
 
+import com.google.common.base.Throwables;
+
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.mockito.Mockito;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 
 import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.InputStream;
 import java.io.StringWriter;
 import java.io.Writer;
@@ -53,29 +68,153 @@ public class MoblyBinaryHostTestTest {
     private static final String LOG_PATH = "/log/dir/abs/path";
     private static final String DEVICE_SERIAL = "X123SER";
     private static final long DEFAULT_TIME_OUT = 30 * 1000L;
+    private static final String TEST_RESULT_FILE_NAME = "test_summary.yaml";
+    private static final String TEMP_DIR = "/tmp";
 
     private MoblyBinaryHostTest mSpyTest;
     private ITestDevice mMockDevice;
     private IRunUtil mMockRunUtil;
     private MoblyYamlResultParser mMockParser;
     private InputStream mMockSummaryInputStream;
+    private File mMoblyBinary; // used by python-binaries option
+    private File mMoblyBinary2; // used by par-file-name option
+    private DeviceBuildInfo mMockBuildInfo;
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
         mSpyTest = Mockito.spy(new MoblyBinaryHostTest());
         mMockDevice = Mockito.mock(ITestDevice.class);
         mMockRunUtil = Mockito.mock(IRunUtil.class);
+        mMockBuildInfo = Mockito.mock(DeviceBuildInfo.class);
         mSpyTest.setDevice(mMockDevice);
-        Mockito.doNothing().when(mSpyTest).reportLogs(any(), any());
         Mockito.doReturn(mMockRunUtil).when(mSpyTest).getRunUtil();
         Mockito.doReturn(DEFAULT_TIME_OUT).when(mSpyTest).getTestTimeout();
-        Mockito.doReturn(new CommandResult(CommandStatus.SUCCESS))
-                .when(mMockRunUtil)
-                .runTimedCmd(anyLong(), any());
+        Mockito.doReturn("not_adb").when(mSpyTest).getAdbPath();
+        mMoblyBinary = FileUtil.createTempFile("mobly_binary", ".par");
+        mMoblyBinary2 = FileUtil.createTempFile("mobly_binary_2", ".par");
+        mSpyTest.setBuild(mMockBuildInfo);
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        FileUtil.deleteFile(mMoblyBinary);
+        FileUtil.deleteFile(mMoblyBinary2);
+    }
+
+    @Test
+    public void testRun_withPythonBinariesOption() throws Exception {
+        OptionSetter setter = new OptionSetter(mSpyTest);
+        setter.setOptionValue("python-binaries", mMoblyBinary.getAbsolutePath());
+        File testResult = new File(mSpyTest.getLogDirAbsolutePath(), TEST_RESULT_FILE_NAME);
+        // Mimics the behavior of a successful test run.
+        Mockito.when(mMockRunUtil.runTimedCmd(anyLong(), any()))
+                .thenAnswer(
+                        new Answer<CommandResult>() {
+                            @Override
+                            public CommandResult answer(InvocationOnMock invocation)
+                                    throws Throwable {
+                                FileUtils.createFile(testResult, "");
+                                FileUtils.createFile(
+                                        new File(mSpyTest.getLogDirAbsolutePath(), "log"),
+                                        "log content");
+                                return new CommandResult(CommandStatus.SUCCESS);
+                            }
+                        });
+
+        mSpyTest.run(Mockito.mock(ITestInvocationListener.class));
+
+        verify(mSpyTest.getRunUtil()).runTimedCmd(anyLong(), any());
+        assertFalse(new File(mSpyTest.getLogDirAbsolutePath()).exists());
+    }
+
+    @Test
+    public void testRun_withPythonBinariesOption_binaryNotFound() throws Exception {
+        OptionSetter setter = new OptionSetter(mSpyTest);
+        setter.setOptionValue("python-binaries", mMoblyBinary.getAbsolutePath());
+        FileUtil.deleteFile(mMoblyBinary);
+
+        mSpyTest.run(Mockito.mock(ITestInvocationListener.class));
+
+        verify(mSpyTest, never()).reportLogs(any(), any());
+    }
+
+    @Test
+    public void testRun_withParFileNameOption() throws Exception {
+        OptionSetter setter = new OptionSetter(mSpyTest);
+        setter.setOptionValue("par-file-name", mMoblyBinary2.getName());
+        Mockito.doReturn(new File(TEMP_DIR)).when(mMockBuildInfo).getTestsDir();
+        File testResult = new File(mSpyTest.getLogDirAbsolutePath(), TEST_RESULT_FILE_NAME);
+        Mockito.when(mMockRunUtil.runTimedCmd(anyLong(), any()))
+                .thenAnswer(
+                        new Answer<CommandResult>() {
+                            @Override
+                            public CommandResult answer(InvocationOnMock invocation)
+                                    throws Throwable {
+                                FileUtils.createFile(testResult, "");
+                                FileUtils.createFile(
+                                        new File(mSpyTest.getLogDirAbsolutePath(), "log"),
+                                        "log content");
+                                return new CommandResult(CommandStatus.SUCCESS);
+                            }
+                        });
+
+        mSpyTest.run(Mockito.mock(ITestInvocationListener.class));
+
+        verify(mSpyTest.getRunUtil()).runTimedCmd(anyLong(), any());
+        assertFalse(new File(mSpyTest.getLogDirAbsolutePath()).exists());
+    }
+
+    @Test
+    public void testRun_withParFileNameOption_binaryNotFound() throws Exception {
+        OptionSetter setter = new OptionSetter(mSpyTest);
+        setter.setOptionValue("par-file-name", mMoblyBinary2.getName());
+        Mockito.doReturn(new File(TEMP_DIR)).when(mMockBuildInfo).getTestsDir();
+        FileUtil.deleteFile(mMoblyBinary2);
+
+        try {
+            mSpyTest.run(Mockito.mock(ITestInvocationListener.class));
+            fail("Should have thrown an exception");
+        } catch (RuntimeException e) {
+            verify(mSpyTest, never()).reportLogs(any(), any());
+            assertEquals(
+                    String.format(
+                            "An unexpected exception was thrown, full stack trace: %s",
+                            Throwables.getStackTraceAsString(e)),
+                    e.getMessage(),
+                    String.format("Couldn't find a par file %s", mMoblyBinary2.getName()));
+        }
+    }
+
+    @Test
+    public void testRun_testResultIsMissing() throws Exception {
+        OptionSetter setter = new OptionSetter(mSpyTest);
+        setter.setOptionValue("python-binaries", mMoblyBinary.getAbsolutePath());
+        // Test result and log files were not created for some reasons during test run.
+        Mockito.when(mMockRunUtil.runTimedCmd(anyLong(), any()))
+                .thenAnswer(
+                        new Answer<CommandResult>() {
+                            @Override
+                            public CommandResult answer(InvocationOnMock invocation)
+                                    throws Throwable {
+                                return new CommandResult(CommandStatus.SUCCESS);
+                            }
+                        });
+
+        try {
+            mSpyTest.run(Mockito.mock(ITestInvocationListener.class));
+            fail("Should have thrown an exception");
+        } catch (RuntimeException e) {
+            assertThat(
+                    e.getMessage(),
+                    containsString(
+                            "Fail to find test summary file test_summary.yaml under directory"));
+            assertFalse(new File(mSpyTest.getLogDirAbsolutePath()).exists());
+        }
     }
 
     @Test
     public void testBuildCommandLineArrayWithOutConfig() throws Exception {
+        Mockito.doNothing().when(mSpyTest).reportLogs(any(), any());
         Mockito.doReturn(DEVICE_SERIAL).when(mMockDevice).getSerialNumber();
         Mockito.doReturn(LOG_PATH).when(mSpyTest).getLogDirAbsolutePath();
         List<String> expOptions = Arrays.asList("--option1", "--option2=test_option");
@@ -95,6 +234,7 @@ public class MoblyBinaryHostTestTest {
 
     @Test
     public void testBuildCommandLineArrayWithConfig() throws Exception {
+        Mockito.doNothing().when(mSpyTest).reportLogs(any(), any());
         Mockito.doReturn(DEVICE_SERIAL).when(mMockDevice).getSerialNumber();
         Mockito.doReturn(LOG_PATH).when(mSpyTest).getLogDirAbsolutePath();
         List<String> expOptions = Arrays.asList("--option1", "--option2=test_option");
@@ -116,6 +256,7 @@ public class MoblyBinaryHostTestTest {
 
     @Test
     public void testProcessYamlTestResultsSuccess() throws Exception {
+        Mockito.doNothing().when(mSpyTest).reportLogs(any(), any());
         mMockSummaryInputStream = Mockito.mock(InputStream.class);
         mMockParser = Mockito.mock(MoblyYamlResultParser.class);
         mSpyTest.processYamlTestResults(mMockSummaryInputStream, mMockParser);
@@ -124,6 +265,7 @@ public class MoblyBinaryHostTestTest {
 
     @Test
     public void testUpdateConfigFile() throws Exception {
+        Mockito.doNothing().when(mSpyTest).reportLogs(any(), any());
         Mockito.doReturn("testBedName").when(mSpyTest).getTestBed();
         String configString =
                 new StringBuilder()

@@ -34,10 +34,13 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.NativeDevice;
 import com.android.tradefed.device.StubDevice;
+import com.android.tradefed.device.TcpDevice;
 import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.device.cloud.ManagedRemoteDevice;
 import com.android.tradefed.device.cloud.NestedRemoteDevice;
 import com.android.tradefed.device.cloud.RemoteAndroidVirtualDevice;
+import com.android.tradefed.error.HarnessException;
+import com.android.tradefed.error.IHarnessException;
 import com.android.tradefed.guice.InvocationScope;
 import com.android.tradefed.invoker.logger.CurrentInvocation;
 import com.android.tradefed.invoker.logger.CurrentInvocation.InvocationInfo;
@@ -64,6 +67,7 @@ import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogSaverResultForwarder;
 import com.android.tradefed.result.ResultAndLogForwarder;
+import com.android.tradefed.result.error.ErrorIdentifier;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.retry.IRetryDecision;
@@ -240,7 +244,7 @@ public class TestInvocation implements ITestInvocation {
                     badDevice.setRecoveryMode(RecoveryMode.NONE);
                 }
             }
-            reportFailure(e, listener);
+            reportFailure(createFailureFromException(e, FailureStatus.INFRA_FAILURE), listener);
         } catch (TargetSetupError e) {
             exception = e;
             CLog.e("Caught exception while running invocation");
@@ -249,7 +253,7 @@ public class TestInvocation implements ITestInvocation {
             if (e.getDeviceSerial() != null) {
                 badDevice = context.getDeviceBySerial(e.getDeviceSerial());
             }
-            reportFailure(e, listener);
+            reportFailure(createFailureFromException(e, FailureStatus.INFRA_FAILURE), listener);
         } catch (DeviceNotAvailableException e) {
             exception = e;
             // log a warning here so its captured before reportLogs is called
@@ -261,7 +265,7 @@ public class TestInvocation implements ITestInvocation {
                 // under certain cases it might still be possible to grab a bugreport
                 bugreportName = DEVICE_UNRESPONSIVE_BUGREPORT_NAME;
             }
-            reportFailure(e, listener);
+            reportFailure(createFailureFromException(e, FailureStatus.INFRA_FAILURE), listener);
             // Upon reaching here after an exception, it is safe to assume that recovery
             // has already been attempted so we disable it to avoid re-entry during clean up.
             if (badDevice != null) {
@@ -271,18 +275,18 @@ public class TestInvocation implements ITestInvocation {
         } catch (RunInterruptedException e) {
             exception = e;
             CLog.w("Invocation interrupted");
-            reportFailure(e, listener);
+            reportFailure(createFailureFromException(e, FailureStatus.UNSET), listener);
         } catch (AssertionError e) {
             exception = e;
             CLog.e("Caught AssertionError while running invocation: %s", e.toString());
             CLog.e(e);
-            reportFailure(e, listener);
+            reportFailure(createFailureFromException(e, FailureStatus.UNSET), listener);
         } catch (Throwable t) {
             exception = t;
             // log a warning here so its captured before reportLogs is called
             CLog.e("Unexpected exception when running invocation: %s", t.toString());
             CLog.e(t);
-            reportFailure(t, listener);
+            reportFailure(createFailureFromException(t, FailureStatus.UNSET), listener);
             throw t;
         } finally {
             // Only capture logcat for TEST if we started the test phase.
@@ -338,7 +342,10 @@ public class TestInvocation implements ITestInvocation {
                 CLog.e(tearDownException);
                 if (exception == null) {
                     // only report when the exception is new during tear down
-                    reportFailure(tearDownException, listener);
+                    reportFailure(
+                            createFailureFromException(
+                                    tearDownException, FailureStatus.INFRA_FAILURE),
+                            listener);
                 }
             }
             mStatus = "done running tests";
@@ -446,17 +453,6 @@ public class TestInvocation implements ITestInvocation {
     }
 
     /** Report the exception failure as an invocation failure. */
-    private void reportFailure(Throwable exception, ITestInvocationListener listener) {
-        if (mInvocationFailed) {
-            CLog.e("An invocation failure was already reported, ignoring %s", exception);
-            return;
-        }
-        // Always report the failure
-        listener.invocationFailed(exception);
-        mInvocationFailed = true;
-    }
-
-    /** Report the exception failure as an invocation failure. */
     private void reportFailure(FailureDescription failure, ITestInvocationListener listener) {
         if (mInvocationFailed) {
             CLog.e("An invocation failure was already reported, ignoring %s", failure);
@@ -465,6 +461,30 @@ public class TestInvocation implements ITestInvocation {
         // Always report the failure
         listener.invocationFailed(failure);
         mInvocationFailed = true;
+    }
+
+    /**
+     * Create a {@link FailureDescription} from an invocation exception.
+     *
+     * @param exception The exception to convert
+     * @param defaultStatus The status to use by default if the exception is not a {@link
+     *     IHarnessException}.
+     */
+    private FailureDescription createFailureFromException(
+            Throwable exception, FailureStatus defaultStatus) {
+        ErrorIdentifier id = null;
+        if (exception instanceof IHarnessException) {
+            id = ((HarnessException) exception).getErrorId();
+        }
+        FailureDescription failure =
+                CurrentInvocation.createFailure(exception.getMessage(), id)
+                        .setCause(exception)
+                        .setFailureStatus(defaultStatus);
+        if (id != null) {
+            failure.setErrorIdentifier(id);
+            failure.setFailureStatus(id.status());
+        }
+        return failure;
     }
 
     private void reportHostLog(ITestInvocationListener listener, IConfiguration config) {
@@ -611,12 +631,8 @@ public class TestInvocation implements ITestInvocation {
         setExitCode(ExitCode.NO_BUILD, buildException);
         // Report an empty invocation, so this error is sent to listeners
         startInvocation(config, testInfo.getContext(), listener);
-        // Don't want to use #reportFailure, since that will call buildNotTested
-        FailureDescription failure =
-                CurrentInvocation.createFailure(buildException.getMessage(), null)
-                        .setFailureStatus(FailureStatus.INFRA_FAILURE)
-                        .setCause(buildException);
-        reportFailure(failure, listener);
+        reportFailure(
+                createFailureFromException(buildException, FailureStatus.INFRA_FAILURE), listener);
         for (ITestDevice device : testInfo.getContext().getDevices()) {
             invocationPath.reportLogs(device, listener, Stage.ERROR);
         }
@@ -669,12 +685,7 @@ public class TestInvocation implements ITestInvocation {
 
             // Report an empty invocation, so this error is sent to listeners
             startInvocation(config, context, listener);
-            // Don't want to use #reportFailure, since that will call buildNotTested
-            FailureDescription failure =
-                    CurrentInvocation.createFailure(e.getMessage(), null)
-                            .setFailureStatus(FailureStatus.INFRA_FAILURE)
-                            .setCause(e);
-            reportFailure(failure, listener);
+            reportFailure(createFailureFromException(e, FailureStatus.INFRA_FAILURE), listener);
             for (ITestDevice device : context.getDevices()) {
                 invocationPath.reportLogs(device, listener, Stage.ERROR);
             }
@@ -854,7 +865,9 @@ public class TestInvocation implements ITestInvocation {
                         try {
                             invocationPath.runDevicePostInvocationTearDown(context, config, e);
                         } finally {
-                            reportFailure(failure, listener);
+                            reportFailure(
+                                    createFailureFromException(e, FailureStatus.INFRA_FAILURE),
+                                    listener);
                             // Reports the logs
                             for (ITestDevice device : context.getDevices()) {
                                 invocationPath.reportLogs(device, listener, Stage.ERROR);
@@ -1084,9 +1097,15 @@ public class TestInvocation implements ITestInvocation {
                     InvocationMetricKey.DEVICE_RELEASE_STATE,
                     devicesStates.values().iterator().next().toString());
         }
-        // TODO: Add Handling of virtual devices
         int countPhysicalLost = 0;
+        int countVirtualLost = 0;
         for (Entry<ITestDevice, FreeDeviceState> fds : devicesStates.entrySet()) {
+            // TODO: Rely on the FailureStatus for lost devices instead
+            if (fds.getKey().getIDevice() instanceof TcpDevice
+                    && exception instanceof DeviceNotAvailableException) {
+                countVirtualLost++;
+                continue;
+            }
             if (fds.getKey().getIDevice() instanceof StubDevice) {
                 continue;
             }
@@ -1102,6 +1121,8 @@ public class TestInvocation implements ITestInvocation {
                                 .executeGlobalAdbCommand("devices");
                 CLog.e("'adb devices' output:\n%s", adbOutput);
             }
+        } else if (countVirtualLost > 0) {
+            addInvocationMetric(InvocationMetricKey.VIRTUAL_DEVICE_LOST_DETECTED, countVirtualLost);
         }
         return devicesStates;
     }
