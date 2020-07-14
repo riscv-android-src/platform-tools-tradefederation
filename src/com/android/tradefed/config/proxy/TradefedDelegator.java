@@ -29,6 +29,9 @@ import java.util.List;
 /** Objects that helps delegating the invocation to another Tradefed binary. */
 public class TradefedDelegator {
 
+    /** The object reference in the configuration. */
+    public static final String DELEGATE_OBJECT = "DELEGATE";
+
     private static final String DELETEGATED_OPTION_NAME = "delegated-tf";
 
     @Option(
@@ -36,6 +39,8 @@ public class TradefedDelegator {
             description =
                     "Points to the root dir of another Tradefed binary that will be used to drive the invocation")
     private File mDelegatedTfRootDir;
+
+    private String[] mCommandLine = null;
 
     /** Whether or not trigger the delegation logic. */
     public boolean shouldUseDelegation() {
@@ -59,6 +64,14 @@ public class TradefedDelegator {
                                     }
                                 }));
         return Joiner.on(":").join(jars);
+    }
+
+    public void setCommandLine(String[] command) {
+        mCommandLine = command;
+    }
+
+    public String[] getCommandLine() {
+        return mCommandLine;
     }
 
     public static String[] clearCommandline(String[] originalCommand)
