@@ -566,7 +566,9 @@ public class ConfigurationFactory implements IConfigurationFactory {
                 internalCreateConfigurationFromArgs(
                         reorderedArrayArgs, listArgs, keyStoreClient, allowedObjects);
         config.setCommandLine(arrayArgs);
-        config.setBestEffortOptionsFromCommandLineArgs(listArgs, keyStoreClient);
+        List<String> leftOver =
+                config.setBestEffortOptionsFromCommandLineArgs(listArgs, keyStoreClient);
+        CLog.d("Non-applied arguments: %s", leftOver);
         return config;
     }
 
