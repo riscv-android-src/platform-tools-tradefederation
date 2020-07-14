@@ -94,7 +94,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
 
     // Configurations to be passed to subprocess: Typical object that are representing the host
     // level and the subprocess should follow too.
-    private static final String[] CONFIGS_FOR_SUBPROCESS_WHITE_LIST =
+    private static final String[] CONFIGS_FOR_SUBPROCESS_ALLOW_LIST =
             new String[] {
                 DEVICE_MANAGER_TYPE_NAME,
                 KEY_STORE_TYPE_NAME,
@@ -777,13 +777,13 @@ public class GlobalConfiguration implements IGlobalConfiguration {
 
     /** {@inheritDoc} */
     @Override
-    public File cloneConfigWithFilter(String... whitelistConfigs) throws IOException {
-        return cloneConfigWithFilter(new HashSet<>(), whitelistConfigs);
+    public File cloneConfigWithFilter(String... allowlistConfigs) throws IOException {
+        return cloneConfigWithFilter(new HashSet<>(), allowlistConfigs);
     }
 
     /** {@inheritDoc} */
     @Override
-    public File cloneConfigWithFilter(Set<String> exclusionPatterns, String... whitelistConfigs)
+    public File cloneConfigWithFilter(Set<String> exclusionPatterns, String... allowlistConfigs)
             throws IOException {
         IConfigurationFactory configFactory = getConfigurationFactory();
         IGlobalConfiguration copy = null;
@@ -799,10 +799,10 @@ public class GlobalConfiguration implements IGlobalConfiguration {
         File filteredGlobalConfig = FileUtil.createTempFile("filtered_global_config", ".config");
         KXmlSerializer serializer = ConfigurationUtil.createSerializer(filteredGlobalConfig);
         serializer.startTag(null, ConfigurationUtil.CONFIGURATION_NAME);
-        if (whitelistConfigs == null || whitelistConfigs.length == 0) {
-            whitelistConfigs = CONFIGS_FOR_SUBPROCESS_WHITE_LIST;
+        if (allowlistConfigs == null || allowlistConfigs.length == 0) {
+            allowlistConfigs = CONFIGS_FOR_SUBPROCESS_ALLOW_LIST;
         }
-        for (String config : whitelistConfigs) {
+        for (String config : allowlistConfigs) {
             Object configObj = copy.getConfigurationObject(config);
             if (configObj == null) {
                 CLog.d("Object '%s' was not found in global config.", config);
