@@ -33,6 +33,7 @@ import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.IRunUtil.EnvPriority;
+import com.android.tradefed.util.RunInterruptedException;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.SystemUtil;
@@ -109,23 +110,38 @@ public class DelegatedInvocationExecution extends InvocationExecution {
             mStderr = new FileOutputStream(mStderrFile);
             mStdout = new FileOutputStream(mStdoutFile);
             IRunUtil runUtil = createRunUtil(receiver.getSocketServerPort());
-            CommandResult result =
-                    runUtil.runTimedCmd(
-                            config.getCommandOptions().getInvocationTimeout(),
-                            mStdout,
-                            mStderr,
-                            commandLine.toArray(new String[0]));
+            CommandResult result = null;
+            RuntimeException runtimeException = null;
+            try {
+                result =
+                        runUtil.runTimedCmd(
+                                config.getCommandOptions().getInvocationTimeout(),
+                                mStdout,
+                                mStderr,
+                                commandLine.toArray(new String[0]));
+            } catch (RuntimeException e) {
+                runtimeException = e;
+            }
             if (!receiver.joinReceiver(EVENT_THREAD_JOIN_TIMEOUT_MS)) {
                 throw new RuntimeException(
                         String.format(
                                 "Event receiver thread did not complete:\n%s",
                                 FileUtil.readStringFromFile(mStderrFile)));
             }
+            receiver.completeModuleEvents();
+            if (runtimeException != null) {
+                if (runtimeException instanceof RunInterruptedException) {
+                    throw runtimeException;
+                }
+                throw new HarnessRuntimeException(
+                        runtimeException.getMessage(),
+                        runtimeException,
+                        InfraErrorIdentifier.UNDETERMINED);
+            }
             if (result.getStatus().equals(CommandStatus.TIMED_OUT)) {
                 throw new HarnessRuntimeException(
                         "Delegated invocation timed out.", InfraErrorIdentifier.UNDETERMINED);
             }
-            receiver.completeModuleEvents();
         } finally {
             StreamUtil.close(mStderr);
             StreamUtil.close(mStdout);
