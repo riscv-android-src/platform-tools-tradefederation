@@ -157,6 +157,11 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
                 testNames.add(testInfo.getName());
             }
             setIncludeFilter(testNames);
+            // With include filters being set, the test no longer needs group and path settings.
+            // Clear the settings to avoid conflict when the test is running in a shard.
+            mTestGroup = null;
+            mTestMappingPaths.clear();
+            mUseTestMappingPath = false;
         }
 
         // load all the configurations with include-filter injected.
@@ -184,6 +189,21 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
             }
         }
         return testConfigs;
+    }
+
+    @VisibleForTesting
+    String getTestGroup() {
+        return mTestGroup;
+    }
+
+    @VisibleForTesting
+    List<String> getTestMappingPaths() {
+        return mTestMappingPaths;
+    }
+
+    @VisibleForTesting
+    boolean getUseTestMappingPath() {
+        return mUseTestMappingPath;
     }
 
     /**
