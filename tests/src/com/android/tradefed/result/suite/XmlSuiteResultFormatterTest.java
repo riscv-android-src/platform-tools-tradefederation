@@ -170,7 +170,7 @@ public class XmlSuiteResultFormatterTest {
         assertXmlContainsValue(
                 content,
                 "Result/Module/TestCase/Test/Failure/StackTrace",
-                "module1 failed.\nstack\n<null>stack[Null]");
+                XmlSuiteResultFormatter.sanitizeXmlContent("module1 failed.\nstack\nstack\0"));
         // Test that we can read back the informations
         SuiteResultHolder holder = mFormatter.parseResults(mResultDir, false);
         assertEquals(holder.completeModules, mResultHolder.completeModules);
@@ -224,7 +224,7 @@ public class XmlSuiteResultFormatterTest {
         assertXmlContainsValue(
                 content,
                 "Result/Module/TestCase/Test/Failure/StackTrace",
-                "module1 failed.\nstack\n<null>stack[Null]");
+                XmlSuiteResultFormatter.sanitizeXmlContent("module1 failed.\nstack\nstack\0"));
         // Test that we can read back the informations
         SuiteResultHolder holder = mFormatter.parseResults(mResultDir, false);
         assertEquals(holder.completeModules, mResultHolder.completeModules);
@@ -477,7 +477,7 @@ public class XmlSuiteResultFormatterTest {
         assertXmlContainsValue(
                 content,
                 "Result/Module/TestCase/Test/Failure/StackTrace",
-                "module1 failed.\nstack\n<null>stack[Null]");
+                XmlSuiteResultFormatter.sanitizeXmlContent("module1 failed.\nstack\nstack\0"));
         // Test that we can read back the informations
         SuiteResultHolder holder = mFormatter.parseResults(mResultDir, true);
         assertEquals(holder.completeModules, mResultHolder.completeModules);
@@ -671,7 +671,7 @@ public class XmlSuiteResultFormatterTest {
                     new TestDescription("com.class." + runName, runName + ".failed" + i);
             fakeRes.testStarted(description);
             // Include a null character \0 that is not XML supported
-            fakeRes.testFailed(description, runName + " failed.\nstack\n<null>stack\0");
+            fakeRes.testFailed(description, runName + " failed.\nstack\nstack\0");
             HashMap<String, Metric> metrics = new HashMap<String, Metric>();
             if (withMetrics) {
                 metrics.put("metric0" + i, TfMetricProtoUtil.stringToMetric("value0" + i));
