@@ -34,6 +34,7 @@ import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import com.google.common.base.Strings;
+import com.google.common.xml.XmlEscapers;
 import com.google.gson.Gson;
 
 import org.xmlpull.v1.XmlPullParser;
@@ -707,7 +708,6 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
 
     @VisibleForTesting
     static String sanitizeXmlContent(String s) {
-        // Replace c++ \0 null since Serializer doesn't handle it.
-        return s.replace("\0", "[Null]");
+        return XmlEscapers.xmlContentEscaper().escape(s);
     }
 }
