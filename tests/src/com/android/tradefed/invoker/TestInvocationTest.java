@@ -309,7 +309,7 @@ public class TestInvocationTest {
 
                     @Override
                     protected void setExitCode(ExitCode code, Throwable stack) {
-                        // empty on purpose
+                        // Empty on purpose
                     }
 
                     @Override
@@ -320,7 +320,12 @@ public class TestInvocationTest {
 
                     @Override
                     public void registerExecutionFiles(ExecutionFiles executionFiles) {
-                        // Empty of purpose
+                        // Empty on purpose
+                    }
+
+                    @Override
+                    protected void applyAutomatedReporters(IConfiguration config) {
+                        // Empty on purpose
                     }
 
                     @Override
@@ -1659,6 +1664,11 @@ public class TestInvocationTest {
                     }
 
                     @Override
+                    protected void applyAutomatedReporters(IConfiguration config) {
+                        // Empty on purpose
+                    }
+
+                    @Override
                     protected void addInvocationMetric(InvocationMetricKey key, long value) {}
 
                     @Override
@@ -1729,6 +1739,11 @@ public class TestInvocationTest {
                                     // inop for the common test case.
                                 }
                             };
+                        }
+
+                        @Override
+                        protected void applyAutomatedReporters(IConfiguration config) {
+                            // Empty on purpose
                         }
 
                         @Override
@@ -1836,6 +1851,11 @@ public class TestInvocationTest {
                         @Override
                         protected void setExitCode(ExitCode code, Throwable stack) {
                             // empty on purpose
+                        }
+
+                        @Override
+                        protected void applyAutomatedReporters(IConfiguration config) {
+                            // Empty on purpose
                         }
 
                         @Override
