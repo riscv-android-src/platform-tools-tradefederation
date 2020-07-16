@@ -177,7 +177,8 @@ public class DelegatedInvocationExecution extends InvocationExecution {
     private StreamProtoReceiver createReceiver(
             ITestInvocationListener listener, IInvocationContext mainContext) throws IOException {
         StreamProtoReceiver receiver =
-                new StreamProtoReceiver(listener, mainContext, false, false, "");
+                new StreamProtoReceiver(
+                        listener, mainContext, false, false, /* report logs */ false, "");
         return receiver;
     }
 
