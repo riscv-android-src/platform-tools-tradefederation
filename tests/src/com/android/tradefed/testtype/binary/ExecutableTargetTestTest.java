@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.testtype.binary;
 
+import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.eq;
 
 import com.android.tradefed.config.ConfigurationException;
@@ -29,6 +30,7 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
+import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.CommandResult;
 
 import org.junit.Before;
@@ -38,6 +40,8 @@ import org.junit.runners.JUnit4;
 import org.mockito.Mockito;
 
 import java.util.HashMap;
+import java.util.Collection;
+import java.util.Map;
 
 /** Unit tests for {@link com.android.tradefed.testtype.binary.ExecutableTargetTest}. */
 @RunWith(JUnit4.class)
@@ -368,5 +372,32 @@ public class ExecutableTargetTestTest {
                 .testEnded(
                         Mockito.eq(testDescription3),
                         Mockito.eq(new HashMap<String, MetricMeasurement.Metric>()));
+    }
+
+    /** Test split() for sharding */
+    @Test
+    public void testShard_Split() throws DeviceNotAvailableException, ConfigurationException {
+        mExecutableTargetTest = new ExecutableTargetTest();
+        // Set test commands
+        OptionSetter setter = new OptionSetter(mExecutableTargetTest);
+        setter.setOptionValue("test-command-line", testName1, testCmd1);
+        setter.setOptionValue("test-command-line", testName2, testCmd2);
+        setter.setOptionValue("test-command-line", testName3, testCmd3);
+        // Split the shard.
+        Collection<IRemoteTest> testShards = mExecutableTargetTest.split();
+        // Test the size of the test Shard.
+        assertEquals(3, testShards.size());
+        // Test the command of each shard.
+        for (IRemoteTest test : testShards) {
+            Map<String, String> TestCommands = ((ExecutableTargetTest) test).getTestCommands();
+            String cmd1 = TestCommands.get(testName1);
+            if (cmd1 != null) assertEquals(testCmd1, cmd1);
+            String cmd2 = TestCommands.get(testName2);
+            if (cmd2 != null) assertEquals(testCmd2, cmd2);
+            String cmd3 = TestCommands.get(testName3);
+            if (cmd3 != null) assertEquals(testCmd3, cmd3);
+            // The test command should equals to one of them.
+            assertEquals(true, cmd1 != null || cmd2 != null || cmd3 != null);
+        }
     }
 }
