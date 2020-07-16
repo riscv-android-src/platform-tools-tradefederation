@@ -303,6 +303,9 @@ public abstract class ExecutableBaseTest
                 // Set one test command per shard
                 shard.mTestCommands.put(testName, cmd);
             }
+            // Copy the filters to each shard
+            shard.mExcludeFilters.addAll(mExcludeFilters);
+            shard.mIncludeFilters.addAll(mIncludeFilters);
         } catch (InstantiationException
                 | IllegalAccessException
                 | InvocationTargetException
