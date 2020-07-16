@@ -295,7 +295,7 @@ public interface IGlobalConfiguration {
     public void validateOptions() throws ConfigurationException;
 
     /**
-     * Filter the GlobalConfiguration based on a white list and output to an XML file.
+     * Filter the GlobalConfiguration based on a allowed list and output to an XML file.
      *
      * <p>For example, for following configuration:
      * {@code
@@ -318,24 +318,24 @@ public interface IGlobalConfiguration {
      * </xml>
      * }
      *
-     * @param whitelistConfigs a {@link String} array of configs to be included in the new XML file.
+     * @param allowlistConfigs a {@link String} array of configs to be included in the new XML file.
      *     If it's set to <code>null<code/>, a default list should be used.
      * @return the File containing the new filtered global config.
      * @throws IOException
      */
-    public File cloneConfigWithFilter(String... whitelistConfigs) throws IOException;
+    public File cloneConfigWithFilter(String... allowlistConfigs) throws IOException;
 
     /**
      * Filter the GlobalConfiguration based on a white list and output to an XML file.
      * @see #cloneConfigWithFilter(String...)
      *
      * @param exclusionPatterns The pattern of class name to exclude from the dump.
-     * @param whitelistConfigs a {@link String} array of configs to be included in the new XML file.
+     * @param allowlistConfigs a {@link String} array of configs to be included in the new XML file.
      *     If it's set to <code>null<code/>, a default list should be used.
      * @return the File containing the new filtered global config.
      * @throws IOException
      */
-    public File cloneConfigWithFilter(Set<String> exclusionPatterns, String... whitelistConfigs)
+    public File cloneConfigWithFilter(Set<String> exclusionPatterns, String... allowlistConfigs)
             throws IOException;
 
     /**

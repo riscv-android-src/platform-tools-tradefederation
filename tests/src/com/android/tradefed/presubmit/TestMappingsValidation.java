@@ -195,7 +195,10 @@ public class TestMappingsValidation implements IBuildReceiver {
                     continue;
                 }
                 for (String param : params) {
-                    errors.add(validateMainlineModuleConfig(param, Set.of(configName)));
+                    String error = validateMainlineModuleConfig(param, Set.of(configName));
+                    if (!Strings.isNullOrEmpty(error)){
+                        errors.add(error);
+                    }
                 }
             } catch (ConfigurationException e) {
                 errors.add(String.format("\t%s: %s", configName, e.getMessage()));

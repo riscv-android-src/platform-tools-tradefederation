@@ -43,6 +43,8 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.utils.FileUtils;
 
+import com.google.common.base.Throwables;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -67,13 +69,13 @@ public class MoblyBinaryHostTestTest {
     private static final String DEVICE_SERIAL = "X123SER";
     private static final long DEFAULT_TIME_OUT = 30 * 1000L;
     private static final String TEST_RESULT_FILE_NAME = "test_summary.yaml";
-    private static final String TEMP_DIR = "/tmp";
 
     private MoblyBinaryHostTest mSpyTest;
     private ITestDevice mMockDevice;
     private IRunUtil mMockRunUtil;
     private MoblyYamlResultParser mMockParser;
     private InputStream mMockSummaryInputStream;
+    private File mMoblyTestDir;
     private File mMoblyBinary; // used by python-binaries option
     private File mMoblyBinary2; // used by par-file-name option
     private DeviceBuildInfo mMockBuildInfo;
@@ -88,17 +90,15 @@ public class MoblyBinaryHostTestTest {
         Mockito.doReturn(mMockRunUtil).when(mSpyTest).getRunUtil();
         Mockito.doReturn(DEFAULT_TIME_OUT).when(mSpyTest).getTestTimeout();
         Mockito.doReturn("not_adb").when(mSpyTest).getAdbPath();
-        mMoblyBinary = new File(TEMP_DIR, "mobly_binary.par");
-        FileUtils.createFile(mMoblyBinary, "");
-        mMoblyBinary2 = new File(TEMP_DIR, "mobly_binary_2.par");
-        FileUtils.createFile(mMoblyBinary2, "");
+        mMoblyTestDir = FileUtil.createTempDir("mobly_tests");
+        mMoblyBinary = FileUtil.createTempFile("mobly_binary", ".par", mMoblyTestDir);
+        mMoblyBinary2 = FileUtil.createTempFile("mobly_binary_2", ".par", mMoblyTestDir);
         mSpyTest.setBuild(mMockBuildInfo);
     }
 
     @After
     public void tearDown() throws Exception {
-        FileUtils.deleteIfExists(mMoblyBinary);
-        FileUtils.deleteIfExists(mMoblyBinary2);
+        FileUtil.recursiveDelete(mMoblyTestDir);
     }
 
     @Test
@@ -142,7 +142,7 @@ public class MoblyBinaryHostTestTest {
     public void testRun_withParFileNameOption() throws Exception {
         OptionSetter setter = new OptionSetter(mSpyTest);
         setter.setOptionValue("par-file-name", mMoblyBinary2.getName());
-        Mockito.doReturn(new File(TEMP_DIR)).when(mMockBuildInfo).getTestsDir();
+        Mockito.doReturn(mMoblyTestDir).when(mMockBuildInfo).getTestsDir();
         File testResult = new File(mSpyTest.getLogDirAbsolutePath(), TEST_RESULT_FILE_NAME);
         Mockito.when(mMockRunUtil.runTimedCmd(anyLong(), any()))
                 .thenAnswer(
@@ -168,7 +168,7 @@ public class MoblyBinaryHostTestTest {
     public void testRun_withParFileNameOption_binaryNotFound() throws Exception {
         OptionSetter setter = new OptionSetter(mSpyTest);
         setter.setOptionValue("par-file-name", mMoblyBinary2.getName());
-        Mockito.doReturn(new File(TEMP_DIR)).when(mMockBuildInfo).getTestsDir();
+        Mockito.doReturn(mMoblyTestDir).when(mMockBuildInfo).getTestsDir();
         FileUtil.deleteFile(mMoblyBinary2);
 
         try {
@@ -177,6 +177,9 @@ public class MoblyBinaryHostTestTest {
         } catch (RuntimeException e) {
             verify(mSpyTest, never()).reportLogs(any(), any());
             assertEquals(
+                    String.format(
+                            "An unexpected exception was thrown, full stack trace: %s",
+                            Throwables.getStackTraceAsString(e)),
                     e.getMessage(),
                     String.format("Couldn't find a par file %s", mMoblyBinary2.getName()));
         }
@@ -202,6 +205,9 @@ public class MoblyBinaryHostTestTest {
             fail("Should have thrown an exception");
         } catch (RuntimeException e) {
             assertThat(
+                    String.format(
+                            "An unexpected exception was thrown, full stack trace: %s",
+                            Throwables.getStackTraceAsString(e)),
                     e.getMessage(),
                     containsString(
                             "Fail to find test summary file test_summary.yaml under directory"));

@@ -20,7 +20,8 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import com.android.tradefed.build.BootstrapBuildProvider;
+import com.android.tradefed.build.DependenciesResolver;
+import com.android.tradefed.build.StubBuildProvider;
 import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -57,12 +58,23 @@ public class ConfigurationYamlParserTest {
     @Test
     public void testParseConfig() throws Exception {
         try (InputStream res = readFromRes(YAML_TEST_CONFIG_1)) {
-            mParser.parse(mConfigDef, "source", res);
+            mParser.parse(mConfigDef, "source", res, false);
             // Create the configuration to test the flow
             IConfiguration config = mConfigDef.createConfiguration();
             config.validateOptions();
             // build provider
-            assertTrue(config.getBuildProvider() instanceof BootstrapBuildProvider);
+            assertTrue(config.getBuildProvider() instanceof DependenciesResolver);
+            DependenciesResolver resolver = (DependenciesResolver) config.getBuildProvider();
+            assertEquals(7, resolver.getDependencies().size());
+            assertThat(resolver.getDependencies())
+                    .containsExactly(
+                            new File("test.apk"),
+                            new File("test2.apk"),
+                            new File("test1.apk"),
+                            new File("tobepushed2.txt"),
+                            new File("tobepushed.txt"),
+                            new File("file1.txt"),
+                            new File("file2.txt"));
             // Test
             assertEquals(1, config.getTests().size());
             assertTrue(config.getTests().get(0) instanceof AndroidJUnitTest);
@@ -90,6 +102,46 @@ public class ConfigurationYamlParserTest {
             // Result reporters
             List<ITestInvocationListener> listeners = config.getTestInvocationListeners();
             assertTrue(listeners.get(0) instanceof SuiteResultReporter);
+        }
+    }
+
+    @Test
+    public void testParseModule() throws Exception {
+        try (InputStream res = readFromRes(YAML_TEST_CONFIG_1)) {
+            mParser.parse(mConfigDef, "source", res, true /* createdAsModule */);
+            // Create the configuration to test the flow
+            IConfiguration config = mConfigDef.createConfiguration();
+            config.validateOptions();
+            // build provider isn't set
+            assertTrue(config.getBuildProvider() instanceof StubBuildProvider);
+            // Test
+            assertEquals(1, config.getTests().size());
+            assertTrue(config.getTests().get(0) instanceof AndroidJUnitTest);
+            assertEquals(
+                    "android.package",
+                    ((AndroidJUnitTest) config.getTests().get(0)).getPackageName());
+
+            // Dependencies
+            // apk dependencies
+            assertEquals(2, config.getTargetPreparers().size());
+            ITargetPreparer installApk = config.getTargetPreparers().get(0);
+            assertTrue(installApk instanceof SuiteApkInstaller);
+            assertThat(((SuiteApkInstaller) installApk).getTestsFileName())
+                    .containsExactly(
+                            new File("test.apk"), new File("test2.apk"), new File("test1.apk"));
+            // device file dependencies
+            ITargetPreparer pushFile = config.getTargetPreparers().get(1);
+            assertTrue(pushFile instanceof PushFilePreparer);
+            assertThat(((PushFilePreparer) pushFile).getPushSpecs(null))
+                    .containsExactly(
+                            "/sdcard/",
+                            new File("tobepushed2.txt"),
+                            "/sdcard",
+                            new File("tobepushed.txt"));
+            // Result reporters aren't set
+            List<ITestInvocationListener> listeners = config.getTestInvocationListeners();
+            // TODO: Renable when matching project is updated
+            // assertTrue(listeners.get(0) instanceof TextResultReporter);
         }
     }
 
