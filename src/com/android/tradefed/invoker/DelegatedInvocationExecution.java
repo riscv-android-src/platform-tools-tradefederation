@@ -19,6 +19,7 @@ import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.proxy.TradefedDelegator;
+import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.invoker.TestInvocation.Stage;
@@ -28,6 +29,8 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.result.proto.StreamProtoReceiver;
+import com.android.tradefed.targetprep.BuildError;
+import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -75,6 +78,22 @@ public class DelegatedInvocationExecution extends InvocationExecution {
     }
 
     @Override
+    public void doSetup(TestInformation testInfo, IConfiguration config, ITestLogger listener)
+            throws TargetSetupError, BuildError, DeviceNotAvailableException {
+        // Do nothing
+    }
+
+    @Override
+    public void doTeardown(
+            TestInformation testInfo,
+            IConfiguration config,
+            ITestLogger logger,
+            Throwable exception)
+            throws Throwable {
+        // Do nothing
+    }
+
+    @Override
     public void runTests(
             TestInformation info, IConfiguration config, ITestInvocationListener listener)
             throws Throwable {
@@ -104,8 +123,8 @@ public class DelegatedInvocationExecution extends InvocationExecution {
         commandLine.addAll(Arrays.asList(delegator.getCommandLine()));
 
         try (StreamProtoReceiver receiver = createReceiver(listener, info.getContext())) {
-            mStdoutFile = FileUtil.createTempFile("stdout_subprocess_", ".log", mTmpDelegatedDir);
-            mStderrFile = FileUtil.createTempFile("stderr_subprocess_", ".log", mTmpDelegatedDir);
+            mStdoutFile = FileUtil.createTempFile("stdout_delegate_", ".log", mTmpDelegatedDir);
+            mStderrFile = FileUtil.createTempFile("stderr_delegate_", ".log", mTmpDelegatedDir);
             mStderr = new FileOutputStream(mStderrFile);
             mStdout = new FileOutputStream(mStdoutFile);
             IRunUtil runUtil = createRunUtil(receiver.getSocketServerPort());
@@ -168,7 +187,8 @@ public class DelegatedInvocationExecution extends InvocationExecution {
                     GlobalConfiguration.DEVICE_MANAGER_TYPE_NAME,
                     GlobalConfiguration.KEY_STORE_TYPE_NAME,
                     GlobalConfiguration.HOST_OPTIONS_TYPE_NAME,
-                    GlobalConfiguration.SANDBOX_FACTORY_TYPE_NAME
+                    GlobalConfiguration.SANDBOX_FACTORY_TYPE_NAME,
+                    "android-build"
                 };
         File filteredGlobalConfig =
                 GlobalConfiguration.getInstance().cloneConfigWithFilter(configList);
