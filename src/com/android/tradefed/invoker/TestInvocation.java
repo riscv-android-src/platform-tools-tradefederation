@@ -716,8 +716,7 @@ public class TestInvocation implements ITestInvocation {
             ITestInvocationListener... extraListeners)
             throws DeviceNotAvailableException, Throwable {
         // Handle the automated reporting
-        AutomatedReporters autoReport = new AutomatedReporters();
-        autoReport.applyAutomatedReporters(config);
+        applyAutomatedReporters(config);
 
         for (ITestInvocationListener listener : extraListeners) {
             if (listener instanceof IScheduledInvocationListener) {
@@ -1035,6 +1034,12 @@ public class TestInvocation implements ITestInvocation {
         String startEnd = end ? "ENDING" : "STARTING";
         String message = String.format("===== %s PHASE %s =====", phase, startEnd);
         PrettyPrintDelimiter.printStageDelimiter(message);
+    }
+
+    @VisibleForTesting
+    protected void applyAutomatedReporters(IConfiguration config) {
+        AutomatedReporters autoReport = new AutomatedReporters();
+        autoReport.applyAutomatedReporters(config);
     }
 
     private void logExecuteShellCommand(List<ITestDevice> devices, ITestLogger logger) {

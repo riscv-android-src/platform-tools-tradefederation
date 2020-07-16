@@ -114,6 +114,11 @@ public class TestInvocationMultiTest {
                     }
 
                     @Override
+                    protected void applyAutomatedReporters(IConfiguration config) {
+                        // Empty on purpose
+                    }
+
+                    @Override
                     protected void setExitCode(ExitCode code, Throwable stack) {
                         // empty on purpose
                     }
