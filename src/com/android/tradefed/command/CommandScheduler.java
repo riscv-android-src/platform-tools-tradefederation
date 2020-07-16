@@ -1222,7 +1222,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         ArgsOptionParser argsParser = new ArgsOptionParser(delegator);
         List<String> argsList = new ArrayList<>(Arrays.asList(args));
         argsList.remove(0);
-        argsParser.parseBestEffort(argsList);
+        argsParser.parseBestEffort(argsList, true);
         if (delegator.shouldUseDelegation()) {
             String[] argsWithoutDelegation = TradefedDelegator.clearCommandline(args);
             delegator.setCommandLine(argsWithoutDelegation);
@@ -1237,9 +1237,10 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                                     ImmutableSet.of(
                                             Configuration.DEVICE_REQUIREMENTS_TYPE_NAME,
                                             Configuration.LOGGER_TYPE_NAME,
-                                            Configuration.LOG_SAVER_TYPE_NAME));
+                                            Configuration.LOG_SAVER_TYPE_NAME,
+                                            Configuration.RESULT_REPORTER_TYPE_NAME));
             config.setConfigurationObject(TradefedDelegator.DELEGATE_OBJECT, delegator);
-            config.setTestInvocationListener(new SuiteResultReporter());
+            setDelegateLevelReporting(config);
             return config;
         }
 
@@ -1264,6 +1265,20 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             return RetryConfigurationFactory.getInstance().createRetryConfiguration(config);
         }
         return config;
+    }
+
+    private void setDelegateLevelReporting(IConfiguration config) {
+        List<ITestInvocationListener> delegateReporters = new ArrayList<>();
+        // For debugging in the console, add a printer
+        delegateReporters.add(new SuiteResultReporter());
+        for (ITestInvocationListener listener : config.getTestInvocationListeners()) {
+            // Add infra reporter if configured.
+            if ("com.google.android.tradefed.result.teststorage.ResultReporter"
+                    .equals(listener.getClass().getCanonicalName())) {
+                delegateReporters.add(listener);
+            }
+        }
+        config.setTestInvocationListeners(delegateReporters);
     }
 
     private boolean internalAddCommand(String[] args, String cmdFilePath)
