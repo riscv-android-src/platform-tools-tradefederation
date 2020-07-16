@@ -89,6 +89,7 @@ public class TestInvocationMultiTest {
                 .andReturn(null);
         EasyMock.expect(mMockConfig.getConfigurationObject(ShardHelper.LAST_SHARD_DETECTOR))
                 .andReturn(null);
+        EasyMock.expect(mMockConfig.getConfigurationObject("DELEGATE")).andStubReturn(null);
         mMockRescheduler = EasyMock.createMock(IRescheduler.class);
         mMockTestListener = EasyMock.createMock(ITestInvocationListener.class);
         mMockLogSaver = EasyMock.createMock(ILogSaver.class);
@@ -110,6 +111,11 @@ public class TestInvocationMultiTest {
                                 return new ShardHelper();
                             }
                         };
+                    }
+
+                    @Override
+                    protected void applyAutomatedReporters(IConfiguration config) {
+                        // Empty on purpose
                     }
 
                     @Override

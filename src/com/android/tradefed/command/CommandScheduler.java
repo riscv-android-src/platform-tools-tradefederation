@@ -28,6 +28,8 @@ import com.android.tradefed.command.remote.IRemoteClient;
 import com.android.tradefed.command.remote.RemoteClient;
 import com.android.tradefed.command.remote.RemoteException;
 import com.android.tradefed.command.remote.RemoteManager;
+import com.android.tradefed.config.ArgsOptionParser;
+import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
@@ -40,6 +42,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.RetryConfigurationFactory;
 import com.android.tradefed.config.SandboxConfigurationFactory;
 import com.android.tradefed.config.proxy.ProxyConfiguration;
+import com.android.tradefed.config.proxy.TradefedDelegator;
 import com.android.tradefed.device.DeviceAllocationState;
 import com.android.tradefed.device.DeviceManager;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -64,6 +67,7 @@ import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ResultForwarder;
+import com.android.tradefed.result.suite.SuiteResultReporter;
 import com.android.tradefed.sandbox.ISandbox;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.suite.retry.RetryRescheduler;
@@ -82,6 +86,7 @@ import com.android.tradefed.util.keystore.IKeyStoreFactory;
 import com.android.tradefed.util.keystore.KeyStoreException;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableSet;
 
 import java.io.File;
 import java.io.IOException;
@@ -1213,6 +1218,32 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
     }
 
     private IConfiguration createConfiguration(String[] args) throws ConfigurationException {
+        TradefedDelegator delegator = new TradefedDelegator();
+        ArgsOptionParser argsParser = new ArgsOptionParser(delegator);
+        List<String> argsList = new ArrayList<>(Arrays.asList(args));
+        argsList.remove(0);
+        argsParser.parseBestEffort(argsList, true);
+        if (delegator.shouldUseDelegation()) {
+            String[] argsWithoutDelegation = TradefedDelegator.clearCommandline(args);
+            delegator.setCommandLine(argsWithoutDelegation);
+            CLog.d(
+                    "Using commandline arguments as starting command: %s",
+                    Arrays.asList(argsWithoutDelegation));
+            IConfiguration config =
+                    ((ConfigurationFactory) getConfigFactory())
+                            .createPartialConfigurationFromArgs(
+                                    argsWithoutDelegation,
+                                    getKeyStoreClient(),
+                                    ImmutableSet.of(
+                                            Configuration.DEVICE_REQUIREMENTS_TYPE_NAME,
+                                            Configuration.LOGGER_TYPE_NAME,
+                                            Configuration.LOG_SAVER_TYPE_NAME,
+                                            Configuration.RESULT_REPORTER_TYPE_NAME));
+            config.setConfigurationObject(TradefedDelegator.DELEGATE_OBJECT, delegator);
+            setDelegateLevelReporting(config);
+            return config;
+        }
+
         // check if the command should be sandboxed
         if (isCommandSandboxed(args)) {
             // Create an sandboxed configuration based on the sandbox of the scheduler.
@@ -1234,6 +1265,20 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             return RetryConfigurationFactory.getInstance().createRetryConfiguration(config);
         }
         return config;
+    }
+
+    private void setDelegateLevelReporting(IConfiguration config) {
+        List<ITestInvocationListener> delegateReporters = new ArrayList<>();
+        // For debugging in the console, add a printer
+        delegateReporters.add(new SuiteResultReporter());
+        for (ITestInvocationListener listener : config.getTestInvocationListeners()) {
+            // Add infra reporter if configured.
+            if ("com.google.android.tradefed.result.teststorage.ResultReporter"
+                    .equals(listener.getClass().getCanonicalName())) {
+                delegateReporters.add(listener);
+            }
+        }
+        config.setTestInvocationListeners(delegateReporters);
     }
 
     private boolean internalAddCommand(String[] args, String cmdFilePath)
