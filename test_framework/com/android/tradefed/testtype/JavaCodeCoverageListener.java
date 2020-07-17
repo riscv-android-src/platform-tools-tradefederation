@@ -21,11 +21,14 @@ import static com.google.common.io.Files.getNameWithoutExtension;
 
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.logger.CurrentInvocation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.ResultForwarder;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.testtype.coverage.CoverageOptions;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.JavaCodeCoverageFlusher;
@@ -110,13 +113,15 @@ final class JavaCodeCoverageListener extends ResultForwarder {
             // Get the path of the coverage measurement on the device.
             Metric devicePathMetric = runMetrics.get(COVERAGE_MEASUREMENT_KEY);
             if (devicePathMetric == null) {
-                super.testRunFailed("No Java code coverage measurement.");
+                super.testRunFailed(
+                        createCodeCoverageFailure("No Java code coverage measurement."));
                 super.testRunEnded(elapsedTime, runMetrics);
                 return;
             }
             String testCoveragePath = devicePathMetric.getMeasurements().getSingleString();
             if (testCoveragePath == null) {
-                super.testRunFailed("No Java code coverage measurement.");
+                super.testRunFailed(
+                        createCodeCoverageFailure("No Java code coverage measurement."));
                 super.testRunEnded(elapsedTime, runMetrics);
                 return;
             }
@@ -202,5 +207,9 @@ final class JavaCodeCoverageListener extends ResultForwarder {
                 FileUtil.deleteFile(coverageFile);
             }
         }
+    }
+
+    private FailureDescription createCodeCoverageFailure(String message) {
+        return CurrentInvocation.createFailure(message, InfraErrorIdentifier.CODE_COVERAGE_ERROR);
     }
 }
