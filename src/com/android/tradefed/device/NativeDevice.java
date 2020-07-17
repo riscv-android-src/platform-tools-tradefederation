@@ -2099,9 +2099,13 @@ public class NativeDevice implements IManagedTestDevice {
             recoverDevice();
         }
         if (retryAttempts > 0) {
-            throw new DeviceUnresponsiveException(String.format("Attempted %s multiple times "
-                    + "on device %s without communication success. Aborting.", actionDescription,
-                    getSerialNumber()), getSerialNumber());
+            throw new DeviceUnresponsiveException(
+                    String.format(
+                            "Attempted %s multiple times "
+                                    + "on device %s without communication success. Aborting.",
+                            actionDescription, getSerialNumber()),
+                    getSerialNumber(),
+                    DeviceErrorIdentifier.DEVICE_UNRESPONSIVE);
         }
         return false;
     }
