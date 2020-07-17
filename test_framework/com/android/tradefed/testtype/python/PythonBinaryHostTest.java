@@ -26,9 +26,11 @@ import com.android.tradefed.invoker.ExecutionFiles.FilesKey;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
@@ -73,6 +75,7 @@ public class PythonBinaryHostTest implements IRemoteTest, ITestFilterReceiver {
     @VisibleForTesting static final String USE_TEST_OUTPUT_FILE_OPTION = "use-test-output-file";
     static final String TEST_OUTPUT_FILE_FLAG = "test-output-file";
 
+    private static final String PYTHON_LOG_STDOUT_FORMAT = "%s-stdout";
     private static final String PYTHON_LOG_STDERR_FORMAT = "%s-stderr";
     private static final String PYTHON_LOG_TEST_OUTPUT_FORMAT = "%s-test-output";
 
@@ -316,7 +319,13 @@ public class PythonBinaryHostTest implements IRemoteTest, ITestFilterReceiver {
                             + "%s\nstderr:%s",
                     result.getStdout(), result.getStderr());
         }
-
+        if (result.getStdout() != null) {
+            try (InputStreamSource data =
+                    new ByteArrayInputStreamSource(result.getStdout().getBytes())) {
+                listener.testLog(
+                        String.format(PYTHON_LOG_STDOUT_FORMAT, runName), LogDataType.TEXT, data);
+            }
+        }
         File stderrFile = null;
         try {
             // Note that we still log stderr when parsing results from a test-written output file

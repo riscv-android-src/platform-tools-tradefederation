@@ -69,6 +69,8 @@ public class ProtoResultParser {
      * invocation scope we should not report it again.
      */
     private boolean mReportInvocation = false;
+    /** In some cases we do not need to forward the logs. */
+    private boolean mReportLogs = true;
     /** Prefix that will be added to the files logged through the parser. */
     private String mFilePrefix;
     /** The context from the invocation in progress, not the proto one. */
@@ -113,6 +115,11 @@ public class ProtoResultParser {
     /** Sets whether or not to print when events are received. */
     public void setQuiet(boolean quiet) {
         mQuietParsing = quiet;
+    }
+
+    /** Sets whether or not we should report the logs. */
+    public void setReportLogs(boolean reportLogs) {
+        mReportLogs = reportLogs;
     }
 
     /**
@@ -318,6 +325,7 @@ public class ProtoResultParser {
                     } catch (IOException e) {
                         CLog.e("Failed to deserialize the invocation exception:");
                         CLog.e(e);
+                        failure.setCause(new RuntimeException(failure.getErrorMessage()));
                     }
                 }
             }
@@ -498,6 +506,9 @@ public class ProtoResultParser {
 
     private void handleLogs(TestRecord proto) {
         if (!(mListener instanceof ILogSaverListener)) {
+            return;
+        }
+        if (!mReportLogs) {
             return;
         }
         ILogSaverListener logger = (ILogSaverListener) mListener;

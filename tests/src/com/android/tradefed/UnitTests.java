@@ -62,6 +62,7 @@ import com.android.tradefed.config.RetryConfigurationFactoryTest;
 import com.android.tradefed.config.SandboxConfigurationFactoryTest;
 import com.android.tradefed.config.gcs.GCSConfigurationFactoryTest;
 import com.android.tradefed.config.gcs.GCSConfigurationServerTest;
+import com.android.tradefed.config.proxy.AutomatedReportersTest;
 import com.android.tradefed.config.remote.GcsRemoteFileResolverTest;
 import com.android.tradefed.config.remote.HttpRemoteFileResolverTest;
 import com.android.tradefed.config.remote.LocalFileResolverTest;
@@ -479,6 +480,9 @@ import org.junit.runners.Suite.SuiteClasses;
     // config.gcs
     GCSConfigurationServerTest.class,
     GCSConfigurationFactoryTest.class,
+
+    // config.proxy
+    AutomatedReportersTest.class,
 
     // config.remote
     GcsRemoteFileResolverTest.class,
