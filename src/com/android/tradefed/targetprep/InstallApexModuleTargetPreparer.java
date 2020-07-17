@@ -198,7 +198,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
             throw new TargetSetupError(
                     String.format("Failed to find bundletool jar %s.", getBundletoolFileName()),
                     testInfo.getDevice().getDeviceDescriptor(),
-                    InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
+                    InfraErrorIdentifier.CONFIGURED_ARTIFACT_NOT_FOUND);
         }
         mBundletoolUtil = new BundletoolUtil(bundletoolJar);
     }

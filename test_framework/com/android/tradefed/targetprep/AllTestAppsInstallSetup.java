@@ -89,7 +89,7 @@ public class AllTestAppsInstallSetup extends BaseTargetPreparer implements IAbiR
             throw new TargetSetupError(
                     "Failed to find a valid test zip directory.",
                     device.getDeviceDescriptor(),
-                    InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
+                    InfraErrorIdentifier.CONFIGURED_ARTIFACT_NOT_FOUND);
         }
         if (mForceQueryable && device.isAppEnumerationSupported()) {
             mInstallArgs.add("--force-queryable");
@@ -112,7 +112,7 @@ public class AllTestAppsInstallSetup extends BaseTargetPreparer implements IAbiR
             throw new TargetSetupError(
                     "Invalid test zip directory!",
                     device.getDeviceDescriptor(),
-                    InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
+                    InfraErrorIdentifier.CONFIGURED_ARTIFACT_NOT_FOUND);
         }
         CLog.d("Installing all apks found in dir %s ...", directory.getAbsolutePath());
         File[] files = directory.listFiles();
