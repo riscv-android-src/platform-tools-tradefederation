@@ -34,6 +34,7 @@ import com.android.tradefed.host.IHostOptions;
 import com.android.tradefed.log.ILogRegistry.EventType;
 import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
@@ -1016,8 +1017,10 @@ public class DeviceManager implements IDeviceManager {
         @Override
         public void recoverDevice(IDeviceStateMonitor monitor, boolean recoverUntilOnline)
                 throws DeviceNotAvailableException {
-            throw new DeviceNotAvailableException("aborted test session",
-                    monitor.getSerialNumber());
+            throw new DeviceNotAvailableException(
+                    "aborted test session",
+                    monitor.getSerialNumber(),
+                    InfraErrorIdentifier.INVOCATION_CANCELLED);
         }
 
         /**
@@ -1026,8 +1029,10 @@ public class DeviceManager implements IDeviceManager {
         @Override
         public void recoverDeviceBootloader(IDeviceStateMonitor monitor)
                 throws DeviceNotAvailableException {
-            throw new DeviceNotAvailableException("aborted test session",
-                    monitor.getSerialNumber());
+            throw new DeviceNotAvailableException(
+                    "aborted test session",
+                    monitor.getSerialNumber(),
+                    InfraErrorIdentifier.INVOCATION_CANCELLED);
         }
 
         /**
@@ -1036,8 +1041,10 @@ public class DeviceManager implements IDeviceManager {
         @Override
         public void recoverDeviceRecovery(IDeviceStateMonitor monitor)
                 throws DeviceNotAvailableException {
-            throw new DeviceNotAvailableException("aborted test session",
-                    monitor.getSerialNumber());
+            throw new DeviceNotAvailableException(
+                    "aborted test session",
+                    monitor.getSerialNumber(),
+                    InfraErrorIdentifier.INVOCATION_CANCELLED);
         }
 
         /** {@inheritDoc} */
@@ -1045,7 +1052,9 @@ public class DeviceManager implements IDeviceManager {
         public void recoverDeviceFastbootd(IDeviceStateMonitor monitor)
                 throws DeviceNotAvailableException {
             throw new DeviceNotAvailableException(
-                    "aborted test session", monitor.getSerialNumber());
+                    "aborted test session",
+                    monitor.getSerialNumber(),
+                    InfraErrorIdentifier.INVOCATION_CANCELLED);
         }
     }
 
