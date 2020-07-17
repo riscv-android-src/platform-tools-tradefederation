@@ -52,7 +52,6 @@ public class ExecutableTargetTestTest {
     private final String testCmd2 = "cmd2";
     private final String testName3 = "testName3";
     private final String testCmd3 = "cmd3";
-    private static final String NO_BINARY_ERROR = "Binary %s does not exist.";
     private static final String ERROR_MESSAGE = "binary returned non-zero exit code.";
 
     private ITestInvocationListener mListener = null;
@@ -376,7 +375,7 @@ public class ExecutableTargetTestTest {
 
     /** Test split() for sharding */
     @Test
-    public void testShard_Split() throws DeviceNotAvailableException, ConfigurationException {
+    public void testShard_Split() throws ConfigurationException {
         mExecutableTargetTest = new ExecutableTargetTest();
         // Set test commands
         OptionSetter setter = new OptionSetter(mExecutableTargetTest);
