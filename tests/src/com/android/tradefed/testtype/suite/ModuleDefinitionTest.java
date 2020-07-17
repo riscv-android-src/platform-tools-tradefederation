@@ -38,7 +38,6 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
-import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.invoker.TestInvocation;
@@ -57,6 +56,8 @@ import com.android.tradefed.result.MultiFailureDescription;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestRunResult;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.retry.BaseRetryDecision;
 import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.targetprep.BaseTargetPreparer;
@@ -160,10 +161,12 @@ public class ModuleDefinitionTest {
                 TestDescription test = new TestDescription(mRunName + "class", "test" + i);
                 listener.testStarted(test);
                 if (mShouldThrow && i == mNumTest / 2) {
-                    throw new DeviceNotAvailableException("unavailable", "serial");
+                    throw new DeviceNotAvailableException(
+                            "unavailable", "serial", DeviceErrorIdentifier.DEVICE_UNAVAILABLE);
                 }
                 if (mDeviceUnresponsive) {
-                    throw new DeviceUnresponsiveException("unresponsive", "serial");
+                    throw new DeviceUnresponsiveException(
+                            "unresponsive", "serial", DeviceErrorIdentifier.DEVICE_UNRESPONSIVE);
                 }
                 if (mThrowError && i == mNumTest / 2) {
                     throw new AssertionError("assert error");
@@ -1048,12 +1051,6 @@ public class ModuleDefinitionTest {
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
-        // Run failed
-        EasyMock.expect(mMockDevice.getIDevice()).andReturn(EasyMock.createMock(IDevice.class));
-        EasyMock.expect(mMockDevice.getSerialNumber()).andReturn("serial");
-        EasyMock.expect(mMockDevice.logBugreport(EasyMock.anyObject(), EasyMock.anyObject()))
-                .andReturn(true);
-
         replayMocks();
         mModule.run(mModuleInfo, mMockListener);
         // Only one module
@@ -1388,7 +1385,8 @@ public class ModuleDefinitionTest {
                     EasyMock.<HashMap<String, Metric>>anyObject());
         }
         mMockListener.testFailed(EasyMock.anyObject(), (String) EasyMock.anyObject());
-        FailureDescription issues = FailureDescription.create("unresponsive");
+        FailureDescription issues =
+                FailureDescription.create("unresponsive", FailureStatus.LOST_SYSTEM_UNDER_TEST);
         mMockListener.testRunFailed(issues);
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
@@ -1564,7 +1562,6 @@ public class ModuleDefinitionTest {
         mModule.setBuild(mMockBuildInfo);
         mModule.setDevice(mMockDevice);
 
-        EasyMock.expect(mMockDevice.getIDevice()).andReturn(new StubDevice("fake"));
         EasyMock.expect(mMockPrep.isDisabled()).andReturn(false).times(2);
         // no isTearDownDisabled() expected for setup
         mMockPrep.setUp(EasyMock.eq(mModuleInfo));
