@@ -26,6 +26,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.CommandResult;
@@ -57,6 +58,7 @@ public class ClusterCommandLauncherTest {
 
     private IRunUtil mMockRunUtil;
     private SubprocessTestResultsParser mMockSubprocessTestResultsParser;
+    private TestInformation mMockTestInformation;
     private ITestInvocationListener mMockListener;
     private ITestDevice mMockTestDevice;
     private File mTfPath;
@@ -79,6 +81,7 @@ public class ClusterCommandLauncherTest {
     public void setUp() throws Exception {
         mMockRunUtil = Mockito.mock(IRunUtil.class);
         mMockSubprocessTestResultsParser = Mockito.mock(SubprocessTestResultsParser.class);
+        mMockTestInformation = Mockito.mock(TestInformation.class);
         mMockListener = Mockito.mock(ITestInvocationListener.class);
         mMockTestDevice = Mockito.mock(ITestDevice.class);
         Mockito.doReturn(DEVICE_SERIAL).when(mMockTestDevice).getSerialNumber();
@@ -139,7 +142,7 @@ public class ClusterCommandLauncherTest {
                 .thenReturn(mockCommandResult);
         Mockito.when(mLauncher.getRunUtil()).thenReturn(mMockRunUtil);
 
-        mLauncher.run(mMockListener);
+        mLauncher.run(mMockTestInformation, mMockListener);
 
         Mockito.verify(mMockRunUtil, Mockito.times(2)).setWorkingDir(mRootDir);
         Mockito.verify(mMockRunUtil).unsetEnvVariable("TF_GLOBAL_CONFIG");
@@ -186,7 +189,7 @@ public class ClusterCommandLauncherTest {
                 .thenReturn(mockCommandResult);
         Mockito.when(mLauncher.getRunUtil()).thenReturn(mMockRunUtil);
 
-        mLauncher.run(mMockListener);
+        mLauncher.run(mMockTestInformation, mMockListener);
 
         Mockito.verify(mMockRunUtil, Mockito.times(2)).setWorkingDir(mRootDir);
         Mockito.verify(mMockRunUtil).unsetEnvVariable("TF_GLOBAL_CONFIG");
@@ -241,7 +244,7 @@ public class ClusterCommandLauncherTest {
         final File subprocessReporterConfig = new File(mRootDir, "_command-line.xml");
         Mockito.when(mLauncher.getRunUtil()).thenReturn(mMockRunUtil);
 
-        mLauncher.run(mMockListener);
+        mLauncher.run(mMockTestInformation, mMockListener);
 
         String subprocessJar =
                 FileUtil.findFile(mRootDir, "subprocess-results-reporter.jar").getAbsolutePath();
