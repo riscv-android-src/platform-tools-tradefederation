@@ -509,7 +509,13 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 // After the run, if the test failed (even after retry the final result passed) has
                 // failed, capture a bugreport.
                 if (retriableTest.getResultListener().hasLastAttemptFailed()) {
-                    captureBugreport(listener, getId());
+                    captureBugreport(
+                            listener,
+                            getId(),
+                            retriableTest
+                                    .getResultListener()
+                                    .getCurrentRunResults()
+                                    .getRunFailureDescription());
                 }
             }
         } finally {
@@ -609,7 +615,13 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         return retriableTest;
     }
 
-    private void captureBugreport(ITestLogger listener, String moduleId) {
+    private void captureBugreport(
+            ITestLogger listener, String moduleId, FailureDescription failure) {
+        FailureStatus status = failure.getFailureStatus();
+        if (!FailureStatus.LOST_SYSTEM_UNDER_TEST.equals(status)
+                && !FailureStatus.SYSTEM_UNDER_TEST_CRASHED.equals(status)) {
+            return;
+        }
         for (ITestDevice device : mModuleInvocationContext.getDevices()) {
             if (device.getIDevice() instanceof StubDevice) {
                 continue;

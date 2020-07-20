@@ -33,6 +33,7 @@ public interface IDefaultObjectLoader {
     public class LoaderConfiguration {
 
         private ConfigurationDef mConfigDef;
+        private boolean mCreatedAsModule = false;
         private Set<String> mDependencies = new LinkedHashSet<>();
 
         public LoaderConfiguration setConfigurationDef(ConfigurationDef configDef) {
@@ -50,12 +51,21 @@ public interface IDefaultObjectLoader {
             return this;
         }
 
+        public LoaderConfiguration setCreatedAsModule(boolean createdAsModule) {
+            mCreatedAsModule = createdAsModule;
+            return this;
+        }
+
         public ConfigurationDef getConfigDef() {
             return mConfigDef;
         }
 
         public Set<String> getDependencies() {
             return mDependencies;
+        }
+
+        public boolean createdAsModule() {
+            return mCreatedAsModule;
         }
     }
 }

@@ -23,6 +23,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
 
 /**
  * Target preparer that performs "adb root" or "adb unroot" based on option "force-root".
@@ -79,7 +80,8 @@ public final class RootTargetPreparer extends BaseTargetPreparer {
     private void throwOrLog(String message, DeviceDescriptor deviceDescriptor)
             throws TargetSetupError {
         if (mThrowOnError) {
-            throw new TargetSetupError(message, deviceDescriptor);
+            throw new TargetSetupError(
+                    message, deviceDescriptor, DeviceErrorIdentifier.DEVICE_UNEXPECTED_RESPONSE);
         } else {
             CLog.w(message + " " + deviceDescriptor);
         }

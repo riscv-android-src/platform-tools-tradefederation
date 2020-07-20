@@ -83,7 +83,7 @@ public class StreamProtoReceiver implements Closeable {
             boolean reportInvocation,
             boolean quietParsing)
             throws IOException {
-        this(listener, mainContext, reportInvocation, quietParsing, "subprocess-");
+        this(listener, mainContext, reportInvocation, quietParsing, true, "subprocess-");
     }
 
     /**
@@ -102,8 +102,30 @@ public class StreamProtoReceiver implements Closeable {
             boolean quietParsing,
             String logNamePrefix)
             throws IOException {
+        this(listener, mainContext, reportInvocation, quietParsing, true, logNamePrefix);
+    }
+
+    /**
+     * Ctor.
+     *
+     * @param listener the {@link ITestInvocationListener} where to report the results.
+     * @param reportInvocation Whether or not to report the invocation level events.
+     * @param quietParsing Whether or not to let the parser log debug information.
+     * @param reportLogs Whether or not to report the logs
+     * @param logNamePrefix The prefix for file logged through the parser.
+     * @throws IOException
+     */
+    public StreamProtoReceiver(
+            ITestInvocationListener listener,
+            IInvocationContext mainContext,
+            boolean reportInvocation,
+            boolean quietParsing,
+            boolean reportLogs,
+            String logNamePrefix)
+            throws IOException {
         mListener = listener;
         mParser = new ProtoResultParser(mListener, mainContext, reportInvocation, logNamePrefix);
+        mParser.setReportLogs(reportLogs);
         mParser.setQuiet(quietParsing);
         mEventReceiver = new EventReceiverThread();
         mEventReceiver.start();
