@@ -33,6 +33,9 @@ import com.android.tradefed.util.FileUtil;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Map.Entry;
 
 /**
  * A {@link IDeviceBuildProvider} that bootstraps build info from the test device
@@ -80,6 +83,13 @@ public class BootstrapBuildProvider implements IDeviceBuildProvider {
     @Option(name="tests-dir", description="Path to top directory of expanded tests zip")
     private File mTestsDir = null;
 
+    @Option(
+            name = "extra-file",
+            description =
+                    "The extra file to be added to the Build Provider. "
+                            + "Can be repeated. For example --extra-file file_key_1=/path/to/file")
+    private Map<String, File> mExtraFiles = new LinkedHashMap<>();
+
     @Override
     public IBuildInfo getBuild() throws BuildRetrievalError {
         throw new UnsupportedOperationException("Call getBuild(ITestDevice)");
@@ -93,6 +103,7 @@ public class BootstrapBuildProvider implements IDeviceBuildProvider {
     public IBuildInfo getBuild(ITestDevice device) throws BuildRetrievalError,
             DeviceNotAvailableException {
         IBuildInfo info = new DeviceBuildInfo(mBuildId, mBuildTargetName);
+        addFiles(info, mExtraFiles);
         info.setProperties(BuildInfoProperties.DO_NOT_COPY_ON_SHARDING);
         if (!(device.getIDevice() instanceof StubDevice)) {
             if (!device.waitForDeviceShell(mShellAvailableTimeout * 1000)) {
@@ -139,6 +150,18 @@ public class BootstrapBuildProvider implements IDeviceBuildProvider {
                             !createdTestDir /* shouldNotDelete */);
         }
         return info;
+    }
+
+    /**
+     * Add file to build info.
+     *
+     * @param buildInfo the {@link IBuildInfo} the build info
+     * @param fileMaps the {@link Map} of file_key and file object to be added to the buildInfo
+     */
+    private void addFiles(IBuildInfo buildInfo, Map<String, File> fileMaps) {
+        for (final Entry<String, File> entry : fileMaps.entrySet()) {
+            buildInfo.setFile(entry.getKey(), entry.getValue(), "0");
+        }
     }
 
     @VisibleForTesting

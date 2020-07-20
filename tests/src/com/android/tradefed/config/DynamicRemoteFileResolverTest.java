@@ -28,6 +28,7 @@ import com.android.tradefed.build.BootstrapBuildProvider;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.StubBuildProvider;
 import com.android.tradefed.config.DynamicRemoteFileResolver.FileResolverLoader;
+import com.android.tradefed.config.DynamicRemoteFileResolver.ResolverLoadingException;
 import com.android.tradefed.config.DynamicRemoteFileResolver.ServiceFileResolverLoader;
 import com.android.tradefed.config.remote.GcsRemoteFileResolver;
 import com.android.tradefed.config.remote.IRemoteFileResolver;
@@ -160,34 +161,6 @@ public class DynamicRemoteFileResolverTest {
                 .andReturn(fake);
         EasyMock.replay(mMockResolver);
 
-        Set<File> downloadedFile = setter.validateRemoteFilePath(mResolver);
-        assertEquals(1, downloadedFile.size());
-        File downloaded = downloadedFile.iterator().next();
-        // The file has been replaced by the downloaded one.
-        assertEquals(downloaded.getAbsolutePath(), object.remoteFile.getAbsolutePath());
-        EasyMock.verify(mMockResolver);
-    }
-
-    @Test
-    public void testResolveWithQuery_overrides() throws Exception {
-        RemoteFileOption object = new RemoteFileOption();
-        OptionSetter setter = new OptionSetter(object);
-
-        File fake = temporaryFolder.newFile();
-
-        setter.setOptionValue("remote-file", "gs://fake/path?key=value");
-        assertEquals("gs:/fake/path?key=value", object.remoteFile.getPath());
-
-        Map<String, String> testMap = new HashMap<>();
-        testMap.put("key", "override" /* The args value is overriden*/);
-        EasyMock.expect(
-                        mMockResolver.resolveRemoteFiles(
-                                EasyMock.eq(new File("gs:/fake/path")), EasyMock.eq(testMap)))
-                .andReturn(fake);
-        EasyMock.replay(mMockResolver);
-        Map<String, String> extraArgs = new HashMap<>();
-        extraArgs.put("key", "override");
-        mResolver.addExtraArgs(extraArgs);
         Set<File> downloadedFile = setter.validateRemoteFilePath(mResolver);
         assertEquals(1, downloadedFile.size());
         File downloaded = downloadedFile.iterator().next();
@@ -658,6 +631,210 @@ public class DynamicRemoteFileResolverTest {
 
         assertThat(resolver.getClass())
                 .isAnyOf(NullFileResolver.class, DuplicateNullFileResolver.class);
+    }
+
+    @Test
+    public void resolverLoader_throwsIfMissingMandatoryOption() throws Exception {
+        ClassLoader classLoader = classLoaderWithProviders(ResolverWithOptions.class.getName());
+        FileResolverLoader loader = new ServiceFileResolverLoader(classLoader);
+        Map<String, String> config = ResolverWithOptions.minimalConfig();
+        config.remove(ResolverWithOptions.MANDATORY_OPTION_FQN);
+
+        try {
+            loader.load(ResolverWithOptions.PROTOCOL, config);
+            fail();
+        } catch (ResolverLoadingException expected) {
+            assertThat(expected)
+                    .hasCauseThat()
+                    .hasMessageThat()
+                    .contains(ResolverWithOptions.MANDATORY_OPTION_NAME);
+        }
+    }
+
+    @Test
+    public void resolverLoader_setsNonMandatoryOption() throws Exception {
+        String optionValue = "value";
+        ClassLoader classLoader = classLoaderWithProviders(ResolverWithOptions.class.getName());
+        FileResolverLoader loader = new ServiceFileResolverLoader(classLoader);
+        Map<String, String> config = ResolverWithOptions.minimalConfig();
+        config.put(ResolverWithOptions.NON_MANDATORY_OPTION_FQN, optionValue);
+
+        IRemoteFileResolver resolver = loader.load(ResolverWithOptions.PROTOCOL, config);
+
+        assertThat(((ResolverWithOptions) resolver).nonMandatoryOption).isEqualTo(optionValue);
+    }
+
+    @Test
+    public void resolverLoader_throwsForMapOption() throws Exception {
+        ClassLoader classLoader = classLoaderWithProviders(ResolverWithOptions.class.getName());
+        FileResolverLoader loader = new ServiceFileResolverLoader(classLoader);
+        Map<String, String> config = ResolverWithOptions.minimalConfig();
+        config.put(ResolverWithOptions.MAP_OPTION_FQN, "key=value");
+
+        try {
+            loader.load(ResolverWithOptions.PROTOCOL, config);
+            fail();
+        } catch (ResolverLoadingException expected) {
+            assertThat(expected)
+                    .hasCauseThat()
+                    .hasMessageThat()
+                    .contains(ResolverWithOptions.MAP_OPTION_FQN);
+            assertThat(expected).hasCauseThat().hasMessageThat().contains("not supported");
+        }
+    }
+
+    @Test
+    public void resolverLoader_resolvesFileOption() throws Exception {
+        File file = temporaryFolder.newFile();
+        ClassLoader classLoader = classLoaderWithProviders(ResolverWithOptions.class.getName());
+        FileResolverLoader loader = new ServiceFileResolverLoader(classLoader);
+        Map<String, String> config = ResolverWithOptions.minimalConfig();
+        config.put(ResolverWithOptions.MANDATORY_OPTION_FQN, file.toURI().toString());
+
+        IRemoteFileResolver resolver = loader.load(ResolverWithOptions.PROTOCOL, config);
+
+        assertThat(((ResolverWithOptions) resolver).mandatoryOption).isEqualTo(file);
+    }
+
+    @Test
+    public void resolverLoader_doesNotResolveFileOptionWithUnsupportedScheme() throws Exception {
+        ClassLoader classLoader = classLoaderWithProviders(ResolverWithOptions.class.getName());
+        FileResolverLoader loader = new ServiceFileResolverLoader(classLoader);
+        Map<String, String> config = ResolverWithOptions.minimalConfig();
+        config.put(ResolverWithOptions.MANDATORY_OPTION_FQN, "missing://tmp");
+
+        IRemoteFileResolver resolver = loader.load(ResolverWithOptions.PROTOCOL, config);
+
+        assertThat(((ResolverWithOptions) resolver).mandatoryOption.toString())
+                .contains("missing:");
+    }
+
+    @Test
+    public void resolverLoader_resolvesResolverFileOption() throws Exception {
+        File f = new File("/tmp/a-file");
+        ClassLoader classLoader =
+                classLoaderWithProviders(
+                        ResolverWithOptions.class
+                                .getName(), // Contains a file option resolved by the next.
+                        AnotherResolverWithOptions.class.getName());
+        FileResolverLoader loader = new ServiceFileResolverLoader(classLoader);
+        Map<String, String> config = new HashMap<>();
+        config.putAll(ResolverWithOptions.minimalConfig());
+        config.putAll(AnotherResolverWithOptions.minimalConfig());
+        config.put(
+                ResolverWithOptions.MANDATORY_OPTION_FQN,
+                AnotherResolverWithOptions.PROTOCOL + "://a-file");
+        config.put(AnotherResolverWithOptions.MANDATORY_OPTION_FQN, f.toString());
+
+        IRemoteFileResolver resolver = loader.load(ResolverWithOptions.PROTOCOL, config);
+
+        assertThat(((ResolverWithOptions) resolver).mandatoryOption).isEqualTo(f);
+    }
+
+    @Test
+    public void resolverLoader_throwsOnInitializationCycles() throws Exception {
+        ClassLoader classLoader = classLoaderWithProviders(ResolverWithOptions.class.getName());
+        FileResolverLoader loader = new ServiceFileResolverLoader(classLoader);
+        Map<String, String> config = ResolverWithOptions.minimalConfig();
+        config.put(
+                ResolverWithOptions.MANDATORY_OPTION_FQN,
+                ResolverWithOptions.PROTOCOL + "://a-file");
+
+        try {
+            loader.load(ResolverWithOptions.PROTOCOL, config);
+            fail();
+        } catch (ResolverLoadingException expected) {
+            assertThat(expected)
+                    .hasCauseThat()
+                    .hasCauseThat()
+                    .hasMessageThat()
+                    .contains("Cycle detected");
+        }
+    }
+
+    @Test
+    public void resolverLoader_onlyInitializesOptionsOfUsedResolvers() throws Exception {
+        File f = new File("/tmp/a-file");
+        ClassLoader classLoader =
+                classLoaderWithProviders(
+                        ResolverWithOptions.class.getName(),
+                        AnotherResolverWithOptions.class
+                                .getName()); // Requires option but never used.
+        FileResolverLoader loader = new ServiceFileResolverLoader(classLoader);
+        Map<String, String> config = new HashMap<>();
+        config.putAll(ResolverWithOptions.minimalConfig());
+        config.put(ResolverWithOptions.MANDATORY_OPTION_FQN, f.toString());
+
+        IRemoteFileResolver resolver = loader.load(ResolverWithOptions.PROTOCOL, config);
+
+        assertThat(((ResolverWithOptions) resolver).mandatoryOption).isEqualTo(f);
+    }
+
+    public static final class ResolverWithOptions implements IRemoteFileResolver {
+        static final String PROTOCOL = "rwo";
+        static final String MANDATORY_OPTION_NAME = "mandatory";
+        static final String MANDATORY_OPTION_FQN =
+                optionFqn(ResolverWithOptions.class, MANDATORY_OPTION_NAME);
+        static final String NON_MANDATORY_OPTION_NAME = "nonMandatory";
+        static final String NON_MANDATORY_OPTION_FQN =
+                optionFqn(ResolverWithOptions.class, NON_MANDATORY_OPTION_NAME);
+        static final String MAP_OPTION_NAME = "map";
+        static final String MAP_OPTION_FQN = optionFqn(ResolverWithOptions.class, MAP_OPTION_NAME);
+
+        static Map<String, String> minimalConfig() {
+            Map<String, String> config = new HashMap<>();
+            config.put(MANDATORY_OPTION_FQN, "anything");
+            return config;
+        }
+
+        @Option(name = MANDATORY_OPTION_NAME, mandatory = true)
+        private File mandatoryOption;
+
+        @Option(name = NON_MANDATORY_OPTION_NAME)
+        private String nonMandatoryOption;
+
+        @Option(name = MAP_OPTION_NAME)
+        private Map<String, String> mapOption;
+
+        @Override
+        public String getSupportedProtocol() {
+            return PROTOCOL;
+        }
+
+        @Override
+        public File resolveRemoteFiles(File consideredFile, Map<String, String> queryArgs) {
+            return mandatoryOption;
+        }
+    }
+
+    public static final class AnotherResolverWithOptions implements IRemoteFileResolver {
+        static final String PROTOCOL = "arwo";
+        static final String MANDATORY_OPTION_NAME = "mandatory";
+        static final String MANDATORY_OPTION_FQN =
+                optionFqn(AnotherResolverWithOptions.class, MANDATORY_OPTION_NAME);
+
+        static Map<String, String> minimalConfig() {
+            Map<String, String> config = new HashMap<>();
+            config.put(MANDATORY_OPTION_FQN, "anything");
+            return config;
+        }
+
+        @Option(name = MANDATORY_OPTION_NAME, mandatory = true)
+        private File mandatoryOption;
+
+        @Override
+        public String getSupportedProtocol() {
+            return PROTOCOL;
+        }
+
+        @Override
+        public File resolveRemoteFiles(File consideredFile, Map<String, String> queryArgs) {
+            return mandatoryOption;
+        }
+    }
+
+    private static String optionFqn(Class<?> cls, String name) {
+        return cls.getName() + ":" + name;
     }
 
     @Test

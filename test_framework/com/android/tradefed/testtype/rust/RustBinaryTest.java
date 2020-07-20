@@ -32,9 +32,9 @@ import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
-import com.android.tradefed.testtype.coverage.CoverageOptions;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.NativeCodeCoverageListener;
+import com.android.tradefed.testtype.coverage.CoverageOptions;
 import com.android.tradefed.util.NativeCodeCoverageFlusher;
 
 import java.io.File;
@@ -87,8 +87,6 @@ public class RustBinaryTest extends RustTestBase implements IDeviceTest, IConfig
     public String getTestModule() {
         return mTestModule;
     }
-
-    // TODO(chh): implement test filter
 
     /**
      * Gets the path where tests live on the device.
@@ -166,6 +164,7 @@ public class RustBinaryTest extends RustTestBase implements IDeviceTest, IConfig
         } else {
             cmd = fullPath;
         }
+        cmd = addFiltersToCommand(cmd);
 
         int testCount = 0;
         try {
