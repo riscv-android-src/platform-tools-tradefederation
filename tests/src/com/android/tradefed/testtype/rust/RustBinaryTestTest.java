@@ -97,6 +97,14 @@ public class RustBinaryTestTest {
         EasyMock.verify(mMockInvocationListener, mMockITestDevice, mMockReceiver);
     }
 
+    private String runListOutput(int numTests) {
+        return RustBinaryHostTestTest.runListOutput(numTests);
+    }
+
+    private String runListOutput(String[] tests) {
+        return RustBinaryHostTestTest.runListOutput(tests);
+    }
+
     /** Add mocked Call "path --list" to count the number of tests. */
     private void mockCountTests(String path, String result) throws DeviceNotAvailableException {
         EasyMock.expect(mMockITestDevice.executeShellCommand(path + " --list")).andReturn(result);
@@ -218,12 +226,12 @@ public class RustBinaryTestTest {
         EasyMock.expect(mMockITestDevice.isDirectory(testPath2)).andReturn(false);
         EasyMock.expect(mMockITestDevice.isExecutable(testPath2)).andReturn(true);
 
-        mockCountTests(testPath1, "test1\n3 tests, 0 benchmarks\n");
+        mockCountTests(testPath1, runListOutput(3));
         mockTestRunStarted("test1", 3);
         mockShellCommand(test1);
         mockTestRunEnded();
 
-        mockCountTests(testPath2, "test2\n7 tests, 0 benchmarks\n");
+        mockCountTests(testPath2, runListOutput(7));
         mockTestRunStarted("test2", 7);
         mockShellCommand(test2);
         mockTestRunEnded();
@@ -247,7 +255,7 @@ public class RustBinaryTestTest {
         EasyMock.expect(mMockITestDevice.isDirectory(modulePath)).andReturn(false);
         EasyMock.expect(mMockITestDevice.isExecutable(modulePath)).andReturn(true);
 
-        mockCountTests(modulePath, "moduleTest\n1 test, 0 benchmarks\n");
+        mockCountTests(modulePath, runListOutput(1));
         mockTestRunStarted("test1", 1);
         mockShellCommand(modulePath);
         mockTestRunEnded();
@@ -281,7 +289,7 @@ public class RustBinaryTestTest {
         String[] files2 = new String[] {"test1"};
         EasyMock.expect(mMockITestDevice.getChildren(subDirPath)).andReturn(files2);
 
-        mockCountTests(test1Path, "test1\n5 tests, 0 benchmarks\n");
+        mockCountTests(test1Path, runListOutput(5));
         mockTestRunStarted("test1", 5);
         mockShellCommand(test1Path);
         mockTestRunEnded();
@@ -364,15 +372,11 @@ public class RustBinaryTestTest {
         String[] files = new String[] {"test1", "test2"};
         EasyMock.expect(mMockITestDevice.getChildren(testPath)).andReturn(files);
 
-        mockCountTests(
-                "GCOV_PREFIX=/data/misc/trace/testcoverage " + testPath1,
-                "test1\n1 test, 0 benchmarks\n");
+        mockCountTests("GCOV_PREFIX=/data/misc/trace/testcoverage " + testPath1, runListOutput(1));
         mockTestRunStarted("test1", 1);
         mockShellCommand(test1);
         mockTestRunEnded();
-        mockCountTests(
-                "GCOV_PREFIX=/data/misc/trace/testcoverage " + testPath2,
-                "test2\n1 test, 0 benchmarks\n");
+        mockCountTests("GCOV_PREFIX=/data/misc/trace/testcoverage " + testPath2, runListOutput(1));
         mockTestRunStarted("test2", 1);
         mockShellCommand(test2);
         mockTestRunEnded();
@@ -469,15 +473,11 @@ public class RustBinaryTestTest {
         String[] files = new String[] {"test1", "test2"};
         EasyMock.expect(mMockITestDevice.getChildren(testPath)).andReturn(files);
 
-        mockCountTests(
-                "GCOV_PREFIX=/data/misc/trace/testcoverage " + testPath1,
-                "test1\n1 test, 0 benchmarks\n");
+        mockCountTests("GCOV_PREFIX=/data/misc/trace/testcoverage " + testPath1, runListOutput(1));
         mockTestRunStarted("test1", 1);
         mockShellCommand(test1);
         mockTestRunEnded();
-        mockCountTests(
-                "GCOV_PREFIX=/data/misc/trace/testcoverage " + testPath2,
-                "test2\n1 test, 0 benchmarks\n");
+        mockCountTests("GCOV_PREFIX=/data/misc/trace/testcoverage " + testPath2, runListOutput(1));
         mockTestRunStarted("test2", 1);
         mockShellCommand(test2);
         mockTestRunEnded();
@@ -490,7 +490,7 @@ public class RustBinaryTestTest {
      * @param filterString The string to search for in the Mock, to verify filtering was called
      * @throws DeviceNotAvailableException
      */
-    private void doTestFilter(String filterString) throws DeviceNotAvailableException {
+    private void doTestFilter(String[] filterStrings) throws DeviceNotAvailableException {
         final String testPath = RustBinaryTest.DEFAULT_TEST_PATH;
         final String test1 = "test1";
         final String testPath1 = String.format("%s/%s", testPath, test1);
@@ -504,9 +504,13 @@ public class RustBinaryTestTest {
         EasyMock.expect(mMockITestDevice.isDirectory(testPath1)).andReturn(false);
         EasyMock.expect(mMockITestDevice.isExecutable(testPath1)).andReturn(true);
 
-        mockCountTests(testPath1 + filterString, "test1\n3 tests, 0 benchmarks\n");
+        for (String filter : filterStrings) {
+            mockCountTests(testPath1 + filter, runListOutput(3));
+        }
         mockTestRunStarted("test1", 3);
-        mockShellCommand(test1 + filterString);
+        for (String filter : filterStrings) {
+            mockShellCommand(test1 + filter);
+        }
         mockTestRunEnded();
         callReplayRunVerify();
     }
@@ -516,8 +520,8 @@ public class RustBinaryTestTest {
     public void testExcludeFilter() throws Exception {
         OptionSetter setter = new OptionSetter(mRustBinaryTest);
         setter.setOptionValue("exclude-filter", "NotMe");
-        setter.setOptionValue("exclude-filter", "Long");
-        doTestFilter(" --skip NotMe --skip Long");
+        setter.setOptionValue("exclude-filter", "MyTest#Long");
+        doTestFilter(new String[] {" --skip NotMe --skip Long"});
     }
 
     /** Test both include- and exclude-filter options. */
@@ -525,11 +529,24 @@ public class RustBinaryTestTest {
     public void testIncludeExcludeFilter() throws Exception {
         OptionSetter setter = new OptionSetter(mRustBinaryTest);
         setter.setOptionValue("exclude-filter", "NotMe2");
-        setter.setOptionValue("include-filter", "OnlyMe");
+        setter.setOptionValue("include-filter", "MyTest#OnlyMe");
+        setter.setOptionValue("exclude-filter", "MyTest#other");
+        // Include filters are passed before exclude filters.
+        doTestFilter(new String[] {" OnlyMe --skip NotMe2 --skip other"});
+    }
+
+    /** Test multiple include- and exclude-filter options. */
+    @Test
+    public void testMultipleIncludeExcludeFilter() throws Exception {
+        OptionSetter setter = new OptionSetter(mRustBinaryTest);
+        setter.setOptionValue("exclude-filter", "MyTest#NotMe2");
+        setter.setOptionValue("include-filter", "MyTest#OnlyMe");
         setter.setOptionValue("exclude-filter", "other");
         setter.setOptionValue("include-filter", "Me2");
-        // Include filters are passed before exclude filters.
-        // Multiple include filters are accepted, but all except the 1st are ignored.
-        doTestFilter(" OnlyMe Me2 --skip NotMe2 --skip other");
+        // Multiple include filters are run one by one.
+        doTestFilter(
+                new String[] {
+                    " OnlyMe --skip NotMe2 --skip other", " Me2 --skip NotMe2 --skip other"
+                });
     }
 }
