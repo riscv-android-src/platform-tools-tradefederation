@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.testtype;
 
+import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.Option;
@@ -205,8 +206,11 @@ public class IsolatedHostTest
      */
     private String compileClassPath() throws ClassNotFoundException {
         List<String> paths = new ArrayList<>();
-        IDeviceBuildInfo build = (IDeviceBuildInfo) mBuildInfo;
-        File testDir = build.getTestsDir();
+        File testDir = mBuildInfo.getFile(BuildInfoFileKey.TESTDIR_IMAGE);
+
+        if (!testDir.exists()) {
+            throw new IllegalArgumentException("Test directory not found, cannot proceed");
+        }
 
         // This is a relatively hacky way to get around the fact that we don't have a consistent
         // way to locate tradefed related jars in all environments, so instead we dyn link to that
