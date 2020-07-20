@@ -38,7 +38,6 @@ import com.android.tradefed.util.RunUtil;
 
 import java.io.File;
 import java.io.IOException;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -128,42 +127,70 @@ public class RustBinaryHostTest extends RustTestBase implements IBuildReceiver {
     }
 
     private void runSingleRustFile(ITestInvocationListener listener, File file) {
+        CLog.d("Run single Rust File: %s", file.getAbsolutePath());
+        // Rust binary does not support multiple inclusion filters,
+        // so we run the test once for each include filter.
+        List<String> includeFilters = getListOfIncludeFilters();
+
+        // Call with --list once per include filter to add up testCount.
+        // Duplicated test cases selected by different include filters should not be counted.
+        Set<String> foundTests = new HashSet<>();
+        for (String filter : includeFilters) {
+            countTests(file, filter, foundTests);
+        }
+        int testCount = foundTests.size();
+        CLog.d("Total test count: %d", testCount);
+        long startTimeMs = System.currentTimeMillis();
+        listener.testRunStarted(file.getName(), testCount, 0, startTimeMs);
+        for (String filter : includeFilters) {
+            try {
+                runTestWithFilter(listener, file, filter);
+            } catch (IOException e) {
+                listener.testRunFailed(e.getMessage());
+                long testTimeMs = System.currentTimeMillis() - startTimeMs;
+                listener.testRunEnded(testTimeMs, new HashMap<String, Metric>());
+                throw new RuntimeException(e);
+            }
+        }
+        long testTimeMs = System.currentTimeMillis() - startTimeMs;
+        listener.testRunEnded(testTimeMs, new HashMap<String, Metric>());
+    }
+
+    private void countTests(File file, String filter, Set<String> foundTests) {
+        CLog.d("Count with filter '%s' for Rust File: %s", filter, file.getAbsolutePath());
         List<String> commandLine = new ArrayList<>();
         commandLine.add(file.getAbsolutePath());
-        CLog.d("Run single Rust File: " + file.getAbsolutePath());
-
-        // Add all the other options and include/exclude filters.
         commandLine.addAll(mTestOptions);
-        addFiltersToArgs(commandLine);
+        addFiltersToArgs(commandLine, filter);
 
         List<String> listCommandLine = new ArrayList<>(commandLine);
         listCommandLine.add("--list");
         CommandResult listResult =
                 getRunUtil()
                         .runTimedCmdSilently(mTestTimeout, listCommandLine.toArray(new String[0]));
-        int testCount = 0;
         // TODO: Do we want to handle non-standard test harnesses without a
         // --list param? Currently we will report 0 tests, which will cause an
         // overall failure, but we don't know how to parse arbitrary test
         // harness results.
         if (listResult.getStatus() == CommandStatus.SUCCESS) {
-            try {
-                testCount = parseTestListCount(listResult.getStdout().split("\n"));
-            } catch (ParseException e) {
-                CLog.w("Parsing test list failed: %s", e.getMessage());
-            }
+            collectTestLines(listResult.getStdout().split("\n"), foundTests);
         } else {
             CLog.w(
                     "Could not run command '%s' to get test list.",
                     String.join(" ", listCommandLine));
         }
+    }
 
+    private void runTestWithFilter(ITestInvocationListener listener, File file, String filter)
+            throws IOException {
         String runName = file.getName();
-        long startTimeMs = System.currentTimeMillis();
-        listener.testRunStarted(runName, testCount, 0, startTimeMs);
+        List<String> commandLine = new ArrayList<>();
+        commandLine.add(file.getAbsolutePath());
+        commandLine.addAll(mTestOptions);
+        addFiltersToArgs(commandLine, filter);
+        CLog.d("Running test with filter '%s'", filter);
         CommandResult result =
                 getRunUtil().runTimedCmd(mTestTimeout, commandLine.toArray(new String[0]));
-        long testTimeMs = System.currentTimeMillis() - startTimeMs;
         if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
             String message =
                     String.format(
@@ -190,12 +217,8 @@ public class RustBinaryHostTest extends RustTestBase implements IBuildReceiver {
             listener.testRunFailed(
                     String.format("Failed to parse the rust test output: %s", e.getMessage()));
             CLog.e(e);
-        } catch (IOException e) {
-            listener.testRunFailed(e.getMessage());
-            throw new RuntimeException(e);
         } finally {
             FileUtil.deleteFile(resultFile);
-            listener.testRunEnded(testTimeMs, new HashMap<String, Metric>());
         }
     }
 

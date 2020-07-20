@@ -38,8 +38,10 @@ import com.android.tradefed.testtype.coverage.CoverageOptions;
 import com.android.tradefed.util.NativeCodeCoverageFlusher;
 
 import java.io.File;
-import java.text.ParseException;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /** A Test that runs a rust binary on given device. */
@@ -155,38 +157,49 @@ public class RustBinaryTest extends RustTestBase implements IDeviceTest, IConfig
             final IShellOutputReceiver resultParser,
             final String fullPath)
             throws DeviceNotAvailableException {
-        // TODO(chh): add rerun support
         CLog.d("RustBinaryTest runTest: " + fullPath);
-        // TODO(chh): add LD_LIBRARY_PATH
         String cmd;
         if (getCoverageOptions().isCoverageEnabled()) {
             cmd = "GCOV_PREFIX=/data/misc/trace/testcoverage " + fullPath;
         } else {
             cmd = fullPath;
         }
-        cmd = addFiltersToCommand(cmd);
+        // Rust binary does not support multiple inclusion filters,
+        // so we run the test once for each include filter.
+        List<String> includeFilters = getListOfIncludeFilters();
 
-        int testCount = 0;
-        try {
-            String[] testList = testDevice.executeShellCommand(cmd + " --list").split("\n");
-            testCount = parseTestListCount(testList);
-        } catch (DeviceNotAvailableException e) {
-            CLog.e("Could not retrieve tests list from device: %s", e.getMessage());
-            throw e;
-        } catch (ParseException e) {
-            CLog.w("Parsing test list failed: %s", e.getMessage());
+        // Call with --list once per include filter to add up testCount.
+        // Duplicated test cases selected by different include filters should not be counted.
+        Set<String> foundTests = new HashSet<>();
+        for (String filter : includeFilters) {
+            String newCmd = addFiltersToCommand(cmd, filter);
+            try {
+                String[] testList = testDevice.executeShellCommand(newCmd + " --list").split("\n");
+                collectTestLines(testList, foundTests);
+            } catch (DeviceNotAvailableException e) {
+                CLog.e("Could not retrieve tests list from device: %s", e.getMessage());
+                throw e;
+            }
         }
+        int testCount = foundTests.size();
+        CLog.d("Total test count: %d", testCount);
         long startTimeMs = System.currentTimeMillis();
         listener.testRunStarted(new File(fullPath).getName(), testCount, 0, startTimeMs);
-        try {
-            testDevice.executeShellCommand(
-                    cmd, resultParser, mTestTimeout, TimeUnit.MILLISECONDS, 0 /* retryAttempts */);
-        } catch (DeviceNotAvailableException e) {
-            listener.testRunFailed(String.format("Device not available: %s", e.getMessage()));
-        } finally {
-            listener.testRunEnded(
-                    System.currentTimeMillis() - startTimeMs, new HashMap<String, Metric>());
+        for (String filter : includeFilters) {
+            String newCmd = addFiltersToCommand(cmd, filter);
+            try {
+                testDevice.executeShellCommand(
+                        newCmd,
+                        resultParser,
+                        mTestTimeout,
+                        TimeUnit.MILLISECONDS,
+                        0 /* retryAttempts */);
+            } catch (DeviceNotAvailableException e) {
+                listener.testRunFailed(String.format("Device not available: %s", e.getMessage()));
+            }
         }
+        long testTimeMs = System.currentTimeMillis() - startTimeMs;
+        listener.testRunEnded(testTimeMs, new HashMap<String, Metric>());
     }
 
     private void wrongTestPath(String msg, String testPath, ITestInvocationListener listener) {
