@@ -26,6 +26,8 @@ import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.proxy.AutomatedReporters;
+import com.android.tradefed.config.proxy.TradefedDelegator;
 import com.android.tradefed.device.DeviceManager;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
@@ -119,6 +121,7 @@ public class TestInvocation implements ITestInvocation {
 
     public static final String TRADEFED_LOG_NAME = "host_log";
     public static final String TRADEFED_END_HOST_LOG = "end_host_log";
+    private static final String TRADEFED_DELEGATED_LOG_NAME = "delegated_parent_log";
     /** Suffix used on host_log for the part before sharding occurs. */
     static final String BEFORE_SHARDING_SUFFIX = "_before_sharding";
     static final String DEVICE_LOG_NAME_PREFIX = "device_logcat_";
@@ -152,6 +155,7 @@ public class TestInvocation implements ITestInvocation {
         PARENT_SANDBOX,
         SANDBOX,
         REMOTE_INVOCATION,
+        DELEGATED_INVOCATION
     }
 
     private String mStatus = "(not invoked)";
@@ -275,7 +279,11 @@ public class TestInvocation implements ITestInvocation {
         } catch (RunInterruptedException e) {
             exception = e;
             CLog.w("Invocation interrupted");
-            reportFailure(createFailureFromException(e, FailureStatus.UNSET), listener);
+            // if a stop cause was set, the interruption is most likely due to the invocation being
+            // cancelled
+            if (mStopCause == null) {
+                reportFailure(createFailureFromException(e, FailureStatus.UNSET), listener);
+            }
         } catch (AssertionError e) {
             exception = e;
             CLog.e("Caught AssertionError while running invocation: %s", e.toString());
@@ -488,7 +496,11 @@ public class TestInvocation implements ITestInvocation {
     }
 
     private void reportHostLog(ITestInvocationListener listener, IConfiguration config) {
-        reportHostLog(listener, config, TRADEFED_LOG_NAME);
+        String name = TRADEFED_LOG_NAME;
+        if (config.getConfigurationObject(TradefedDelegator.DELEGATE_OBJECT) != null) {
+            name = TRADEFED_DELEGATED_LOG_NAME;
+        }
+        reportHostLog(listener, config, name);
     }
 
     private void reportHostLog(
@@ -703,6 +715,9 @@ public class TestInvocation implements ITestInvocation {
             IRescheduler rescheduler,
             ITestInvocationListener... extraListeners)
             throws DeviceNotAvailableException, Throwable {
+        // Handle the automated reporting
+        applyAutomatedReporters(config);
+
         for (ITestInvocationListener listener : extraListeners) {
             if (listener instanceof IScheduledInvocationListener) {
                 mSchedulerListeners.add((IScheduledInvocationListener) listener);
@@ -779,6 +794,9 @@ public class TestInvocation implements ITestInvocation {
         }
         if (context.getDevices().get(0) instanceof ManagedRemoteDevice) {
             mode = RunMode.REMOTE_INVOCATION;
+        }
+        if (config.getConfigurationObject(TradefedDelegator.DELEGATE_OBJECT) != null) {
+            mode = RunMode.DELEGATED_INVOCATION;
         }
         IInvocationExecution invocationPath = createInvocationExec(mode);
         updateInvocationContext(context, config);
@@ -907,7 +925,8 @@ public class TestInvocation implements ITestInvocation {
             if (!deviceInit) {
                 startInvocation(config, context, listener);
             }
-            if (config.getTests() == null || config.getTests().isEmpty()) {
+            if (!RunMode.DELEGATED_INVOCATION.equals(mode)
+                    && (config.getTests() == null || config.getTests().isEmpty())) {
                 CLog.e("No tests to run");
                 if (deviceInit) {
                     // If we did an early setup, do the tear down.
@@ -1003,6 +1022,8 @@ public class TestInvocation implements ITestInvocation {
                 return new SandboxedInvocationExecution();
             case REMOTE_INVOCATION:
                 return new RemoteInvocationExecution();
+            case DELEGATED_INVOCATION:
+                return new DelegatedInvocationExecution();
             default:
                 return new InvocationExecution();
         }
@@ -1013,6 +1034,12 @@ public class TestInvocation implements ITestInvocation {
         String startEnd = end ? "ENDING" : "STARTING";
         String message = String.format("===== %s PHASE %s =====", phase, startEnd);
         PrettyPrintDelimiter.printStageDelimiter(message);
+    }
+
+    @VisibleForTesting
+    protected void applyAutomatedReporters(IConfiguration config) {
+        AutomatedReporters autoReport = new AutomatedReporters();
+        autoReport.applyAutomatedReporters(config);
     }
 
     private void logExecuteShellCommand(List<ITestDevice> devices, ITestLogger logger) {
