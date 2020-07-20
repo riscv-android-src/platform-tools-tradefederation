@@ -26,6 +26,7 @@ import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
@@ -47,6 +48,7 @@ import com.android.tradefed.util.SystemUtil;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -133,32 +135,10 @@ public class ClusterCommandLauncher
     }
 
     @Override
-    public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
-        // Get an expanded TF_PATH value.
-        String tfPath = getEnvVar(TF_PATH, System.getProperty(TF_JAR_DIR));
-        if (tfPath == null) {
-            throw new RuntimeException("cannot find TF path!");
-        }
-
-        // Construct a Java class path based on TF_PATH value.
-        // This expects TF_PATH to be a colon(:) separated list of paths where each path
-        // points to a specific jar file or folder.
-        // (example: path/to/tradefed.jar:path/to/tradefed/folder:...)
-        final Set<String> jars = new LinkedHashSet<>();
-        for (final String path : tfPath.split(":")) {
-            final File jarFile = new File(path);
-            if (!jarFile.exists()) {
-                CLog.w("TF_PATH %s doesn't exist; ignoring", path);
-                continue;
-            }
-            if (jarFile.isFile()) {
-                jars.add(jarFile.getAbsolutePath());
-            } else {
-                jars.add(new File(path, "*").getAbsolutePath());
-            }
-        }
-
-        IRunUtil runUtil = getRunUtil();
+    public void run(TestInformation testInfo, ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
+        // Prepare a IRunUtil instance for running subprocesses.
+        final IRunUtil runUtil = getRunUtil();
         runUtil.setWorkingDir(mRootDir);
         // clear the TF_GLOBAL_CONFIG env, so another tradefed will not reuse the global config file
         runUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
@@ -171,45 +151,17 @@ public class ClusterCommandLauncher
         logDir.mkdirs();
         File stdoutFile = new File(logDir, "stdout.txt");
         File stderrFile = new File(logDir, "stderr.txt");
-        FileIdleMonitor monitor = createFileMonitor(stdoutFile, stderrFile);
 
+        // Run setup scripts.
+        runSetupScripts(runUtil, stdoutFile, stderrFile);
+
+        FileIdleMonitor monitor = createFileMonitor(stdoutFile, stderrFile);
         SubprocessTestResultsParser subprocessEventParser = null;
         try (FileOutputStream stdout = new FileOutputStream(stdoutFile);
                 FileOutputStream stderr = new FileOutputStream(stderrFile)) {
-            long timeout = mScriptTimeout;
-            long startTime = System.currentTimeMillis();
-            for (String script : mSetupScripts) {
-                script = StringUtil.expand(script, mEnvVars);
-                CLog.i("Running a setup script: %s", script);
-                // FIXME: Refactor command execution into a helper function.
-                CommandResult result =
-                        runUtil.runTimedCmd(
-                                timeout,
-                                stdout,
-                                stderr,
-                                QuotationAwareTokenizer.tokenizeLine(script));
-                if (!result.getStatus().equals(CommandStatus.SUCCESS)) {
-                    String error = null;
-                    if (result.getStatus().equals(CommandStatus.TIMED_OUT)) {
-                        error = "timeout";
-                    } else {
-                        error = FileUtil.readStringFromFile(stderrFile);
-                    }
-                    throw new RuntimeException(String.format("Script failed to run: %s", error));
-                }
-                timeout -= (System.currentTimeMillis() - startTime);
-                if (timeout < 0) {
-                    throw new RuntimeException(
-                            String.format("Setup scripts failed to run in %sms", mScriptTimeout));
-                }
-            }
 
-            String classpath = ArrayUtil.join(":", jars);
             String commandLine = mCommandLine;
-            if (classpath.isEmpty()) {
-                throw new RuntimeException(
-                        String.format("cannot find any TF jars from %s!", tfPath));
-            }
+            String classpath = buildJavaClasspath();
 
             if (mOriginalCommandLine != null && !mOriginalCommandLine.equals(commandLine)) {
                 // Make sure a wrapper XML of the original command is available because retries
@@ -271,6 +223,72 @@ public class ClusterCommandLauncher
                 StreamUtil.close(subprocessEventParser);
             }
         }
+    }
+
+    private void runSetupScripts(
+            final IRunUtil runUtil, final File stdoutFile, final File stderrFile) {
+        try (FileOutputStream stdout = new FileOutputStream(stdoutFile);
+                FileOutputStream stderr = new FileOutputStream(stderrFile)) {
+            long timeout = mScriptTimeout;
+            long startTime = System.currentTimeMillis();
+            for (String script : mSetupScripts) {
+                script = StringUtil.expand(script, mEnvVars);
+                CLog.i("Running a setup script: %s", script);
+                // FIXME: Refactor command execution into a helper function.
+                CommandResult result =
+                        runUtil.runTimedCmd(
+                                timeout,
+                                stdout,
+                                stderr,
+                                QuotationAwareTokenizer.tokenizeLine(script));
+                if (!result.getStatus().equals(CommandStatus.SUCCESS)) {
+                    String error = null;
+                    if (result.getStatus().equals(CommandStatus.TIMED_OUT)) {
+                        error = "timeout";
+                    } else {
+                        error = FileUtil.readStringFromFile(stderrFile);
+                    }
+                    throw new RuntimeException(String.format("Script failed to run: %s", error));
+                }
+                timeout -= (System.currentTimeMillis() - startTime);
+                if (timeout < 0) {
+                    throw new RuntimeException(
+                            String.format("Setup scripts failed to run in %sms", mScriptTimeout));
+                }
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException("Error running setup scripts", e);
+        }
+    }
+
+    private String buildJavaClasspath() {
+        // Get an expanded TF_PATH value.
+        final String tfPath = getEnvVar(TF_PATH, System.getProperty(TF_JAR_DIR));
+        if (tfPath == null) {
+            throw new RuntimeException("cannot find TF path!");
+        }
+
+        // Construct a Java class path based on TF_PATH value.
+        // This expects TF_PATH to be a colon(:) separated list of paths where each path
+        // points to a specific jar file or folder.
+        // (example: path/to/tradefed.jar:path/to/tradefed/folder:...)
+        final Set<String> jars = new LinkedHashSet<>();
+        for (final String path : tfPath.split(":")) {
+            final File jarFile = new File(path);
+            if (!jarFile.exists()) {
+                CLog.w("TF_PATH %s doesn't exist; ignoring", path);
+                continue;
+            }
+            if (jarFile.isFile()) {
+                jars.add(jarFile.getAbsolutePath());
+            } else {
+                jars.add(new File(path, "*").getAbsolutePath());
+            }
+        }
+        if (jars.isEmpty()) {
+            throw new RuntimeException(String.format("cannot find any TF jars from %s!", tfPath));
+        }
+        return String.join(":", jars);
     }
 
     /** Build a shell command line to invoke a TF process. */
