@@ -257,6 +257,17 @@ public interface IConfiguration {
     public void injectOptionValues(List<OptionDef> optionDefs) throws ConfigurationException;
 
     /**
+     * Inject multiple option values into the set of configuration objects without throwing if one
+     * of the option cannot be applied.
+     *
+     * <p>Useful to inject many option values at once after creating a new object.
+     *
+     * @param optionDefs a list of option defs to inject
+     * @throws ConfigurationException if failed to create the {@link OptionSetter}
+     */
+    public void safeInjectOptionValues(List<OptionDef> optionDefs) throws ConfigurationException;
+
+    /**
      * Create a shallow copy of this object.
      *
      * @return a {link IConfiguration} copy
@@ -490,6 +501,19 @@ public interface IConfiguration {
     public List<String> setOptionsFromCommandLineArgs(List<String> listArgs,
             IKeyStoreClient keyStoreClient)
             throws ConfigurationException;
+
+    /**
+     * Set the config {@link Option} fields with given set of command line arguments using a best
+     * effort approach.
+     *
+     * <p>See {@link ArgsOptionParser} for expected format
+     *
+     * @param listArgs the command line arguments
+     * @param keyStoreClient {@link IKeyStoreClient} to use.
+     * @return the unconsumed arguments
+     */
+    public List<String> setBestEffortOptionsFromCommandLineArgs(
+            List<String> listArgs, IKeyStoreClient keyStoreClient) throws ConfigurationException;
 
     /**
      * Outputs a command line usage help text for this configuration to given printStream.

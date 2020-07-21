@@ -134,7 +134,14 @@ public class DeviceBatteryLevelChecker implements IRemoteTest {
                 charge = runTest(testInfo, listener);
                 elapsedTimeMs = getCurrentTimeMs() - elapsedTimeMs;
             } catch (DeviceNotAvailableException e) {
-                FailureDescription failure = FailureDescription.create(e.getMessage()).setCause(e);
+                FailureDescription failure =
+                        FailureDescription.create(e.getMessage())
+                                .setCause(e)
+                                .setErrorIdentifier(e.getErrorId())
+                                .setOrigin(e.getOrigin());
+                if (e.getErrorId() != null) {
+                    failure.setFailureStatus(e.getErrorId().status());
+                }
                 listener.testRunFailed(failure);
                 throw e;
             } finally {
