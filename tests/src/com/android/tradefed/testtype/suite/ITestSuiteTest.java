@@ -59,6 +59,7 @@ import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.MultiFailureDescription;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.retry.BaseRetryDecision;
 import com.android.tradefed.retry.IRetryDecision;
@@ -661,7 +662,9 @@ public class ITestSuiteTest {
                             fake.setTest(
                                     new StubCollectingTest(
                                             new DeviceUnresponsiveException(
-                                                    "unresponsive", "serial")));
+                                                    "unresponsive",
+                                                    "serial",
+                                                    DeviceErrorIdentifier.DEVICE_UNRESPONSIVE)));
                             testConfig.put(TEST_CONFIG_NAME, fake);
                         } catch (ConfigurationException e) {
                             CLog.e(e);
@@ -683,7 +686,8 @@ public class ITestSuiteTest {
         mMockListener.testRunStarted(
                 EasyMock.eq(TEST_CONFIG_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         EasyMock.expectLastCall().times(1);
-        mMockListener.testRunFailed(FailureDescription.create("unresponsive"));
+        mMockListener.testRunFailed(
+                FailureDescription.create("unresponsive", FailureStatus.LOST_SYSTEM_UNDER_TEST));
         EasyMock.expect(
                         mMockDevice.logBugreport(
                                 EasyMock.eq("module-test-failure-SERIAL-bugreport"),
@@ -811,11 +815,6 @@ public class ITestSuiteTest {
         EasyMock.expectLastCall().times(1);
         Capture<FailureDescription> captured = new Capture<>();
         mMockListener.testRunFailed(EasyMock.capture(captured));
-        EasyMock.expect(
-                        mMockDevice.logBugreport(
-                                EasyMock.eq("module-test-failure-SERIAL-bugreport"),
-                                EasyMock.anyObject()))
-                .andReturn(true);
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         EasyMock.expectLastCall().times(1);

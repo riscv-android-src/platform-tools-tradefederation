@@ -231,9 +231,10 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
             }
         }
         // If no reboot was done, waitForDeviceAvailable has already been checked.
-        throw new DeviceUnresponsiveException(String.format(
-                "Device %s is online but unresponsive", monitor.getSerialNumber()),
-                monitor.getSerialNumber());
+        throw new DeviceUnresponsiveException(
+                String.format("Device %s is online but unresponsive", monitor.getSerialNumber()),
+                monitor.getSerialNumber(),
+                DeviceErrorIdentifier.DEVICE_UNRESPONSIVE);
     }
 
     /**
