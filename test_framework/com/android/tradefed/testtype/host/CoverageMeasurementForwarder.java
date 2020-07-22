@@ -36,7 +36,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-/** A dummy test that fowards coverage measurements from the build provider to the logger. */
+/** A placeholder test that forwards coverage measurements from the build provider to the logger. */
 public final class CoverageMeasurementForwarder implements IRemoteTest {
 
     @Option(
