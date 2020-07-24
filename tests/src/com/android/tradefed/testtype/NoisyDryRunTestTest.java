@@ -366,6 +366,30 @@ public class NoisyDryRunTestTest {
         verifyMocks();
     }
 
+    @Test
+    public void testRun_withDelegation() throws Exception {
+        FileUtil.writeToFile("tf/fake --delegated-tf .\n" + "tf/fake", mFile);
+        mMockListener.testRunStarted("com.android.tradefed.testtype.NoisyDryRunTest_parseFile", 1);
+        mMockListener.testStarted(anyObject());
+        mMockListener.testEnded(anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
+        mMockListener.testRunEnded(EasyMock.eq(0l), EasyMock.<HashMap<String, Metric>>anyObject());
+
+        mMockListener.testRunStarted(
+                "com.android.tradefed.testtype.NoisyDryRunTest_parseCommands", 2);
+        mMockListener.testStarted(anyObject());
+        mMockListener.testEnded(anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
+        mMockListener.testStarted(anyObject());
+        mMockListener.testEnded(anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
+        mMockListener.testRunEnded(EasyMock.eq(0l), EasyMock.<HashMap<String, Metric>>anyObject());
+        replayMocks();
+
+        NoisyDryRunTest noisyDryRunTest = new NoisyDryRunTest();
+        OptionSetter setter = new OptionSetter(noisyDryRunTest);
+        setter.setOptionValue("cmdfile", mFile.getAbsolutePath());
+        noisyDryRunTest.run(mTestInfo, mMockListener);
+        verifyMocks();
+    }
+
     private void replayMocks() {
         EasyMock.replay(mMockListener, mMockRunUtil);
     }
