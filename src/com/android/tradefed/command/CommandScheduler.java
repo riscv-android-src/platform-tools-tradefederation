@@ -1218,11 +1218,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
     }
 
     private IConfiguration createConfiguration(String[] args) throws ConfigurationException {
-        TradefedDelegator delegator = new TradefedDelegator();
-        ArgsOptionParser argsParser = new ArgsOptionParser(delegator);
-        List<String> argsList = new ArrayList<>(Arrays.asList(args));
-        argsList.remove(0);
-        argsParser.parseBestEffort(argsList, true);
+        TradefedDelegator delegator = checkDelegation(args);
         if (delegator.shouldUseDelegation()) {
             String[] argsWithoutDelegation = TradefedDelegator.clearCommandline(args);
             delegator.setCommandLine(argsWithoutDelegation);
@@ -1265,6 +1261,20 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             return RetryConfigurationFactory.getInstance().createRetryConfiguration(config);
         }
         return config;
+    }
+
+    /**
+     * Create a delegator based on the command line to see if we need to delegate the run.
+     *
+     * @throws ConfigurationException
+     */
+    public static TradefedDelegator checkDelegation(String[] args) throws ConfigurationException {
+        TradefedDelegator delegator = new TradefedDelegator();
+        ArgsOptionParser argsParser = new ArgsOptionParser(delegator);
+        List<String> argsList = new ArrayList<>(Arrays.asList(args));
+        argsList.remove(0);
+        argsParser.parseBestEffort(argsList, true);
+        return delegator;
     }
 
     private void setDelegateLevelReporting(IConfiguration config) {

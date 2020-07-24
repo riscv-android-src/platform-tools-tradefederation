@@ -20,11 +20,13 @@ import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.command.CommandFileParser;
 import com.android.tradefed.command.CommandFileParser.CommandLine;
 import com.android.tradefed.command.CommandOptions;
+import com.android.tradefed.command.CommandScheduler;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.SandboxConfigurationFactory;
+import com.android.tradefed.config.proxy.TradefedDelegator;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -147,6 +149,12 @@ public class NoisyDryRunTest implements IRemoteTest {
             String[] args = commands.get(i).asArray();
             String cmdLine = QuotationAwareTokenizer.combineTokens(args);
             try {
+                TradefedDelegator delegator = CommandScheduler.checkDelegation(args);
+                if (delegator.shouldUseDelegation()) {
+                    // TODO: Add some validation of delegated config.
+                    continue;
+                }
+
                 if (cmdLine.contains("--" + CommandOptions.USE_SANDBOX)) {
                     // Handle the sandboxed command use case.
                     testSandboxCommand(args);
