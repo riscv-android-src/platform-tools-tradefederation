@@ -102,7 +102,7 @@ public class GsiDeviceFlashPreparer extends BaseTargetPreparer {
 
         File tmpDir = null;
         try {
-            tmpDir = FileUtil.createTempDir("gki_preparer");
+            tmpDir = FileUtil.createTempDir("gsi_preparer");
             validateGsiImg(device, buildInfo, tmpDir);
             flashGsi(device, buildInfo);
         } catch (IOException ioe) {
