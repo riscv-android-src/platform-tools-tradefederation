@@ -212,7 +212,9 @@ public class RustBinaryHostTest extends RustTestBase implements IBuildReceiver {
                         String.format(RUST_LOG_STDERR_FORMAT, runName), LogDataType.TEXT, data);
             }
             String[] lines = result.getStdout().split("\n");
-            new RustTestResultParser(listener, runName).processNewLines(lines);
+            RustTestResultParser parser = new RustTestResultParser(listener, runName);
+            parser.processNewLines(lines);
+            parser.done();
         } catch (RuntimeException e) {
             listener.testRunFailed(
                     String.format("Failed to parse the rust test output: %s", e.getMessage()));
