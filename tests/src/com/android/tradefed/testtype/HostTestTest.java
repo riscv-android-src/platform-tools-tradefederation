@@ -37,6 +37,8 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner.TestLogData;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner.TestMetrics;
 import com.android.tradefed.testtype.junit4.AfterClassWithInfo;
@@ -346,7 +348,8 @@ public class HostTestTest extends TestCase {
 
         @After
         public void tearDown() throws Exception {
-            throw new DeviceNotAvailableException("dnae", "serial");
+            throw new DeviceNotAvailableException(
+                    "dnae", "serial", DeviceErrorIdentifier.DEVICE_UNAVAILABLE);
         }
     }
 
@@ -1323,7 +1326,7 @@ public class HostTestTest extends TestCase {
                 EasyMock.eq(test1),
                 EasyMock.contains("MultipleFailureException, There were 2 errors:"));
         mListener.testEnded(EasyMock.eq(test1), (HashMap<String, Metric>) EasyMock.anyObject());
-        Capture<String> captureRunFailure = new Capture<>();
+        Capture<FailureDescription> captureRunFailure = new Capture<>();
         mListener.testRunFailed(EasyMock.capture(captureRunFailure));
         mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
         EasyMock.replay(mListener);
@@ -1334,10 +1337,12 @@ public class HostTestTest extends TestCase {
             // Expected
         }
         EasyMock.verify(mListener);
-        String failure = captureRunFailure.getValue();
+        FailureDescription failure = captureRunFailure.getValue();
         assertTrue(
-                failure.startsWith(
-                        "Failed with trace: com.android.tradefed.device.DeviceNotAvailableException: dnae"));
+                failure.getErrorMessage()
+                        .startsWith(
+                                "com.android.tradefed.device.DeviceNotAvailableException: dnae"));
+        assertEquals(FailureStatus.LOST_SYSTEM_UNDER_TEST, failure.getFailureStatus());
     }
 
     /**
@@ -2178,7 +2183,8 @@ public class HostTestTest extends TestCase {
         setter.setOptionValue("class", Junit4TestClass.class.getName());
         // First class fail with the run failure
         mListener.testRunStarted(EasyMock.anyObject(), EasyMock.eq(1));
-        mListener.testRunFailed(EasyMock.contains("Failed with trace:"));
+        Capture<FailureDescription> capture = new Capture<>();
+        mListener.testRunFailed(EasyMock.capture(capture));
         mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
 
         // Second class run properly
@@ -2195,6 +2201,8 @@ public class HostTestTest extends TestCase {
         assertEquals(3, mHostTest.countTestCases());
         mHostTest.run(mTestInfo, mListener);
         EasyMock.verify(mListener);
+        FailureDescription failure = capture.getValue();
+        assertEquals("Exception with no error message", failure.getErrorMessage());
     }
 
     /** JUnit4 class that throws within its @Before */
