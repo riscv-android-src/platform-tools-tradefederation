@@ -155,11 +155,11 @@ public final class RunHostScriptTargetPreparerTest {
     @Test
     public void testSetUp_pathVariable() throws Exception {
         mOptionSetter.setOptionValue("script-file", mScriptFile.getAbsolutePath());
-        // Create and set dummy adb binary
+        // Create and set no-op adb binary
         Path adbDir = Files.createTempDirectory(mWorkDir.toPath(), "adb");
         File adbBinary = File.createTempFile("adb", ".sh", adbDir.toFile());
         when(mTestInfo.executionFiles().get(eq(FilesKey.ADB_BINARY))).thenReturn(adbBinary);
-        // Create and set dummy fastboot binary
+        // Create and set no-op fastboot binary
         Path fastbootDir = Files.createTempDirectory(mWorkDir.toPath(), "fastboot");
         File fastbootBinary = File.createTempFile("fastboot", ".sh", fastbootDir.toFile());
         when(mDeviceManager.getFastbootPath()).thenReturn(fastbootBinary.getAbsolutePath());
