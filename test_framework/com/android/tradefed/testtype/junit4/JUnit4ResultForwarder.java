@@ -15,9 +15,13 @@
  */
 package com.android.tradefed.testtype.junit4;
 
+import com.android.tradefed.error.IHarnessException;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.error.ErrorIdentifier;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner.LogAnnotation;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner.MetricAnnotation;
 import com.android.tradefed.testtype.MetricTestCase.LogHolder;
@@ -51,18 +55,29 @@ public class JUnit4ResultForwarder extends RunListener {
     public void testFailure(Failure failure) throws Exception {
         Description description = failure.getDescription();
         if (description.getMethodName() == null) {
-            String trace = failure.getTrace();
-            if (failure.getException() instanceof CarryDnaeError) {
-                trace =
-                        StreamUtil.getStackTrace(
-                                ((CarryDnaeError) failure.getException())
-                                        .getDeviceNotAvailableException());
+            Throwable error = failure.getException();
+            String message = error.getMessage();
+            if (message == null) {
+                message = "Exception with no error message";
             }
-            // In case of exception in @BeforeClass, the method name will be null
-            mListener.testRunFailed(String.format("Failed with trace: %s", trace));
+            FailureDescription failureDesc =
+                    FailureDescription.create(message).setFailureStatus(FailureStatus.TEST_FAILURE);
+            if (error instanceof CarryDnaeError) {
+                error = ((CarryDnaeError) error).getDeviceNotAvailableException();
+            }
+            failureDesc.setCause(error);
+            if (error instanceof IHarnessException) {
+                ErrorIdentifier id = ((IHarnessException) error).getErrorId();
+                if (id != null) {
+                    failureDesc.setFailureStatus(id.status());
+                }
+                failureDesc.setErrorIdentifier(((IHarnessException) error).getErrorId());
+                failureDesc.setOrigin(((IHarnessException) error).getOrigin());
+            }
+            mListener.testRunFailed(failureDesc);
             // If the exception is ours thrown from before, rethrow it
-            if (failure.getException() instanceof CarryDnaeError) {
-                throw ((CarryDnaeError) failure.getException()).getDeviceNotAvailableException();
+            if (error instanceof CarryDnaeError) {
+                throw ((CarryDnaeError) error).getDeviceNotAvailableException();
             }
             return;
         }
