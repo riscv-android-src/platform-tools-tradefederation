@@ -95,10 +95,6 @@ public class MixImageZipPreparer extends BaseMultiTargetPreparer {
     )
     private Set<String> mSystemFileNames = new TreeSet<>();
 
-    @Deprecated
-    @Option(name = "dummy-file-name", description = "use stub-file-name instead.")
-    private Set<String> mDummyFileNames = new TreeSet<>();
-
     @Option(
             name = "stub-file-name",
             description =
@@ -221,7 +217,6 @@ public class MixImageZipPreparer extends BaseMultiTargetPreparer {
             systemFiles = replaceExistingEntries(systemFiles, files);
             filesNotInDeviceBuild.putAll(systemFiles);
 
-            mStubFileNames.addAll(mDummyFileNames);
             // Generate specified stub files and replace those in device build.
             Map<String, InputStreamFactory> stubFiles =
                     createStubInputStreamFactories(mStubFileNames);
