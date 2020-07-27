@@ -26,6 +26,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -106,7 +107,8 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
                     String.format(
                             "Device %s did not become available after flashing GKI. Exception: %s",
                             device.getSerialNumber(), e),
-                    device.getDeviceDescriptor());
+                    device.getDeviceDescriptor(),
+                    DeviceErrorIdentifier.ERROR_AFTER_FLASHING);
         }
         device.postBootSetup();
         CLog.i("Device update completed on %s", device.getDeviceDescriptor());
@@ -242,40 +244,6 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
         } catch (IOException e) {
             throw new TargetSetupError(
                     "Fail to generate GKI boot.img.", e, device.getDeviceDescriptor());
-        }
-    }
-
-    /**
-     * Flash device images.
-     *
-     * @param device the {@link ITestDevice}
-     * @param buildInfo the {@link IDeviceBuildInfo} the device build info
-     * @throws TargetSetupError, DeviceNotAvailableException
-     */
-    private void flashDeviceImage(ITestDevice device, IDeviceBuildInfo buildInfo)
-            throws TargetSetupError, DeviceNotAvailableException {
-        IDeviceManager deviceManager = getDeviceManager();
-        long start = System.currentTimeMillis();
-        deviceManager.takeFlashingPermit();
-        CLog.v(
-                "Flashing permit obtained after %ds",
-                TimeUnit.MILLISECONDS.toSeconds((System.currentTimeMillis() - start)));
-        // don't allow interruptions during flashing operations.
-        getRunUtil().allowInterrupt(false);
-        try {
-            executeFastbootCmd(
-                    device,
-                    "--skip-reboot",
-                    "--disable-verity",
-                    "update",
-                    buildInfo.getDeviceImageFile().getAbsolutePath());
-        } finally {
-            // Allow interruption at the end no matter what.
-            getRunUtil().allowInterrupt(true);
-            deviceManager.returnFlashingPermit();
-            CLog.v(
-                    "Flashing permit returned after %ds",
-                    TimeUnit.MILLISECONDS.toSeconds((System.currentTimeMillis() - start)));
         }
     }
 
