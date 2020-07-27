@@ -262,7 +262,7 @@ public class TestResult {
                 }
                 break;
             default:
-                // We keep a sane default of one failure is a failure that should be reported.
+                // We keep a default of one failure is a failure that should be reported.
                 if (fail > 0) {
                     mergedResult.setStatus(TestStatus.FAILURE);
                 } else {
