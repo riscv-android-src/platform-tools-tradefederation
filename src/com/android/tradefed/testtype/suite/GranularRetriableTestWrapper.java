@@ -51,21 +51,21 @@ import java.util.Map;
  * A wrapper class works on the {@link IRemoteTest} to granulate the IRemoteTest in testcase level.
  * An IRemoteTest can contain multiple testcases. Previously, these testcases are treated as a
  * whole: When IRemoteTest runs, all testcases will run. Some IRemoteTest (The ones that implements
- * ITestFilterReceiver) can accept a whitelist of testcases and only run those testcases. This class
- * takes advantage of the existing feature and provides a more flexible way to run test suite.
+ * ITestFilterReceiver) can accept an allowlist of testcases and only run those testcases. This
+ * class takes advantage of the existing feature and provides a more flexible way to run test suite.
  *
  * <ul>
- *   <li> Single testcase can be retried multiple times (within the same IRemoteTest run) to reduce
+ *   <li>Single testcase can be retried multiple times (within the same IRemoteTest run) to reduce
  *       the non-test-error failure rates.
- *   <li> The retried testcases are dynamically collected from previous run failures.
+ *   <li>The retried testcases are dynamically collected from previous run failures.
  * </ul>
  *
  * <p>Note:
  *
  * <ul>
- *   <li> The prerequisite to run a subset of test cases is that the test type should implement the
+ *   <li>The prerequisite to run a subset of test cases is that the test type should implement the
  *       interface {@link ITestFilterReceiver}.
- *   <li> X is customized max retry number.
+ *   <li>X is customized max retry number.
  * </ul>
  */
 public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector {
