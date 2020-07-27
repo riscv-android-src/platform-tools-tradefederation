@@ -90,34 +90,15 @@ public class RustTestResultParser extends MultiLineReceiver {
         mTestResultCache = new HashMap<>();
     }
 
-    /**
-     * Process Rust unittest output and report parsed results.
-     *
-     * <p>This method should be called only once with the full output, unlike the base method in
-     * {@link MultiLineReceiver}.
-     */
+    /** Process Rust unittest output. */
     @Override
     public void processNewLines(String[] lines) {
-        try {
-            boolean hasContent = false;
-            for (String line : lines) {
-                hasContent |= line.length() > 0;
-                if (lineMatchesPattern(line, COMPLETE_PATTERN)) {
-                    reportToListeners(line);
-                    return;
-                }
-                if (lineMatchesPattern(line, RUST_ONE_LINE_RESULT)) {
-                    mCurrentTestName = mCurrentMatcher.group(1);
-                    mCurrentTestStatus = mCurrentMatcher.group(2);
-                    reportTestResult();
-                }
+        for (String line : lines) {
+            if (lineMatchesPattern(line, RUST_ONE_LINE_RESULT)) {
+                mCurrentTestName = mCurrentMatcher.group(1);
+                mCurrentTestStatus = mCurrentMatcher.group(2);
+                reportTestResult();
             }
-            if (hasContent) {
-                throw new Exception(
-                        String.format("Missing summary line:\n%s\n", String.join("\n", lines)));
-            }
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to parse Rust test result\n" + e);
         }
     }
 
@@ -144,7 +125,8 @@ public class RustTestResultParser extends MultiLineReceiver {
     }
 
     /** Send recorded test results to all listeners. */
-    private void reportToListeners(String line) {
+    @Override
+    public void done() {
         for (ITestInvocationListener listener : mListeners) {
             for (Entry<TestDescription, String> test : mTestResultCache.entrySet()) {
                 listener.testStarted(test.getKey());
