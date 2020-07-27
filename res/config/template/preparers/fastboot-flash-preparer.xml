@@ -13,6 +13,6 @@
      See the License for the specific language governing permissions and
      limitations under the License.
 -->
-<configuration description="Common template for flashing the device with GKI image." >
-    <target_preparer class="com.android.tradefed.targetprep.GkiDeviceFlashPreparer" />
+<configuration description="Common template for flashing the device." >
+    <target_preparer class="com.android.tradefed.targetprep.FastbootUpdateBootstrapPreparer" />
 </configuration>
