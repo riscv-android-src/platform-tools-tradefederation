@@ -272,7 +272,10 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
         List<File> moduleNamesToInstall = new ArrayList<>();
         for (File moduleFileName : moduleFileNames) {
             // getLocalPathForFilename throws if apk not found
-            File moduleFile = getLocalPathForFilename(testInfo, moduleFileName.getName());
+            File moduleFile = moduleFileName;
+            if (!moduleFile.isAbsolute()) {
+                moduleFile = getLocalPathForFilename(testInfo, moduleFileName.getName());
+            }
             String modulePackageName = "";
             if (moduleFile.getName().endsWith(SPLIT_APKS_SUFFIX)) {
                 List<File> splits = getSplitsForApks(testInfo, moduleFile);
