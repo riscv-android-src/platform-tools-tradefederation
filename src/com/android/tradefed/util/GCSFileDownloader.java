@@ -304,8 +304,12 @@ public class GCSFileDownloader extends GCSCommon implements IFileDownloader {
                 }
             } while (true);
         } catch (IOException e) {
-            CLog.e("Failed to download gs://%s/%s, clean up.", bucketName, remoteFilename);
-            throw new BuildRetrievalError(e.getMessage(), e);
+            String message =
+                    String.format(
+                            "Failed to download gs://%s/%s due to: %s",
+                            bucketName, remoteFilename, e.getMessage());
+            CLog.e(message);
+            throw new BuildRetrievalError(message, e, InfraErrorIdentifier.GCS_ERROR);
         }
     }
 
