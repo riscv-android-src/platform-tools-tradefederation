@@ -1074,8 +1074,9 @@ public class InstrumentationTestTest {
         inOrder.verify(mMockListener).testRunStarted("fakeName", 1);
         TestDescription tid = new TestDescription("fakeclass", "fakemethod0");
         inOrder.verify(mMockListener).testStarted(tid, 0L);
-        inOrder.verify(mMockListener)
-                .testFailed(tid, "Instrumentation run failed due to 'Process crashed.'");
+        FailureDescription failure =
+                FailureDescription.create("Instrumentation run failed due to 'Process crashed.'");
+        inOrder.verify(mMockListener).testFailed(tid, failure);
         inOrder.verify(mMockListener).testEnded(tid, 15L, EMPTY_STRING_MAP);
         inOrder.verify(mMockListener)
                 .testRunFailed(
