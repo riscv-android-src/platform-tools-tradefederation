@@ -20,6 +20,7 @@ import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.gcs.GCSDownloaderHelper;
 import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 
 import java.io.File;
 import java.io.IOException;
@@ -44,10 +45,12 @@ public class GcsRemoteFileResolver implements IRemoteFileResolver {
             File downloadedFile = getDownloader().fetchTestResource(path);
             // Unzip it if required
             return DynamicRemoteFileResolver.unzipIfRequired(downloadedFile, query);
-        } catch (BuildRetrievalError | IOException e) {
+        } catch (IOException e) {
             CLog.e(e);
             throw new BuildRetrievalError(
-                    String.format("Failed to download %s due to: %s", path, e.getMessage()), e);
+                    String.format("Failed to download %s due to: %s", path, e.getMessage()),
+                    e,
+                    InfraErrorIdentifier.GCS_ERROR);
         }
     }
 
