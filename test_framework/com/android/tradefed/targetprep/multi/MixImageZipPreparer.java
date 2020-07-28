@@ -95,16 +95,19 @@ public class MixImageZipPreparer extends BaseMultiTargetPreparer {
     )
     private Set<String> mSystemFileNames = new TreeSet<>();
 
-    @Option(
-        name = "dummy-file-name",
-        description =
-                "the name of the image file to be replaced with a small dummy file. "
-                        + "Can be repeated. This option is used when the generic system "
-                        + "image is too large for the device's dynamic partition. "
-                        + "As GSI doesn't use product partition, the product image can be "
-                        + "replaced with a dummy file so as to free up space for GSI."
-    )
+    @Deprecated
+    @Option(name = "dummy-file-name", description = "use stub-file-name instead.")
     private Set<String> mDummyFileNames = new TreeSet<>();
+
+    @Option(
+            name = "stub-file-name",
+            description =
+                    "the name of the image file to be replaced with a small stub file. "
+                            + "Can be repeated. This option is used when the generic system "
+                            + "image is too large for the device's dynamic partition. "
+                            + "As GSI doesn't use product partition, the product image can be "
+                            + "replaced with a stub file so as to free up space for GSI.")
+    private Set<String> mStubFileNames = new TreeSet<>();
 
     @Option(
         name = "compression-level",
@@ -218,21 +221,22 @@ public class MixImageZipPreparer extends BaseMultiTargetPreparer {
             systemFiles = replaceExistingEntries(systemFiles, files);
             filesNotInDeviceBuild.putAll(systemFiles);
 
-            // Generate specified dummy files and replace those in device build.
-            Map<String, InputStreamFactory> dummyFiles =
-                    createDummyInputStreamFactories(mDummyFileNames);
-            Map<String, InputStreamFactory> dummyFilesNotInDeviceBuild =
-                    replaceExistingEntries(dummyFiles, files);
-            // The purpose of the dummy files is to make fastboot shrink product partition.
-            // Some devices don't have product partition and image. If the dummy file names are not
+            mStubFileNames.addAll(mDummyFileNames);
+            // Generate specified stub files and replace those in device build.
+            Map<String, InputStreamFactory> stubFiles =
+                    createStubInputStreamFactories(mStubFileNames);
+            Map<String, InputStreamFactory> stubFilesNotInDeviceBuild =
+                    replaceExistingEntries(stubFiles, files);
+            // The purpose of the stub files is to make fastboot shrink product partition.
+            // Some devices don't have product partition and image. If the stub file names are not
             // found in device build, they are ignored so that devices with and without product
             // partition can share configurations.
-            // This preparer does not generate dummy files in super image because
+            // This preparer does not generate stub files in super image because
             // build_super_image cannot handle unformatted files.
-            if (!dummyFilesNotInDeviceBuild.isEmpty()) {
+            if (!stubFilesNotInDeviceBuild.isEmpty()) {
                 CLog.w(
-                        "Skip creating dummy images: %s",
-                        String.join(",", dummyFilesNotInDeviceBuild.keySet()));
+                        "Skip creating stub images: %s",
+                        String.join(",", stubFilesNotInDeviceBuild.keySet()));
             }
 
             if (resourceBuildInfo != null) {
@@ -376,14 +380,14 @@ public class MixImageZipPreparer extends BaseMultiTargetPreparer {
         return factories;
     }
 
-    private static Map<String, InputStreamFactory> createDummyInputStreamFactories(
-            Collection<String> dummyFileNames) {
+    private static Map<String, InputStreamFactory> createStubInputStreamFactories(
+            Collection<String> stubFileNames) {
         // The image size must be larger than zero. Otherwise fastboot cannot flash it.
         byte[] data = new byte[] {0};
         Map<String, InputStreamFactory> factories = new HashMap<>();
-        for (String dummyFileName : dummyFileNames) {
+        for (String stubFileName : stubFileNames) {
             factories.put(
-                    dummyFileName,
+                    stubFileName,
                     new InputStreamFactory() {
                         @Override
                         public InputStream createInputStream() throws IOException {
@@ -598,8 +602,8 @@ public class MixImageZipPreparer extends BaseMultiTargetPreparer {
     }
 
     @VisibleForTesting
-    void addDummyFileName(String fileName) {
-        mDummyFileNames.add(fileName);
+    void addStubFileName(String fileName) {
+        mStubFileNames.add(fileName);
     }
 
     @VisibleForTesting
