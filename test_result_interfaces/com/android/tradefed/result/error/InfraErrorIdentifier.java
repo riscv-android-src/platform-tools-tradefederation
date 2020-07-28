@@ -33,6 +33,7 @@ public enum InfraErrorIdentifier implements ErrorIdentifier {
     ARTIFACT_REMOTE_PATH_NULL(10_501, FailureStatus.INFRA_FAILURE),
     ARTIFACT_UNSUPPORTED_PATH(10_502, FailureStatus.INFRA_FAILURE),
     ARTIFACT_DOWNLOAD_ERROR(10_503, FailureStatus.INFRA_FAILURE),
+    GCS_ERROR(10_504, FailureStatus.UNSET), // TODO: switch to dependency_issue
 
     // 11_001 - 11_500: environment issues: For example: lab wifi
     WIFI_FAILED_CONNECT(11_001, FailureStatus.UNSET), // TODO: switch to dependency_issue
