@@ -79,7 +79,7 @@ public class MixImageZipPreparerTest {
     // The strings written to temporary image files.
     private static final String DEVICE_CONTENT = "device content";
     private static final String SYSTEM_CONTENT = "system content";
-    private static final String DUMMY_CONTENT = "\0";
+    private static final String STUB_CONTENT = "\0";
     private static final String RESOURCE_CONTENT = "resource content";
 
     private IInvocationContext mMockContext;
@@ -165,8 +165,8 @@ public class MixImageZipPreparerTest {
         for (String imageName : imageNames) {
             mPreparer.addSystemFileName(imageName);
         }
-        mPreparer.addDummyFileName(PRODUCT_IMAGE_NAME);
-        mPreparer.addDummyFileName("missing_dummy.img");
+        mPreparer.addStubFileName(PRODUCT_IMAGE_NAME);
+        mPreparer.addStubFileName("missing_stub.img");
     }
 
     private void setUpPreparerAndSystem() throws IOException {
@@ -337,7 +337,7 @@ public class MixImageZipPreparerTest {
             } else {
                 // setUpDevice was called.
                 verifyImage(SYSTEM_CONTENT, mixedImageDir, SYSTEM_IMAGE_NAME);
-                verifyImage(DUMMY_CONTENT, mixedImageDir, PRODUCT_IMAGE_NAME);
+                verifyImage(STUB_CONTENT, mixedImageDir, PRODUCT_IMAGE_NAME);
             }
 
             if (mResourceBuild != null) {
