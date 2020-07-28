@@ -66,15 +66,17 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
 
     @Override
     public void testFailed(TestDescription test, String trace) {
-        // If the test case was detected as crashing the instrumentation, we add the crash to it.
-        trace = extractCrashAndAddToMessage(trace, mStartTime);
-        super.testFailed(test, trace);
+        testFailed(test, FailureDescription.create(trace));
     }
 
     @Override
     public void testFailed(TestDescription test, FailureDescription failure) {
         // If the test case was detected as crashing the instrumentation, we add the crash to it.
         String trace = extractCrashAndAddToMessage(failure.getErrorMessage(), mStartTime);
+        if (trace.compareTo(failure.getErrorMessage()) != 0) {
+            // Crash stack trace found, consider this a test failure.
+            failure.setFailureStatus(FailureStatus.TEST_FAILURE);
+        }
         failure.setErrorMessage(trace);
         super.testFailed(test, failure);
     }
