@@ -67,6 +67,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -104,7 +105,8 @@ public class Configuration implements IConfiguration {
     // regexp pattern used to parse map option values
     private static final Pattern OPTION_KEY_VALUE_PATTERN = Pattern.compile("(?<!\\\\)=");
 
-    private static final String CONFIG_EXCEPTION_PATTERN = "Could not find option with name ";
+    private static final Pattern CONFIG_EXCEPTION_PATTERN =
+            Pattern.compile("Could not find option with name '(.*)'");
 
     /** Mapping of config object type name to config objects. */
     private Map<String, List<Object>> mConfigMap;
@@ -1123,10 +1125,11 @@ public class Configuration implements IConfiguration {
         try {
             return parser.parse(listArgs);
         } catch (ConfigurationException e) {
-            if (!e.getMessage().contains(CONFIG_EXCEPTION_PATTERN)) {
+            Matcher m = CONFIG_EXCEPTION_PATTERN.matcher(e.getMessage());
+            if (!m.matches()) {
                 throw e;
             }
-            String optionName = e.getMessage().split(CONFIG_EXCEPTION_PATTERN)[1];
+            String optionName = m.group(1);
             try {
                 // In case the option exists in the config descriptor, we change the error message
                 // to be more specific about why the option is rejected.
@@ -1138,7 +1141,7 @@ public class Configuration implements IConfiguration {
             }
             throw new OptionNotAllowedException(
                     String.format(
-                            "Option %s cannot be specified via "
+                            "Option '%s' cannot be specified via "
                                     + "command line. Only in the configuration xml.",
                             optionName));
         }
