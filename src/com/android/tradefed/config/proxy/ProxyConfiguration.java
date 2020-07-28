@@ -15,31 +15,58 @@
  */
 package com.android.tradefed.config.proxy;
 
+import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.log.LogUtil.CLog;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 /** Object that allows pointing to a remote configuration to execute. */
 public final class ProxyConfiguration {
 
     public static final String PROXY_CONFIG_TYPE_KEY = "proxy-config";
+    private static final String PROXY_CONFIG_OPTION_NAME = "proxy-configuration";
 
     @Option(
-            name = "proxy-configuration",
+            name = PROXY_CONFIG_OPTION_NAME,
             description = "Point to an external configuration to be run instead.")
     private File mProxyConfig;
+
+    /** Returns whether or not a proxy config value is set. */
+    public boolean isProxySet() {
+        return mProxyConfig != null;
+    }
 
     /** Returns the current proxy configuration to use. */
     public File getProxyConfig() {
         if (mProxyConfig == null || !mProxyConfig.exists()) {
-            CLog.d("No proxy configuration is configured.");
+            CLog.e("No proxy configuration is configured: %s", mProxyConfig);
             return null;
         }
         if (mProxyConfig.isDirectory()) {
-            CLog.w("Proxy configuration must be a file, found a directory: %s", mProxyConfig);
+            CLog.e("Proxy configuration must be a file, found a directory: %s", mProxyConfig);
             return null;
         }
         return mProxyConfig;
+    }
+
+    public static String[] clearCommandline(String[] originalCommand)
+            throws ConfigurationException {
+        List<String> argsList = new ArrayList<>(Arrays.asList(originalCommand));
+        try {
+            while (argsList.contains("--" + PROXY_CONFIG_OPTION_NAME)) {
+                int index = argsList.indexOf("--" + PROXY_CONFIG_OPTION_NAME);
+                if (index != -1) {
+                    argsList.remove(index + 1);
+                    argsList.remove(index);
+                }
+            }
+        } catch (RuntimeException e) {
+            throw new ConfigurationException(e.getMessage(), e);
+        }
+        return argsList.toArray(new String[0]);
     }
 }
