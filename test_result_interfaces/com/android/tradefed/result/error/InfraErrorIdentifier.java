@@ -28,6 +28,7 @@ public enum InfraErrorIdentifier implements ErrorIdentifier {
     FAIL_TO_CREATE_FILE(10_002, FailureStatus.INFRA_FAILURE),
     INVOCATION_CANCELLED(10_003, FailureStatus.CANCELLED),
     CODE_COVERAGE_ERROR(10_004, FailureStatus.INFRA_FAILURE),
+    MODULE_SETUP_RUNTIME_EXCEPTION(10_005, FailureStatus.UNSET), // TODO: switch to customer_issue
 
     // 10_501 - 11_000: Build, Artifacts download related errors
     ARTIFACT_REMOTE_PATH_NULL(10_501, FailureStatus.INFRA_FAILURE),
