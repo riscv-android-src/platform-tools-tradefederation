@@ -1135,6 +1135,11 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             failureDescription.setErrorIdentifier(id);
             failureDescription.setFailureStatus(id.status());
             failureDescription.setOrigin(((IHarnessException) setupException).getOrigin());
+        } else if (setupException instanceof RuntimeException) {
+            // TODO: switch to customer_issue
+            failureDescription.setFailureStatus(FailureStatus.UNSET);
+            failureDescription.setErrorIdentifier(
+                    InfraErrorIdentifier.MODULE_SETUP_RUNTIME_EXCEPTION);
         } else {
             failureDescription.setFailureStatus(FailureStatus.UNSET);
         }
