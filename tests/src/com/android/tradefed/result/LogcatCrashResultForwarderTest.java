@@ -19,6 +19,7 @@ import static org.junit.Assert.assertTrue;
 
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 
 import org.easymock.Capture;
 import org.easymock.EasyMock;
@@ -52,7 +53,9 @@ public class LogcatCrashResultForwarderTest {
         mMockListener.testStarted(test, 0L);
         EasyMock.expect(mMockDevice.getLogcatSince(0L))
                 .andReturn(new ByteArrayInputStreamSource("".getBytes()));
-        mMockListener.testFailed(test, "instrumentation failed. reason: 'Process crashed.'");
+        mMockListener.testFailed(
+                test,
+                FailureDescription.create("instrumentation failed. reason: 'Process crashed.'"));
         mMockListener.testEnded(test, 5L, new HashMap<String, Metric>());
 
         EasyMock.replay(mMockListener, mMockDevice);
@@ -89,15 +92,12 @@ public class LogcatCrashResultForwarderTest {
         EasyMock.expect(mMockDevice.getLogcatSince(0L))
                 .andReturn(new ByteArrayInputStreamSource(logcat.getBytes()));
         // Some crash was added to the failure
-        mMockListener.testFailed(
-                EasyMock.eq(test),
-                EasyMock.contains(
-                        "instrumentation failed. reason: 'Process crashed.'"
-                                + "\nCrash Message:Runtime"));
+        Capture<FailureDescription> captured_1 = new Capture<>();
+        mMockListener.testFailed(EasyMock.eq(test), EasyMock.capture(captured_1));
         mMockListener.testEnded(test, 5L, new HashMap<String, Metric>());
         // If a run failure follows, expect it to contain the additional stack too.
-        Capture<FailureDescription> captured = new Capture<>();
-        mMockListener.testRunFailed(EasyMock.capture(captured));
+        Capture<FailureDescription> captured_2 = new Capture<>();
+        mMockListener.testRunFailed(EasyMock.capture(captured_2));
 
         EasyMock.replay(mMockListener, mMockDevice);
         mReporter.testStarted(test, 0L);
@@ -106,7 +106,16 @@ public class LogcatCrashResultForwarderTest {
         mReporter.testRunFailed("Something went wrong.");
         EasyMock.verify(mMockListener, mMockDevice);
         assertTrue(
-                captured.getValue()
+                captured_1
+                        .getValue()
+                        .getErrorMessage()
+                        .contains(
+                                "instrumentation failed. reason: 'Process crashed.'"
+                                        + "\nCrash Message:Runtime"));
+        assertTrue(FailureStatus.TEST_FAILURE.equals(captured_1.getValue().getFailureStatus()));
+        assertTrue(
+                captured_2
+                        .getValue()
                         .getErrorMessage()
                         .contains("Something went wrong.\nCrash Message:Runtime"));
     }
@@ -138,7 +147,7 @@ public class LogcatCrashResultForwarderTest {
         EasyMock.expect(mMockDevice.getLogcatSince(0L))
                 .andReturn(new ByteArrayInputStreamSource(logcat.getBytes()));
         // No crash added at the point of testFailed.
-        mMockListener.testFailed(test, "Something went wrong.");
+        mMockListener.testFailed(test, FailureDescription.create("Something went wrong."));
         mMockListener.testEnded(test, 5L, new HashMap<String, Metric>());
         // If a run failure comes with a crash detected, expect it to contain the additional stack.
         Capture<FailureDescription> captured = new Capture<>();
@@ -186,7 +195,7 @@ public class LogcatCrashResultForwarderTest {
         EasyMock.expect(mMockDevice.getLogcatSince(0L))
                 .andReturn(new ByteArrayInputStreamSource(logcat.getBytes()));
         // No crash added at the point of testFailed.
-        mMockListener.testFailed(test, "Something went wrong.");
+        mMockListener.testFailed(test, FailureDescription.create("Something went wrong."));
         mMockListener.testEnded(test, 5L, new HashMap<String, Metric>());
         // If a run failure comes with a crash detected, expect it to contain the additional stack.
         Capture<FailureDescription> captured = new Capture<>();
