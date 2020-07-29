@@ -323,7 +323,7 @@ public class TestInvocation implements ITestInvocation {
                     takeBugreport(collectBugreport, listener, bugreportName);
                 } else if (context.getDevices().size() > 1) {
                     ParallelDeviceExecutor<Boolean> executor =
-                            new ParallelDeviceExecutor<>(context.getDevices());
+                            new ParallelDeviceExecutor<>(context.getDevices().size());
                     List<Callable<Boolean>> callableTasks = new ArrayList<>();
                     final String reportName = bugreportName;
                     for (ITestDevice device : context.getDevices()) {
