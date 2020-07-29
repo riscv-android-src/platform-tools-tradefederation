@@ -135,7 +135,8 @@ final class InstrumentationListener extends LogcatCrashResultForwarder {
                 super.testStarted(miss);
                 FailureDescription failure =
                         FailureDescription.create(
-                                "test did not run due to instrumentation issue.",
+                                "test did not run due to instrumentation issue. See run level "
+                                        + "error for reason.",
                                 FailureStatus.NOT_EXECUTED);
                 super.testFailed(miss, failure);
                 super.testEnded(miss, new HashMap<String, Metric>());
