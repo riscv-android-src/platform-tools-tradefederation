@@ -108,6 +108,7 @@ public class ClusterDeviceMonitor implements IDeviceMonitor {
                             .setHostName(ClusterHostUtil.getHostName())
                             .setTfVersion(ClusterHostUtil.getTfVersion())
                             .setData(getAdditionalHostInfo())
+                            .setData("host_ip", ClusterHostUtil.getHostIpAddress())
                             .setClusterId(getClusterOptions().getClusterId())
                             .setNextClusterIds(getClusterOptions().getNextClusterIds())
                             .setLabName(getClusterOptions().getLabName());
