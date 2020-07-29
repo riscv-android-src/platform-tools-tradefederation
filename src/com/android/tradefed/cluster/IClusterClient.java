@@ -90,6 +90,20 @@ public interface IClusterClient {
             throws IOException, JSONException;
 
     /**
+     * Get the command status of a cluster command (the state and the cancel reason if canceled).
+     *
+     * @param requestId cluster request ID
+     * @param commandId cluster command ID
+     * @return a ClusterCommandStatus that represents the state and the cancel reason if the command
+     *     is canceled. The state is {@link ClusterCommand.State#UNKNOWN} if it could not be
+     *     determined.
+     */
+    public default ClusterCommandStatus getCommandStatus(String requestId, String commandId) {
+        ClusterCommand.State state = getCommandState(requestId, commandId);
+        return new ClusterCommandStatus(state, "");
+    }
+
+    /**
      * Determine the state of a cluster command.
      *
      * @param requestId cluster request ID
