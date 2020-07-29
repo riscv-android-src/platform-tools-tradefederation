@@ -214,6 +214,11 @@ public class ClusterClient implements IClusterClient {
 
     @Override
     public ClusterCommand.State getCommandState(String requestId, String commandId) {
+        return getCommandStatus(requestId, commandId).getState();
+    }
+
+    @Override
+    public ClusterCommandStatus getCommandStatus(String requestId, String commandId) {
         try {
             HttpResponse response =
                     getApiHelper()
@@ -223,12 +228,14 @@ public class ClusterClient implements IClusterClient {
                                     new HashMap<>(),
                                     null);
             String content = StreamUtil.getStringFromStream(response.getContent());
-            String value = new JSONObject(content).getString("state");
-            return ClusterCommand.State.valueOf(value);
+            JSONObject jsonContent = new JSONObject(content);
+            String value = jsonContent.getString("state");
+            String cancelReason = jsonContent.optString("cancel_reason", "");
+            return new ClusterCommandStatus(ClusterCommand.State.valueOf(value), cancelReason);
         } catch (IOException | JSONException | IllegalArgumentException e) {
             CLog.w("Failed to get state of request %s command %s", requestId, commandId);
             CLog.e(e);
-            return ClusterCommand.State.UNKNOWN;
+            return new ClusterCommandStatus(ClusterCommand.State.UNKNOWN, "");
         }
     }
 
