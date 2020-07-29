@@ -39,6 +39,8 @@ public class ClusterHostUtil {
 
     private static String sHostName = null;
 
+    private static String sHostIpAddress = null;
+
     static final String DEFAULT_TF_VERSION = "(unknown)";
 
     private static long sTfStartTime = getCurrentTimeMillis();
@@ -46,7 +48,7 @@ public class ClusterHostUtil {
     /**
      * Gets the hostname.
      *
-     * @return the hostname or null if we were unable to fetch it
+     * @return the hostname or null if we were unable to fetch it.
      */
     public static String getHostName() {
         if (sHostName == null) {
@@ -57,6 +59,22 @@ public class ClusterHostUtil {
             }
         }
         return sHostName;
+    }
+
+    /**
+     * Gets the IP address.
+     *
+     * @return the IP address or null if we were unable to fetch it.
+     */
+    public static String getHostIpAddress() {
+        if (sHostIpAddress == null) {
+            try {
+                sHostIpAddress = InetAddress.getLocalHost().getHostAddress();
+            } catch (UnknownHostException e) {
+                CLog.w("failed to get hostname: %s", e);
+            }
+        }
+        return sHostIpAddress;
     }
 
     /**
