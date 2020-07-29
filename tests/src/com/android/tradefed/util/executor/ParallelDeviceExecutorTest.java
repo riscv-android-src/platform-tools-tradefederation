@@ -49,7 +49,7 @@ public class ParallelDeviceExecutorTest {
         mDevice2 = Mockito.mock(ITestDevice.class);
         mDevices.add(mDevice1);
         mDevices.add(mDevice2);
-        mExecutor = new ParallelDeviceExecutor<>(mDevices);
+        mExecutor = new ParallelDeviceExecutor<>(mDevices.size());
     }
 
     @Test
