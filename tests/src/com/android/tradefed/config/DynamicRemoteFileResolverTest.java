@@ -387,7 +387,7 @@ public class DynamicRemoteFileResolverTest {
             call.add(callableTask);
             devices.add(Mockito.mock(ITestDevice.class));
         }
-        ParallelDeviceExecutor<Set<File>> executor = new ParallelDeviceExecutor<>(devices);
+        ParallelDeviceExecutor<Set<File>> executor = new ParallelDeviceExecutor<>(devices.size());
         List<Set<File>> downloadedFile = null;
         downloadedFile = executor.invokeAll(call, 1, TimeUnit.MINUTES);
         boolean oneMustBeNonEmpty = false;

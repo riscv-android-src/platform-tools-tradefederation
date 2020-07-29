@@ -234,7 +234,7 @@ public class InvocationExecution implements IInvocationExecution {
                     && config.getDeviceConfig().size() > 1) {
                 CLog.d("Using parallel setup due to replicated setup enabled.");
                 ParallelDeviceExecutor<Boolean> executor =
-                        new ParallelDeviceExecutor<>(testInfo.getContext().getDevices());
+                        new ParallelDeviceExecutor<>(testInfo.getContext().getDevices().size());
                 List<Callable<Boolean>> callableTasks = new ArrayList<>();
                 for (String deviceName : testInfo.getContext().getDeviceConfigNames()) {
                     mTrackTargetPreparers.put(deviceName, new HashSet<>());
