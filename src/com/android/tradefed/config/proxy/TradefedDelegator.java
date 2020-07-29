@@ -15,8 +15,10 @@
  */
 package com.android.tradefed.config.proxy;
 
+import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.util.UniqueMultiMap;
 
 import com.google.common.base.Joiner;
 
@@ -39,6 +41,11 @@ public class TradefedDelegator {
             description =
                     "Points to the root dir of another Tradefed binary that will be used to drive the invocation")
     private File mDelegatedTfRootDir;
+
+    @Option(
+            name = CommandOptions.INVOCATION_DATA,
+            description = "Mirror of CommandOptions#INVOCATION_DATA")
+    private UniqueMultiMap<String, String> mInvocationData = new UniqueMultiMap<>();
 
     private String[] mCommandLine = null;
 
@@ -74,6 +81,19 @@ public class TradefedDelegator {
         return mCommandLine;
     }
 
+    /**
+     * Returns whether or not this is the staging environment. We do not want to delegate in staging
+     * by default, only if the "staging_delegated" is set.
+     */
+    public boolean isStaging() {
+        return mInvocationData.containsKey("staging")
+                && !mInvocationData.containsKey("staging_delegated");
+    }
+
+    /**
+     * Remove from the original command line the delegate options so the underlying config does not
+     * delegate again.
+     */
     public static String[] clearCommandline(String[] originalCommand)
             throws ConfigurationException {
         List<String> argsList = new ArrayList<>(Arrays.asList(originalCommand));
