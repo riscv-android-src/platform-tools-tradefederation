@@ -298,7 +298,10 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
                             + "successful, proceeding with next module. Stack trace:");
             CLog.w(due);
             CLog.w("Proceeding to the next test.");
-            runListener.testRunFailed(createFromException(due));
+            // If it already was marked as failure do not remark it.
+            if (!mMainGranularRunListener.hasLastAttemptFailed()) {
+                runListener.testRunFailed(createFromException(due));
+            }
         } catch (DeviceNotAvailableException dnae) {
             // TODO: See if it's possible to report IReportNotExecuted
             CLog.e("Run in progress was not completed due to:");
