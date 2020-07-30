@@ -36,7 +36,7 @@ _META_FILE = os.path.join(os.path.expanduser('~'),
                           '.config', 'asuite', '.metadata')
 _ANDROID_BUILD_TOP = 'ANDROID_BUILD_TOP'
 
-DUMMY_UUID = '00000000-0000-4000-8000-000000000000'
+UNUSED_UUID = '00000000-0000-4000-8000-000000000000'
 
 
 #pylint: disable=broad-except
@@ -57,7 +57,7 @@ def log_event(metrics_url, unused_key_fallback=True, **kwargs):
         except Exception:
             if not unused_key_fallback:
                 return
-            key = DUMMY_UUID
+            key = UNUSED_UUID
         data = {'grouping_key': key,
                 'run_id': str(uuid.uuid4())}
         if kwargs:
