@@ -18,12 +18,32 @@ package com.android.tradefed.cluster;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationUtil;
 import com.android.tradefed.result.LegacySubprocessResultsReporter;
+import com.android.tradefed.util.FileUtil;
 
-import org.kxml2.io.KXmlSerializer;
+import com.google.common.base.Strings;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.xml.sax.SAXException;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.InputStream;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.util.ArrayList;
+import java.util.List;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 
 /**
  * Build a wrapper TF config XML for an existing TF config.
@@ -31,19 +51,23 @@ import java.io.PrintWriter;
  * <p>A wrapper XML allows to enable subprocess reporting on an existing TF config.
  */
 public class SubprocessConfigBuilder {
-    private static final String INCLUDE_NAME = "include";
     private static final String REPORTER_CLASS = LegacySubprocessResultsReporter.class.getName();
     private static final String OPTION_KEY = "subprocess-report-port";
-    private static final String CONFIG_DESCRIPTION = "Cluster Command Launcher config";
+    private String mClasspath;
 
-    private File mWorkdir;
+    private File mWorkDir;
 
     private String mOriginalConfig;
 
     private String mPort;
 
+    public SubprocessConfigBuilder setClasspath(String classpath) {
+        mClasspath = classpath;
+        return this;
+    }
+
     public SubprocessConfigBuilder setWorkingDir(File dir) {
-        mWorkdir = dir;
+        mWorkDir = dir;
         return this;
     }
 
@@ -66,43 +90,68 @@ public class SubprocessConfigBuilder {
     }
 
     public File build() throws IOException {
-        // Make a new config name based on the original config name to make it possible to find
-        // out the original command line from a modified one.
-        // FIXME: Find a better way to preserve the original command line.
-        String configName = createConfigName(mOriginalConfig);
-        // mOriginalConfig is from another test suite, so its content is hard to know at this
-        // time. So it doesn't load mOriginalConfig as IConfiguration and add additional config.
-        // Instead, it creates a wrapper config including mOriginalConfig.
-        File f = new File(mWorkdir, configName);
-        PrintWriter writer = new PrintWriter(f);
-        KXmlSerializer serializer = new KXmlSerializer();
-        serializer.setOutput(writer);
-        serializer.setFeature("http://xmlpull.org/v1/doc/features.html#indent-output", true);
-        serializer.startDocument("UTF-8", null);
-        serializer.startTag(null, ConfigurationUtil.CONFIGURATION_NAME);
-        serializer.attribute(
-                null, Configuration.CONFIGURATION_DESCRIPTION_TYPE_NAME, CONFIG_DESCRIPTION);
-
-        serializer.startTag(null, INCLUDE_NAME);
-        serializer.attribute(null, ConfigurationUtil.NAME_NAME, mOriginalConfig);
-        serializer.endTag(null, INCLUDE_NAME);
-
-        if (mPort != null) {
-            serializer.startTag(null, Configuration.RESULT_REPORTER_TYPE_NAME);
-            serializer.attribute(null, ConfigurationUtil.CLASS_NAME, REPORTER_CLASS);
-
-            serializer.startTag(null, ConfigurationUtil.OPTION_NAME);
-            serializer.attribute(null, ConfigurationUtil.NAME_NAME, OPTION_KEY);
-            serializer.attribute(null, ConfigurationUtil.VALUE_NAME, mPort);
-            serializer.endTag(null, ConfigurationUtil.OPTION_NAME);
-
-            serializer.endTag(null, Configuration.RESULT_REPORTER_TYPE_NAME);
+        final List<URL> urls = new ArrayList<>();
+        for (final String path : mClasspath.split(File.pathSeparator)) {
+            if (path.endsWith("*")) {
+                final File dir = new File(path.substring(0, path.length() - 1));
+                if (!dir.exists()) {
+                    continue;
+                }
+                for (final File file :
+                        dir.listFiles((parent, name) -> name.toLowerCase().endsWith(".jar"))) {
+                    urls.add(file.toURI().toURL());
+                }
+            } else {
+                urls.add(new File(path).toURI().toURL());
+            }
         }
 
-        serializer.endTag(null, ConfigurationUtil.CONFIGURATION_NAME);
-        serializer.endDocument();
+        // Read the original config file.
+        final DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        Document doc = null;
+        try (URLClassLoader loader = new URLClassLoader(urls.toArray(new URL[urls.size()]), null)) {
+            final DocumentBuilder builder = factory.newDocumentBuilder();
+            final String ext = FileUtil.getExtension(mOriginalConfig);
+            InputStream in = null;
+            if (Strings.isNullOrEmpty(ext)) {
+                in = loader.getResourceAsStream(String.format("config/%s.xml", mOriginalConfig));
+            } else {
+                in = loader.getResourceAsStream(String.format("config/%s", mOriginalConfig));
+            }
+            if (in == null) {
+                try {
+                    in = new FileInputStream(mOriginalConfig);
+                } catch (FileNotFoundException e) {
+                    throw new RuntimeException(
+                            String.format("Could not find configuration '%s'", mOriginalConfig));
+                }
+            }
+            doc = builder.parse(in);
+        } catch (ParserConfigurationException | SAXException e) {
+            throw new RuntimeException(e);
+        }
 
-        writer.close();
+        if (mPort != null) {
+            // Add subprocess result reporter to a config file.
+            final Node root = doc.getElementsByTagName("configuration").item(0);
+            final Element reporter = doc.createElement(Configuration.RESULT_REPORTER_TYPE_NAME);
+            reporter.setAttribute(ConfigurationUtil.CLASS_NAME, REPORTER_CLASS);
+            final Element options = doc.createElement(ConfigurationUtil.OPTION_NAME);
+            options.setAttribute(ConfigurationUtil.NAME_NAME, OPTION_KEY);
+            options.setAttribute(ConfigurationUtil.VALUE_NAME, mPort);
+            reporter.appendChild(options);
+            root.appendChild(reporter);
+        }
+
+        File f = new File(mWorkDir, createConfigName(mOriginalConfig));
+        TransformerFactory transformerFactory = TransformerFactory.newInstance();
+        try {
+            Transformer transformer = transformerFactory.newTransformer();
+            transformer.transform(new DOMSource(doc), new StreamResult(f));
+        } catch (TransformerException e) {
+            throw new RuntimeException(e);
+        }
+
         return f;
     }
 }

@@ -34,11 +34,13 @@ import java.io.IOException;
 public class SubprocessReportingHelperTest {
     private SubprocessReportingHelper mHelper;
     private File mWorkDir;
+    private String mClasspath;
 
     @Before
     public void setUp() throws IOException {
-        mHelper = new SubprocessReportingHelper();
         mWorkDir = FileUtil.createTempDir("tfjar");
+        mClasspath = System.getProperty("java.class.path");
+        mHelper = new SubprocessReportingHelper("host", mClasspath, mWorkDir, null);
     }
 
     @After
@@ -48,7 +50,7 @@ public class SubprocessReportingHelperTest {
 
     @Test
     public void testCreateSubprocessReporterJar() throws IOException {
-        File jar = mHelper.createSubprocessReporterJar(mWorkDir);
+        File jar = mHelper.buildSubprocessReporterJar();
         assertNotNull(jar);
         File extractedJar = ZipUtil2.extractZipToTemp(jar, "tmp-jar");
         try {
@@ -56,24 +58,9 @@ public class SubprocessReportingHelperTest {
             assertNotNull(FileUtil.findFile(extractedJar, "SubprocessTestResultsParser.class"));
             assertNotNull(FileUtil.findFile(extractedJar, "SubprocessEventHelper.class"));
             assertNotNull(FileUtil.findFile(extractedJar, "SubprocessResultsReporter.class"));
+            assertNotNull(FileUtil.findFile(extractedJar, "host.xml"));
         } finally {
             FileUtil.recursiveDelete(extractedJar);
         }
-    }
-
-    @Test
-    public void testGetNewCommandLine() throws IOException {
-        String oldCommandLine = "cts arg1 arg2 arg3";
-        String newCommandLine = mHelper.buildNewCommandConfig(oldCommandLine, "1024", mWorkDir);
-        assertNotNull(FileUtil.findFile(mWorkDir, "_cts.xml"));
-        assertEquals("_cts.xml arg1 arg2 arg3", newCommandLine);
-    }
-
-    @Test
-    public void testGetNewCommandLine_withSlashes() throws IOException {
-        String oldCommandLine = "foo/bar/cts arg1 arg2 arg3";
-        String newCommandLine = mHelper.buildNewCommandConfig(oldCommandLine, "1024", mWorkDir);
-        assertNotNull(FileUtil.findFile(mWorkDir, "_foo\\$bar\\$cts.xml"));
-        assertEquals("_foo$bar$cts.xml arg1 arg2 arg3", newCommandLine);
     }
 }
