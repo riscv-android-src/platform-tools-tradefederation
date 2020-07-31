@@ -1237,24 +1237,25 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
     private IConfiguration createConfiguration(String[] args) throws ConfigurationException {
         TradefedDelegator delegator = checkDelegation(args);
         if (delegator.shouldUseDelegation()) {
-            String[] argsWithoutDelegation = TradefedDelegator.clearCommandline(args);
-            delegator.setCommandLine(argsWithoutDelegation);
-            CLog.d(
-                    "Using commandline arguments as starting command: %s",
-                    Arrays.asList(argsWithoutDelegation));
-            IConfiguration config =
-                    ((ConfigurationFactory) getConfigFactory())
-                            .createPartialConfigurationFromArgs(
-                                    argsWithoutDelegation,
-                                    getKeyStoreClient(),
-                                    ImmutableSet.of(
-                                            Configuration.DEVICE_REQUIREMENTS_TYPE_NAME,
-                                            Configuration.LOGGER_TYPE_NAME,
-                                            Configuration.LOG_SAVER_TYPE_NAME,
-                                            Configuration.RESULT_REPORTER_TYPE_NAME));
-            config.setConfigurationObject(TradefedDelegator.DELEGATE_OBJECT, delegator);
-            setDelegateLevelReporting(config);
-            return config;
+            args = TradefedDelegator.clearCommandline(args);
+            // Do not use delegation on staging
+            if (!delegator.isStaging()) {
+                delegator.setCommandLine(args);
+                CLog.d("Using commandline arguments as starting command: %s", Arrays.asList(args));
+                IConfiguration config =
+                        ((ConfigurationFactory) getConfigFactory())
+                                .createPartialConfigurationFromArgs(
+                                        args,
+                                        getKeyStoreClient(),
+                                        ImmutableSet.of(
+                                                Configuration.DEVICE_REQUIREMENTS_TYPE_NAME,
+                                                Configuration.LOGGER_TYPE_NAME,
+                                                Configuration.LOG_SAVER_TYPE_NAME,
+                                                Configuration.RESULT_REPORTER_TYPE_NAME));
+                config.setConfigurationObject(TradefedDelegator.DELEGATE_OBJECT, delegator);
+                setDelegateLevelReporting(config);
+                return config;
+            }
         }
 
         // check if the command should be sandboxed
