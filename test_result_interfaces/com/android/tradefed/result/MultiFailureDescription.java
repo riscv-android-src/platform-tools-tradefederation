@@ -49,7 +49,11 @@ public final class MultiFailureDescription extends FailureDescription {
      * @return The current {@link MultiFailureDescription}.
      */
     public MultiFailureDescription addFailure(FailureDescription failure) {
-        mFailures.add(failure);
+        if (failure instanceof MultiFailureDescription) {
+            addMultiFailures(((MultiFailureDescription) failure).getFailures());
+        } else {
+            mFailures.add(failure);
+        }
         return this;
     }
 
