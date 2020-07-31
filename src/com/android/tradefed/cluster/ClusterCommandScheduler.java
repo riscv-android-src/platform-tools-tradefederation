@@ -616,7 +616,9 @@ public class ClusterCommandScheduler extends CommandScheduler {
                         ClusterCommandEvent.createEventBuilder(commandTask)
                                 .setHostName(ClusterHostUtil.getHostName())
                                 .setType(ClusterCommandEvent.Type.ConfigurationError)
-                                .setData(ClusterCommandEvent.DATA_KEY_ERROR, e.toString())
+                                .setData(
+                                        ClusterCommandEvent.DATA_KEY_ERROR,
+                                        StreamUtil.getStackTrace(e))
                                 .build());
                 eventUploader.flush();
             }
