@@ -694,8 +694,7 @@ public class ClusterCommandScheduler extends CommandScheduler {
      */
     protected boolean dryRunCommand(final InvocationEventHandler handler, String[] args)
             throws ConfigurationException {
-        IConfiguration config =
-                getConfigFactory().createConfigurationFromArgs(args, null, getKeyStoreClient());
+        IConfiguration config = createConfiguration(args);
         if (config.getCommandOptions().isDryRunMode()) {
             IInvocationContext context = new InvocationContext();
             context.addDeviceBuildInfo("stub", new BuildInfo());
