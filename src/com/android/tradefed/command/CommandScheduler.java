@@ -1234,7 +1234,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         return GlobalConfiguration.getInstance().getSandboxFactory().createSandbox();
     }
 
-    private IConfiguration createConfiguration(String[] args) throws ConfigurationException {
+    protected IConfiguration createConfiguration(String[] args) throws ConfigurationException {
         TradefedDelegator delegator = checkDelegation(args);
         if (delegator.shouldUseDelegation()) {
             String[] argsWithoutDelegation = TradefedDelegator.clearCommandline(args);
