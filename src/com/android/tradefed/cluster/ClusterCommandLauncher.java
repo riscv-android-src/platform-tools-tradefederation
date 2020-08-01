@@ -160,37 +160,25 @@ public class ClusterCommandLauncher
         try (FileOutputStream stdout = new FileOutputStream(stdoutFile);
                 FileOutputStream stderr = new FileOutputStream(stderrFile)) {
 
-            String commandLine = mCommandLine;
             String classpath = buildJavaClasspath();
 
-            if (mOriginalCommandLine != null && !mOriginalCommandLine.equals(commandLine)) {
-                // Make sure a wrapper XML of the original command is available because retries
-                // try to run original commands in Q+. If the original command was run with
-                // subprocess reporting, a recorded command would be one with .xml suffix.
-                new SubprocessConfigBuilder()
-                        .setWorkingDir(testWorkDir)
-                        .setOriginalConfig(
-                                QuotationAwareTokenizer.tokenizeLine(mOriginalCommandLine)[0])
-                        .build();
-            }
+            // TODO(b/129111645): use proto reporting if a test suite supports it.
             if (mUseSubprocessReporting) {
-                SubprocessReportingHelper mHelper = new SubprocessReportingHelper();
-                // Create standalone jar for subprocess result reporter, which is used
-                // for pre-O cts. The created jar is put in front position of the class path to
-                // override class with the same name.
-                classpath =
-                        String.format(
-                                "%s:%s",
-                                mHelper.createSubprocessReporterJar(mRootDir).getAbsolutePath(),
-                                classpath);
                 subprocessEventParser =
                         createSubprocessTestResultsParser(listener, true, mInvocationContext);
-                String port = Integer.toString(subprocessEventParser.getSocketServerPort());
-                commandLine = mHelper.buildNewCommandConfig(commandLine, port, testWorkDir);
+                final String port = Integer.toString(subprocessEventParser.getSocketServerPort());
+                // Create injection jar for subprocess result reporter, which is used
+                // for pre-R xTS. The created jar is put in front position of the class path to
+                // override class with the same name.
+                final SubprocessReportingHelper mHelper =
+                        new SubprocessReportingHelper(mCommandLine, classpath, testWorkDir, port);
+                final File subprocessReporterJar = mHelper.buildSubprocessReporterJar();
+                classpath =
+                        String.format("%s:%s", subprocessReporterJar.getAbsolutePath(), classpath);
             }
 
-            List<String> javaCommandArgs = buildJavaCommandArgs(classpath, commandLine);
-            CLog.i("Running a command line: %s", commandLine);
+            List<String> javaCommandArgs = buildJavaCommandArgs(classpath, mCommandLine);
+            CLog.i("Running a command line: %s", mCommandLine);
             CLog.i("args = %s", javaCommandArgs);
             CLog.i("test working directory = %s", testWorkDir);
 
@@ -272,6 +260,7 @@ public class ClusterCommandLauncher
         // This expects TF_PATH to be a colon(:) separated list of paths where each path
         // points to a specific jar file or folder.
         // (example: path/to/tradefed.jar:path/to/tradefed/folder:...)
+        // TODO(b/162473907): deprecate TF_PATH.
         final Set<String> jars = new LinkedHashSet<>();
         for (final String path : tfPath.split(":")) {
             final File jarFile = new File(path);
@@ -282,6 +271,8 @@ public class ClusterCommandLauncher
             if (jarFile.isFile()) {
                 jars.add(jarFile.getAbsolutePath());
             } else {
+                // Add a folder path to the classpath to handle class file directories.
+                jars.add(jarFile.getAbsolutePath() + "/");
                 jars.add(new File(path, "*").getAbsolutePath());
             }
         }
