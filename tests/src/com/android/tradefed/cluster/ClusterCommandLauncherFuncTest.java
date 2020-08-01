@@ -29,6 +29,7 @@ import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
@@ -36,7 +37,6 @@ import com.android.tradefed.util.FileUtil;
 
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -59,6 +59,7 @@ public class ClusterCommandLauncherFuncTest {
     private IConfiguration mConfiguration;
     private IInvocationContext mInvocationContext;
     private OptionSetter mOptionSetter;
+    @Mock private TestInformation mTestInformation;
 
     @Spy private ClusterCommandLauncher mLauncher;
     @Mock private ITestInvocationListener mListener;
@@ -81,7 +82,7 @@ public class ClusterCommandLauncherFuncTest {
         FileUtil.recursiveDelete(mRootDir);
     }
 
-    @Ignore
+    // @Ignore
     @Test
     public void testRun_withLegacyTradefed()
             throws IOException, ConfigurationException, DeviceNotAvailableException {
@@ -91,7 +92,7 @@ public class ClusterCommandLauncherFuncTest {
         mOptionSetter.setOptionValue("cluster:use-subprocess-reporting", "true");
         mOptionSetter.setOptionValue("cluster:command-line", LEGACY_TRADEFED_COMMAND);
 
-        mLauncher.run(mListener);
+        mLauncher.run(mTestInformation, mListener);
 
         HashMap<String, MetricMeasurement.Metric> emptyMap = new HashMap<>();
         verify(mListener).testRunStarted(anyString(), anyInt(), anyInt(), anyLong());

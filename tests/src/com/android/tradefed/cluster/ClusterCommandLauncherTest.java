@@ -15,7 +15,6 @@
  */
 package com.android.tradefed.cluster;
 
-import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
 
 import com.android.tradefed.config.Configuration;
@@ -55,6 +54,7 @@ import java.util.List;
 public class ClusterCommandLauncherTest {
 
     private static final String DEVICE_SERIAL = "device_serial";
+    private static final String COMMAND = "host";
 
     private IRunUtil mMockRunUtil;
     private SubprocessTestResultsParser mMockSubprocessTestResultsParser;
@@ -119,14 +119,15 @@ public class ClusterCommandLauncherTest {
                         tfJar.getName(), mTfPath.getName(), mTfLibDir.getName());
         final List<String> jars = new ArrayList<>();
         jars.add(tfJar.getAbsolutePath());
+        jars.add(String.format("%s/", mTfPath));
         jars.add(String.format("%s/*", mTfPath));
+        jars.add(String.format("%s/", mTfLibDir));
         jars.add(String.format("%s/*", mTfLibDir));
         final String classPath = ArrayUtil.join(":", jars);
         mOptionSetter.setOptionValue("cluster:jvm-option", "-Xmx1g");
         mOptionSetter.setOptionValue("cluster:env-var", "TF_PATH", tfPathValue);
         mOptionSetter.setOptionValue("cluster:java-property", "FOO", "${TF_WORK_DIR}/foo");
-        mOptionSetter.setOptionValue("cluster:original-command-line", "original-command-line");
-        mOptionSetter.setOptionValue("cluster:command-line", "command-line");
+        mOptionSetter.setOptionValue("cluster:command-line", COMMAND);
         final String expandedTfPathValue =
                 String.format(
                         "%s:%s:%s",
@@ -161,25 +162,24 @@ public class ClusterCommandLauncherTest {
                                     "-Xmx1g",
                                     "-DFOO=" + mRootDir.getAbsolutePath() + "/foo",
                                     "com.android.tradefed.command.CommandRunner",
-                                    "command-line",
+                                    COMMAND,
                                     "--serial",
                                     DEVICE_SERIAL
                                 }));
-        assertTrue(new File(mRootDir, "_original-command-line.xml").exists());
     }
 
     @Test
     public void testRun_withSetupScripts()
             throws DeviceNotAvailableException, ConfigurationException {
         mInvocationContext.addAllocatedDevice("foo", mMockTestDevice);
-        final String classpath = String.format("%s/*", mTfPath);
+        final String classpath = String.format("%s/:%s/*", mTfPath, mTfPath);
         mOptionSetter.setOptionValue("cluster:env-var", "TF_PATH", mTfPath.getAbsolutePath());
         mOptionSetter.setOptionValue("cluster:env-var", "FOO", "foo");
         mOptionSetter.setOptionValue("cluster:env-var", "BAR", "bar");
         mOptionSetter.setOptionValue("cluster:env-var", "ZZZ", "zzz");
         mOptionSetter.setOptionValue("cluster:setup-script", "foo bar zzz");
         mOptionSetter.setOptionValue("cluster:setup-script", "${FOO} ${BAR} ${ZZZ}");
-        mOptionSetter.setOptionValue("cluster:command-line", "command-line");
+        mOptionSetter.setOptionValue("cluster:command-line", COMMAND);
         final CommandResult mockCommandResult = new CommandResult(CommandStatus.SUCCESS);
         when(mMockRunUtil.runTimedCmd(
                         Mockito.anyLong(),
@@ -215,7 +215,7 @@ public class ClusterCommandLauncherTest {
                                     "-cp",
                                     classpath,
                                     "com.android.tradefed.command.CommandRunner",
-                                    "command-line",
+                                    COMMAND,
                                     "--serial",
                                     DEVICE_SERIAL
                                 }));
@@ -225,9 +225,23 @@ public class ClusterCommandLauncherTest {
     public void testRun_withUseSubprocessReporting()
             throws DeviceNotAvailableException, ConfigurationException, IOException {
         mInvocationContext.addAllocatedDevice("foo", mMockTestDevice);
-        final String classpath = String.format("%s/*", mTfPath);
-        mOptionSetter.setOptionValue("cluster:env-var", "TF_PATH", mTfPath.getAbsolutePath());
-        mOptionSetter.setOptionValue("cluster:command-line", "command-line");
+        // We need to use the real TF path to allow ClusterCommandLauncher to find a config.
+        final File tfPath =
+                new File(
+                        ClusterCommandLauncher.class
+                                .getProtectionDomain()
+                                .getCodeSource()
+                                .getLocation()
+                                .getPath());
+        String classpath;
+        if (tfPath.isDirectory()) {
+            classpath =
+                    String.format("%s/:%s/*", tfPath.getAbsolutePath(), tfPath.getAbsolutePath());
+        } else {
+            classpath = tfPath.getAbsolutePath();
+        }
+        mOptionSetter.setOptionValue("cluster:env-var", "TF_PATH", tfPath.getAbsolutePath());
+        mOptionSetter.setOptionValue("cluster:command-line", COMMAND);
         mOptionSetter.setOptionValue("cluster:use-subprocess-reporting", "true");
         when(mMockSubprocessTestResultsParser.getSocketServerPort()).thenReturn(123);
         Mockito.when(
@@ -241,18 +255,16 @@ public class ClusterCommandLauncherTest {
                         Mockito.<OutputStream>any(),
                         Mockito.<String[]>any()))
                 .thenReturn(mockCommandResult);
-        final File subprocessReporterConfig = new File(mRootDir, "_command-line.xml");
         Mockito.when(mLauncher.getRunUtil()).thenReturn(mMockRunUtil);
 
         mLauncher.run(mMockTestInformation, mMockListener);
 
         String subprocessJar =
                 FileUtil.findFile(mRootDir, "subprocess-results-reporter.jar").getAbsolutePath();
-        assertTrue(subprocessReporterConfig.exists());
         Mockito.verify(mMockRunUtil, Mockito.times(2)).setWorkingDir(mRootDir);
         Mockito.verify(mMockRunUtil).unsetEnvVariable("TF_GLOBAL_CONFIG");
         Mockito.verify(mMockRunUtil).setEnvVariable("TF_WORK_DIR", mRootDir.getAbsolutePath());
-        Mockito.verify(mMockRunUtil).setEnvVariable("TF_PATH", mTfPath.getAbsolutePath());
+        Mockito.verify(mMockRunUtil).setEnvVariable("TF_PATH", tfPath.getAbsolutePath());
         Mockito.verify(mMockRunUtil).unsetEnvVariable("TF_GLOBAL_CONFIG");
         Mockito.verify(mMockRunUtil)
                 .runTimedCmd(
@@ -265,7 +277,7 @@ public class ClusterCommandLauncherTest {
                                     "-cp",
                                     subprocessJar + ":" + classpath,
                                     "com.android.tradefed.command.CommandRunner",
-                                    subprocessReporterConfig.getName(),
+                                    COMMAND,
                                     "--serial",
                                     DEVICE_SERIAL,
                                 }));
