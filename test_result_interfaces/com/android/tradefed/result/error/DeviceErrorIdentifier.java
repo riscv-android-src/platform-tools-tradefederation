@@ -24,13 +24,14 @@ public enum DeviceErrorIdentifier implements ErrorIdentifier {
     // Device Errors: 520_001 ~ 530_000
     // ********************************************************************************************
     APK_INSTALLATION_FAILED(520_001, FailureStatus.DEPENDENCY_ISSUE),
+    FAIL_ACTIVATE_APEX(520_002, FailureStatus.DEPENDENCY_ISSUE),
 
     AAPT_PARSER_FAILED(520_050, FailureStatus.DEPENDENCY_ISSUE),
 
     SHELL_COMMAND_ERROR(520_100, FailureStatus.DEPENDENCY_ISSUE),
     DEVICE_UNEXPECTED_RESPONSE(30_101, FailureStatus.DEPENDENCY_ISSUE),
 
-    INSTRUMENATION_CRASH(520_200, FailureStatus.SYSTEM_UNDER_TEST_CRASHED),
+    INSTRUMENTATION_CRASH(520_200, FailureStatus.SYSTEM_UNDER_TEST_CRASHED),
 
     FAILED_TO_LAUNCH_GCE(520_500, FailureStatus.LOST_SYSTEM_UNDER_TEST),
     FAILED_TO_CONNECT_TO_GCE(520_501, FailureStatus.LOST_SYSTEM_UNDER_TEST),
