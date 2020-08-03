@@ -380,7 +380,7 @@ public class DynamicRemoteFileResolver {
             fileToResolve = new File(protocol + ":" + uri.getPath());
         } catch (URISyntaxException e) {
             CLog.e(e);
-            return null;
+            throw new BuildRetrievalError(e.getMessage(), e);
         }
 
         try {
