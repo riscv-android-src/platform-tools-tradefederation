@@ -67,7 +67,7 @@ public abstract class DeviceUpdateTargetPreparer extends DeviceBuildInfoBootStra
             throw new TargetSetupError(
                     "Device image file not found: " + deviceUpdateImage.getAbsolutePath(),
                     device.getDeviceDescriptor(),
-                    InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
+                    InfraErrorIdentifier.CONFIGURED_ARTIFACT_NOT_FOUND);
         }
         preUpdateActions(deviceUpdateImage, device);
         // flashing concurrency control

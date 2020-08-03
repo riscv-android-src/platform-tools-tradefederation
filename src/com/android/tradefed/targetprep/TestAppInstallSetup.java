@@ -251,7 +251,7 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
                             apkFileName, testInfo.getBuildInfo().toString()),
                     ioe,
                     testInfo.getDevice().getDeviceDescriptor(),
-                    InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
+                    InfraErrorIdentifier.CONFIGURED_ARTIFACT_NOT_FOUND);
         }
     }
 
@@ -471,7 +471,7 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
                     throw new TargetSetupError(
                             String.format("Test app %s was not found.", apkFile.getName()),
                             device.getDeviceDescriptor(),
-                            InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
+                            InfraErrorIdentifier.CONFIGURED_ARTIFACT_NOT_FOUND);
                 } else {
                     CLog.d("Test app %s was not found.", apkFile.getName());
                     continue;

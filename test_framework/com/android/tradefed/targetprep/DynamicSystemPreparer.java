@@ -62,7 +62,7 @@ public class DynamicSystemPreparer extends BaseTargetPreparer {
             throw new BuildError(
                     "Cannot find " + mSystemImageZipName + " in build info.",
                     device.getDeviceDescriptor(),
-                    InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
+                    InfraErrorIdentifier.CONFIGURED_ARTIFACT_NOT_FOUND);
         }
 
         ZipFile zipFile = null;

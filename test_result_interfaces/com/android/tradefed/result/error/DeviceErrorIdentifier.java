@@ -21,23 +21,23 @@ import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 public enum DeviceErrorIdentifier implements ErrorIdentifier {
 
     // ********************************************************************************************
-    // Device Errors: 30_001 ~ 40_000
+    // Device Errors: 520_001 ~ 530_000
     // ********************************************************************************************
-    APK_INSTALLATION_FAILED(30_001, FailureStatus.UNSET),
+    APK_INSTALLATION_FAILED(520_001, FailureStatus.DEPENDENCY_ISSUE),
 
-    AAPT_PARSER_FAILED(30_050, FailureStatus.UNSET),
+    AAPT_PARSER_FAILED(520_050, FailureStatus.DEPENDENCY_ISSUE),
 
-    SHELL_COMMAND_ERROR(30_100, FailureStatus.UNSET),
-    DEVICE_UNEXPECTED_RESPONSE(30_101, FailureStatus.UNSET),
+    SHELL_COMMAND_ERROR(520_100, FailureStatus.DEPENDENCY_ISSUE),
+    DEVICE_UNEXPECTED_RESPONSE(30_101, FailureStatus.DEPENDENCY_ISSUE),
 
-    INSTRUMENATION_CRASH(30_200, FailureStatus.UNSET),
+    INSTRUMENATION_CRASH(520_200, FailureStatus.SYSTEM_UNDER_TEST_CRASHED),
 
-    FAILED_TO_LAUNCH_GCE(30_500, FailureStatus.LOST_SYSTEM_UNDER_TEST),
-    FAILED_TO_CONNECT_TO_GCE(30_501, FailureStatus.LOST_SYSTEM_UNDER_TEST),
-    ERROR_AFTER_FLASHING(30_502, FailureStatus.LOST_SYSTEM_UNDER_TEST),
+    FAILED_TO_LAUNCH_GCE(520_500, FailureStatus.LOST_SYSTEM_UNDER_TEST),
+    FAILED_TO_CONNECT_TO_GCE(520_501, FailureStatus.LOST_SYSTEM_UNDER_TEST),
+    ERROR_AFTER_FLASHING(520_502, FailureStatus.LOST_SYSTEM_UNDER_TEST),
 
-    DEVICE_UNAVAILABLE(30_750, FailureStatus.LOST_SYSTEM_UNDER_TEST),
-    DEVICE_UNRESPONSIVE(30_751, FailureStatus.LOST_SYSTEM_UNDER_TEST);
+    DEVICE_UNAVAILABLE(520_750, FailureStatus.LOST_SYSTEM_UNDER_TEST),
+    DEVICE_UNRESPONSIVE(520_751, FailureStatus.LOST_SYSTEM_UNDER_TEST);
 
     private final long code;
     private final FailureStatus status;
