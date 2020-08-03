@@ -169,7 +169,8 @@ public abstract class ExecutableBaseTest
                         FailureDescription.create(
                                         String.format(NO_BINARY_ERROR, cmd),
                                         FailureStatus.TEST_FAILURE)
-                                .setErrorIdentifier(InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
+                                .setErrorIdentifier(
+                                        InfraErrorIdentifier.CONFIGURED_ARTIFACT_NOT_FOUND);
                 listener.testRunFailed(failure);
                 listener.testRunEnded(0L, new HashMap<String, Metric>());
             } else {

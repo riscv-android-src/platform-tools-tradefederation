@@ -258,7 +258,7 @@ public class MixImageZipPreparer extends BaseMultiTargetPreparer {
                     throw new BuildError(
                             "Cannot get " + MISC_INFO_FILE_NAME + " from device build.",
                             device.getDeviceDescriptor(),
-                            InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
+                            InfraErrorIdentifier.CONFIGURED_ARTIFACT_NOT_FOUND);
                 }
 
                 File otaToolsZip = mOtaToolsZip;
@@ -269,7 +269,7 @@ public class MixImageZipPreparer extends BaseMultiTargetPreparer {
                     throw new BuildError(
                             "Cannot get " + OTATOOLS_ZIP_NAME + " from system build.",
                             systemNullDevice.getDeviceDescriptor(),
-                            InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
+                            InfraErrorIdentifier.CONFIGURED_ARTIFACT_NOT_FOUND);
                 }
 
                 File repackSuperImageFile = mRepackSuperImageFile;
@@ -280,7 +280,7 @@ public class MixImageZipPreparer extends BaseMultiTargetPreparer {
                     throw new BuildError(
                             "Cannot get " + REPACK_SUPER_IMAGE_FILE_NAME + " from system build.",
                             systemNullDevice.getDeviceDescriptor(),
-                            InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
+                            InfraErrorIdentifier.CONFIGURED_ARTIFACT_NOT_FOUND);
                 }
 
                 mixedSuperImage = FileUtil.createTempFile("super", ".img");
