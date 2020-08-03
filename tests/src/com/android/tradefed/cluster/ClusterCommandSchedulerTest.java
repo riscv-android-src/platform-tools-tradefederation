@@ -1421,8 +1421,8 @@ public class ClusterCommandSchedulerTest {
 
         // command status is CANCELED
         mMockClusterClient = Mockito.mock(IClusterClient.class, RETURNS_DEEP_STUBS);
-        Mockito.when(mMockClusterClient.getCommandState(any(), any()))
-                .thenReturn(ClusterCommand.State.CANCELED);
+        Mockito.when(mMockClusterClient.getCommandStatus(any(), any()))
+                .thenReturn(new ClusterCommandStatus(ClusterCommand.State.CANCELED, "Reason"));
 
         // not stopped if check is disabled
         mMockClusterOptions.setCheckCommandState(false);
@@ -1434,7 +1434,7 @@ public class ClusterCommandSchedulerTest {
         heartbeat.run();
         assertTrue(scheduler.wasStopInvocationCalled());
 
-        Mockito.verify(mMockClusterClient, Mockito.times(1)).getCommandState(any(), any());
+        Mockito.verify(mMockClusterClient, Mockito.times(1)).getCommandStatus(any(), any());
     }
 
     /** Tests whether the heartbeat can determine the invocationId to stop. */
@@ -1450,8 +1450,8 @@ public class ClusterCommandSchedulerTest {
 
         // command status is CANCELED
         mMockClusterClient = Mockito.mock(IClusterClient.class, RETURNS_DEEP_STUBS);
-        Mockito.when(mMockClusterClient.getCommandState(any(), any()))
-                .thenReturn(ClusterCommand.State.CANCELED);
+        Mockito.when(mMockClusterClient.getCommandStatus(any(), any()))
+                .thenReturn(new ClusterCommandStatus(ClusterCommand.State.CANCELED, "Reason"));
 
         // not stopped without invocation context
         heartbeat.run();
@@ -1473,7 +1473,7 @@ public class ClusterCommandSchedulerTest {
         heartbeat.run();
         assertTrue(scheduler.wasStopInvocationCalled());
 
-        Mockito.verify(mMockClusterClient, Mockito.times(4)).getCommandState(any(), any());
+        Mockito.verify(mMockClusterClient, Mockito.times(4)).getCommandStatus(any(), any());
     }
 
     /** Tests whether the heartbeat can determine the cluster command state. */
