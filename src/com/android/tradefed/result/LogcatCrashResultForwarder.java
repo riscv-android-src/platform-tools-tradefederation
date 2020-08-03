@@ -107,7 +107,7 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
         }
         error.setErrorMessage(errorMessage);
         if (isCrash(errorMessage)) {
-            error.setErrorIdentifier(DeviceErrorIdentifier.INSTRUMENATION_CRASH);
+            error.setErrorIdentifier(DeviceErrorIdentifier.INSTRUMENTATION_CRASH);
         }
         super.testRunFailed(error);
     }
