@@ -158,7 +158,8 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
                     String.format(
                             "Failed to activate %s on device %s.",
                             listApexInfo(failToActivateApex).toString(), device.getSerialNumber()),
-                    device.getDeviceDescriptor());
+                    device.getDeviceDescriptor(),
+                    DeviceErrorIdentifier.FAIL_ACTIVATE_APEX);
         }
         CLog.i("Train activation succeed.");
     }
