@@ -44,6 +44,9 @@ public enum InfraErrorIdentifier implements ErrorIdentifier {
     // 502_000 - 502_100: Test issues detected by infra
     EXPECTED_TESTS_MISMATCH(502_000, FailureStatus.TEST_FAILURE),
 
+    // 505_000 - 505_250: Acloud errors
+    NO_ACLOUD_REPORT(505_000, FailureStatus.DEPENDENCY_ISSUE),
+
     UNDETERMINED(510_000, FailureStatus.UNSET);
 
     private final long code;
