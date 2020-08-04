@@ -159,7 +159,7 @@ public class DelegatedInvocationExecution extends InvocationExecution {
             }
             if (result.getStatus().equals(CommandStatus.TIMED_OUT)) {
                 throw new HarnessRuntimeException(
-                        "Delegated invocation timed out.", InfraErrorIdentifier.UNDETERMINED);
+                        "Delegated invocation timed out.", InfraErrorIdentifier.INVOCATION_TIMEOUT);
             }
         } finally {
             StreamUtil.close(mStderr);

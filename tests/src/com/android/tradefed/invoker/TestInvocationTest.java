@@ -1149,9 +1149,12 @@ public class TestInvocationTest {
                 mMockTestListener.invocationFailed(EasyMock.<FailureDescription>anyObject());
                 mMockSummaryListener.invocationFailed(EasyMock.<FailureDescription>anyObject());
             } else {
+                FailureStatus failureStatus = FailureStatus.INFRA_FAILURE;
+                if (throwable instanceof BuildError) {
+                    failureStatus = FailureStatus.DEPENDENCY_ISSUE;
+                }
                 FailureDescription failure =
-                        FailureDescription.create(
-                                        throwable.getMessage(), FailureStatus.INFRA_FAILURE)
+                        FailureDescription.create(throwable.getMessage(), failureStatus)
                                 .setCause(throwable);
                 if (throwable instanceof BuildRetrievalError) {
                     failure.setActionInProgress(ActionInProgress.FETCHING_ARTIFACTS);
