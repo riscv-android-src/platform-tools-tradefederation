@@ -46,6 +46,8 @@ public class FilePullerLogCollector extends FilePullerDeviceMetricCollector {
                     type = LogDataType.PB;
                 } else if (".mp4".equals(ext)) {
                     type = LogDataType.MP4;
+                } else if (".hprof".equals(ext)) {
+                    type = LogDataType.HPROF;
                 }
                 testLog(metricFile.getName(), type, source);
             }
