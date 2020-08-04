@@ -63,6 +63,7 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
 
     private GceManager mGceHandler = null;
     private GceSshTunnelMonitor mGceSshMonitor;
+    private DeviceNotAvailableException mTunnelInitFailed = null;
 
     private static final long WAIT_FOR_TUNNEL_ONLINE = 2 * 60 * 1000;
     private static final long WAIT_AFTER_REBOOT = 60 * 1000;
@@ -91,6 +92,7 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
         try {
             mGceAvd = null;
             mGceSshMonitor = null;
+            mTunnelInitFailed = null;
             // We create a brand new GceManager each time to ensure clean state.
             mGceHandler = new GceManager(getDeviceDescriptor(), getOptions(), info);
             getGceHandler().logStableHostImageInfos(info);
@@ -269,7 +271,10 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
                         String.format(
                                 "Device failed to boot. Error from Acloud: %s",
                                 mGceAvd.getErrors());
-                throw new TargetSetupError(errorMsg, getDeviceDescriptor());
+                throw new TargetSetupError(
+                        errorMsg,
+                        getDeviceDescriptor(),
+                        DeviceErrorIdentifier.FAILED_TO_LAUNCH_GCE);
             }
         }
         createGceSshMonitor(this, buildInfo, mGceAvd.hostAndPort(), this.getOptions());
@@ -322,14 +327,20 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
             }
             getRunUtil().sleep(RETRY_INTERVAL_MS);
         }
-        throw new DeviceNotAvailableException(
-                String.format("Tunnel did not come back online after %sms", waitTime),
-                getSerialNumber(),
-                DeviceErrorIdentifier.FAILED_TO_CONNECT_TO_GCE);
+        mTunnelInitFailed =
+                new DeviceNotAvailableException(
+                        String.format("Tunnel did not come back online after %sms", waitTime),
+                        getSerialNumber(),
+                        DeviceErrorIdentifier.FAILED_TO_CONNECT_TO_GCE);
+        throw mTunnelInitFailed;
     }
 
     @Override
     public void recoverDevice() throws DeviceNotAvailableException {
+        if (getGceSshMonitor() == null && mTunnelInitFailed != null) {
+            // We threw before but was not reported, so throw the root cause here.
+            throw mTunnelInitFailed;
+        }
         // Re-init tunnel when attempting recovery
         CLog.i("Attempting recovery on GCE AVD %s", getSerialNumber());
         getGceSshMonitor().closeConnection();
