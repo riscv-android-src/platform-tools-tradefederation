@@ -416,7 +416,7 @@ public abstract class SubprocessTfLauncher
                                     "%s Tests subprocess failed due to:\n%s\n",
                                     mConfigName, errMessage),
                             InfraErrorIdentifier.INVOCATION_TIMEOUT);
-                } else {
+                } else if (eventParser != null && !eventParser.reportedInvocationFailed()) {
                     SubprocessExceptionParser.handleStderrException(result);
                 }
             }
