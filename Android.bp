@@ -210,7 +210,6 @@ droiddoc_host {
           "-werror " +
           "-package " +
           "-devsite ",
-    create_stubs: false,
 }
 
 sh_binary_host {
