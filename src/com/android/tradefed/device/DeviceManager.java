@@ -194,6 +194,8 @@ public class DeviceManager implements IDeviceManager {
     /** Flag to remember if adb bridge has been disconnected and needs to be reset * */
     private boolean mAdbBridgeNeedRestart = false;
 
+    private Map<String, String> mMonitoringTcpFastbootDevices = new HashMap<>();
+
     /**
      * The DeviceManager should be retrieved from the {@link GlobalConfiguration}
      */
@@ -1343,6 +1345,11 @@ public class DeviceManager implements IDeviceManager {
             final FastbootHelper fastboot = new FastbootHelper(getRunUtil(), getFastbootPath());
             while (!mQuit) {
                 Map<String, Boolean> serialAndMode = fastboot.getBootloaderAndFastbootdDevices();
+
+                serialAndMode.putAll(
+                        fastboot.getBootloaderAndFastbootdTcpDevices(
+                                mMonitoringTcpFastbootDevices));
+
                 if (serialAndMode != null) {
                     // Update known bootloader devices state
                     Set<String> bootloader = new HashSet<>();
@@ -1581,5 +1588,11 @@ public class DeviceManager implements IDeviceManager {
     @Override
     public String getAdbVersion() {
         return mAdbBridge.getAdbVersion(mAdbPath);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void addMonitoringTcpFastbootDevice(String serial, String fastboot_serial) {
+        mMonitoringTcpFastbootDevices.put(serial, fastboot_serial);
     }
 }
