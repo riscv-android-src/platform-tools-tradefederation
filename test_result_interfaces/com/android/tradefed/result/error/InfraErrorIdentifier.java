@@ -30,11 +30,12 @@ public enum InfraErrorIdentifier implements ErrorIdentifier {
     CODE_COVERAGE_ERROR(500_004, FailureStatus.INFRA_FAILURE),
     MODULE_SETUP_RUNTIME_EXCEPTION(500_005, FailureStatus.CUSTOMER_ISSUE),
     CONFIGURED_ARTIFACT_NOT_FOUND(500_006, FailureStatus.CUSTOMER_ISSUE),
+    INVOCATION_TIMEOUT(500_007, FailureStatus.TIMED_OUT),
 
     // 500_501 - 501_000: Build, Artifacts download related errors
     ARTIFACT_REMOTE_PATH_NULL(500_501, FailureStatus.INFRA_FAILURE),
     ARTIFACT_UNSUPPORTED_PATH(500_502, FailureStatus.INFRA_FAILURE),
-    ARTIFACT_DOWNLOAD_ERROR(500_503, FailureStatus.INFRA_FAILURE),
+    ARTIFACT_DOWNLOAD_ERROR(500_503, FailureStatus.DEPENDENCY_ISSUE),
     GCS_ERROR(500_504, FailureStatus.DEPENDENCY_ISSUE),
 
     // 501_001 - 501_500: environment issues: For example: lab wifi
