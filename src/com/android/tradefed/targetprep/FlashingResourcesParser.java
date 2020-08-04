@@ -277,7 +277,7 @@ public class FlashingResourcesParser implements IFlashingResourcesParser {
                                 "Could not find %s in device image zip %s",
                                 ANDROID_INFO_FILE_NAME, deviceImgZipFile.getName()),
                         nullDescriptor,
-                        InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
+                        InfraErrorIdentifier.CONFIGURED_ARTIFACT_NOT_FOUND);
             }
             infoReader = new BufferedReader(new InputStreamReader(
                     deviceZip.getInputStream(androidInfoEntry)));

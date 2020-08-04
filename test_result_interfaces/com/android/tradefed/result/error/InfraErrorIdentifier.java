@@ -21,25 +21,30 @@ import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 public enum InfraErrorIdentifier implements ErrorIdentifier {
 
     // ********************************************************************************************
-    // Infra: 10_001 ~ 20_000
+    // Infra: 500_001 ~ 510_000
     // ********************************************************************************************
-    // 10_001 - 10_500: General errors
-    ARTIFACT_NOT_FOUND(10_001, FailureStatus.INFRA_FAILURE),
-    FAIL_TO_CREATE_FILE(10_002, FailureStatus.INFRA_FAILURE),
-    INVOCATION_CANCELLED(10_003, FailureStatus.CANCELLED),
+    // 500_001 - 500_500: General errors
+    ARTIFACT_NOT_FOUND(500_001, FailureStatus.DEPENDENCY_ISSUE),
+    FAIL_TO_CREATE_FILE(500_002, FailureStatus.INFRA_FAILURE),
+    INVOCATION_CANCELLED(500_003, FailureStatus.CANCELLED),
+    CODE_COVERAGE_ERROR(500_004, FailureStatus.INFRA_FAILURE),
+    MODULE_SETUP_RUNTIME_EXCEPTION(500_005, FailureStatus.CUSTOMER_ISSUE),
+    CONFIGURED_ARTIFACT_NOT_FOUND(500_006, FailureStatus.CUSTOMER_ISSUE),
 
-    // 10_501 - 11_000: Build, Artifacts download related errors
-    ARTIFACT_REMOTE_PATH_NULL(10_501, FailureStatus.INFRA_FAILURE),
-    ARTIFACT_UNSUPPORTED_PATH(10_502, FailureStatus.INFRA_FAILURE),
-    ARTIFACT_DOWNLOAD_ERROR(10_503, FailureStatus.INFRA_FAILURE),
+    // 500_501 - 501_000: Build, Artifacts download related errors
+    ARTIFACT_REMOTE_PATH_NULL(500_501, FailureStatus.INFRA_FAILURE),
+    ARTIFACT_UNSUPPORTED_PATH(500_502, FailureStatus.INFRA_FAILURE),
+    ARTIFACT_DOWNLOAD_ERROR(500_503, FailureStatus.INFRA_FAILURE),
+    GCS_ERROR(500_504, FailureStatus.DEPENDENCY_ISSUE),
 
-    // 11_001 - 11_500: environment issues: For example: lab wifi
-    WIFI_FAILED_CONNECT(11_001, FailureStatus.UNSET), // TODO: switch to dependency_issue
+    // 501_001 - 501_500: environment issues: For example: lab wifi
+    WIFI_FAILED_CONNECT(501_001, FailureStatus.DEPENDENCY_ISSUE),
+    GOOGLE_ACCOUNT_SETUP_FAILED(501_002, FailureStatus.DEPENDENCY_ISSUE),
 
-    // 12_000 - 12_100: Test issues detected by infra
-    EXPECTED_TESTS_MISMATCH(12_000, FailureStatus.TEST_FAILURE),
+    // 502_000 - 502_100: Test issues detected by infra
+    EXPECTED_TESTS_MISMATCH(502_000, FailureStatus.TEST_FAILURE),
 
-    UNDETERMINED(20_000, FailureStatus.UNSET);
+    UNDETERMINED(510_000, FailureStatus.UNSET);
 
     private final long code;
     private final FailureStatus status;

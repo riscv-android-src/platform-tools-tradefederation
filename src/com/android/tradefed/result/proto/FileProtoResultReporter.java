@@ -92,6 +92,11 @@ public class FileProtoResultReporter extends ProtoResultReporter {
         mPeriodicWriting = enabled;
     }
 
+    /** Whether or not periodic writing is enabled. */
+    public boolean isPeriodicWriting() {
+        return mPeriodicWriting;
+    }
+
     private void writeProto(TestRecord record) {
         if (mOutputFile == null) {
             return;

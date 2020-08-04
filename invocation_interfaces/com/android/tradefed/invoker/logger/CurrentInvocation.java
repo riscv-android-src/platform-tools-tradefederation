@@ -174,6 +174,7 @@ public class CurrentInvocation {
         }
         if (errorIdentifier != null) {
             failure.setErrorIdentifier(errorIdentifier);
+            failure.setFailureStatus(errorIdentifier.status());
         }
         // Automatically populate the origin
         Class<?> clazz = StackWalker.getInstance(Option.RETAIN_CLASS_REFERENCE).getCallerClass();

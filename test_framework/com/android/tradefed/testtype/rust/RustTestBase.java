@@ -25,12 +25,11 @@ import com.android.tradefed.testtype.ITestFilterReceiver;
 
 import com.google.common.annotations.VisibleForTesting;
 
-import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /** Base class of RustBinaryHostTest and RustBinaryTest */
@@ -51,47 +50,16 @@ public abstract class RustTestBase implements IRemoteTest, ITestFilterReceiver {
             isTimeVal = true)
     protected long mTestTimeout = 20 * 1000L; // milliseconds
 
-    @Option(
-            name = "include-filter",
-            description = "A substr filter of the test names to run; only the first one is used.")
+    @Option(name = "include-filter", description = "A substr filter of test case names to run.")
     private Set<String> mIncludeFilters = new LinkedHashSet<>();
 
-    @Option(name = "exclude-filter", description = "A substr filter of the test names to skip.")
+    @Option(name = "exclude-filter", description = "A substr filter of test case names to skip.")
     private Set<String> mExcludeFilters = new LinkedHashSet<>();
 
     // A wrapper that can be redefined in unit tests to create a (mocked) result parser.
     @VisibleForTesting
     IShellOutputReceiver createParser(ITestInvocationListener listener, String runName) {
         return new RustTestResultParser(listener, runName);
-    }
-
-    /**
-     * Parse and return the number of tests from the list of tests from a Rust test harness.
-     *
-     * @param testList the output of the Rust test list (output of `test_binary --list`).
-     */
-    protected static int parseTestListCount(String[] testList) throws ParseException {
-        // Get the number of tests we are running, assuming this is a standard
-        // rust test harness. If this isn't, this command will fail and we will
-        // report 0 tests, which is fine.
-        int testCount = 0;
-        if (testList.length > 0) {
-            Matcher matcher = TEST_LIST_PATTERN.matcher(testList[testList.length - 1]);
-            if (matcher.matches()) {
-                testCount = Integer.parseInt(matcher.group(1));
-            } else {
-                throw new ParseException(
-                        "Could not match total test/benchmark count output. "
-                                + "Does this test use the standard Rust test harness?",
-                        0);
-            }
-        } else {
-            throw new ParseException(
-                    "Test did not return any output with --list argument. "
-                            + "Does this test use the standard Rust test harness?",
-                    0);
-        }
-        return testCount;
     }
 
     /** {@inheritDoc} */
@@ -142,31 +110,48 @@ public abstract class RustTestBase implements IRemoteTest, ITestFilterReceiver {
         return mExcludeFilters;
     }
 
-    private void checkMultipleIncludeFilters() {
-        if (mIncludeFilters.size() > 1) {
-            CLog.e("Found multiple include filters; all except the 1st are ignored.");
+    /** Find test case names in testList and add them into foundTests. */
+    protected static void collectTestLines(String[] testList, Set<String> foundTests) {
+        // Rust test --list returns "testName: test" for each test.
+        int counter = 0;
+        for (String line : testList) {
+            if (line.endsWith(": test")) {
+                counter++;
+                foundTests.add(line);
+            }
         }
+        CLog.d("Found %d tests", counter);
     }
 
-    protected void addFiltersToArgs(List<String> args) {
-        checkMultipleIncludeFilters();
-        for (String s : mIncludeFilters) {
-            args.add(s);
+    /** Convert TestBinaryName#TestCaseName to TestCaseName for Rust Test. */
+    protected String cleanFilter(String filter) {
+        return filter.replaceFirst(".*#", "");
+    }
+
+    protected List<String> getListOfIncludeFilters() {
+        if (mIncludeFilters.isEmpty()) {
+            // Run test only once without any include filter.
+            return new ArrayList<String>(Arrays.asList(""));
+        }
+        return new ArrayList<String>(mIncludeFilters);
+    }
+
+    protected void addFiltersToArgs(List<String> args, String filter) {
+        if (!"".equals(filter)) {
+            args.add(cleanFilter(filter));
         }
         for (String s : mExcludeFilters) {
             args.add("--skip");
-            args.add(s);
+            args.add(cleanFilter(s));
         }
     }
 
-    protected String addFiltersToCommand(String cmd) {
-        if (!mIncludeFilters.isEmpty()) {
-            checkMultipleIncludeFilters();
-            cmd += " " + String.join(" ", mIncludeFilters);
+    protected String addFiltersToCommand(String cmd, String filter) {
+        List<String> args = new ArrayList<>();
+        addFiltersToArgs(args, filter);
+        if (args.isEmpty()) {
+            return cmd;
         }
-        if (!mExcludeFilters.isEmpty()) {
-            cmd += " --skip " + String.join(" --skip ", mExcludeFilters);
-        }
-        return cmd;
+        return cmd + " " + String.join(" ", args);
     }
 }

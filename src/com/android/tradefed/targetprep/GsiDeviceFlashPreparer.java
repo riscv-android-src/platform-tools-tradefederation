@@ -26,6 +26,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -102,7 +103,7 @@ public class GsiDeviceFlashPreparer extends BaseTargetPreparer {
 
         File tmpDir = null;
         try {
-            tmpDir = FileUtil.createTempDir("gki_preparer");
+            tmpDir = FileUtil.createTempDir("gsi_preparer");
             validateGsiImg(device, buildInfo, tmpDir);
             flashGsi(device, buildInfo);
         } catch (IOException ioe) {
@@ -125,7 +126,8 @@ public class GsiDeviceFlashPreparer extends BaseTargetPreparer {
                     String.format(
                             "Device %s did not become available after flashing GKI. Exception: %s",
                             device.getSerialNumber(), e),
-                    device.getDeviceDescriptor());
+                    device.getDeviceDescriptor(),
+                    DeviceErrorIdentifier.ERROR_AFTER_FLASHING);
         }
         device.postBootSetup();
         CLog.i("Device update completed on %s", device.getDeviceDescriptor());
@@ -200,7 +202,6 @@ public class GsiDeviceFlashPreparer extends BaseTargetPreparer {
                                 device, "delete-logical-partition", "product" + currSlot);
                     }
                 }
-                String systemPartition = "system";
                 executeFastbootCmd(device, "erase", "system" + currSlot);
                 executeFastbootCmd(device, "flash", "system", mSystemImg.getAbsolutePath());
                 executeFastbootCmd(device, "-w");

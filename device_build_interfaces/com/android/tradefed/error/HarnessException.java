@@ -70,4 +70,10 @@ public class HarnessException extends Exception implements IHarnessException {
             mOrigin = clazz.getCanonicalName();
         }
     }
+
+    protected final void setCallerClass(String clazz) {
+        if (clazz != null && mOrigin == null) {
+            mOrigin = clazz;
+        }
+    }
 }
