@@ -42,7 +42,8 @@ public class SubprocessReportingHelper {
     private static final String REPORTER_JAR_NAME = "subprocess-results-reporter.jar";
     private static final String CLASS_FILTER =
             String.format(
-                    "(^%s|^%s|^%s|^%s|^%s).*class$",
+                    "(^%s|^%s|^%s|^%s|^%s|^%s).*class$",
+                    "ErrorIdentifier",
                     "LegacySubprocessResultsReporter",
                     "SubprocessTestResultsParser",
                     "SubprocessEventHelper",

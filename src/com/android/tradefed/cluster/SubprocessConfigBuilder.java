@@ -119,8 +119,12 @@ public class SubprocessConfigBuilder {
                 in = loader.getResourceAsStream(String.format("config/%s", mOriginalConfig));
             }
             if (in == null) {
+                File f = new File(mOriginalConfig);
+                if (!f.isAbsolute()) {
+                    f = new File(mWorkDir, mOriginalConfig);
+                }
                 try {
-                    in = new FileInputStream(mOriginalConfig);
+                    in = new FileInputStream(f);
                 } catch (FileNotFoundException e) {
                     throw new RuntimeException(
                             String.format("Could not find configuration '%s'", mOriginalConfig));
@@ -143,7 +147,7 @@ public class SubprocessConfigBuilder {
             root.appendChild(reporter);
         }
 
-        File f = new File(mWorkDir, createConfigName(mOriginalConfig));
+        File f = new File(mWorkDir, mOriginalConfig);
         TransformerFactory transformerFactory = TransformerFactory.newInstance();
         try {
             Transformer transformer = transformerFactory.newTransformer();
