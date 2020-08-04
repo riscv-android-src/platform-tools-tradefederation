@@ -15,7 +15,6 @@
  */
 package com.android.tradefed.result.error;
 
-import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 
 /**
@@ -33,7 +32,7 @@ public interface ErrorIdentifier {
 
     /**
      * The failure status associated with the identifier, this status is expected to align with the
-     * {@link FailureDescription} one.
+     * FailureDescription one.
      */
     public FailureStatus status();
 }
