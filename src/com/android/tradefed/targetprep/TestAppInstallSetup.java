@@ -163,7 +163,7 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
     private Integer mUserId = null;
     private Boolean mGrantPermission = null;
 
-    private Set<String> mPackagesInstalled = null;
+    private Set<String> mPackagesInstalled = new HashSet<>();
     private TestInformation mTestInfo;
 
     protected void setTestInformation(TestInformation testInfo) {
@@ -277,9 +277,6 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
             CLog.i("No test apps to install, skipping");
             return;
         }
-        if (mCleanup) {
-            mPackagesInstalled = new HashSet<>();
-        }
 
         // resolve abi flags
         if (mAbi != null && mForceAbi != null) {
@@ -370,7 +367,7 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
     @Override
     public void tearDown(TestInformation testInfo, Throwable e) throws DeviceNotAvailableException {
         mTestInfo = testInfo;
-        if (mCleanup && mPackagesInstalled != null && !(e instanceof DeviceNotAvailableException)) {
+        if (mCleanup && !(e instanceof DeviceNotAvailableException)) {
             for (String packageName : mPackagesInstalled) {
                 try {
                     uninstallPackage(getDevice(), packageName);
