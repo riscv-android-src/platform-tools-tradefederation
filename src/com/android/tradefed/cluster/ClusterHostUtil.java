@@ -31,6 +31,7 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.security.InvalidParameterException;
 import java.util.Map;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -48,16 +49,28 @@ public class ClusterHostUtil {
     /**
      * Gets the hostname.
      *
+     * <p>1. Try to get hostname from InetAddress. 2. If fail, try to get hostname from HOSTNAME
+     * env. 3. If not set, generate a unique hostname.
+     *
      * @return the hostname or null if we were unable to fetch it.
      */
     public static String getHostName() {
-        if (sHostName == null) {
-            try {
-                sHostName = InetAddress.getLocalHost().getHostName();
-            } catch (UnknownHostException e) {
-                CLog.w("failed to get hostname: %s", e);
-            }
+        if (sHostName != null) {
+            return sHostName;
         }
+        try {
+            sHostName = InetAddress.getLocalHost().getHostName();
+            return sHostName;
+        } catch (UnknownHostException e) {
+            CLog.w("Failed to get hostname from InetAddress: %s", e);
+        }
+        CLog.i("Get hostname from HOSTNAME env.");
+        sHostName = System.getenv("HOSTNAME");
+        if (!Strings.isNullOrEmpty(sHostName)) {
+            return sHostName;
+        }
+        sHostName = "unknown-" + UUID.randomUUID().toString();
+        CLog.i("No HOSTNAME env set. Generate hostname: %s.", sHostName);
         return sHostName;
     }
 
