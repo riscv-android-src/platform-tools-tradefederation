@@ -194,7 +194,13 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
         if (mBundletoolUtil != null) {
             return;
         }
-        File bundletoolJar = getLocalPathForFilename(testInfo, getBundletoolFileName());
+        File bundletoolJar;
+        File f = new File(getBundletoolFileName());
+        if (!f.isAbsolute()) {
+            bundletoolJar = getLocalPathForFilename(testInfo, getBundletoolFileName());
+        } else {
+            bundletoolJar = f;
+        }
         if (bundletoolJar == null) {
             throw new TargetSetupError(
                     String.format("Failed to find bundletool jar %s.", getBundletoolFileName()),
