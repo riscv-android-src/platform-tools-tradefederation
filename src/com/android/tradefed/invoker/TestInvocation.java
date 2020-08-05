@@ -42,6 +42,7 @@ import com.android.tradefed.device.cloud.ManagedRemoteDevice;
 import com.android.tradefed.device.cloud.NestedRemoteDevice;
 import com.android.tradefed.device.cloud.RemoteAndroidVirtualDevice;
 import com.android.tradefed.error.HarnessException;
+import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.error.IHarnessException;
 import com.android.tradefed.guice.InvocationScope;
 import com.android.tradefed.invoker.logger.CurrentInvocation;
@@ -213,7 +214,6 @@ public class TestInvocation implements ITestInvocation {
             throws Throwable {
         ReportHostLog reportThread = new ReportHostLog(listener, config);
         Runtime.getRuntime().addShutdownHook(reportThread);
-        boolean resumed = false;
         String bugreportName = null;
         long startTime = System.currentTimeMillis();
         long elapsedTime = -1;
@@ -383,6 +383,10 @@ public class TestInvocation implements ITestInvocation {
                                     mStopCause);
                     FailureDescription failure =
                             FailureDescription.create(message, FailureStatus.CANCELLED);
+                    failure.setErrorIdentifier(InfraErrorIdentifier.INVOCATION_CANCELLED);
+                    failure.setCause(
+                            new HarnessRuntimeException(
+                                    message, InfraErrorIdentifier.INVOCATION_CANCELLED));
                     reportFailure(failure, listener);
                     PrettyPrintDelimiter.printStageDelimiter(message);
                     if (mStopRequestTime != null) {
@@ -398,21 +402,19 @@ public class TestInvocation implements ITestInvocation {
                 Runtime.getRuntime().removeShutdownHook(reportThread);
 
                 elapsedTime = System.currentTimeMillis() - startTime;
-                if (!resumed) {
-                    // Init a log for the end of the host_log.
-                    ILeveledLogOutput endHostLog = config.getLogOutput();
-                    endHostLog.init();
-                    getLogRegistry().registerLogger(endHostLog);
-                    PrettyPrintDelimiter.printStageDelimiter("===== Result Reporters =====");
-                    try {
-                        // Copy the invocation metrics to the context
-                        ((InvocationContext) context).logInvocationMetrics();
-                        listener.invocationEnded(elapsedTime);
-                    } finally {
-                        InvocationMetricLogger.clearInvocationMetrics();
-                        endHostLog.closeLog();
-                        getLogRegistry().unregisterLogger();
-                    }
+                // Init a log for the end of the host_log.
+                ILeveledLogOutput endHostLog = config.getLogOutput();
+                endHostLog.init();
+                getLogRegistry().registerLogger(endHostLog);
+                PrettyPrintDelimiter.printStageDelimiter("===== Result Reporters =====");
+                try {
+                    // Copy the invocation metrics to the context
+                    ((InvocationContext) context).logInvocationMetrics();
+                    listener.invocationEnded(elapsedTime);
+                } finally {
+                    InvocationMetricLogger.clearInvocationMetrics();
+                    endHostLog.closeLog();
+                    getLogRegistry().unregisterLogger();
                 }
             } finally {
                 TfObjectTracker.clearTracking();
