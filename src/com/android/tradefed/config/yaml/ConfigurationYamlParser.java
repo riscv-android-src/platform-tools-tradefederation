@@ -21,6 +21,7 @@ import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.config.yaml.IDefaultObjectLoader.LoaderConfiguration;
+import com.android.tradefed.config.yaml.YamlClassOptionsParser.ClassAndOptions;
 
 import com.google.common.collect.ImmutableList;
 
@@ -40,6 +41,8 @@ import java.util.Set;
 public final class ConfigurationYamlParser {
 
     private static final String DESCRIPTION_KEY = "description";
+    public static final String PRE_SETUP_ACTION_KEY = "pre_setup_action";
+    public static final String POST_SETUP_ACTION_KEY = "post_setup_action";
     public static final String DEPENDENCIES_KEY = "dependencies";
     public static final String TESTS_KEY = "tests";
 
@@ -89,6 +92,16 @@ public final class ConfigurationYamlParser {
             mSeenKeys.add(DESCRIPTION_KEY);
         }
         Set<String> dependencyFiles = new LinkedHashSet<>();
+        if (yamlObjects.containsKey(PRE_SETUP_ACTION_KEY)) {
+            YamlClassOptionsParser classAndOptions =
+                    new YamlClassOptionsParser(
+                            "action",
+                            PRE_SETUP_ACTION_KEY,
+                            (List<Map<String, Object>>) yamlObjects.get(PRE_SETUP_ACTION_KEY));
+            mSeenKeys.add(PRE_SETUP_ACTION_KEY);
+            convertClassAndOptionsToObjects(
+                    configDef, classAndOptions, Configuration.TARGET_PREPARER_TYPE_NAME);
+        }
         if (yamlObjects.containsKey(DEPENDENCIES_KEY)) {
             YamlTestDependencies testDeps =
                     new YamlTestDependencies(
@@ -97,12 +110,24 @@ public final class ConfigurationYamlParser {
             mSeenKeys.add(DEPENDENCIES_KEY);
         }
         if (yamlObjects.containsKey(TESTS_KEY)) {
-            YamlTestRunners runnerInfo =
-                    new YamlTestRunners((List<Map<String, Object>>) yamlObjects.get(TESTS_KEY));
+            YamlClassOptionsParser runnerInfo =
+                    new YamlClassOptionsParser(
+                            "test",
+                            TESTS_KEY,
+                            (List<Map<String, Object>>) yamlObjects.get(TESTS_KEY));
             mSeenKeys.add(TESTS_KEY);
-            convertTestsToObjects(configDef, runnerInfo);
+            convertClassAndOptionsToObjects(configDef, runnerInfo, Configuration.TEST_TYPE_NAME);
         }
-
+        if (yamlObjects.containsKey(POST_SETUP_ACTION_KEY)) {
+            YamlClassOptionsParser runnerInfo =
+                    new YamlClassOptionsParser(
+                            "action",
+                            POST_SETUP_ACTION_KEY,
+                            (List<Map<String, Object>>) yamlObjects.get(POST_SETUP_ACTION_KEY));
+            mSeenKeys.add(POST_SETUP_ACTION_KEY);
+            convertClassAndOptionsToObjects(
+                    configDef, runnerInfo, Configuration.TARGET_PREPARER_TYPE_NAME);
+        }
         if (!mSeenKeys.containsAll(REQUIRED_KEYS)) {
             Set<String> missingKeys = new HashSet<>(REQUIRED_KEYS);
             missingKeys.removeAll(mSeenKeys);
@@ -185,27 +210,26 @@ public final class ConfigurationYamlParser {
         return dependencies;
     }
 
-    private void convertTestsToObjects(ConfigurationDef def, YamlTestRunners tests) {
-        if (tests.getRunner() == null) {
+    private void convertClassAndOptionsToObjects(
+            ConfigurationDef def, YamlClassOptionsParser tests, String configObjType) {
+        if (tests.getClassesAndOptions().isEmpty()) {
             return;
         }
-        String className = tests.getRunner();
-        int classCount = def.addConfigObjectDef(Configuration.TEST_TYPE_NAME, className);
-        for (Entry<String, String> options : tests.getOptions().entries()) {
-            String optionName =
-                    String.format(
-                            "%s%c%d%c%s",
-                            className,
-                            OptionSetter.NAMESPACE_SEPARATOR,
-                            classCount,
-                            OptionSetter.NAMESPACE_SEPARATOR,
-                            options.getKey());
-            def.addOptionDef(
-                    optionName,
-                    null,
-                    options.getValue(),
-                    def.getName(),
-                    Configuration.TEST_TYPE_NAME);
+        for (ClassAndOptions classOptions : tests.getClassesAndOptions()) {
+            String className = classOptions.mClass;
+            int classCount = def.addConfigObjectDef(configObjType, className);
+            for (Entry<String, String> options : classOptions.mOptions.entries()) {
+                String optionName =
+                        String.format(
+                                "%s%c%d%c%s",
+                                className,
+                                OptionSetter.NAMESPACE_SEPARATOR,
+                                classCount,
+                                OptionSetter.NAMESPACE_SEPARATOR,
+                                options.getKey());
+                def.addOptionDef(
+                        optionName, null, options.getValue(), def.getName(), configObjType);
+            }
         }
     }
 }
