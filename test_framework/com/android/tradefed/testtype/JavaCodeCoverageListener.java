@@ -19,15 +19,18 @@ package com.android.tradefed.testtype;
 import static com.google.common.base.Verify.verifyNotNull;
 import static com.google.common.io.Files.getNameWithoutExtension;
 
+import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IConfigurationReceiver;
+import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.logger.CurrentInvocation;
+import com.android.tradefed.device.metric.BaseDeviceMetricCollector;
+import com.android.tradefed.device.metric.DeviceMetricData;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.FileInputStreamSource;
-import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.testtype.coverage.CoverageOptions;
 import com.android.tradefed.util.FileUtil;
@@ -41,14 +44,15 @@ import org.jacoco.core.tools.ExecFileLoader;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
+import java.util.Map;
 import java.util.List;
 
 /**
- * A {@link ResultForwarder} that will pull Java coverage measurements off of the device and log
- * them as test artifacts.
+ * A {@link BaseDeviceMetricCollector} that will pull Java coverage measurements off of the device
+ * and log them as test artifacts.
  */
-final class JavaCodeCoverageListener extends ResultForwarder {
+final class JavaCodeCoverageListener extends BaseDeviceMetricCollector
+        implements IConfigurationReceiver {
 
     public static final String MERGE_COVERAGE_MEASUREMENTS_TEST_NAME = "mergeCoverageMeasurements";
     public static final String COVERAGE_MEASUREMENT_KEY = "coverageFilePath";
@@ -56,27 +60,30 @@ final class JavaCodeCoverageListener extends ResultForwarder {
     public static final String FIND_COVERAGE_FILES =
             String.format("find %s -name '*.ec'", COVERAGE_DIRECTORY);
 
-    private final ITestDevice mDevice;
-    private final CoverageOptions mCoverageOptions;
-
-    private final boolean mMergeCoverageMeasurements;
+    @Option(
+            name = "merge-coverage-measurements",
+            description =
+                    "Merge coverage measurements after all tests are complete rather than logging individual measurements.")
+    private boolean mMergeCoverageMeasurements = false;
 
     private final ExecFileLoader mExecFileLoader = new ExecFileLoader();
 
     private JavaCodeCoverageFlusher mFlusher;
-    private String mCurrentRunName;
+    private IConfiguration mConfiguration;
 
-    public JavaCodeCoverageListener(
-            ITestDevice device,
-            CoverageOptions options,
-            boolean mergeMeasurements,
-            ITestInvocationListener... listeners) {
-        super(listeners);
-        mDevice = device;
-        mCoverageOptions = options;
-        mMergeCoverageMeasurements = mergeMeasurements;
+    @Override
+    public void setConfiguration(IConfiguration configuration) {
+        mConfiguration = configuration;
+    }
 
-        mFlusher = new JavaCodeCoverageFlusher(device, options.getCoverageProcesses());
+    private JavaCodeCoverageFlusher getCoverageFlusher() {
+        if (mFlusher == null) {
+            mFlusher =
+                    new JavaCodeCoverageFlusher(
+                            getRealDevices().get(0),
+                            mConfiguration.getCoverageOptions().getCoverageProcesses());
+        }
+        return mFlusher;
     }
 
     @VisibleForTesting
@@ -84,15 +91,22 @@ final class JavaCodeCoverageListener extends ResultForwarder {
         mFlusher = flusher;
     }
 
-    @Override
-    public void testRunStarted(String runName, int testCount) {
-        super.testRunStarted(runName, testCount);
-        mCurrentRunName = runName;
+    @VisibleForTesting
+    public void setMergeMeasurements(boolean merge) {
+        mMergeCoverageMeasurements = merge;
     }
 
     @Override
-    public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
-        if (MERGE_COVERAGE_MEASUREMENTS_TEST_NAME.equals(mCurrentRunName)) {
+    public void onTestRunEnd(DeviceMetricData runData, final Map<String, Metric> runMetrics) {
+        if (mConfiguration == null
+                || !mConfiguration.getCoverageOptions().isCoverageEnabled()
+                || !mConfiguration
+                        .getCoverageOptions()
+                        .getCoverageToolchains()
+                        .contains(CoverageOptions.Toolchain.JACOCO)) {
+            return;
+        }
+        if (MERGE_COVERAGE_MEASUREMENTS_TEST_NAME.equals(getRunName())) {
             // Log the merged runtime coverage measurement.
             try {
                 File mergedMeasurements =
@@ -106,8 +120,6 @@ final class JavaCodeCoverageListener extends ResultForwarder {
                 logCoverageMeasurement("merged_runtime_coverage", mergedMeasurements);
             } catch (IOException e) {
                 throw new RuntimeException(e);
-            } finally {
-                super.testRunEnded(elapsedTime, runMetrics);
             }
         } else {
             // Get the path of the coverage measurement on the device.
@@ -115,35 +127,32 @@ final class JavaCodeCoverageListener extends ResultForwarder {
             if (devicePathMetric == null) {
                 super.testRunFailed(
                         createCodeCoverageFailure("No Java code coverage measurement."));
-                super.testRunEnded(elapsedTime, runMetrics);
                 return;
             }
             String testCoveragePath = devicePathMetric.getMeasurements().getSingleString();
             if (testCoveragePath == null) {
                 super.testRunFailed(
                         createCodeCoverageFailure("No Java code coverage measurement."));
-                super.testRunEnded(elapsedTime, runMetrics);
                 return;
             }
 
+            ITestDevice device = getRealDevices().get(0);
             ImmutableList.Builder<String> devicePaths = ImmutableList.builder();
             devicePaths.add(testCoveragePath);
 
             try {
-                if (mCoverageOptions.isCoverageFlushEnabled()) {
-                    mFlusher.forceCoverageFlush();
+                if (mConfiguration.getCoverageOptions().isCoverageFlushEnabled()) {
+                    getCoverageFlusher().forceCoverageFlush();
                 }
 
                 // Find all .ec files in /data/misc/trace and pull them from the device as well.
-                String fileList = mDevice.executeShellCommand(FIND_COVERAGE_FILES);
+                String fileList = device.executeShellCommand(FIND_COVERAGE_FILES);
                 devicePaths.addAll(Splitter.on('\n').omitEmptyStrings().split(fileList));
 
-                collectAndLogCoverageMeasurementsAsRoot(devicePaths.build());
+                collectAndLogCoverageMeasurementsAsRoot(device, devicePaths.build());
 
             } catch (DeviceNotAvailableException | IOException e) {
                 throw new RuntimeException(e);
-            } finally {
-                super.testRunEnded(elapsedTime, runMetrics);
             }
         }
     }
@@ -154,7 +163,8 @@ final class JavaCodeCoverageListener extends ResultForwarder {
         }
     }
 
-    private void collectAndLogCoverageMeasurementsAsRoot(List<String> devicePaths)
+    private void collectAndLogCoverageMeasurementsAsRoot(
+            ITestDevice device, List<String> devicePaths)
             throws IOException, DeviceNotAvailableException {
 
         // We enable root before pulling files off the device since the coverage file of the test
@@ -162,31 +172,30 @@ final class JavaCodeCoverageListener extends ResultForwarder {
         // files of other processes should be accessible without root. Note that we also restore
         // root status to what it was after we're done to not interfere with subsequent tests that
         // run on the device.
-        boolean wasRoot = mDevice.isAdbRoot();
-        if (!wasRoot && !mDevice.enableAdbRoot()) {
+        boolean wasRoot = device.isAdbRoot();
+        if (!wasRoot && !device.enableAdbRoot()) {
             throw new RuntimeException(
                     "Failed to enable root before pulling Java code coverage files off device");
         }
 
         try {
-            collectAndLogCoverageMeasurements(devicePaths);
+            collectAndLogCoverageMeasurements(device, devicePaths);
         } finally {
             for (String devicePath : devicePaths) {
-                mDevice.deleteFile(devicePath);
+                device.deleteFile(devicePath);
             }
-
-            if (!wasRoot && !mDevice.disableAdbRoot()) {
+            if (!wasRoot && !device.disableAdbRoot()) {
                 throw new RuntimeException(
                         "Failed to disable root after pulling Java code coverage files off device");
             }
         }
     }
 
-    private void collectAndLogCoverageMeasurements(List<String> devicePaths)
+    private void collectAndLogCoverageMeasurements(ITestDevice device, List<String> devicePaths)
             throws IOException, DeviceNotAvailableException {
 
         for (String devicePath : devicePaths) {
-            File coverageFile = mDevice.pullFile(devicePath);
+            File coverageFile = device.pullFile(devicePath);
             verifyNotNull(
                     coverageFile, "Failed to pull the Java code coverage file from %s", devicePath);
 
@@ -197,7 +206,7 @@ final class JavaCodeCoverageListener extends ResultForwarder {
                     mExecFileLoader.load(coverageFile);
                 } else {
                     logCoverageMeasurement(
-                            mCurrentRunName
+                            getRunName()
                                     + "_"
                                     + getNameWithoutExtension(devicePath)
                                     + "_runtime_coverage",
