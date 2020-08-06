@@ -65,7 +65,7 @@ public interface ISandbox {
      */
     public File getTradefedSandboxEnvironment(
             IInvocationContext context, IConfiguration nonVersionedConfig, String[] args)
-            throws ConfigurationException;
+            throws Exception;
 
     /**
      * Create a classpath based on the environment and the working directory returned by {@link
