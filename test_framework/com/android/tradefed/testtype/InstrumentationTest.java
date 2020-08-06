@@ -911,7 +911,7 @@ public class InstrumentationTest
         // Reruns do not create new listeners or clear coverage measurements.
         if (!mIsRerun) {
             listener = addBugreportListenerIfEnabled(listener);
-            listener = addJavaCoverageListenerIfEnabled(listener);
+            listener = addJavaCoverageListenerIfEnabled(testInfo, listener);
             listener = addGcovCoverageListenerIfEnabled(listener);
             listener = addClangCoverageListenerIfEnabled(listener);
 
@@ -994,17 +994,16 @@ public class InstrumentationTest
      * Returns a listener that will collect coverage measurements, or the original {@code listener}
      * if this feature is disabled.
      */
-    ITestInvocationListener addJavaCoverageListenerIfEnabled(ITestInvocationListener listener) {
+    ITestInvocationListener addJavaCoverageListenerIfEnabled(
+            final TestInformation testInfo, ITestInvocationListener listener) {
         if (mConfiguration == null) {
             return listener;
         }
         if (mConfiguration.getCoverageOptions().isCoverageEnabled()
                 && mConfiguration.getCoverageOptions().getCoverageToolchains().contains(JACOCO)) {
-            return new JavaCodeCoverageListener(
-                    getDevice(),
-                    mConfiguration.getCoverageOptions(),
-                    mMergeCoverageMeasurements,
-                    listener);
+            JavaCodeCoverageListener javaListener = new JavaCodeCoverageListener();
+            javaListener.setConfiguration(mConfiguration);
+            return javaListener.init(testInfo.getContext(), listener);
         }
         return listener;
     }
