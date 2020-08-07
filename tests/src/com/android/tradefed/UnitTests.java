@@ -580,7 +580,6 @@ import org.junit.runners.Suite.SuiteClasses;
     InvocationContextTest.class,
     InvocationExecutionTest.class,
     RemoteInvocationExecutionTest.class,
-    SandboxedInvocationExecutionTest.class,
     ShardListenerTest.class,
     ShardMainResultForwarderTest.class,
     TestInvocationMultiTest.class,
@@ -604,7 +603,6 @@ import org.junit.runners.Suite.SuiteClasses;
 
     // invoker.sandbox
     ParentSandboxInvocationExecutionTest.class,
-    SandboxedInvocationExecutionTest.class,
 
     // lite
     DryRunnerTest.class,
@@ -648,7 +646,6 @@ import org.junit.runners.Suite.SuiteClasses;
     MultiFailureDescriptionTest.class,
     SnapshotInputStreamSourceTest.class,
     SubprocessResultsReporterTest.class,
-    TestDescriptionTest.class,
     TestFailureEmailResultReporterTest.class,
     PassingTestFileReporterTest.class,
     TestDescriptionTest.class,
