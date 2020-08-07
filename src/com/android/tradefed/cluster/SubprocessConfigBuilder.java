@@ -147,7 +147,13 @@ public class SubprocessConfigBuilder {
             root.appendChild(reporter);
         }
 
-        File f = new File(mWorkDir, mOriginalConfig);
+        final File f = new File(mWorkDir, mOriginalConfig);
+        final File parentDir = f.getParentFile();
+        if (!parentDir.exists()) {
+            // If mOriginalConfig contains slashes (e.g. util/timewaster), parent folders should be
+            // created.
+            parentDir.mkdirs();
+        }
         TransformerFactory transformerFactory = TransformerFactory.newInstance();
         try {
             Transformer transformer = transformerFactory.newTransformer();
