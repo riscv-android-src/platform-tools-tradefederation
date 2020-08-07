@@ -402,20 +402,7 @@ public class TestInvocation implements ITestInvocation {
                 Runtime.getRuntime().removeShutdownHook(reportThread);
 
                 elapsedTime = System.currentTimeMillis() - startTime;
-                // Init a log for the end of the host_log.
-                ILeveledLogOutput endHostLog = config.getLogOutput();
-                endHostLog.init();
-                getLogRegistry().registerLogger(endHostLog);
-                PrettyPrintDelimiter.printStageDelimiter("===== Result Reporters =====");
-                try {
-                    // Copy the invocation metrics to the context
-                    ((InvocationContext) context).logInvocationMetrics();
-                    listener.invocationEnded(elapsedTime);
-                } finally {
-                    InvocationMetricLogger.clearInvocationMetrics();
-                    endHostLog.closeLog();
-                    getLogRegistry().unregisterLogger();
-                }
+                reportInvocationEnded(config, context, listener, elapsedTime);
             } finally {
                 TfObjectTracker.clearTracking();
                 CurrentInvocation.clearInvocationInfos();
@@ -651,7 +638,7 @@ public class TestInvocation implements ITestInvocation {
             invocationPath.reportLogs(device, listener, Stage.ERROR);
         }
         reportHostLog(listener, config);
-        listener.invocationEnded(0L);
+        reportInvocationEnded(config, testInfo.getContext(), listener, 0L);
         return false;
     }
 
@@ -704,7 +691,7 @@ public class TestInvocation implements ITestInvocation {
                 invocationPath.reportLogs(device, listener, Stage.ERROR);
             }
             reportHostLog(listener, config);
-            listener.invocationEnded(0L);
+            reportInvocationEnded(config, context, listener, 0L);
             return false;
         }
     }
@@ -1154,6 +1141,35 @@ public class TestInvocation implements ITestInvocation {
             addInvocationMetric(InvocationMetricKey.VIRTUAL_DEVICE_LOST_DETECTED, countVirtualLost);
         }
         return devicesStates;
+    }
+
+    private void reportInvocationEnded(
+            IConfiguration config,
+            IInvocationContext context,
+            ITestInvocationListener listener,
+            long elapsedTime) {
+        // Init a log for the end of the host_log.
+        ILeveledLogOutput endHostLog = config.getLogOutput();
+        try {
+            endHostLog.init();
+            getLogRegistry().registerLogger(endHostLog);
+        } catch (IOException e) {
+            CLog.e(e);
+            endHostLog = null;
+        }
+
+        PrettyPrintDelimiter.printStageDelimiter("===== Result Reporters =====");
+        try {
+            // Copy the invocation metrics to the context
+            ((InvocationContext) context).logInvocationMetrics();
+            listener.invocationEnded(elapsedTime);
+        } finally {
+            InvocationMetricLogger.clearInvocationMetrics();
+            if (endHostLog != null) {
+                endHostLog.closeLog();
+                getLogRegistry().unregisterLogger();
+            }
+        }
     }
 
     /** Helper Thread that ensures host_log is reported in case of killed JVM */
