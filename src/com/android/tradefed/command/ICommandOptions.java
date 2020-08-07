@@ -120,6 +120,10 @@ public interface ICommandOptions {
      */
     public void setInvocationTimeout(Long mInvocationTimeout);
 
+
+    /** Returns true if we should optimize the list of test modules for mainline test. */
+    public boolean getOptimizeMainlineTest();
+
     /**
      * Return the total shard count for the command.
      */
