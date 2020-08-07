@@ -108,6 +108,10 @@ public class CommandOptions implements ICommandOptions {
             "[0, shard-count)")
     private Integer mShardIndex;
 
+    @Option(name = "optimize-mainline-test", description =
+            "Whether or not to optimize the list of test modules for mainline.")
+    private boolean mOptimizeMainlineTest;
+
     @Option(
         name = "enable-token-sharding",
         description = "Whether or not to allow sharding with the token support enabled."
@@ -364,6 +368,14 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public void setInvocationTimeout(Long invocationTimeout) {
         mInvocationTimeout = invocationTimeout;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean getOptimizeMainlineTest() {
+        return mOptimizeMainlineTest;
     }
 
     /**
