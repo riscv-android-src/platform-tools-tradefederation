@@ -43,6 +43,8 @@ public class ClusterHostUtil {
     private static String sHostIpAddress = null;
 
     static final String DEFAULT_TF_VERSION = "(unknown)";
+    static final String EMULATOR_SERIAL_PREFIX = "emulator-";
+    static final String NULL_DEVICE_SERIAL_PLACEHOLDER = "(no device serial)";
 
     private static long sTfStartTime = getCurrentTimeMillis();
 
@@ -72,6 +74,28 @@ public class ClusterHostUtil {
         sHostName = "unknown-" + UUID.randomUUID().toString();
         CLog.i("No HOSTNAME env set. Generate hostname: %s.", sHostName);
         return sHostName;
+    }
+
+    /**
+     * Returns a unique device serial for a device.
+     *
+     * <p>Non-physical devices (e.g. emulator) have pseudo serials which are not unique across
+     * hosts. This method prefixes those with a hostname to make them unique.
+     *
+     * @param device a device descriptor.
+     * @return a unique device serial.
+     */
+    public static String getUniqueDeviceSerial(DeviceDescriptor device) {
+        String serial = device.getSerial();
+        if (Strings.isNullOrEmpty(serial)
+                || device.isStubDevice()
+                || serial.startsWith(EMULATOR_SERIAL_PREFIX)) {
+            if (Strings.isNullOrEmpty(serial)) {
+                serial = NULL_DEVICE_SERIAL_PLACEHOLDER;
+            }
+            serial = String.format("%s:%s", getHostName(), serial);
+        }
+        return serial;
     }
 
     /**
@@ -156,7 +180,7 @@ public class ClusterHostUtil {
                         txt = device.getDeviceClass();
                         break;
                     case "SERIAL":
-                        txt = device.getSerial();
+                        txt = getUniqueDeviceSerial(device);
                         break;
                     case "TAG":
                         if (deviceTags == null || deviceTags.isEmpty()) {
