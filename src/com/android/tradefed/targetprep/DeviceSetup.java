@@ -894,7 +894,7 @@ public class DeviceSetup extends BaseTargetPreparer {
             CLog.d("Skipping connect wifi due to force-skip-run-commands");
             return;
         }
-        if (mWifiSsid == null && mWifiSsidToPsk.isEmpty()) {
+        if ((mWifiSsid == null || mWifiSsid.isEmpty()) && mWifiSsidToPsk.isEmpty()) {
             return;
         }
 
