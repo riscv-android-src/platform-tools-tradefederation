@@ -266,6 +266,22 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.verify(mMockDevice);
     }
 
+    public void testSetup_wifi_network_empty() throws Exception {
+        doSetupExpectations();
+        doCheckExternalStoreSpaceExpectations();
+        doSettingExpectations("global", "wifi_on", "1");
+        doCommandsExpectations("svc wifi enable");
+        EasyMock.replay(mMockDevice);
+
+        mDeviceSetup.setWifiNetwork("");
+        mDeviceSetup.setWifiPsk("psk");
+
+        mDeviceSetup.setWifi(BinaryState.ON);
+        mDeviceSetup.setUp(mTestInfo);
+
+        EasyMock.verify(mMockDevice);
+    }
+
     public void testSetup_wifi_multiple_network_names() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
