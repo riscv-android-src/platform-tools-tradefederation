@@ -36,6 +36,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -207,7 +208,8 @@ public class JsonHttpTestResultReporter extends CollectingTestListener {
 
             // Parse run metrics
             if (runResult.getRunMetrics().size() > 0) {
-                JSONObject runResultMetrics = new JSONObject(runResult.getRunMetrics());
+                JSONObject runResultMetrics = new JSONObject(
+                        getValidMetrics(runResult.getRunMetrics()));
                 String reportingUnit = runResult.getName();
                 if (mReportingUnitKeySuffix != null && !mReportingUnitKeySuffix.isEmpty()) {
                     reportingUnit += mReportingUnitKeySuffix;
@@ -233,7 +235,8 @@ public class JsonHttpTestResultReporter extends CollectingTestListener {
                 }
                 resultsName.append(String.format("%s%s", reportingUnit, RESULT_SEPARATOR));
                 if (testResult.getMetrics().size() > 0) {
-                    JSONObject testResultMetrics = new JSONObject(testResult.getMetrics());
+                    JSONObject testResultMetrics = new JSONObject(
+                            getValidMetrics(testResult.getMetrics()));
                     allTestMetrics.put(reportingUnit, testResultMetrics);
                 }
             }
@@ -258,5 +261,24 @@ public class JsonHttpTestResultReporter extends CollectingTestListener {
         }
 
         return result;
+    }
+
+    /**
+     * Add only the numeric metrics and skip posting the non-numeric metrics.
+     *
+     * @param collectedMetrics contains all the metrics.
+     * @return only the numeric metrics.
+     */
+    public Map<String, String> getValidMetrics(Map<String, String> collectedMetrics) {
+        Map<String, String> validMetrics = new HashMap<>();
+        for (Map.Entry<String, String> entry : collectedMetrics.entrySet()) {
+            try {
+                Double.parseDouble(entry.getValue());
+                validMetrics.put(entry.getKey(), entry.getValue());
+            } catch (Exception e) {
+                // Skip adding the non numeric metric.
+            }
+        }
+        return validMetrics;
     }
 }
