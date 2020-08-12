@@ -100,6 +100,24 @@ public class ClusterDeviceMonitorTest {
         Assert.assertEquals("cluster1", hostEvent.getClusterId());
         Assert.assertEquals(Arrays.asList("cluster2", "cluster3"), hostEvent.getNextClusterIds());
         Assert.assertEquals("lab1", hostEvent.getLabName());
+        Assert.assertEquals("", hostEvent.getData().get("label"));
+    }
+
+    @Test
+    public void testLabel() throws Exception {
+        mClusterOptionSetter.setOptionValue("cluster:label", "label1");
+        mClusterOptionSetter.setOptionValue("cluster:label", "label2");
+        Capture<ClusterHostEvent> capture = new Capture<>();
+        mHostEventUploader.postEvent(EasyMock.capture(capture));
+        mHostEventUploader.flush();
+        EasyMock.replay(mHostEventUploader);
+        mEventDispatcher.dispatch();
+        EasyMock.verify(mHostEventUploader);
+        ClusterHostEvent hostEvent = capture.getValue();
+        Assert.assertEquals("cluster1", hostEvent.getClusterId());
+        Assert.assertEquals(Arrays.asList("cluster2", "cluster3"), hostEvent.getNextClusterIds());
+        Assert.assertEquals("lab1", hostEvent.getLabName());
+        Assert.assertEquals("label1,label2", hostEvent.getData().get("label"));
     }
 
     void setOptions() throws Exception {
