@@ -147,12 +147,13 @@ public class SubprocessConfigBuilder {
             root.appendChild(reporter);
         }
 
-        final File f = new File(mWorkDir, mOriginalConfig);
-        final File parentDir = f.getParentFile();
-        if (!parentDir.exists()) {
-            // If mOriginalConfig contains slashes (e.g. util/timewaster), parent folders should be
-            // created.
-            parentDir.mkdirs();
+        File f = new File(mWorkDir, mOriginalConfig);
+        if (!f.exists() || !f.isFile()) {
+            // If the original config is an existing file, we need to update it since some old TFs
+            // check the file system first before bundled configs when loading configs.
+            // If the original config is not an existing file, we can use any name since the
+            // original config name will be assigned when creating a injection jar.
+            f = File.createTempFile("subprocess_config_", ".xml", mWorkDir);
         }
         TransformerFactory transformerFactory = TransformerFactory.newInstance();
         try {
