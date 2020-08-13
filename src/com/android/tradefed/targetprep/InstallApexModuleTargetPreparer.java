@@ -480,7 +480,12 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
             throws TargetSetupError, DeviceNotAvailableException {
         ITestDevice device = testInfo.getDevice();
         for (File moduleFileName : testAppFileNames) {
-            File moduleFile = getLocalPathForFilename(testInfo, moduleFileName.getName());
+            File moduleFile;
+            if (!moduleFileName.isAbsolute()) {
+                moduleFile = getLocalPathForFilename(testInfo, moduleFileName.getName());
+            } else {
+                moduleFile = moduleFileName;
+            }
             if (moduleFileName.getName().endsWith(SPLIT_APKS_SUFFIX)) {
                 List<File> splits = getSplitsForApks(testInfo, moduleFile);
                 String splitsArgs = createInstallArgsForSplit(splits, device);
