@@ -209,8 +209,8 @@ public class GsiDeviceFlashPreparer extends BaseTargetPreparer {
                 if (shouldUseFastbootd) {
                     device.rebootIntoFastbootd();
                     if (mShouldEraseProductPartition) {
-                        executeFastbootCmd(
-                                device, "delete-logical-partition", "product" + currSlot);
+                        device.executeLongFastbootCommand(
+                                "delete-logical-partition", "product" + currSlot);
                     }
                 }
                 executeFastbootCmd(device, "erase", "system" + currSlot);
@@ -246,24 +246,20 @@ public class GsiDeviceFlashPreparer extends BaseTargetPreparer {
                     String.format("BuildInfo doesn't contain file key %s.", mSystemImageZipName),
                     device.getDeviceDescriptor());
         }
-        if (buildInfo.getFile(mVbmetaImageZipName) == null) {
-            throw new TargetSetupError(
-                    String.format("BuildInfo doesn't contain file key %s.", mVbmetaImageZipName),
-                    device.getDeviceDescriptor());
-        }
         mSystemImg =
                 getRequestedFile(
                         device,
                         mSystemImageFileName,
                         buildInfo.getFile(mSystemImageZipName),
                         tmpDir);
-        mVbmetaImg =
-                getRequestedFile(
-                        device,
-                        mVbmetaImageFileName,
-                        buildInfo.getFile(mVbmetaImageZipName),
-                        tmpDir);
-
+        if (buildInfo.getFile(mVbmetaImageZipName) != null) {
+            mVbmetaImg =
+                    getRequestedFile(
+                            device,
+                            mVbmetaImageFileName,
+                            buildInfo.getFile(mVbmetaImageZipName),
+                            tmpDir);
+        }
         if (buildInfo.getFile(mBootImageZipName) != null && mBootImageFileName != null) {
             mBootImg =
                     getRequestedFile(
@@ -320,7 +316,10 @@ public class GsiDeviceFlashPreparer extends BaseTargetPreparer {
                 ZipUtil2.extractZip(sourceFile, destDir);
                 requestedFile = FileUtil.findFile(destDir, requestedFileName);
             } catch (IOException e) {
-                throw new TargetSetupError(e.getMessage(), e, device.getDeviceDescriptor());
+                throw new TargetSetupError(
+                        String.format("Fail to get %s from %s", requestedFileName, sourceFile),
+                        e,
+                        device.getDeviceDescriptor());
             }
         } else if (sourceFile.isDirectory()) {
             requestedFile = FileUtil.findFile(sourceFile, requestedFileName);
@@ -363,7 +362,7 @@ public class GsiDeviceFlashPreparer extends BaseTargetPreparer {
             throw new TargetSetupError(
                     String.format(
                             "fastboot command %s failed in device %s. stdout: %s, stderr: %s",
-                            cmdArgs[0],
+                            cmdArgs,
                             device.getSerialNumber(),
                             result.getStdout(),
                             result.getStderr()),
