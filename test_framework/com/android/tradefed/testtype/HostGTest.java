@@ -41,21 +41,10 @@ import java.util.List;
 
 /** A Test that runs a native test package. */
 @OptionClass(alias = "hostgtest")
-public class HostGTest extends GTestBase implements IAbiReceiver, IBuildReceiver {
+public class HostGTest extends GTestBase implements IBuildReceiver {
     private static final long DEFAULT_HOST_COMMAND_TIMEOUT_MS = 2 * 60 * 1000;
 
     private IBuildInfo mBuildInfo = null;
-    private IAbi mAbi = null;
-
-    @Override
-    public void setAbi(IAbi abi) {
-        this.mAbi = abi;
-    }
-
-    @Override
-    public IAbi getAbi() {
-        return this.mAbi;
-    }
 
     @Override
     public void setBuild(IBuildInfo buildInfo) {
@@ -216,7 +205,7 @@ public class HostGTest extends GTestBase implements IAbiReceiver, IBuildReceiver
         String moduleName = getTestModule();
         File gTestFile = null;
         try {
-            gTestFile = FileUtil.findFile(moduleName, mAbi, scanDirs.toArray(new File[] {}));
+            gTestFile = FileUtil.findFile(moduleName, getAbi(), scanDirs.toArray(new File[] {}));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -226,7 +215,8 @@ public class HostGTest extends GTestBase implements IAbiReceiver, IBuildReceiver
             // search for it with a potential suffix (which is allowed).
             try {
                 File byBaseName =
-                        FileUtil.findFile(moduleName + ".*", mAbi, scanDirs.toArray(new File[] {}));
+                        FileUtil.findFile(
+                                moduleName + ".*", getAbi(), scanDirs.toArray(new File[] {}));
                 if (byBaseName != null && byBaseName.isFile()) {
                     gTestFile = byBaseName;
                 }
