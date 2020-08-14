@@ -306,7 +306,10 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
                 ZipUtil2.extractZip(sourceFile, destDir);
                 requestedFile = FileUtil.findFile(destDir, requestedFileName);
             } catch (IOException e) {
-                throw new TargetSetupError(e.getMessage(), e, device.getDeviceDescriptor());
+                throw new TargetSetupError(
+                        String.format("Fail to get %s from %s", requestedFileName, sourceFile),
+                        e,
+                        device.getDeviceDescriptor());
             }
         } else if (sourceFile.isDirectory()) {
             requestedFile = FileUtil.findFile(sourceFile, requestedFileName);
@@ -349,7 +352,7 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
             throw new TargetSetupError(
                     String.format(
                             "fastboot command %s failed in device %s. stdout: %s, stderr: %s",
-                            cmdArgs[0],
+                            cmdArgs,
                             device.getSerialNumber(),
                             result.getStdout(),
                             result.getStderr()),
