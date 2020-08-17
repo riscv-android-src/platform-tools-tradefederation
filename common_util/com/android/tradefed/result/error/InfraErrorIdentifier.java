@@ -31,6 +31,7 @@ public enum InfraErrorIdentifier implements ErrorIdentifier {
     MODULE_SETUP_RUNTIME_EXCEPTION(500_005, FailureStatus.CUSTOMER_ISSUE),
     CONFIGURED_ARTIFACT_NOT_FOUND(500_006, FailureStatus.CUSTOMER_ISSUE),
     INVOCATION_TIMEOUT(500_007, FailureStatus.TIMED_OUT),
+    OPTION_CONFIGURATION_ERROR(500_008, FailureStatus.CUSTOMER_ISSUE),
 
     // 500_501 - 501_000: Build, Artifacts download related errors
     ARTIFACT_REMOTE_PATH_NULL(500_501, FailureStatus.INFRA_FAILURE),
@@ -41,6 +42,7 @@ public enum InfraErrorIdentifier implements ErrorIdentifier {
     // 501_001 - 501_500: environment issues: For example: lab wifi
     WIFI_FAILED_CONNECT(501_001, FailureStatus.DEPENDENCY_ISSUE),
     GOOGLE_ACCOUNT_SETUP_FAILED(501_002, FailureStatus.DEPENDENCY_ISSUE),
+    NO_WIFI(501_003, FailureStatus.DEPENDENCY_ISSUE),
 
     // 502_000 - 502_100: Test issues detected by infra
     EXPECTED_TESTS_MISMATCH(502_000, FailureStatus.TEST_FAILURE),
