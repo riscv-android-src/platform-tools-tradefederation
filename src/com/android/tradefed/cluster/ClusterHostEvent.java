@@ -37,6 +37,8 @@ public class ClusterHostEvent implements IClusterEvent {
     private Map<String, String> mData = new HashMap<>();
     private String mLabName;
     public static final String EVENT_QUEUE = "host-event-queue";
+    public static final String LABEL_KEY = "label";
+    public static final String HOST_IP_KEY = "host_ip";
 
     /** Enums of the different types of host events. */
     public enum HostEventType {
