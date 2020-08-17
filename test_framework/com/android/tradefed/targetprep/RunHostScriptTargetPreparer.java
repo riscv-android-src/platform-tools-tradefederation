@@ -56,6 +56,11 @@ public class RunHostScriptTargetPreparer extends BaseTargetPreparer {
     @Option(name = "script-timeout", description = "Script execution timeout.")
     private Duration mTimeout = Duration.ofMinutes(1L);
 
+    @Option(
+            name = "use-flashing-permit",
+            description = "Acquire a flashing permit before executing the script.")
+    private boolean mUseFlashingPermit = false;
+
     private IRunUtil mRunUtil;
 
     @Override
@@ -82,28 +87,15 @@ public class RunHostScriptTargetPreparer extends BaseTargetPreparer {
         getRunUtil().setEnvVariable("ANDROID_SERIAL", device.getSerialNumber());
         setPathVariable(testInfo);
 
-        // Execute script and handle result
-        CommandResult result =
-                getRunUtil().runTimedCmd(mTimeout.toMillis(), scriptFile.getAbsolutePath());
-        switch (result.getStatus()) {
-            case SUCCESS:
-                CLog.i("Script executed successfully, stdout = [%s].", result.getStdout());
-                break;
-            case FAILED:
-                throw new TargetSetupError(
-                        String.format(
-                                "Script execution failed, stdout = [%s], stderr = [%s].",
-                                result.getStdout(), result.getStderr()),
-                        device.getDeviceDescriptor());
-            case TIMED_OUT:
-                throw new TargetSetupError(
-                        "Script execution timed out.", device.getDeviceDescriptor());
-            case EXCEPTION:
-                throw new TargetSetupError(
-                        String.format(
-                                "Exception during script execution, stdout = [%s], stderr = [%s].",
-                                result.getStdout(), result.getStderr()),
-                        device.getDeviceDescriptor());
+        try {
+            if (mUseFlashingPermit) {
+                getDeviceManager().takeFlashingPermit();
+            }
+            executeScript(scriptFile, device);
+        } finally {
+            if (mUseFlashingPermit) {
+                getDeviceManager().returnFlashingPermit();
+            }
         }
     }
 
@@ -116,7 +108,7 @@ public class RunHostScriptTargetPreparer extends BaseTargetPreparer {
         return mRunUtil;
     }
 
-    /** @return {@link IDeviceManager} instance used to fetch the configured adb/fastboot paths */
+    /** @return {@link IDeviceManager} instance used for adb/fastboot paths and flashing permits */
     @VisibleForTesting
     IDeviceManager getDeviceManager() {
         return GlobalConfiguration.getDeviceManagerInstance();
@@ -173,6 +165,37 @@ public class RunHostScriptTargetPreparer extends BaseTargetPreparer {
             String path = paths.stream().distinct().collect(Collectors.joining(separator));
             CLog.d("Using updated $PATH: %s", path);
             getRunUtil().setEnvVariable("PATH", path);
+        }
+    }
+
+    /**
+     * Execute script and handle result.
+     *
+     * @param scriptFile script file to execute
+     * @param device device being prepared
+     */
+    private void executeScript(File scriptFile, ITestDevice device) throws TargetSetupError {
+        CommandResult result =
+                getRunUtil().runTimedCmd(mTimeout.toMillis(), scriptFile.getAbsolutePath());
+        switch (result.getStatus()) {
+            case SUCCESS:
+                CLog.i("Script executed successfully, stdout = [%s].", result.getStdout());
+                break;
+            case FAILED:
+                throw new TargetSetupError(
+                        String.format(
+                                "Script execution failed, stdout = [%s], stderr = [%s].",
+                                result.getStdout(), result.getStderr()),
+                        device.getDeviceDescriptor());
+            case TIMED_OUT:
+                throw new TargetSetupError(
+                        "Script execution timed out.", device.getDeviceDescriptor());
+            case EXCEPTION:
+                throw new TargetSetupError(
+                        String.format(
+                                "Exception during script execution, stdout = [%s], stderr = [%s].",
+                                result.getStdout(), result.getStderr()),
+                        device.getDeviceDescriptor());
         }
     }
 }
