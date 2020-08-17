@@ -89,6 +89,7 @@ import com.android.tradefed.device.cloud.GceRemoteCmdFormatterTest;
 import com.android.tradefed.device.cloud.GceSshTunnelMonitorTest;
 import com.android.tradefed.device.cloud.ManagedRemoteDeviceTest;
 import com.android.tradefed.device.cloud.NestedRemoteDeviceTest;
+import com.android.tradefed.device.cloud.RemoteAndroidVirtualDeviceTest;
 import com.android.tradefed.device.cloud.RemoteFileUtilTest;
 import com.android.tradefed.device.contentprovider.ContentProviderHandlerTest;
 import com.android.tradefed.device.helper.TelephonyHelperTest;
@@ -518,7 +519,7 @@ import org.junit.runners.Suite.SuiteClasses;
     GceSshTunnelMonitorTest.class,
     ManagedRemoteDeviceTest.class,
     NestedRemoteDeviceTest.class,
-    RemoteAndroidDeviceTest.class,
+    RemoteAndroidVirtualDeviceTest.class,
     RemoteFileUtilTest.class,
 
     // device.contentprovider
