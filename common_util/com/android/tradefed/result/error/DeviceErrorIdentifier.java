@@ -30,6 +30,7 @@ public enum DeviceErrorIdentifier implements ErrorIdentifier {
 
     SHELL_COMMAND_ERROR(520_100, FailureStatus.DEPENDENCY_ISSUE),
     DEVICE_UNEXPECTED_RESPONSE(30_101, FailureStatus.DEPENDENCY_ISSUE),
+    FAIL_PUSH_FILE(30_102, FailureStatus.DEPENDENCY_ISSUE),
 
     INSTRUMENTATION_CRASH(520_200, FailureStatus.SYSTEM_UNDER_TEST_CRASHED),
 
