@@ -323,6 +323,32 @@ public class RemoteAndroidVirtualDeviceTest {
     /** Test {@link RemoteAndroidVirtualDevice#postInvocationTearDown(Throwable)}. */
     @Test
     public void testPostInvocationTearDown() throws Exception {
+        mTestDevice =
+                new TestableRemoteAndroidVirtualDevice() {
+                    @Override
+                    protected IRunUtil getRunUtil() {
+                        return mMockRunUtil;
+                    }
+
+                    @Override
+                    void createGceSshMonitor(
+                            ITestDevice device,
+                            IBuildInfo buildInfo,
+                            HostAndPort hostAndPort,
+                            TestDeviceOptions deviceOptions) {
+                        // ignore
+                    }
+
+                    @Override
+                    GceManager getGceHandler() {
+                        return mGceHandler;
+                    }
+
+                    @Override
+                    public DeviceDescriptor getDeviceDescriptor() {
+                        return null;
+                    }
+                };
         mTestDevice.setTestLogger(mTestLogger);
         EasyMock.expect(mMockStateMonitor.waitForDeviceNotAvailable(EasyMock.anyLong()))
                 .andReturn(true);
