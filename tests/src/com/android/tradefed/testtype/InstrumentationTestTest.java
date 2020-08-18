@@ -44,6 +44,7 @@ import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.metric.IMetricCollector;
+import com.android.tradefed.device.metric.JavaCodeCoverageCollector;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
@@ -1097,7 +1098,7 @@ public class InstrumentationTestTest {
 
         ITestInvocationListener listener =
                 mInstrumentationTest.addJavaCoverageListenerIfEnabled(mTestInfo, mMockListener);
-        assertThat(listener).isInstanceOf(JavaCodeCoverageListener.class);
+        assertThat(listener).isInstanceOf(JavaCodeCoverageCollector.class);
 
         listener = mInstrumentationTest.addGcovCoverageListenerIfEnabled(mMockListener);
         assertThat(listener).isInstanceOf(NativeCodeCoverageListener.class);
