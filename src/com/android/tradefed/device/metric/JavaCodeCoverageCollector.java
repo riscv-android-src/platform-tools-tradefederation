@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.tradefed.testtype;
+package com.android.tradefed.device.metric;
 
 import static com.google.common.base.Verify.verifyNotNull;
 import static com.google.common.io.Files.getNameWithoutExtension;
@@ -25,8 +25,6 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.logger.CurrentInvocation;
-import com.android.tradefed.device.metric.BaseDeviceMetricCollector;
-import com.android.tradefed.device.metric.DeviceMetricData;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.FileInputStreamSource;
@@ -48,10 +46,10 @@ import java.util.Map;
 import java.util.List;
 
 /**
- * A {@link BaseDeviceMetricCollector} that will pull Java coverage measurements off of the device
- * and log them as test artifacts.
+ * A {@link com.android.tradefed.device.metric.BaseDeviceMetricCollector} that will pull Java
+ * coverage measurements off of the device and log them as test artifacts.
  */
-final class JavaCodeCoverageListener extends BaseDeviceMetricCollector
+public final class JavaCodeCoverageCollector extends BaseDeviceMetricCollector
         implements IConfigurationReceiver {
 
     public static final String MERGE_COVERAGE_MEASUREMENTS_TEST_NAME = "mergeCoverageMeasurements";
