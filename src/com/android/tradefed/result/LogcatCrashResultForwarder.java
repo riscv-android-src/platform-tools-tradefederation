@@ -41,6 +41,8 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
     /** Special error message from the instrumentation when something goes wrong on device side. */
     public static final String ERROR_MESSAGE = "Process crashed.";
     public static final String SYSTEM_CRASH_MESSAGE = "System has crashed.";
+    public static final String SHELL_TIMEOUT_MESSAGE = "Failed to receive adb shell test output";
+    public static final String TIMEOUT_MESSAGE = "TimeoutException when running tests";
 
     public static final int MAX_NUMBER_CRASH = 3;
 
@@ -76,6 +78,8 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
         if (trace.compareTo(failure.getErrorMessage()) != 0) {
             // Crash stack trace found, consider this a test failure.
             failure.setFailureStatus(FailureStatus.TEST_FAILURE);
+        } else if (isTimeout(failure.getErrorMessage())) {
+            failure.setFailureStatus(FailureStatus.TIMED_OUT);
         }
         failure.setErrorMessage(trace);
         super.testFailed(test, failure);
@@ -131,6 +135,10 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
         return errorMessage.contains(ERROR_MESSAGE) || errorMessage.contains(SYSTEM_CRASH_MESSAGE);
     }
 
+    private boolean isTimeout(String errorMessage) {
+        return errorMessage.contains(SHELL_TIMEOUT_MESSAGE)
+                || errorMessage.contains(TIMEOUT_MESSAGE);
+    }
     /**
      * Extract a formatted object from the logcat snippet.
      *
