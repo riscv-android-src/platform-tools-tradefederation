@@ -3954,7 +3954,8 @@ public class NativeDevice implements IManagedTestDevice {
             throw new DeviceRuntimeException(
                     String.format(
                             "Failed to query property '%s'. device returned null.",
-                            DeviceProperties.BUILD_CODENAME));
+                            DeviceProperties.BUILD_CODENAME),
+                    DeviceErrorIdentifier.DEVICE_UNEXPECTED_RESPONSE);
         }
         codeName = codeName.trim();
         int apiLevel = getApiLevel() + ("REL".equals(codeName) ? 0 : 1);
