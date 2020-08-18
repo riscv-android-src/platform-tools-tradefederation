@@ -497,7 +497,6 @@ public class ClusterCommandScheduler extends CommandScheduler {
             String runTarget =
                     ClusterHostUtil.getRunTarget(
                             device, runTargetFormat, getClusterOptions().getDeviceTag());
-            CLog.d("%s is available", runTarget);
             devices.put(runTarget, device);
         }
         return devices;
