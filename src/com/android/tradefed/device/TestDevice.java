@@ -27,6 +27,7 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.InputStreamSource;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.util.AaptParser;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
@@ -1187,7 +1188,8 @@ public class TestDevice extends NativeDevice {
         String[] lines = commandOutput.split("\\r?\\n");
         if (!lines[0].equals("Users:")) {
             throw new DeviceRuntimeException(
-                    String.format("'%s' in not a valid output for 'pm list users'", commandOutput));
+                    String.format("'%s' in not a valid output for 'pm list users'", commandOutput),
+                    DeviceErrorIdentifier.DEVICE_UNEXPECTED_RESPONSE);
         }
         ArrayList<String[]> users = new ArrayList<String[]>(lines.length - 1);
         for (int i = 1; i < lines.length; i++) {
@@ -1199,7 +1201,8 @@ public class TestDevice extends NativeDevice {
                         String.format(
                                 "device output: '%s' \nline: '%s' was not in the expected "
                                         + "format for user info.",
-                                commandOutput, lines[i]));
+                                commandOutput, lines[i]),
+                        DeviceErrorIdentifier.DEVICE_UNEXPECTED_RESPONSE);
             }
             users.add(tokens);
         }

@@ -78,4 +78,10 @@ public class HarnessRuntimeException extends RuntimeException implements IHarnes
     public String getOrigin() {
         return mOrigin;
     }
+
+    protected final void setCallerClass(Class<?> clazz) {
+        if (clazz != null) {
+            mOrigin = clazz.getCanonicalName();
+        }
+    }
 }
