@@ -37,6 +37,7 @@ import org.junit.runners.JUnit4;
 public class ClusterHostUtilTest {
 
     private static final String DEVICE_SERIAL = "serial";
+    private static final String EMULATOR_SERIAL = "emulator-5554";
 
     @Test
     public void testIsIpPort() {
@@ -286,5 +287,62 @@ public class ClusterHostUtilTest {
                         "simState",
                         "simOperator");
         Assert.assertEquals("product", ClusterHostUtil.getRunTarget(device, format, null));
+    }
+
+    @Test
+    public void testGetRunTarget_withStubDevice() {
+        final String hostname = ClusterHostUtil.getHostName();
+        // with a stub device.
+        DeviceDescriptor device =
+                new DeviceDescriptor(
+                        DEVICE_SERIAL,
+                        true,
+                        DeviceAllocationState.Available,
+                        "product",
+                        "productVariant",
+                        "sdkVersion",
+                        "buildId",
+                        "batteryLevel");
+        Assert.assertEquals(
+                hostname + ":" + DEVICE_SERIAL,
+                ClusterHostUtil.getRunTarget(device, "{SERIAL}", null));
+    }
+
+    @Test
+    public void testGetRunTarget_withEmulator() {
+        final String hostname = ClusterHostUtil.getHostName();
+        // with a stub device.
+        DeviceDescriptor device =
+                new DeviceDescriptor(
+                        EMULATOR_SERIAL,
+                        false,
+                        DeviceAllocationState.Available,
+                        "product",
+                        "productVariant",
+                        "sdkVersion",
+                        "buildId",
+                        "batteryLevel");
+        Assert.assertEquals(
+                hostname + ":" + EMULATOR_SERIAL,
+                ClusterHostUtil.getRunTarget(device, "{SERIAL}", null));
+    }
+
+    @Test
+    public void testGetRunTarget_withEmptyDeviceSerial() {
+        final String hostname = ClusterHostUtil.getHostName();
+        // with a stub device.
+        DeviceDescriptor device =
+                new DeviceDescriptor(
+                        "",
+                        false,
+                        DeviceAllocationState.Available,
+                        "product",
+                        "productVariant",
+                        "sdkVersion",
+                        "buildId",
+                        "batteryLevel");
+        Assert.assertEquals(
+                hostname + ":" + ClusterHostUtil.NULL_DEVICE_SERIAL_PLACEHOLDER,
+                ClusterHostUtil.getRunTarget(device, "{SERIAL}", null));
     }
 }
