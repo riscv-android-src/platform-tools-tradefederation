@@ -97,31 +97,19 @@ import com.android.tradefed.device.metric.AtraceCollectorTest;
 import com.android.tradefed.device.metric.AtraceRunMetricCollectorTest;
 import com.android.tradefed.device.metric.AutoLogCollectorTest;
 import com.android.tradefed.device.metric.BaseDeviceMetricCollectorTest;
-import com.android.tradefed.device.metric.BuddyInfoMetricCollectorTest;
-import com.android.tradefed.device.metric.BugreportzMetricCollectorTest;
 import com.android.tradefed.device.metric.BugreportzOnFailureCollectorTest;
 import com.android.tradefed.device.metric.DebugHostLogOnFailureCollectorTest;
 import com.android.tradefed.device.metric.DeviceMetricDataTest;
-import com.android.tradefed.device.metric.DumpHeapCollectorTest;
 import com.android.tradefed.device.metric.FilePullerDeviceMetricCollectorTest;
 import com.android.tradefed.device.metric.FilePullerLogCollectorTest;
-import com.android.tradefed.device.metric.GraphicsStatsMetricCollectorTest;
 import com.android.tradefed.device.metric.HostStatsdMetricCollectorTest;
 import com.android.tradefed.device.metric.IncidentReportCollectorTest;
-import com.android.tradefed.device.metric.IonHeapInfoMetricCollectorTest;
 import com.android.tradefed.device.metric.LogcatOnFailureCollectorTest;
 import com.android.tradefed.device.metric.LogcatTimingMetricCollectorTest;
-import com.android.tradefed.device.metric.MemInfoMetricCollectorTest;
-import com.android.tradefed.device.metric.PagetypeInfoMetricCollectorTest;
 import com.android.tradefed.device.metric.PerfettoPullerMetricCollectorTest;
-import com.android.tradefed.device.metric.ProcessMaxMemoryCollectorTest;
 import com.android.tradefed.device.metric.RebootReasonCollectorTest;
 import com.android.tradefed.device.metric.RuntimeRestartCollectorTest;
-import com.android.tradefed.device.metric.ScheduleMultipleDeviceMetricCollectorTest;
-import com.android.tradefed.device.metric.ScheduledDeviceMetricCollectorTest;
 import com.android.tradefed.device.metric.ScreenshotOnFailureCollectorTest;
-import com.android.tradefed.device.metric.TemperatureCollectorTest;
-import com.android.tradefed.device.metric.TraceMetricCollectorTest;
 import com.android.tradefed.device.recovery.BatteryUnavailableDeviceRecoveryTest;
 import com.android.tradefed.device.recovery.RunConfigDeviceRecoveryTest;
 import com.android.tradefed.device.recovery.UsbResetMultiDeviceRecoveryTest;
@@ -533,31 +521,19 @@ import org.junit.runners.Suite.SuiteClasses;
     AtraceRunMetricCollectorTest.class,
     AutoLogCollectorTest.class,
     BaseDeviceMetricCollectorTest.class,
-    BuddyInfoMetricCollectorTest.class,
-    BugreportzMetricCollectorTest.class,
     BugreportzOnFailureCollectorTest.class,
     DebugHostLogOnFailureCollectorTest.class,
     DeviceMetricDataTest.class,
-    DumpHeapCollectorTest.class,
     FilePullerDeviceMetricCollectorTest.class,
     FilePullerLogCollectorTest.class,
-    GraphicsStatsMetricCollectorTest.class,
     IncidentReportCollectorTest.class,
-    IonHeapInfoMetricCollectorTest.class,
     LogcatOnFailureCollectorTest.class,
     LogcatTimingMetricCollectorTest.class,
-    MemInfoMetricCollectorTest.class,
-    PagetypeInfoMetricCollectorTest.class,
     PerfettoPullerMetricCollectorTest.class,
-    ProcessMaxMemoryCollectorTest.class,
     RebootReasonCollectorTest.class,
     RuntimeRestartCollectorTest.class,
-    ScheduledDeviceMetricCollectorTest.class,
-    ScheduleMultipleDeviceMetricCollectorTest.class,
     ScreenshotOnFailureCollectorTest.class,
     HostStatsdMetricCollectorTest.class,
-    TemperatureCollectorTest.class,
-    TraceMetricCollectorTest.class,
 
     // device.recovery
     BatteryUnavailableDeviceRecoveryTest.class,
