@@ -29,6 +29,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -161,6 +162,8 @@ public class DeviceSelectionOptions implements IDeviceSelection {
 
     // If we have tried to fetch the environment variable ANDROID_SERIAL before.
     private boolean mFetchedEnvVariable = false;
+    // Store the reason for which the device was not matched.
+    private Map<String, String> mNoMatchReason = new LinkedHashMap<>();
 
     private static final String VARIANT_SEPARATOR = ":";
 
@@ -448,6 +451,7 @@ public class DeviceSelectionOptions implements IDeviceSelection {
      */
     @Override
     public boolean matches(IDevice device) {
+        String deviceSerial = device.getSerialNumber();
         Collection<String> serials = getSerials(device);
         Collection<String> excludeSerials = getExcludeSerials();
         Map<String, Collection<String>> productVariants = splitOnVariant(getProductTypes());
@@ -456,9 +460,17 @@ public class DeviceSelectionOptions implements IDeviceSelection {
 
         if (!serials.isEmpty() &&
                 !serials.contains(device.getSerialNumber())) {
+            addNoMatchReason(
+                    deviceSerial,
+                    String.format(
+                            "device serial does not match any requested serial(%s)", serials));
             return false;
         }
         if (excludeSerials.contains(device.getSerialNumber())) {
+            addNoMatchReason(
+                    deviceSerial,
+                    String.format(
+                            "device serial was part of excluded serials(%s)", excludeSerials));
             return false;
         }
         if (!productTypes.isEmpty()) {
@@ -468,15 +480,31 @@ public class DeviceSelectionOptions implements IDeviceSelection {
                 String productVariant = getDeviceProductVariant(device);
                 Collection<String> variants = productVariants.get(productType);
                 if (variants != null && !variants.contains(productVariant)) {
+                    addNoMatchReason(
+                            deviceSerial,
+                            String.format(
+                                    "device variant (%s) does not match requested variants(%s)",
+                                    productVariant, variants));
                     return false;
                 }
             } else {
                 // no product type matches; bye-bye
+                addNoMatchReason(
+                        deviceSerial,
+                        String.format(
+                                "device product type (%s) does not match requested product types(%s)",
+                                productType, productTypes));
                 return false;
             }
         }
         for (Map.Entry<String, String> propEntry : properties.entrySet()) {
-            if (!propEntry.getValue().equals(device.getProperty(propEntry.getKey()))) {
+            String deviceProperty = device.getProperty(propEntry.getKey());
+            if (!propEntry.getValue().equals(deviceProperty)) {
+                addNoMatchReason(
+                        deviceSerial,
+                        String.format(
+                                "device property (%s) value(%s) does not match requested value(%s)",
+                                propEntry.getKey(), deviceProperty, propEntry.getValue()));
                 return false;
             }
         }
@@ -488,12 +516,25 @@ public class DeviceSelectionOptions implements IDeviceSelection {
         if ((mMinSdk != null) || (mMaxSdk != null)) {
             int deviceSdkLevel = getDeviceSdkLevel(device);
             if (deviceSdkLevel < 0) {
+                addNoMatchReason(
+                        deviceSerial,
+                        String.format("device returned unexpected sdk level (%s)", deviceSdkLevel));
                 return false;
             }
             if (mMinSdk != null && deviceSdkLevel < mMinSdk) {
+                addNoMatchReason(
+                        deviceSerial,
+                        String.format(
+                                "device sdk (%s) is below the requested min sdk (%s)",
+                                deviceSdkLevel, mMinSdk));
                 return false;
             }
             if (mMaxSdk != null && mMaxSdk < deviceSdkLevel) {
+                addNoMatchReason(
+                        deviceSerial,
+                        String.format(
+                                "device sdk (%s) is above the requested max sdk (%s)",
+                                deviceSdkLevel, mMaxSdk));
                 return false;
             }
         }
@@ -505,19 +546,35 @@ public class DeviceSelectionOptions implements IDeviceSelection {
                 if (device instanceof StubDevice || device instanceof FastbootDevice) {
                     // Reading battery of fastboot and StubDevice device does not work and could
                     // lead to weird log.
+                    addNoMatchReason(
+                            deviceSerial,
+                            String.format(
+                                    "device type is (%s) which cannot have a battery required.",
+                                    device.getClass()));
                     return false;
                 }
                 Integer deviceBattery = getBatteryLevel(device);
                 if (deviceBattery == null) {
                     // Couldn't determine battery level when that check is required; reject device
+                    addNoMatchReason(deviceSerial, "device failed to return a battery reading.");
                     return false;
                 }
                 if (isLessAndNotNull(deviceBattery, mMinBattery)) {
                     // deviceBattery < mMinBattery
+                    addNoMatchReason(
+                            deviceSerial,
+                            String.format(
+                                    "device battery (%s) is below the requested min battery (%s)",
+                                    deviceBattery, mMinBattery));
                     return false;
                 }
                 if (isLessEqAndNotNull(mMaxBattery, deviceBattery)) {
                     // mMaxBattery <= deviceBattery
+                    addNoMatchReason(
+                            deviceSerial,
+                            String.format(
+                                    "device battery (%s) is above the requested max battery (%s)",
+                                    deviceBattery, mMaxBattery));
                     return false;
                 }
             }
@@ -558,39 +615,55 @@ public class DeviceSelectionOptions implements IDeviceSelection {
         if ((emulatorRequested() || stubEmulatorRequested()) && !device.isEmulator()) {
             return false;
         }
+        String deviceSerial = device.getSerialNumber();
         // If physical device is requested but device is emulator or remote ip device, skip
         if (deviceRequested()
                 && (device.isEmulator()
                         || RemoteAndroidDevice.checkSerialFormatValid(device.getSerialNumber()))) {
+            addNoMatchReason(deviceSerial, "device is not a physical device");
             return false;
         }
 
         if (mRequestedType != null) {
             Class<?> classNeeded = mRequestedType.getRequiredClass();
             if (!device.getClass().equals(classNeeded)) {
+                addNoMatchReason(
+                        deviceSerial,
+                        String.format(
+                                "device is type (%s) while requested type was (%s)",
+                                device.getClass(), classNeeded));
                 return false;
             }
         } else {
             if (device.isEmulator() && (device instanceof StubDevice) && !stubEmulatorRequested()) {
                 // only allocate the stub emulator if requested
+                addNoMatchReason(deviceSerial, "device is emulator while requested type was not");
                 return false;
             }
             if (nullDeviceRequested() != (device instanceof NullDevice)) {
+                addNoMatchReason(
+                        deviceSerial, "device is null-device while requested type was not");
                 return false;
             }
             if (tcpDeviceRequested() != TcpDevice.class.equals(device.getClass())) {
                 // We only match an exact TcpDevice here, no child class.
+                addNoMatchReason(deviceSerial, "device is tcp-device while requested type was not");
                 return false;
             }
             if (gceDeviceRequested() != RemoteAvdIDevice.class.equals(device.getClass())) {
                 // We only match an exact RemoteAvdIDevice here, no child class.
+                addNoMatchReason(deviceSerial, "device is gce-device while requested type was not");
                 return false;
             }
             if (remoteDeviceRequested() != VmRemoteDevice.class.equals(device.getClass())) {
+                addNoMatchReason(
+                        deviceSerial, "device is remote-device while requested type was not");
                 return false;
             }
             if (localVirtualDeviceRequested()
                     != StubLocalAndroidVirtualDevice.class.equals(device.getClass())) {
+                addNoMatchReason(
+                        deviceSerial, "device is local-virtual while requested type was not");
                 return false;
             }
         }
@@ -702,6 +775,15 @@ public class DeviceSelectionOptions implements IDeviceSelection {
             CLog.w("Failed to parse sdk level %s for device %s", prop, device.getSerialNumber());
         }
         return apiLevel;
+    }
+
+    private void addNoMatchReason(String device, String reason) {
+        mNoMatchReason.put(device, reason);
+    }
+
+    @Override
+    public Map<String, String> getNoMatchReason() {
+        return mNoMatchReason;
     }
 
     /**
