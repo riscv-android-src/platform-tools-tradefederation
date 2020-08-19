@@ -19,6 +19,8 @@ import com.android.loganalysis.item.JavaCrashItem;
 import com.android.loganalysis.item.LogcatItem;
 import com.android.loganalysis.parser.LogcatParser;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.error.DeviceErrorIdentifier;
@@ -112,6 +114,12 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
         error.setErrorMessage(errorMessage);
         if (isCrash(errorMessage)) {
             error.setErrorIdentifier(DeviceErrorIdentifier.INSTRUMENTATION_CRASH);
+        }
+        // Add metrics for assessing uncaught IntrumentationTest crash failures.
+        InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.CRASH_FAILURES, 1);
+        if (FailureStatus.UNSET.equals(error.getFailureStatus())) {
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.UNCAUGHT_CRASH_FAILURES, 1);
         }
         super.testRunFailed(error);
     }
