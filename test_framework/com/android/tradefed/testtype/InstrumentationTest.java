@@ -948,6 +948,9 @@ public class InstrumentationTest
                     CLog.d(
                             "Initializing %s for instrumentation.",
                             collector.getClass().getCanonicalName());
+                    if (collector instanceof IConfigurationReceiver) {
+                        ((IConfigurationReceiver) collector).setConfiguration(mConfiguration);
+                    }
                     listener = collector.init(testInfo.getContext(), listener);
                 }
             }
