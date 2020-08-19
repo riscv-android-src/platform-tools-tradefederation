@@ -365,12 +365,14 @@ public class CommandSchedulerTest {
         mScheduler =
                 new TestableCommandScheduler() {
                     @Override
-                    Map<String, ITestDevice> allocateDevices(
+                    DeviceAllocationResult allocateDevices(
                             IConfiguration config, IDeviceManager manager) {
+                        DeviceAllocationResult results = new DeviceAllocationResult();
                         Map<String, ITestDevice> allocated = new HashMap<>();
                         ((MockDeviceManager) manager).addDevice(mockDevice);
                         allocated.put("device", ((MockDeviceManager) manager).allocateDevice());
-                        return allocated;
+                        results.addAllocatedDevices(allocated);
+                        return results;
                     }
                 };
         replayMocks(mockDevice, mockListener);
@@ -1094,8 +1096,10 @@ public class CommandSchedulerTest {
         mMockConfiguration.validateOptions();
         replayMocks();
         mScheduler.start();
-        Map<String, ITestDevice> devices = mScheduler.allocateDevices(
-                mMockConfiguration, mMockManager);
+        DeviceAllocationResult results =
+                mScheduler.allocateDevices(mMockConfiguration, mMockManager);
+        assertTrue(results.wasAllocationSuccessful());
+        Map<String, ITestDevice> devices = results.getAllocatedDevices();
         assertEquals(1, devices.size());
         mScheduler.shutdown();
     }
@@ -1120,8 +1124,10 @@ public class CommandSchedulerTest {
         mMockConfiguration.setDeviceConfigList(EasyMock.anyObject());
         replayMocks();
         mScheduler.start();
-        Map<String, ITestDevice> devices =
+        DeviceAllocationResult results =
                 mScheduler.allocateDevices(mMockConfiguration, mMockManager);
+        assertTrue(results.wasAllocationSuccessful());
+        Map<String, ITestDevice> devices = results.getAllocatedDevices();
         // With replicated setup, all devices get allocated.
         assertEquals(3, devices.size());
         mScheduler.shutdown();
@@ -1147,8 +1153,10 @@ public class CommandSchedulerTest {
         mMockConfiguration.validateOptions();
         replayMocks();
         mScheduler.start();
-        Map<String, ITestDevice> devices = mScheduler.allocateDevices(
-                mMockConfiguration, mMockManager);
+        DeviceAllocationResult results =
+                mScheduler.allocateDevices(mMockConfiguration, mMockManager);
+        assertTrue(results.wasAllocationSuccessful());
+        Map<String, ITestDevice> devices = results.getAllocatedDevices();
         assertEquals(2, devices.size());
         assertEquals(0, mMockManager.getQueueOfAvailableDeviceSize());
         mScheduler.shutdown();
@@ -1166,8 +1174,10 @@ public class CommandSchedulerTest {
         mMockConfiguration.validateOptions();
         replayMocks();
         mScheduler.start();
-        Map<String, ITestDevice> devices = mScheduler.allocateDevices(
-                mMockConfiguration, mMockManager);
+        DeviceAllocationResult results =
+                mScheduler.allocateDevices(mMockConfiguration, mMockManager);
+        assertFalse(results.wasAllocationSuccessful());
+        Map<String, ITestDevice> devices = results.getAllocatedDevices();
         assertEquals(0, devices.size());
         assertEquals(2, mMockManager.getQueueOfAvailableDeviceSize());
         mScheduler.shutdown();
@@ -1279,12 +1289,14 @@ public class CommandSchedulerTest {
         mScheduler =
                 new TestableCommandScheduler() {
                     @Override
-                    Map<String, ITestDevice> allocateDevices(
+                    DeviceAllocationResult allocateDevices(
                             IConfiguration config, IDeviceManager manager) {
+                        DeviceAllocationResult results = new DeviceAllocationResult();
                         Map<String, ITestDevice> allocated = new HashMap<>();
                         ((MockDeviceManager) manager).addDevice(mockDevice);
                         allocated.put("device", ((MockDeviceManager) manager).allocateDevice());
-                        return allocated;
+                        results.addAllocatedDevices(allocated);
+                        return results;
                     }
                 };
 
