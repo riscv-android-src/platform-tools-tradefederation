@@ -193,6 +193,7 @@ public class ClusterCommandConfigBuilder {
         envVars.putAll(mTestEnvironment.getEnvVars());
         envVars.putAll(mTestContext.getEnvVars());
         for (String serial : mCommand.getTargetDeviceSerials()) {
+            serial = ClusterHostUtil.getLocalDeviceSerial(serial);
             IDeviceConfiguration device =
                     new DeviceConfigurationHolder(String.format("TF_DEVICE_%d", index++));
             device.getDeviceRequirements().setSerial(serial);
