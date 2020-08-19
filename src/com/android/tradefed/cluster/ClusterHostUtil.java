@@ -99,6 +99,22 @@ public class ClusterHostUtil {
     }
 
     /**
+     * Returns a local device serial for a given unique device serial.
+     *
+     * <p>TFC sends down unique device serials for non-physical devices which TF does not
+     * understand. This method converts them back to local device serials.
+     *
+     * @param serial a unique device serial from TFC.
+     * @return a local device serial.
+     */
+    public static String getLocalDeviceSerial(String serial) {
+        String prefix = getHostName() + ":";
+        if (serial.startsWith(prefix)) {
+            return serial.substring(prefix.length());
+        }
+        return serial;
+    }
+    /**
      * Gets the IP address.
      *
      * @return the IP address or null if we were unable to fetch it.

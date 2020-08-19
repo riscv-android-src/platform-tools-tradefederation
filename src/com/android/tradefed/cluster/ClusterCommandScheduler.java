@@ -639,7 +639,7 @@ public class ClusterCommandScheduler extends CommandScheduler {
         if (commandTask.getTargetDeviceSerials() != null) {
             for (String serial : commandTask.getTargetDeviceSerials()) {
                 cmdLine += " --serial ";
-                cmdLine += serial;
+                cmdLine += ClusterHostUtil.getLocalDeviceSerial(serial);
             }
         }
         CLog.i("executing cluster command: [%s] %s", commandTask.getTaskId(), cmdLine);
