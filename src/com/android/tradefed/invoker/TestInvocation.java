@@ -165,6 +165,7 @@ public class TestInvocation implements ITestInvocation {
     private Long mStopRequestTime = null;
     private boolean mTestStarted = false;
     private boolean mInvocationFailed = false;
+    private boolean mDelegatedInvocation = false;
     private List<IScheduledInvocationListener> mSchedulerListeners = new ArrayList<>();
 
     /**
@@ -306,37 +307,39 @@ public class TestInvocation implements ITestInvocation {
             }
             CurrentInvocation.setActionInProgress(ActionInProgress.TEAR_DOWN);
             getRunUtil().allowInterrupt(false);
-            if (config.getCommandOptions().takeBugreportOnInvocationEnded() ||
-                    config.getCommandOptions().takeBugreportzOnInvocationEnded()) {
-                if (bugreportName != null) {
-                    CLog.i("Bugreport to be taken for failure instead of invocation ended.");
-                } else {
-                    bugreportName = INVOCATION_ENDED_BUGREPORT_NAME;
+            if (!mDelegatedInvocation) {
+                if (config.getCommandOptions().takeBugreportOnInvocationEnded()
+                        || config.getCommandOptions().takeBugreportzOnInvocationEnded()) {
+                    if (bugreportName != null) {
+                        CLog.i("Bugreport to be taken for failure instead of invocation ended.");
+                    } else {
+                        bugreportName = INVOCATION_ENDED_BUGREPORT_NAME;
+                    }
                 }
-            }
-            if (bugreportName != null) {
-                if (context.getDevices().size() == 1 || badDevice != null) {
-                    ITestDevice collectBugreport = badDevice;
-                    if (collectBugreport == null) {
-                        collectBugreport = context.getDevices().get(0);
+                if (bugreportName != null) {
+                    if (context.getDevices().size() == 1 || badDevice != null) {
+                        ITestDevice collectBugreport = badDevice;
+                        if (collectBugreport == null) {
+                            collectBugreport = context.getDevices().get(0);
+                        }
+                        // If we have identified a faulty device only take the bugreport on it.
+                        takeBugreport(collectBugreport, listener, bugreportName);
+                    } else if (context.getDevices().size() > 1) {
+                        ParallelDeviceExecutor<Boolean> executor =
+                                new ParallelDeviceExecutor<>(context.getDevices().size());
+                        List<Callable<Boolean>> callableTasks = new ArrayList<>();
+                        final String reportName = bugreportName;
+                        for (ITestDevice device : context.getDevices()) {
+                            Callable<Boolean> callableTask =
+                                    () -> {
+                                        takeBugreport(device, listener, reportName);
+                                        return true;
+                                    };
+                            callableTasks.add(callableTask);
+                        }
+                        // Capture the bugreports best effort, ignore the results.
+                        executor.invokeAll(callableTasks, 5, TimeUnit.MINUTES);
                     }
-                    // If we have identified a faulty device only take the bugreport on it.
-                    takeBugreport(collectBugreport, listener, bugreportName);
-                } else if (context.getDevices().size() > 1) {
-                    ParallelDeviceExecutor<Boolean> executor =
-                            new ParallelDeviceExecutor<>(context.getDevices().size());
-                    List<Callable<Boolean>> callableTasks = new ArrayList<>();
-                    final String reportName = bugreportName;
-                    for (ITestDevice device : context.getDevices()) {
-                        Callable<Boolean> callableTask =
-                                () -> {
-                                    takeBugreport(device, listener, reportName);
-                                    return true;
-                                };
-                        callableTasks.add(callableTask);
-                    }
-                    // Capture the bugreports best effort, ignore the results.
-                    executor.invokeAll(callableTasks, 5, TimeUnit.MINUTES);
                 }
             }
             // Save the device executeShellCommand logs
@@ -487,7 +490,7 @@ public class TestInvocation implements ITestInvocation {
 
     private void reportHostLog(ITestInvocationListener listener, IConfiguration config) {
         String name = TRADEFED_LOG_NAME;
-        if (config.getConfigurationObject(TradefedDelegator.DELEGATE_OBJECT) != null) {
+        if (mDelegatedInvocation) {
             name = TRADEFED_DELEGATED_LOG_NAME;
         }
         reportHostLog(listener, config, name);
@@ -786,6 +789,7 @@ public class TestInvocation implements ITestInvocation {
             mode = RunMode.REMOTE_INVOCATION;
         }
         if (config.getConfigurationObject(TradefedDelegator.DELEGATE_OBJECT) != null) {
+            mDelegatedInvocation = true;
             mode = RunMode.DELEGATED_INVOCATION;
         }
         IInvocationExecution invocationPath = createInvocationExec(mode);
