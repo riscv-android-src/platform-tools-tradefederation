@@ -32,6 +32,8 @@ public enum InfraErrorIdentifier implements ErrorIdentifier {
     CONFIGURED_ARTIFACT_NOT_FOUND(500_006, FailureStatus.CUSTOMER_ISSUE),
     INVOCATION_TIMEOUT(500_007, FailureStatus.TIMED_OUT),
     OPTION_CONFIGURATION_ERROR(500_008, FailureStatus.CUSTOMER_ISSUE),
+    RUNNER_ALLOCATION_ERROR(500_009, FailureStatus.INFRA_FAILURE),
+    SCHEDULER_ALLOCATION_ERROR(500_010, FailureStatus.CUSTOMER_ISSUE),
 
     // 500_501 - 501_000: Build, Artifacts download related errors
     ARTIFACT_REMOTE_PATH_NULL(500_501, FailureStatus.INFRA_FAILURE),
