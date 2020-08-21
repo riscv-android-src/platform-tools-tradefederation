@@ -69,6 +69,7 @@ import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ResultForwarder;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.result.suite.SuiteResultReporter;
 import com.android.tradefed.sandbox.ISandbox;
 import com.android.tradefed.testtype.IRemoteTest;
@@ -1553,7 +1554,8 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             throw new NoDeviceException(
                     String.format(
                             "no devices is available for command: %s\n%s",
-                            Arrays.asList(args), allocationResults.formattedReason()));
+                            Arrays.asList(args), allocationResults.formattedReason()),
+                    InfraErrorIdentifier.SCHEDULER_ALLOCATION_ERROR);
         }
     }
 
