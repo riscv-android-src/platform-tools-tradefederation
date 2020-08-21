@@ -514,14 +514,16 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
                     String.format(
                             "Could not list files of specified directory: %s", fileOrDirectory),
                     e,
-                    deviceDescriptor);
+                    deviceDescriptor,
+                    InfraErrorIdentifier.CONFIGURED_ARTIFACT_NOT_FOUND);
         }
 
         if (mThrowIfNoFile && apkFiles.isEmpty()) {
             throw new TargetSetupError(
                     String.format(
                             "Could not find any files in specified directory: %s", fileOrDirectory),
-                    deviceDescriptor);
+                    deviceDescriptor,
+                    InfraErrorIdentifier.CONFIGURED_ARTIFACT_NOT_FOUND);
         }
 
         return apkFiles;
