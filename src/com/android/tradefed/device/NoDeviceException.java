@@ -16,36 +16,23 @@
 package com.android.tradefed.device;
 
 import com.android.tradefed.build.BuildSerializedVersion;
+import com.android.tradefed.error.HarnessRuntimeException;
+import com.android.tradefed.result.error.ErrorIdentifier;
 
-/**
- * Thrown when there's no device to execute a given command.
- */
-public class NoDeviceException extends Exception {
+import java.lang.StackWalker.Option;
+
+/** Thrown when there's no device to execute a given command. */
+public class NoDeviceException extends HarnessRuntimeException {
     private static final long serialVersionUID = BuildSerializedVersion.VERSION;
 
     /**
      * Creates a {@link NoDeviceException}.
-     */
-    public NoDeviceException() {
-        super();
-    }
-
-    /**
-     * Creates a {@link NoDeviceException}.
      *
      * @param msg a descriptive message.
+     * @param errorId The {@link ErrorIdentifier} categorizing the exception.
      */
-    public NoDeviceException(String msg) {
-        super(msg);
-    }
-
-    /**
-     * Creates a {@link NoDeviceException}.
-     *
-     * @param msg a descriptive message.
-     * @param cause the root {@link Throwable} that caused the device to become unavailable.
-     */
-    public NoDeviceException(String msg, Throwable cause) {
-        super(msg, cause);
+    public NoDeviceException(String msg, ErrorIdentifier errorId) {
+        super(msg, errorId);
+        setCallerClass(StackWalker.getInstance(Option.RETAIN_CLASS_REFERENCE).getCallerClass());
     }
 }
