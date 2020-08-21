@@ -205,8 +205,10 @@ public class ClusterCommandConfigBuilder {
         }
         deviceConfigs.get(0).addSpecificConfig(new ClusterBuildProvider());
         config.setDeviceConfigList(deviceConfigs);
-        // Perform target preparation in parallel
+        // Perform target preparation in parallel with an unlimited timeout
+        // TODO(b/166455187): Consider making parallel setup options configurable
         config.injectOptionValue("parallel-setup", "true");
+        config.injectOptionValue("parallel-setup-timeout", "0");
 
         config.setTest(new ClusterCommandLauncher());
         config.setLogSaver(new ClusterLogSaver());
