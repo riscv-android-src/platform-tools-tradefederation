@@ -189,6 +189,9 @@ public interface ICommandOptions {
     /** Whether or not to attempt parallel setup of the remote devices. */
     public boolean shouldUseParallelRemoteSetup();
 
+    /** Whether or not to attempt parallel setup. */
+    public boolean shouldUseParallelSetup();
+
     /** Whether or not to use replicated setup for all the remote devices. */
     public boolean shouldUseReplicateSetup();
 
