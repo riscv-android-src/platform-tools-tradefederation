@@ -165,6 +165,9 @@ public class CommandOptions implements ICommandOptions {
                     "For remote sharded invocation, whether or not to attempt the setup in parallel.")
     private boolean mUseParallelRemoteSetup = false;
 
+    @Option(name = "parallel-setup", description = "Whether to attempt the setup in parallel.")
+    private boolean mUseParallelSetup = false;
+
     @Option(
             name = "replicate-parent-setup",
             description =
@@ -522,6 +525,12 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public boolean shouldUseParallelRemoteSetup() {
         return mUseParallelRemoteSetup;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean shouldUseParallelSetup() {
+        return mUseParallelSetup;
     }
 
     /** {@inheritDoc} */
