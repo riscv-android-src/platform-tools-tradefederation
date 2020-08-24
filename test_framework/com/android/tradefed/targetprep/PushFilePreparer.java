@@ -318,6 +318,22 @@ public class PushFilePreparer extends BaseTargetPreparer
                 // approach to do individual download from remote artifact.
                 // Try to stage the files from remote zip files.
                 src = buildInfo.stageRemoteFile(fileName, testDir);
+                if (src != null) {
+                    try {
+                        // Search again with filtering on ABI
+                        File srcWithAbi = FileUtil.findFile(fileName, mAbi, testDir);
+                        if (srcWithAbi != null
+                                && !srcWithAbi
+                                        .getAbsolutePath()
+                                        .startsWith(src.getAbsolutePath())) {
+                            // When multiple matches are found, return the one with matching
+                            // ABI unless src is its parent directory.
+                            return srcWithAbi;
+                        }
+                    } catch (IOException e) {
+                        CLog.w("Failed to find test files with matching ABI from directory.");
+                    }
+                }
             }
         }
         return src;
