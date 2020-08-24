@@ -16,7 +16,6 @@
 
 package com.android.tradefed.util.zip;
 
-import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.ByteArrayUtil;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -241,9 +240,6 @@ public final class CentralDirectoryInfo {
         if (Long.toHexString(mUncompressedSize).equals("ffffffff") ||
             Long.toHexString(mCompressedSize).equals("ffffffff") ||
             Long.toHexString(mLocalHeaderOffset).equals("ffffffff")) {
-            CLog.i("Values(compressed/uncompressed size, and relative offset of local header)) in "
-                    + "CentralDirectoryInfo for file name: %s reaches the limitation(0xffffffff), "
-                    + "getting the data from extra field.", mFileName);
             byte[] zip64FieldId = Arrays.copyOfRange(
                     data, startOffset + mFileNameLength + 46, startOffset + mFileNameLength + 48);
             // There should be a ZIP64 Field ID(0x0001) existing here.
