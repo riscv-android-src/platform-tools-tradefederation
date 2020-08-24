@@ -221,7 +221,7 @@ public class AaptParserTest extends TestCase {
         assertFalse(p.isRequestingLegacyStorage());
     }
 
-    public void testParseXmlTree_withUsesPermissionManageExternalStorage() {
+    public void testParse_withUsesPermissionManageExternalStorage() {
         AaptParser p = new AaptParser();
         p.parse(
                 "package: name='com.android.foo' versionCode='217173' versionName='1.7173' "
@@ -234,7 +234,7 @@ public class AaptParserTest extends TestCase {
         assertTrue(p.isUsingPermissionManageExternalStorage());
     }
 
-    public void testParseXmlTree_withoutUsesPermissionManageExternalStorage() {
+    public void testParse_withoutUsesPermissionManageExternalStorage() {
         AaptParser p = new AaptParser();
         p.parse(
                 "package: name='com.android.foo' versionCode='217173' versionName='1.7173' "
