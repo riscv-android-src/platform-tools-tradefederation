@@ -106,6 +106,7 @@ public class InstrumentationTestTest {
     private TestInformation mTestInfo = null;
     private CoverageOptions mCoverageOptions = null;
     private OptionSetter mCoverageOptionsSetter = null;
+    private IInvocationContext mContext = null;
 
     // The mock objects.
     @Mock IDevice mMockIDevice;
@@ -160,8 +161,8 @@ public class InstrumentationTestTest {
 
         mConfig.setCoverageOptions(mCoverageOptions);
         mInstrumentationTest.setConfiguration(mConfig);
-        IInvocationContext context = new InvocationContext();
-        mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
+        mContext = new InvocationContext();
+        mTestInfo = TestInformation.newBuilder().setInvocationContext(mContext).build();
     }
 
     /** Test normal run scenario. */
@@ -751,13 +752,15 @@ public class InstrumentationTestTest {
         mInstrumentationTest.run(mTestInfo, mMockListener);
 
         InOrder inOrder = Mockito.inOrder(mMockListener);
-        inOrder.verify(mMockListener).testRunStarted(TEST_PACKAGE_VALUE, 2);
+        inOrder.verify(mMockListener)
+                .testRunStarted(eq(TEST_PACKAGE_VALUE), eq(2), anyInt(), anyLong());
         inOrder.verify(mMockListener).testStarted(eq(TEST1), anyLong());
         inOrder.verify(mMockListener).testEnded(eq(TEST1), anyLong(), eq(EMPTY_STRING_MAP));
         inOrder.verify(mMockListener).testStarted(eq(TEST2), anyLong());
         inOrder.verify(mMockListener).testEnded(eq(TEST2), anyLong(), eq(EMPTY_STRING_MAP));
         inOrder.verify(mMockListener).testRunEnded(1, EMPTY_STRING_MAP);
-        inOrder.verify(mMockListener).testRunStarted(eq("mergeCoverageMeasurements"), anyInt());
+        inOrder.verify(mMockListener)
+                .testRunStarted(eq("mergeCoverageMeasurements"), anyInt(), anyInt(), anyLong());
         inOrder.verify(mMockListener)
                 .testLog(eq("merged_runtime_coverage"), eq(LogDataType.COVERAGE), any());
         inOrder.verify(mMockListener).testRunEnded(anyLong(), eq(EMPTY_STRING_MAP));
@@ -1093,7 +1096,7 @@ public class InstrumentationTestTest {
         mCoverageOptionsSetter.setOptionValue("coverage-toolchain", "JACOCO");
 
         ITestInvocationListener listener =
-                mInstrumentationTest.addJavaCoverageListenerIfEnabled(mMockListener);
+                mInstrumentationTest.addJavaCoverageListenerIfEnabled(mContext, mMockListener);
         assertThat(listener).isInstanceOf(JavaCodeCoverageListener.class);
 
         listener = mInstrumentationTest.addGcovCoverageListenerIfEnabled(mMockListener);
@@ -1105,7 +1108,7 @@ public class InstrumentationTestTest {
         mCoverageOptionsSetter.setOptionValue("coverage", "false");
 
         ITestInvocationListener listener =
-                mInstrumentationTest.addJavaCoverageListenerIfEnabled(mMockListener);
+                mInstrumentationTest.addJavaCoverageListenerIfEnabled(mContext, mMockListener);
         assertThat(listener).isSameAs(mMockListener);
 
         listener = mInstrumentationTest.addGcovCoverageListenerIfEnabled(mMockListener);
