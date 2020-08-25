@@ -37,6 +37,7 @@ public class ErrorIdentifierTest {
         List<ErrorIdentifier> errors = new ArrayList<>();
         errors.addAll(Arrays.asList(InfraErrorIdentifier.values()));
         errors.addAll(Arrays.asList(DeviceErrorIdentifier.values()));
+        errors.addAll(Arrays.asList(TestErrorIdentifier.values()));
 
         List<String> names = errors.stream().map(e -> e.name()).collect(Collectors.toList());
         Set<String> uniques = new HashSet<>();
