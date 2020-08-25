@@ -39,6 +39,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -911,7 +912,7 @@ public class InstrumentationTest
         // Reruns do not create new listeners or clear coverage measurements.
         if (!mIsRerun) {
             listener = addBugreportListenerIfEnabled(listener);
-            listener = addJavaCoverageListenerIfEnabled(listener);
+            listener = addJavaCoverageListenerIfEnabled(testInfo.getContext(), listener);
             listener = addGcovCoverageListenerIfEnabled(listener);
             listener = addClangCoverageListenerIfEnabled(listener);
 
@@ -994,17 +995,16 @@ public class InstrumentationTest
      * Returns a listener that will collect coverage measurements, or the original {@code listener}
      * if this feature is disabled.
      */
-    ITestInvocationListener addJavaCoverageListenerIfEnabled(ITestInvocationListener listener) {
+    ITestInvocationListener addJavaCoverageListenerIfEnabled(
+            IInvocationContext context, ITestInvocationListener listener) {
         if (mConfiguration == null) {
             return listener;
         }
         if (mConfiguration.getCoverageOptions().isCoverageEnabled()
                 && mConfiguration.getCoverageOptions().getCoverageToolchains().contains(JACOCO)) {
-            return new JavaCodeCoverageListener(
-                    getDevice(),
-                    mConfiguration.getCoverageOptions(),
-                    mMergeCoverageMeasurements,
-                    listener);
+            JavaCodeCoverageListener javaListener = new JavaCodeCoverageListener();
+            javaListener.setConfiguration(mConfiguration);
+            return javaListener.init(context, listener);
         }
         return listener;
     }
