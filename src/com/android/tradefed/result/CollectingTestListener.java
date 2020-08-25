@@ -311,6 +311,12 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
     }
 
     @Override
+    public void testAssumptionFailure(TestDescription test, FailureDescription failure) {
+        setCountDirty();
+        mCurrentTestRunResult.testAssumptionFailure(test, failure);
+    }
+
+    @Override
     public void testIgnored(TestDescription test) {
         setCountDirty();
         mCurrentTestRunResult.testIgnored(test);
