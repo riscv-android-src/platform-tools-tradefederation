@@ -59,6 +59,7 @@ import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.result.error.ErrorIdentifier;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
+import com.android.tradefed.result.error.TestErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.retry.RetryStatistics;
@@ -1008,7 +1009,9 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         }
         listener.testRunStarted(getId(), 0, 0, System.currentTimeMillis());
         FailureDescription description =
-                FailureDescription.create(message).setFailureStatus(FailureStatus.NOT_EXECUTED);
+                FailureDescription.create(message)
+                        .setFailureStatus(FailureStatus.NOT_EXECUTED)
+                        .setErrorIdentifier(TestErrorIdentifier.MODULE_DID_NOT_EXECUTE);
         listener.testRunFailed(description);
         listener.testRunEnded(0, new HashMap<String, Metric>());
         listener.testModuleEnded();
