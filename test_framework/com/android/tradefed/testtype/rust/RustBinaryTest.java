@@ -28,6 +28,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -226,7 +227,7 @@ public class RustBinaryTest extends RustTestBase implements IDeviceTest, IConfig
         }
 
         // Insert the coverage listener if code coverage collection is enabled.
-        listener = addNativeCoverageListenerIfEnabled(listener);
+        listener = addNativeCoverageListenerIfEnabled(testInfo.getContext(), listener);
         NativeCodeCoverageFlusher flusher =
                 new NativeCodeCoverageFlusher(mDevice, getCoverageOptions().getCoverageProcesses());
 
@@ -269,11 +270,13 @@ public class RustBinaryTest extends RustTestBase implements IDeviceTest, IConfig
      * @return a native coverage listener if coverage is enabled, otherwise the original listener
      */
     private ITestInvocationListener addNativeCoverageListenerIfEnabled(
-            ITestInvocationListener listener) {
+            IInvocationContext context, ITestInvocationListener listener) {
         CoverageOptions options = getCoverageOptions();
 
         if (options.isCoverageEnabled() && options.getCoverageToolchains().contains(GCOV)) {
-            return new NativeCodeCoverageListener(mDevice, options, listener);
+            NativeCodeCoverageListener nativeListener = new NativeCodeCoverageListener();
+            nativeListener.setConfiguration(mConfiguration);
+            listener = nativeListener.init(context, listener);
         }
         return listener;
     }

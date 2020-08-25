@@ -18,22 +18,22 @@ package com.android.tradefed.testtype;
 
 import static com.google.common.truth.Truth.assertThat;
 
-import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 
 import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.OptionSetter;
-import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.testtype.coverage.CoverageOptions;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
-import com.google.common.base.VerifyException;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.ByteString;
 
@@ -74,6 +74,8 @@ public class NativeCodeCoverageListenerTest {
 
     @Rule public TemporaryFolder folder = new TemporaryFolder();
 
+    @Mock IConfiguration mMockConfiguration;
+    @Mock IInvocationContext mMockContext;
     @Mock ITestDevice mMockDevice;
 
     LogFileReader mFakeListener = new LogFileReader();
@@ -92,12 +94,18 @@ public class NativeCodeCoverageListenerTest {
 
         mCoverageOptions = new CoverageOptions();
         mCoverageOptionsSetter = new OptionSetter(mCoverageOptions);
+
+        doReturn(mCoverageOptions).when(mMockConfiguration).getCoverageOptions();
+        doReturn(ImmutableList.of(mMockDevice)).when(mMockContext).getDevices();
+
+        mCodeCoverageListener = new NativeCodeCoverageListener();
+        mCodeCoverageListener.setConfiguration(mMockConfiguration);
+        mCodeCoverageListener.init(mMockContext, mFakeListener);
     }
 
     @Test
-    public void test_logsCoverageZip() throws DeviceNotAvailableException, IOException {
-        mCodeCoverageListener = new NativeCodeCoverageListener(mMockDevice, mFakeListener);
-
+    public void test_logsCoverageZip() throws Exception {
+        enableGcovCoverage();
         // Setup mocks to write the coverage measurement to the file.
         doReturn(true).when(mMockDevice).enableAdbRoot();
         File tar =
@@ -135,9 +143,8 @@ public class NativeCodeCoverageListenerTest {
     }
 
     @Test
-    public void testNoCoverageFiles_logsEmptyZip() throws DeviceNotAvailableException, IOException {
-        mCodeCoverageListener = new NativeCodeCoverageListener(mMockDevice, mFakeListener);
-
+    public void testNoCoverageFiles_logsEmptyZip() throws Exception {
+        enableGcovCoverage();
         doReturn(true).when(mMockDevice).enableAdbRoot();
         doReturn(createTar(ImmutableMap.of())).when(mMockDevice).pullFile(anyString());
 
@@ -160,12 +167,9 @@ public class NativeCodeCoverageListenerTest {
     }
 
     @Test
-    public void testCoverageFlushAllProcesses_flushAllCommandCalled()
-            throws ConfigurationException, DeviceNotAvailableException, IOException {
+    public void testCoverageFlushAllProcesses_flushAllCommandCalled() throws Exception {
+        enableGcovCoverage();
         mCoverageOptionsSetter.setOptionValue("coverage-flush", "true");
-
-        mCodeCoverageListener =
-                new NativeCodeCoverageListener(mMockDevice, mCoverageOptions, mFakeListener);
 
         doReturn(true).when(mMockDevice).enableAdbRoot();
         doReturn(true).when(mMockDevice).isAdbRoot();
@@ -181,14 +185,11 @@ public class NativeCodeCoverageListenerTest {
     }
 
     @Test
-    public void testCoverageFlushSpecificProcesses_flushCommandCalled()
-            throws ConfigurationException, DeviceNotAvailableException, IOException {
+    public void testCoverageFlushSpecificProcesses_flushCommandCalled() throws Exception {
+        enableGcovCoverage();
         mCoverageOptionsSetter.setOptionValue("coverage-flush", "true");
         mCoverageOptionsSetter.setOptionValue("coverage-processes", "mediaserver");
         mCoverageOptionsSetter.setOptionValue("coverage-processes", "adbd");
-
-        mCodeCoverageListener =
-                new NativeCodeCoverageListener(mMockDevice, mCoverageOptions, mFakeListener);
 
         doReturn(true).when(mMockDevice).enableAdbRoot();
         doReturn(true).when(mMockDevice).isAdbRoot();
@@ -206,9 +207,8 @@ public class NativeCodeCoverageListenerTest {
     }
 
     @Test
-    public void testFailure_unableToPullFile() throws DeviceNotAvailableException {
-        mCodeCoverageListener = new NativeCodeCoverageListener(mMockDevice, mFakeListener);
-
+    public void testFailure_unableToPullFile() throws Exception {
+        enableGcovCoverage();
         // Setup mocks.
         doReturn(true).when(mMockDevice).enableAdbRoot();
 
@@ -216,13 +216,8 @@ public class NativeCodeCoverageListenerTest {
         mCodeCoverageListener.testRunStarted(RUN_NAME, TEST_COUNT);
 
         Map<String, String> metric = new HashMap<>();
-        try {
             mCodeCoverageListener.testRunEnded(
                     ELAPSED_TIME, TfMetricProtoUtil.upgradeConvert(metric));
-            fail("an exception should have been thrown.");
-        } catch (VerifyException e) {
-            // Expected
-        }
 
         // Verify testLog(..) was not called.
         assertThat(mFakeListener.getLogs()).isEmpty();
@@ -230,7 +225,7 @@ public class NativeCodeCoverageListenerTest {
 
     @Test
     public void testNoCollectOnTestEnd_noCoverageMeasurements() throws Exception {
-        mCodeCoverageListener = new NativeCodeCoverageListener(mMockDevice, mFakeListener);
+        enableGcovCoverage();
         mCodeCoverageListener.setCollectOnTestEnd(false);
 
         // Simute a test run.
@@ -302,5 +297,10 @@ public class NativeCodeCoverageListenerTest {
             }
         }
         return tarFile;
+    }
+
+    private void enableGcovCoverage() throws ConfigurationException {
+        mCoverageOptionsSetter.setOptionValue("coverage", "true");
+        mCoverageOptionsSetter.setOptionValue("coverage-toolchain", "GCOV");
     }
 }
