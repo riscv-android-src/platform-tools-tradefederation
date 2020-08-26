@@ -77,6 +77,26 @@ java_library_host {
     ],
 }
 
+python_library_host {
+    name: "tradefed-protos-py",
+    pkg_path: "atest",
+    srcs: ["proto/**/*.proto"],
+    libs: [
+        "libprotobuf-python",
+    ],
+    proto: {
+        include_dirs: ["external/protobuf/src"],
+    },
+    version: {
+        py2: {
+            enabled: true,
+        },
+        py3: {
+            enabled: true,
+        },
+    },
+}
+
 // Main Target to build tradefed jar
 java_library_host {
     name: "tradefed",
@@ -190,7 +210,6 @@ droiddoc_host {
           "-werror " +
           "-package " +
           "-devsite ",
-    create_stubs: false,
 }
 
 sh_binary_host {

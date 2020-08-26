@@ -25,6 +25,8 @@ import com.android.tradefed.device.ITestDevice.ApexInfo;
 import com.android.tradefed.device.PackageInfo;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.targetprep.suite.SuiteApkInstaller;
 import com.android.tradefed.util.AaptParser;
 import com.android.tradefed.util.BundletoolUtil;
@@ -156,7 +158,8 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
                     String.format(
                             "Failed to activate %s on device %s.",
                             listApexInfo(failToActivateApex).toString(), device.getSerialNumber()),
-                    device.getDeviceDescriptor());
+                    device.getDeviceDescriptor(),
+                    DeviceErrorIdentifier.FAIL_ACTIVATE_APEX);
         }
         CLog.i("Train activation succeed.");
     }
@@ -191,11 +194,18 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
         if (mBundletoolUtil != null) {
             return;
         }
-        File bundletoolJar = getLocalPathForFilename(testInfo, getBundletoolFileName());
+        File bundletoolJar;
+        File f = new File(getBundletoolFileName());
+        if (!f.isAbsolute()) {
+            bundletoolJar = getLocalPathForFilename(testInfo, getBundletoolFileName());
+        } else {
+            bundletoolJar = f;
+        }
         if (bundletoolJar == null) {
             throw new TargetSetupError(
                     String.format("Failed to find bundletool jar %s.", getBundletoolFileName()),
-                    testInfo.getDevice().getDeviceDescriptor());
+                    testInfo.getDevice().getDeviceDescriptor(),
+                    InfraErrorIdentifier.CONFIGURED_ARTIFACT_NOT_FOUND);
         }
         mBundletoolUtil = new BundletoolUtil(bundletoolJar);
     }
@@ -268,11 +278,10 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
         List<File> moduleFileNames = getTestsFileName();
         List<File> moduleNamesToInstall = new ArrayList<>();
         for (File moduleFileName : moduleFileNames) {
-            File moduleFile = getLocalPathForFilename(testInfo, moduleFileName.getName());
-            if (moduleFile == null) {
-                throw new TargetSetupError(
-                        String.format("%s not found.", moduleFileName),
-                        device.getDeviceDescriptor());
+            // getLocalPathForFilename throws if apk not found
+            File moduleFile = moduleFileName;
+            if (!moduleFile.isAbsolute()) {
+                moduleFile = getLocalPathForFilename(testInfo, moduleFileName.getName());
             }
             String modulePackageName = "";
             if (moduleFile.getName().endsWith(SPLIT_APKS_SUFFIX)) {
@@ -396,7 +405,8 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
                     String.format(
                             "Failed to install %s on %s. Error log: '%s'",
                             moduleFilenames.toString(), device.getSerialNumber(), log),
-                    device.getDeviceDescriptor());
+                    device.getDeviceDescriptor(),
+                    DeviceErrorIdentifier.APK_INSTALLATION_FAILED);
         }
         mApkInstalled.addAll(apkPackageNames);
     }
@@ -518,7 +528,10 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
             throws TargetSetupError {
         AaptParser parser = AaptParser.parse(testApexFile);
         if (parser == null) {
-            throw new TargetSetupError("apex installed but AaptParser failed", deviceDescriptor);
+            throw new TargetSetupError(
+                    "apex installed but AaptParser failed",
+                    deviceDescriptor,
+                    DeviceErrorIdentifier.AAPT_PARSER_FAILED);
         }
         return new ApexInfo(parser.getPackageName(), Long.parseLong(parser.getVersionCode()));
     }

@@ -35,6 +35,7 @@ import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestLoggerReceiver;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
@@ -62,6 +63,7 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
 
     private GceManager mGceHandler = null;
     private GceSshTunnelMonitor mGceSshMonitor;
+    private DeviceNotAvailableException mTunnelInitFailed = null;
 
     private static final long WAIT_FOR_TUNNEL_ONLINE = 2 * 60 * 1000;
     private static final long WAIT_AFTER_REBOOT = 60 * 1000;
@@ -90,6 +92,7 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
         try {
             mGceAvd = null;
             mGceSshMonitor = null;
+            mTunnelInitFailed = null;
             // We create a brand new GceManager each time to ensure clean state.
             mGceHandler = new GceManager(getDeviceDescriptor(), getOptions(), info);
             getGceHandler().logStableHostImageInfos(info);
@@ -103,7 +106,8 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
                 throw new DeviceNotAvailableException(
                         String.format(
                                 "Failed to launch GCE after %sms", getOptions().getGceCmdTimeout()),
-                        getSerialNumber());
+                        getSerialNumber(),
+                        DeviceErrorIdentifier.FAILED_TO_LAUNCH_GCE);
             }
             CLog.d("%sms left before timeout after GCE launch returned", remainingTime);
             // Wait for device to be ready.
@@ -132,7 +136,8 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
                 throw new DeviceNotAvailableException(
                         String.format(
                                 "AVD device booted but was in %s state", getIDevice().getState()),
-                        getSerialNumber());
+                        getSerialNumber(),
+                        DeviceErrorIdentifier.FAILED_TO_LAUNCH_GCE);
             }
             enableAdbRoot();
         } catch (DeviceNotAvailableException | TargetSetupError e) {
@@ -195,14 +200,14 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
                     CommonLogRemoteFileUtil.fetchTombstones(
                             mTestLogger, mGceAvd, getOptions(), getRunUtil());
                 }
-
-                // Cleanup GCE first to make sure ssh tunnel has nowhere to go.
-                if (!getOptions().shouldSkipTearDown()) {
-                    getGceHandler().shutdownGce();
-                }
-                // We are done with the gce related information, clean it to prevent re-entry.
-                mGceAvd = null;
             }
+
+            // Cleanup GCE first to make sure ssh tunnel has nowhere to go.
+            if (!getOptions().shouldSkipTearDown()) {
+                getGceHandler().shutdownGce();
+            }
+            // We are done with the gce related information, clean it to prevent re-entry.
+            mGceAvd = null;
 
             if (getInitialSerial() != null) {
                 setIDevice(new RemoteAvdIDevice(getInitialSerial(), getInitialIp()));
@@ -266,7 +271,10 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
                         String.format(
                                 "Device failed to boot. Error from Acloud: %s",
                                 mGceAvd.getErrors());
-                throw new TargetSetupError(errorMsg, getDeviceDescriptor());
+                throw new TargetSetupError(
+                        errorMsg,
+                        getDeviceDescriptor(),
+                        DeviceErrorIdentifier.FAILED_TO_LAUNCH_GCE);
             }
         }
         createGceSshMonitor(this, buildInfo, mGceAvd.hostAndPort(), this.getOptions());
@@ -319,13 +327,20 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
             }
             getRunUtil().sleep(RETRY_INTERVAL_MS);
         }
-        throw new DeviceNotAvailableException(
-                String.format("Tunnel did not come back online after %sms", waitTime),
-                getSerialNumber());
+        mTunnelInitFailed =
+                new DeviceNotAvailableException(
+                        String.format("Tunnel did not come back online after %sms", waitTime),
+                        getSerialNumber(),
+                        DeviceErrorIdentifier.FAILED_TO_CONNECT_TO_GCE);
+        throw mTunnelInitFailed;
     }
 
     @Override
     public void recoverDevice() throws DeviceNotAvailableException {
+        if (getGceSshMonitor() == null && mTunnelInitFailed != null) {
+            // We threw before but was not reported, so throw the root cause here.
+            throw mTunnelInitFailed;
+        }
         // Re-init tunnel when attempting recovery
         CLog.i("Attempting recovery on GCE AVD %s", getSerialNumber());
         getGceSshMonitor().closeConnection();

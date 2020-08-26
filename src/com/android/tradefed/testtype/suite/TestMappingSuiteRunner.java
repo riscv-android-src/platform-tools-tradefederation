@@ -19,10 +19,12 @@ import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.testmapping.TestInfo;
 import com.android.tradefed.util.testmapping.TestMapping;
 import com.android.tradefed.util.testmapping.TestOption;
+
 import com.google.common.annotations.VisibleForTesting;
 
 import java.io.File;
@@ -155,6 +157,11 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
                 testNames.add(testInfo.getName());
             }
             setIncludeFilter(testNames);
+            // With include filters being set, the test no longer needs group and path settings.
+            // Clear the settings to avoid conflict when the test is running in a shard.
+            mTestGroup = null;
+            mTestMappingPaths.clear();
+            mUseTestMappingPath = false;
         }
 
         // load all the configurations with include-filter injected.
@@ -166,12 +173,13 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
             IConfiguration moduleConfig = entry.getValue();
             ConfigurationDescriptor configDescriptor =
                     moduleConfig.getConfigurationDescription();
-            String moduleName = configDescriptor.getModuleName();
+            IAbi abi = configDescriptor.getAbi();
+            // Get the parameterized module name by striping the abi information out.
+            String moduleName = entry.getKey().replace(String.format("%s ", abi.getName()), "");
             String configPath = moduleConfig.getName();
             Set<TestInfo> testInfos = getTestInfos(testInfosToRun, moduleName);
-            allTests.addAll(
-                    createIndividualTests(
-                            testInfos, configPath));
+            // Only keep the same matching abi runner
+            allTests.addAll(createIndividualTests(testInfos, configPath, abi));
             if (!allTests.isEmpty()) {
                 // Set back to IConfiguration only if IRemoteTests are created.
                 moduleConfig.setTests(allTests);
@@ -183,6 +191,21 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
         return testConfigs;
     }
 
+    @VisibleForTesting
+    String getTestGroup() {
+        return mTestGroup;
+    }
+
+    @VisibleForTesting
+    List<String> getTestMappingPaths() {
+        return mTestMappingPaths;
+    }
+
+    @VisibleForTesting
+    boolean getUseTestMappingPath() {
+        return mUseTestMappingPath;
+    }
+
     /**
      * Create individual tests with test infos for a module.
      *
@@ -191,15 +214,14 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
      * @return The {@link List} that are injected with the test options.
      */
     @VisibleForTesting
-    List<IRemoteTest> createIndividualTests(Set<TestInfo> testInfos, String configPath) {
+    List<IRemoteTest> createIndividualTests(Set<TestInfo> testInfos, String configPath, IAbi abi) {
         List<IRemoteTest> tests = new ArrayList<>();
         if (configPath == null) {
             throw new RuntimeException(String.format("Configuration path is null."));
         }
         File configFie = new File(configPath);
         if (!configFie.exists()) {
-            throw new RuntimeException(
-                    String.format("Configuration path: %s doesn't exits.", configPath));
+            configFie = null;
         }
         // De-duplicate test infos so that there won't be duplicate test options.
         testInfos = dedupTestInfos(testInfos);
@@ -207,13 +229,19 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
             // Clean up all the test options injected in SuiteModuleLoader.
             super.cleanUpSuiteSetup();
             super.clearModuleArgs();
-            clearConfigPaths();
-            // Set config path to BaseTestSuite to limit the search.
-            addConfigPaths(configFie);
+            if (configFie != null) {
+                clearConfigPaths();
+                // Set config path to BaseTestSuite to limit the search.
+                addConfigPaths(configFie);
+            }
             // Inject the test options from each test info to SuiteModuleLoader.
             parseOptions(testInfo);
             LinkedHashMap<String, IConfiguration> config = super.loadTests();
             for (Map.Entry<String, IConfiguration> entry : config.entrySet()) {
+                if (entry.getValue().getConfigurationDescription().getAbi() != null
+                        && !entry.getValue().getConfigurationDescription().getAbi().equals(abi)) {
+                    continue;
+                }
                 tests.addAll(entry.getValue().getTests());
             }
         }

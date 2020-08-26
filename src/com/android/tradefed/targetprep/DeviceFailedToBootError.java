@@ -16,12 +16,27 @@
 package com.android.tradefed.targetprep;
 
 import com.android.tradefed.command.remote.DeviceDescriptor;
+import com.android.tradefed.result.error.ErrorIdentifier;
 
 /**
  * Thrown if a device fails to boot after being flashed with a build.
  */
-@SuppressWarnings("serial")
 public class DeviceFailedToBootError extends BuildError {
+
+    private static final long serialVersionUID = -6539557027017640715L;
+
+    /**
+     * Constructs a new (@link DeviceFailedToBootError} with a detailed error message.
+     *
+     * @param reason an error message giving more details about the boot failure
+     * @param descriptor the descriptor of the device concerned by the exception
+     * @deprecated Use {@link #DeviceFailedToBootError(String, DeviceDescriptor, ErrorIdentifier)}
+     *     instead
+     */
+    @Deprecated
+    public DeviceFailedToBootError(String reason, DeviceDescriptor descriptor) {
+        super(reason, descriptor);
+    }
 
     /**
      * Constructs a new (@link DeviceFailedToBootError} with a detailed error message.
@@ -29,7 +44,8 @@ public class DeviceFailedToBootError extends BuildError {
      * @param reason an error message giving more details about the boot failure
      * @param descriptor the descriptor of the device concerned by the exception
      */
-    public DeviceFailedToBootError(String reason, DeviceDescriptor descriptor) {
-        super(reason, descriptor);
+    public DeviceFailedToBootError(
+            String reason, DeviceDescriptor descriptor, ErrorIdentifier errorId) {
+        super(reason, descriptor, errorId);
     }
 }

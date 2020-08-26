@@ -23,6 +23,7 @@ import static org.junit.Assert.fail;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.gcs.GCSDownloaderHelper;
 import com.android.tradefed.config.DynamicRemoteFileResolver;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.ZipUtil;
 
@@ -64,7 +65,9 @@ public class GcsRemoteFileResolverTest {
 
     @Test
     public void testResolve_error() throws Exception {
-        Mockito.doThrow(new BuildRetrievalError("download failure"))
+        Mockito.doThrow(
+                        new BuildRetrievalError(
+                                "download failure", InfraErrorIdentifier.ARTIFACT_DOWNLOAD_ERROR))
                 .when(mMockHelper)
                 .fetchTestResource("gs:/fake/file");
 
@@ -72,9 +75,7 @@ public class GcsRemoteFileResolverTest {
             mResolver.resolveRemoteFiles(new File("gs:/fake/file"), new HashMap<>());
             fail("Should have thrown an exception.");
         } catch (BuildRetrievalError expected) {
-            assertEquals(
-                    "Failed to download gs:/fake/file due to: download failure",
-                    expected.getMessage());
+            assertEquals("download failure", expected.getMessage());
         }
 
         Mockito.verify(mMockHelper).fetchTestResource("gs:/fake/file");

@@ -20,7 +20,7 @@ import android.app.Activity;
 import android.os.Bundle;
 
 /**
- * Dummy activity used to launch app for first time, so in future it can handle Dismiss Keyguard
+ * An activity used to launch app for first time, so in future it can handle Dismiss Keyguard
  * intents on ICS and above devices.
  */
 public class MainActivity extends Activity {

@@ -708,7 +708,7 @@ public class InstrumentationTest
             runOptions += "--no-window-animation ";
         }
 
-        if (abiName != null) {
+        if (abiName != null && getDevice().getApiLevel() > 20) {
             mInstallArgs.add(String.format("--abi %s", abiName));
             runOptions += String.format("--abi %s", abiName);
         }

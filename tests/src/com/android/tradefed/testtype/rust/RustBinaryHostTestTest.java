@@ -20,6 +20,7 @@ import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.util.CommandResult;
@@ -64,23 +65,52 @@ public class RustBinaryHostTestTest {
         mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
     }
 
+    private CommandResult newCommandResult(CommandStatus status, String stderr, String stdout) {
+        CommandResult res = new CommandResult();
+        res.setStatus(status);
+        res.setStderr(stderr);
+        res.setStdout(stdout);
+        return res;
+    }
+
+    private String resultCount(int pass, int fail, int ignore) {
+        return "test result: ok. " + pass + " passed; " + fail + " failed; " + ignore + " ignored;";
+    }
+
+    private CommandResult successResult(String stderr, String stdout) throws Exception {
+        return newCommandResult(CommandStatus.SUCCESS, stderr, stdout);
+    }
+
+    // shared with RustBinaryTestTest
+    static String runListOutput(int numTests) {
+        String listOutput = "";
+        for (int i = 1; i <= numTests; i++) {
+            listOutput += "test_case_" + i + ": test\n";
+        }
+        return listOutput + numTests + " tests, 0 benchmarks";
+    }
+
+    // shared with RustBinaryTestTest
+    static String runListOutput(String[] tests) {
+        String listOutput = "";
+        for (String name : tests) {
+            listOutput += name + ": test\n";
+        }
+        return listOutput + tests.length + " tests, 0 benchmarks";
+    }
+
     /** Add mocked call "binary --list" to count the number of tests. */
     private void mockCountTests(File binary, int numOfTest) throws Exception {
-        CommandResult res = new CommandResult();
-        res.setStatus(CommandStatus.SUCCESS);
-        res.setStderr("");
-        res.setStdout(numOfTest + " tests, 0 benchmarks");
         EasyMock.expect(
                         mMockRunUtil.runTimedCmdSilently(
                                 EasyMock.anyLong(),
                                 EasyMock.eq(binary.getAbsolutePath()),
                                 EasyMock.eq("--list")))
-                .andReturn(res);
+                .andReturn(successResult("", runListOutput(numOfTest)));
     }
 
-    /** Add mocked call to count tests and testRunStarted. */
-    private void mockTestRunStarted(File binary, int count) throws Exception {
-        mockCountTests(binary, count);
+    /** Add mocked testRunStarted call to the listener. */
+    private void mockListenerStarted(File binary, int count) throws Exception {
         mMockListener.testRunStarted(
                 EasyMock.eq(binary.getName()),
                 EasyMock.eq(count),
@@ -88,21 +118,19 @@ public class RustBinaryHostTestTest {
                 EasyMock.anyLong());
     }
 
-    /** Add mocked call to "binary" with result status, stderr, and stdout. */
-    private void mockRunTest(File binary, CommandStatus status, String stderr, String stdout)
-            throws Exception {
-        CommandResult res = new CommandResult();
-        res.setStatus(status);
-        res.setStderr(stderr);
-        res.setStdout(stdout);
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(), EasyMock.eq(binary.getAbsolutePath())))
-                .andReturn(res);
+    /** Add mocked call to check listener log file. */
+    private void mockListenerLog(File binary) {
         mMockListener.testLog(
                 EasyMock.eq(binary.getName() + "-stderr"),
                 EasyMock.eq(LogDataType.TEXT),
                 EasyMock.anyObject());
+    }
+
+    private void mockTestRunExpect(File binary, CommandResult res) throws Exception {
+        EasyMock.expect(
+                        mMockRunUtil.runTimedCmd(
+                                EasyMock.anyLong(), EasyMock.eq(binary.getAbsolutePath())))
+                .andReturn(res);
     }
 
     /** Add mocked call to testRunEnded. */
@@ -125,12 +153,11 @@ public class RustBinaryHostTestTest {
         try {
             OptionSetter setter = new OptionSetter(mTest);
             setter.setOptionValue("test-file", binary.getAbsolutePath());
-            mockTestRunStarted(binary, 9);
-            mockRunTest(
-                    binary,
-                    CommandStatus.SUCCESS,
-                    "",
-                    "test result: ok. 6 passed; 1 failed; 2 ignored;");
+            mockCountTests(binary, 9);
+            mockListenerStarted(binary, 9);
+            mockListenerLog(binary);
+            CommandResult res = successResult("", resultCount(6, 1, 2));
+            mockTestRunExpect(binary, res);
             mockTestRunEnded();
             callReplayRunVerify();
         } finally {
@@ -151,12 +178,11 @@ public class RustBinaryHostTestTest {
         try {
             OptionSetter setter = new OptionSetter(mTest);
             setter.setOptionValue("test-file", binary.getAbsolutePath());
-            mockTestRunStarted(binary, 9);
-            mockRunTest(
-                    binary,
-                    CommandStatus.SUCCESS,
-                    "",
-                    "test result: ok. 6 passed; 1 failed; 2 ignored;");
+            mockCountTests(binary, 9);
+            mockListenerStarted(binary, 9);
+            mockListenerLog(binary);
+            CommandResult res = successResult("", resultCount(6, 1, 2));
+            mockTestRunExpect(binary, res);
             mockTestRunEnded();
             callReplayRunVerify();
         } finally {
@@ -164,20 +190,19 @@ public class RustBinaryHostTestTest {
         }
     }
 
-    /**
-     * If the binary returns an exception status, we should throw a runtime exception since
-     * something went wrong with the binary setup.
-     */
+    /** If the binary returns an exception status, it is treated as a failed test. */
     @Test
     public void testRunFail_exception() throws Exception {
         File binary = FileUtil.createTempFile("rust-dir", "");
         try {
             OptionSetter setter = new OptionSetter(mTest);
             setter.setOptionValue("test-file", binary.getAbsolutePath());
-            mockTestRunStarted(binary, 0);
-            mockRunTest(
-                    binary, CommandStatus.EXCEPTION, "Count not execute.", "Could not execute.");
-            mMockListener.testRunFailed((String) EasyMock.anyObject());
+            mockCountTests(binary, 0);
+            mockListenerStarted(binary, 0);
+            mockListenerLog(binary);
+            CommandResult res = newCommandResult(CommandStatus.EXCEPTION, "Err.", "Exception.");
+            mockTestRunExpect(binary, res);
+            mMockListener.testRunFailed((FailureDescription) EasyMock.anyObject());
             mockTestRunEnded();
             callReplayRunVerify();
         } finally {
@@ -185,20 +210,14 @@ public class RustBinaryHostTestTest {
         }
     }
 
-    /**
-     * If we can't parse a test list from the binary, we should continue but expect 0 tests. This
-     * may occur if the test binary does not use the standard Rust test harness.
-     */
+    /** If the binary reports a FAILED status, it is treated as a failed test. */
     @Test
     public void testRunFail_list() throws Exception {
         File binary = FileUtil.createTempFile("rust-dir", "");
         try {
             OptionSetter setter = new OptionSetter(mTest);
             setter.setOptionValue("test-file", binary.getAbsolutePath());
-            CommandResult listRes = new CommandResult();
-            listRes.setStatus(CommandStatus.FAILED);
-            listRes.setStderr("");
-            listRes.setStdout("");
+            CommandResult listRes = newCommandResult(CommandStatus.FAILED, "", "");
             EasyMock.expect(
                             mMockRunUtil.runTimedCmdSilently(
                                     EasyMock.anyLong(),
@@ -210,11 +229,10 @@ public class RustBinaryHostTestTest {
                     EasyMock.eq(0),
                     EasyMock.anyInt(),
                     EasyMock.anyLong());
-            mockRunTest(
-                    binary,
-                    CommandStatus.FAILED,
-                    "",
-                    "test result: ok. 6 passed; 1 failed; 2 ignored;");
+            mockListenerLog(binary);
+            CommandResult res = newCommandResult(CommandStatus.FAILED, "", resultCount(6, 1, 2));
+            mockTestRunExpect(binary, res);
+            mMockListener.testRunFailed((FailureDescription) EasyMock.anyObject());
             mockTestRunEnded();
             callReplayRunVerify();
         } finally {
@@ -222,22 +240,174 @@ public class RustBinaryHostTestTest {
         }
     }
 
-    /**
-     * If the binary reports a FAILED status but the output actually have some tests, it most likely
-     * means that some tests failed. So we simply continue with parsing the results.
-     */
+    /** If the binary reports a FAILED status, it is treated as a failed test. */
     @Test
     public void testRunFail_failureOnly() throws Exception {
         File binary = FileUtil.createTempFile("rust-dir", "");
         try {
             OptionSetter setter = new OptionSetter(mTest);
             setter.setOptionValue("test-file", binary.getAbsolutePath());
-            mockTestRunStarted(binary, 9);
-            mockRunTest(
-                    binary,
-                    CommandStatus.FAILED,
-                    "",
-                    "test result: ok. 6 passed; 1 failed; 2 ignored;");
+            mockCountTests(binary, 9);
+            mockListenerStarted(binary, 9);
+            mockListenerLog(binary);
+            CommandResult res = newCommandResult(CommandStatus.FAILED, "", resultCount(6, 1, 2));
+            mockTestRunExpect(binary, res);
+            mMockListener.testRunFailed((FailureDescription) EasyMock.anyObject());
+            mockTestRunEnded();
+            callReplayRunVerify();
+        } finally {
+            FileUtil.deleteFile(binary);
+        }
+    }
+
+    /** Test the exclude filtering of test methods. */
+    @Test
+    public void testExcludeFilter() throws Exception {
+        File binary = FileUtil.createTempFile("rust-dir", "");
+        try {
+            OptionSetter setter = new OptionSetter(mTest);
+            setter.setOptionValue("test-file", binary.getAbsolutePath());
+            setter.setOptionValue("exclude-filter", "NotMe");
+            setter.setOptionValue("exclude-filter", "Long");
+            EasyMock.expect(
+                            mMockRunUtil.runTimedCmdSilently(
+                                    EasyMock.anyLong(),
+                                    EasyMock.eq(binary.getAbsolutePath()),
+                                    EasyMock.eq("--skip"),
+                                    EasyMock.eq("NotMe"),
+                                    EasyMock.eq("--skip"),
+                                    EasyMock.eq("Long"),
+                                    EasyMock.eq("--list")))
+                    .andReturn(successResult("", runListOutput(9)));
+            mockListenerStarted(binary, 9);
+            mockListenerLog(binary);
+            CommandResult res = successResult("", resultCount(6, 1, 2));
+            EasyMock.expect(
+                            mMockRunUtil.runTimedCmd(
+                                    EasyMock.anyLong(),
+                                    EasyMock.eq(binary.getAbsolutePath()),
+                                    EasyMock.eq("--skip"),
+                                    EasyMock.eq("NotMe"),
+                                    EasyMock.eq("--skip"),
+                                    EasyMock.eq("Long")))
+                    .andReturn(res);
+
+            mockTestRunEnded();
+            callReplayRunVerify();
+        } finally {
+            FileUtil.deleteFile(binary);
+        }
+    }
+
+    /** Test both include and exclude filters. */
+    @Test
+    public void testIncludeExcludeFilter() throws Exception {
+        File binary = FileUtil.createTempFile("rust-dir", "");
+        try {
+            OptionSetter setter = new OptionSetter(mTest);
+            setter.setOptionValue("test-file", binary.getAbsolutePath());
+            setter.setOptionValue("exclude-filter", "MyTest#NotMe");
+            setter.setOptionValue("include-filter", "MyTest#OnlyMe");
+            setter.setOptionValue("exclude-filter", "Other");
+            // We always pass the include-filter before exclude-filter strings.
+            EasyMock.expect(
+                            mMockRunUtil.runTimedCmdSilently(
+                                    EasyMock.anyLong(),
+                                    EasyMock.eq(binary.getAbsolutePath()),
+                                    EasyMock.eq("OnlyMe"),
+                                    EasyMock.eq("--skip"),
+                                    EasyMock.eq("NotMe"),
+                                    EasyMock.eq("--skip"),
+                                    EasyMock.eq("Other"),
+                                    EasyMock.eq("--list")))
+                    .andReturn(successResult("", runListOutput(3)));
+            mockListenerStarted(binary, 3);
+
+            mockListenerLog(binary);
+            CommandResult res = successResult("", resultCount(3, 0, 0));
+            EasyMock.expect(
+                            mMockRunUtil.runTimedCmd(
+                                    EasyMock.anyLong(),
+                                    EasyMock.eq(binary.getAbsolutePath()),
+                                    EasyMock.eq("OnlyMe"),
+                                    EasyMock.eq("--skip"),
+                                    EasyMock.eq("NotMe"),
+                                    EasyMock.eq("--skip"),
+                                    EasyMock.eq("Other")))
+                    .andReturn(res);
+
+            mockTestRunEnded();
+            callReplayRunVerify();
+        } finally {
+            FileUtil.deleteFile(binary);
+        }
+    }
+
+    /** Test multiple include and exclude filters. */
+    @Test
+    public void testMultipleIncludeExcludeFilter() throws Exception {
+        File binary = FileUtil.createTempFile("rust-dir", "");
+        try {
+            OptionSetter setter = new OptionSetter(mTest);
+            setter.setOptionValue("test-file", binary.getAbsolutePath());
+            setter.setOptionValue("exclude-filter", "NotMe");
+            setter.setOptionValue("include-filter", "MyTest#OnlyMe");
+            setter.setOptionValue("exclude-filter", "MyTest#Other");
+            setter.setOptionValue("include-filter", "Me2");
+            // Multiple include filters are run one by one with --list.
+            String[] selection1 = new String[] {"test1", "test2"};
+            EasyMock.expect(
+                            mMockRunUtil.runTimedCmdSilently(
+                                    EasyMock.anyLong(),
+                                    EasyMock.eq(binary.getAbsolutePath()),
+                                    EasyMock.eq("OnlyMe"),
+                                    EasyMock.eq("--skip"),
+                                    EasyMock.eq("NotMe"),
+                                    EasyMock.eq("--skip"),
+                                    EasyMock.eq("Other"),
+                                    EasyMock.eq("--list")))
+                    .andReturn(successResult("", runListOutput(selection1)));
+            String[] selection2 = new String[] {"test2", "test3", "test4"};
+            EasyMock.expect(
+                            mMockRunUtil.runTimedCmdSilently(
+                                    EasyMock.anyLong(),
+                                    EasyMock.eq(binary.getAbsolutePath()),
+                                    EasyMock.eq("Me2"),
+                                    EasyMock.eq("--skip"),
+                                    EasyMock.eq("NotMe"),
+                                    EasyMock.eq("--skip"),
+                                    EasyMock.eq("Other"),
+                                    EasyMock.eq("--list")))
+                    .andReturn(successResult("", runListOutput(selection2)));
+            // Union of selection1 and selection2 has 4 tests.
+            mockListenerStarted(binary, 4);
+
+            // Multiple include filters are run one by one.
+            mockListenerLog(binary);
+            CommandResult res = successResult("", resultCount(2, 0, 0));
+            EasyMock.expect(
+                            mMockRunUtil.runTimedCmd(
+                                    EasyMock.anyLong(),
+                                    EasyMock.eq(binary.getAbsolutePath()),
+                                    EasyMock.eq("OnlyMe"),
+                                    EasyMock.eq("--skip"),
+                                    EasyMock.eq("NotMe"),
+                                    EasyMock.eq("--skip"),
+                                    EasyMock.eq("Other")))
+                    .andReturn(res);
+            mockListenerLog(binary);
+            res = successResult("", resultCount(3, 0, 0));
+            EasyMock.expect(
+                            mMockRunUtil.runTimedCmd(
+                                    EasyMock.anyLong(),
+                                    EasyMock.eq(binary.getAbsolutePath()),
+                                    EasyMock.eq("Me2"),
+                                    EasyMock.eq("--skip"),
+                                    EasyMock.eq("NotMe"),
+                                    EasyMock.eq("--skip"),
+                                    EasyMock.eq("Other")))
+                    .andReturn(res);
+
             mockTestRunEnded();
             callReplayRunVerify();
         } finally {

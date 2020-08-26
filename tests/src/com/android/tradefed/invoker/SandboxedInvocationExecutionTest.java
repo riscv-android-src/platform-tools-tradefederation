@@ -16,6 +16,8 @@
 package com.android.tradefed.invoker;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -423,6 +425,28 @@ public class SandboxedInvocationExecutionTest {
         } finally {
             FileUtil.deleteFile(tmpFile);
             FileUtil.deleteFile(buildFile);
+        }
+    }
+
+    @Test
+    public void testBuildInfo_testTag() throws Exception {
+        IBuildInfo info = new BuildInfo();
+        assertEquals("stub", info.getTestTag());
+        File testsDir = FileUtil.createTempDir("doesnt_matter_testsdir");
+        try {
+            info.setFile(BuildInfoFileKey.TESTDIR_IMAGE, testsDir, "tests");
+            mContext.addDeviceBuildInfo(ConfigurationDef.DEFAULT_DEVICE_NAME, info);
+            mConfig.getCommandOptions().setTestTag("test");
+            TestInformation testInfo =
+                    TestInformation.newBuilder().setInvocationContext(mContext).build();
+            assertNull(testInfo.executionFiles().get(FilesKey.TESTS_DIRECTORY));
+            mExecution.fetchBuild(testInfo, mConfig, null, null);
+            // Build test tag was updated
+            assertEquals("test", info.getTestTag());
+            // Execution file was back filled
+            assertNotNull(testInfo.executionFiles().get(FilesKey.TESTS_DIRECTORY));
+        } finally {
+            FileUtil.recursiveDelete(testsDir);
         }
     }
 }

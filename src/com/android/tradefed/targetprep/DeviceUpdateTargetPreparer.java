@@ -25,6 +25,8 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 
 import java.io.File;
 import java.util.concurrent.TimeUnit;
@@ -64,7 +66,8 @@ public abstract class DeviceUpdateTargetPreparer extends DeviceBuildInfoBootStra
         if (!deviceUpdateImage.exists()) {
             throw new TargetSetupError(
                     "Device image file not found: " + deviceUpdateImage.getAbsolutePath(),
-                    device.getDeviceDescriptor());
+                    device.getDeviceDescriptor(),
+                    InfraErrorIdentifier.CONFIGURED_ARTIFACT_NOT_FOUND);
         }
         preUpdateActions(deviceUpdateImage, device);
         // flashing concurrency control
@@ -104,7 +107,8 @@ public abstract class DeviceUpdateTargetPreparer extends DeviceBuildInfoBootStra
                     String.format(
                             "Device %s did not become available after flashing %s",
                             device.getSerialNumber(), deviceUpdateImage.getAbsolutePath()),
-                    device.getDeviceDescriptor());
+                    device.getDeviceDescriptor(),
+                    DeviceErrorIdentifier.ERROR_AFTER_FLASHING);
         }
         CLog.i("Device update completed on %s", device.getDeviceDescriptor());
         // calling this last because we want to inject device side build info after device boots up

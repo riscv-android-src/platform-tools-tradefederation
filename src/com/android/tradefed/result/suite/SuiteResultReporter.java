@@ -401,6 +401,9 @@ public class SuiteResultReporter extends CollectingTestListener {
 
     @Override
     public TestSummary getSummary() {
+        if (mSummary == null || mSummary.toString().isEmpty()) {
+            return null;
+        }
         TestSummary summary = new TestSummary(new TypedString(mSummary.toString(), Type.TEXT));
         summary.setSource(SUITE_REPORTER_SOURCE);
         return summary;

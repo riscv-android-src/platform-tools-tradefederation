@@ -15,7 +15,7 @@
  */
 package com.android.tradefed.targetprep;
 
-import com.android.tradefed.build.IDeviceBuildInfo;
+import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
@@ -26,6 +26,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -62,12 +63,24 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
             isTimeVal = true)
     private long mDeviceBootTime = 5 * 60 * 1000;
 
+    @Option(
+            name = "boot-image-file-name",
+            description =
+                    "The boot image file name to search for if gki_boot.img is provided in "
+                            + "BuildInfo and the provided file is a zip file or directory, for "
+                            + "example boot-5.4.img. By default when gki_boot.img is provided in "
+                            + "BuildInfo with a zip file or file directory, the target preparer "
+                            + "will use the first found file that matches boot(.*).img.")
+    private String mBootImageFileName = "boot(.*).img";
+
+    private File mBootImg = null;
+
     /** {@inheritDoc} */
     @Override
     public void setUp(TestInformation testInfo)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
         ITestDevice device = testInfo.getDevice();
-        IDeviceBuildInfo buildInfo = (IDeviceBuildInfo) testInfo.getBuildInfo();
+        IBuildInfo buildInfo = testInfo.getBuildInfo();
 
         File tmpDir = null;
         try {
@@ -94,7 +107,8 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
                     String.format(
                             "Device %s did not become available after flashing GKI. Exception: %s",
                             device.getSerialNumber(), e),
-                    device.getDeviceDescriptor());
+                    device.getDeviceDescriptor(),
+                    DeviceErrorIdentifier.ERROR_AFTER_FLASHING);
         }
         device.postBootSetup();
         CLog.i("Device update completed on %s", device.getDeviceDescriptor());
@@ -124,10 +138,10 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
      * Flash GKI images.
      *
      * @param device the {@link ITestDevice}
-     * @param buildInfo the {@link IDeviceBuildInfo} the device build info
+     * @param buildInfo the {@link IBuildInfo} the build info
      * @throws TargetSetupError, DeviceNotAvailableException, IOException
      */
-    private void flashGki(ITestDevice device, IDeviceBuildInfo buildInfo)
+    private void flashGki(ITestDevice device, IBuildInfo buildInfo)
             throws TargetSetupError, DeviceNotAvailableException {
         IDeviceManager deviceManager = getDeviceManager();
         device.waitForDeviceOnline();
@@ -151,8 +165,7 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
                 executeFastbootCmd(
                         device, "flash", "dtbo", buildInfo.getFile(DTBO_IMG).getAbsolutePath());
             }
-            executeFastbootCmd(
-                    device, "flash", "boot", buildInfo.getFile(GKI_BOOT_IMG).getAbsolutePath());
+            executeFastbootCmd(device, "flash", "boot", mBootImg.getAbsolutePath());
         } finally {
             deviceManager.returnFlashingPermit();
             // Allow interruption at the end no matter what.
@@ -167,13 +180,13 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
      * Validate GKI boot image is expected. (Obsoleted. Please call with tmpDir provided)
      *
      * @param device the {@link ITestDevice}
-     * @param buildInfo the {@link IDeviceBuildInfo} the device build info
+     * @param buildInfo the {@link IBuildInfo} the build info
      * @throws TargetSetupError if there is no valid gki boot.img
      */
-    public void validateGkiBootImg(ITestDevice device, IDeviceBuildInfo buildInfo)
+    public void validateGkiBootImg(ITestDevice device, IBuildInfo buildInfo)
             throws TargetSetupError {
         throw new TargetSetupError(
-                "Obsoleted. Please use validateGkiBootImg(ITestDevice, IDeviceBuildInfo, File)",
+                "Obsoleted. Please use validateGkiBootImg(ITestDevice, IBuildInfo, File)",
                 device.getDeviceDescriptor());
     }
 
@@ -181,14 +194,17 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
      * Validate GKI boot image is expected. Throw exception if there is no valid boot.img.
      *
      * @param device the {@link ITestDevice}
-     * @param buildInfo the {@link IDeviceBuildInfo} the device build info
+     * @param buildInfo the {@link IBuildInfo} the build info
      * @param tmpDir the temporary directory {@link File}
      * @throws TargetSetupError if there is no valid gki boot.img
      */
-    public void validateGkiBootImg(ITestDevice device, IDeviceBuildInfo buildInfo, File tmpDir)
+    @VisibleForTesting
+    protected void validateGkiBootImg(ITestDevice device, IBuildInfo buildInfo, File tmpDir)
             throws TargetSetupError {
-        if (buildInfo.getFile(GKI_BOOT_IMG) != null
-                && buildInfo.getFile(GKI_BOOT_IMG).length() > 0) {
+        if (buildInfo.getFile(GKI_BOOT_IMG) != null && mBootImageFileName != null) {
+            mBootImg =
+                    getRequestedFile(
+                            device, mBootImageFileName, buildInfo.getFile(GKI_BOOT_IMG), tmpDir);
             return;
         }
         if (buildInfo.getFile(KERNEL_IMAGE) == null) {
@@ -209,7 +225,7 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
         try {
             File mkbootimg =
                     getRequestedFile(device, MKBOOTIMG, buildInfo.getFile(OTATOOLS_ZIP), tmpDir);
-            File gkiBootImg = FileUtil.createTempFile("boot", ".img", tmpDir);
+            mBootImg = FileUtil.createTempFile("boot", ".img", tmpDir);
             String cmd =
                     String.format(
                             "%s --kernel %s --header_version 3 --base 0x00000000 "
@@ -217,12 +233,10 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
                             mkbootimg.getAbsolutePath(),
                             buildInfo.getFile(KERNEL_IMAGE),
                             buildInfo.getFile(RAMDISK_RECOVERY_IMG),
-                            gkiBootImg.getAbsolutePath());
+                            mBootImg.getAbsolutePath());
             executeHostCommand(device, cmd);
-            CLog.i("The GKI boot.img is of size %d", gkiBootImg.length());
-            if (gkiBootImg.length() > 0) {
-                buildInfo.setFile(GKI_BOOT_IMG, gkiBootImg, "0");
-            } else {
+            CLog.i("The GKI boot.img is of size %d", mBootImg.length());
+            if (mBootImg.length() == 0) {
                 throw new TargetSetupError(
                         "The mkbootimg tool didn't generate a valid boot.img.",
                         device.getDeviceDescriptor());
@@ -230,40 +244,6 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
         } catch (IOException e) {
             throw new TargetSetupError(
                     "Fail to generate GKI boot.img.", e, device.getDeviceDescriptor());
-        }
-    }
-
-    /**
-     * Flash device images.
-     *
-     * @param device the {@link ITestDevice}
-     * @param buildInfo the {@link IDeviceBuildInfo} the device build info
-     * @throws TargetSetupError, DeviceNotAvailableException
-     */
-    private void flashDeviceImage(ITestDevice device, IDeviceBuildInfo buildInfo)
-            throws TargetSetupError, DeviceNotAvailableException {
-        IDeviceManager deviceManager = getDeviceManager();
-        long start = System.currentTimeMillis();
-        deviceManager.takeFlashingPermit();
-        CLog.v(
-                "Flashing permit obtained after %ds",
-                TimeUnit.MILLISECONDS.toSeconds((System.currentTimeMillis() - start)));
-        // don't allow interruptions during flashing operations.
-        getRunUtil().allowInterrupt(false);
-        try {
-            executeFastbootCmd(
-                    device,
-                    "--skip-reboot",
-                    "--disable-verity",
-                    "update",
-                    buildInfo.getDeviceImageFile().getAbsolutePath());
-        } finally {
-            // Allow interruption at the end no matter what.
-            getRunUtil().allowInterrupt(true);
-            deviceManager.returnFlashingPermit();
-            CLog.v(
-                    "Flashing permit returned after %ds",
-                    TimeUnit.MILLISECONDS.toSeconds((System.currentTimeMillis() - start)));
         }
     }
 
@@ -313,19 +293,28 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
      * @param requestedFileName the requeste file name String
      * @param sourceFile the source file
      * @return the file that is specified by the requested file name
-     * @throws TargetSetupError, IOException
+     * @throws TargetSetupError
      */
     private File getRequestedFile(
             ITestDevice device, String requestedFileName, File sourceFile, File tmpDir)
-            throws TargetSetupError, IOException {
+            throws TargetSetupError {
         File requestedFile = null;
         if (sourceFile.getName().endsWith(".zip")) {
-            File destDir =
-                    FileUtil.createTempDir(FileUtil.getBaseName(sourceFile.getName()), tmpDir);
-            ZipUtil2.extractZip(sourceFile, destDir);
-            requestedFile = FileUtil.findFile(destDir, requestedFileName);
+            try {
+                File destDir =
+                        FileUtil.createTempDir(FileUtil.getBaseName(sourceFile.getName()), tmpDir);
+                ZipUtil2.extractZip(sourceFile, destDir);
+                requestedFile = FileUtil.findFile(destDir, requestedFileName);
+            } catch (IOException e) {
+                throw new TargetSetupError(
+                        String.format("Fail to get %s from %s", requestedFileName, sourceFile),
+                        e,
+                        device.getDeviceDescriptor());
+            }
         } else if (sourceFile.isDirectory()) {
             requestedFile = FileUtil.findFile(sourceFile, requestedFileName);
+        } else {
+            requestedFile = sourceFile;
         }
         if (requestedFile == null || !requestedFile.exists()) {
             throw new TargetSetupError(
@@ -363,7 +352,7 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
             throw new TargetSetupError(
                     String.format(
                             "fastboot command %s failed in device %s. stdout: %s, stderr: %s",
-                            cmdArgs[0],
+                            cmdArgs,
                             device.getSerialNumber(),
                             result.getStdout(),
                             result.getStderr()),

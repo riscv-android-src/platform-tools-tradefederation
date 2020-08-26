@@ -53,6 +53,13 @@ public class BaseRetryDecision implements IRetryDecision {
     private boolean mRebootAtLastRetry = false;
 
     @Option(
+            name = "reset-at-last-retry",
+            description =
+                    "Reset or powerwash the device at the last retry attempt. If this option is "
+                            + "set, option `reboot-at-last-retry` will be ignored.")
+    private boolean mResetAtLastRetry = false;
+
+    @Option(
         name = "max-testcase-run-count",
         description =
                 "If the IRemoteTest can have its testcases run multiple times, "

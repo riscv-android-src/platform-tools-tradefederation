@@ -62,7 +62,7 @@ public class ConfigurationDescriptorTest {
             fail("Should have thrown an exception.");
         } catch (OptionNotAllowedException expected) {
             assertEquals(
-                    "Option test-suite-tag cannot be specified via command line. "
+                    "Option 'test-suite-tag' cannot be specified via command line. "
                             + "Only in the configuration xml.",
                     expected.getMessage());
         }

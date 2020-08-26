@@ -16,6 +16,9 @@
 package com.android.tradefed.config;
 
 import com.android.ddmlib.Log.LogLevel;
+import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.build.IBuildProvider;
+import com.android.tradefed.build.IDeviceBuildProvider;
 import com.android.tradefed.build.LocalDeviceBuildProvider;
 import com.android.tradefed.config.ConfigurationDef.ConfigObjectDef;
 import com.android.tradefed.config.ConfigurationFactory.ConfigId;
@@ -87,7 +90,7 @@ public class ConfigurationFactoryTest extends TestCase {
                 };
     }
 
-    /** Sanity test to ensure all config names on classpath are loadable */
+    /** Initial test to ensure all config names on classpath are loadable */
     public void testLoadAllConfigs() throws Exception {
         ConfigurationFactory spyFactory = Mockito.spy(mRealFactory);
         Mockito.doReturn(new HashSet<String>()).when(spyFactory).getConfigNamesFromTestCases(null);
@@ -132,9 +135,7 @@ public class ConfigurationFactoryTest extends TestCase {
         }
     }
 
-    /**
-     * Sanity test to ensure all configs on classpath can be fully loaded and parsed
-     */
+    /** Initial test to ensure all configs on classpath can be fully loaded and parsed */
     public void testLoadAndPrintAllConfigs() throws ConfigurationException {
         ConfigurationFactory spyFactory = Mockito.spy(mRealFactory);
         Mockito.doReturn(new HashSet<String>()).when(spyFactory).getConfigNamesFromTestCases(null);
@@ -1799,6 +1800,28 @@ public class ConfigurationFactoryTest extends TestCase {
         } finally {
             FileUtil.deleteFile(testConfigFile);
         }
+    }
+
+    /** Test that a YAML config command line parse correctly. */
+    public void testCreateConfigurationFromArgs_yaml() throws Exception {
+        IConfiguration config =
+                mFactory.createConfigurationFromArgs(
+                        new String[] {
+                            "yaml/test-config.tf_yaml",
+                            "--build-id",
+                            "5",
+                            "--build-flavor",
+                            "test",
+                            "--branch",
+                            "main"
+                        });
+        assertNotNull(config);
+        IBuildProvider provider = config.getBuildProvider();
+        assertTrue(provider instanceof IDeviceBuildProvider);
+        IBuildInfo info = ((IDeviceBuildProvider) provider).getBuild(null);
+        assertEquals("5", info.getBuildId());
+        assertEquals("test", info.getBuildFlavor());
+        assertEquals("main", info.getBuildBranch());
     }
 
     private static String getClassName(String name) {

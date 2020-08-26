@@ -168,6 +168,34 @@ public class AaptParserTest extends TestCase {
         assertTrue(p.isRequestingLegacyStorage());
     }
 
+    public void testParseXmlTreeForAapt2_withRequestLegacyFlagTrue() {
+        AaptParser p = new AaptParser();
+        p.parseXmlTree(
+                "N: android=http://schemas.android.com/apk/res/android\n"
+                        + "  E: manifest (line=2)\n"
+                        + "    A: http://schemas.android.com/apk/res/android:versionCode(0x0101021b)=(type 0x10)0x1d\n"
+                        + "    A: http://schemas.android.com/apk/res/android:versionName(0x0101021c)=\"R\" (Raw: \"R\")\n"
+                        + "    A: http://schemas.android.com/apk/res/android:compileSdkVersion(0x01010572)=(type 0x10)0x1d\n"
+                        + "    A: http://schemas.android.com/apk/res/android:compileSdkVersionCodename(0x01010573)=\"R\" (Raw: "
+                        + "\"R\")\n"
+                        + "    A: package=\"com.android.foo\" (Raw: \"com.android.foo\")\n"
+                        + "    A: platformBuildVersionCode=(type 0x10)0x1d\n"
+                        + "    A: platformBuildVersionName=\"R\" (Raw: \"R\")\n"
+                        + "    E: uses-sdk (line=5)\n"
+                        + "      A: http://schemas.android.com/apk/res/android:minSdkVersion(0x0101020c)=(type 0x10)0x1c\n"
+                        + "      A: http://schemas.android.com/apk/res/android:targetSdkVersion(0x01010270)=\"R\" (Raw: \"R\")\n"
+                        + "    E: application (line=12)\n"
+                        + "      A: http://schemas.android.com/apk/res/android:targetSdkVersion(0x01010270)=(type 0x10)0x1e\n"
+                        + "      A: http://schemas.android.com/apk/res/android:supportsRtl(0x010103af)=(type 0x12)0xffffffff\n"
+                        + "      A: http://schemas.android.com/apk/res/android:extractNativeLibs(0x010104ea)=(type 0x12)0xffffffff\n"
+                        + "      A: http://schemas.android.com/apk/res/android:appComponentFactory(0x0101057a)=\"androidx.core.app"
+                        + ".CoreComponentFactory\" (Raw: \"androidx.core.app"
+                        + ".CoreComponentFactory\")\n"
+                        + "      A: http://schemas.android.com/apk/res/android:requestLegacyExternalStorage(0x01010603)=(type 0x12)"
+                        + "0xffffffff\n");
+        assertTrue(p.isRequestingLegacyStorage());
+    }
+
     public void testParseXmlTree_withRequestLegacyFlagFalse() {
         AaptParser p = new AaptParser();
         p.parseXmlTree(
@@ -192,6 +220,34 @@ public class AaptParserTest extends TestCase {
                         + ".CoreComponentFactory\" (Raw: \"androidx.core.app"
                         + ".CoreComponentFactory\")\n"
                         + "      A: android:requestLegacyExternalStorage(0x01010603)=(type 0x12)"
+                        + "0x0\n");
+        assertFalse(p.isRequestingLegacyStorage());
+    }
+
+    public void testParseXmlTreeForAapt2_withRequestLegacyFlagFalse() {
+        AaptParser p = new AaptParser();
+        p.parseXmlTree(
+                "N: android=http://schemas.android.com/apk/res/android\n"
+                        + "  E: manifest (line=2)\n"
+                        + "    A: http://schemas.android.com/apk/res/android:versionCode(0x0101021b)=(type 0x10)0x1d\n"
+                        + "    A: http://schemas.android.com/apk/res/android:versionName(0x0101021c)=\"R\" (Raw: \"R\")\n"
+                        + "    A: http://schemas.android.com/apk/res/android:compileSdkVersion(0x01010572)=(type 0x10)0x1d\n"
+                        + "    A: http://schemas.android.com/apk/res/android:compileSdkVersionCodename(0x01010573)=\"R\" (Raw: "
+                        + "\"R\")\n"
+                        + "    A: package=\"com.android.foo\" (Raw: \"com.android.foo\")\n"
+                        + "    A: platformBuildVersionCode=(type 0x10)0x1d\n"
+                        + "    A: platformBuildVersionName=\"R\" (Raw: \"R\")\n"
+                        + "    E: uses-sdk (line=5)\n"
+                        + "      A: http://schemas.android.com/apk/res/android:minSdkVersion(0x0101020c)=(type 0x10)0x1c\n"
+                        + "      A: http://schemas.android.com/apk/res/android:targetSdkVersion(0x01010270)=\"R\" (Raw: \"R\")\n"
+                        + "    E: application (line=12)\n"
+                        + "      A: http://schemas.android.com/apk/res/android:targetSdkVersion(0x01010270)=(type 0x10)0x1e\n"
+                        + "      A: http://schemas.android.com/apk/res/android:supportsRtl(0x010103af)=(type 0x12)0xffffffff\n"
+                        + "      A: http://schemas.android.com/apk/res/android:extractNativeLibs(0x010104ea)=(type 0x12)0xffffffff\n"
+                        + "      A: http://schemas.android.com/apk/res/android:appComponentFactory(0x0101057a)=\"androidx.core.app"
+                        + ".CoreComponentFactory\" (Raw: \"androidx.core.app"
+                        + ".CoreComponentFactory\")\n"
+                        + "      A: http://schemas.android.com/apk/res/android:requestLegacyExternalStorage(0x01010603)=(type 0x12)"
                         + "0x0\n");
         assertFalse(p.isRequestingLegacyStorage());
     }
@@ -221,7 +277,32 @@ public class AaptParserTest extends TestCase {
         assertFalse(p.isRequestingLegacyStorage());
     }
 
-    public void testParseXmlTree_withUsesPermissionManageExternalStorage() {
+    public void testParseXmlTreeForAapt2_withoutRequestLegacyFlag() {
+        AaptParser p = new AaptParser();
+        p.parseXmlTree(
+                "N: android=http://schemas.android.com/apk/res/android\n"
+                        + "  E: manifest (line=2)\n"
+                        + "    A: http://schemas.android.com/apk/res/androidandroid:versionCode(0x0101021b)=(type 0x10)0x1d\n"
+                        + "    A: http://schemas.android.com/apk/res/androidandroid:versionName(0x0101021c)=\"R\" (Raw: \"R\")\n"
+                        + "    A: http://schemas.android.com/apk/res/androidandroid:compileSdkVersion(0x01010572)=(type 0x10)0x1d\n"
+                        + "    A: http://schemas.android.com/apk/res/androidandroid:compileSdkVersionCodename(0x01010573)=\"R\" (Raw: "
+                        + "\"R\")\n"
+                        + "    A: package=\"com.android.foo\" (Raw: \"com.android.foo\")\n"
+                        + "    A: platformBuildVersionCode=(type 0x10)0x1d\n"
+                        + "    A: platformBuildVersionName=\"R\" (Raw: \"R\")\n"
+                        + "    E: uses-sdk (line=5)\n"
+                        + "      A: http://schemas.android.com/apk/res/androidandroid:minSdkVersion(0x0101020c)=(type 0x10)0x1c\n"
+                        + "      A: http://schemas.android.com/apk/res/androidandroid:targetSdkVersion(0x01010270)=\"R\" (Raw: \"R\")\n"
+                        + "    E: application (line=12)\n"
+                        + "      A: http://schemas.android.com/apk/res/androidandroid:targetSdkVersion(0x01010270)=(type 0x10)0x1e\n"
+                        + "      A: http://schemas.android.com/apk/res/androidandroid:supportsRtl(0x010103af)=(type 0x12)0xffffffff\n"
+                        + "      A: http://schemas.android.com/apk/res/androidandroid:extractNativeLibs(0x010104ea)=(type 0x12)0xffffffff\n"
+                        + "      A: http://schemas.android.com/apk/res/androidandroid:appComponentFactory(0x0101057a)=\"androidx.core.app"
+                        + ".CoreComponentFactory\" (Raw: \"androidx.core.app");
+        assertFalse(p.isRequestingLegacyStorage());
+    }
+
+    public void testParse_withUsesPermissionManageExternalStorage() {
         AaptParser p = new AaptParser();
         p.parse(
                 "package: name='com.android.foo' versionCode='217173' versionName='1.7173' "
@@ -234,7 +315,7 @@ public class AaptParserTest extends TestCase {
         assertTrue(p.isUsingPermissionManageExternalStorage());
     }
 
-    public void testParseXmlTree_withoutUsesPermissionManageExternalStorage() {
+    public void testParse_withoutUsesPermissionManageExternalStorage() {
         AaptParser p = new AaptParser();
         p.parse(
                 "package: name='com.android.foo' versionCode='217173' versionName='1.7173' "

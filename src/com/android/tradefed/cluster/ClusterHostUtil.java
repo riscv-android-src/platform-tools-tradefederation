@@ -31,6 +31,7 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.security.InvalidParameterException;
 import java.util.Map;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -39,24 +40,94 @@ public class ClusterHostUtil {
 
     private static String sHostName = null;
 
+    private static String sHostIpAddress = null;
+
     static final String DEFAULT_TF_VERSION = "(unknown)";
+    static final String EMULATOR_SERIAL_PREFIX = "emulator-";
+    static final String NULL_DEVICE_SERIAL_PLACEHOLDER = "(no device serial)";
 
     private static long sTfStartTime = getCurrentTimeMillis();
 
     /**
      * Gets the hostname.
      *
-     * @return the hostname or null if we were unable to fetch it
+     * <p>1. Try to get hostname from InetAddress. 2. If fail, try to get hostname from HOSTNAME
+     * env. 3. If not set, generate a unique hostname.
+     *
+     * @return the hostname or null if we were unable to fetch it.
      */
     public static String getHostName() {
-        if (sHostName == null) {
+        if (sHostName != null) {
+            return sHostName;
+        }
+        try {
+            sHostName = InetAddress.getLocalHost().getHostName();
+            return sHostName;
+        } catch (UnknownHostException e) {
+            CLog.w("Failed to get hostname from InetAddress: %s", e);
+        }
+        CLog.i("Get hostname from HOSTNAME env.");
+        sHostName = System.getenv("HOSTNAME");
+        if (!Strings.isNullOrEmpty(sHostName)) {
+            return sHostName;
+        }
+        sHostName = "unknown-" + UUID.randomUUID().toString();
+        CLog.i("No HOSTNAME env set. Generate hostname: %s.", sHostName);
+        return sHostName;
+    }
+
+    /**
+     * Returns a unique device serial for a device.
+     *
+     * <p>Non-physical devices (e.g. emulator) have pseudo serials which are not unique across
+     * hosts. This method prefixes those with a hostname to make them unique.
+     *
+     * @param device a device descriptor.
+     * @return a unique device serial.
+     */
+    public static String getUniqueDeviceSerial(DeviceDescriptor device) {
+        String serial = device.getSerial();
+        if (Strings.isNullOrEmpty(serial)
+                || device.isStubDevice()
+                || serial.startsWith(EMULATOR_SERIAL_PREFIX)) {
+            if (Strings.isNullOrEmpty(serial)) {
+                serial = NULL_DEVICE_SERIAL_PLACEHOLDER;
+            }
+            serial = String.format("%s:%s", getHostName(), serial);
+        }
+        return serial;
+    }
+
+    /**
+     * Returns a local device serial for a given unique device serial.
+     *
+     * <p>TFC sends down unique device serials for non-physical devices which TF does not
+     * understand. This method converts them back to local device serials.
+     *
+     * @param serial a unique device serial from TFC.
+     * @return a local device serial.
+     */
+    public static String getLocalDeviceSerial(String serial) {
+        String prefix = getHostName() + ":";
+        if (serial.startsWith(prefix)) {
+            return serial.substring(prefix.length());
+        }
+        return serial;
+    }
+    /**
+     * Gets the IP address.
+     *
+     * @return the IP address or null if we were unable to fetch it.
+     */
+    public static String getHostIpAddress() {
+        if (sHostIpAddress == null) {
             try {
-                sHostName = InetAddress.getLocalHost().getHostName();
+                sHostIpAddress = InetAddress.getLocalHost().getHostAddress();
             } catch (UnknownHostException e) {
                 CLog.w("failed to get hostname: %s", e);
             }
         }
-        return sHostName;
+        return sHostIpAddress;
     }
 
     /**
@@ -125,7 +196,7 @@ public class ClusterHostUtil {
                         txt = device.getDeviceClass();
                         break;
                     case "SERIAL":
-                        txt = device.getSerial();
+                        txt = getUniqueDeviceSerial(device);
                         break;
                     case "TAG":
                         if (deviceTags == null || deviceTags.isEmpty()) {

@@ -22,6 +22,8 @@ import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.ZipUtil2;
 
+import com.google.common.base.Strings;
+
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -40,44 +42,71 @@ public class SubprocessReportingHelper {
     private static final String REPORTER_JAR_NAME = "subprocess-results-reporter.jar";
     private static final String CLASS_FILTER =
             String.format(
-                    "(^%s|^%s|^%s|^%s|^%s).*class$",
+                    "(^%s|^%s|^%s|^%s|^%s|^%s).*class$",
+                    "ErrorIdentifier",
                     "LegacySubprocessResultsReporter",
                     "SubprocessTestResultsParser",
                     "SubprocessEventHelper",
                     "SubprocessResultsReporter",
                     "ISupportGranularResults");
 
+    private String mCommandLine;
+    private String mClasspath;
+    private File mWorkDir;
+    private String mPort;
+
+    public SubprocessReportingHelper(
+            String commandLine, String classpath, File workDir, String port) {
+        mCommandLine = commandLine;
+        mClasspath = classpath;
+        mWorkDir = workDir;
+        mPort = port;
+    }
+
     /**
      * Dynamically generate extract .class file from tradefed.jar and generate new subprocess
      * results reporter jar.
      *
-     * @param parentDir parent directory of subprocess results reporter jar.
-     * @return subprocess result reporter jar.
+     * @return a subprocess result reporter jar to inject.
      * @throws IOException
      */
-    public File createSubprocessReporterJar(File parentDir) throws IOException {
-        File reporterJar = new File(parentDir, REPORTER_JAR_NAME);
-        File tfJar =
+    public File buildSubprocessReporterJar() throws IOException {
+        // Generate a patched config file.
+        final String[] tokens = QuotationAwareTokenizer.tokenizeLine(mCommandLine);
+        final String configName = tokens[0];
+        final SubprocessConfigBuilder builder = new SubprocessConfigBuilder();
+        builder.setWorkingDir(mWorkDir)
+                .setOriginalConfig(configName)
+                .setClasspath(mClasspath)
+                .setPort(mPort);
+        final File patchedConfigFile = builder.build();
+        LogUtil.CLog.i(
+                "Generating new configuration:\n %s",
+                FileUtil.readStringFromFile(patchedConfigFile));
+
+        final File reporterJar = new File(mWorkDir, REPORTER_JAR_NAME);
+        final File tfJar =
                 new File(
                         LegacySubprocessResultsReporter.class
                                 .getProtectionDomain()
                                 .getCodeSource()
                                 .getLocation()
                                 .getPath());
+        final String ext = FileUtil.getExtension(configName);
+        final String configFileName = Strings.isNullOrEmpty(ext) ? configName + ".xml" : configName;
         // tfJar is directory of .class file when running JUnit test from Eclipse IDE
         if (tfJar.isDirectory()) {
             Set<File> classFiles = FileUtil.findFilesObject(tfJar, CLASS_FILTER);
             Manifest manifest = new Manifest();
-            createJar(reporterJar, manifest, classFiles);
-        }
-        // tfJar is the tradefed.jar when running with tradefed.
-        else {
+            createJar(reporterJar, manifest, classFiles, configFileName, patchedConfigFile);
+        } else {
+            // tfJar is the tradefed.jar when running with tradefed.
             File extractedJar = ZipUtil2.extractZipToTemp(tfJar, "tmp-jar");
             try {
                 Set<File> classFiles = FileUtil.findFilesObject(extractedJar, CLASS_FILTER);
                 File mf = FileUtil.findFile(extractedJar, "MANIFEST.MF");
                 Manifest manifest = new Manifest(new FileInputStream(mf));
-                createJar(reporterJar, manifest, classFiles);
+                createJar(reporterJar, manifest, classFiles, configFileName, patchedConfigFile);
             } finally {
                 FileUtil.recursiveDelete(extractedJar);
             }
@@ -92,7 +121,9 @@ public class SubprocessReportingHelper {
      * @param manifest manifest file.
      * @throws IOException
      */
-    private void createJar(File jar, Manifest manifest, Set<File> classFiles) throws IOException {
+    private void createJar(
+            File jar, Manifest manifest, Set<File> classFiles, String configName, File configFile)
+            throws IOException {
         try (JarOutputStream jarOutput = new JarOutputStream(new FileOutputStream(jar), manifest)) {
             for (File file : classFiles) {
                 try (BufferedInputStream in = new BufferedInputStream(new FileInputStream(file))) {
@@ -104,30 +135,14 @@ public class SubprocessReportingHelper {
                     jarOutput.closeEntry();
                 }
             }
+            try (BufferedInputStream in =
+                    new BufferedInputStream(new FileInputStream(configFile))) {
+                JarEntry entry = new JarEntry(String.format("config/%s", configName));
+                entry.setTime(configFile.lastModified());
+                jarOutput.putNextEntry(entry);
+                StreamUtil.copyStreams(in, jarOutput);
+                jarOutput.closeEntry();
+            }
         }
-    }
-
-    /**
-     * Get a new command line whose configuration argument is replaced by a newly-created wrapper
-     * configuration.
-     *
-     * <p>The resulting command line will reference a generate XML file in parentDir and needs to
-     * run from parentDir.
-     *
-     * @param commandLine old command line that will be run by subprocess.
-     * @param port port number that subprocess should use to report results.
-     * @param parentDir parent directory of new wrapper configuration.
-     * @return new command line, whose first argument is wrapper config.
-     * @throws IOException
-     */
-    public String buildNewCommandConfig(String commandLine, String port, File parentDir)
-            throws IOException {
-        String[] tokens = QuotationAwareTokenizer.tokenizeLine(commandLine);
-        SubprocessConfigBuilder builder = new SubprocessConfigBuilder();
-        builder.setWorkingDir(parentDir).setOriginalConfig(tokens[0]).setPort(port);
-        File f = builder.build();
-        LogUtil.CLog.i("Generating new configuration:\n %s", FileUtil.readStringFromFile(f));
-        tokens[0] = f.getName();
-        return QuotationAwareTokenizer.combineTokens(tokens);
     }
 }

@@ -257,6 +257,12 @@ public class ResultAggregator extends CollectingTestListener {
     }
 
     @Override
+    public void testAssumptionFailure(TestDescription test, FailureDescription failure) {
+        super.testAssumptionFailure(test, failure);
+        mDetailedForwarder.testAssumptionFailure(test, failure);
+    }
+
+    @Override
     public void testFailed(TestDescription test, String trace) {
         super.testFailed(test, trace);
         mDetailedForwarder.testFailed(test, trace);
@@ -348,8 +354,10 @@ public class ResultAggregator extends CollectingTestListener {
                 mAggregatedForwarder.testRunFailed(runResult.getRunFailureDescription());
             }
             // Provide a strong association of the run to its logs.
-            for (Entry<String, LogFile> logFile : runResult.getRunLoggedFiles().entrySet()) {
-                mAggregatedForwarder.logAssociation(logFile.getKey(), logFile.getValue());
+            for (String key : runResult.getRunLoggedFiles().keySet()) {
+                for (LogFile logFile : runResult.getRunLoggedFiles().get(key)) {
+                    mAggregatedForwarder.logAssociation(key, logFile);
+                }
             }
         }
 
@@ -427,8 +435,10 @@ public class ResultAggregator extends CollectingTestListener {
             listener.testRunFailed(result.getRunFailureDescription());
         }
         // Provide a strong association of the run to its logs.
-        for (Entry<String, LogFile> logFile : result.getRunLoggedFiles().entrySet()) {
-            listener.logAssociation(logFile.getKey(), logFile.getValue());
+        for (String key : result.getRunLoggedFiles().keySet()) {
+            for (LogFile logFile : result.getRunLoggedFiles().get(key)) {
+                listener.logAssociation(key, logFile);
+            }
         }
         listener.testRunEnded(result.getElapsedTime(), result.getRunProtoMetrics());
         // Ensure we don't keep track of the results we just forwarded

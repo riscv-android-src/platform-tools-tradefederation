@@ -137,17 +137,21 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
 
     @Override
     public void testEnded(TestIdentifier testId, Map<String, String> testMetrics) {
-        for (ITestLifeCycleReceiver listener : mListeners) {
-            if (mNullMethod != null && mNullMethod.equals(testId)) {
-                String message =
-                        String.format(ERROR_MESSAGE_FORMAT, mNullMethod.getTestName(), mNullMethod);
-                if (mNullStack != null) {
-                    message = String.format("%s Stack:%s", message, mNullStack);
-                }
-                listener.testRunFailed(message);
-                mNullStack = null;
-                continue;
+        if (mNullMethod != null && mNullMethod.equals(testId)) {
+            String message =
+                    String.format(ERROR_MESSAGE_FORMAT, mNullMethod.getTestName(), mNullMethod);
+            if (mNullStack != null) {
+                message = String.format("%s Stack:%s", message, mNullStack);
             }
+            FailureDescription failure =
+                    FailureDescription.create(message, FailureStatus.TEST_FAILURE);
+            for (ITestLifeCycleReceiver listener : mListeners) {
+                listener.testRunFailed(failure);
+            }
+            mNullStack = null;
+            return;
+        }
+        for (ITestLifeCycleReceiver listener : mListeners) {
             try {
                 listener.testEnded(
                         TestDescription.createFromTestIdentifier(testId),

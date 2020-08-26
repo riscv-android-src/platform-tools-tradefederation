@@ -36,12 +36,14 @@ import com.android.tradefed.invoker.shard.ShardHelper;
 import com.android.tradefed.log.ILeveledLogOutput;
 import com.android.tradefed.log.ILogRegistry;
 import com.android.tradefed.postprocessor.IPostProcessor;
+import com.android.tradefed.result.ActionInProgress;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogFile;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.retry.BaseRetryDecision;
 
@@ -87,6 +89,7 @@ public class TestInvocationMultiTest {
                 .andReturn(null);
         EasyMock.expect(mMockConfig.getConfigurationObject(ShardHelper.LAST_SHARD_DETECTOR))
                 .andReturn(null);
+        EasyMock.expect(mMockConfig.getConfigurationObject("DELEGATE")).andStubReturn(null);
         mMockRescheduler = EasyMock.createMock(IRescheduler.class);
         mMockTestListener = EasyMock.createMock(ITestInvocationListener.class);
         mMockLogSaver = EasyMock.createMock(ILogSaver.class);
@@ -108,6 +111,11 @@ public class TestInvocationMultiTest {
                                 return new ShardHelper();
                             }
                         };
+                    }
+
+                    @Override
+                    protected void applyAutomatedReporters(IConfiguration config) {
+                        // Empty on purpose
                     }
 
                     @Override
@@ -166,15 +174,17 @@ public class TestInvocationMultiTest {
         EasyMock.expect(mMockConfig.getLogOutput()).andStubReturn(mMockLogger);
         EasyMock.expect(mMockConfig.getConfigurationDescription()).andReturn(mConfigDesc);
         mMockLogger.init();
+        EasyMock.expectLastCall().times(2);
         EasyMock.expect(mMockLogger.getLog())
                 .andReturn(new ByteArrayInputStreamSource("fake".getBytes()));
         mMockLogger.closeLog();
-        EasyMock.expectLastCall().times(2);
+        EasyMock.expectLastCall().times(3);
 
         mMockLogRegistry.registerLogger(mMockLogger);
+        EasyMock.expectLastCall().times(2);
         mMockLogRegistry.dumpToGlobalLog(mMockLogger);
         mMockLogRegistry.unregisterLogger();
-        EasyMock.expectLastCall().times(2);
+        EasyMock.expectLastCall().times(3);
 
         EasyMock.expect(mMockConfig.getCommandLine()).andStubReturn("empty");
         EasyMock.expect(mMockConfig.getCommandOptions()).andStubReturn(new CommandOptions());
@@ -262,15 +272,17 @@ public class TestInvocationMultiTest {
         EasyMock.expect(mMockConfig.getLogOutput()).andStubReturn(mMockLogger);
         EasyMock.expect(mMockConfig.getConfigurationDescription()).andReturn(mConfigDesc);
         mMockLogger.init();
+        EasyMock.expectLastCall().times(2);
         EasyMock.expect(mMockLogger.getLog())
                 .andReturn(new ByteArrayInputStreamSource("fake".getBytes()));
         mMockLogger.closeLog();
-        EasyMock.expectLastCall().times(2);
+        EasyMock.expectLastCall().times(3);
 
         mMockLogRegistry.registerLogger(mMockLogger);
+        EasyMock.expectLastCall().times(2);
         mMockLogRegistry.dumpToGlobalLog(mMockLogger);
         mMockLogRegistry.unregisterLogger();
-        EasyMock.expectLastCall().times(2);
+        EasyMock.expectLastCall().times(3);
 
         EasyMock.expect(mMockConfig.getCommandLine()).andStubReturn("empty");
         EasyMock.expect(mMockConfig.getCommandOptions()).andStubReturn(new CommandOptions());
@@ -291,8 +303,8 @@ public class TestInvocationMultiTest {
         EasyMock.expect(mMockTestListener.getSummary()).andReturn(null);
         mMockLogSaver.invocationStarted(mContext);
         FailureDescription failure =
-                FailureDescription.create(
-                        configException.getMessage(), FailureStatus.INFRA_FAILURE);
+                FailureDescription.create(configException.getMessage(), FailureStatus.INFRA_FAILURE)
+                        .setActionInProgress(ActionInProgress.FETCHING_ARTIFACTS);
         mMockTestListener.invocationFailed(EasyMock.eq(failure));
         mMockTestListener.testLog(EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject());
         EasyMock.expect(
@@ -344,15 +356,17 @@ public class TestInvocationMultiTest {
         EasyMock.expect(mMockConfig.getLogOutput()).andStubReturn(mMockLogger);
         EasyMock.expect(mMockConfig.getConfigurationDescription()).andReturn(mConfigDesc);
         mMockLogger.init();
+        EasyMock.expectLastCall().times(2);
         EasyMock.expect(mMockLogger.getLog())
                 .andReturn(new ByteArrayInputStreamSource("fake".getBytes()));
         mMockLogger.closeLog();
-        EasyMock.expectLastCall().times(2);
+        EasyMock.expectLastCall().times(3);
 
         mMockLogRegistry.registerLogger(mMockLogger);
+        EasyMock.expectLastCall().times(2);
         mMockLogRegistry.dumpToGlobalLog(mMockLogger);
         mMockLogRegistry.unregisterLogger();
-        EasyMock.expectLastCall().times(2);
+        EasyMock.expectLastCall().times(3);
 
         EasyMock.expect(mMockConfig.getCommandLine()).andStubReturn("empty");
         EasyMock.expect(mMockConfig.getCommandOptions()).andStubReturn(new CommandOptions());
@@ -382,7 +396,10 @@ public class TestInvocationMultiTest {
         IBuildInfo build1 = new BuildInfo();
         EasyMock.expect(mProvider1.getBuild()).andReturn(build1);
         // Second build is not found
-        EasyMock.expect(mProvider2.getBuild()).andThrow(new BuildRetrievalError("fail"));
+        EasyMock.expect(mProvider2.getBuild())
+                .andThrow(
+                        new BuildRetrievalError(
+                                "fail", InfraErrorIdentifier.ARTIFACT_DOWNLOAD_ERROR));
         // The downloaded build is cleaned
         mProvider1.cleanUp(build1);
         // A second build from the BuildRetrievalError is generated but still cleaned.
@@ -431,15 +448,17 @@ public class TestInvocationMultiTest {
         EasyMock.expect(mMockConfig.getLogOutput()).andStubReturn(mMockLogger);
         EasyMock.expect(mMockConfig.getConfigurationDescription()).andReturn(mConfigDesc);
         mMockLogger.init();
+        EasyMock.expectLastCall().times(2);
         EasyMock.expect(mMockLogger.getLog())
                 .andReturn(new ByteArrayInputStreamSource("fake".getBytes()));
         mMockLogger.closeLog();
-        EasyMock.expectLastCall().times(2);
+        EasyMock.expectLastCall().times(3);
 
         mMockLogRegistry.registerLogger(mMockLogger);
+        EasyMock.expectLastCall().times(2);
         mMockLogRegistry.dumpToGlobalLog(mMockLogger);
         mMockLogRegistry.unregisterLogger();
-        EasyMock.expectLastCall().times(2);
+        EasyMock.expectLastCall().times(3);
 
         EasyMock.expect(mMockConfig.getCommandLine()).andStubReturn("empty");
         EasyMock.expect(mMockConfig.getCommandOptions()).andStubReturn(new CommandOptions());
@@ -469,7 +488,10 @@ public class TestInvocationMultiTest {
         IBuildInfo build1 = new BuildInfo();
         EasyMock.expect(mProvider1.getBuild()).andReturn(build1);
         // Second build is not found
-        EasyMock.expect(mProvider2.getBuild()).andThrow(new BuildRetrievalError("fail"));
+        EasyMock.expect(mProvider2.getBuild())
+                .andThrow(
+                        new BuildRetrievalError(
+                                "fail", InfraErrorIdentifier.ARTIFACT_DOWNLOAD_ERROR));
         // The downloaded build is cleaned
         mProvider1.cleanUp(build1);
         EasyMock.expectLastCall().andThrow(new RuntimeException("I failed to clean!"));
