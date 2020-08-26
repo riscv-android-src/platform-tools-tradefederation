@@ -20,6 +20,7 @@ import com.android.tradefed.command.FatalHostError;
 import com.android.tradefed.invoker.logger.CurrentInvocation;
 import com.android.tradefed.invoker.logger.CurrentInvocation.InvocationInfo;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
 
@@ -329,7 +330,8 @@ public class FileDownloadCache {
         boolean download = false;
         File cachedFile, copyFile;
         if (remotePath == null) {
-            throw new BuildRetrievalError("remote path was null.");
+            throw new BuildRetrievalError(
+                    "remote path was null.", InfraErrorIdentifier.ARTIFACT_REMOTE_PATH_NULL);
         }
 
         lockFile(remotePath);
@@ -399,7 +401,7 @@ public class FileDownloadCache {
 
     @VisibleForTesting
     File copyFile(String remotePath, File cachedFile, File destFile) throws BuildRetrievalError {
-        // attempt to create a local copy of cached file with sane name
+        // attempt to create a local copy of cached file with meaningful name
         File hardlinkFile = destFile;
         try {
             if (hardlinkFile == null) {
@@ -421,8 +423,10 @@ public class FileDownloadCache {
             FileUtil.deleteFile(hardlinkFile);
             // cached file might be corrupt or incomplete, delete it
             FileUtil.deleteFile(cachedFile);
-            throw new BuildRetrievalError(String.format("Failed to copy cached file %s",
-                    cachedFile), e);
+            throw new BuildRetrievalError(
+                    String.format("Failed to copy cached file %s", cachedFile),
+                    e,
+                    InfraErrorIdentifier.FAIL_TO_CREATE_FILE);
         }
     }
 

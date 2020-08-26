@@ -15,7 +15,6 @@
  */
 package com.android.tradefed.util.executor;
 
-import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 
 import java.util.ArrayList;
@@ -29,14 +28,14 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-/** Wrapper of {@link ExecutorService} to execute a function on all devices in parallel. */
+/** Wrapper of {@link ExecutorService} to execute a function in parallel. */
 public class ParallelDeviceExecutor<V> {
 
-    private List<ITestDevice> mDevices;
+    private final int mPoolSize;
     private List<Throwable> mErrors;
 
-    public ParallelDeviceExecutor(List<ITestDevice> devices) {
-        mDevices = devices;
+    public ParallelDeviceExecutor(int poolSize) {
+        mPoolSize = poolSize;
         mErrors = new ArrayList<>();
     }
 
@@ -51,7 +50,7 @@ public class ParallelDeviceExecutor<V> {
     public List<V> invokeAll(List<Callable<V>> callableTasks, long timeout, TimeUnit unit) {
         ExecutorService executor =
                 Executors.newFixedThreadPool(
-                        mDevices.size(),
+                        mPoolSize,
                         new ThreadFactory() {
                             @Override
                             public Thread newThread(Runnable r) {

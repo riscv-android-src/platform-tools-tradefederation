@@ -18,6 +18,7 @@ package com.android.tradefed.targetprep.suite;
 
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.invoker.TestInformation;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.targetprep.TestAppInstallSetup;
 
@@ -42,7 +43,8 @@ public class SuiteApkInstaller extends TestAppInstallSetup {
             throw new TargetSetupError(
                     String.format("%s not found", apkFileName),
                     e,
-                    testInfo.getDevice().getDeviceDescriptor());
+                    testInfo.getDevice().getDeviceDescriptor(),
+                    InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
         }
         return apkFile;
     }

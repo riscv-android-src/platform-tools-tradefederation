@@ -22,6 +22,7 @@ import static org.mockito.Mockito.doReturn;
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.config.ConfigurationDef;
+import com.android.tradefed.config.DynamicRemoteFileResolver.FileResolverLoader;
 import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionSetter;
@@ -36,6 +37,8 @@ import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 
+import com.google.common.collect.ImmutableMap;
+
 import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
@@ -46,6 +49,7 @@ import org.mockito.Mockito;
 
 import java.io.File;
 import java.util.HashMap;
+import java.util.Map;
 
 /** Unit tests for {@link DeviceJUnit4ClassRunner}. */
 @RunWith(JUnit4.class)
@@ -62,34 +66,23 @@ public class DeviceJUnit4ClassRunnerTest {
 
         @Override
         protected DynamicRemoteFileResolver createResolver() {
-            DynamicRemoteFileResolver mResolver =
-                    new DynamicRemoteFileResolver() {
+            IRemoteFileResolver mockResolver = Mockito.mock(IRemoteFileResolver.class);
+            try {
+                doReturn(new File("/downloaded/somewhere"))
+                        .when(mockResolver)
+                        .resolveRemoteFiles(Mockito.eq(FAKE_REMOTE_FILE_PATH), Mockito.any());
+            } catch (BuildRetrievalError e) {
+                CLog.e(e);
+            }
+            FileResolverLoader resolverLoader =
+                    new FileResolverLoader() {
                         @Override
-                        protected IRemoteFileResolver getResolver(String protocol) {
-                            if (GcsRemoteFileResolver.PROTOCOL.equals(protocol)) {
-                                IRemoteFileResolver mockResolver =
-                                        Mockito.mock(IRemoteFileResolver.class);
-                                try {
-                                    doReturn(new File("/downloaded/somewhere"))
-                                            .when(mockResolver)
-                                            .resolveRemoteFiles(
-                                                    Mockito.eq(FAKE_REMOTE_FILE_PATH),
-                                                    Mockito.any());
-                                    return mockResolver;
-                                } catch (BuildRetrievalError e) {
-                                    CLog.e(e);
-                                }
-                            }
-                            return null;
-                        }
-
-                        @Override
-                        protected boolean updateProtocols() {
-                            // Do not set the static variable
-                            return false;
+                        public IRemoteFileResolver load(String scheme, Map<String, String> config) {
+                            return ImmutableMap.of(GcsRemoteFileResolver.PROTOCOL, mockResolver)
+                                    .get(scheme);
                         }
                     };
-            return mResolver;
+            return new DynamicRemoteFileResolver(resolverLoader);
         }
     }
 

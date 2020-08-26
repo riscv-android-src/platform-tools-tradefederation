@@ -19,6 +19,7 @@ package com.android.tradefed.command;
 import com.android.ddmlib.DdmPreferences;
 import com.android.ddmlib.Log;
 import com.android.ddmlib.Log.LogLevel;
+import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.clearcut.ClearcutClient;
 import com.android.tradefed.command.CommandFileParser.CommandLine;
 import com.android.tradefed.command.CommandFileWatcher.ICommandFileListener;
@@ -28,9 +29,12 @@ import com.android.tradefed.command.remote.IRemoteClient;
 import com.android.tradefed.command.remote.RemoteClient;
 import com.android.tradefed.command.remote.RemoteException;
 import com.android.tradefed.command.remote.RemoteManager;
+import com.android.tradefed.config.ArgsOptionParser;
+import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
+import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
@@ -40,6 +44,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.RetryConfigurationFactory;
 import com.android.tradefed.config.SandboxConfigurationFactory;
 import com.android.tradefed.config.proxy.ProxyConfiguration;
+import com.android.tradefed.config.proxy.TradefedDelegator;
 import com.android.tradefed.device.DeviceAllocationState;
 import com.android.tradefed.device.DeviceManager;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -64,6 +69,8 @@ import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ResultForwarder;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
+import com.android.tradefed.result.suite.SuiteResultReporter;
 import com.android.tradefed.sandbox.ISandbox;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.suite.retry.RetryRescheduler;
@@ -82,6 +89,7 @@ import com.android.tradefed.util.keystore.IKeyStoreFactory;
 import com.android.tradefed.util.keystore.KeyStoreException;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableSet;
 
 import java.io.File;
 import java.io.IOException;
@@ -1068,8 +1076,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 IConfiguration config = cmd.getConfiguration();
                 IInvocationContext context = new InvocationContext();
                 context.setConfigurationDescriptor(config.getConfigurationDescription());
-                Map<String, ITestDevice> devices = allocateDevices(config, manager);
-                if (!devices.isEmpty()) {
+                DeviceAllocationResult allocationResults = allocateDevices(config, manager);
+                if (allocationResults.wasAllocationSuccessful()) {
+                    Map<String, ITestDevice> devices = allocationResults.getAllocatedDevices();
                     cmdIter.remove();
                     mExecutingCommands.add(cmd);
                     context.addAllocatedDevice(devices);
@@ -1178,12 +1187,27 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         return foundSandbox;
     }
 
-    private boolean isProxyCommand(IConfiguration config) {
-        return config.getConfigurationObject(ProxyConfiguration.PROXY_CONFIG_TYPE_KEY) != null;
+    private boolean isProxyCommand(String[] args) throws ConfigurationException {
+        ProxyConfiguration proxy = new ProxyConfiguration();
+        ArgsOptionParser argsParser = new ArgsOptionParser(proxy);
+        List<String> argsList = new ArrayList<>(Arrays.asList(args));
+        argsList.remove(0);
+        argsParser.parseBestEffort(argsList, true);
+        return proxy.isProxySet();
     }
 
-    private String[] handleProxyCommand(IConfiguration config, String[] originalArgs)
-            throws ConfigurationException {
+    private IConfiguration handleProxyCommand(String[] originalArgs) throws ConfigurationException {
+        IConfiguration config =
+                ((ConfigurationFactory) getConfigFactory())
+                        .createPartialConfigurationFromArgs(
+                                originalArgs,
+                                getKeyStoreClient(),
+                                ImmutableSet.of(ProxyConfiguration.PROXY_CONFIG_TYPE_KEY));
+        try {
+            config.resolveDynamicOptions(new DynamicRemoteFileResolver());
+        } catch (BuildRetrievalError e) {
+            throw new ConfigurationException(e.getMessage(), e);
+        }
         ProxyConfiguration proxy =
                 (ProxyConfiguration)
                         config.getConfigurationObject(ProxyConfiguration.PROXY_CONFIG_TYPE_KEY);
@@ -1191,7 +1215,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             throw new ConfigurationException("No proxy configuration found.");
         }
         originalArgs[0] = proxy.getProxyConfig().getAbsolutePath();
-        return originalArgs;
+        return config;
     }
 
     /** Returns true if the configuration used is a retry one. */
@@ -1212,7 +1236,30 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         return GlobalConfiguration.getInstance().getSandboxFactory().createSandbox();
     }
 
-    private IConfiguration createConfiguration(String[] args) throws ConfigurationException {
+    protected IConfiguration createConfiguration(String[] args) throws ConfigurationException {
+        TradefedDelegator delegator = checkDelegation(args);
+        if (delegator.shouldUseDelegation()) {
+            args = TradefedDelegator.clearCommandline(args);
+            // Do not use delegation on staging
+            if (!delegator.isStaging()) {
+                delegator.setCommandLine(args);
+                CLog.d("Using commandline arguments as starting command: %s", Arrays.asList(args));
+                IConfiguration config =
+                        ((ConfigurationFactory) getConfigFactory())
+                                .createPartialConfigurationFromArgs(
+                                        args,
+                                        getKeyStoreClient(),
+                                        ImmutableSet.of(
+                                                Configuration.DEVICE_REQUIREMENTS_TYPE_NAME,
+                                                Configuration.LOGGER_TYPE_NAME,
+                                                Configuration.LOG_SAVER_TYPE_NAME,
+                                                Configuration.RESULT_REPORTER_TYPE_NAME));
+                config.setConfigurationObject(TradefedDelegator.DELEGATE_OBJECT, delegator);
+                setDelegateLevelReporting(config);
+                return config;
+            }
+        }
+
         // check if the command should be sandboxed
         if (isCommandSandboxed(args)) {
             // Create an sandboxed configuration based on the sandbox of the scheduler.
@@ -1220,20 +1267,56 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             return SandboxConfigurationFactory.getInstance()
                     .createConfigurationFromArgs(args, getKeyStoreClient(), sandbox, new RunUtil());
         }
+        if (isProxyCommand(args)) {
+            IConfiguration proxyConfig = handleProxyCommand(args);
+            String[] argsWithoutDelegation = ProxyConfiguration.clearCommandline(args);
+            IConfiguration resolvedConfig = null;
+            try {
+                resolvedConfig =
+                        getConfigFactory()
+                                .createConfigurationFromArgs(
+                                        argsWithoutDelegation, null, getKeyStoreClient());
+            } catch (ConfigurationException e) {
+                proxyConfig.cleanConfigurationData();
+                throw e;
+            }
+            resolvedConfig.addFilesToClean(proxyConfig.getFilesToClean());
+            return resolvedConfig;
+        }
         IConfiguration config =
                 getConfigFactory().createConfigurationFromArgs(args, null, getKeyStoreClient());
-        if (isProxyCommand(config)) {
-            String[] newArgs = handleProxyCommand(config, args);
-            IConfiguration proxyConfig =
-                    getConfigFactory()
-                            .createConfigurationFromArgs(newArgs, null, getKeyStoreClient());
-            proxyConfig.addFilesToClean(config.getFilesToClean());
-            return proxyConfig;
-        }
         if (isRetryCommand(config)) {
             return RetryConfigurationFactory.getInstance().createRetryConfiguration(config);
         }
         return config;
+    }
+
+    /**
+     * Create a delegator based on the command line to see if we need to delegate the run.
+     *
+     * @throws ConfigurationException
+     */
+    public static TradefedDelegator checkDelegation(String[] args) throws ConfigurationException {
+        TradefedDelegator delegator = new TradefedDelegator();
+        ArgsOptionParser argsParser = new ArgsOptionParser(delegator);
+        List<String> argsList = new ArrayList<>(Arrays.asList(args));
+        argsList.remove(0);
+        argsParser.parseBestEffort(argsList, true);
+        return delegator;
+    }
+
+    private void setDelegateLevelReporting(IConfiguration config) {
+        List<ITestInvocationListener> delegateReporters = new ArrayList<>();
+        // For debugging in the console, add a printer
+        delegateReporters.add(new SuiteResultReporter());
+        for (ITestInvocationListener listener : config.getTestInvocationListeners()) {
+            // Add infra reporter if configured.
+            if ("com.google.android.tradefed.result.teststorage.ResultReporter"
+                    .equals(listener.getClass().getCanonicalName())) {
+                delegateReporters.add(listener);
+            }
+        }
+        config.setTestInvocationListeners(delegateReporters);
     }
 
     private boolean internalAddCommand(String[] args, String cmdFilePath)
@@ -1453,8 +1536,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
         ExecutableCommand execCmd = createExecutableCommand(cmdTracker, config, false);
         context.setConfigurationDescriptor(config.getConfigurationDescription());
-        Map<String, ITestDevice> devices = allocateDevices(config, manager);
-        if (!devices.isEmpty()) {
+        DeviceAllocationResult allocationResults = allocateDevices(config, manager);
+        if (allocationResults.wasAllocationSuccessful()) {
+            Map<String, ITestDevice> devices = allocationResults.getAllocatedDevices();
             context.addAllocatedDevice(devices);
             synchronized (this) {
                 mExecutingCommands.add(execCmd);
@@ -1462,8 +1546,16 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             CLog.d("Executing '%s' on '%s'", cmdTracker.getArgs()[0], devices);
             startInvocation(context, execCmd, listener, new FreeDeviceHandler(manager));
         } else {
+            // Log adb output just to help debug
+            String adbOutput =
+                    ((DeviceManager) GlobalConfiguration.getDeviceManagerInstance())
+                            .executeGlobalAdbCommand("devices");
+            CLog.e("'adb devices' output:\n%s", adbOutput);
             throw new NoDeviceException(
-                    "no devices is available for command: " + Arrays.asList(args));
+                    String.format(
+                            "no devices is available for command: %s\n%s",
+                            Arrays.asList(args), allocationResults.formattedReason()),
+                    InfraErrorIdentifier.SCHEDULER_ALLOCATION_ERROR);
         }
     }
 
@@ -1504,11 +1596,12 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
     /**
      * Allocate devices for a config.
+     *
      * @param config a {@link IConfiguration} has device requirements.
      * @param manager a {@link IDeviceManager}
      * @return allocated devices
      */
-    Map<String, ITestDevice> allocateDevices(IConfiguration config, IDeviceManager manager) {
+    DeviceAllocationResult allocateDevices(IConfiguration config, IDeviceManager manager) {
         Map<String, ITestDevice> devices = new LinkedHashMap<String, ITestDevice>();
         ITestDevice device = null;
         if (config.getDeviceConfig().isEmpty()) {
@@ -1517,6 +1610,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         // If we need to replicate the setup on all devices
         ParentShardReplicate.replicatedSetup(config, getKeyStoreClient());
         synchronized(this) {
+            DeviceAllocationResult allocationResults = new DeviceAllocationResult();
             for (IDeviceConfiguration deviceConfig : config.getDeviceConfig()) {
                 device =
                         manager.allocateDevice(
@@ -1524,6 +1618,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 if (device != null) {
                     devices.put(deviceConfig.getDeviceName(), device);
                 } else {
+                    allocationResults.addAllocationFailureReason(
+                            deviceConfig.getDeviceName(),
+                            deviceConfig.getDeviceRequirements().getNoMatchReason());
                     // If one of the several device cannot be allocated, we de-allocate
                     // all the previous one.
                     for (ITestDevice allocatedDevice : devices.values()) {
@@ -1542,7 +1639,8 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                     break;
                 }
             }
-            return devices;
+            allocationResults.addAllocatedDevices(devices);
+            return allocationResults;
         }
     }
 

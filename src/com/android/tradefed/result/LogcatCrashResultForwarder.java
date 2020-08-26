@@ -19,8 +19,11 @@ import com.android.loganalysis.item.JavaCrashItem;
 import com.android.loganalysis.item.LogcatItem;
 import com.android.loganalysis.parser.LogcatParser;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.util.StreamUtil;
 
@@ -40,6 +43,8 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
     /** Special error message from the instrumentation when something goes wrong on device side. */
     public static final String ERROR_MESSAGE = "Process crashed.";
     public static final String SYSTEM_CRASH_MESSAGE = "System has crashed.";
+    public static final String SHELL_TIMEOUT_MESSAGE = "Failed to receive adb shell test output";
+    public static final String TIMEOUT_MESSAGE = "TimeoutException when running tests";
 
     public static final int MAX_NUMBER_CRASH = 3;
 
@@ -65,15 +70,19 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
 
     @Override
     public void testFailed(TestDescription test, String trace) {
-        // If the test case was detected as crashing the instrumentation, we add the crash to it.
-        trace = extractCrashAndAddToMessage(trace, mStartTime);
-        super.testFailed(test, trace);
+        testFailed(test, FailureDescription.create(trace));
     }
 
     @Override
     public void testFailed(TestDescription test, FailureDescription failure) {
         // If the test case was detected as crashing the instrumentation, we add the crash to it.
         String trace = extractCrashAndAddToMessage(failure.getErrorMessage(), mStartTime);
+        if (trace.compareTo(failure.getErrorMessage()) != 0) {
+            // Crash stack trace found, consider this a test failure.
+            failure.setFailureStatus(FailureStatus.TEST_FAILURE);
+        } else if (isTimeout(failure.getErrorMessage())) {
+            failure.setFailureStatus(FailureStatus.TIMED_OUT);
+        }
         failure.setErrorMessage(trace);
         super.testFailed(test, failure);
     }
@@ -103,6 +112,15 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
             errorMessage = extractCrashAndAddToMessage(errorMessage, mLastStartTime);
         }
         error.setErrorMessage(errorMessage);
+        if (isCrash(errorMessage)) {
+            error.setErrorIdentifier(DeviceErrorIdentifier.INSTRUMENTATION_CRASH);
+        }
+        // Add metrics for assessing uncaught IntrumentationTest crash failures.
+        InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.CRASH_FAILURES, 1);
+        if (FailureStatus.UNSET.equals(error.getFailureStatus())) {
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.UNCAUGHT_CRASH_FAILURES, 1);
+        }
         super.testRunFailed(error);
     }
 
@@ -114,14 +132,21 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
 
     /** Attempt to extract the crash from the logcat if the test was seen as started. */
     private String extractCrashAndAddToMessage(String errorMessage, Long startTime) {
-        if ((errorMessage.contains(ERROR_MESSAGE) || errorMessage.contains(SYSTEM_CRASH_MESSAGE))
-                && startTime != null) {
+        if (isCrash(errorMessage) && startTime != null) {
             mLogcatItem = extractLogcat(mDevice, startTime);
             errorMessage = addJavaCrashToString(mLogcatItem, errorMessage);
         }
         return errorMessage;
     }
 
+    private boolean isCrash(String errorMessage) {
+        return errorMessage.contains(ERROR_MESSAGE) || errorMessage.contains(SYSTEM_CRASH_MESSAGE);
+    }
+
+    private boolean isTimeout(String errorMessage) {
+        return errorMessage.contains(SHELL_TIMEOUT_MESSAGE)
+                || errorMessage.contains(TIMEOUT_MESSAGE);
+    }
     /**
      * Extract a formatted object from the logcat snippet.
      *

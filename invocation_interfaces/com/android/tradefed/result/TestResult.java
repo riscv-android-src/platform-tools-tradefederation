@@ -208,6 +208,7 @@ public class TestResult {
         int ignored = 0;
         int incomplete = 0;
 
+        TestStatus lastStatus = null;
         for (TestResult attempt : results) {
             mergedResult.mProtoMetrics.putAll(attempt.getProtoMetrics());
             mergedResult.mMetrics.putAll(attempt.getMetrics());
@@ -238,6 +239,7 @@ public class TestResult {
                     ignored++;
                     break;
             }
+            lastStatus = attempt.getStatus();
         }
 
         switch (strategy) {
@@ -258,11 +260,17 @@ public class TestResult {
                         mergedResult.setStatus(TestStatus.INCOMPLETE);
                     }
                 } else {
-                    mergedResult.setStatus(TestStatus.FAILURE);
+                    if (TestStatus.ASSUMPTION_FAILURE.equals(lastStatus)) {
+                        mergedResult.setStatus(TestStatus.ASSUMPTION_FAILURE);
+                    } else if (TestStatus.IGNORED.equals(lastStatus)) {
+                        mergedResult.setStatus(TestStatus.IGNORED);
+                    } else {
+                        mergedResult.setStatus(TestStatus.FAILURE);
+                    }
                 }
                 break;
             default:
-                // We keep a sane default of one failure is a failure that should be reported.
+                // We keep a default of one failure is a failure that should be reported.
                 if (fail > 0) {
                     mergedResult.setStatus(TestStatus.FAILURE);
                 } else {

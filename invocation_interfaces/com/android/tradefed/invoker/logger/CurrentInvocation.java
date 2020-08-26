@@ -18,10 +18,14 @@ package com.android.tradefed.invoker.logger;
 import com.android.tradefed.invoker.ExecutionFiles;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ActionInProgress;
+import com.android.tradefed.result.FailureDescription;
+import com.android.tradefed.result.error.ErrorIdentifier;
 
 import java.io.File;
+import java.lang.StackWalker.Option;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 import javax.annotation.Nullable;
@@ -54,7 +58,7 @@ public class CurrentInvocation {
     private static class InternalInvocationTracking {
         public Map<InvocationInfo, File> mInvocationInfoFiles = new HashMap<>();
         public ExecutionFiles mExecutionFiles;
-        public ActionInProgress mActionInProgress;
+        public ActionInProgress mActionInProgress = ActionInProgress.UNSET;
     }
 
     /**
@@ -63,6 +67,9 @@ public class CurrentInvocation {
      */
     private static final Map<ThreadGroup, InternalInvocationTracking> mPerGroupInfo =
             new ConcurrentHashMap<ThreadGroup, CurrentInvocation.InternalInvocationTracking>();
+
+    private static final Map<ThreadGroup, Map<InvocationLocal<?>, Optional<?>>> mInvocationLocals =
+            new ConcurrentHashMap<>();
 
     /**
      * Add one key-value to be tracked at the invocation level.
@@ -97,6 +104,7 @@ public class CurrentInvocation {
         synchronized (mPerGroupInfo) {
             mPerGroupInfo.remove(group);
         }
+        mInvocationLocals.remove(group);
     }
 
     /**
@@ -124,6 +132,9 @@ public class CurrentInvocation {
     public static ExecutionFiles getInvocationFiles() {
         ThreadGroup group = Thread.currentThread().getThreadGroup();
         synchronized (mPerGroupInfo) {
+            if (mPerGroupInfo.get(group) == null) {
+                mPerGroupInfo.put(group, new InternalInvocationTracking());
+            }
             return mPerGroupInfo.get(group).mExecutionFiles;
         }
     }
@@ -143,7 +154,46 @@ public class CurrentInvocation {
     public static @Nullable ActionInProgress getActionInProgress() {
         ThreadGroup group = Thread.currentThread().getThreadGroup();
         synchronized (mPerGroupInfo) {
+            if (mPerGroupInfo.get(group) == null) {
+                return null;
+            }
             return mPerGroupInfo.get(group).mActionInProgress;
         }
+    }
+
+    /**
+     * Create a failure associated with the invocation action in progress. Convenience utility to
+     * avoid calling {@link FailureDescription#setActionInProgress(ActionInProgress)}.
+     */
+    public static FailureDescription createFailure(
+            String errorMessage, ErrorIdentifier errorIdentifier) {
+        FailureDescription failure = FailureDescription.create(errorMessage);
+        ActionInProgress action = getActionInProgress();
+        if (action != null) {
+            failure.setActionInProgress(action);
+        }
+        if (errorIdentifier != null) {
+            failure.setErrorIdentifier(errorIdentifier);
+            failure.setFailureStatus(errorIdentifier.status());
+        }
+        // Automatically populate the origin
+        Class<?> clazz = StackWalker.getInstance(Option.RETAIN_CLASS_REFERENCE).getCallerClass();
+        failure.setOrigin(clazz.getCanonicalName());
+        return failure;
+    }
+
+    static <T> T getLocal(InvocationLocal<T> local) {
+        ThreadGroup group = Thread.currentThread().getThreadGroup();
+        Map<InvocationLocal<?>, Optional<?>> locals =
+                mInvocationLocals.computeIfAbsent(group, unused -> new ConcurrentHashMap<>());
+
+        // Note that ConcurrentHashMap guarantees that the function is atomic and called at-most
+        // once.
+        Optional<?> holder =
+                locals.computeIfAbsent(local, unused -> Optional.ofNullable(local.initialValue()));
+
+        @SuppressWarnings("unchecked")
+        T value = (T) holder.orElse(null);
+        return value;
     }
 }

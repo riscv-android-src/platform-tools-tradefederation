@@ -23,6 +23,7 @@ import com.android.tradefed.device.IManagedTestDevice;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -281,9 +282,12 @@ public class FastbootDeviceFlasher implements IDeviceFlasher {
         String deviceProductType = device.getProductType();
         if (deviceProductType == null) {
             // treat this as a fatal device error
-            throw new DeviceNotAvailableException(String.format(
-                    "Could not determine product type for device %s", device.getSerialNumber()),
-                    device.getSerialNumber());
+            throw new DeviceNotAvailableException(
+                    String.format(
+                            "Could not determine product type for device %s",
+                            device.getSerialNumber()),
+                    device.getSerialNumber(),
+                    DeviceErrorIdentifier.DEVICE_UNEXPECTED_RESPONSE);
         }
         verifyRequiredBoards(device, resourceParser, deviceProductType);
 
@@ -816,10 +820,15 @@ public class FastbootDeviceFlasher implements IDeviceFlasher {
             mFbCmdStatus = CommandStatus.FAILED;
         }
         if (mFbCmdStatus != CommandStatus.SUCCESS) {
-            throw new TargetSetupError(String.format(
-                    "fastboot command %s failed in device %s. stdout: %s, stderr: %s", cmdArgs[0],
-                    device.getSerialNumber(), result.getStdout(), result.getStderr()),
-                    device.getDeviceDescriptor());
+            throw new TargetSetupError(
+                    String.format(
+                            "fastboot command %s failed in device %s. stdout: %s, stderr: %s",
+                            cmdArgs[0],
+                            device.getSerialNumber(),
+                            result.getStdout(),
+                            result.getStderr()),
+                    device.getDeviceDescriptor(),
+                    DeviceErrorIdentifier.ERROR_AFTER_FLASHING);
         }
         if (result.getStderr().length() > 0) {
             return result.getStderr();

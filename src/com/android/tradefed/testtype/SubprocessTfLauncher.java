@@ -22,6 +22,8 @@ import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -30,6 +32,7 @@ import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.result.proto.StreamProtoReceiver;
 import com.android.tradefed.result.proto.StreamProtoResultReporter;
 import com.android.tradefed.util.CommandResult;
@@ -39,6 +42,7 @@ import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.IRunUtil.EnvPriority;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
+import com.android.tradefed.util.SubprocessExceptionParser;
 import com.android.tradefed.util.SubprocessTestResultsParser;
 import com.android.tradefed.util.SystemUtil;
 import com.android.tradefed.util.TimeUtil;
@@ -328,7 +332,8 @@ public abstract class SubprocessTfLauncher
 
     /** {@inheritDoc} */
     @Override
-    public void run(TestInformation testInfo, ITestInvocationListener listener) {
+    public void run(TestInformation testInfo, ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
         preRun();
         addInvocationData();
 
@@ -398,19 +403,22 @@ public abstract class SubprocessTfLauncher
             } else {
                 CLog.w("Failed ran TF tests for build %s, status %s",
                         mBuildInfo.getBuildId(), result.getStatus());
-                CLog.v("TF tests output:\nstdout:\n%s\nstderror:\n%s",
+                CLog.v(
+                        "TF tests output:\nstdout:\n%s\nstderr:\n%s",
                         result.getStdout(), result.getStderr());
                 exception = true;
                 String errMessage = null;
                 if (result.getStatus().equals(CommandStatus.TIMED_OUT)) {
                     errMessage = String.format("Timeout after %s",
                             TimeUtil.formatElapsedTime(mMaxTfRunTime));
-                } else {
-                    errMessage = FileUtil.readStringFromFile(stderrFile);
+                    throw new HarnessRuntimeException(
+                            String.format(
+                                    "%s Tests subprocess failed due to:\n%s\n",
+                                    mConfigName, errMessage),
+                            InfraErrorIdentifier.INVOCATION_TIMEOUT);
+                } else if (eventParser != null && !eventParser.reportedInvocationFailed()) {
+                    SubprocessExceptionParser.handleStderrException(result);
                 }
-                throw new RuntimeException(
-                        String.format("%s Tests subprocess failed due to:\n%s\n", mConfigName,
-                                errMessage));
             }
         } catch (IOException e) {
             exception = true;

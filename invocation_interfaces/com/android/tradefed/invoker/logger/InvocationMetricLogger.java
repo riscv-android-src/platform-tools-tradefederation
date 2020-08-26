@@ -39,6 +39,7 @@ public class InvocationMetricLogger {
         DEVICE_DONE_TIMESTAMP("device_done_timestamp", false),
         DEVICE_RELEASE_STATE("device_release_state", false),
         DEVICE_LOST_DETECTED("device_lost_detected", false),
+        VIRTUAL_DEVICE_LOST_DETECTED("virtual_device_lost_detected", false),
         DEVICE_RECOVERY("device_recovery", true),
         DEVICE_RECOVERY_FROM_RECOVERY("device_recovery_from_recovery", true),
         DEVICE_RECOVERY_FAIL("device_recovery_fail", true),
@@ -46,7 +47,9 @@ public class InvocationMetricLogger {
         CF_FETCH_ARTIFACT_TIME("cf_fetch_artifact_time_ms", false),
         CF_GCE_CREATE_TIME("cf_gce_create_time_ms", false),
         CF_LAUNCH_CVD_TIME("cf_launch_cvd_time_ms", false),
-        CF_INSTANCE_COUNT("cf_instance_count", false);
+        CF_INSTANCE_COUNT("cf_instance_count", false),
+        CRASH_FAILURES("crash_failures", true),
+        UNCAUGHT_CRASH_FAILURES("uncaught_crash_failures", true);
 
         private final String mKeyName;
         // Whether or not to add the value when the key is added again.
