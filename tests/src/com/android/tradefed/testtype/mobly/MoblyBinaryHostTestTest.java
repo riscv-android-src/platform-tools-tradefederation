@@ -28,6 +28,7 @@ import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -78,6 +79,7 @@ public class MoblyBinaryHostTestTest {
     private File mMoblyTestDir;
     private File mMoblyBinary; // used by python-binaries option
     private File mMoblyBinary2; // used by par-file-name option
+    private File mVenvDir;
     private DeviceBuildInfo mMockBuildInfo;
 
     @Before
@@ -87,6 +89,11 @@ public class MoblyBinaryHostTestTest {
         mMockRunUtil = Mockito.mock(IRunUtil.class);
         mMockBuildInfo = Mockito.mock(DeviceBuildInfo.class);
         mSpyTest.setDevice(mMockDevice);
+
+        mVenvDir = FileUtil.createTempDir("venv");
+        new File(mVenvDir, "bin").mkdir();
+        Mockito.when(mMockBuildInfo.getFile(eq("VIRTUAL_ENV"))).thenReturn(mVenvDir);
+
         Mockito.doReturn(mMockRunUtil).when(mSpyTest).getRunUtil();
         Mockito.doReturn(DEFAULT_TIME_OUT).when(mSpyTest).getTestTimeout();
         Mockito.doReturn("not_adb").when(mSpyTest).getAdbPath();
@@ -99,6 +106,7 @@ public class MoblyBinaryHostTestTest {
     @After
     public void tearDown() throws Exception {
         FileUtil.recursiveDelete(mMoblyTestDir);
+        FileUtil.recursiveDelete(mVenvDir);
     }
 
     @Test
