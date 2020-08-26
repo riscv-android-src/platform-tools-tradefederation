@@ -1188,6 +1188,15 @@ public class NativeDevice implements IManagedTestDevice {
     /** {@inheritDoc} */
     @Override
     public boolean doesFileExist(String deviceFilePath) throws DeviceNotAvailableException {
+        if (deviceFilePath.startsWith(SD_CARD)) {
+            ContentProviderHandler handler = getContentProvider();
+            if (handler != null) {
+                CLog.d("Delegating check to ContentProvider doesFileExist(%s)", deviceFilePath);
+
+                return handler.doesFileExist(deviceFilePath);
+            }
+        }
+        CLog.d("Using 'ls' to check doesFileExist(%s)", deviceFilePath);
         String lsGrep = executeShellCommand(String.format("ls \"%s\"", deviceFilePath));
         return !lsGrep.contains("No such file or directory");
     }

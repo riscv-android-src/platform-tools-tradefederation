@@ -219,6 +219,29 @@ public class ContentProviderHandler {
         return false;
     }
 
+    /**
+     * Determines if the file or non-empty directory exists on the device.
+     *
+     * @param deviceFilePath The absolute file path on device to check for existence.
+     * @return True if file/directory exists, False otherwise. If directory is empty, it will return
+     *     False as well.
+     */
+    public boolean doesFileExist(String deviceFilePath) throws DeviceNotAvailableException {
+        String contentUri = createEscapedContentUri(deviceFilePath);
+        String queryContentCommand =
+                String.format(
+                        "content query --user %d --uri %s", mDevice.getCurrentUser(), contentUri);
+
+        String listCommandResult = mDevice.executeShellCommand(queryContentCommand);
+
+        if (NO_RESULTS_STRING.equals(listCommandResult.trim())) {
+            // No file found.
+            return false;
+        }
+
+        return true;
+    }
+
     /** Returns true if {@link CommandStatus} is successful and there is no error message. */
     private boolean isSuccessful(CommandResult result) {
         if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
