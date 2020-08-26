@@ -82,6 +82,7 @@ import com.google.common.base.Strings;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -252,8 +253,8 @@ public class InvocationExecution implements IInvocationExecution {
                     callableTasks.add(callableTask);
                     index++;
                 }
-                // Run setup with 30 minutes right now.
-                executor.invokeAll(callableTasks, 30, TimeUnit.MINUTES);
+                Duration timeout = config.getCommandOptions().getParallelSetupTimeout();
+                executor.invokeAll(callableTasks, timeout.toMillis(), TimeUnit.MILLISECONDS);
                 if (executor.hasErrors()) {
                     List<Throwable> errors = executor.getErrors();
                     // TODO: Handle throwing multi-exceptions, right now throw the first one.

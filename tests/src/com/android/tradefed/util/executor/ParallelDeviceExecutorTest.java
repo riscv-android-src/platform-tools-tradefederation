@@ -31,6 +31,7 @@ import org.mockito.Mockito;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.TimeUnit;
 
 /** Unit tests for {@link ParallelDeviceExecutor}. */
@@ -92,5 +93,24 @@ public class ParallelDeviceExecutorTest {
         assertEquals(2, mExecutor.getErrors().size());
         assertTrue(mExecutor.getErrors().get(0).getMessage().contains("one"));
         assertTrue(mExecutor.getErrors().get(1).getMessage().contains("two"));
+    }
+
+    @Test
+    public void testExecution_timeout() {
+        List<Callable<Boolean>> callableTasks = new ArrayList<>();
+        for (ITestDevice device : mDevices) {
+            callableTasks.add(
+                    () -> {
+                        Thread.sleep(1000L);
+                        return true;
+                    });
+        }
+
+        List<Boolean> results = mExecutor.invokeAll(callableTasks, 1L, TimeUnit.MILLISECONDS);
+        assertEquals(0, results.size());
+        assertTrue(mExecutor.hasErrors());
+        assertEquals(2, mExecutor.getErrors().size());
+        assertTrue(mExecutor.getErrors().get(0) instanceof CancellationException);
+        assertTrue(mExecutor.getErrors().get(1) instanceof CancellationException);
     }
 }
