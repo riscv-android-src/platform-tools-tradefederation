@@ -29,6 +29,7 @@ import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.metric.ClangCodeCoverageCollector;
+import com.android.tradefed.device.metric.GcovCodeCoverageCollector;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -430,7 +431,7 @@ public class GTest extends GTestBase implements IDeviceTest {
             mDevice.executeShellCommand("stop");
         }
         // Insert the coverage listener if code coverage collection is enabled.
-        listener = addNativeCoverageListenerIfEnabled(testInfo.getContext(), listener);
+        listener = addGcovCoverageListenerIfEnabled(testInfo.getContext(), listener);
         listener = addClangCoverageListenerIfEnabled(testInfo.getContext(), listener);
         listener = getGTestListener(listener);
         NativeCodeCoverageFlusher flusher =
@@ -471,12 +472,12 @@ public class GTest extends GTestBase implements IDeviceTest {
      * @param listener the current chain of listeners
      * @return a native coverage listener if coverage is enabled, otherwise the original listener
      */
-    private ITestInvocationListener addNativeCoverageListenerIfEnabled(
+    private ITestInvocationListener addGcovCoverageListenerIfEnabled(
             IInvocationContext context, ITestInvocationListener listener) {
         CoverageOptions options = getConfiguration().getCoverageOptions();
 
         if (options.isCoverageEnabled() && options.getCoverageToolchains().contains(GCOV)) {
-            NativeCodeCoverageListener nativeListener = new NativeCodeCoverageListener();
+            GcovCodeCoverageCollector nativeListener = new GcovCodeCoverageCollector();
             nativeListener.setConfiguration(getConfiguration());
             listener = nativeListener.init(context, listener);
         }
