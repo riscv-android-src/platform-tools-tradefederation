@@ -16,6 +16,7 @@
 
 package com.android.tradefed.testtype;
 
+import static com.android.tradefed.testtype.coverage.CoverageOptions.Toolchain.CLANG;
 import static com.google.common.base.Verify.verify;
 import static com.google.common.base.Verify.verifyNotNull;
 
@@ -25,14 +26,12 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.metric.BaseDeviceMetricCollector;
+import com.android.tradefed.device.metric.DeviceMetricData;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FileInputStreamSource;
-import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.result.ResultForwarder;
-import com.android.tradefed.testtype.coverage.CoverageOptions;
-import com.android.tradefed.testtype.coverage.CoverageOptions.Toolchain;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -48,15 +47,15 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
- * A {@link ResultForwarder} that will pull Clang coverage measurements off of the device and log
- * them as test artifacts.
+ * A {@link BaseDeviceMetricCollector} that will pull Clang coverage measurements off of the device
+ * and log them as test artifacts.
  */
-public final class ClangCodeCoverageListener extends ResultForwarder
+public final class ClangCodeCoverageListener extends BaseDeviceMetricCollector
         implements IConfigurationReceiver {
 
     private static final String NATIVE_COVERAGE_DEVICE_PATH = "/data/misc/trace";
@@ -74,22 +73,11 @@ public final class ClangCodeCoverageListener extends ResultForwarder
     private static final String DELETE_COVERAGE_FILES_COMMAND =
             String.format("find %s -name '*.profraw' -delete", NATIVE_COVERAGE_DEVICE_PATH);
 
-    private final ITestDevice mDevice;
-
     private IBuildInfo mBuildInfo;
     private IConfiguration mConfiguration;
-    private IRunUtil mRunUtil;
+    private IRunUtil mRunUtil = RunUtil.getDefault();
 
     private NativeCodeCoverageFlusher mFlusher;
-
-    private File mLlvmProfdataTool;
-    private String mCurrentRunName;
-
-    public ClangCodeCoverageListener(ITestDevice device, ITestInvocationListener... listeners) {
-        super(listeners);
-        mDevice = device;
-        mRunUtil = RunUtil.getDefault();
-    }
 
     @Override
     public void setConfiguration(IConfiguration configuration) {
@@ -102,40 +90,28 @@ public final class ClangCodeCoverageListener extends ResultForwarder
     }
 
     @Override
-    public void testRunStarted(String runName, int testCount) {
-        mCurrentRunName = runName;
-        super.testRunStarted(runName, testCount);
-    }
-
-    @Override
-    public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
-        CoverageOptions options = mConfiguration.getCoverageOptions();
+    public void onTestRunEnd(
+            DeviceMetricData runData, final Map<String, Metric> currentRunMetrics) {
+        if (!mConfiguration.getCoverageOptions().isCoverageEnabled()
+                || !mConfiguration.getCoverageOptions().getCoverageToolchains().contains(CLANG)) {
+            return;
+        }
         try {
-            if (options.isCoverageEnabled()
-                    && options.getCoverageToolchains().contains(Toolchain.CLANG)) {
-                // Enable abd root on the device, otherwise the following commands will fail.
-                verify(mDevice.enableAdbRoot(), "Failed to enable adb root.");
+            ITestDevice device = getRealDevices().get(0);
 
-                if (options.isCoverageFlushEnabled()) {
-                    getCoverageFlusher().forceCoverageFlush();
-                }
-                logCoverageMeasurement(mCurrentRunName);
+            // Enable abd root on the device, otherwise the following commands will fail.
+            verify(device.enableAdbRoot(), "Failed to enable adb root.");
 
-                // Delete coverage files on the device.
-                mDevice.executeShellCommand(DELETE_COVERAGE_FILES_COMMAND);
+            if (mConfiguration.getCoverageOptions().isCoverageFlushEnabled()) {
+                getCoverageFlusher(device).forceCoverageFlush();
             }
+            logCoverageMeasurement(device, getRunName());
+
+            // Delete coverage files on the device.
+            device.executeShellCommand(DELETE_COVERAGE_FILES_COMMAND);
         } catch (DeviceNotAvailableException | IOException e) {
             throw new RuntimeException(e);
-        } finally {
-            super.testRunEnded(elapsedTime, runMetrics);
         }
-    }
-
-    @Override
-    public void invocationEnded(long elapsedTime) {
-        // Clean up the llvm-profdata tool.
-        FileUtil.recursiveDelete(mLlvmProfdataTool);
-        super.invocationEnded(elapsedTime);
     }
 
     /**
@@ -145,7 +121,7 @@ public final class ClangCodeCoverageListener extends ResultForwarder
      * @throws DeviceNotAvailableException
      * @throws IOException
      */
-    private void logCoverageMeasurement(String runName)
+    private void logCoverageMeasurement(ITestDevice device, String runName)
             throws DeviceNotAvailableException, IOException {
         File coverageTarGz = null;
         File untarDir = null;
@@ -153,13 +129,13 @@ public final class ClangCodeCoverageListener extends ResultForwarder
         File indexedProfileFile = null;
         try {
             // Compress coverage measurements on the device before pulling.
-            mDevice.executeShellCommand(ZIP_CLANG_FILES_COMMAND);
-            coverageTarGz = mDevice.pullFile(COVERAGE_TAR_PATH);
+            device.executeShellCommand(ZIP_CLANG_FILES_COMMAND);
+            coverageTarGz = device.pullFile(COVERAGE_TAR_PATH);
             verifyNotNull(
                     coverageTarGz,
                     "Failed to pull the Clang code coverage file %s",
                     COVERAGE_TAR_PATH);
-            mDevice.deleteFile(COVERAGE_TAR_PATH);
+            device.deleteFile(COVERAGE_TAR_PATH);
 
             untarDir = FileUtil.createTempDir("clang_coverage");
             TarUtil.unTar(coverageTarGz, untarDir);
@@ -208,6 +184,7 @@ public final class ClangCodeCoverageListener extends ResultForwarder
         } finally {
             FileUtil.deleteFile(coverageTarGz);
             FileUtil.recursiveDelete(untarDir);
+            FileUtil.recursiveDelete(profileTool);
             FileUtil.deleteFile(indexedProfileFile);
         }
     }
@@ -217,13 +194,13 @@ public final class ClangCodeCoverageListener extends ResultForwarder
      *
      * @return a NativeCodeCoverageFlusher
      */
-    private NativeCodeCoverageFlusher getCoverageFlusher() {
+    private NativeCodeCoverageFlusher getCoverageFlusher(ITestDevice device) {
         if (mFlusher == null) {
             verifyNotNull(mConfiguration);
-            verifyNotNull(mDevice);
+            verifyNotNull(device);
             mFlusher =
                     new NativeCodeCoverageFlusher(
-                            mDevice, mConfiguration.getCoverageOptions().getCoverageProcesses());
+                            device, mConfiguration.getCoverageOptions().getCoverageProcesses());
         }
         return mFlusher;
     }
@@ -234,11 +211,6 @@ public final class ClangCodeCoverageListener extends ResultForwarder
      * @return the directory containing the profile tool and dependencies
      */
     private File getProfileTool() throws IOException {
-        // If we have a cached version of the profile tool already, use it.
-        if (mLlvmProfdataTool != null) {
-            return mLlvmProfdataTool;
-        }
-
         // If llvm-profdata-path was set in the Configuration, pass it through. Don't save the path
         // locally since the parent process is responsible for cleaning it up.
         File configurationTool = mConfiguration.getCoverageOptions().getLlvmProfdataPath();
@@ -254,8 +226,7 @@ public final class ClangCodeCoverageListener extends ResultForwarder
                     verifyNotNull(
                             buildInfo.getFile("llvm-profdata.zip"),
                             "Could not get llvm-profdata.zip from the build.");
-            mLlvmProfdataTool = ZipUtil.extractZipToTemp(profileToolZip, "llvm-profdata");
-            return mLlvmProfdataTool;
+            return ZipUtil.extractZipToTemp(profileToolZip, "llvm-profdata");
         } catch (BuildRetrievalError e) {
             throw new RuntimeException(e);
         } finally {
