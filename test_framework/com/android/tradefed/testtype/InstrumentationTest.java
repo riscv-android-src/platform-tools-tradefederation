@@ -919,7 +919,7 @@ public class InstrumentationTest
             listener = addBugreportListenerIfEnabled(listener);
             listener = addJavaCoverageListenerIfEnabled(testInfo, listener);
             listener = addGcovCoverageListenerIfEnabled(testInfo, listener);
-            listener = addClangCoverageListenerIfEnabled(listener);
+            listener = addClangCoverageListenerIfEnabled(testInfo, listener);
 
             // Clear coverage measurements on the device before running.
             if (mConfiguration != null
@@ -1053,16 +1053,16 @@ public class InstrumentationTest
      * Returns a listener that will collect Clang coverage measurements, or the original {@code
      * listener} if this feature is disabled.
      */
-    ITestInvocationListener addClangCoverageListenerIfEnabled(ITestInvocationListener listener) {
+    ITestInvocationListener addClangCoverageListenerIfEnabled(
+            TestInformation testInfo, ITestInvocationListener listener) {
         if (mConfiguration == null) {
             return listener;
         }
         if (mConfiguration.getCoverageOptions().isCoverageEnabled()
                 && mConfiguration.getCoverageOptions().getCoverageToolchains().contains(CLANG)) {
-            ClangCodeCoverageListener clangListener =
-                    new ClangCodeCoverageListener(getDevice(), listener);
+            ClangCodeCoverageListener clangListener = new ClangCodeCoverageListener();
             clangListener.setConfiguration(mConfiguration);
-            return clangListener;
+            listener = clangListener.init(testInfo.getContext(), listener);
         }
         return listener;
     }
