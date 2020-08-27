@@ -106,6 +106,7 @@ import com.android.tradefed.device.metric.DumpHeapCollectorTest;
 import com.android.tradefed.device.metric.FilePullerDeviceMetricCollectorTest;
 import com.android.tradefed.device.metric.FilePullerLogCollectorTest;
 import com.android.tradefed.device.metric.GraphicsStatsMetricCollectorTest;
+import com.android.tradefed.device.metric.GcovCodeCoverageCollectorTest;
 import com.android.tradefed.device.metric.HostStatsdMetricCollectorTest;
 import com.android.tradefed.device.metric.IncidentReportCollectorTest;
 import com.android.tradefed.device.metric.IonHeapInfoMetricCollectorTest;
@@ -283,7 +284,6 @@ import com.android.tradefed.testtype.InstrumentationTestTest;
 import com.android.tradefed.testtype.JarHostTestTest;
 import com.android.tradefed.testtype.NativeBenchmarkTestParserTest;
 import com.android.tradefed.testtype.NativeBenchmarkTestTest;
-import com.android.tradefed.testtype.NativeCodeCoverageListenerTest;
 import com.android.tradefed.testtype.NativeStressTestParserTest;
 import com.android.tradefed.testtype.NativeStressTestTest;
 import com.android.tradefed.testtype.NoisyDryRunTestTest;
@@ -542,6 +542,7 @@ import org.junit.runners.Suite.SuiteClasses;
     FilePullerDeviceMetricCollectorTest.class,
     FilePullerLogCollectorTest.class,
     GraphicsStatsMetricCollectorTest.class,
+    GcovCodeCoverageCollectorTest.class,
     IncidentReportCollectorTest.class,
     IonHeapInfoMetricCollectorTest.class,
     JavaCodeCoverageCollectorTest.class,
@@ -777,7 +778,6 @@ import org.junit.runners.Suite.SuiteClasses;
     JarHostTestTest.class,
     NativeBenchmarkTestParserTest.class,
     NativeBenchmarkTestTest.class,
-    NativeCodeCoverageListenerTest.class,
     NativeStressTestParserTest.class,
     NativeStressTestTest.class,
     NoisyDryRunTestTest.class,
