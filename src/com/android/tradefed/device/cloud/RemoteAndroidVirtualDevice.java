@@ -37,6 +37,8 @@ import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.targetprep.TargetSetupError;
+import com.android.tradefed.util.CommandResult;
+import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
 
@@ -457,5 +459,39 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
                             getInitialSerial() + "[" + descriptor.getSerial() + "]");
         }
         return descriptor;
+    }
+
+    /**
+     * Attempt to powerwash a GCE instance
+     *
+     * @return returns true if powerwash Gce success.
+     * @throws TargetSetupError
+     * @throws DeviceNotAvailableException
+     */
+    public boolean powerwashGce() throws TargetSetupError, DeviceNotAvailableException {
+        if (mGceAvd == null) {
+            String errorMsg = String.format("Can not get GCE AVD Info. launch GCE first?");
+            throw new TargetSetupError(
+                    errorMsg, getDeviceDescriptor(), DeviceErrorIdentifier.DEVICE_UNAVAILABLE);
+        }
+        String username = this.getOptions().getInstanceUser();
+        String powerwashCommand = String.format("/home/%s/bin/powerwash_cvd", username);
+        CommandResult powerwashRes =
+                GceManager.remoteSshCommandExecution(
+                        mGceAvd,
+                        this.getOptions(),
+                        getRunUtil(),
+                        60000L,
+                        powerwashCommand.split(" "));
+        if (!CommandStatus.SUCCESS.equals(powerwashRes.getStatus())) {
+            CLog.e("%s", powerwashRes.getStderr());
+            // Log 'adb devices' to confirm device is gone
+            CommandResult printAdbDevices = getRunUtil().runTimedCmd(60000L, "adb", "devices");
+            CLog.e("%s\n%s", printAdbDevices.getStdout(), printAdbDevices.getStderr());
+            // Proceed here, device could have been already gone.
+            return false;
+        }
+        getMonitor().waitForDeviceAvailable();
+        return true;
     }
 }
