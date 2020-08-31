@@ -197,6 +197,7 @@ public class WaitDeviceRecoveryTest {
                                 EasyMock.eq("reboot")))
                 .andReturn(result);
 
+        EasyMock.expect(mMockMonitor.getFastbootSerialNumber()).andReturn("serial");
         EasyMock.expect(mMockMonitor.waitForDeviceOnline(EasyMock.anyLong())).andReturn(null);
         replayMocks();
         try {
@@ -247,6 +248,7 @@ public class WaitDeviceRecoveryTest {
         CommandResult result = new CommandResult();
         result.setStatus(CommandStatus.SUCCESS);
         // expect reboot
+        EasyMock.expect(mMockMonitor.getFastbootSerialNumber()).andReturn("serial");
         EasyMock.expect(mMockRunUtil.runTimedCmd(EasyMock.anyLong(), EasyMock.eq("fastboot"),
                 EasyMock.eq("-s"), EasyMock.eq("serial"), EasyMock.eq("reboot"))).
                 andReturn(result);
