@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.tradefed.testtype;
+package com.android.tradefed.device.metric;
 
 import static com.google.common.truth.Truth.assertThat;
 
@@ -70,7 +70,7 @@ import java.util.zip.ZipOutputStream;
 
 /** Unit tests for {@link ClangCodeCoverageListener}. */
 @RunWith(JUnit4.class)
-public class ClangCodeCoverageListenerTest {
+public class ClangCodeCoverageCollectorTest {
 
     private static final String RUN_NAME = "SomeTest";
     private static final int TEST_COUNT = 5;
@@ -96,7 +96,7 @@ public class ClangCodeCoverageListenerTest {
     OptionSetter mCoverageOptionsSetter = null;
 
     /** Object under test. */
-    ClangCodeCoverageListener mListener;
+    ClangCodeCoverageCollector mListener;
 
     @Before
     public void setUp() throws Exception {
@@ -114,7 +114,7 @@ public class ClangCodeCoverageListenerTest {
 
         doReturn(ImmutableList.of(mMockDevice)).when(mMockContext).getDevices();
 
-        mListener = new ClangCodeCoverageListener();
+        mListener = new ClangCodeCoverageCollector();
         mListener.setConfiguration(mMockConfiguration);
         mListener.setRunUtil(mCommandArgumentCaptor);
         mListener.init(mMockContext, mFakeListener);
