@@ -98,6 +98,7 @@ import com.android.tradefed.device.metric.AtraceRunMetricCollectorTest;
 import com.android.tradefed.device.metric.AutoLogCollectorTest;
 import com.android.tradefed.device.metric.BaseDeviceMetricCollectorTest;
 import com.android.tradefed.device.metric.BugreportzOnFailureCollectorTest;
+import com.android.tradefed.device.metric.ClangCodeCoverageCollectorTest;
 import com.android.tradefed.device.metric.DebugHostLogOnFailureCollectorTest;
 import com.android.tradefed.device.metric.DeviceMetricDataTest;
 import com.android.tradefed.device.metric.FilePullerDeviceMetricCollectorTest;
@@ -248,7 +249,6 @@ import com.android.tradefed.targetprep.multi.MixImageZipPreparerTest;
 import com.android.tradefed.targetprep.suite.SuiteApkInstallerTest;
 import com.android.tradefed.testtype.AndroidJUnitTestTest;
 import com.android.tradefed.testtype.ArtRunTestTest;
-import com.android.tradefed.testtype.ClangCodeCoverageListenerTest;
 import com.android.tradefed.testtype.DeviceBatteryLevelCheckerTest;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunnerTest;
 import com.android.tradefed.testtype.DeviceSuiteTest;
@@ -523,6 +523,7 @@ import org.junit.runners.Suite.SuiteClasses;
     AutoLogCollectorTest.class,
     BaseDeviceMetricCollectorTest.class,
     BugreportzOnFailureCollectorTest.class,
+    ClangCodeCoverageCollectorTest.class,
     DebugHostLogOnFailureCollectorTest.class,
     DeviceMetricDataTest.class,
     FilePullerDeviceMetricCollectorTest.class,
@@ -727,7 +728,6 @@ import org.junit.runners.Suite.SuiteClasses;
     // testtype
     AndroidJUnitTestTest.class,
     ArtRunTestTest.class,
-    ClangCodeCoverageListenerTest.class,
     CoverageMeasurementForwarderTest.class,
     DeviceBatteryLevelCheckerTest.class,
     DeviceJUnit4ClassRunnerTest.class,
