@@ -120,6 +120,9 @@ public class PerfettoPullerMetricCollectorTest {
         assertTrue("Trace duration metrics not available but expected.",
                 currentMetrics.get("perfetto_trace_extractor_runtime").getMeasurements()
                         .getSingleDouble() >= 0);
+        assertTrue("Trace file size metric is not available.",
+                currentMetrics.get("perfetto_trace_file_size_bytes").getMeasurements()
+                        .getSingleDouble() >= 0);
     }
 
     @Test
