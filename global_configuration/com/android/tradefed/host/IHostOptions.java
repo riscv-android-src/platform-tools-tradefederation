@@ -73,4 +73,7 @@ public interface IHostOptions {
 
     /** Check if it should use the zip64 format in partial download or not. */
     boolean getUseZip64InPartialDownload();
+
+    /** Returns the network interface used to connect to remote test devices. */
+    String getNetworkInterface();
 }
