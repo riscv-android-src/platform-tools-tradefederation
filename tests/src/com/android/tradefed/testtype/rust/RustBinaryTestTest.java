@@ -311,6 +311,7 @@ public class RustBinaryTestTest {
         final String coverageTarPath = "/data/misc/trace/coverage.tar";
 
         MockFileUtil.setMockDirContents(mMockITestDevice, testPath, test1, test2);
+        EasyMock.expect(mMockITestDevice.getIDevice()).andReturn(null);
         EasyMock.expect(mMockITestDevice.enableAdbRoot()).andReturn(true);
         EasyMock.expect(mMockITestDevice.enableAdbRoot()).andReturn(true);
         EasyMock.expect(mMockITestDevice.executeShellCommand("mkdir /data/misc/trace/testcoverage"))
@@ -351,11 +352,11 @@ public class RustBinaryTestTest {
         mMockITestDevice.deleteFile(coverageTarPath);
         mMockITestDevice.deleteFile(coverageTarPath);
         mMockInvocationListener.testLog(
-                EasyMock.eq("null_native_runtime_coverage"),
+                EasyMock.eq("test1_native_runtime_coverage"),
                 EasyMock.eq(LogDataType.NATIVE_COVERAGE),
                 EasyMock.anyObject());
         mMockInvocationListener.testLog(
-                EasyMock.eq("null_native_runtime_coverage"),
+                EasyMock.eq("test2_native_runtime_coverage"),
                 EasyMock.eq(LogDataType.NATIVE_COVERAGE),
                 EasyMock.anyObject());
         EasyMock.expect(
@@ -405,6 +406,7 @@ public class RustBinaryTestTest {
         final String coverageTarPath = "/data/misc/trace/coverage.tar";
 
         MockFileUtil.setMockDirContents(mMockITestDevice, testPath, test1, test2);
+        EasyMock.expect(mMockITestDevice.getIDevice()).andReturn(null);
         EasyMock.expect(mMockITestDevice.enableAdbRoot()).andReturn(true);
         EasyMock.expect(mMockITestDevice.enableAdbRoot()).andReturn(true);
         EasyMock.expect(mMockITestDevice.executeShellCommand("mkdir /data/misc/trace/testcoverage"))
@@ -452,11 +454,11 @@ public class RustBinaryTestTest {
         mMockITestDevice.deleteFile(coverageTarPath);
         mMockITestDevice.deleteFile(coverageTarPath);
         mMockInvocationListener.testLog(
-                EasyMock.eq("null_native_runtime_coverage"),
+                EasyMock.eq("test1_native_runtime_coverage"),
                 EasyMock.eq(LogDataType.NATIVE_COVERAGE),
                 EasyMock.anyObject());
         mMockInvocationListener.testLog(
-                EasyMock.eq("null_native_runtime_coverage"),
+                EasyMock.eq("test2_native_runtime_coverage"),
                 EasyMock.eq(LogDataType.NATIVE_COVERAGE),
                 EasyMock.anyObject());
         EasyMock.expect(
