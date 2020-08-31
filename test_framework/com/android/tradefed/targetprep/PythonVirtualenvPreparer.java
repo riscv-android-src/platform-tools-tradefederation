@@ -26,6 +26,7 @@ import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.PythonVirtualenvHelper;
 import com.android.tradefed.util.RunUtil;
 
 import java.io.File;
@@ -40,8 +41,7 @@ import java.util.List;
 @OptionClass(alias = "python-venv")
 public class PythonVirtualenvPreparer extends BaseTargetPreparer {
 
-    private static final String PIP = "pip";
-    private static final String PATH = "PATH";
+    private static final String PIP = "pip3";
     protected static final String PYTHONPATH = "PYTHONPATH";
     private static final int BASE_TIMEOUT = 1000 * 60;
 
@@ -70,6 +70,7 @@ public class PythonVirtualenvPreparer extends BaseTargetPreparer {
 
     protected void installDeps(IBuildInfo buildInfo, ITestDevice device) throws TargetSetupError {
         boolean hasDependencies = false;
+        mPip = getPipPath();
         if (mRequirementsFile != null) {
             CommandResult c = mRunUtil.runTimedCmd(BASE_TIMEOUT * 5, mPip,
                     "install", "-r", mRequirementsFile.getAbsolutePath());
@@ -99,9 +100,12 @@ public class PythonVirtualenvPreparer extends BaseTargetPreparer {
         } else {
             // make the install directory of new packages available to other classes that
             // receive the build
-            buildInfo.setFile(PYTHONPATH, new File(mVenvDir,
-                    "local/lib/python2.7/site-packages"),
+            // TODO(b/166688272): Get install location from pip rather than hard code it.
+            buildInfo.setFile(
+                    PYTHONPATH,
+                    new File(mVenvDir, "local/lib/python3.8/site-packages"),
                     buildInfo.getBuildId());
+            buildInfo.setFile("VIRTUAL_ENV", mVenvDir, buildInfo.getBuildId());
         }
     }
 
@@ -109,13 +113,25 @@ public class PythonVirtualenvPreparer extends BaseTargetPreparer {
             throws TargetSetupError {
         if (mVenvDir != null) {
             CLog.i("Using existing virtualenv based at %s", mVenvDir.getAbsolutePath());
-            activate();
+            PythonVirtualenvHelper.activate(mRunUtil, mVenvDir);
             return;
         }
         try {
             mVenvDir = FileUtil.createNamedTempDir(buildInfo.getTestTag() + "-virtualenv");
-            mRunUtil.runTimedCmd(BASE_TIMEOUT, "virtualenv", mVenvDir.getAbsolutePath());
-            activate();
+            CommandResult c =
+                    mRunUtil.runTimedCmd(BASE_TIMEOUT, "virtualenv", mVenvDir.getAbsolutePath());
+            if (c.getStatus() != CommandStatus.SUCCESS) {
+                CLog.e("Creating virtual environment at %s failed.", mVenvDir.getAbsoluteFile());
+                CLog.e(
+                        "Status: %s\nStdout: %s\nStderr: %s",
+                        c.getStatus(), c.getStdout(), c.getStderr());
+                throw new TargetSetupError(
+                        String.format(
+                                "Failed to create virtual environment. Error:\n%s", c.getStderr()),
+                        device.getDeviceDescriptor());
+            }
+            CLog.i("Created a virtualenv based at %s", mVenvDir.getAbsolutePath());
+            PythonVirtualenvHelper.activate(mRunUtil, mVenvDir);
         } catch (IOException e) {
             CLog.e("Failed to create temp directory for virtualenv");
             throw new TargetSetupError("Error creating virtualenv", e,
@@ -131,13 +147,13 @@ public class PythonVirtualenvPreparer extends BaseTargetPreparer {
         mRequirementsFile = f;
     }
 
-    private void activate() {
-        File binDir = new File(mVenvDir, "bin");
-        mRunUtil.setWorkingDir(binDir);
-        String path = System.getenv(PATH);
-        mRunUtil.setEnvVariable(PATH, binDir + ":" + path);
-        File pipFile = new File(binDir, PIP);
+    private String getPipPath() {
+        if (mVenvDir == null || !mVenvDir.exists()) {
+            return null;
+        }
+        String virtualenvPath = mVenvDir.getAbsolutePath();
+        File pipFile = new File(PythonVirtualenvHelper.getPythonBinDir(virtualenvPath), PIP);
         pipFile.setExecutable(true);
-        mPip = pipFile.getAbsolutePath();
+        return pipFile.getAbsolutePath();
     }
 }

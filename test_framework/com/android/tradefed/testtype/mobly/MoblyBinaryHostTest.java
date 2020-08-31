@@ -37,6 +37,7 @@ import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.PythonVirtualenvHelper;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 
@@ -137,6 +138,7 @@ public class MoblyBinaryHostTest
     @Override
     public final void run(ITestInvocationListener listener) {
         List<File> parFilesList = findParFiles();
+        PythonVirtualenvHelper.activate(getRunUtil(), mBuildInfo.getFile("VIRTUAL_ENV"));
         for (File parFile : parFilesList) {
             // TODO(b/159365341): add a failure reporting for nonexistent binary.
             if (!parFile.exists()) {
@@ -348,6 +350,8 @@ public class MoblyBinaryHostTest
     protected String[] buildCommandLineArray(String filePath) {
         List<String> commandLine = new ArrayList<>();
         commandLine.add(filePath);
+        // TODO(b/166468397): some test binaries are actually a wrapper of Mobly runner and need --
+        //  to separate Python options.
         commandLine.add("--");
         if (getConfigPath() != null) {
             commandLine.add("--config=" + getConfigPath());
