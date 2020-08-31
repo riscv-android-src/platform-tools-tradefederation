@@ -55,6 +55,9 @@ public class NativeDeviceStateMonitor implements IDeviceStateMonitor {
     /** The  time in ms to wait for a device to available. */
     private long mDefaultAvailableTimeout = 6 * 60 * 1000;
 
+    /** The fastboot mode serial number */
+    private String mFastbootSerialNumber = null;
+
     private List<DeviceStateListener> mStateListeners;
     private IDeviceManager mMgr;
     private final boolean mFastbootEnabled;
@@ -95,6 +98,17 @@ public class NativeDeviceStateMonitor implements IDeviceStateMonitor {
         mDefaultAvailableTimeout = timeoutMs;
     }
 
+    /** Set the fastboot mode serial number. */
+    @Override
+    public void setFastbootSerialNumber(String serial) {
+        mFastbootSerialNumber = serial;
+
+        if (mFastbootSerialNumber != null && !mFastbootSerialNumber.equals(getSerialNumber())) {
+            // Add to IDeviceManager to monitor it
+            mMgr.addMonitoringTcpFastbootDevice(getSerialNumber(), mFastbootSerialNumber);
+        }
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -129,6 +143,15 @@ public class NativeDeviceStateMonitor implements IDeviceStateMonitor {
     @Override
     public String getSerialNumber() {
         return getIDevice().getSerialNumber();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public String getFastbootSerialNumber() {
+        if (mFastbootSerialNumber == null) {
+            mFastbootSerialNumber = getSerialNumber();
+        }
+        return mFastbootSerialNumber;
     }
 
     /**
