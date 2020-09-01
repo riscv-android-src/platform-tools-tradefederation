@@ -318,6 +318,7 @@ public class ProtoResultParser {
                     } catch (IOException e) {
                         CLog.e("Failed to deserialize the invocation exception:");
                         CLog.e(e);
+                        failure.setCause(new RuntimeException(failure.getErrorMessage()));
                     }
                 }
             }
