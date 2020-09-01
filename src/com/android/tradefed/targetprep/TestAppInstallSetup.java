@@ -33,6 +33,7 @@ import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IAbiReceiver;
 import com.android.tradefed.util.AaptParser;
+import com.android.tradefed.util.AaptParser.AaptVersion;
 import com.android.tradefed.util.AbiFormatter;
 import com.android.tradefed.util.BuildTestsZipUtils;
 
@@ -152,6 +153,9 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
     @Option(name = "instant-mode", description = "Whether or not to install apk in instant mode.")
     private boolean mInstantMode = false;
 
+    @Option(name = "aapt-version", description = "The version of AAPT for APK parsing.")
+    private AaptVersion mAaptVersion = AaptVersion.AAPT;
+
     @Option(
         name = "force-install-mode",
         description =
@@ -219,6 +223,11 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
     /** If a userId is provided, grantPermission can be set for the apk installation. */
     public void setShouldGrantPermission(boolean shouldGrant) {
         mGrantPermission = shouldGrant;
+    }
+
+    /** Sets the version of AAPT for APK parsing. */
+    public void setAaptVersion(AaptVersion aaptVersion) {
+        mAaptVersion = aaptVersion;
     }
 
     /** Adds one apk installation arg to be used. */
@@ -587,7 +596,7 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
     /** Get the package name from the test app. */
     protected String parsePackageName(File testAppFile, DeviceDescriptor deviceDescriptor)
             throws TargetSetupError {
-        AaptParser parser = AaptParser.parse(testAppFile);
+        AaptParser parser = AaptParser.parse(testAppFile, mAaptVersion);
         if (parser == null) {
             throw new TargetSetupError(
                     "apk installed but AaptParser failed",
@@ -597,4 +606,3 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
         return parser.getPackageName();
     }
 }
-

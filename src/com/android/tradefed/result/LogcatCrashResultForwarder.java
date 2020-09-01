@@ -43,8 +43,11 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
     /** Special error message from the instrumentation when something goes wrong on device side. */
     public static final String ERROR_MESSAGE = "Process crashed.";
     public static final String SYSTEM_CRASH_MESSAGE = "System has crashed.";
-    public static final String SHELL_TIMEOUT_MESSAGE = "Failed to receive adb shell test output";
-    public static final String TIMEOUT_MESSAGE = "TimeoutException when running tests";
+    public static final String TIMEOUT_MESSAGES[] = {
+        "Failed to receive adb shell test output",
+        "TimeoutException when running tests",
+        "TestTimedOutException: test timed out after",
+    };
 
     public static final int MAX_NUMBER_CRASH = 3;
 
@@ -144,8 +147,12 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
     }
 
     private boolean isTimeout(String errorMessage) {
-        return errorMessage.contains(SHELL_TIMEOUT_MESSAGE)
-                || errorMessage.contains(TIMEOUT_MESSAGE);
+        for (String timeoutMessage : TIMEOUT_MESSAGES) {
+            if (errorMessage.contains(timeoutMessage)) {
+                return true;
+            }
+        }
+        return false;
     }
     /**
      * Extract a formatted object from the logcat snippet.

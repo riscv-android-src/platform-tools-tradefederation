@@ -354,6 +354,7 @@ import com.android.tradefed.util.NativeCodeCoverageFlusherTest;
 import com.android.tradefed.util.PairTest;
 import com.android.tradefed.util.PropertyChangerTest;
 import com.android.tradefed.util.PsParserTest;
+import com.android.tradefed.util.PythonVirtualenvHelperTest;
 import com.android.tradefed.util.QuotationAwareTokenizerTest;
 import com.android.tradefed.util.RegexTrieTest;
 import com.android.tradefed.util.RemoteZipTest;
@@ -851,6 +852,7 @@ import org.junit.runners.Suite.SuiteClasses;
     MergedZipEntryCollectionTest.class,
     NativeCodeCoverageFlusherTest.class,
     PairTest.class,
+    PythonVirtualenvHelperTest.class,
     PsParserTest.class,
     QuotationAwareTokenizerTest.class,
     RegexTrieTest.class,

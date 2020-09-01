@@ -23,6 +23,7 @@ import com.android.tradefed.device.metric.AutoLogCollector;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.UniqueMultiMap;
 
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -167,6 +168,9 @@ public class CommandOptions implements ICommandOptions {
 
     @Option(name = "parallel-setup", description = "Whether to attempt the setup in parallel.")
     private boolean mUseParallelSetup = false;
+
+    @Option(name = "parallel-setup-timeout", description = "Timeout to use during parallel setup.")
+    private Duration mParallelSetupTimeout = Duration.ofMinutes(30L);
 
     @Option(
             name = "replicate-parent-setup",
@@ -531,6 +535,12 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public boolean shouldUseParallelSetup() {
         return mUseParallelSetup;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Duration getParallelSetupTimeout() {
+        return mParallelSetupTimeout;
     }
 
     /** {@inheritDoc} */
