@@ -911,8 +911,8 @@ public class InstrumentationTest
         // Reruns do not create new listeners or clear coverage measurements.
         if (!mIsRerun) {
             listener = addBugreportListenerIfEnabled(listener);
-            listener = addJavaCoverageListenerIfEnabled(listener);
-            listener = addGcovCoverageListenerIfEnabled(listener);
+            listener = addJavaCoverageListenerIfEnabled(testInfo, listener);
+            listener = addGcovCoverageListenerIfEnabled(testInfo, listener);
             listener = addClangCoverageListenerIfEnabled(listener);
 
             // Clear coverage measurements on the device before running.
@@ -994,17 +994,16 @@ public class InstrumentationTest
      * Returns a listener that will collect coverage measurements, or the original {@code listener}
      * if this feature is disabled.
      */
-    ITestInvocationListener addJavaCoverageListenerIfEnabled(ITestInvocationListener listener) {
+    ITestInvocationListener addJavaCoverageListenerIfEnabled(
+            final TestInformation testInfo, ITestInvocationListener listener) {
         if (mConfiguration == null) {
             return listener;
         }
         if (mConfiguration.getCoverageOptions().isCoverageEnabled()
                 && mConfiguration.getCoverageOptions().getCoverageToolchains().contains(JACOCO)) {
-            return new JavaCodeCoverageListener(
-                    getDevice(),
-                    mConfiguration.getCoverageOptions(),
-                    mMergeCoverageMeasurements,
-                    listener);
+            JavaCodeCoverageListener javaListener = new JavaCodeCoverageListener();
+            javaListener.setConfiguration(mConfiguration);
+            return javaListener.init(testInfo.getContext(), listener);
         }
         return listener;
     }
@@ -1013,16 +1012,16 @@ public class InstrumentationTest
      * Returns a listener that will collect gcov coverage measurements, or the original {@code
      * listener} if this feature is disabled.
      */
-    ITestInvocationListener addGcovCoverageListenerIfEnabled(ITestInvocationListener listener) {
+    ITestInvocationListener addGcovCoverageListenerIfEnabled(
+            final TestInformation testInfo, ITestInvocationListener listener) {
         if (mConfiguration == null) {
             return listener;
         }
         if (mConfiguration.getCoverageOptions().isCoverageEnabled()
                 && mConfiguration.getCoverageOptions().getCoverageToolchains().contains(GCOV)) {
-            mNativeCoverageListener =
-                    new NativeCodeCoverageListener(
-                            getDevice(), mConfiguration.getCoverageOptions(), listener);
-            return mNativeCoverageListener;
+            mNativeCoverageListener = new NativeCodeCoverageListener();
+            mNativeCoverageListener.setConfiguration(mConfiguration);
+            listener = mNativeCoverageListener.init(testInfo.getContext(), listener);
         }
         return listener;
     }
