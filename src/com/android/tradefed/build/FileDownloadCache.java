@@ -420,6 +420,10 @@ public class FileDownloadCache {
             }
             return hardlinkFile;
         } catch (IOException e) {
+            CLog.e(
+                    String.format(
+                            "Failed to copy cached file %s due to: %s",
+                            cachedFile, e.getMessage()));
             FileUtil.deleteFile(hardlinkFile);
             // cached file might be corrupt or incomplete, delete it
             FileUtil.deleteFile(cachedFile);
