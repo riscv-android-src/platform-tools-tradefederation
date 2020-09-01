@@ -17,6 +17,7 @@
 package com.android.tradefed.testtype;
 
 import static com.google.common.base.Verify.verifyNotNull;
+import static com.google.common.io.Files.getNameWithoutExtension;
 
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
@@ -25,7 +26,12 @@ import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.ResultForwarder;
+import com.android.tradefed.testtype.coverage.CoverageOptions;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.JavaCodeCoverageFlusher;
+
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableList;
 
 import org.jacoco.core.tools.ExecFileLoader;
 
@@ -43,18 +49,31 @@ final class JavaCodeCoverageListener extends ResultForwarder {
     public static final String COVERAGE_MEASUREMENT_KEY = "coverageFilePath";
 
     private final ITestDevice mDevice;
+    private final CoverageOptions mCoverageOptions;
 
     private final boolean mMergeCoverageMeasurements;
 
     private final ExecFileLoader mExecFileLoader = new ExecFileLoader();
 
+    private JavaCodeCoverageFlusher mFlusher;
     private String mCurrentRunName;
 
     public JavaCodeCoverageListener(
-            ITestDevice device, boolean mergeMeasurements, ITestInvocationListener... listeners) {
+            ITestDevice device,
+            CoverageOptions options,
+            boolean mergeMeasurements,
+            ITestInvocationListener... listeners) {
         super(listeners);
         mDevice = device;
+        mCoverageOptions = options;
         mMergeCoverageMeasurements = mergeMeasurements;
+
+        mFlusher = new JavaCodeCoverageFlusher(device, options.getCoverageProcesses());
+    }
+
+    @VisibleForTesting
+    public void setCoverageFlusher(JavaCodeCoverageFlusher flusher) {
+        mFlusher = flusher;
     }
 
     @Override
@@ -76,10 +95,7 @@ final class JavaCodeCoverageListener extends ResultForwarder {
                 mExecFileLoader.save(mergedMeasurements, false);
 
                 // Save the merged measurement as a test log.
-                try (FileInputStreamSource source =
-                        new FileInputStreamSource(mergedMeasurements, true)) {
-                    testLog("merged_runtime_coverage", LogDataType.COVERAGE, source);
-                }
+                logCoverageMeasurement("merged_runtime_coverage", mergedMeasurements);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             } finally {
@@ -93,37 +109,55 @@ final class JavaCodeCoverageListener extends ResultForwarder {
                 super.testRunEnded(elapsedTime, runMetrics);
                 return;
             }
-            String devicePath = devicePathMetric.getMeasurements().getSingleString();
-            if (devicePath == null) {
+            String testCoveragePath = devicePathMetric.getMeasurements().getSingleString();
+            if (testCoveragePath == null) {
                 super.testRunFailed("No coverage measurement.");
                 super.testRunEnded(elapsedTime, runMetrics);
                 return;
             }
 
+            ImmutableList.Builder<String> devicePaths = ImmutableList.builder();
+            devicePaths.add(testCoveragePath);
+
             File coverageFile = null;
             try {
-                coverageFile = mDevice.pullFile(devicePath);
-                verifyNotNull(coverageFile, "Failed to pull the coverage file from %s", devicePath);
+                if (mCoverageOptions.isCoverageFlushEnabled()) {
+                    devicePaths.addAll(mFlusher.forceCoverageFlush());
+                }
 
-                // When merging, load the measurement data. Otherwise log the measurement
-                // immediately.
-                if (mMergeCoverageMeasurements) {
-                    mExecFileLoader.load(coverageFile);
-                } else {
-                    try (FileInputStreamSource source =
-                            new FileInputStreamSource(coverageFile, true)) {
-                        testLog(
-                                mCurrentRunName + "_runtime_coverage",
-                                LogDataType.COVERAGE,
-                                source);
+                for (String devicePath : devicePaths.build()) {
+                    coverageFile = mDevice.pullFile(devicePath);
+                    verifyNotNull(
+                            coverageFile, "Failed to pull the coverage file from %s", devicePath);
+
+                    // When merging, load the measurement data. Otherwise log the measurement
+                    // immediately.
+                    try {
+                        if (mMergeCoverageMeasurements) {
+                            mExecFileLoader.load(coverageFile);
+                        } else {
+                            logCoverageMeasurement(
+                                    mCurrentRunName
+                                            + "_"
+                                            + getNameWithoutExtension(devicePath)
+                                            + "_runtime_coverage",
+                                    coverageFile);
+                        }
+                    } finally {
+                        FileUtil.deleteFile(coverageFile);
                     }
                 }
             } catch (DeviceNotAvailableException | IOException e) {
                 throw new RuntimeException(e);
             } finally {
-                FileUtil.deleteFile(coverageFile);
                 super.testRunEnded(elapsedTime, runMetrics);
             }
+        }
+    }
+
+    private void logCoverageMeasurement(String name, File coverageFile) throws IOException {
+        try (FileInputStreamSource source = new FileInputStreamSource(coverageFile, true)) {
+            testLog(name, LogDataType.COVERAGE, source);
         }
     }
 }

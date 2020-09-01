@@ -88,6 +88,24 @@ public class TarUtilTest {
     }
 
     /**
+     * Test that {TarUtil#extractTarGzipToTemp(File, String)} can extract properly a tar.gz file.
+     */
+    @Test
+    public void testExtractTarGzipToTemp() throws Exception {
+        InputStream logTarGz = getClass().getResourceAsStream(EMMA_METADATA_RESOURCE_PATH);
+        File tarGzFile = FileUtil.createTempFile("extract_tar_gz_test", ".tar.gz");
+        File tempDir = null;
+        try {
+            FileUtil.writeToFile(logTarGz, tarGzFile);
+            tempDir = TarUtil.extractTarGzipToTemp(tarGzFile, "extract_tar_gz_test");
+            Assert.assertEquals(2, tempDir.list().length);
+        } finally {
+            FileUtil.recursiveDelete(tempDir);
+            FileUtil.deleteFile(tarGzFile);
+        }
+    }
+
+    /**
      * Test that {TarUtil#extractAndLog(ITestLogger, File, String)} can untar properly a tar file
      * and export its content.
      */

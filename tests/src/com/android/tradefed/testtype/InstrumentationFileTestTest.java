@@ -24,6 +24,7 @@ import static org.junit.Assert.fail;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
 import com.android.ddmlib.testrunner.ITestRunListener;
+import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
@@ -83,6 +84,7 @@ public class InstrumentationFileTestTest {
                 return "runner";
             }
         };
+        mMockITest.setConfiguration(new Configuration("", ""));
         mMockITest.setDevice(mMockTestDevice);
         mMockITest.setPackageName(TEST_PACKAGE_VALUE);
         mMockITest = Mockito.spy(mMockITest);

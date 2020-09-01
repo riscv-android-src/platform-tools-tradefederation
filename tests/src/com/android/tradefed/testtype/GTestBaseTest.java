@@ -15,7 +15,6 @@
  */
 package com.android.tradefed.testtype;
 
-import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -188,31 +187,5 @@ public class GTestBaseTest {
         GTestBase gTestBase = new GTestBaseImpl();
         gTestBase.setCollectTestsOnly(true);
         assertNull(gTestBase.split(5));
-    }
-
-    /** Test that native coverage enabled will add the code coverage listener. */
-    @Test
-    public void testCoverage_addsCodeCoverageListener() throws ConfigurationException {
-        GTestBase gTestBase = new GTestBaseImpl();
-        mSetter = new OptionSetter(gTestBase);
-        mSetter.setOptionValue("coverage", "true");
-
-        ITestInvocationListener listener =
-                gTestBase.addNativeCoverageListenerIfEnabled(mMockTestDevice, mMockListener);
-
-        assertThat(listener).isInstanceOf(NativeCodeCoverageListener.class);
-    }
-
-    /** Test that when native coverage is disabled, the code coverage listener is not added. */
-    @Test
-    public void testNoCoverage_doesNotAddCodeCoverageListener() throws ConfigurationException {
-        GTestBase gTestBase = new GTestBaseImpl();
-        mSetter = new OptionSetter(gTestBase);
-        mSetter.setOptionValue("coverage", "false");
-
-        ITestInvocationListener listener =
-                gTestBase.addNativeCoverageListenerIfEnabled(mMockTestDevice, mMockListener);
-
-        assertThat(listener).isSameAs(mMockListener);
     }
 }

@@ -32,6 +32,7 @@ import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.coverage.CoverageOptions;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
 
 import org.json.JSONArray;
@@ -161,6 +162,13 @@ public interface IConfiguration {
      * @return the {@link IDeviceSelection} provided in the configuration.
      */
     public IDeviceSelection getDeviceRequirements();
+
+    /**
+     * Gets the {@link CoverageOptions} to use from the configuration.
+     *
+     * @return the {@link CoverageOptions} provided in the configuration.
+     */
+    public CoverageOptions getCoverageOptions();
 
     /**
      * Generic interface to get the configuration object with the given type name.
@@ -420,6 +428,9 @@ public interface IConfiguration {
      * Set the {@link TestDeviceOptions}, replacing any existing values
      */
     public void setDeviceOptions(TestDeviceOptions deviceOptions);
+
+    /** Set the {@link CoverageOptions}, replacing any existing values. */
+    public void setCoverageOptions(CoverageOptions coverageOptions);
 
     /**
      * Generic method to set the config object with the given name, replacing any existing value.
