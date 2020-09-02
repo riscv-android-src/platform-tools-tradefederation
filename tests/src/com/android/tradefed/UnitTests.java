@@ -136,6 +136,7 @@ import com.android.tradefed.log.TerribleFailureEmailHandlerTest;
 import com.android.tradefed.postprocessor.AggregatePostProcessorTest;
 import com.android.tradefed.postprocessor.AveragePostProcessorTest;
 import com.android.tradefed.postprocessor.BasePostProcessorTest;
+import com.android.tradefed.result.ATestFileSystemLogSaverTest;
 import com.android.tradefed.result.BugreportCollectorTest;
 import com.android.tradefed.result.CollectingTestListenerTest;
 import com.android.tradefed.result.ConsoleResultReporterTest;
@@ -302,6 +303,7 @@ import com.android.tradefed.util.FixedByteArrayOutputStreamTest;
 import com.android.tradefed.util.GCSFileDownloaderTest;
 import com.android.tradefed.util.GoogleApiClientUtilTest;
 import com.android.tradefed.util.HprofAllocSiteParserTest;
+import com.android.tradefed.util.JavaCodeCoverageFlusherTest;
 import com.android.tradefed.util.JUnitXmlParserTest;
 import com.android.tradefed.util.KeyguardControllerStateTest;
 import com.android.tradefed.util.ListInstrumentationParserTest;
@@ -535,6 +537,7 @@ import org.junit.runners.Suite.SuiteClasses;
     BasePostProcessorTest.class,
 
     // result
+    ATestFileSystemLogSaverTest.class,
     BugreportCollectorTest.class,
     CollectingTestListenerTest.class,
     ConsoleResultReporterTest.class,
@@ -742,6 +745,7 @@ import org.junit.runners.Suite.SuiteClasses;
     GCSFileDownloaderTest.class,
     GoogleApiClientUtilTest.class,
     HprofAllocSiteParserTest.class,
+    JavaCodeCoverageFlusherTest.class,
     JUnitXmlParserTest.class,
     KeyguardControllerStateTest.class,
     LegacySubprocessResultsReporterTest.class,

@@ -71,6 +71,7 @@ class InstrumentationSerialTest implements IRemoteTest {
             throws ConfigurationException {
         InstrumentationTest runner = new InstrumentationTest();
         OptionCopier.copyOptions(instrumentationTest, runner);
+        runner.setConfiguration(instrumentationTest.getConfiguration());
         runner.setDevice(instrumentationTest.getDevice());
         runner.setForceAbi(instrumentationTest.getForceAbi());
         // ensure testFile is not used.

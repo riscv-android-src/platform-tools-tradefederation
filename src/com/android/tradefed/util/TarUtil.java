@@ -81,6 +81,15 @@ public class TarUtil {
                     }
                 } else {
                     CLog.i(String.format("Creating output file %s.", outputFile.getAbsolutePath()));
+                    final File parent = outputFile.getParentFile();
+                    if (parent != null && !parent.exists()) {
+                        if (!parent.mkdirs()) {
+                            throw new IOException(
+                                    String.format(
+                                            "Couldn't create directory %s.",
+                                            parent.getAbsolutePath()));
+                        }
+                    }
                     final OutputStream outputFileStream = new FileOutputStream(outputFile);
                     IOUtils.copy(debInputStream, outputFileStream);
                     StreamUtil.close(outputFileStream);
@@ -150,6 +159,33 @@ public class TarUtil {
             StreamUtil.close(out);
         }
         return outputFile;
+    }
+
+    /**
+     * Untar and ungzip a tar.gz file to a temp directory.
+     *
+     * @param targzFile the tar.gz file to extract.
+     * @param nameHint the prefix for the temp directory.
+     * @return the temp directory.
+     * @throws FileNotFoundException
+     * @throws IOException
+     */
+    public static File extractTarGzipToTemp(File targzFile, String nameHint)
+            throws FileNotFoundException, IOException {
+        File unGzipDir = null;
+        File unTarDir = null;
+        try {
+            unGzipDir = FileUtil.createTempDir("extractTarGzip");
+            File tarFile = TarUtil.unGzip(targzFile, unGzipDir);
+            unTarDir = FileUtil.createTempDir(nameHint);
+            TarUtil.unTar(tarFile, unTarDir);
+            return unTarDir;
+        } catch (IOException e) {
+            FileUtil.recursiveDelete(unTarDir);
+            throw e;
+        } finally {
+            FileUtil.recursiveDelete(unGzipDir);
+        }
     }
 
     /**

@@ -20,6 +20,8 @@ import static org.junit.Assert.assertTrue;
 
 import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.IDeviceBuildInfo;
+import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -27,12 +29,15 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.testtype.Abi;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IRemoteTest;
-import com.android.tradefed.testtype.InstrumentationTest;
+import com.android.tradefed.testtype.StubTest;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.ZipUtil;
+import com.android.tradefed.util.testmapping.TestInfo;
 import com.android.tradefed.util.testmapping.TestMapping;
 
+import com.android.tradefed.util.testmapping.TestOption;
+import java.util.ArrayList;
 import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
@@ -57,13 +62,17 @@ public class TestMappingSuiteRunnerTest {
 
     private static final String ABI_1 = "arm64-v8a";
     private static final String ABI_2 = "armeabi-v7a";
+    private static final String DISABLED_PRESUBMIT_TESTS = "disabled-presubmit-tests";
+    private static final String EMPTY_CONFIG = "empty";
     private static final String NON_EXISTING_DIR = "non-existing-dir";
+    private static final String TEST_CONFIG_NAME = "test";
     private static final String TEST_DATA_DIR = "testdata";
     private static final String TEST_MAPPING = "TEST_MAPPING";
     private static final String TEST_MAPPINGS_ZIP = "test_mappings.zip";
-    private static final String DISABLED_PRESUBMIT_TESTS = "disabled-presubmit-tests";
 
     private TestMappingSuiteRunner mRunner;
+    private OptionSetter mOptionSetter;
+    private TestMappingSuiteRunner mRunner2;
     private IDeviceBuildInfo mBuildInfo;
     private ITestDevice mMockDevice;
 
@@ -75,8 +84,16 @@ public class TestMappingSuiteRunnerTest {
         mRunner.setBuild(mBuildInfo);
         mRunner.setDevice(mMockDevice);
 
-        EasyMock.expect(mBuildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR)).andReturn(null);
-        EasyMock.expect(mBuildInfo.getTestsDir()).andReturn(new File(NON_EXISTING_DIR));
+        mOptionSetter = new OptionSetter(mRunner);
+        mOptionSetter.setOptionValue("suite-config-prefix", "suite");
+
+        mRunner2 = new FakeTestMappingSuiteRunner();
+        mRunner2.setBuild(mBuildInfo);
+        mRunner2.setDevice(mMockDevice);
+
+        EasyMock.expect(mBuildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR)).andReturn(null)
+                .anyTimes();
+        EasyMock.expect(mBuildInfo.getTestsDir()).andReturn(new File(NON_EXISTING_DIR)).anyTimes();
         EasyMock.expect(mMockDevice.getProperty(EasyMock.anyObject())).andReturn(ABI_1);
         EasyMock.expect(mMockDevice.getProperty(EasyMock.anyObject())).andReturn(ABI_2);
         EasyMock.replay(mBuildInfo, mMockDevice);
@@ -94,6 +111,43 @@ public class TestMappingSuiteRunnerTest {
             abis.add(new Abi(ABI_2, AbiUtils.getBitness(ABI_2)));
             return abis;
         }
+
+        @Override
+        List<IRemoteTest> createIndividualTests(Set<TestInfo> testInfos, String configPath) {
+            IRemoteTest fakeTest = EasyMock.createMock(IRemoteTest.class);
+            return new ArrayList<>(Arrays.asList(fakeTest));
+        }
+    }
+
+    /**
+     * Test TestMappingSuiteRunner that create a fake IConfiguration with fake a test object.
+     */
+    public static class FakeTestMappingSuiteRunner extends TestMappingSuiteRunner {
+        @Override
+        public Set<IAbi> getAbis(ITestDevice device) throws DeviceNotAvailableException {
+            Set<IAbi> abis = new HashSet<>();
+            abis.add(new Abi(ABI_1, AbiUtils.getBitness(ABI_1)));
+            abis.add(new Abi(ABI_2, AbiUtils.getBitness(ABI_2)));
+            return abis;
+        }
+
+        @Override
+        public LinkedHashMap<String, IConfiguration> loadingStrategy(Set<IAbi> abis,
+            List<File> testsDirs, String suitePrefix, String suiteTag) {
+            LinkedHashMap<String, IConfiguration> testConfig = new LinkedHashMap<>();
+            try {
+                IConfiguration config =
+                        ConfigurationFactory.getInstance()
+                                .createConfigurationFromArgs(new String[] {EMPTY_CONFIG});
+                config.setTest(new StubTest());
+                config.getConfigurationDescription().setModuleName(TEST_CONFIG_NAME);
+                testConfig.put(TEST_CONFIG_NAME, config);
+
+            } catch (ConfigurationException e) {
+                throw new RuntimeException(e);
+            }
+            return testConfig;
+        }
     }
 
     /**
@@ -105,6 +159,17 @@ public class TestMappingSuiteRunnerTest {
         OptionSetter setter = new OptionSetter(mRunner);
         setter.setOptionValue("include-filter", "test1");
         setter.setOptionValue("test-mapping-test-group", "group");
+        mRunner.loadTests();
+    }
+
+    /**
+     * Test for {@link TestMappingSuiteRunner#loadTests()} to fail when both options include-filter
+     * and test-mapping-path are set.
+     */
+    @Test(expected = RuntimeException.class)
+    public void testLoadTests_conflictOptions() throws Exception {
+        mOptionSetter.setOptionValue("include-filter", "test1");
+        mOptionSetter.setOptionValue("test-mapping-path", "path1");
         mRunner.loadTests();
     }
 
@@ -173,14 +238,7 @@ public class TestMappingSuiteRunnerTest {
             assertTrue(mRunner.getIncludeFilter().contains("test2"));
             assertTrue(mRunner.getIncludeFilter().contains("instrument"));
             assertTrue(mRunner.getIncludeFilter().contains("suite/stub1"));
-            // Filters are applied directly
-            assertTrue(mRunner.getExcludeFilter().contains("suite/stub1 filter.com"));
-            assertTrue(mRunner.getIncludeFilter().contains("suite/stub2 filter.com"));
-
-            // Check module-arg work as expected.
-            InstrumentationTest test =
-                    (InstrumentationTest) configMap.get("arm64-v8a instrument").getTests().get(0);
-            assertEquals("some-name", test.getRunName());
+            assertTrue(mRunner.getIncludeFilter().contains("suite/stub2"));
 
             assertEquals(6, configMap.size());
             assertTrue(configMap.containsKey(ABI_1 + " instrument"));
@@ -477,5 +535,249 @@ public class TestMappingSuiteRunnerTest {
         assertTrue(configMap.containsKey(ABI_1 + " suite/stubAbi"));
         assertTrue(configMap.containsKey(ABI_2 + " suite/stubAbi"));
         EasyMock.verify(mockDevice);
+    }
+
+    /**
+     * Test for {@link TestMappingSuiteRunner#loadTests()} that when force-test-mapping-module is
+     * specified, tests would be filtered.
+     */
+    @Test
+    public void testLoadTestsWithModule() throws Exception {
+        File tempDir = null;
+        try {
+            OptionSetter setter = new OptionSetter(mRunner);
+            setter.setOptionValue("test-mapping-test-group", "postsubmit");
+            setter.setOptionValue("force-test-mapping-module", "suite/stub1");
+
+            tempDir = FileUtil.createTempDir("test_mapping");
+
+            File srcDir = FileUtil.createTempDir("src", tempDir);
+            String srcFile =
+                    File.separator + TEST_DATA_DIR + File.separator + DISABLED_PRESUBMIT_TESTS;
+            InputStream resourceStream = this.getClass().getResourceAsStream(srcFile);
+            FileUtil.saveResourceFile(resourceStream, srcDir, DISABLED_PRESUBMIT_TESTS);
+
+            srcFile = File.separator + TEST_DATA_DIR + File.separator + "test_mapping_1";
+            resourceStream = this.getClass().getResourceAsStream(srcFile);
+            FileUtil.saveResourceFile(resourceStream, srcDir, TEST_MAPPING);
+            File subDir = FileUtil.createTempDir("sub_dir", srcDir);
+            srcFile = File.separator + TEST_DATA_DIR + File.separator + "test_mapping_2";
+            resourceStream = this.getClass().getResourceAsStream(srcFile);
+            FileUtil.saveResourceFile(resourceStream, subDir, TEST_MAPPING);
+
+            List<File> filesToZip =
+                    Arrays.asList(srcDir, new File(tempDir, DISABLED_PRESUBMIT_TESTS));
+            File zipFile = Paths.get(tempDir.getAbsolutePath(), TEST_MAPPINGS_ZIP).toFile();
+            ZipUtil.createZip(filesToZip, zipFile);
+
+            IDeviceBuildInfo mockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
+            EasyMock.expect(mockBuildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR))
+                    .andReturn(null);
+            EasyMock.expect(mockBuildInfo.getTestsDir()).andReturn(new File("non-existing-dir"));
+            EasyMock.expect(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).andReturn(zipFile);
+
+            mRunner.setBuild(mockBuildInfo);
+            EasyMock.replay(mockBuildInfo);
+
+            LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
+            assertEquals(2, configMap.size());
+            assertTrue(configMap.containsKey(ABI_1 + " suite/stub1"));
+            assertTrue(configMap.containsKey(ABI_2 + " suite/stub1"));
+            EasyMock.verify(mockBuildInfo);
+        } finally {
+            FileUtil.recursiveDelete(tempDir);
+        }
+    }
+
+    /**
+     * Test for {@link TestMappingSuiteRunner#loadTests()} that when multi force-test-mapping-module
+     * are specified, tests would be filtered.
+     */
+    @Test
+    public void testLoadTestsWithMultiModules() throws Exception {
+        File tempDir = null;
+        try {
+            OptionSetter setter = new OptionSetter(mRunner);
+            setter.setOptionValue("test-mapping-test-group", "postsubmit");
+            setter.setOptionValue("force-test-mapping-module", "suite/stub1");
+            setter.setOptionValue("force-test-mapping-module", "suite/stub2");
+
+            tempDir = FileUtil.createTempDir("test_mapping");
+
+            File srcDir = FileUtil.createTempDir("src", tempDir);
+            String srcFile =
+                File.separator + TEST_DATA_DIR + File.separator + DISABLED_PRESUBMIT_TESTS;
+            InputStream resourceStream = this.getClass().getResourceAsStream(srcFile);
+            FileUtil.saveResourceFile(resourceStream, srcDir, DISABLED_PRESUBMIT_TESTS);
+
+            srcFile = File.separator + TEST_DATA_DIR + File.separator + "test_mapping_1";
+            resourceStream = this.getClass().getResourceAsStream(srcFile);
+            FileUtil.saveResourceFile(resourceStream, srcDir, TEST_MAPPING);
+            File subDir = FileUtil.createTempDir("sub_dir", srcDir);
+            srcFile = File.separator + TEST_DATA_DIR + File.separator + "test_mapping_2";
+            resourceStream = this.getClass().getResourceAsStream(srcFile);
+            FileUtil.saveResourceFile(resourceStream, subDir, TEST_MAPPING);
+
+            List<File> filesToZip =
+                Arrays.asList(srcDir, new File(tempDir, DISABLED_PRESUBMIT_TESTS));
+            File zipFile = Paths.get(tempDir.getAbsolutePath(), TEST_MAPPINGS_ZIP).toFile();
+            ZipUtil.createZip(filesToZip, zipFile);
+
+            IDeviceBuildInfo mockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
+            EasyMock.expect(mockBuildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR))
+                .andReturn(null);
+            EasyMock.expect(mockBuildInfo.getTestsDir()).andReturn(new File("non-existing-dir"));
+            EasyMock.expect(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).andReturn(zipFile);
+
+            mRunner.setBuild(mockBuildInfo);
+            EasyMock.replay(mockBuildInfo);
+
+            LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
+            assertEquals(4, configMap.size());
+            assertTrue(configMap.containsKey(ABI_1 + " suite/stub1"));
+            assertTrue(configMap.containsKey(ABI_1 + " suite/stub2"));
+            assertTrue(configMap.containsKey(ABI_2 + " suite/stub1"));
+            assertTrue(configMap.containsKey(ABI_2 + " suite/stub2"));
+            EasyMock.verify(mockBuildInfo);
+        } finally {
+            FileUtil.recursiveDelete(tempDir);
+        }
+    }
+
+    /**
+     * Test for {@link TestMappingSuiteRunner#getTestInfos(Set, String)} that when a module is
+     * specified, tests would be still found correctly.
+     */
+    @Test
+    public void testGetTestInfos() throws Exception {
+        Set<TestInfo> testInfos = new HashSet<>();
+        testInfos.add(createTestInfo("test", "path"));
+        testInfos.add(createTestInfo("test", "path2"));
+        testInfos.add(createTestInfo("test2", "path2"));
+
+        assertEquals(2, mRunner.getTestInfos(testInfos, "test").size());
+        assertEquals(1, mRunner.getTestInfos(testInfos, "test2").size());
+    }
+
+    /**
+     * Test for {@link TestMappingSuiteRunner#dedupTestInfos(Set)} that tests with the same test
+     * options would be filtered out.
+     */
+    @Test
+    public void testDedupTestInfos() throws Exception {
+        Set<TestInfo> testInfos = new HashSet<>();
+        testInfos.add(createTestInfo("test", "path"));
+        testInfos.add(createTestInfo("test", "path2"));
+        assertEquals(1, mRunner.dedupTestInfos(testInfos).size());
+
+        TestInfo anotherInfo = new TestInfo("test", "folder3", false);
+        anotherInfo.addOption(new TestOption("include-filter", "value1"));
+        testInfos.add(anotherInfo);
+        assertEquals(2, mRunner.dedupTestInfos(testInfos).size());
+    }
+
+    /**
+     * Test for {@link TestMappingSuiteRunner#getTestSources(Set)} that test sources would be found
+     * correctly.
+     */
+    @Test
+    public void testGetTestSources() throws Exception {
+        Set<TestInfo> testInfos = new HashSet<>();
+        testInfos.add(createTestInfo("test", "path"));
+        testInfos.add(createTestInfo("test", "path2"));
+        List<String> results = mRunner.getTestSources(testInfos);
+        assertEquals(2, results.size());
+    }
+
+    /**
+     * Test for {@link TestMappingSuiteRunner#parseOptions(TestInfo)} that the test options are
+     * injected correctly.
+     */
+    @Test
+    public void testParseOptions() throws Exception {
+        TestInfo info = createTestInfo("test", "path");
+        mRunner.parseOptions(info);
+        assertEquals(1, mRunner.getIncludeFilter().size());
+        assertEquals(1, mRunner.getExcludeFilter().size());
+    }
+
+    /**
+     * Test for {@link TestMappingSuiteRunner#createIndividualTests(Set, String)} that IRemoteTest
+     * object are created according to the test infos with different test options.
+     */
+    @Test
+    public void testCreateIndividualTestsWithDifferentTestInfos() throws Exception {
+        File tempDir = null;
+        try {
+            tempDir = FileUtil.createTempDir("tmp");
+            File moduleConfig = new File(tempDir, "module_name.config");
+            moduleConfig.createNewFile();
+            Set<TestInfo> testInfos = new HashSet<>();
+            testInfos.add(createTestInfo("test", "path"));
+            testInfos.add(createTestInfo("test2", "path"));
+            String configPath = moduleConfig.getAbsolutePath();
+            assertEquals(2, mRunner2.createIndividualTests(testInfos, configPath).size());
+            assertEquals(1, mRunner2.getIncludeFilter().size());
+            assertEquals(1, mRunner2.getExcludeFilter().size());
+        } finally {
+            FileUtil.recursiveDelete(tempDir);
+        }
+    }
+
+    /**
+     * Test for {@link TestMappingSuiteRunner#createIndividualTests(Set, String)} that IRemoteTest
+     * object are created according to the test infos with multiple test options.
+     */
+    @Test
+    public void testCreateIndividualTestsWithDifferentTestOptions() throws Exception {
+        File tempDir = null;
+        try {
+            tempDir = FileUtil.createTempDir("tmp");
+            File moduleConfig = new File(tempDir, "module_name.config");
+            moduleConfig.createNewFile();
+            Set<TestInfo> testInfos = new HashSet<>();
+            testInfos.add(createTestInfo("test", "path"));
+            TestInfo info = new TestInfo("test", "path", false);
+            info.addOption(new TestOption("include-filter", "include-filter"));
+            testInfos.add(info);
+            String configPath = moduleConfig.getAbsolutePath();
+            assertEquals(2, mRunner2.createIndividualTests(testInfos, configPath).size());
+            assertEquals(1, mRunner2.getIncludeFilter().size());
+            assertEquals(0, mRunner2.getExcludeFilter().size());
+        } finally {
+            FileUtil.recursiveDelete(tempDir);
+        }
+    }
+
+    /**
+     * Test for {@link TestMappingSuiteRunner#createIndividualTests(Set, String)} that IRemoteTest
+     * object are created according to the test infos with the same test options and name.
+     */
+    @Test
+    public void testCreateIndividualTestsWithSameTestInfos() throws Exception {
+        File tempDir = null;
+        try {
+            tempDir = FileUtil.createTempDir("tmp");
+            File moduleConfig = new File(tempDir, "module_name.config");
+            moduleConfig.createNewFile();
+            String configPath = moduleConfig.getAbsolutePath();
+            Set<TestInfo> testInfos = new HashSet<>();
+            testInfos.add(createTestInfo("test", "path"));
+            testInfos.add(createTestInfo("test", "path"));
+            assertEquals(1, mRunner2.createIndividualTests(testInfos, configPath).size());
+            assertEquals(1, mRunner2.getIncludeFilter().size());
+            assertEquals(1, mRunner2.getExcludeFilter().size());
+        } finally {
+            FileUtil.recursiveDelete(tempDir);
+        }
+    }
+
+    /** Helper to create specific test infos. */
+    private TestInfo createTestInfo(String name, String source) {
+        TestInfo info = new TestInfo(name, source, false);
+        info.addOption(new TestOption("include-filter", name));
+        info.addOption(new TestOption("exclude-filter", name));
+        info.addOption(new TestOption("other", name));
+        return info;
     }
 }

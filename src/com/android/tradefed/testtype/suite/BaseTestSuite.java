@@ -172,6 +172,7 @@ public class BaseTestSuite extends ITestSuite {
     private SuiteModuleLoader mModuleRepo;
     private Map<String, List<SuiteTestFilter>> mIncludeFiltersParsed = new HashMap<>();
     private Map<String, List<SuiteTestFilter>> mExcludeFiltersParsed = new HashMap<>();
+    private List<File> mConfigPaths = new ArrayList<>();
 
     /** {@inheritDoc} */
     @Override
@@ -234,6 +235,12 @@ public class BaseTestSuite extends ITestSuite {
     public LinkedHashMap<String, IConfiguration> loadingStrategy(
             Set<IAbi> abis, List<File> testsDirs, String suitePrefix, String suiteTag) {
         LinkedHashMap<String, IConfiguration> loadedConfigs = new LinkedHashMap<>();
+        // Load and return directly the specific config files.
+        if (!mConfigPaths.isEmpty()) {
+            CLog.d("Loading the specified configs and skip loading from the resources.");
+            return getModuleLoader().loadConfigsFromSpecifiedPaths(mConfigPaths, abis, suiteTag);
+        }
+
         // Load configs that are part of the resources
         if (!mSkipJarLoading) {
             loadedConfigs.putAll(
@@ -297,6 +304,11 @@ public class BaseTestSuite extends ITestSuite {
     /** Adds module args */
     public void addModuleArgs(Set<String> moduleArgs) {
         mModuleArgs.addAll(moduleArgs);
+    }
+
+    /** Clear the stored module args out */
+    void clearModuleArgs() {
+        mModuleArgs.clear();
     }
 
     /** Add config patterns */
@@ -399,6 +411,21 @@ public class BaseTestSuite extends ITestSuite {
         mExcludeFilters.clear();
         mIncludeFiltersParsed.clear();
         mExcludeFiltersParsed.clear();
+    }
+
+    /**
+     * Add the config path for {@link SuiteModuleLoader} to limit the search loading
+     * configurations.
+     *
+     * @param configPath A {@code File} with the absolute path of the configuration.
+     */
+    void addConfigPaths(File configPath) {
+        mConfigPaths.add(configPath);
+    }
+
+    /** Clear the stored config paths out. */
+    void clearConfigPaths() {
+        mConfigPaths.clear();
     }
 
     /* Helper method designed to remove filters in a list not applicable to the given module */
