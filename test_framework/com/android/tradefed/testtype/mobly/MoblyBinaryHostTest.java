@@ -138,7 +138,10 @@ public class MoblyBinaryHostTest
     @Override
     public final void run(ITestInvocationListener listener) {
         List<File> parFilesList = findParFiles();
-        PythonVirtualenvHelper.activate(getRunUtil(), mBuildInfo.getFile("VIRTUAL_ENV"));
+        File venvDir = mBuildInfo.getFile("VIRTUAL_ENV");
+        if (venvDir != null) {
+            PythonVirtualenvHelper.activate(getRunUtil(), venvDir);
+        }
         for (File parFile : parFilesList) {
             // TODO(b/159365341): add a failure reporting for nonexistent binary.
             if (!parFile.exists()) {
