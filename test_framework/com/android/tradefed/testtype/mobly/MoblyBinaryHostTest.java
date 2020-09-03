@@ -158,6 +158,10 @@ public class MoblyBinaryHostTest
                 reportLogs(getLogDir(), listener);
             }
         }
+        if (venvDir != null
+                && venvDir.getAbsolutePath().startsWith(System.getProperty("java.io.tmpdir"))) {
+            FileUtil.recursiveDelete(venvDir);
+        }
     }
 
     private List<File> findParFiles() {
@@ -280,7 +284,6 @@ public class MoblyBinaryHostTest
     private void updateConfigFile() {
         InputStream inputStream = null;
         FileWriter fileWriter = null;
-        // TODO(b/159369745): clean up the tmp files created.
         File localConfigFile = new File(getLogDir(), "local_config.yaml");
         try {
             inputStream = new FileInputStream(mConfigFile);
