@@ -19,6 +19,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.suite.ModuleDefinition;
 
 import java.util.List;
 
@@ -55,6 +56,24 @@ public interface IRetryDecision {
      */
     public boolean shouldRetry(
             IRemoteTest test, int attemptJustExecuted, List<TestRunResult> previousResults)
+            throws DeviceNotAvailableException;
+
+    /**
+     * Decide whether or not retry should be attempted. Also make any necessary changes to the
+     * {@link IRemoteTest} to be retried (Applying filters, etc.).
+     *
+     * @param test The {@link IRemoteTest} that just ran.
+     * @param module The {@link ModuleDefinition} object for the test module.
+     * @param attemptJustExecuted The number of the attempt that we just ran.
+     * @param previousResults The list of {@link TestRunResult} of the test that just ran.
+     * @return True if we should retry, False otherwise.
+     * @throws DeviceNotAvailableException Can be thrown during device recovery
+     */
+    public boolean shouldRetry(
+            IRemoteTest test,
+            ModuleDefinition module,
+            int attemptJustExecuted,
+            List<TestRunResult> previousResults)
             throws DeviceNotAvailableException;
 
     /**
