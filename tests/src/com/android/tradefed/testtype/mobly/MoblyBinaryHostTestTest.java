@@ -223,7 +223,7 @@ public class MoblyBinaryHostTestTest {
     }
 
     @Test
-    public void testRun_shouldActivateVenv_whenVenvIsSet() throws Exception {
+    public void testRun_shouldActivateVenvAndCleanUp_whenVenvIsSet() throws Exception {
         Mockito.when(mMockBuildInfo.getFile(eq("VIRTUAL_ENV"))).thenReturn(mVenvDir);
         OptionSetter setter = new OptionSetter(mSpyTest);
         setter.setOptionValue("python-binaries", mMoblyBinary.getAbsolutePath());
@@ -246,6 +246,7 @@ public class MoblyBinaryHostTestTest {
 
         verify(mSpyTest.getRunUtil(), times(1))
                 .setEnvVariable(eq("VIRTUAL_ENV"), eq(mVenvDir.getAbsolutePath()));
+        assertFalse(mVenvDir.exists());
     }
 
     @Test
