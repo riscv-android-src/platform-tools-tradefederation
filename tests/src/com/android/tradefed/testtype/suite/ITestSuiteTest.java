@@ -228,7 +228,8 @@ public class ITestSuiteTest {
                 TestDescription test = new TestDescription(EMPTY_CONFIG, EMPTY_CONFIG);
                 listener.testStarted(test, 0);
                 if (mFailed != null) {
-                    listener.testFailed(test, mFailed);
+                    listener.testFailed(
+                            test, FailureDescription.create(mFailed, FailureStatus.TEST_FAILURE));
                 }
                 listener.testEnded(test, 5, new HashMap<String, Metric>());
             } finally {
@@ -400,7 +401,8 @@ public class ITestSuiteTest {
         TestDescription test = new TestDescription(EMPTY_CONFIG, EMPTY_CONFIG);
         listener.testStarted(test, 0);
         if (testFailed) {
-            listener.testFailed(test, message);
+            listener.testFailed(
+                    test, FailureDescription.create(message, FailureStatus.TEST_FAILURE));
         }
         listener.testEnded(test, 5, new HashMap<String, Metric>());
         listener.testRunEnded(EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
@@ -416,7 +418,9 @@ public class ITestSuiteTest {
             TestDescription test = new TestDescription(EMPTY_CONFIG, EMPTY_CONFIG);
             listener.testStarted(test, 0);
             if (testFailed) {
-                listener.testFailed(test, mTestFailedMessage);
+                listener.testFailed(
+                        test,
+                        FailureDescription.create(mTestFailedMessage, FailureStatus.TEST_FAILURE));
             }
             listener.testEnded(test, 5, new HashMap<String, Metric>());
             listener.testRunEnded(
@@ -1603,7 +1607,9 @@ public class ITestSuiteTest {
                     EasyMock.anyLong());
             TestDescription testId = new TestDescription(EMPTY_CONFIG, EMPTY_CONFIG);
             mMockListener.testStarted(testId, 0);
-            mMockListener.testFailed(testId, mTestFailedMessage);
+            mMockListener.testFailed(
+                    testId,
+                    FailureDescription.create(mTestFailedMessage, FailureStatus.TEST_FAILURE));
             mMockListener.testEnded(testId, 5, new HashMap<String, Metric>());
             mMockListener.testRunEnded(
                     EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
