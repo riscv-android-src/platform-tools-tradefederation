@@ -87,6 +87,12 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
             failure.setFailureStatus(FailureStatus.TIMED_OUT);
         }
         failure.setErrorMessage(trace);
+        // Add metrics for assessing uncaught IntrumentationTest crash failures (test level).
+        InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.TEST_CRASH_FAILURES, 1);
+        if (FailureStatus.UNSET.equals(failure.getFailureStatus())) {
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.UNCAUGHT_TEST_CRASH_FAILURES, 1);
+        }
         super.testFailed(test, failure);
     }
 
