@@ -50,6 +50,8 @@ public class InvocationMetricLogger {
         CF_INSTANCE_COUNT("cf_instance_count", false),
         CRASH_FAILURES("crash_failures", true),
         UNCAUGHT_CRASH_FAILURES("uncaught_crash_failures", true),
+        TEST_CRASH_FAILURES("test_crash_failures", true),
+        UNCAUGHT_TEST_CRASH_FAILURES("uncaught_test_crash_failures", true),
         DEVICE_RESET_COUNT("device_reset_count", true),
         DEVICE_RESET_MODULES("device_reset_modules", true);
 
