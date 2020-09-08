@@ -38,6 +38,7 @@ import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.metric.ClangCodeCoverageCollector;
+import com.android.tradefed.device.metric.GcovCodeCoverageCollector;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.device.metric.JavaCodeCoverageCollector;
@@ -342,7 +343,7 @@ public class InstrumentationTest
     private String mTestFilePathOnDevice = null;
 
     private ListInstrumentationParser mListInstrumentationParser = null;
-    private NativeCodeCoverageListener mNativeCoverageListener = null;
+    private GcovCodeCoverageCollector mNativeCoverageListener = null;
 
     private List<String> mExtraDeviceListener = new ArrayList<>();
 
@@ -1021,7 +1022,7 @@ public class InstrumentationTest
         }
         if (mConfiguration.getCoverageOptions().isCoverageEnabled()
                 && mConfiguration.getCoverageOptions().getCoverageToolchains().contains(GCOV)) {
-            mNativeCoverageListener = new NativeCodeCoverageListener();
+            mNativeCoverageListener = new GcovCodeCoverageCollector();
             mNativeCoverageListener.setConfiguration(mConfiguration);
             listener = mNativeCoverageListener.init(testInfo.getContext(), listener);
         }
