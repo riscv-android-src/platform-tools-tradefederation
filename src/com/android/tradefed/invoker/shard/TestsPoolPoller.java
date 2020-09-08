@@ -178,6 +178,9 @@ public final class TestsPoolPoller
         try {
             ITestInvocationListener listenerWithCollectors = listener;
             for (IMetricCollector collector : mCollectors) {
+                if (collector instanceof IConfigurationReceiver) {
+                    ((IConfigurationReceiver) collector).setConfiguration(mConfig);
+                }
                 listenerWithCollectors = collector.init(info.getContext(), listenerWithCollectors);
             }
             while (true) {
