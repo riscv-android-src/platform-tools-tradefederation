@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.tradefed.testtype;
+package com.android.tradefed.device.metric;
 
 import static com.android.tradefed.testtype.coverage.CoverageOptions.Toolchain.GCOV;
 import static com.google.common.base.Verify.verify;
@@ -24,8 +24,6 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.device.metric.BaseDeviceMetricCollector;
-import com.android.tradefed.device.metric.DeviceMetricData;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.LogDataType;
@@ -41,10 +39,10 @@ import java.util.Arrays;
 import java.util.Map;
 
 /**
- * A {@link BaseDeviceMetricCollector} that will pull native coverage measurements off of the device
- * and log them as test artifacts.
+ * A {@link com.android.tradefed.device.metric.BaseDeviceMetricCollector} that will pull gcov
+ * coverage measurements off of the device and log them as test artifacts.
  */
-public final class NativeCodeCoverageListener extends BaseDeviceMetricCollector
+public final class GcovCodeCoverageCollector extends BaseDeviceMetricCollector
         implements IConfigurationReceiver {
 
     private static final String NATIVE_COVERAGE_DEVICE_PATH = "/data/misc/trace";
