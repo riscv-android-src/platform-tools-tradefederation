@@ -324,6 +324,7 @@ import com.android.tradefed.testtype.suite.retry.RetryReschedulerTest;
 import com.android.tradefed.util.AaptParserTest;
 import com.android.tradefed.util.AbiFormatterTest;
 import com.android.tradefed.util.AbiUtilsTest;
+import com.android.tradefed.util.AdbRootElevatorTest;
 import com.android.tradefed.util.AppVersionFetcherTest;
 import com.android.tradefed.util.ArrayUtilTest;
 import com.android.tradefed.util.BluetoothUtilsTest;
@@ -823,6 +824,7 @@ import org.junit.runners.Suite.SuiteClasses;
     AaptParserTest.class,
     AbiFormatterTest.class,
     AbiUtilsTest.class,
+    AdbRootElevatorTest.class,
     AppVersionFetcherTest.class,
     ArrayUtilTest.class,
     BluetoothUtilsTest.class,
