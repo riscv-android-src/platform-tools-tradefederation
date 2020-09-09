@@ -25,6 +25,8 @@ import java.security.InvalidParameterException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.easymock.EasyMock;
 import org.junit.Assert;
@@ -344,5 +346,15 @@ public class ClusterHostUtilTest {
         Assert.assertEquals(
                 hostname + ":" + ClusterHostUtil.NULL_DEVICE_SERIAL_PLACEHOLDER,
                 ClusterHostUtil.getRunTarget(device, "{SERIAL}", null));
+    }
+
+    @Test
+    public void testGetHostIpAddress() {
+        final String hostIp = ClusterHostUtil.getHostIpAddress();
+        Assert.assertNotEquals(hostIp, "127.0.0.1");
+        Pattern pattern =
+                Pattern.compile("[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}" + "|UNKNOWN");
+        Matcher matcher = pattern.matcher(hostIp);
+        Assert.assertTrue("host ip format not match: " + hostIp, matcher.matches());
     }
 }
