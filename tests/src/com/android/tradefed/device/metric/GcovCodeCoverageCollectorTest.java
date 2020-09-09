@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.tradefed.testtype;
+package com.android.tradefed.device.metric;
 
 import static com.google.common.truth.Truth.assertThat;
 
@@ -64,9 +64,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.zip.ZipFile;
 
-/** Unit tests for {@link NativeCodeCoverageListener}. */
+/** Unit tests for {@link GcovCodeCoverageCollector}. */
 @RunWith(JUnit4.class)
-public class NativeCodeCoverageListenerTest {
+public class GcovCodeCoverageCollectorTest {
 
     private static final String RUN_NAME = "SomeTest";
     private static final int TEST_COUNT = 5;
@@ -86,7 +86,7 @@ public class NativeCodeCoverageListenerTest {
     OptionSetter mCoverageOptionsSetter = null;
 
     /** Object under test. */
-    NativeCodeCoverageListener mCodeCoverageListener;
+    GcovCodeCoverageCollector mCodeCoverageListener;
 
     @Before
     public void setUp() throws ConfigurationException {
@@ -98,7 +98,7 @@ public class NativeCodeCoverageListenerTest {
         doReturn(mCoverageOptions).when(mMockConfiguration).getCoverageOptions();
         doReturn(ImmutableList.of(mMockDevice)).when(mMockContext).getDevices();
 
-        mCodeCoverageListener = new NativeCodeCoverageListener();
+        mCodeCoverageListener = new GcovCodeCoverageCollector();
         mCodeCoverageListener.setConfiguration(mMockConfiguration);
         mCodeCoverageListener.init(mMockContext, mFakeListener);
     }
