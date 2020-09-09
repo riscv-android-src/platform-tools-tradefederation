@@ -19,8 +19,6 @@ package com.android.tradefed.testtype;
 import static com.android.tradefed.testtype.coverage.CoverageOptions.Toolchain.CLANG;
 import static com.android.tradefed.testtype.coverage.CoverageOptions.Toolchain.GCOV;
 
-import static com.google.common.base.Verify.verify;
-
 import com.android.ddmlib.FileListingService;
 import com.android.ddmlib.IShellOutputReceiver;
 import com.android.tradefed.config.Option;
@@ -37,7 +35,6 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.coverage.CoverageOptions;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.FileUtil;
-import com.android.tradefed.util.NativeCodeCoverageFlusher;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -438,23 +435,9 @@ public class GTest extends GTestBase implements IDeviceTest {
         listener = addGcovCoverageListenerIfEnabled(testInfo.getContext(), listener);
         listener = addClangCoverageListenerIfEnabled(testInfo.getContext(), listener);
         listener = getGTestListener(listener);
-        NativeCodeCoverageFlusher flusher =
-                new NativeCodeCoverageFlusher(
-                        mDevice, getConfiguration().getCoverageOptions().getCoverageProcesses());
 
         Throwable throwable = null;
         try {
-            if (getConfiguration().getCoverageOptions().isCoverageEnabled()) {
-                // Enable abd root on the device, otherwise the following commands will fail.
-                verify(mDevice.enableAdbRoot(), "Failed to enable adb root.");
-
-                flusher.resetCoverage();
-
-                // Clang will no longer create directories that are part of the GCOV_PREFIX
-                // environment variable. Force create the /data/misc/trace/testcoverage dir to
-                // prevent "No such file or directory" errors when writing test coverage to disk.
-                mDevice.executeShellCommand("mkdir /data/misc/trace/testcoverage");
-            }
             doRunAllTestsInSubdirectory(testPath, mDevice, listener);
         } catch (Throwable t) {
             throwable = t;

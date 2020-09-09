@@ -167,6 +167,7 @@ public class InstrumentationTestTest {
         mConfig.setCoverageOptions(mCoverageOptions);
         mInstrumentationTest.setConfiguration(mConfig);
         mContext = new InvocationContext();
+        mContext.addAllocatedDevice("main", mMockTestDevice);
         mTestInfo = TestInformation.newBuilder().setInvocationContext(mContext).build();
     }
 
@@ -1116,10 +1117,14 @@ public class InstrumentationTestTest {
     }
 
     @Test
-    public void testAddCoverageListener_enabled() throws ConfigurationException {
+    public void testAddCoverageListener_enabledAndFlushes() throws Exception {
         mCoverageOptionsSetter.setOptionValue("coverage", "true");
         mCoverageOptionsSetter.setOptionValue("coverage-toolchain", "GCOV");
         mCoverageOptionsSetter.setOptionValue("coverage-toolchain", "JACOCO");
+
+        doReturn(true).when(mMockTestDevice).isAdbRoot();
+        doReturn("").when(mMockTestDevice).executeShellCommand("ps -e");
+        doReturn("").when(mMockTestDevice).executeShellCommand("pm list packages -a");
 
         ITestInvocationListener listener =
                 mInstrumentationTest.addJavaCoverageListenerIfEnabled(mTestInfo, mMockListener);
@@ -1127,6 +1132,9 @@ public class InstrumentationTestTest {
 
         listener = mInstrumentationTest.addGcovCoverageListenerIfEnabled(mTestInfo, mMockListener);
         assertThat(listener).isInstanceOf(GcovCodeCoverageCollector.class);
+
+        // Ensure that a native coverage flush was executed.
+        verify(mMockTestDevice).executeShellCommand("kill -37 -1");
     }
 
     @Test
