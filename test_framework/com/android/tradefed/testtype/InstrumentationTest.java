@@ -16,9 +16,6 @@
 
 package com.android.tradefed.testtype;
 
-import static com.android.tradefed.testtype.coverage.CoverageOptions.Toolchain.CLANG;
-import static com.android.tradefed.testtype.coverage.CoverageOptions.Toolchain.GCOV;
-import static com.android.tradefed.testtype.coverage.CoverageOptions.Toolchain.JACOCO;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
@@ -40,10 +37,8 @@ import com.android.tradefed.device.metric.GcovCodeCoverageCollector;
 import com.android.tradefed.device.metric.ClangCodeCoverageCollector;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
-import com.android.tradefed.device.metric.JavaCodeCoverageCollector;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
-import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.BugreportCollector;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -99,9 +94,6 @@ public class InstrumentationTest
     static final long TEST_COLLECTION_TIMEOUT_MS = 2 * 60 * 1000;
 
     static final String RUN_TESTS_AS_USER_KEY = "RUN_TESTS_AS_USER";
-
-    /** test run name for merging coverage measurements */
-    static final String MERGE_COVERAGE_MEASUREMENTS_TEST_NAME = "mergeCoverageMeasurements";
 
     @Option(
         name = "package",
@@ -262,6 +254,7 @@ public class InstrumentationTest
     )
     private boolean mCoverage = false;
 
+    @Deprecated
     @Option(
         name = "merge-coverage-measurements",
         description =
@@ -651,12 +644,6 @@ public class InstrumentationTest
         return mForceAbi;
     }
 
-    /** Sets the --merge-coverage-measurements option for testing. */
-    @VisibleForTesting
-    void setMergeCoverageMeasurements(boolean merge) {
-        mMergeCoverageMeasurements = merge;
-    }
-
     /** Sets the --rerun-from-file option. */
     public void setReRunUsingTestFile(boolean reRunUsingTestFile) {
         mReRunUsingTestFile = reRunUsingTestFile;
@@ -911,12 +898,9 @@ public class InstrumentationTest
             mRunner.addInstrumentationArg("coverage", "true");
         }
 
-        // Reruns do not create new listeners or clear coverage measurements.
+        // Reruns do not create new listeners.
         if (!mIsRerun) {
             listener = addBugreportListenerIfEnabled(listener);
-            listener = addJavaCoverageListenerIfEnabled(testInfo, listener);
-            listener = addGcovCoverageListenerIfEnabled(testInfo, listener);
-            listener = addClangCoverageListenerIfEnabled(testInfo, listener);
 
             // TODO: Convert to device-side collectors when possible.
             for (IMetricCollector collector : mCollectors) {
@@ -946,13 +930,6 @@ public class InstrumentationTest
             runWithRerun(testInfo, listener, testsToRun);
         } else {
             CLog.i("No tests expected for %s, skipping", mPackageName);
-        }
-
-        // Merge coverage measurements after all tests have been run, but not inside the rerun
-        // itself since the merging will be handled by the caller.
-        if (!mIsRerun && mMergeCoverageMeasurements) {
-            listener.testRunStarted(MERGE_COVERAGE_MEASUREMENTS_TEST_NAME, 0);
-            listener.testRunEnded(0, new HashMap<String, Metric>());
         }
     }
 
@@ -984,60 +961,6 @@ public class InstrumentationTest
             BugreportCollector collector = new BugreportCollector(listener, getDevice());
             collector.addPredicate(pred);
             listener = collector;
-        }
-        return listener;
-    }
-
-    /**
-     * Returns a listener that will collect coverage measurements, or the original {@code listener}
-     * if this feature is disabled.
-     */
-    ITestInvocationListener addJavaCoverageListenerIfEnabled(
-            final TestInformation testInfo, ITestInvocationListener listener) {
-        if (mConfiguration == null) {
-            return listener;
-        }
-        if (mConfiguration.getCoverageOptions().isCoverageEnabled()
-                && mConfiguration.getCoverageOptions().getCoverageToolchains().contains(JACOCO)) {
-            JavaCodeCoverageCollector javaListener = new JavaCodeCoverageCollector();
-            javaListener.setConfiguration(mConfiguration);
-            return javaListener.init(testInfo.getContext(), listener);
-        }
-        return listener;
-    }
-
-    /**
-     * Returns a listener that will collect gcov coverage measurements, or the original {@code
-     * listener} if this feature is disabled.
-     */
-    ITestInvocationListener addGcovCoverageListenerIfEnabled(
-            final TestInformation testInfo, ITestInvocationListener listener) {
-        if (mConfiguration == null) {
-            return listener;
-        }
-        if (mConfiguration.getCoverageOptions().isCoverageEnabled()
-                && mConfiguration.getCoverageOptions().getCoverageToolchains().contains(GCOV)) {
-            mNativeCoverageListener = new GcovCodeCoverageCollector();
-            mNativeCoverageListener.setConfiguration(mConfiguration);
-            listener = mNativeCoverageListener.init(testInfo.getContext(), listener);
-        }
-        return listener;
-    }
-
-    /**
-     * Returns a listener that will collect Clang coverage measurements, or the original {@code
-     * listener} if this feature is disabled.
-     */
-    ITestInvocationListener addClangCoverageListenerIfEnabled(
-            TestInformation testInfo, ITestInvocationListener listener) {
-        if (mConfiguration == null) {
-            return listener;
-        }
-        if (mConfiguration.getCoverageOptions().isCoverageEnabled()
-                && mConfiguration.getCoverageOptions().getCoverageToolchains().contains(CLANG)) {
-            ClangCodeCoverageCollector clangListener = new ClangCodeCoverageCollector();
-            clangListener.setConfiguration(mConfiguration);
-            listener = clangListener.init(testInfo.getContext(), listener);
         }
         return listener;
     }
