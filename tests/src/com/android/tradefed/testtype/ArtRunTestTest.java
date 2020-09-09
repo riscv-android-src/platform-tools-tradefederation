@@ -25,7 +25,6 @@ import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.TestInformation;
-import com.android.tradefed.invoker.ExecutionFiles.FilesKey;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
@@ -49,9 +48,6 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class ArtRunTestTest {
 
-    // Default run-test name.
-    private static final String RUN_TEST_NAME = "run-test";
-
     private ITestInvocationListener mMockInvocationListener;
     private IAbi mMockAbi;
     private ITestDevice mMockITestDevice;
@@ -60,9 +56,9 @@ public class ArtRunTestTest {
     private ArtRunTest mArtRunTest;
     private OptionSetter mSetter;
     private TestInformation mTestInfo;
-    // Target tests directory.
-    private File mTmpTargetTestsDir;
-    // Expected output file (under the target tests directory).
+    // Test dependencies directory on host.
+    private File mTmpDepsDir;
+    // Expected output file (within the dependencies directory).
     private File mTmpExpectedFile;
 
     @Before
@@ -82,23 +78,22 @@ public class ArtRunTestTest {
         mArtRunTest.setDevice(mMockITestDevice);
         mSetter = new OptionSetter(mArtRunTest);
 
-        // Set up target tests directory and expected output file.
-        mTmpTargetTestsDir = FileUtil.createTempDir("target_testcases");
-        File runTestDir = new File(mTmpTargetTestsDir, RUN_TEST_NAME);
-        runTestDir.mkdir();
-        mTmpExpectedFile = new File(runTestDir, "expected.txt");
-        FileWriter fw = new FileWriter(mTmpExpectedFile);
-        fw.write("output\n");
-        fw.close();
-
-        // Set the target tests directory in test information object.
-        mTestInfo = TestInformation.newBuilder().build();
-        mTestInfo.executionFiles().put(FilesKey.TARGET_TESTS_DIRECTORY, mTmpTargetTestsDir);
+        // Temporary test directory (e.g. for the expected-output file).
+        mTmpDepsDir = FileUtil.createTempDir("art-run-test-deps");
+        mTestInfo = TestInformation.newBuilder().setDependenciesFolder(mTmpDepsDir).build();
     }
 
     @After
     public void tearDown() {
-        FileUtil.recursiveDelete(mTmpTargetTestsDir);
+        FileUtil.recursiveDelete(mTmpDepsDir);
+    }
+
+    /** Helper creating an expected-output file within the (temporary) test directory. */
+    private void createExpectedOutputFile(String runTestName) throws IOException {
+        mTmpExpectedFile = new File(mTmpDepsDir, runTestName + "-expected.txt");
+        FileWriter fw = new FileWriter(mTmpExpectedFile);
+        fw.write("output\n");
+        fw.close();
     }
 
     /** Helper mocking writing the output of a test command. */
@@ -151,7 +146,9 @@ public class ArtRunTestTest {
     @Test
     public void testRunSingleTest_unsetClasspathOption()
             throws ConfigurationException, DeviceNotAvailableException, IOException {
-        mSetter.setOptionValue("run-test-name", RUN_TEST_NAME);
+        final String runTestName = "test";
+        mSetter.setOptionValue("run-test-name", runTestName);
+        createExpectedOutputFile(runTestName);
 
         replayMocks();
         try {
@@ -167,7 +164,9 @@ public class ArtRunTestTest {
     @Test
     public void testRunSingleTest()
             throws ConfigurationException, DeviceNotAvailableException, IOException {
-        mSetter.setOptionValue("run-test-name", RUN_TEST_NAME);
+        final String runTestName = "test";
+        mSetter.setOptionValue("run-test-name", runTestName);
+        createExpectedOutputFile(runTestName);
         final String classpath = "/data/local/tmp/test/test.jar";
         mSetter.setOptionValue("classpath", classpath);
 
@@ -177,7 +176,7 @@ public class ArtRunTestTest {
         String runName = "ArtRunTest_abi";
         // Beginning of test.
         mMockInvocationListener.testRunStarted(runName, 1);
-        TestDescription testId = new TestDescription(runName, RUN_TEST_NAME);
+        TestDescription testId = new TestDescription(runName, runTestName);
         mMockInvocationListener.testStarted(testId);
         String cmd = String.format("dalvikvm64 -classpath %s Main", classpath);
         // Test execution.
@@ -205,7 +204,9 @@ public class ArtRunTestTest {
     @Test
     public void testRunSingleTest_unexpectedOutput()
             throws ConfigurationException, DeviceNotAvailableException, IOException {
-        mSetter.setOptionValue("run-test-name", RUN_TEST_NAME);
+        final String runTestName = "test";
+        mSetter.setOptionValue("run-test-name", runTestName);
+        createExpectedOutputFile(runTestName);
         final String classpath = "/data/local/tmp/test/test.jar";
         mSetter.setOptionValue("classpath", classpath);
 
@@ -215,7 +216,7 @@ public class ArtRunTestTest {
         String runName = "ArtRunTest_abi";
         // Beginning of test.
         mMockInvocationListener.testRunStarted(runName, 1);
-        TestDescription testId = new TestDescription(runName, RUN_TEST_NAME);
+        TestDescription testId = new TestDescription(runName, runTestName);
         mMockInvocationListener.testStarted(testId);
         String cmd = String.format("dalvikvm64 -classpath %s Main", classpath);
         // Test execution.
