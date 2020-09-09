@@ -42,8 +42,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 
@@ -490,120 +488,6 @@ public class GTestTest {
         mMockITestDevice.executeShellCommand(EasyMock.contains(test2),
                 (CollectingOutputReceiver) EasyMock.anyObject(),
                 EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(), EasyMock.anyInt());
-        replayMocks();
-
-        mGTest.run(mTestInfo, mMockInvocationListener);
-        verifyMocks();
-    }
-
-    /** Test cross-process coverage dump for all native processes */
-    @Test
-    public void testNativeCoverageAllProcesses() throws Exception {
-        mCoverageOptionsSetter.setOptionValue("coverage", "true");
-        mCoverageOptionsSetter.setOptionValue("coverage-toolchain", "GCOV");
-        mCoverageOptionsSetter.setOptionValue("coverage-flush", "true");
-
-        final String nativeTestPath = GTest.DEFAULT_NATIVETEST_PATH;
-        final String test1 = "test1";
-        final String test2 = "test2";
-        final String testPath1 = String.format("%s/%s", nativeTestPath, test1);
-        final String testPath2 = String.format("%s/%s", nativeTestPath, test2);
-
-        MockFileUtil.setMockDirContents(mMockITestDevice, nativeTestPath, test1, test2);
-        EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
-        EasyMock.expect(mMockITestDevice.executeShellCommand("kill -37 -1")).andReturn("");
-        // Wait up to 5 minutes for the device to be available after flushing coverage data.
-        mMockITestDevice.waitForDeviceAvailable(5 * 60 * 1000);
-        EasyMock.expect(mMockITestDevice.executeShellCommand("rm -rf /data/misc/trace/*"))
-                .andReturn("");
-        EasyMock.expect(mMockITestDevice.doesFileExist(nativeTestPath)).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath)).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isDirectory(testPath1)).andReturn(false);
-        // report the file as executable
-        EasyMock.expect(mMockITestDevice.isExecutable(testPath1)).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isDirectory(testPath2)).andReturn(false);
-        // report the file as executable
-        EasyMock.expect(mMockITestDevice.isExecutable(testPath2)).andReturn(true);
-
-        String[] files = new String[] {"test1", "test2"};
-        EasyMock.expect(mMockITestDevice.getChildren(nativeTestPath)).andReturn(files);
-        mMockITestDevice.executeShellCommand(
-                EasyMock.contains(test1),
-                EasyMock.same(mMockReceiver),
-                EasyMock.anyLong(),
-                (TimeUnit) EasyMock.anyObject(),
-                EasyMock.anyInt());
-        mMockITestDevice.executeShellCommand(
-                EasyMock.contains(test2),
-                EasyMock.same(mMockReceiver),
-                EasyMock.anyLong(),
-                (TimeUnit) EasyMock.anyObject(),
-                EasyMock.anyInt());
-
-        replayMocks();
-
-        mGTest.run(mTestInfo, mMockInvocationListener);
-        verifyMocks();
-    }
-
-    /** Test cross-process coverage dump for specific processes */
-    @Test
-    public void testNativeCoverageSpecificProcesses() throws Exception {
-        final List<String> processNames = new ArrayList<>();
-        processNames.add("init");
-        processNames.add("surfaceflinger");
-
-        mCoverageOptionsSetter.setOptionValue("coverage", "true");
-        mCoverageOptionsSetter.setOptionValue("coverage-toolchain", "GCOV");
-        mCoverageOptionsSetter.setOptionValue("coverage-flush", "true");
-        for (String processName : processNames) {
-            mCoverageOptionsSetter.setOptionValue("coverage-processes", processName);
-        }
-
-        final String nativeTestPath = GTest.DEFAULT_NATIVETEST_PATH;
-        final String test1 = "test1";
-        final String test2 = "test2";
-        final String testPath1 = String.format("%s/%s", nativeTestPath, test1);
-        final String testPath2 = String.format("%s/%s", nativeTestPath, test2);
-
-        MockFileUtil.setMockDirContents(mMockITestDevice, nativeTestPath, test1, test2);
-        EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
-        // Get the pids to flush coverage data.
-        EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
-        EasyMock.expect(mMockITestDevice.getProcessPid(processNames.get(0))).andReturn("1");
-        EasyMock.expect(mMockITestDevice.getProcessPid(processNames.get(1))).andReturn("1000");
-        EasyMock.expect(mMockITestDevice.executeShellCommand("kill -37 1 1000")).andReturn("");
-        // Wait up to 5 minutes for the device to be available after flushing coverage data.
-        mMockITestDevice.waitForDeviceAvailable(5 * 60 * 1000);
-
-        // Clear the coverage data.
-        EasyMock.expect(mMockITestDevice.executeShellCommand("rm -rf /data/misc/trace/*"))
-                .andReturn("");
-        EasyMock.expect(mMockITestDevice.doesFileExist(nativeTestPath)).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath)).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isDirectory(testPath1)).andReturn(false);
-        // report the file as executable
-        EasyMock.expect(mMockITestDevice.isExecutable(testPath1)).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isDirectory(testPath2)).andReturn(false);
-        // report the file as executable
-        EasyMock.expect(mMockITestDevice.isExecutable(testPath2)).andReturn(true);
-
-        String[] files = new String[] {"test1", "test2"};
-        EasyMock.expect(mMockITestDevice.getChildren(nativeTestPath)).andReturn(files);
-        mMockITestDevice.executeShellCommand(
-                EasyMock.contains(test1),
-                EasyMock.same(mMockReceiver),
-                EasyMock.anyLong(),
-                (TimeUnit) EasyMock.anyObject(),
-                EasyMock.anyInt());
-        mMockITestDevice.executeShellCommand(
-                EasyMock.contains(test2),
-                EasyMock.same(mMockReceiver),
-                EasyMock.anyLong(),
-                (TimeUnit) EasyMock.anyObject(),
-                EasyMock.anyInt());
-
         replayMocks();
 
         mGTest.run(mTestInfo, mMockInvocationListener);
