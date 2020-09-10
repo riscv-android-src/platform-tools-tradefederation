@@ -159,8 +159,12 @@ java_library_host {
         "tradefed-protos",
         "tradefed-isolation-protos",
         "tradefed-lite",
+        "guava",
         "guava-testlib",
-        "grpc-java-testing"
+        "grpc-java",
+        "grpc-java-testing",
+        "grpc-java-netty-shaded",
+        "javax-annotation-api-prebuilt-host-jar",
     ],
     libs: [
         "loganalysis",
