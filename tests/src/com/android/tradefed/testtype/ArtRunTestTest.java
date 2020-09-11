@@ -160,19 +160,16 @@ public class ArtRunTestTest {
         verifyMocks();
     }
 
-    /** Test the run method for a (single) test. */
-    @Test
-    public void testRunSingleTest()
+    /** Helper containing testing logic for a (single) test expected to run (and succeed). */
+    private void doTestRunSingleTest(final String runTestName, final String classpath)
             throws ConfigurationException, DeviceNotAvailableException, IOException {
-        final String runTestName = "test";
         mSetter.setOptionValue("run-test-name", runTestName);
         createExpectedOutputFile(runTestName);
-        final String classpath = "/data/local/tmp/test/test.jar";
         mSetter.setOptionValue("classpath", classpath);
 
         // Pre-test checks.
-        EasyMock.expect(mMockITestDevice.getSerialNumber()).andReturn("");
         EasyMock.expect(mMockAbi.getName()).andReturn("abi");
+        EasyMock.expect(mMockITestDevice.getSerialNumber()).andReturn("");
         String runName = "ArtRunTest_abi";
         // Beginning of test.
         mMockInvocationListener.testRunStarted(runName, 1);
@@ -197,6 +194,31 @@ public class ArtRunTestTest {
         verifyMocks();
     }
 
+    /** Helper containing testing logic for a (single) test expected not to run. */
+    private void doTestDoNotRunSingleTest(final String runTestName, final String classpath)
+            throws ConfigurationException, DeviceNotAvailableException, IOException {
+        mSetter.setOptionValue("run-test-name", runTestName);
+        createExpectedOutputFile(runTestName);
+        mSetter.setOptionValue("classpath", classpath);
+
+        EasyMock.expect(mMockAbi.getName()).andReturn("abi");
+        replayMocks();
+
+        mArtRunTest.run(mTestInfo, mMockInvocationListener);
+
+        verifyMocks();
+    }
+
+    /** Test the run method for a (single) test. */
+    @Test
+    public void testRunSingleTest()
+            throws ConfigurationException, DeviceNotAvailableException, IOException {
+        final String runTestName = "test";
+        final String classpath = "/data/local/tmp/test/test.jar";
+
+        doTestRunSingleTest(runTestName, classpath);
+    }
+
     /**
      * Test the behavior of the run method when the output produced by the shell command on device
      * differs from the expected output.
@@ -211,8 +233,8 @@ public class ArtRunTestTest {
         mSetter.setOptionValue("classpath", classpath);
 
         // Pre-test checks.
-        EasyMock.expect(mMockITestDevice.getSerialNumber()).andReturn("");
         EasyMock.expect(mMockAbi.getName()).andReturn("abi");
+        EasyMock.expect(mMockITestDevice.getSerialNumber()).andReturn("");
         String runName = "ArtRunTest_abi";
         // Beginning of test.
         mMockInvocationListener.testRunStarted(runName, 1);
@@ -236,5 +258,45 @@ public class ArtRunTestTest {
         mArtRunTest.run(mTestInfo, mMockInvocationListener);
 
         verifyMocks();
+    }
+
+    /** Test the run method for a (single) test contained in an include filter. */
+    @Test
+    public void testIncludeFilter()
+            throws ConfigurationException, DeviceNotAvailableException, IOException {
+        final String runTestName = "test";
+        final String classpath = "/data/local/tmp/test/test.jar";
+        // Add an include filter containing the test's name.
+        mArtRunTest.addIncludeFilter(runTestName);
+
+        doTestRunSingleTest(runTestName, classpath);
+    }
+
+    /** Test the run method for a (single) test contained in an exclude filter. */
+    @Test
+    public void testExcludeFilter()
+            throws ConfigurationException, DeviceNotAvailableException, IOException {
+        final String runTestName = "test";
+        final String classpath = "/data/local/tmp/test/test.jar";
+        // Add an exclude filter containing the test's name.
+        mArtRunTest.addExcludeFilter(runTestName);
+
+        doTestDoNotRunSingleTest(runTestName, classpath);
+    }
+
+    /**
+     * Test the run method for a (single) test contained both in an include and an exclude filter.
+     */
+    @Test
+    public void testIncludeAndExcludeFilter()
+            throws ConfigurationException, DeviceNotAvailableException, IOException {
+        final String runTestName = "test";
+        final String classpath = "/data/local/tmp/test/test.jar";
+        // Add an include filter containing the test's name.
+        mArtRunTest.addIncludeFilter(runTestName);
+        // Add an exclude filter containing the test's name.
+        mArtRunTest.addExcludeFilter(runTestName);
+
+        doTestDoNotRunSingleTest(runTestName, classpath);
     }
 }
