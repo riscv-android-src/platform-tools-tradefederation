@@ -34,11 +34,13 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /** A test runner to run ART run-tests. */
-public class ArtRunTest implements IDeviceTest, IRemoteTest, IAbiReceiver {
+public class ArtRunTest implements IDeviceTest, IRemoteTest, IAbiReceiver, ITestFilterReceiver {
 
     private static final String RUNTEST_TAG = "ArtRunTest";
 
@@ -61,6 +63,8 @@ public class ArtRunTest implements IDeviceTest, IRemoteTest, IAbiReceiver {
 
     private ITestDevice mDevice = null;
     private IAbi mAbi = null;
+    private Set<String> mIncludeFilters = new LinkedHashSet<>();
+    private Set<String> mExcludeFilters = new LinkedHashSet<>();
 
     /** {@inheritDoc} */
     @Override
@@ -83,6 +87,54 @@ public class ArtRunTest implements IDeviceTest, IRemoteTest, IAbiReceiver {
     @Override
     public IAbi getAbi() {
         return mAbi;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void addIncludeFilter(String filter) {
+        mIncludeFilters.add(filter);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void addAllIncludeFilters(Set<String> filters) {
+        mIncludeFilters.addAll(filters);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void addExcludeFilter(String filter) {
+        mExcludeFilters.add(filter);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void addAllExcludeFilters(Set<String> filters) {
+        mExcludeFilters.addAll(filters);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Set<String> getIncludeFilters() {
+        return mIncludeFilters;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Set<String> getExcludeFilters() {
+        return mExcludeFilters;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void clearIncludeFilters() {
+        mIncludeFilters.clear();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void clearExcludeFilters() {
+        mExcludeFilters.clear();
     }
 
     /** {@inheritDoc} */
@@ -113,20 +165,24 @@ public class ArtRunTest implements IDeviceTest, IRemoteTest, IAbiReceiver {
      */
     void runArtTest(TestInformation testInfo, ITestInvocationListener listener)
             throws DeviceNotAvailableException {
+        String abi = mAbi.getName();
+        String runName = String.format("%s_%s", RUNTEST_TAG, abi);
+        TestDescription testId = new TestDescription(runName, mRunTestName);
+        if (shouldSkipCurrentTest(testId)) {
+            return;
+        }
+
         CLog.i("Running ArtRunTest %s on %s", mRunTestName, mDevice.getSerialNumber());
 
         String cmd = DALVIKVM_CMD;
-        String abi = mAbi.getName();
         cmd = cmd.replace("|#BITNESS#|", AbiUtils.getBitness(abi));
         cmd = cmd.replace("|#CLASSPATH#|", ArrayUtil.join(File.pathSeparator, mClasspath));
         // TODO: Turn this into an an option of the `ArtRunTest` class?
         cmd = cmd.replace("|#MAINCLASS#|", "Main");
 
         CLog.d("About to run run-test command: %s", cmd);
-        String runName = String.format("%s_%s", RUNTEST_TAG, abi);
         // Note: We only run one test at the moment.
         int testCount = 1;
-        TestDescription testId = new TestDescription(runName, mRunTestName);
         listener.testRunStarted(runName, testCount);
         listener.testStarted(testId);
 
@@ -170,6 +226,26 @@ public class ArtRunTest implements IDeviceTest, IRemoteTest, IAbiReceiver {
             // TODO: Pass an actual value as `elapsedTimeMillis` argument.
             listener.testRunEnded(/* elapsedTimeMillis*/ 0, emptyTestRunMetrics);
         }
+    }
+
+    /**
+     * Check if current test should be skipped.
+     *
+     * @param description The test in progress.
+     * @return true if the test should be skipped.
+     */
+    private boolean shouldSkipCurrentTest(TestDescription description) {
+        // Force to skip any test not listed in include filters, or listed in exclude filters.
+        // exclude filters have highest priority.
+        String testName = description.getTestName();
+        String descString = description.toString();
+        if (mExcludeFilters.contains(testName) || mExcludeFilters.contains(descString)) {
+            return true;
+        }
+        if (!mIncludeFilters.isEmpty()) {
+            return !mIncludeFilters.contains(testName) && !mIncludeFilters.contains(descString);
+        }
+        return false;
     }
 
     /** Create an output receiver for the test command executed on the device. */
