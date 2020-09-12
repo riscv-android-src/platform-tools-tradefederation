@@ -18,7 +18,6 @@ package com.android.tradefed.testtype.rust;
 
 import static com.android.tradefed.testtype.coverage.CoverageOptions.Toolchain.GCOV;
 
-import static com.google.common.base.Verify.verify;
 
 import com.android.ddmlib.FileListingService;
 import com.android.ddmlib.IShellOutputReceiver;
@@ -36,7 +35,6 @@ import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.coverage.CoverageOptions;
-import com.android.tradefed.util.NativeCodeCoverageFlusher;
 
 import java.io.File;
 import java.util.HashMap;
@@ -159,12 +157,8 @@ public class RustBinaryTest extends RustTestBase implements IDeviceTest, IConfig
             final String fullPath)
             throws DeviceNotAvailableException {
         CLog.d("RustBinaryTest runTest: " + fullPath);
-        String cmd;
-        if (getCoverageOptions().isCoverageEnabled()) {
-            cmd = "GCOV_PREFIX=/data/misc/trace/testcoverage " + fullPath;
-        } else {
-            cmd = fullPath;
-        }
+        String cmd = fullPath;
+
         // Rust binary does not support multiple inclusion filters,
         // so we run the test once for each include filter.
         List<String> includeFilters = getListOfIncludeFilters();
@@ -228,21 +222,6 @@ public class RustBinaryTest extends RustTestBase implements IDeviceTest, IConfig
 
         // Insert the coverage listener if code coverage collection is enabled.
         listener = addGcovCoverageListenerIfEnabled(testInfo.getContext(), listener);
-        NativeCodeCoverageFlusher flusher =
-                new NativeCodeCoverageFlusher(mDevice, getCoverageOptions().getCoverageProcesses());
-
-        if (getCoverageOptions().isCoverageEnabled()) {
-            // Enable abd root on the device, otherwise the following commands will fail.
-            // TODO(b/159843590): Restore adb root state later.
-            verify(mDevice.enableAdbRoot(), "Failed to enable adb root.");
-
-            flusher.resetCoverage();
-
-            // Clang will no longer create directories that are part of the GCOV_PREFIX
-            // environment variable. Force create the /data/misc/trace/testcoverage dir to
-            // prevent "No such file or directory" errors when writing test coverage to disk.
-            mDevice.executeShellCommand("mkdir /data/misc/trace/testcoverage");
-        }
 
         CLog.d("To run tests in directory " + testPath);
 
