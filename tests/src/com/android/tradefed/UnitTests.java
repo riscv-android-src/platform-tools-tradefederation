@@ -369,6 +369,7 @@ import com.android.tradefed.util.SimplePerfUtilTest;
 import com.android.tradefed.util.SimpleStatsTest;
 import com.android.tradefed.util.SizeLimitedOutputStreamTest;
 import com.android.tradefed.util.Sl4aBluetoothUtilTest;
+import com.android.tradefed.util.SparseImageUtilTest;
 import com.android.tradefed.util.StreamUtilTest;
 import com.android.tradefed.util.StringEscapeUtilsTest;
 import com.android.tradefed.util.StringUtilTest;
@@ -869,6 +870,7 @@ import org.junit.runners.Suite.SuiteClasses;
     SimpleStatsTest.class,
     SizeLimitedOutputStreamTest.class,
     Sl4aBluetoothUtilTest.class,
+    SparseImageUtilTest.class,
     StreamUtilTest.class,
     StringEscapeUtilsTest.class,
     StringUtilTest.class,
