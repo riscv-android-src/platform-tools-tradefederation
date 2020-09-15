@@ -26,6 +26,7 @@ import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
+import com.android.tradefed.util.StringEscapeUtils;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -406,7 +407,7 @@ public class GoogleBenchmarkTest implements IDeviceTest, IRemoteTest, ITestFilte
         if (iterator.hasNext()) {
             filterFlag.append(String.format(" %s=%s", GBENCHMARK_FILTER_OPTION, iterator.next()));
             while (iterator.hasNext()) {
-                filterFlag.append(String.format("\\|%s", iterator.next()));
+                filterFlag.append(String.format("|%s", iterator.next()));
             }
         }
         return filterFlag.toString();
@@ -421,7 +422,7 @@ public class GoogleBenchmarkTest implements IDeviceTest, IRemoteTest, ITestFilte
             // Format benchmark as "^benchmark$" to avoid unintended regex partial matching.
             filterFlag.append(String.format(" %s=^%s$", GBENCHMARK_FILTER_OPTION, iterator.next()));
             while (iterator.hasNext()) {
-                filterFlag.append(String.format("\\|^%s$", iterator.next()));
+                filterFlag.append(String.format("|^%s$", iterator.next()));
             }
         }
         return filterFlag.toString();
@@ -441,14 +442,14 @@ public class GoogleBenchmarkTest implements IDeviceTest, IRemoteTest, ITestFilte
             final String cmd,
             final IShellOutputReceiver outputReceiver)
             throws DeviceNotAvailableException {
+        String shellCmd = StringEscapeUtils.escapeShell(cmd);
         // Ensure that command is not too long for adb
-        if (cmd.length() < ADB_CMD_CHAR_LIMIT) {
+        if (shellCmd.length() < ADB_CMD_CHAR_LIMIT) {
             if (outputReceiver == null) {
-                return testDevice.executeShellCommand(cmd);
+                return testDevice.executeShellCommand(shellCmd);
             }
-
             testDevice.executeShellCommand(
-                    cmd,
+                    shellCmd,
                     outputReceiver,
                     mMaxRunTime /* maxTimeToShellOutputResponse */,
                     TimeUnit.MILLISECONDS,
@@ -457,7 +458,7 @@ public class GoogleBenchmarkTest implements IDeviceTest, IRemoteTest, ITestFilte
         }
 
         // Wrap adb shell command in script if command is too long for direct execution
-        return executeCommandByScript(testDevice, cmd, outputReceiver);
+        return executeCommandByScript(testDevice, shellCmd, outputReceiver);
     }
 
     /** Runs a command from a temporary script. */
