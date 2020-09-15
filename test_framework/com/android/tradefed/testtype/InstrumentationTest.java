@@ -936,7 +936,7 @@ public class InstrumentationTest
             IRemoteAndroidTestRunner runner,
             ITestLifeCycleReceiver... receivers)
             throws DeviceNotAvailableException {
-        if (testInfo.properties().containsKey(RUN_TESTS_AS_USER_KEY)) {
+        if (testInfo != null && testInfo.properties().containsKey(RUN_TESTS_AS_USER_KEY)) {
             return mDevice.runInstrumentationTestsAsUser(
                     runner,
                     Integer.parseInt(testInfo.properties().get(RUN_TESTS_AS_USER_KEY)),
