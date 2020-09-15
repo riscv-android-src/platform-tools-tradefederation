@@ -380,22 +380,22 @@ public class ClusterCommandScheduler extends CommandScheduler {
             @Override
             public void run() {
                 try {
-                    // check cluster command's status
+                    // Check cluster command's status.
                     if (getClusterOptions().checkCommandState()) {
-                        ClusterCommand.State status =
+                        ClusterCommandStatus commandStatus =
                                 getClusterClient()
-                                        .getCommandState(
+                                        .getCommandStatus(
                                                 mCommandTask.getRequestId(),
                                                 mCommandTask.getCommandId());
-                        if (ClusterCommand.State.CANCELED.equals(status)) {
-                            // TODO: retrieve cancel reason from TFC.
+                        if (ClusterCommand.State.CANCELED.equals(commandStatus.getState())) {
                             String cause =
                                     String.format(
                                             "The cluster client %s has marked command "
-                                                    + "(requestId=%s, commandId=%s) canceled",
+                                                    + "(requestId=%s, commandId=%s) canceled with reason: %s",
                                             getClusterClient().getClass().getSimpleName(),
                                             mCommandTask.getRequestId(),
-                                            mCommandTask.getCommandId());
+                                            mCommandTask.getCommandId(),
+                                            commandStatus.getCancelReason());
                             CLog.w("Stop invocation due to: %s", cause);
                             Optional.ofNullable(getInvocationContext())
                                     .map(IInvocationContext::getInvocationId)
@@ -616,7 +616,9 @@ public class ClusterCommandScheduler extends CommandScheduler {
                         ClusterCommandEvent.createEventBuilder(commandTask)
                                 .setHostName(ClusterHostUtil.getHostName())
                                 .setType(ClusterCommandEvent.Type.ConfigurationError)
-                                .setData(ClusterCommandEvent.DATA_KEY_ERROR, e.toString())
+                                .setData(
+                                        ClusterCommandEvent.DATA_KEY_ERROR,
+                                        StreamUtil.getStackTrace(e))
                                 .build());
                 eventUploader.flush();
             }
@@ -692,8 +694,7 @@ public class ClusterCommandScheduler extends CommandScheduler {
      */
     protected boolean dryRunCommand(final InvocationEventHandler handler, String[] args)
             throws ConfigurationException {
-        IConfiguration config =
-                getConfigFactory().createConfigurationFromArgs(args, null, getKeyStoreClient());
+        IConfiguration config = createConfiguration(args);
         if (config.getCommandOptions().isDryRunMode()) {
             IInvocationContext context = new InvocationContext();
             context.addDeviceBuildInfo("stub", new BuildInfo());

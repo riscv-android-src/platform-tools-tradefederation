@@ -35,6 +35,7 @@ import com.android.tradefed.device.FreeDeviceState;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.NativeDevice;
+import com.android.tradefed.device.RemoteAndroidDevice;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.TcpDevice;
 import com.android.tradefed.device.TestDeviceState;
@@ -323,7 +324,7 @@ public class TestInvocation implements ITestInvocation {
                     takeBugreport(collectBugreport, listener, bugreportName);
                 } else if (context.getDevices().size() > 1) {
                     ParallelDeviceExecutor<Boolean> executor =
-                            new ParallelDeviceExecutor<>(context.getDevices());
+                            new ParallelDeviceExecutor<>(context.getDevices().size());
                     List<Callable<Boolean>> callableTasks = new ArrayList<>();
                     final String reportName = bugreportName;
                     for (ITestDevice device : context.getDevices()) {
@@ -1128,7 +1129,8 @@ public class TestInvocation implements ITestInvocation {
         int countVirtualLost = 0;
         for (Entry<ITestDevice, FreeDeviceState> fds : devicesStates.entrySet()) {
             // TODO: Rely on the FailureStatus for lost devices instead
-            if (fds.getKey().getIDevice() instanceof TcpDevice
+            if ((fds.getKey().getIDevice() instanceof TcpDevice
+                            || fds.getKey() instanceof RemoteAndroidDevice)
                     && exception instanceof DeviceNotAvailableException) {
                 countVirtualLost++;
                 continue;

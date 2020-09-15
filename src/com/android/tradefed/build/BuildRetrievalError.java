@@ -16,7 +16,9 @@
 package com.android.tradefed.build;
 
 import com.android.tradefed.error.HarnessException;
+import com.android.tradefed.error.IHarnessException;
 import com.android.tradefed.result.error.ErrorIdentifier;
+
 
 /** A fatal error occurred while retrieving the build for testing. */
 public class BuildRetrievalError extends HarnessException {
@@ -91,6 +93,9 @@ public class BuildRetrievalError extends HarnessException {
         super(reason, cause, errorId);
         if (build != null) {
             mBuildInfo = build;
+        }
+        if (cause instanceof IHarnessException) {
+            setCallerClass(((IHarnessException) cause).getOrigin());
         }
     }
 

@@ -19,6 +19,7 @@ package com.android.tradefed.command;
 import com.android.ddmlib.DdmPreferences;
 import com.android.ddmlib.Log;
 import com.android.ddmlib.Log.LogLevel;
+import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.clearcut.ClearcutClient;
 import com.android.tradefed.command.CommandFileParser.CommandLine;
 import com.android.tradefed.command.CommandFileWatcher.ICommandFileListener;
@@ -33,6 +34,7 @@ import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
+import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
@@ -1183,12 +1185,27 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         return foundSandbox;
     }
 
-    private boolean isProxyCommand(IConfiguration config) {
-        return config.getConfigurationObject(ProxyConfiguration.PROXY_CONFIG_TYPE_KEY) != null;
+    private boolean isProxyCommand(String[] args) throws ConfigurationException {
+        ProxyConfiguration proxy = new ProxyConfiguration();
+        ArgsOptionParser argsParser = new ArgsOptionParser(proxy);
+        List<String> argsList = new ArrayList<>(Arrays.asList(args));
+        argsList.remove(0);
+        argsParser.parseBestEffort(argsList, true);
+        return proxy.isProxySet();
     }
 
-    private String[] handleProxyCommand(IConfiguration config, String[] originalArgs)
-            throws ConfigurationException {
+    private IConfiguration handleProxyCommand(String[] originalArgs) throws ConfigurationException {
+        IConfiguration config =
+                ((ConfigurationFactory) getConfigFactory())
+                        .createPartialConfigurationFromArgs(
+                                originalArgs,
+                                getKeyStoreClient(),
+                                ImmutableSet.of(ProxyConfiguration.PROXY_CONFIG_TYPE_KEY));
+        try {
+            config.resolveDynamicOptions(new DynamicRemoteFileResolver());
+        } catch (BuildRetrievalError e) {
+            throw new ConfigurationException(e.getMessage(), e);
+        }
         ProxyConfiguration proxy =
                 (ProxyConfiguration)
                         config.getConfigurationObject(ProxyConfiguration.PROXY_CONFIG_TYPE_KEY);
@@ -1196,7 +1213,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             throw new ConfigurationException("No proxy configuration found.");
         }
         originalArgs[0] = proxy.getProxyConfig().getAbsolutePath();
-        return originalArgs;
+        return config;
     }
 
     /** Returns true if the configuration used is a retry one. */
@@ -1217,31 +1234,28 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         return GlobalConfiguration.getInstance().getSandboxFactory().createSandbox();
     }
 
-    private IConfiguration createConfiguration(String[] args) throws ConfigurationException {
-        TradefedDelegator delegator = new TradefedDelegator();
-        ArgsOptionParser argsParser = new ArgsOptionParser(delegator);
-        List<String> argsList = new ArrayList<>(Arrays.asList(args));
-        argsList.remove(0);
-        argsParser.parseBestEffort(argsList, true);
+    protected IConfiguration createConfiguration(String[] args) throws ConfigurationException {
+        TradefedDelegator delegator = checkDelegation(args);
         if (delegator.shouldUseDelegation()) {
-            String[] argsWithoutDelegation = TradefedDelegator.clearCommandline(args);
-            delegator.setCommandLine(argsWithoutDelegation);
-            CLog.d(
-                    "Using commandline arguments as starting command: %s",
-                    Arrays.asList(argsWithoutDelegation));
-            IConfiguration config =
-                    ((ConfigurationFactory) getConfigFactory())
-                            .createPartialConfigurationFromArgs(
-                                    argsWithoutDelegation,
-                                    getKeyStoreClient(),
-                                    ImmutableSet.of(
-                                            Configuration.DEVICE_REQUIREMENTS_TYPE_NAME,
-                                            Configuration.LOGGER_TYPE_NAME,
-                                            Configuration.LOG_SAVER_TYPE_NAME,
-                                            Configuration.RESULT_REPORTER_TYPE_NAME));
-            config.setConfigurationObject(TradefedDelegator.DELEGATE_OBJECT, delegator);
-            setDelegateLevelReporting(config);
-            return config;
+            args = TradefedDelegator.clearCommandline(args);
+            // Do not use delegation on staging
+            if (!delegator.isStaging()) {
+                delegator.setCommandLine(args);
+                CLog.d("Using commandline arguments as starting command: %s", Arrays.asList(args));
+                IConfiguration config =
+                        ((ConfigurationFactory) getConfigFactory())
+                                .createPartialConfigurationFromArgs(
+                                        args,
+                                        getKeyStoreClient(),
+                                        ImmutableSet.of(
+                                                Configuration.DEVICE_REQUIREMENTS_TYPE_NAME,
+                                                Configuration.LOGGER_TYPE_NAME,
+                                                Configuration.LOG_SAVER_TYPE_NAME,
+                                                Configuration.RESULT_REPORTER_TYPE_NAME));
+                config.setConfigurationObject(TradefedDelegator.DELEGATE_OBJECT, delegator);
+                setDelegateLevelReporting(config);
+                return config;
+            }
         }
 
         // check if the command should be sandboxed
@@ -1251,20 +1265,42 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             return SandboxConfigurationFactory.getInstance()
                     .createConfigurationFromArgs(args, getKeyStoreClient(), sandbox, new RunUtil());
         }
+        if (isProxyCommand(args)) {
+            IConfiguration proxyConfig = handleProxyCommand(args);
+            String[] argsWithoutDelegation = ProxyConfiguration.clearCommandline(args);
+            IConfiguration resolvedConfig = null;
+            try {
+                resolvedConfig =
+                        getConfigFactory()
+                                .createConfigurationFromArgs(
+                                        argsWithoutDelegation, null, getKeyStoreClient());
+            } catch (ConfigurationException e) {
+                proxyConfig.cleanConfigurationData();
+                throw e;
+            }
+            resolvedConfig.addFilesToClean(proxyConfig.getFilesToClean());
+            return resolvedConfig;
+        }
         IConfiguration config =
                 getConfigFactory().createConfigurationFromArgs(args, null, getKeyStoreClient());
-        if (isProxyCommand(config)) {
-            String[] newArgs = handleProxyCommand(config, args);
-            IConfiguration proxyConfig =
-                    getConfigFactory()
-                            .createConfigurationFromArgs(newArgs, null, getKeyStoreClient());
-            proxyConfig.addFilesToClean(config.getFilesToClean());
-            return proxyConfig;
-        }
         if (isRetryCommand(config)) {
             return RetryConfigurationFactory.getInstance().createRetryConfiguration(config);
         }
         return config;
+    }
+
+    /**
+     * Create a delegator based on the command line to see if we need to delegate the run.
+     *
+     * @throws ConfigurationException
+     */
+    public static TradefedDelegator checkDelegation(String[] args) throws ConfigurationException {
+        TradefedDelegator delegator = new TradefedDelegator();
+        ArgsOptionParser argsParser = new ArgsOptionParser(delegator);
+        List<String> argsList = new ArrayList<>(Arrays.asList(args));
+        argsList.remove(0);
+        argsParser.parseBestEffort(argsList, true);
+        return delegator;
     }
 
     private void setDelegateLevelReporting(IConfiguration config) {

@@ -20,8 +20,8 @@ import com.android.tradefed.testtype.DeviceTestCase;
 
 /**
  * Functional tests for {@link DeviceBuildDescriptor}.
- * <p/>
- * Sanity checks data can be retrieved off device.
+ *
+ * <p>Validity checks data can be retrieved off device.
  */
 public class DeviceBuildDescriptorFuncTest extends DeviceTestCase {
 

@@ -94,7 +94,7 @@ public class Email implements IEmail {
      */
     @Override
     public void send(Message msg) throws IllegalArgumentException, IOException {
-        // Sanity checks
+        // Validity checks
         if (msg.getTo() == null) {
             throw new IllegalArgumentException("Message is missing a destination");
         } else if (msg.getSubject() == null) {
