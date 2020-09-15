@@ -209,6 +209,15 @@ public class InstrumentationTestTest {
     }
 
     @Test
+    public void testRun_nullTestInfo() throws Exception {
+        mInstrumentationTest.run(/* testInfo= */ null, mMockListener);
+
+        verify(mMockTestDevice, atLeastOnce())
+                .runInstrumentationTests(
+                        any(IRemoteAndroidTestRunner.class), any(ITestInvocationListener.class));
+    }
+
+    @Test
     public void testRun_runTestsAsUser() throws DeviceNotAvailableException {
         mTestInfo.properties().put(RUN_TESTS_AS_USER_KEY, "10");
         mInstrumentationTest.run(mTestInfo, mMockListener);
