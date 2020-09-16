@@ -76,6 +76,9 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
     @Option(name = "bundletool-file-name", description = "The file name of the bundletool jar.")
     private String mBundletoolFilename;
 
+    @Option(name = "train-path", description = "The absoulte path of the train folder.")
+    private File mTrainFolderPath;
+
     @Option(
         name = "apex-staging-wait-time",
         description = "The time in ms to wait for apex staged session ready.",
@@ -101,6 +104,10 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
         setTestInformation(testInfo);
         ITestDevice device = testInfo.getDevice();
+
+        if (mTrainFolderPath != null) {
+            addApksToTestFiles();
+        }
 
         List<File> moduleFileNames = getTestsFileName();
         if (moduleFileNames.isEmpty()) {
@@ -844,6 +851,16 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
             }
         }
         return failToActivateApex;
+    }
+
+    private void addApksToTestFiles() {
+        File[] filesUnderTrainFolder = mTrainFolderPath.listFiles();
+        Arrays.sort(filesUnderTrainFolder, (a, b) -> a.getName().compareTo(b.getName()));
+        for (File f : filesUnderTrainFolder) {
+            if (f.getName().endsWith(".apks")) {
+                getTestsFileName().add(f);
+            }
+        }
     }
 
     @VisibleForTesting
