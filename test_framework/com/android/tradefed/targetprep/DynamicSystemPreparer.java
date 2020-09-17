@@ -49,6 +49,11 @@ public class DynamicSystemPreparer extends BaseTargetPreparer {
     )
     private String mSystemImageZipName = "system-img.zip";
 
+    @Option(
+            name = "user-data-size-in-gb",
+            description = "Number of GB to be allocated for DSU user-data.")
+    private long mUserDataSizeInGb = 16L; // 16GB
+
     private boolean isDSURunning(ITestDevice device) throws DeviceNotAvailableException {
         CollectingOutputReceiver receiver = new CollectingOutputReceiver();
         device.executeShellCommand("gsi_tool status", receiver);
@@ -102,8 +107,9 @@ public class DynamicSystemPreparer extends BaseTargetPreparer {
                             + "--el KEY_SYSTEM_SIZE "
                             + rawSize
                             + " "
-                            + "--el KEY_USERDATA_SIZE 8589934592 "
-                            + "--ez KEY_ENABLE_WHEN_COMPLETED true";
+                            + "--el KEY_USERDATA_SIZE "
+                            + mUserDataSizeInGb * 1024 * 1024 * 1024
+                            + " --ez KEY_ENABLE_WHEN_COMPLETED true";
             device.executeShellCommand(command);
             // Check if device shows as unavailable (as expected after the activity finished).
             device.waitForDeviceNotAvailable(DSU_MAX_WAIT_SEC * 1000);
