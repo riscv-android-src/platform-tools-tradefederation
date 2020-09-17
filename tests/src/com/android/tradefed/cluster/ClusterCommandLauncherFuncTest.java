@@ -36,7 +36,9 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.FileUtil;
 
+import org.hamcrest.CoreMatchers;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -126,8 +128,9 @@ public class ClusterCommandLauncherFuncTest {
 
         try {
             mLauncher.run(mTestInformation, mListener);
-            fail("RuntimeException should be thrown");
-        } catch (RuntimeException e) {
+            fail("SubprocessCommandException should be thrown");
+        } catch (SubprocessCommandException e) {
+            Assert.assertThat(e.getCause().getMessage(), CoreMatchers.containsString("cause"));
         }
 
         verify(mListener).invocationFailed(any(Throwable.class));
