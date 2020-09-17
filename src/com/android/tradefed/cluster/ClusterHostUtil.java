@@ -27,13 +27,21 @@ import com.google.common.net.HostAndPort;
 import com.google.common.net.InetAddresses;
 import com.google.common.primitives.Longs;
 
+import java.net.Inet6Address;
 import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.security.InvalidParameterException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Enumeration;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
 
 /** Static util functions for TF Cluster to get global config instances, host information, etc. */
 public class ClusterHostUtil {
@@ -45,6 +53,7 @@ public class ClusterHostUtil {
     static final String DEFAULT_TF_VERSION = "(unknown)";
     static final String EMULATOR_SERIAL_PREFIX = "emulator-";
     static final String NULL_DEVICE_SERIAL_PLACEHOLDER = "(no device serial)";
+    static final String UNKNOWN = "UNKNOWN";
 
     private static long sTfStartTime = getCurrentTimeMillis();
 
@@ -117,17 +126,38 @@ public class ClusterHostUtil {
     /**
      * Gets the IP address.
      *
-     * @return the IP address or null if we were unable to fetch it.
+     * @return the IPV4 address String or "UNKNOWN" if we were unable to fetch it.
      */
     public static String getHostIpAddress() {
         if (sHostIpAddress == null) {
+            List<InetAddress> addresses = new ArrayList<>();
             try {
-                sHostIpAddress = InetAddress.getLocalHost().getHostAddress();
-            } catch (UnknownHostException e) {
-                CLog.w("failed to get hostname: %s", e);
+                Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
+                if (interfaces == null) {
+                    return UNKNOWN;
+                }
+                for (NetworkInterface networkInterface : Collections.list(interfaces)) {
+                    if (!networkInterface.isUp() || networkInterface.isLoopback()) {
+                        continue;
+                    }
+                    for (InetAddress address :
+                            Collections.list(networkInterface.getInetAddresses())) {
+                        if (address.isLinkLocalAddress()
+                                || address.isLoopbackAddress()
+                                || address instanceof Inet6Address) {
+                            continue;
+                        }
+                        addresses.add(address);
+                    }
+                }
+            } catch (SocketException e) {
+                CLog.w(e);
+            }
+            if (!addresses.isEmpty()) {
+                sHostIpAddress = addresses.get(0).getHostAddress();
             }
         }
-        return sHostIpAddress;
+        return sHostIpAddress == null ? UNKNOWN : sHostIpAddress;
     }
 
     /**
