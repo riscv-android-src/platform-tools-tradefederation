@@ -28,6 +28,8 @@ import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -228,7 +230,13 @@ public class MoblyBinaryHostTestTest {
         OptionSetter setter = new OptionSetter(mSpyTest);
         setter.setOptionValue("python-binaries", mMoblyBinary.getAbsolutePath());
         File testResult = new File(mSpyTest.getLogDirAbsolutePath(), TEST_RESULT_FILE_NAME);
-        Mockito.when(mMockRunUtil.runTimedCmd(anyLong(), any()))
+        Mockito.when(
+                        mMockRunUtil.runTimedCmd(
+                                anyLong(),
+                                anyString(),
+                                eq("--"),
+                                contains("--device_serial="),
+                                contains("--log_path=")))
                 .thenAnswer(
                         new Answer<CommandResult>() {
                             @Override
@@ -241,6 +249,12 @@ public class MoblyBinaryHostTestTest {
                                 return new CommandResult(CommandStatus.SUCCESS);
                             }
                         });
+        CommandResult result = new CommandResult(CommandStatus.SUCCESS);
+        result.setStdout(
+                "Name: pip\nLocation: "
+                        + new File(mVenvDir.getAbsolutePath(), "lib/python3.8/site-packages"));
+        Mockito.when(mMockRunUtil.runTimedCmd(anyLong(), anyString(), eq("show"), eq("pip")))
+                .thenReturn(result);
 
         mSpyTest.run(Mockito.mock(ITestInvocationListener.class));
 
