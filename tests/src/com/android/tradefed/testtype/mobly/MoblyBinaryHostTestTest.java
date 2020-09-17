@@ -28,6 +28,8 @@ import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -92,7 +94,6 @@ public class MoblyBinaryHostTestTest {
 
         mVenvDir = FileUtil.createTempDir("venv");
         new File(mVenvDir, "bin").mkdir();
-        Mockito.when(mMockBuildInfo.getFile(eq("VIRTUAL_ENV"))).thenReturn(mVenvDir);
 
         Mockito.doReturn(mMockRunUtil).when(mSpyTest).getRunUtil();
         Mockito.doReturn(DEFAULT_TIME_OUT).when(mSpyTest).getTestTimeout();
@@ -221,6 +222,71 @@ public class MoblyBinaryHostTestTest {
                             "Fail to find test summary file test_summary.yaml under directory"));
             assertFalse(new File(mSpyTest.getLogDirAbsolutePath()).exists());
         }
+    }
+
+    @Test
+    public void testRun_shouldActivateVenvAndCleanUp_whenVenvIsSet() throws Exception {
+        Mockito.when(mMockBuildInfo.getFile(eq("VIRTUAL_ENV"))).thenReturn(mVenvDir);
+        OptionSetter setter = new OptionSetter(mSpyTest);
+        setter.setOptionValue("python-binaries", mMoblyBinary.getAbsolutePath());
+        File testResult = new File(mSpyTest.getLogDirAbsolutePath(), TEST_RESULT_FILE_NAME);
+        Mockito.when(
+                        mMockRunUtil.runTimedCmd(
+                                anyLong(),
+                                anyString(),
+                                eq("--"),
+                                contains("--device_serial="),
+                                contains("--log_path=")))
+                .thenAnswer(
+                        new Answer<CommandResult>() {
+                            @Override
+                            public CommandResult answer(InvocationOnMock invocation)
+                                    throws Throwable {
+                                FileUtils.createFile(testResult, "");
+                                FileUtils.createFile(
+                                        new File(mSpyTest.getLogDirAbsolutePath(), "log"),
+                                        "log content");
+                                return new CommandResult(CommandStatus.SUCCESS);
+                            }
+                        });
+        CommandResult result = new CommandResult(CommandStatus.SUCCESS);
+        result.setStdout(
+                "Name: pip\nLocation: "
+                        + new File(mVenvDir.getAbsolutePath(), "lib/python3.8/site-packages"));
+        Mockito.when(mMockRunUtil.runTimedCmd(anyLong(), anyString(), eq("show"), eq("pip")))
+                .thenReturn(result);
+
+        mSpyTest.run(Mockito.mock(ITestInvocationListener.class));
+
+        verify(mSpyTest.getRunUtil(), times(1))
+                .setEnvVariable(eq("VIRTUAL_ENV"), eq(mVenvDir.getAbsolutePath()));
+        assertFalse(mVenvDir.exists());
+    }
+
+    @Test
+    public void testRun_shouldNotActivateVenv_whenVenvIsNotSet() throws Exception {
+        FileUtil.recursiveDelete(mVenvDir);
+        OptionSetter setter = new OptionSetter(mSpyTest);
+        setter.setOptionValue("python-binaries", mMoblyBinary.getAbsolutePath());
+        File testResult = new File(mSpyTest.getLogDirAbsolutePath(), TEST_RESULT_FILE_NAME);
+        Mockito.when(mMockRunUtil.runTimedCmd(anyLong(), any()))
+                .thenAnswer(
+                        new Answer<CommandResult>() {
+                            @Override
+                            public CommandResult answer(InvocationOnMock invocation)
+                                    throws Throwable {
+                                FileUtils.createFile(testResult, "");
+                                FileUtils.createFile(
+                                        new File(mSpyTest.getLogDirAbsolutePath(), "log"),
+                                        "log content");
+                                return new CommandResult(CommandStatus.SUCCESS);
+                            }
+                        });
+
+        mSpyTest.run(Mockito.mock(ITestInvocationListener.class));
+
+        verify(mSpyTest.getRunUtil(), never())
+                .setEnvVariable(eq("VIRTUAL_ENV"), eq(mVenvDir.getAbsolutePath()));
     }
 
     @Test

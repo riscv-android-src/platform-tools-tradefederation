@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.tradefed.testtype;
+package com.android.tradefed.device.metric;
 
 import static com.google.common.base.Verify.verifyNotNull;
 import static com.google.common.io.Files.getNameWithoutExtension;
@@ -24,15 +24,16 @@ import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.logger.CurrentInvocation;
-import com.android.tradefed.device.metric.BaseDeviceMetricCollector;
-import com.android.tradefed.device.metric.DeviceMetricData;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.testtype.coverage.CoverageOptions;
+import com.android.tradefed.util.AdbRootElevator;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.JavaCodeCoverageFlusher;
 
@@ -48,10 +49,10 @@ import java.util.Map;
 import java.util.List;
 
 /**
- * A {@link BaseDeviceMetricCollector} that will pull Java coverage measurements off of the device
- * and log them as test artifacts.
+ * A {@link com.android.tradefed.device.metric.BaseDeviceMetricCollector} that will pull Java
+ * coverage measurements off of the device and log them as test artifacts.
  */
-final class JavaCodeCoverageListener extends BaseDeviceMetricCollector
+public final class JavaCodeCoverageCollector extends BaseDeviceMetricCollector
         implements IConfigurationReceiver {
 
     public static final String MERGE_COVERAGE_MEASUREMENTS_TEST_NAME = "mergeCoverageMeasurements";
@@ -70,6 +71,22 @@ final class JavaCodeCoverageListener extends BaseDeviceMetricCollector
 
     private JavaCodeCoverageFlusher mFlusher;
     private IConfiguration mConfiguration;
+
+    @Override
+    public ITestInvocationListener init(
+            IInvocationContext context, ITestInvocationListener listener) {
+        super.init(context, listener);
+
+        if (isJavaCoverageEnabled()) {
+            try (AdbRootElevator adbRoot = new AdbRootElevator(getDevices().get(0))) {
+                getCoverageFlusher().resetCoverage();
+            } catch (DeviceNotAvailableException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        return this;
+    }
 
     @Override
     public void setConfiguration(IConfiguration configuration) {
@@ -98,12 +115,7 @@ final class JavaCodeCoverageListener extends BaseDeviceMetricCollector
 
     @Override
     public void onTestRunEnd(DeviceMetricData runData, final Map<String, Metric> runMetrics) {
-        if (mConfiguration == null
-                || !mConfiguration.getCoverageOptions().isCoverageEnabled()
-                || !mConfiguration
-                        .getCoverageOptions()
-                        .getCoverageToolchains()
-                        .contains(CoverageOptions.Toolchain.JACOCO)) {
+        if (!isJavaCoverageEnabled()) {
             return;
         }
         if (MERGE_COVERAGE_MEASUREMENTS_TEST_NAME.equals(getRunName())) {
@@ -140,7 +152,7 @@ final class JavaCodeCoverageListener extends BaseDeviceMetricCollector
             ImmutableList.Builder<String> devicePaths = ImmutableList.builder();
             devicePaths.add(testCoveragePath);
 
-            try {
+            try (AdbRootElevator adbRoot = new AdbRootElevator(device)) {
                 if (mConfiguration.getCoverageOptions().isCoverageFlushEnabled()) {
                     getCoverageFlusher().forceCoverageFlush();
                 }
@@ -149,7 +161,7 @@ final class JavaCodeCoverageListener extends BaseDeviceMetricCollector
                 String fileList = device.executeShellCommand(FIND_COVERAGE_FILES);
                 devicePaths.addAll(Splitter.on('\n').omitEmptyStrings().split(fileList));
 
-                collectAndLogCoverageMeasurementsAsRoot(device, devicePaths.build());
+                collectAndLogCoverageMeasurements(device, devicePaths.build());
 
             } catch (DeviceNotAvailableException | IOException e) {
                 throw new RuntimeException(e);
@@ -163,39 +175,12 @@ final class JavaCodeCoverageListener extends BaseDeviceMetricCollector
         }
     }
 
-    private void collectAndLogCoverageMeasurementsAsRoot(
-            ITestDevice device, List<String> devicePaths)
-            throws IOException, DeviceNotAvailableException {
-
-        // We enable root before pulling files off the device since the coverage file of the test
-        // process is written in its private directory which is otherwise inaccessible. Coverage
-        // files of other processes should be accessible without root. Note that we also restore
-        // root status to what it was after we're done to not interfere with subsequent tests that
-        // run on the device.
-        boolean wasRoot = device.isAdbRoot();
-        if (!wasRoot && !device.enableAdbRoot()) {
-            throw new RuntimeException(
-                    "Failed to enable root before pulling Java code coverage files off device");
-        }
-
-        try {
-            collectAndLogCoverageMeasurements(device, devicePaths);
-        } finally {
-            for (String devicePath : devicePaths) {
-                device.deleteFile(devicePath);
-            }
-            if (!wasRoot && !device.disableAdbRoot()) {
-                throw new RuntimeException(
-                        "Failed to disable root after pulling Java code coverage files off device");
-            }
-        }
-    }
-
     private void collectAndLogCoverageMeasurements(ITestDevice device, List<String> devicePaths)
             throws IOException, DeviceNotAvailableException {
 
         for (String devicePath : devicePaths) {
             File coverageFile = device.pullFile(devicePath);
+            device.deleteFile(devicePath);
             verifyNotNull(
                     coverageFile, "Failed to pull the Java code coverage file from %s", devicePath);
 
@@ -220,5 +205,14 @@ final class JavaCodeCoverageListener extends BaseDeviceMetricCollector
 
     private FailureDescription createCodeCoverageFailure(String message) {
         return CurrentInvocation.createFailure(message, InfraErrorIdentifier.CODE_COVERAGE_ERROR);
+    }
+
+    private boolean isJavaCoverageEnabled() {
+        return mConfiguration != null
+                && mConfiguration.getCoverageOptions().isCoverageEnabled()
+                && mConfiguration
+                        .getCoverageOptions()
+                        .getCoverageToolchains()
+                        .contains(CoverageOptions.Toolchain.JACOCO);
     }
 }

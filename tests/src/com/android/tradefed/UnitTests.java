@@ -98,12 +98,15 @@ import com.android.tradefed.device.metric.AtraceRunMetricCollectorTest;
 import com.android.tradefed.device.metric.AutoLogCollectorTest;
 import com.android.tradefed.device.metric.BaseDeviceMetricCollectorTest;
 import com.android.tradefed.device.metric.BugreportzOnFailureCollectorTest;
+import com.android.tradefed.device.metric.ClangCodeCoverageCollectorTest;
 import com.android.tradefed.device.metric.DebugHostLogOnFailureCollectorTest;
 import com.android.tradefed.device.metric.DeviceMetricDataTest;
 import com.android.tradefed.device.metric.FilePullerDeviceMetricCollectorTest;
 import com.android.tradefed.device.metric.FilePullerLogCollectorTest;
+import com.android.tradefed.device.metric.GcovCodeCoverageCollectorTest;
 import com.android.tradefed.device.metric.HostStatsdMetricCollectorTest;
 import com.android.tradefed.device.metric.IncidentReportCollectorTest;
+import com.android.tradefed.device.metric.JavaCodeCoverageCollectorTest;
 import com.android.tradefed.device.metric.LogcatOnFailureCollectorTest;
 import com.android.tradefed.device.metric.LogcatTimingMetricCollectorTest;
 import com.android.tradefed.device.metric.PerfettoPullerMetricCollectorTest;
@@ -247,8 +250,8 @@ import com.android.tradefed.targetprep.multi.MergeMultiBuildTargetPreparerTest;
 import com.android.tradefed.targetprep.multi.MixImageZipPreparerTest;
 import com.android.tradefed.targetprep.suite.SuiteApkInstallerTest;
 import com.android.tradefed.testtype.AndroidJUnitTestTest;
+import com.android.tradefed.testtype.ArtGTestTest;
 import com.android.tradefed.testtype.ArtRunTestTest;
-import com.android.tradefed.testtype.ClangCodeCoverageListenerTest;
 import com.android.tradefed.testtype.DeviceBatteryLevelCheckerTest;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunnerTest;
 import com.android.tradefed.testtype.DeviceSuiteTest;
@@ -269,10 +272,8 @@ import com.android.tradefed.testtype.InstrumentationFileTestTest;
 import com.android.tradefed.testtype.InstrumentationSerialTestTest;
 import com.android.tradefed.testtype.InstrumentationTestTest;
 import com.android.tradefed.testtype.JarHostTestTest;
-import com.android.tradefed.testtype.JavaCodeCoverageListenerTest;
 import com.android.tradefed.testtype.NativeBenchmarkTestParserTest;
 import com.android.tradefed.testtype.NativeBenchmarkTestTest;
-import com.android.tradefed.testtype.NativeCodeCoverageListenerTest;
 import com.android.tradefed.testtype.NativeStressTestParserTest;
 import com.android.tradefed.testtype.NativeStressTestTest;
 import com.android.tradefed.testtype.NoisyDryRunTestTest;
@@ -324,6 +325,7 @@ import com.android.tradefed.testtype.suite.retry.RetryReschedulerTest;
 import com.android.tradefed.util.AaptParserTest;
 import com.android.tradefed.util.AbiFormatterTest;
 import com.android.tradefed.util.AbiUtilsTest;
+import com.android.tradefed.util.AdbRootElevatorTest;
 import com.android.tradefed.util.AppVersionFetcherTest;
 import com.android.tradefed.util.ArrayUtilTest;
 import com.android.tradefed.util.BluetoothUtilsTest;
@@ -368,6 +370,7 @@ import com.android.tradefed.util.SimplePerfUtilTest;
 import com.android.tradefed.util.SimpleStatsTest;
 import com.android.tradefed.util.SizeLimitedOutputStreamTest;
 import com.android.tradefed.util.Sl4aBluetoothUtilTest;
+import com.android.tradefed.util.SparseImageUtilTest;
 import com.android.tradefed.util.StreamUtilTest;
 import com.android.tradefed.util.StringEscapeUtilsTest;
 import com.android.tradefed.util.StringUtilTest;
@@ -523,11 +526,14 @@ import org.junit.runners.Suite.SuiteClasses;
     AutoLogCollectorTest.class,
     BaseDeviceMetricCollectorTest.class,
     BugreportzOnFailureCollectorTest.class,
+    ClangCodeCoverageCollectorTest.class,
     DebugHostLogOnFailureCollectorTest.class,
     DeviceMetricDataTest.class,
     FilePullerDeviceMetricCollectorTest.class,
     FilePullerLogCollectorTest.class,
+    GcovCodeCoverageCollectorTest.class,
     IncidentReportCollectorTest.class,
+    JavaCodeCoverageCollectorTest.class,
     LogcatOnFailureCollectorTest.class,
     LogcatTimingMetricCollectorTest.class,
     PerfettoPullerMetricCollectorTest.class,
@@ -726,8 +732,8 @@ import org.junit.runners.Suite.SuiteClasses;
 
     // testtype
     AndroidJUnitTestTest.class,
+    ArtGTestTest.class,
     ArtRunTestTest.class,
-    ClangCodeCoverageListenerTest.class,
     CoverageMeasurementForwarderTest.class,
     DeviceBatteryLevelCheckerTest.class,
     DeviceJUnit4ClassRunnerTest.class,
@@ -749,10 +755,8 @@ import org.junit.runners.Suite.SuiteClasses;
     InstrumentationFileTestTest.class,
     InstrumentationTestTest.class,
     JarHostTestTest.class,
-    JavaCodeCoverageListenerTest.class,
     NativeBenchmarkTestParserTest.class,
     NativeBenchmarkTestTest.class,
-    NativeCodeCoverageListenerTest.class,
     NativeStressTestParserTest.class,
     NativeStressTestTest.class,
     NoisyDryRunTestTest.class,
@@ -823,6 +827,7 @@ import org.junit.runners.Suite.SuiteClasses;
     AaptParserTest.class,
     AbiFormatterTest.class,
     AbiUtilsTest.class,
+    AdbRootElevatorTest.class,
     AppVersionFetcherTest.class,
     ArrayUtilTest.class,
     BluetoothUtilsTest.class,
@@ -867,6 +872,7 @@ import org.junit.runners.Suite.SuiteClasses;
     SimpleStatsTest.class,
     SizeLimitedOutputStreamTest.class,
     Sl4aBluetoothUtilTest.class,
+    SparseImageUtilTest.class,
     StreamUtilTest.class,
     StringEscapeUtilsTest.class,
     StringUtilTest.class,

@@ -26,6 +26,7 @@ import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.SparseImageUtil;
 import com.android.tradefed.util.ZipUtil;
 import com.android.tradefed.util.ZipUtil2;
 import java.io.File;
@@ -48,6 +49,11 @@ public class DynamicSystemPreparer extends BaseTargetPreparer {
     )
     private String mSystemImageZipName = "system-img.zip";
 
+    @Option(
+            name = "user-data-size-in-gb",
+            description = "Number of GB to be allocated for DSU user-data.")
+    private long mUserDataSizeInGb = 16L; // 16GB
+
     private boolean isDSURunning(ITestDevice device) throws DeviceNotAvailableException {
         CollectingOutputReceiver receiver = new CollectingOutputReceiver();
         device.executeShellCommand("gsi_tool status", receiver);
@@ -67,15 +73,21 @@ public class DynamicSystemPreparer extends BaseTargetPreparer {
 
         ZipFile zipFile = null;
         File systemImage = null;
+        File rawSystemImage = null;
         File systemImageGZ = null;
         try {
             zipFile = new ZipFile(systemImageZipFile);
             systemImage = ZipUtil2.extractFileFromZip(zipFile, "system.img");
-            //     The prequest here is the system.img must be an unsparsed image.
-            //     Is there any way to detect the actual format and convert it accordingly.
+            if (SparseImageUtil.isSparse(systemImage)) {
+                rawSystemImage = FileUtil.createTempFile("system", ".raw");
+                SparseImageUtil.unsparse(systemImage, rawSystemImage);
+            } else {
+                // system.img is already non-sparse
+                rawSystemImage = systemImage;
+            }
             systemImageGZ = FileUtil.createTempFile("system", ".raw.gz");
-            long rawSize = systemImage.length();
-            ZipUtil.gzipFile(systemImage, systemImageGZ);
+            long rawSize = rawSystemImage.length();
+            ZipUtil.gzipFile(rawSystemImage, systemImageGZ);
             CLog.i("Pushing %s to %s", systemImageGZ.getAbsolutePath(), DEST_PATH);
             if (!device.pushFile(systemImageGZ, DEST_PATH)) {
                 throw new TargetSetupError(
@@ -95,8 +107,9 @@ public class DynamicSystemPreparer extends BaseTargetPreparer {
                             + "--el KEY_SYSTEM_SIZE "
                             + rawSize
                             + " "
-                            + "--el KEY_USERDATA_SIZE 8589934592 "
-                            + "--ez KEY_ENABLE_WHEN_COMPLETED true";
+                            + "--el KEY_USERDATA_SIZE "
+                            + mUserDataSizeInGb * 1024 * 1024 * 1024
+                            + " --ez KEY_ENABLE_WHEN_COMPLETED true";
             device.executeShellCommand(command);
             // Check if device shows as unavailable (as expected after the activity finished).
             device.waitForDeviceNotAvailable(DSU_MAX_WAIT_SEC * 1000);
@@ -120,6 +133,7 @@ public class DynamicSystemPreparer extends BaseTargetPreparer {
                     "fail to install the DynamicSystemUpdate", e, device.getDeviceDescriptor());
         } finally {
             FileUtil.deleteFile(systemImage);
+            FileUtil.deleteFile(rawSystemImage);
             FileUtil.deleteFile(systemImageGZ);
             ZipUtil2.closeZip(zipFile);
         }

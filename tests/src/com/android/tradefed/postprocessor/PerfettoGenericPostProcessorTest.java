@@ -306,10 +306,11 @@ public class PerfettoGenericPostProcessorTest {
     }
 
     /**
-     * Test metrics enabled with key prefixing.
+     * Test metrics enabled with key and string value prefixing.
      */
     @Test
-    public void testParsingWithKeyPrefixing() throws ConfigurationException, IOException {
+    public void testParsingWithKeyAndStringValuePrefixing()
+            throws ConfigurationException, IOException {
         setupPerfettoMetricFile(METRIC_FILE_FORMAT.text, true);
         mOptionSetter.setOptionValue(PREFIX_OPTION, PREFIX_OPTION_VALUE);
         mOptionSetter.setOptionValue(KEY_PREFIX_OPTION,
@@ -320,8 +321,8 @@ public class PerfettoGenericPostProcessorTest {
                 PREFIX_OPTION_VALUE,
                 new LogFile(
                         perfettoMetricProtoFile.getAbsolutePath(), "some.url", LogDataType.TEXTPB));
-        Map<String, Metric.Builder> parsedMetrics =
-                mProcessor.processRunMetricsAndLogs(new HashMap<>(), testLogs);
+        Map<String, Metric.Builder> parsedMetrics = mProcessor
+                .processRunMetricsAndLogs(new HashMap<>(), testLogs);
 
         assertMetricsContain(parsedMetrics,
                 "perfetto_android_hwui_metric-process_info-process_name-com.android.systemui-all_mem_min",
@@ -329,6 +330,28 @@ public class PerfettoGenericPostProcessorTest {
 
     }
 
+    /**
+     * Test metrics enabled with key and integer value prefixing.
+     */
+    @Test
+    public void testParsingWithKeyAndIntegerValuePrefixing()
+            throws ConfigurationException, IOException {
+        setupPerfettoMetricFile(METRIC_FILE_FORMAT.text, true);
+        mOptionSetter.setOptionValue(PREFIX_OPTION, PREFIX_OPTION_VALUE);
+        mOptionSetter.setOptionValue(KEY_PREFIX_OPTION,
+                "perfetto.protos.AndroidCpuMetric.CoreData.id");
+        mOptionSetter.setOptionValue(ALL_METRICS_OPTION, "true");
+        Map<String, LogFile> testLogs = new HashMap<>();
+        testLogs.put(
+                PREFIX_OPTION_VALUE,
+                new LogFile(
+                        perfettoMetricProtoFile.getAbsolutePath(), "some.url", LogDataType.TEXTPB));
+        Map<String, Metric.Builder> parsedMetrics = mProcessor
+                .processRunMetricsAndLogs(new HashMap<>(), testLogs);
+        assertMetricsContain(parsedMetrics, "perfetto_android_cpu-process_info-name-com.google."
+                + "android.apps.messaging-threads-name-BG Thread #1-core-id-1-metrics-runtime_ns",
+                14376405);
+    }
 
     /** Test the post processor can parse binary perfetto metric proto format. */
     @Test
@@ -515,6 +538,54 @@ public class PerfettoGenericPostProcessorTest {
                         "    all_mem_min: 15120269\n" +
                         "    all_mem_avg: 24468104.289592762\n" +
                         "  }\n" +
+                        "}"
+                        + "android_cpu {\n" +
+                        "  process_info {\n" +
+                        "    name: \"com.google.android.apps.messaging\"\n" +
+                        "    metrics {\n" +
+                        "      mcycles: 139\n" +
+                        "      runtime_ns: 639064902\n" +
+                        "      min_freq_khz: 576000\n" +
+                        "      max_freq_khz: 2016000\n" +
+                        "      avg_freq_khz: 324000\n" +
+                        "    }\n" +
+                        "    threads {\n" +
+                        "      name: \"BG Thread #1\"\n" +
+                        "      core {\n" +
+                        "        id: 0\n" +
+                        "        metrics {\n" +
+                        "          runtime_ns: 8371202\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "      core {\n" +
+                        "        id: 1\n" +
+                        "        metrics {\n" +
+                        "          mcycles: 0\n" +
+                        "          runtime_ns: 14376405\n" +
+                        "          min_freq_khz: 1785600\n" +
+                        "          max_freq_khz: 1785600\n" +
+                        "          avg_freq_khz: 57977\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "      metrics {\n" +
+                        "        mcycles: 0\n" +
+                        "        runtime_ns: 22747607\n" +
+                        "        min_freq_khz: 1785600\n" +
+                        "        max_freq_khz: 1785600\n" +
+                        "        avg_freq_khz: 36000\n" +
+                        "      }\n" +
+                        "      core_type {\n" +
+                        "        type: \"little\"\n" +
+                        "        metrics {\n" +
+                        "          mcycles: 0\n" +
+                        "          runtime_ns: 22747607\n" +
+                        "          min_freq_khz: 1785600\n" +
+                        "          max_freq_khz: 1785600\n" +
+                        "          avg_freq_khz: 36000\n" +
+                        "        }\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        " }\n" +
                         "}";
         FileWriter fileWriter = null;
         try {
@@ -593,3 +664,4 @@ public class PerfettoGenericPostProcessorTest {
                                                                         .getSingleString())));
     }
 }
+
