@@ -91,6 +91,9 @@ public class PythonVirtualenvPreparer extends BaseTargetPreparer {
                     CLog.e("Installing %s failed", dep);
                     throw new TargetSetupError("Failed to install dependencies with pip",
                             device.getDeviceDescriptor());
+                } else {
+                    CLog.d("Successfullly installed %s.", dep);
+                    CLog.d("Stdout: %s", c.getStdout());
                 }
                 hasDependencies = true;
             }

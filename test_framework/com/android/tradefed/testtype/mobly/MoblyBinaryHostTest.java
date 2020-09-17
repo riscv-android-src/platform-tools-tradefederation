@@ -138,7 +138,10 @@ public class MoblyBinaryHostTest
     @Override
     public final void run(ITestInvocationListener listener) {
         List<File> parFilesList = findParFiles();
-        PythonVirtualenvHelper.activate(getRunUtil(), mBuildInfo.getFile("VIRTUAL_ENV"));
+        File venvDir = mBuildInfo.getFile("VIRTUAL_ENV");
+        if (venvDir != null) {
+            PythonVirtualenvHelper.activate(getRunUtil(), venvDir);
+        }
         for (File parFile : parFilesList) {
             // TODO(b/159365341): add a failure reporting for nonexistent binary.
             if (!parFile.exists()) {
@@ -154,6 +157,10 @@ public class MoblyBinaryHostTest
             } finally {
                 reportLogs(getLogDir(), listener);
             }
+        }
+        if (venvDir != null
+                && venvDir.getAbsolutePath().startsWith(System.getProperty("java.io.tmpdir"))) {
+            FileUtil.recursiveDelete(venvDir);
         }
     }
 
@@ -277,7 +284,6 @@ public class MoblyBinaryHostTest
     private void updateConfigFile() {
         InputStream inputStream = null;
         FileWriter fileWriter = null;
-        // TODO(b/159369745): clean up the tmp files created.
         File localConfigFile = new File(getLogDir(), "local_config.yaml");
         try {
             inputStream = new FileInputStream(mConfigFile);

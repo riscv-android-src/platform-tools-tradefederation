@@ -144,6 +144,11 @@ public class PerfettoPullerMetricCollector extends FilePullerDeviceMetricCollect
             description = "Convert the raw trace file to perfetto metric file.")
     private boolean mConvertToMetricFile = true;
 
+    @Option(name = "collect-perfetto-file-size",
+            description = "Set it to true to collect the perfetto file size as part"
+                    + " of the metrics.")
+    private boolean mCollectPerfettoFileSize = false;
+
     @Option(
             name = "trace-processor-binary",
             description = "Path to the trace processor shell. This will"
@@ -193,7 +198,7 @@ public class PerfettoPullerMetricCollector extends FilePullerDeviceMetricCollect
         }
 
         // Update the file size metrics.
-        if (processSrcFile != null) {
+        if (processSrcFile != null && mCollectPerfettoFileSize) {
             double perfettoFileSizeInBytes = processSrcFile.length();
             Metric.Builder metricDurationBuilder = Metric.newBuilder();
             metricDurationBuilder.getMeasurementsBuilder().setSingleDouble(

@@ -58,8 +58,42 @@ public class AaptParser {
      * Enum of options for AAPT version used to parse APK files.
      */
     public static enum AaptVersion {
-        AAPT,
-        AAPT2
+        AAPT {
+            @Override
+            public String[] dumpBadgingCommand(File apkFile) {
+                return new String[] {"aapt", "dump", "badging", apkFile.getAbsolutePath()};
+            }
+
+            @Override
+            public String[] dumpXmlTreeCommand(File apkFile) {
+                return new String[] {
+                    "aapt", "dump", "xmltree", apkFile.getAbsolutePath(), "AndroidManifest.xml"
+                };
+            }
+        },
+
+        AAPT2 {
+            @Override
+            public String[] dumpBadgingCommand(File apkFile) {
+                return new String[] {"aapt2", "dump", "badging", apkFile.getAbsolutePath()};
+            }
+
+            @Override
+            public String[] dumpXmlTreeCommand(File apkFile) {
+                return new String[] {
+                    "aapt2",
+                    "dump",
+                    "xmltree",
+                    apkFile.getAbsolutePath(),
+                    "--file",
+                    "AndroidManifest.xml"
+                };
+            }
+        };
+
+        public abstract String[] dumpBadgingCommand(File apkFile);
+
+        public abstract String[] dumpXmlTreeCommand(File apkFile);
     };
 
     private String mPackageName;
@@ -149,37 +183,10 @@ public class AaptParser {
      * @return the {@link AaptParser} or <code>null</code> if failed to extract the information
      */
     public static AaptParser parse(File apkFile, AaptVersion aaptVersion) {
-        String[] dumpBadgingCommand;
-        String[] dumpXmlTreeCommand;
-        switch (aaptVersion) {
-            case AAPT2:
-                dumpBadgingCommand =
-                        new String[] {"aapt2", "dump", "badging", apkFile.getAbsolutePath()};
-                dumpXmlTreeCommand =
-                        new String[] {
-                            "aapt2",
-                            "dump",
-                            "xmltree",
-                            apkFile.getAbsolutePath(),
-                            "--file",
-                            "AndroidManifest.xml"
-                        };
-                break;
-            case AAPT:
-            default:
-                dumpBadgingCommand =
-                        new String[] {"aapt", "dump", "badging", apkFile.getAbsolutePath()};
-                dumpXmlTreeCommand =
-                        new String[] {
-                            "aapt",
-                            "dump",
-                            "xmltree",
-                            apkFile.getAbsolutePath(),
-                            "AndroidManifest.xml"
-                        };
-        }
         CommandResult result =
-                RunUtil.getDefault().runTimedCmdRetry(AAPT_TIMEOUT_MS, 0L, 2, dumpBadgingCommand);
+                RunUtil.getDefault()
+                        .runTimedCmdRetry(
+                                AAPT_TIMEOUT_MS, 0L, 2, aaptVersion.dumpBadgingCommand(apkFile));
 
         String stderr = result.getStderr();
         if (stderr != null && !stderr.isEmpty()) {
@@ -192,7 +199,13 @@ public class AaptParser {
                     apkFile.getAbsoluteFile(), result.getStdout());
             return null;
         }
-        result = RunUtil.getDefault().runTimedCmdRetry(AAPT_TIMEOUT_MS, 0L, 2, dumpXmlTreeCommand);
+        result =
+                RunUtil.getDefault()
+                        .runTimedCmdRetry(
+                                AAPT_TIMEOUT_MS,
+                                0L,
+                                2,
+                                aaptVersion.dumpXmlTreeCommand(apkFile));
 
         stderr = result.getStderr();
         if (stderr != null && !stderr.isEmpty()) {

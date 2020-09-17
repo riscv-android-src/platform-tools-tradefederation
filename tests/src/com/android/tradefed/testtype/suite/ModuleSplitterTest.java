@@ -37,8 +37,11 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /** Unit tests for {@link ModuleSplitter}. */
 @RunWith(JUnit4.class)
@@ -46,6 +49,8 @@ public class ModuleSplitterTest {
 
     private static final String DEFAULT_DEVICE = ConfigurationDef.DEFAULT_DEVICE_NAME;
     private TestInformation mTestInfo = TestInformation.newBuilder().build();
+    private Map<String, List<ITargetPreparer>> mSuitePreparersPerDevice =
+            new HashMap<String, List<ITargetPreparer>>();
 
     /**
      * Tests that {@link ModuleSplitter#splitConfiguration(TestInformation, LinkedHashMap, int,
@@ -69,7 +74,8 @@ public class ModuleSplitterTest {
         setter.setOptionValue("not-shardable", "true");
         runConfig.put("module1", config);
         List<ModuleDefinition> res =
-                ModuleSplitter.splitConfiguration(mTestInfo, runConfig, 5, true, true);
+                ModuleSplitter.splitConfiguration(
+                        mTestInfo, runConfig, mSuitePreparersPerDevice, 5, true, true);
         // matching 1 for 1, config to ModuleDefinition since not shardable
         assertEquals(1, res.size());
         // The original target preparer is changed since we split multiple <test> tags.
@@ -105,7 +111,8 @@ public class ModuleSplitterTest {
         setter.setOptionValue("not-strict-shardable", "true");
         runConfig.put("module1", config);
         List<ModuleDefinition> res =
-                ModuleSplitter.splitConfiguration(mTestInfo, runConfig, 5, true, true);
+                ModuleSplitter.splitConfiguration(
+                        mTestInfo, runConfig, mSuitePreparersPerDevice, 5, true, true);
         // We are sharding since even if we are not-strict-shardable, we are in dynamic context
         assertEquals(10, res.size());
         // The original target preparer is changed since we split multiple <test> tags.
@@ -140,7 +147,8 @@ public class ModuleSplitterTest {
         setter.setOptionValue("not-strict-shardable", "true");
         runConfig.put("module1", config);
         List<ModuleDefinition> res =
-                ModuleSplitter.splitConfiguration(mTestInfo, runConfig, 5, false, true);
+                ModuleSplitter.splitConfiguration(
+                        mTestInfo, runConfig, mSuitePreparersPerDevice, 5, false, true);
         // matching 1 for 1, config to ModuleDefinition since not shardable
         assertEquals(1, res.size());
         // The original target preparer is changed since we split multiple <test> tags.
@@ -169,7 +177,8 @@ public class ModuleSplitterTest {
 
         runConfig.put("module1", config);
         List<ModuleDefinition> res =
-                ModuleSplitter.splitConfiguration(mTestInfo, runConfig, 5, true, false);
+                ModuleSplitter.splitConfiguration(
+                        mTestInfo, runConfig, mSuitePreparersPerDevice, 5, true, false);
         // matching 1 for 1, config to ModuleDefinition since no intra-module sharding
         assertEquals(1, res.size());
         // The original target preparer is changed since we split multiple <test> tags.
@@ -206,7 +215,8 @@ public class ModuleSplitterTest {
 
         runConfig.put("module1", config);
         List<ModuleDefinition> res =
-                ModuleSplitter.splitConfiguration(mTestInfo, runConfig, 5, true, true);
+                ModuleSplitter.splitConfiguration(
+                        mTestInfo, runConfig, mSuitePreparersPerDevice, 5, true, true);
         // matching 1 for 1, config to ModuleDefinition since not shardable
         assertEquals(1, res.size());
         // The original target preparer is not there, it has been copied
@@ -239,7 +249,8 @@ public class ModuleSplitterTest {
 
         runConfig.put("module1", config);
         List<ModuleDefinition> res =
-                ModuleSplitter.splitConfiguration(mTestInfo, runConfig, 5, true, true);
+                ModuleSplitter.splitConfiguration(
+                        mTestInfo, runConfig, mSuitePreparersPerDevice, 5, true, true);
         // matching 1 for 1, config to ModuleDefinition since did not shard
         assertEquals(1, res.size());
         // The original target preparer is not there, it has been copied
@@ -271,14 +282,25 @@ public class ModuleSplitterTest {
         setter.setOptionValue("num-shards", "6");
         config.setTest(test);
 
+        Map<String, List<ITargetPreparer>> suitePreparers =
+                new HashMap<String, List<ITargetPreparer>>();
+        ITargetPreparer preparer1 = new StubTargetPreparer();
+        ITargetPreparer preparer2 = new StubTargetPreparer();
+        List<ITargetPreparer> preparers = Arrays.asList(preparer1, preparer2);
+        suitePreparers.put(DEFAULT_DEVICE, preparers);
+
         runConfig.put("module1", config);
         List<ModuleDefinition> res =
-                ModuleSplitter.splitConfiguration(mTestInfo, runConfig, 5, true, true);
+                ModuleSplitter.splitConfiguration(
+                        mTestInfo, runConfig, suitePreparers, 5, true, true);
         // matching 1 for 10 since tests sharding in 5 units times 2.
         assertEquals(10, res.size());
         // The original IRemoteTest does not exists anymore, new IRemoteTests have been created.
         for (ModuleDefinition m : res) {
             assertNotSame(test, m.getTests().get(0));
+            assertEquals(2, m.getSuitePreparerForDevice(DEFAULT_DEVICE).size());
+            assertNotSame(preparer1, m.getSuitePreparerForDevice(DEFAULT_DEVICE).get(0));
+            assertNotSame(preparer1, m.getSuitePreparerForDevice(DEFAULT_DEVICE).get(1));
         }
         assertTrue(config.getTests().isEmpty());
     }
@@ -302,7 +324,8 @@ public class ModuleSplitterTest {
 
         runConfig.put("module1", config);
         List<ModuleDefinition> res =
-                ModuleSplitter.splitConfiguration(mTestInfo, runConfig, 5, false, true);
+                ModuleSplitter.splitConfiguration(
+                        mTestInfo, runConfig, mSuitePreparersPerDevice, 5, false, true);
         // matching 1 for 6 since tests sharding in 6 tests.
         assertEquals(6, res.size());
         // The original IRemoteTest does not exists anymore, new IRemoteTests have been created.

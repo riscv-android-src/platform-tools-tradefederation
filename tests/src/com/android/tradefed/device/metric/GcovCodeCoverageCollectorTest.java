@@ -14,13 +14,15 @@
  * limitations under the License.
  */
 
-package com.android.tradefed.testtype;
+package com.android.tradefed.device.metric;
 
 import static com.google.common.truth.Truth.assertThat;
 
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
@@ -45,7 +47,9 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.InOrder;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
 import java.io.File;
@@ -64,9 +68,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.zip.ZipFile;
 
-/** Unit tests for {@link NativeCodeCoverageListener}. */
+/** Unit tests for {@link GcovCodeCoverageCollector}. */
 @RunWith(JUnit4.class)
-public class NativeCodeCoverageListenerTest {
+public class GcovCodeCoverageCollectorTest {
 
     private static final String RUN_NAME = "SomeTest";
     private static final int TEST_COUNT = 5;
@@ -86,7 +90,7 @@ public class NativeCodeCoverageListenerTest {
     OptionSetter mCoverageOptionsSetter = null;
 
     /** Object under test. */
-    NativeCodeCoverageListener mCodeCoverageListener;
+    GcovCodeCoverageCollector mCodeCoverageListener;
 
     @Before
     public void setUp() throws ConfigurationException {
@@ -98,16 +102,15 @@ public class NativeCodeCoverageListenerTest {
         doReturn(mCoverageOptions).when(mMockConfiguration).getCoverageOptions();
         doReturn(ImmutableList.of(mMockDevice)).when(mMockContext).getDevices();
 
-        mCodeCoverageListener = new NativeCodeCoverageListener();
+        mCodeCoverageListener = new GcovCodeCoverageCollector();
         mCodeCoverageListener.setConfiguration(mMockConfiguration);
-        mCodeCoverageListener.init(mMockContext, mFakeListener);
     }
 
     @Test
     public void test_logsCoverageZip() throws Exception {
         enableGcovCoverage();
         // Setup mocks to write the coverage measurement to the file.
-        doReturn(true).when(mMockDevice).enableAdbRoot();
+        doReturn(true).when(mMockDevice).isAdbRoot();
         File tar =
                 createTar(
                         ImmutableMap.of(
@@ -118,6 +121,7 @@ public class NativeCodeCoverageListenerTest {
         doReturn(tar).when(mMockDevice).pullFile(anyString());
 
         // Simulate a test run.
+        mCodeCoverageListener.init(mMockContext, mFakeListener);
         mCodeCoverageListener.testRunStarted(RUN_NAME, TEST_COUNT);
         Map<String, String> metric = new HashMap<>();
         mCodeCoverageListener.testRunEnded(ELAPSED_TIME, TfMetricProtoUtil.upgradeConvert(metric));
@@ -145,10 +149,11 @@ public class NativeCodeCoverageListenerTest {
     @Test
     public void testNoCoverageFiles_logsEmptyZip() throws Exception {
         enableGcovCoverage();
-        doReturn(true).when(mMockDevice).enableAdbRoot();
+        doReturn(true).when(mMockDevice).isAdbRoot();
         doReturn(createTar(ImmutableMap.of())).when(mMockDevice).pullFile(anyString());
 
         // Simulate a test run.
+        mCodeCoverageListener.init(mMockContext, mFakeListener);
         mCodeCoverageListener.testRunStarted(RUN_NAME, TEST_COUNT);
         Map<String, String> metric = new HashMap<>();
         mCodeCoverageListener.testRunEnded(ELAPSED_TIME, TfMetricProtoUtil.upgradeConvert(metric));
@@ -171,17 +176,18 @@ public class NativeCodeCoverageListenerTest {
         enableGcovCoverage();
         mCoverageOptionsSetter.setOptionValue("coverage-flush", "true");
 
-        doReturn(true).when(mMockDevice).enableAdbRoot();
         doReturn(true).when(mMockDevice).isAdbRoot();
         doReturn(createTar(ImmutableMap.of())).when(mMockDevice).pullFile(anyString());
 
         // Simulate a test run.
+        mCodeCoverageListener.init(mMockContext, mFakeListener);
         mCodeCoverageListener.testRunStarted(RUN_NAME, TEST_COUNT);
         Map<String, String> metric = new HashMap<>();
         mCodeCoverageListener.testRunEnded(ELAPSED_TIME, TfMetricProtoUtil.upgradeConvert(metric));
 
-        // Verify the flush-all-coverage command was called.
-        verify(mMockDevice).executeShellCommand("kill -37 -1");
+        // Verify the flush-all-coverage command was called twice - once on init(...) and once
+        // on test run end.
+        verify(mMockDevice, times(2)).executeShellCommand("kill -37 -1");
     }
 
     @Test
@@ -191,28 +197,30 @@ public class NativeCodeCoverageListenerTest {
         mCoverageOptionsSetter.setOptionValue("coverage-processes", "mediaserver");
         mCoverageOptionsSetter.setOptionValue("coverage-processes", "adbd");
 
-        doReturn(true).when(mMockDevice).enableAdbRoot();
         doReturn(true).when(mMockDevice).isAdbRoot();
         doReturn("123").when(mMockDevice).getProcessPid("mediaserver");
         doReturn("56789").when(mMockDevice).getProcessPid("adbd");
         doReturn(createTar(ImmutableMap.of())).when(mMockDevice).pullFile(anyString());
 
         // Simulate a test run.
+        mCodeCoverageListener.init(mMockContext, mFakeListener);
         mCodeCoverageListener.testRunStarted(RUN_NAME, TEST_COUNT);
         Map<String, String> metric = new HashMap<>();
         mCodeCoverageListener.testRunEnded(ELAPSED_TIME, TfMetricProtoUtil.upgradeConvert(metric));
 
-        // Verify the flush-coverage command was called with the specific pids.
-        verify(mMockDevice).executeShellCommand("kill -37 123 56789");
+        // Verify the flush-coverage command was called with the specific pids twice - once on
+        // init(...) and once on test run end.
+        verify(mMockDevice, times(2)).executeShellCommand("kill -37 123 56789");
     }
 
     @Test
     public void testFailure_unableToPullFile() throws Exception {
         enableGcovCoverage();
         // Setup mocks.
-        doReturn(true).when(mMockDevice).enableAdbRoot();
+        doReturn(true).when(mMockDevice).isAdbRoot();
 
         // Simulate a test run.
+        mCodeCoverageListener.init(mMockContext, mFakeListener);
         mCodeCoverageListener.testRunStarted(RUN_NAME, TEST_COUNT);
 
         Map<String, String> metric = new HashMap<>();
@@ -228,7 +236,11 @@ public class NativeCodeCoverageListenerTest {
         enableGcovCoverage();
         mCodeCoverageListener.setCollectOnTestEnd(false);
 
-        // Simute a test run.
+        // Setup mocks.
+        doReturn(true).when(mMockDevice).isAdbRoot();
+
+        // Simulate a test run.
+        mCodeCoverageListener.init(mMockContext, mFakeListener);
         mCodeCoverageListener.testRunStarted(RUN_NAME, TEST_COUNT);
         Map<String, String> metric = new HashMap<>();
         mCodeCoverageListener.testRunEnded(ELAPSED_TIME, TfMetricProtoUtil.upgradeConvert(metric));
@@ -261,6 +273,25 @@ public class NativeCodeCoverageListenerTest {
             assertThat(ByteString.readFrom(Files.newInputStream(path)))
                     .isEqualTo(ByteString.copyFromUtf8("coverage.gcda"));
         }
+    }
+
+    @Test
+    public void testInit_adbRootAndCoverageFlushed() throws Exception {
+        enableGcovCoverage();
+
+        // Setup mocks.
+        when(mMockDevice.isAdbRoot()).thenReturn(false).thenReturn(true);
+        when(mMockDevice.enableAdbRoot()).thenReturn(true);
+
+        // Test init(...).
+        mCodeCoverageListener.init(mMockContext, mFakeListener);
+
+        InOrder inOrder = Mockito.inOrder(mMockDevice);
+        inOrder.verify(mMockDevice).isAdbRoot();
+        inOrder.verify(mMockDevice).enableAdbRoot();
+        inOrder.verify(mMockDevice).executeShellCommand("kill -37 -1");
+        inOrder.verify(mMockDevice).executeShellCommand(anyString());
+        inOrder.verify(mMockDevice).disableAdbRoot();
     }
 
     /** An {@link ITestInvocationListener} which reads test log data streams for verification. */
