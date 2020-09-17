@@ -16,12 +16,18 @@
 
 package com.android.tradefed.util;
 
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.*;
+
+import com.google.common.base.Throwables;
 
 import org.junit.After;
 import org.junit.Test;
 
 import java.io.File;
+import java.nio.file.Paths;
 
 public class PythonVirtualenvHelperTest {
 
@@ -59,6 +65,11 @@ public class PythonVirtualenvHelperTest {
         File pythonBin = new File(mVenvDir, "bin");
         pythonBin.mkdir();
         IRunUtil runUtil = mock(RunUtil.class);
+        CommandResult result = new CommandResult(CommandStatus.SUCCESS);
+        result.setStdout(
+                "Name: pip\nLocation: "
+                        + Paths.get(mVenvDir.getAbsolutePath(), "lib/python3.8/site-packages"));
+        when(runUtil.runTimedCmd(anyLong(), anyString(), eq("show"), eq("pip"))).thenReturn(result);
 
         PythonVirtualenvHelper.activate(runUtil, mVenvDir.getAbsolutePath());
 
@@ -72,5 +83,27 @@ public class PythonVirtualenvHelperTest {
                                 + ":"
                                 + System.getenv("PYTHONPATH"));
         verify(runUtil).unsetEnvVariable("PYTHONHOME");
+    }
+
+    @Test
+    public void testActivate_pipShowFails() throws Exception {
+        mVenvDir = FileUtil.createTempDir("venv");
+        File pythonBin = new File(mVenvDir, "bin");
+        pythonBin.mkdir();
+        IRunUtil runUtil = mock(RunUtil.class);
+        when(runUtil.runTimedCmd(anyLong(), anyString(), eq("show"), eq("pip")))
+                .thenReturn(new CommandResult());
+
+        try {
+            PythonVirtualenvHelper.activate(runUtil, mVenvDir.getAbsolutePath());
+            fail("Should have thrown an exception");
+        } catch (RuntimeException e) {
+            assertThat(
+                    String.format(
+                            "An unexpected exception was thrown, full stack trace: %s",
+                            Throwables.getStackTraceAsString(e)),
+                    e.getMessage(),
+                    containsString("pip3 show pip"));
+        }
     }
 }

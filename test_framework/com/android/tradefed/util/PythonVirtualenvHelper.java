@@ -19,7 +19,9 @@ package com.android.tradefed.util;
 import com.android.tradefed.log.LogUtil.CLog;
 
 import java.io.File;
+import java.util.stream.Stream;
 
+/** A helper class for activating Python 3 virtual environment. */
 public class PythonVirtualenvHelper {
 
     private static final String PATH = "PATH";
@@ -72,16 +74,57 @@ public class PythonVirtualenvHelper {
         }
         String separater = ":";
         String pythonPath =
-                new File(virtualenvPath, "lib/python3.8/site-packages").getAbsolutePath()
+                getPackageInstallLocation(runUtil, virtualenvPath)
                         + separater
                         + System.getenv(PYTHONPATH);
         runUtil.setEnvVariable(PATH, pythonBinDir + separater + System.getenv().get(PATH));
         runUtil.setEnvVariable(VIRTUAL_ENV, virtualenvPath);
         runUtil.setEnvVariable(PYTHONPATH, pythonPath);
         runUtil.unsetEnvVariable(PYTHONHOME);
-        CLog.d("Set environment variables:");
+        CLog.d("Activating virtual environment:");
         CLog.d("%s: %s", PATH, pythonBinDir + separater + System.getenv().get(PATH));
         CLog.d("%s: %s", VIRTUAL_ENV, virtualenvPath);
         CLog.d("%s: %s", PYTHONPATH, pythonPath);
+    }
+
+    /**
+     * Gets the absolute path to the pip3 binary in the given venv directory.
+     *
+     * @param virtualenvPath the path to the venv directory.
+     * @return a string representing the absolute path to the pip3 binary.
+     */
+    private static String getPipPath(String virtualenvPath) {
+        File pipFile = new File(PythonVirtualenvHelper.getPythonBinDir(virtualenvPath), "pip3");
+        return pipFile.getAbsolutePath();
+    }
+
+    /**
+     * Gets python package install location.
+     *
+     * <p>This method will call /path/to/venv/bin/pip3 show pip and parse out package location from
+     * stdout output.
+     *
+     * @param runUtil an utility object for running for running commands.
+     * @param virtualenvPath the path to the created virtualenv directory.
+     * @return a string representing the absolute path to the location where Python packages are
+     *     installed.
+     */
+    private static String getPackageInstallLocation(IRunUtil runUtil, String virtualenvPath) {
+        CommandResult result =
+                runUtil.runTimedCmd(60000, getPipPath(virtualenvPath), "show", "pip");
+        if (result.getStatus() != CommandStatus.SUCCESS) {
+            throw new RuntimeException(
+                    String.format(
+                            "Fail to run command: %s show pip.\nStatus:%s\nStdout:%s\nStderr:%s",
+                            getPipPath(virtualenvPath),
+                            result.getStatus(),
+                            result.getStdout(),
+                            result.getStderr()));
+        }
+        String stdout = result.getStdout();
+        String[] lines = stdout.split("\n");
+        String locationLine =
+                Stream.of(lines).filter(x -> x.startsWith("Location")).findFirst().orElse("");
+        return locationLine.split(" ")[1];
     }
 }
