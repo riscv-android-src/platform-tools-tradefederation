@@ -149,6 +149,10 @@ public class GTest extends GTestBase implements IDeviceTest {
         return testPath.toString();
     }
 
+    public void setNativeTestDevicePath(String path) {
+        mNativeTestDevicePath = path;
+    }
+
     /**
      * Executes all native tests in a folder as well as in all subfolders recursively.
      *
