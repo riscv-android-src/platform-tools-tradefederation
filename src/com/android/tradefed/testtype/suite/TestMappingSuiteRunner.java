@@ -219,9 +219,9 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
         if (configPath == null) {
             throw new RuntimeException(String.format("Configuration path is null."));
         }
-        File configFie = new File(configPath);
-        if (!configFie.exists()) {
-            configFie = null;
+        File configFile = new File(configPath);
+        if (!configFile.exists()) {
+            configFile = null;
         }
         // De-duplicate test infos so that there won't be duplicate test options.
         testInfos = dedupTestInfos(testInfos);
@@ -229,10 +229,10 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
             // Clean up all the test options injected in SuiteModuleLoader.
             super.cleanUpSuiteSetup();
             super.clearModuleArgs();
-            if (configFie != null) {
+            if (configFile != null) {
                 clearConfigPaths();
                 // Set config path to BaseTestSuite to limit the search.
-                addConfigPaths(configFie);
+                addConfigPaths(configFile);
             }
             // Inject the test options from each test info to SuiteModuleLoader.
             parseOptions(testInfo);
