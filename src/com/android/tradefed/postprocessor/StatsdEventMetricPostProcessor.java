@@ -24,6 +24,7 @@ import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.util.MultiMap;
+import com.android.tradefed.util.ProtoUtil;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import com.google.protobuf.Descriptors.FieldDescriptor;
@@ -148,48 +149,6 @@ public class StatsdEventMetricPostProcessor extends StatsdGenericPostProcessor {
         return metrics;
     }
 
-    /**
-     * Get a nested field reference, i.e. field_1.field_2.field_3, from a proto message as a string.
-     * Returns an empty list when a field cannot be found, either because it's invalid or does not
-     * exist in the message.
-     *
-     * <p>If the field reference contains repeated fields, each instance is expanded, resulting in a
-     * list of strings.
-     */
-    private List<String> getNestedFieldFromMessageAsStrings(
-            Object messageOrObject, List<String> references) {
-        if (references.isEmpty()) {
-            return Arrays.asList(String.valueOf(messageOrObject));
-        }
-        if (!(messageOrObject instanceof Message)) {
-            CLog.e(
-                    "Attempting to read field %s from object of type %s, "
-                            + "which is not a proto message.",
-                    references.get(0), messageOrObject.getClass());
-            return new ArrayList<String>();
-        }
-        Message message = (Message) messageOrObject;
-        String reference = references.get(0);
-        FieldDescriptor fieldDescriptor = message.getDescriptorForType().findFieldByName(reference);
-        if (fieldDescriptor == null) {
-            CLog.e("Could not find field %s in message %s.", reference, message);
-            return new ArrayList<String>();
-        }
-        Object fieldValue = message.getField(fieldDescriptor);
-        if (fieldValue instanceof List) {
-            return ((List<? extends Object>) fieldValue)
-                    .stream()
-                    .flatMap(
-                            v ->
-                                    getNestedFieldFromMessageAsStrings(
-                                                    v, references.subList(1, references.size()))
-                                            .stream())
-                    .collect(Collectors.toList());
-        }
-        return getNestedFieldFromMessageAsStrings(
-                fieldValue, references.subList(1, references.size()));
-    }
-
     /** Fill in the placeholders in the formatter using the proto message as source. */
     private List<String> fillInPlaceholders(
             String formatter, EventMetricData eventMetric, Message atomContent) {
@@ -202,12 +161,12 @@ public class StatsdEventMetricPostProcessor extends StatsdGenericPostProcessor {
             List<String> actual = new ArrayList();
             if (fieldReference.startsWith("_")) {
                 actual.addAll(
-                        getNestedFieldFromMessageAsStrings(
+                        ProtoUtil.getNestedFieldFromMessageAsStrings(
                                 eventMetric,
                                 Arrays.asList(fieldReference.substring(1).split("\\."))));
             } else {
                 actual.addAll(
-                        getNestedFieldFromMessageAsStrings(
+                        ProtoUtil.getNestedFieldFromMessageAsStrings(
                                 atomContent, Arrays.asList(fieldReference.split("\\."))));
             }
             // If both the existing expansion results and newly expanded results have multiple
