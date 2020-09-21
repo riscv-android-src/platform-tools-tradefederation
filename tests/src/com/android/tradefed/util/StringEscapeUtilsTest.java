@@ -88,4 +88,30 @@ public class StringEscapeUtilsTest {
         assertArrayEquals(new String[]{"foo", "bar bar"},
                 StringEscapeUtils.paramsToArgs(expected).toArray());
     }
+
+    /**
+     * Simple test that {@link StringEscapeUtils#escapeShell(String)} escapes the is greater than
+     * sign.
+     */
+    @Test
+    public void testEscapesGreaterSigns() {
+        String escaped_str = StringEscapeUtils.escapeShell(">greater>signs");
+        assertEquals("\\>greater\\>signs", escaped_str);
+    }
+
+    /**
+     * Simple test that {@link StringEscapeUtils#escapeShell(String)} escapes the is less than sign.
+     */
+    @Test
+    public void testEscapesLessSigns() {
+        String escaped_str = StringEscapeUtils.escapeShell("<less<signs");
+        assertEquals("\\<less\\<signs", escaped_str);
+    }
+
+    /** Simple test that {@link StringEscapeUtils#escapeShell(String)} escapes the or sign. */
+    @Test
+    public void testEscapesOrSigns() {
+        String escaped_str = StringEscapeUtils.escapeShell("|or|signs");
+        assertEquals("\\|or\\|signs", escaped_str);
+    }
 }
