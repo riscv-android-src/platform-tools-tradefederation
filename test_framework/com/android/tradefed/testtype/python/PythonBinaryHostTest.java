@@ -16,6 +16,7 @@
 package com.android.tradefed.testtype.python;
 
 import com.android.annotations.VisibleForTesting;
+import com.android.ddmlib.Log;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.Option;
@@ -308,23 +309,20 @@ public class PythonBinaryHostTest implements IRemoteTest, ITestFilterReceiver {
         }
         // Add all the other options
         commandLine.addAll(mTestOptions);
-
         CommandResult result =
                 getRunUtil().runTimedCmd(mTestTimeout, commandLine.toArray(new String[0]));
         String runName = pyFile.getName();
         PythonForwarder forwarder = new PythonForwarder(listener, runName);
-        if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
-            CLog.e(
-                    "Something went wrong when running the python binary:\nstdout: "
-                            + "%s\nstderr:%s",
-                    result.getStdout(), result.getStderr());
-        }
         if (result.getStdout() != null) {
+            CLog.logAndDisplay(Log.LogLevel.INFO, "\nstdout:\n%s", result.getStdout());
             try (InputStreamSource data =
                     new ByteArrayInputStreamSource(result.getStdout().getBytes())) {
                 listener.testLog(
                         String.format(PYTHON_LOG_STDOUT_FORMAT, runName), LogDataType.TEXT, data);
             }
+        }
+        if (result.getStderr() != null) {
+            CLog.logAndDisplay(Log.LogLevel.INFO, "\nstderr:\n%s", result.getStderr());
         }
         File stderrFile = null;
         try {
