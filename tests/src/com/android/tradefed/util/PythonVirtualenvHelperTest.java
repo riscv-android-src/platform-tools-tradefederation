@@ -39,14 +39,40 @@ public class PythonVirtualenvHelperTest {
     }
 
     @Test
+    public void testActivate_shouldThrowNPE_whenVirtualenvPathIsNull() throws Exception {
+        String nullVirtualenvPath = null;
+        IRunUtil runUtil = mock(RunUtil.class);
+
+        try {
+            PythonVirtualenvHelper.activate(runUtil, nullVirtualenvPath);
+            fail("Should have thrown an exception");
+        } catch (NullPointerException e) {
+            assertThat(
+                    String.format(
+                            "An unexpected exception was thrown, full stack trace: %s",
+                            Throwables.getStackTraceAsString(e)),
+                    e.getMessage(),
+                    containsString("Path to the Python virtual environment should not be null"));
+        }
+    }
+
+    @Test
     public void testActivate_whenVirtualenvPathIsInvalid() throws Exception {
         mVenvDir = FileUtil.createTempDir("venv");
         mVenvDir.delete();
         IRunUtil runUtil = mock(RunUtil.class);
 
-        PythonVirtualenvHelper.activate(runUtil, mVenvDir.getAbsolutePath());
-
-        verifyZeroInteractions(runUtil);
+        try {
+            PythonVirtualenvHelper.activate(runUtil, mVenvDir.getAbsolutePath());
+            fail("Should have thrown an exception");
+        } catch (RuntimeException e) {
+            assertThat(
+                    String.format(
+                            "An unexpected exception was thrown, full stack trace: %s",
+                            Throwables.getStackTraceAsString(e)),
+                    e.getMessage(),
+                    containsString("Invalid python virtualenv path"));
+        }
     }
 
     @Test
@@ -54,9 +80,17 @@ public class PythonVirtualenvHelperTest {
         mVenvDir = FileUtil.createTempDir("venv");
         IRunUtil runUtil = mock(RunUtil.class);
 
-        PythonVirtualenvHelper.activate(runUtil, mVenvDir.getAbsolutePath());
-
-        verifyZeroInteractions(runUtil);
+        try {
+            PythonVirtualenvHelper.activate(runUtil, mVenvDir.getAbsolutePath());
+            fail("Should have thrown an exception");
+        } catch (RuntimeException e) {
+            assertThat(
+                    String.format(
+                            "An unexpected exception was thrown, full stack trace: %s",
+                            Throwables.getStackTraceAsString(e)),
+                    e.getMessage(),
+                    containsString("Invalid python virtualenv path"));
+        }
     }
 
     @Test
