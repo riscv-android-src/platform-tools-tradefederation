@@ -34,15 +34,18 @@ public class PythonVirtualenvHelper {
      *
      * <p>This method will check the directory existence.
      *
-     * @return python bin directory; null if not exist.
+     * @return str, the path to the python bin directory in venv.
+     * @throws NullPointerException if arg virtualenvPath is null.
+     * @throws RuntimeException if /path/to/venv/bin does not exist.
      */
     public static String getPythonBinDir(String virtualenvPath) {
         if (virtualenvPath == null) {
-            return null;
+            throw new NullPointerException(
+                    "Path to the Python virtual environment should not be null");
         }
         File res = new File(virtualenvPath, "bin");
         if (!res.exists()) {
-            return null;
+            throw new RuntimeException("Invalid python virtualenv path " + res.getAbsolutePath());
         }
         return res.getAbsolutePath();
     }
@@ -67,11 +70,6 @@ public class PythonVirtualenvHelper {
      */
     public static void activate(IRunUtil runUtil, String virtualenvPath) {
         String pythonBinDir = getPythonBinDir(virtualenvPath);
-        if (pythonBinDir == null) {
-            CLog.e("Invalid python virtualenv path. Using python from system path.");
-            // TODO(b/166688151): throw an exception to fail early.
-            return;
-        }
         String separater = ":";
         String pythonPath =
                 getPackageInstallLocation(runUtil, virtualenvPath)
