@@ -16,10 +16,15 @@
 
 package com.android.tradefed.targetprep;
 
+import static com.google.common.truth.Truth.assertThat;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.android.tradefed.config.OptionSetter;
+import com.android.tradefed.device.UserInfo;
 import com.android.tradefed.invoker.TestInformation;
 
 import org.junit.Before;
@@ -31,6 +36,9 @@ import org.mockito.Answers;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @RunWith(JUnit4.class)
 public class RunOnSecondaryUserTargetPreparerTest {
@@ -65,6 +73,29 @@ public class RunOnSecondaryUserTargetPreparerTest {
     }
 
     @Test
+    public void setUp_secondaryUserAlreadyExists_doesNotCreateSecondaryUser() throws Exception {
+        Map<Integer, UserInfo> userInfos = new HashMap<>();
+        userInfos.put(2, new UserInfo(2, "secondary", /* flag= */ 0, /* isRunning= */ true));
+        when(mTestInfo.getDevice().getUserInfos()).thenReturn(userInfos);
+
+        mPreparer.setUp(mTestInfo);
+
+        verify(mTestInfo.getDevice(), never()).executeShellCommand(any());
+    }
+
+    @Test
+    public void setUp_secondaryUserAlreadyExists_runsTestAsExistingUser() throws Exception {
+        Map<Integer, UserInfo> userInfos = new HashMap<>();
+        userInfos.put(3, new UserInfo(3, "secondary", /* flag= */ 0, /* isRunning= */ true));
+        when(mTestInfo.getDevice().getUserInfos()).thenReturn(userInfos);
+
+        mPreparer.setUp(mTestInfo);
+
+        verify(mTestInfo.properties())
+                .put(RunOnWorkProfileTargetPreparer.RUN_TESTS_AS_USER_KEY, "3");
+    }
+
+    @Test
     public void setUp_setsRunTestsAsUser() throws Exception {
         String expectedCreateUserCommand = "pm create-user secondary";
         when(mTestInfo.getDevice().executeShellCommand(expectedCreateUserCommand))
@@ -74,6 +105,20 @@ public class RunOnSecondaryUserTargetPreparerTest {
 
         verify(mTestInfo.properties())
                 .put(RunOnSecondaryUserTargetPreparer.RUN_TESTS_AS_USER_KEY, "2");
+    }
+
+    @Test
+    public void setUp_secondaryUserAlreadyExists_installsPackagesInExistingUser() throws Exception {
+        Map<Integer, UserInfo> userInfos = new HashMap<>();
+        userInfos.put(3, new UserInfo(3, "secondary", /* flag= */ 0, /* isRunning= */ true));
+        when(mTestInfo.getDevice().getUserInfos()).thenReturn(userInfos);
+        mOptionSetter.setOptionValue(
+                RunOnWorkProfileTargetPreparer.TEST_PACKAGE_NAME_OPTION, "com.android.testpackage");
+
+        mPreparer.setUp(mTestInfo);
+
+        verify(mTestInfo.getDevice())
+                .executeShellCommand("pm install-existing --user 3 com.android.testpackage");
     }
 
     @Test
@@ -92,7 +137,31 @@ public class RunOnSecondaryUserTargetPreparerTest {
     }
 
     @Test
-    public void tearDown_removesWorkUser() throws Exception {
+    public void setUp_workProfileAlreadyExists_disablesTearDown() throws Exception {
+        Map<Integer, UserInfo> userInfos = new HashMap<>();
+        userInfos.put(3, new UserInfo(3, "secondary", /* flag= */ 0, /* isRunning= */ true));
+        when(mTestInfo.getDevice().getUserInfos()).thenReturn(userInfos);
+        mOptionSetter.setOptionValue("disable-tear-down", "false");
+
+        mPreparer.setUp(mTestInfo);
+
+        assertThat(mPreparer.isTearDownDisabled()).isTrue();
+    }
+
+    @Test
+    public void setUp_doesNotDisableTearDown() throws Exception {
+        String expectedCreateUserCommand = "pm create-user secondary";
+        when(mTestInfo.getDevice().executeShellCommand(expectedCreateUserCommand))
+                .thenReturn(CREATED_USER_2_MESSAGE);
+        mOptionSetter.setOptionValue("disable-tear-down", "false");
+
+        mPreparer.setUp(mTestInfo);
+
+        assertThat(mPreparer.isTearDownDisabled()).isFalse();
+    }
+
+    @Test
+    public void tearDown_removesSecondaryUser() throws Exception {
         when(mTestInfo.properties().get(RunOnSecondaryUserTargetPreparer.RUN_TESTS_AS_USER_KEY))
                 .thenReturn("2");
 

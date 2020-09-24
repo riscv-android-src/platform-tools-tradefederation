@@ -20,12 +20,14 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.UserInfo;
 import com.android.tradefed.invoker.TestInformation;
 
 import com.google.common.annotations.VisibleForTesting;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * An {@link ITargetPreparer} that creates a work profile in setup, and marks that tests should be
@@ -51,7 +53,14 @@ public class RunOnWorkProfileTargetPreparer extends BaseTargetPreparer {
     @Override
     public void setUp(TestInformation testInfo)
             throws TargetSetupError, DeviceNotAvailableException {
-        int workProfileId = createWorkProfile(testInfo.getDevice());
+        int workProfileId = getWorkProfileId(testInfo.getDevice());
+
+        if (workProfileId != -1) {
+            // There is already a work profile - so we don't want to remove it
+            setDisableTearDown(true);
+        } else {
+            workProfileId = createWorkProfile(testInfo.getDevice());
+        }
 
         for (String pkg : mTestPackages) {
             testInfo.getDevice()
@@ -59,6 +68,16 @@ public class RunOnWorkProfileTargetPreparer extends BaseTargetPreparer {
         }
 
         testInfo.properties().put(RUN_TESTS_AS_USER_KEY, Integer.toString(workProfileId));
+    }
+
+    /** Get the id of a work profile currently on the device. -1 if there is none */
+    private static int getWorkProfileId(ITestDevice device) throws DeviceNotAvailableException {
+        for (Map.Entry<Integer, UserInfo> userInfo : device.getUserInfos().entrySet()) {
+            if (userInfo.getValue().isManagedProfile()) {
+                return userInfo.getKey();
+            }
+        }
+        return -1;
     }
 
     /** Creates a work profile and returns the new user ID. */
