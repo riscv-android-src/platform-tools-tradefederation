@@ -604,7 +604,7 @@ public class DynamicRemoteFileResolverTest {
 
         IRemoteFileResolver actual = loader.load(NullFileResolver.PROTOCOL, ImmutableMap.of());
 
-        assertThat(actual).isSameAs(expected);
+        assertThat(actual).isSameInstanceAs(expected);
     }
 
     @Test
@@ -616,7 +616,7 @@ public class DynamicRemoteFileResolverTest {
         IRemoteFileResolver resolver1 = loader1.load(NullFileResolver.PROTOCOL, ImmutableMap.of());
         IRemoteFileResolver resolver2 = loader2.load(NullFileResolver.PROTOCOL, ImmutableMap.of());
 
-        assertThat(resolver1).isNotSameAs(resolver2);
+        assertThat(resolver1).isNotSameInstanceAs(resolver2);
     }
 
     @Test
@@ -968,15 +968,9 @@ public class DynamicRemoteFileResolverTest {
     public static final class DuplicateNullFileResolver extends NullFileResolver {}
 
     private static final Correspondence<File, File> FILE_PATH_EQUIVALENCE =
-            new Correspondence<File, File>() {
-                @Override
-                public boolean compare(File actual, File expected) {
-                    return expected.getAbsolutePath().equals(actual.getAbsolutePath());
-                }
-
-                @Override
-                public String toString() {
-                    return "is equivalent to";
-                }
-            };
+            Correspondence.from(
+                    (File actual, File expected) -> {
+                        return expected.getAbsolutePath().equals(actual.getAbsolutePath());
+                    },
+                    "is equivalent to");
 }
