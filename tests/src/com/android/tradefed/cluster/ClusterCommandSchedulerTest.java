@@ -845,6 +845,70 @@ public class ClusterCommandSchedulerTest {
         handler.invocationInitiated(context);
     }
 
+    @Test
+    public void testInvocationEventHandler_withSubprocessCommandException() {
+        ClusterCommand mockCommand = new ClusterCommand(COMMAND_ID, TASK_ID, CMD_LINE);
+        IInvocationContext context = new InvocationContext();
+        ITestDevice mockTestDevice = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(mockTestDevice.getSerialNumber()).andReturn(DEVICE_SERIAL);
+        EasyMock.expect(mockTestDevice.getIDevice()).andReturn(new StubDevice(DEVICE_SERIAL));
+        context.addAllocatedDevice("", mockTestDevice);
+        IBuildInfo mockBuildInfo = EasyMock.createMock(IBuildInfo.class);
+        context.addDeviceBuildInfo("", mockBuildInfo);
+        ClusterCommandScheduler.InvocationEventHandler handler =
+                mScheduler.new InvocationEventHandler(mockCommand);
+        mMockClusterOptions.setCollectEarlyTestSummary(true);
+
+        mMockEventUploader.postEvent(
+                checkClusterCommandEvent(ClusterCommandEvent.Type.InvocationInitiated));
+        mMockEventUploader.flush();
+        mMockEventUploader.postEvent(
+                checkClusterCommandEvent(ClusterCommandEvent.Type.InvocationStarted));
+        mMockEventUploader.flush();
+        mMockEventUploader.postEvent(
+                checkClusterCommandEvent(ClusterCommandEvent.Type.TestRunInProgress));
+        EasyMock.expectLastCall().anyTimes();
+        mMockEventUploader.postEvent(
+                checkClusterCommandEvent(ClusterCommandEvent.Type.InvocationEnded));
+        mMockEventUploader.flush();
+        Capture<ClusterCommandEvent> capture = new Capture<>();
+        mMockEventUploader.postEvent(EasyMock.capture(capture));
+        mMockEventUploader.flush();
+
+        EasyMock.replay(mMockEventUploader, mockBuildInfo, mockTestDevice);
+        handler.invocationInitiated(context);
+        List<TestSummary> summaries = new ArrayList<>();
+        summaries.add(
+                new TestSummary(new TestSummary.TypedString("http://uri", TestSummary.Type.URI)));
+        handler.putEarlySummary(summaries);
+        handler.putSummary(summaries);
+        handler.invocationStarted(context);
+        handler.invocationFailed(
+                new SubprocessCommandException(
+                        "error_message", new Throwable("subprocess_command_error_message")));
+        handler.invocationEnded(100L);
+        context.addAllocatedDevice(DEVICE_SERIAL, mockTestDevice);
+        Map<ITestDevice, FreeDeviceState> releaseMap = new HashMap<>();
+        releaseMap.put(mockTestDevice, FreeDeviceState.AVAILABLE);
+        handler.invocationComplete(context, releaseMap);
+        EasyMock.verify(mMockEventUploader, mockBuildInfo, mockTestDevice);
+        ClusterCommandEvent capturedEvent = capture.getValue();
+        assertTrue(capturedEvent.getType().equals(ClusterCommandEvent.Type.InvocationCompleted));
+        assertTrue(
+                ((String) capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_ERROR))
+                        .contains("SubprocessCommandException"));
+        assertEquals(
+                "subprocess_command_error_message",
+                capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_SUBPROCESS_COMMAND_ERROR));
+        assertEquals(
+                "0", capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_FAILED_TEST_COUNT));
+        assertEquals(
+                "0", capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_PASSED_TEST_COUNT));
+        assertEquals(
+                "URI: http://uri\n",
+                capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_SUMMARY));
+    }
+
     /**
      * Test that when dry-run is used we validate the config and no ConfigurationException gets
      * thrown.
