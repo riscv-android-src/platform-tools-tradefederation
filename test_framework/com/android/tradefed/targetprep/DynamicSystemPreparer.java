@@ -29,9 +29,11 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.SparseImageUtil;
 import com.android.tradefed.util.ZipUtil;
 import com.android.tradefed.util.ZipUtil2;
+
+import org.apache.commons.compress.archivers.zip.ZipFile;
+
 import java.io.File;
 import java.io.IOException;
-import org.apache.commons.compress.archivers.zip.ZipFile;
 
 /**
  * An {@link ITargetPreparer} that sets up a system image on top of a device build with the Dynamic
@@ -44,9 +46,8 @@ public class DynamicSystemPreparer extends BaseTargetPreparer {
     private static final String DEST_PATH = "/sdcard/system.raw.gz";
 
     @Option(
-        name = "system-image-zip-name",
-        description = "The name of the zip file containing system.img."
-    )
+            name = "system-image-zip-name",
+            description = "The name of the zip file containing system.img.")
     private String mSystemImageZipName = "system-img.zip";
 
     @Option(
