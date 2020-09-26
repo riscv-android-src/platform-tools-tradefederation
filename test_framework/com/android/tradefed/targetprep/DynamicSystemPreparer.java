@@ -113,13 +113,21 @@ public class DynamicSystemPreparer extends BaseTargetPreparer {
                             + " --ez KEY_ENABLE_WHEN_COMPLETED true";
             device.executeShellCommand(command);
             // Check if device shows as unavailable (as expected after the activity finished).
-            device.waitForDeviceNotAvailable(DSU_MAX_WAIT_SEC * 1000);
-            device.waitForDeviceOnline();
-            // the waitForDeviceOnline may block and we need to correct the 'i'
-            // which is used to measure timeout accordingly
-            if (!isDSURunning(device)) {
+            if (!device.waitForDeviceNotAvailable(DSU_MAX_WAIT_SEC * 1000)) {
                 throw new TargetSetupError(
-                        "Timeout to boot into DSU", device.getDeviceDescriptor());
+                        "Timed out waiting for DSU installation to complete and reboot",
+                        device.getDeviceDescriptor());
+            }
+            try {
+                // waitForDeviceOnline() throws DeviceNotAvailableException if device does not
+                // become online within timeout.
+                device.waitForDeviceOnline();
+            } catch (DeviceNotAvailableException e) {
+                throw new TargetSetupError(
+                        "Timed out booting into DSU", e, device.getDeviceDescriptor());
+            }
+            if (!isDSURunning(device)) {
+                throw new TargetSetupError("Failed to boot into DSU", device.getDeviceDescriptor());
             }
             CommandResult result = device.executeShellV2Command("gsi_tool enable");
             if (CommandStatus.SUCCESS.equals(result.getStatus())) {
