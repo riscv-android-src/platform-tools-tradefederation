@@ -147,6 +147,7 @@ import com.android.tradefed.log.HistoryLoggerTest;
 import com.android.tradefed.log.LogRegistryTest;
 import com.android.tradefed.log.SimpleFileLoggerTest;
 import com.android.tradefed.log.TerribleFailureEmailHandlerTest;
+import com.android.tradefed.monitoring.LabResourceDeviceMonitorTest;
 import com.android.tradefed.postprocessor.AggregatePostProcessorTest;
 import com.android.tradefed.postprocessor.AveragePostProcessorTest;
 import com.android.tradefed.postprocessor.BasePostProcessorTest;
@@ -923,6 +924,9 @@ import org.junit.runners.Suite.SuiteClasses;
     // util/testmapping
     TestInfoTest.class,
     TestMappingTest.class,
+
+    // monitoring
+    LabResourceDeviceMonitorTest.class,
 })
 public class UnitTests {
     // empty of purpose
