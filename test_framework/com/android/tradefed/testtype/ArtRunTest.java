@@ -17,27 +17,38 @@
 package com.android.tradefed.testtype;
 
 import com.android.ddmlib.CollectingOutputReceiver;
-
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.ExecutionFiles.FilesKey;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.FileUtil;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 /** A test runner to run ART run-tests. */
 public class ArtRunTest implements IDeviceTest, IRemoteTest, IAbiReceiver, ITestFilterReceiver {
@@ -46,6 +57,7 @@ public class ArtRunTest implements IDeviceTest, IRemoteTest, IAbiReceiver, ITest
 
     private static final String DALVIKVM_CMD =
             "dalvikvm|#BITNESS#| -classpath |#CLASSPATH#| |#MAINCLASS#|";
+    public static final String CHECKER_EXECUTABLE = "art/tools/checker/checker.py";
 
     @Option(
             name = "test-timeout",
@@ -161,7 +173,8 @@ public class ArtRunTest implements IDeviceTest, IRemoteTest, IAbiReceiver, ITest
      * Run a single ART run-test (on device).
      *
      * @param listener {@link ITestInvocationListener} listener for test
-     * @throws DeviceNotAvailableException
+     * @throws DeviceNotAvailableException If there was a problem communicating with
+     *      the test device.
      */
     void runArtTest(TestInformation testInfo, ITestInvocationListener listener)
             throws DeviceNotAvailableException {
@@ -209,20 +222,108 @@ public class ArtRunTest implements IDeviceTest, IRemoteTest, IAbiReceiver, ITest
                         // current ART run-test scripts).
                         CLog.i("%s FAILED: %s", mRunTestName, error);
                         listener.testFailed(testId, error);
+                        return;
                     }
                 } catch (IOException ioe) {
                     CLog.e(
                             "I/O error while accessing expected output file for test %s: %s",
                             mRunTestName, ioe);
                     listener.testFailed(testId, "I/O error while accessing expected output file.");
+                    return;
                 }
             } else {
                 listener.testFailed(testId, "No output received to compare to.");
+                return;
+            }
+
+            if (mRunTestName.contains("-checker-")) {
+                // not particularly reliable way of constructing a temporary dir
+                String cfgPathDir =
+                        String.format("/data/local/tmp/%s", mRunTestName.replaceAll("/", "-"));
+                mDevice.executeShellCommand(String.format("mkdir -p \"%s\"", cfgPathDir));
+
+                String cfgPath = cfgPathDir + "/graph.cfg";
+                mDevice.executeShellCommand(
+                        String.format(
+                                "dex2oat --dex-file=%s --oat-file=/dev/null --dump-cfg=%s -j1",
+                                mClasspath.get(0), cfgPath));
+
+                File runTestDir;
+                try {
+                    runTestDir = getRunTestDir(testInfo);
+                } catch (FileNotFoundException e) {
+                    listener.testFailed(testId, "I/O error while accessing test dir.");
+                    return;
+                }
+
+                File localCfgPath = new File(runTestDir, "graph.cfg");
+                if (localCfgPath.isFile()) {
+                    localCfgPath.delete();
+                }
+
+                mDevice.pullFile(cfgPath, localCfgPath);
+
+                File tempJar = new File(runTestDir, "temp.jar");
+                mDevice.pullFile(mClasspath.get(0), tempJar);
+
+                try (ZipFile archive = new ZipFile(tempJar)) {
+                    File srcFile = new File(runTestDir, "src");
+                    if (srcFile.exists()) {
+                        Files.walk(srcFile.toPath())
+                                .map(Path::toFile)
+                                .sorted(Comparator.reverseOrder())
+                                .forEach(File::delete);
+                    }
+
+                    List<? extends ZipEntry> entries = archive.stream()
+                            .sorted(Comparator.comparing(ZipEntry::getName))
+                            .collect(Collectors.toList());
+
+                    for (ZipEntry entry : entries) {
+                        if (entry.getName().startsWith("src")) {
+                            Path entryDest = runTestDir.toPath().resolve(entry.getName());
+                            if (entry.isDirectory()) {
+                                Files.createDirectory(entryDest);
+                            } else {
+                                Files.copy(archive.getInputStream(entry), entryDest);
+                            }
+                        }
+                    }
+                } catch (IOException e) {
+                    listener.testFailed(testId, "Error unpacking test jar");
+                    CLog.e("Jar unpacking failed with exception %s", e);
+                    CLog.e(e);
+                    return;
+                }
+
+                String checkerArch = AbiUtils.getArchForAbi(abi).toUpperCase();
+
+                ProcessBuilder processBuilder =
+                        new ProcessBuilder(
+                                CHECKER_EXECUTABLE,
+                                "-q",
+                                "--arch=" + checkerArch,
+                                localCfgPath.getAbsolutePath(),
+                                runTestDir.getAbsolutePath());
+
+                try {
+                    Process process = processBuilder.start();
+                    if (process.waitFor() != 0) {
+                        String checkerOutput = new BufferedReader(
+                                new InputStreamReader(process.getErrorStream())).lines().collect(
+                                Collectors.joining("\n"));
+                        listener.testFailed(testId, "Checker failed\n" + checkerOutput);
+                        listener.testLog("graph.cfg", LogDataType.CFG,
+                                new FileInputStreamSource(localCfgPath));
+                    }
+                } catch (IOException | InterruptedException e) {
+                    listener.testFailed(testId, "I/O error while starting Checker process");
+                }
             }
         } finally {
-            HashMap<String, Metric> emptyTestMetrics = new HashMap();
+            HashMap<String, Metric> emptyTestMetrics = new HashMap<>();
             listener.testEnded(testId, emptyTestMetrics);
-            HashMap<String, Metric> emptyTestRunMetrics = new HashMap();
+            HashMap<String, Metric> emptyTestRunMetrics = new HashMap<>();
             // TODO: Pass an actual value as `elapsedTimeMillis` argument.
             listener.testRunEnded(/* elapsedTimeMillis*/ 0, emptyTestRunMetrics);
         }
@@ -251,5 +352,15 @@ public class ArtRunTest implements IDeviceTest, IRemoteTest, IAbiReceiver, ITest
     /** Create an output receiver for the test command executed on the device. */
     protected CollectingOutputReceiver createTestOutputReceiver() {
         return new CollectingOutputReceiver();
+    }
+
+    private File getRunTestDir(TestInformation testInfo) throws FileNotFoundException {
+        File testsDir = testInfo.executionFiles().get(FilesKey.TARGET_TESTS_DIRECTORY);
+        if (testsDir == null || !testsDir.exists()) {
+            throw new FileNotFoundException(
+                    String.format(
+                            "Could not find target tests directory for test %s.", mRunTestName));
+        }
+        return new File(testsDir, mRunTestName);
     }
 }
