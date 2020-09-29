@@ -119,6 +119,7 @@ public class PythonVirtualenvPreparer extends BaseTargetPreparer {
             PythonVirtualenvHelper.activate(mRunUtil, mVenvDir);
             return;
         }
+        checkVirtualenvVersion(device);
         try {
             mVenvDir = FileUtil.createNamedTempDir(buildInfo.getTestTag() + "-virtualenv");
             CommandResult c =
@@ -158,5 +159,27 @@ public class PythonVirtualenvPreparer extends BaseTargetPreparer {
         File pipFile = new File(PythonVirtualenvHelper.getPythonBinDir(virtualenvPath), PIP);
         pipFile.setExecutable(true);
         return pipFile.getAbsolutePath();
+    }
+
+    /** Check if the virtualenv on the host is too old. */
+    private void checkVirtualenvVersion(ITestDevice device) throws TargetSetupError {
+        CommandResult result = mRunUtil.runTimedCmd(BASE_TIMEOUT, "virtualenv", "--version");
+        if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
+            throw new TargetSetupError(
+                    "Failed to run `virtualenv --version`. Reason:\n" + result.getStderr(),
+                    device.getDeviceDescriptor());
+        }
+        String stdout = result.getStdout(); // should start with 'virtualenv <version> from'
+        if (stdout.contains("command not found")) {
+            throw new TargetSetupError(
+                    "virtualenv is not installed.", device.getDeviceDescriptor());
+        }
+        String version = stdout.split(" ")[1];
+        int majorVersion = Integer.parseInt(version.split("\\.")[0]);
+        if (majorVersion < 20) {
+            throw new TargetSetupError(
+                    "virtualenv is too old. Required: >=20.0.1, yours: " + version,
+                    device.getDeviceDescriptor());
+        }
     }
 }
