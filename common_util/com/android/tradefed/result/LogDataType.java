@@ -60,6 +60,7 @@ public enum LogDataType {
     ATRACE("atr", "text/plain", true, false), // atrace -z format
     KERNEL_TRACE("dat", "text/plain", false, false), // raw kernel ftrace buffer
     DIR("", "text/plain", false, false),
+    CFG("cfg", "application/octet-stream", false, true),
     /* Unknown file type */
     UNKNOWN("dat", "text/plain", false, false);
 
