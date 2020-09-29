@@ -336,7 +336,11 @@ public class MoblyBinaryHostTestTest {
         Mockito.doNothing().when(mSpyTest).reportLogs(any(), any());
         mMockSummaryInputStream = Mockito.mock(InputStream.class);
         mMockParser = Mockito.mock(MoblyYamlResultParser.class);
-        mSpyTest.processYamlTestResults(mMockSummaryInputStream, mMockParser);
+        mSpyTest.processYamlTestResults(
+                mMockSummaryInputStream,
+                mMockParser,
+                Mockito.mock(ITestInvocationListener.class),
+                "runName");
         verify(mMockParser, times(1)).parse(mMockSummaryInputStream);
     }
 
