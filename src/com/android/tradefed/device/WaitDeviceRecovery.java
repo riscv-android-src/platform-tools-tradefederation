@@ -137,8 +137,13 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
                             "Found device %s in %s but expected online. Rebooting...",
                             monitor.getSerialNumber(), state));
             // TODO: retry if failed
-            getRunUtil().runTimedCmd(mFastbootWaitTime, mFastbootPath, "-s",
-                    monitor.getSerialNumber(), "reboot");
+            getRunUtil()
+                    .runTimedCmd(
+                            mFastbootWaitTime,
+                            mFastbootPath,
+                            "-s",
+                            monitor.getFastbootSerialNumber(),
+                            "reboot");
         }
 
         // wait for device online
@@ -231,9 +236,10 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
             }
         }
         // If no reboot was done, waitForDeviceAvailable has already been checked.
-        throw new DeviceUnresponsiveException(String.format(
-                "Device %s is online but unresponsive", monitor.getSerialNumber()),
-                monitor.getSerialNumber());
+        throw new DeviceUnresponsiveException(
+                String.format("Device %s is online but unresponsive", monitor.getSerialNumber()),
+                monitor.getSerialNumber(),
+                DeviceErrorIdentifier.DEVICE_UNRESPONSIVE);
     }
 
     /**

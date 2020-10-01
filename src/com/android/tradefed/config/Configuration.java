@@ -681,6 +681,24 @@ public class Configuration implements IConfiguration {
         }
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public void safeInjectOptionValues(List<OptionDef> optionDefs) throws ConfigurationException {
+        OptionSetter optionSetter = createOptionSetter();
+        for (OptionDef optionDef : optionDefs) {
+            try {
+                internalInjectOptionValue(
+                        optionSetter,
+                        optionDef.name,
+                        optionDef.key,
+                        optionDef.value,
+                        optionDef.source);
+            } catch (ConfigurationException e) {
+                // Ignoring
+            }
+        }
+    }
+
     /**
      * Creates a shallow copy of this object.
      */
@@ -1124,6 +1142,21 @@ public class Configuration implements IConfiguration {
                                     + "command line. Only in the configuration xml.",
                             optionName));
         }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public List<String> setBestEffortOptionsFromCommandLineArgs(
+            List<String> listArgs, IKeyStoreClient keyStoreClient) throws ConfigurationException {
+        // We get all the objects except the one describing the Configuration itself which does not
+        // allow passing its option via command line.
+        ArgsOptionParser parser =
+                new ArgsOptionParser(
+                        getAllConfigurationObjects(CONFIGURATION_DESCRIPTION_TYPE_NAME, true));
+        if (keyStoreClient != null) {
+            parser.setKeyStore(keyStoreClient);
+        }
+        return parser.parseBestEffort(listArgs, /* Force continue */ true);
     }
 
     /**

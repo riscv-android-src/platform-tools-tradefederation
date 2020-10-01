@@ -63,6 +63,7 @@ public class PerfettoPullerMetricCollector extends FilePullerDeviceMetricCollect
     private static final String EXTRACTOR_SUCCESS = "1";
     private static final String EXTRACTOR_FAILURE = "0";
     private static final String EXTRACTOR_RUNTIME = "trace_extractor_runtime";
+    private static final String RAW_TRACE_FILE_SIZE = "perfetto_trace_file_size_bytes";
     private static final String NSS_CACHE_ERROR = "base/nsscache-inl.h failed to lookup";
 
     public enum METRIC_FILE_FORMAT {
@@ -189,6 +190,15 @@ public class PerfettoPullerMetricCollector extends FilePullerDeviceMetricCollect
         File processSrcFile = metricFile;
         if (mCompressPerfetto) {
             processSrcFile = decompressFile(metricFile);
+        }
+
+        // Update the file size metrics.
+        if (processSrcFile != null) {
+            double perfettoFileSizeInBytes = processSrcFile.length();
+            Metric.Builder metricDurationBuilder = Metric.newBuilder();
+            metricDurationBuilder.getMeasurementsBuilder().setSingleDouble(
+                    perfettoFileSizeInBytes);
+            data.addMetric(RAW_TRACE_FILE_SIZE, metricDurationBuilder.setType(DataType.RAW));
         }
 
         // Convert to perfetto metric format.

@@ -31,7 +31,7 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.testtype.Abi;
-import com.android.tradefed.testtype.GTest;
+import com.android.tradefed.testtype.HostTest;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IAbiReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
@@ -53,6 +53,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -93,7 +94,7 @@ public class TestMappingSuiteRunnerTest {
             + "    <option name=\"config-descriptor:metadata\" key=\"mainline-param\" value=\"mod2.apk\" />"
             + "    <option name=\"config-descriptor:metadata\" key=\"mainline-param\" value=\"mod1.apk+mod2.apk\" />"
             + "    <option name=\"config-descriptor:metadata\" key=\"mainline-param\" value=\"mod1.apk+mod2.apk+mod3.apk\" />"
-            + "    <test class=\"com.android.tradefed.testtype.GTest\" />\n"
+            + "    <test class=\"com.android.tradefed.testtype.HostTest\" />\n"
             + "</configuration>";
 
     @Before
@@ -514,6 +515,58 @@ public class TestMappingSuiteRunnerTest {
         }
     }
 
+    /**
+     * Test for {@link TestMappingSuiteRunner#loadTests()} for loading tests from test_mappings.zip
+     * and run with shard, and no test is split due to exclude-filter.
+     */
+    @Test
+    public void testLoadTests_shardNoTest() throws Exception {
+        File tempDir = null;
+        try {
+            tempDir = FileUtil.createTempDir("test_mapping");
+
+            File srcDir = FileUtil.createTempDir("src", tempDir);
+            String srcFile = File.separator + TEST_DATA_DIR + File.separator + "test_mapping_1";
+            InputStream resourceStream = this.getClass().getResourceAsStream(srcFile);
+            FileUtil.saveResourceFile(resourceStream, srcDir, TEST_MAPPING);
+            File subDir = FileUtil.createTempDir("sub_dir", srcDir);
+            srcFile = File.separator + TEST_DATA_DIR + File.separator + "test_mapping_2";
+            resourceStream = this.getClass().getResourceAsStream(srcFile);
+            FileUtil.saveResourceFile(resourceStream, subDir, TEST_MAPPING);
+
+            File zipFile = Paths.get(tempDir.getAbsolutePath(), TEST_MAPPINGS_ZIP).toFile();
+            ZipUtil.createZip(srcDir, zipFile);
+
+            mOptionSetter.setOptionValue("test-mapping-test-group", "postsubmit");
+            mOptionSetter.setOptionValue("test-mapping-path", srcDir.getName());
+            mOptionSetter.setOptionValue("exclude-filter", "suite/stub1");
+
+            IDeviceBuildInfo mockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
+            EasyMock.expect(mockBuildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR))
+                    .andStubReturn(null);
+            EasyMock.expect(mockBuildInfo.getTestsDir())
+                    .andStubReturn(new File("non-existing-dir"));
+            EasyMock.expect(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).andReturn(zipFile);
+
+            mTestInfo
+                    .getContext()
+                    .addDeviceBuildInfo(ConfigurationDef.DEFAULT_DEVICE_NAME, mockBuildInfo);
+            EasyMock.replay(mockBuildInfo);
+
+            Collection<IRemoteTest> tests = mRunner.split(2, mTestInfo);
+            assertEquals(null, tests);
+            assertEquals(2, mRunner.getIncludeFilter().size());
+            assertEquals(null, mRunner.getTestGroup());
+            assertEquals(0, mRunner.getTestMappingPaths().size());
+            assertEquals(false, mRunner.getUseTestMappingPath());
+            EasyMock.verify(mockBuildInfo);
+        } finally {
+            // Clean up the static variable due to the usage of option `test-mapping-path`.
+            TestMapping.setTestMappingPaths(new ArrayList<String>());
+            FileUtil.recursiveDelete(tempDir);
+        }
+    }
+
     /** Test for {@link TestMappingSuiteRunner#loadTests()} to fail when no test is found. */
     @Test(expected = RuntimeException.class)
     public void testLoadTests_noTest() throws Exception {
@@ -870,14 +923,16 @@ public class TestMappingSuiteRunnerTest {
             assertTrue(configMap.containsKey(ABI_1 + " test[mod1.apk]"));
             assertTrue(configMap.containsKey(ABI_1 + " test[mod2.apk]"));
             assertTrue(configMap.containsKey(ABI_1 + " test[mod1.apk+mod2.apk]"));
-            GTest test = (GTest) configMap.get(ABI_1 + " test[mod1.apk]").getTests().get(0);
+            HostTest test = (HostTest) configMap.get(ABI_1 + " test[mod1.apk]").getTests().get(0);
             assertTrue(test.getIncludeFilters().contains("test-filter"));
 
-            test = (GTest) configMap.get(ABI_1 + " test[mod2.apk]").getTests().get(0);
+            test = (HostTest) configMap.get(ABI_1 + " test[mod2.apk]").getTests().get(0);
             assertTrue(test.getIncludeFilters().contains("test-filter2"));
 
-            test = (GTest) configMap.get(ABI_1 + " test[mod1.apk+mod2.apk]").getTests().get(0);
+            test = (HostTest) configMap.get(ABI_1 + " test[mod1.apk+mod2.apk]").getTests().get(0);
             assertTrue(test.getIncludeFilters().isEmpty());
+            assertEquals(1, test.getExcludeAnnotations().size());
+            assertEquals("test-annotation", test.getExcludeAnnotations().iterator().next());
 
             EasyMock.verify(mockBuildInfo);
         } finally {
