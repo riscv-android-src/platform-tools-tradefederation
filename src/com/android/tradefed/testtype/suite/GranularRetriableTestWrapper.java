@@ -17,6 +17,7 @@
 package com.android.tradefed.testtype.suite;
 
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.metric.CollectorHelper;
@@ -51,27 +52,28 @@ import java.util.Map;
  * A wrapper class works on the {@link IRemoteTest} to granulate the IRemoteTest in testcase level.
  * An IRemoteTest can contain multiple testcases. Previously, these testcases are treated as a
  * whole: When IRemoteTest runs, all testcases will run. Some IRemoteTest (The ones that implements
- * ITestFilterReceiver) can accept a whitelist of testcases and only run those testcases. This class
- * takes advantage of the existing feature and provides a more flexible way to run test suite.
+ * ITestFilterReceiver) can accept an allowlist of testcases and only run those testcases. This
+ * class takes advantage of the existing feature and provides a more flexible way to run test suite.
  *
  * <ul>
- *   <li> Single testcase can be retried multiple times (within the same IRemoteTest run) to reduce
+ *   <li>Single testcase can be retried multiple times (within the same IRemoteTest run) to reduce
  *       the non-test-error failure rates.
- *   <li> The retried testcases are dynamically collected from previous run failures.
+ *   <li>The retried testcases are dynamically collected from previous run failures.
  * </ul>
  *
  * <p>Note:
  *
  * <ul>
- *   <li> The prerequisite to run a subset of test cases is that the test type should implement the
+ *   <li>The prerequisite to run a subset of test cases is that the test type should implement the
  *       interface {@link ITestFilterReceiver}.
- *   <li> X is customized max retry number.
+ *   <li>X is customized max retry number.
  * </ul>
  */
 public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector {
 
     private IRetryDecision mRetryDecision;
     private IRemoteTest mTest;
+    private ModuleDefinition mModule;
     private List<IMetricCollector> mRunMetricCollectors;
     private TestFailureListener mFailureListener;
     private IInvocationContext mModuleInvocationContext;
@@ -94,7 +96,18 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
             TestFailureListener failureListener,
             List<ITestInvocationListener> moduleLevelListeners,
             int maxRunLimit) {
+        this(test, null, mainListener, failureListener, moduleLevelListeners, maxRunLimit);
+    }
+
+    public GranularRetriableTestWrapper(
+            IRemoteTest test,
+            ModuleDefinition module,
+            ITestInvocationListener mainListener,
+            TestFailureListener failureListener,
+            List<ITestInvocationListener> moduleLevelListeners,
+            int maxRunLimit) {
         mTest = test;
+        mModule = module;
         mMainGranularRunListener = new ModuleListener(mainListener);
         mFailureListener = failureListener;
         mModuleLevelListeners = moduleLevelListeners;
@@ -194,6 +207,9 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
             if (collector.isDisabled()) {
                 CLog.d("%s has been disabled. Skipping.", collector);
             } else {
+                if (collector instanceof IConfigurationReceiver) {
+                    ((IConfigurationReceiver) collector).setConfiguration(mModuleConfiguration);
+                }
                 runListener = collector.init(mModuleInvocationContext, runListener);
             }
         }
@@ -226,7 +242,7 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
 
         // Bail out early if there is no need to retry at all.
         if (!mRetryDecision.shouldRetry(
-                mTest, 0, mMainGranularRunListener.getTestRunForAttempts(0))) {
+                mTest, mModule, 0, mMainGranularRunListener.getTestRunForAttempts(0))) {
             return;
         }
         // Avoid rechecking the shouldRetry below the first time as it could retrigger reboot.
@@ -241,6 +257,7 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
                     boolean retry =
                             mRetryDecision.shouldRetry(
                                     mTest,
+                                    mModule,
                                     attemptNumber - 1,
                                     mMainGranularRunListener.getTestRunForAttempts(
                                             attemptNumber - 1));
@@ -298,7 +315,10 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
                             + "successful, proceeding with next module. Stack trace:");
             CLog.w(due);
             CLog.w("Proceeding to the next test.");
-            runListener.testRunFailed(createFromException(due));
+            // If it already was marked as failure do not remark it.
+            if (!mMainGranularRunListener.hasLastAttemptFailed()) {
+                runListener.testRunFailed(createFromException(due));
+            }
         } catch (DeviceNotAvailableException dnae) {
             // TODO: See if it's possible to report IReportNotExecuted
             CLog.e("Run in progress was not completed due to:");

@@ -16,9 +16,11 @@
 
 package com.android.tradefed.targetprep;
 
+import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.ITestLogger;
@@ -86,6 +88,11 @@ public class RunHostCommandTargetPreparer extends BaseTargetPreparer
     @Option(name = "host-cmd-timeout", description = "Timeout for each command specified.")
     private Duration mTimeout = Duration.ofMinutes(1L);
 
+    @Option(
+            name = "use-flashing-permit",
+            description = "Acquire a flashing permit before running commands.")
+    private boolean mUseFlashingPermit = false;
+
     private List<Process> mBgProcesses = new ArrayList<>();
     private List<BgCommandLog> mBgCommandLogs = new ArrayList<>();
     private ITestLogger mLogger;
@@ -147,7 +154,16 @@ public class RunHostCommandTargetPreparer extends BaseTargetPreparer
         }
         ITestDevice device = testInfo.getDevice();
         replaceSerialNumber(mSetUpCommands, device);
-        runCommandList(mSetUpCommands, device);
+        try {
+            if (mUseFlashingPermit) {
+                getDeviceManager().takeFlashingPermit();
+            }
+            runCommandList(mSetUpCommands, device);
+        } finally {
+            if (mUseFlashingPermit) {
+                getDeviceManager().returnFlashingPermit();
+            }
+        }
 
         try {
             mBgCommandLogs = createBgCommandLogs();
@@ -164,9 +180,16 @@ public class RunHostCommandTargetPreparer extends BaseTargetPreparer
         ITestDevice device = testInfo.getDevice();
         replaceSerialNumber(mTearDownCommands, device);
         try {
+            if (mUseFlashingPermit) {
+                getDeviceManager().takeFlashingPermit();
+            }
             runCommandList(mTearDownCommands, device);
         } catch (TargetSetupError tse) {
             CLog.e(tse);
+        } finally {
+            if (mUseFlashingPermit) {
+                getDeviceManager().returnFlashingPermit();
+            }
         }
 
         // Terminate background commands after test finished
@@ -271,6 +294,12 @@ public class RunHostCommandTargetPreparer extends BaseTargetPreparer
             mRunUtil = new RunUtil();
         }
         return mRunUtil;
+    }
+
+    /** @return {@link IDeviceManager} instance used for flashing permits */
+    @VisibleForTesting
+    IDeviceManager getDeviceManager() {
+        return GlobalConfiguration.getDeviceManagerInstance();
     }
 
     /**

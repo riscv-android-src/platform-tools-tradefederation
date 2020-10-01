@@ -15,7 +15,7 @@
  */
 package com.android.tradefed.targetprep;
 
-import com.android.tradefed.build.IDeviceBuildInfo;
+import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
@@ -26,6 +26,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -48,9 +49,6 @@ import java.util.regex.Pattern;
 @OptionClass(alias = "gsi-device-flash-preparer")
 public class GsiDeviceFlashPreparer extends BaseTargetPreparer {
 
-    private static final String GSI_SYSTEM_IMG = "gsi_system.img";
-    private static final String GSI_VBMETA_IMG = "gsi_vbmeta.img";
-    private static final String GKI_BOOT_IMG = "gki_boot.img";
     private static final int DYNAMIC_PARTITION_API_LEVEL = 29;
     // Wait time for device state to stablize in millisecond
     private static final int STATE_STABLIZATION_WAIT_TIME_MLLISECS = 60000;
@@ -62,26 +60,40 @@ public class GsiDeviceFlashPreparer extends BaseTargetPreparer {
     private long mDeviceBootTime = 5 * 60 * 1000;
 
     @Option(
+            name = "system-image-zip-name",
+            description = "The name of the zip file containing the system image in BuildInfo.")
+    private String mSystemImageZipName = "gsi_system.img";
+
+    @Option(
             name = "system-image-file-name",
             description =
-                    "The system image file name to search for if provided gsi_system.img is in "
-                            + "a zip file or directory.")
+                    "The system image file name to search for if provided system image "
+                            + "is in a zip file or directory.")
     private String mSystemImageFileName = "system.img";
+
+    @Option(
+            name = "vbmeta-image-zip-name",
+            description = "The name of the zip file containing the system image in BuildInfo.")
+    private String mVbmetaImageZipName = "gsi_vbmeta.img";
 
     @Option(
             name = "vbmeta-image-file-name",
             description =
-                    "The vbmeta image file name to search for if provided gsi_vbmeta.img is in "
-                            + "a zip file or directory.")
+                    "The vbmeta image file name to search for if provided vbmeta image is "
+                            + "in a zip file or directory.")
     private String mVbmetaImageFileName = "vbmeta.img";
+
+    @Option(
+            name = "boot-image-zip-name",
+            description = "The name of the zip file containing the boot image in BuildInfo.")
+    private String mBootImageZipName = "gki_boot.img";
 
     @Option(
             name = "boot-image-file-name",
             description =
-                    "The boot image file name to search for if gki_boot.img is provided in BuildInfo and the provided "
-                            + "file is a zip file or directory, for example boot-5.4.img. By default when gki_boot.img "
-                            + "is provided in BuildInfo with a zip file or file directory, the target preparer will use"
-                            + " the first found file that matches boot(.*).img as file name.")
+                    "The boot image file name to search for if boot image is is in a zip "
+                            + "file or directory, for example boot-5.4.img. The first file"
+                            + "match the provided name string will be used.")
     private String mBootImageFileName = "boot(.*).img";
 
     @Option(
@@ -98,11 +110,11 @@ public class GsiDeviceFlashPreparer extends BaseTargetPreparer {
     public void setUp(TestInformation testInfo)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
         ITestDevice device = testInfo.getDevice();
-        IDeviceBuildInfo buildInfo = (IDeviceBuildInfo) testInfo.getBuildInfo();
+        IBuildInfo buildInfo = testInfo.getBuildInfo();
 
         File tmpDir = null;
         try {
-            tmpDir = FileUtil.createTempDir("gki_preparer");
+            tmpDir = FileUtil.createTempDir("gsi_preparer");
             validateGsiImg(device, buildInfo, tmpDir);
             flashGsi(device, buildInfo);
         } catch (IOException ioe) {
@@ -125,7 +137,8 @@ public class GsiDeviceFlashPreparer extends BaseTargetPreparer {
                     String.format(
                             "Device %s did not become available after flashing GKI. Exception: %s",
                             device.getSerialNumber(), e),
-                    device.getDeviceDescriptor());
+                    device.getDeviceDescriptor(),
+                    DeviceErrorIdentifier.ERROR_AFTER_FLASHING);
         }
         device.postBootSetup();
         CLog.i("Device update completed on %s", device.getDeviceDescriptor());
@@ -155,10 +168,10 @@ public class GsiDeviceFlashPreparer extends BaseTargetPreparer {
      * Flash GSI images.
      *
      * @param device the {@link ITestDevice}
-     * @param buildInfo the {@link IDeviceBuildInfo} the device build info
+     * @param buildInfo the {@link IBuildInfo} the build info
      * @throws TargetSetupError, DeviceNotAvailableException, IOException
      */
-    private void flashGsi(ITestDevice device, IDeviceBuildInfo buildInfo)
+    private void flashGsi(ITestDevice device, IBuildInfo buildInfo)
             throws TargetSetupError, DeviceNotAvailableException {
         IDeviceManager deviceManager = getDeviceManager();
         device.waitForDeviceOnline();
@@ -196,11 +209,10 @@ public class GsiDeviceFlashPreparer extends BaseTargetPreparer {
                 if (shouldUseFastbootd) {
                     device.rebootIntoFastbootd();
                     if (mShouldEraseProductPartition) {
-                        executeFastbootCmd(
-                                device, "delete-logical-partition", "product" + currSlot);
+                        device.executeLongFastbootCommand(
+                                "delete-logical-partition", "product" + currSlot);
                     }
                 }
-                String systemPartition = "system";
                 executeFastbootCmd(device, "erase", "system" + currSlot);
                 executeFastbootCmd(device, "flash", "system", mSystemImg.getAbsolutePath());
                 executeFastbootCmd(device, "-w");
@@ -223,33 +235,38 @@ public class GsiDeviceFlashPreparer extends BaseTargetPreparer {
      * Validate GSI image is expected. Throw exception if there is no valid GSI image.
      *
      * @param device the {@link ITestDevice}
-     * @param buildInfo the {@link IDeviceBuildInfo} the device build info
+     * @param buildInfo the {@link IBuildInfo} the build info
      * @param tmpDir the temporary directory {@link File}
      * @throws TargetSetupError if there is no valid gki boot.img
      */
-    private void validateGsiImg(ITestDevice device, IDeviceBuildInfo buildInfo, File tmpDir)
+    private void validateGsiImg(ITestDevice device, IBuildInfo buildInfo, File tmpDir)
             throws TargetSetupError {
-        if (buildInfo.getFile(GSI_SYSTEM_IMG) == null) {
+        if (buildInfo.getFile(mSystemImageZipName) == null) {
             throw new TargetSetupError(
-                    String.format("BuildInfo doesn't contain file key %s.", GSI_SYSTEM_IMG),
-                    device.getDeviceDescriptor());
-        }
-        if (buildInfo.getFile(GSI_VBMETA_IMG) == null) {
-            throw new TargetSetupError(
-                    String.format("BuildInfo doesn't contain file key %s.", GSI_VBMETA_IMG),
+                    String.format("BuildInfo doesn't contain file key %s.", mSystemImageZipName),
                     device.getDeviceDescriptor());
         }
         mSystemImg =
                 getRequestedFile(
-                        device, mSystemImageFileName, buildInfo.getFile(GSI_SYSTEM_IMG), tmpDir);
-        mVbmetaImg =
-                getRequestedFile(
-                        device, mVbmetaImageFileName, buildInfo.getFile(GSI_VBMETA_IMG), tmpDir);
-
-        if (buildInfo.getFile(GKI_BOOT_IMG) != null && mBootImageFileName != null) {
+                        device,
+                        mSystemImageFileName,
+                        buildInfo.getFile(mSystemImageZipName),
+                        tmpDir);
+        if (buildInfo.getFile(mVbmetaImageZipName) != null) {
+            mVbmetaImg =
+                    getRequestedFile(
+                            device,
+                            mVbmetaImageFileName,
+                            buildInfo.getFile(mVbmetaImageZipName),
+                            tmpDir);
+        }
+        if (buildInfo.getFile(mBootImageZipName) != null && mBootImageFileName != null) {
             mBootImg =
                     getRequestedFile(
-                            device, mBootImageFileName, buildInfo.getFile(GKI_BOOT_IMG), tmpDir);
+                            device,
+                            mBootImageFileName,
+                            buildInfo.getFile(mBootImageZipName),
+                            tmpDir);
         }
     }
 
@@ -299,7 +316,10 @@ public class GsiDeviceFlashPreparer extends BaseTargetPreparer {
                 ZipUtil2.extractZip(sourceFile, destDir);
                 requestedFile = FileUtil.findFile(destDir, requestedFileName);
             } catch (IOException e) {
-                throw new TargetSetupError(e.getMessage(), e, device.getDeviceDescriptor());
+                throw new TargetSetupError(
+                        String.format("Fail to get %s from %s", requestedFileName, sourceFile),
+                        e,
+                        device.getDeviceDescriptor());
             }
         } else if (sourceFile.isDirectory()) {
             requestedFile = FileUtil.findFile(sourceFile, requestedFileName);
@@ -342,7 +362,7 @@ public class GsiDeviceFlashPreparer extends BaseTargetPreparer {
             throw new TargetSetupError(
                     String.format(
                             "fastboot command %s failed in device %s. stdout: %s, stderr: %s",
-                            cmdArgs[0],
+                            cmdArgs,
                             device.getSerialNumber(),
                             result.getStdout(),
                             result.getStderr()),

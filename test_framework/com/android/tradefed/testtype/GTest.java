@@ -16,11 +16,6 @@
 
 package com.android.tradefed.testtype;
 
-import static com.android.tradefed.testtype.coverage.CoverageOptions.Toolchain.CLANG;
-import static com.android.tradefed.testtype.coverage.CoverageOptions.Toolchain.GCOV;
-
-import static com.google.common.base.Verify.verify;
-
 import com.android.ddmlib.FileListingService;
 import com.android.ddmlib.IShellOutputReceiver;
 import com.android.tradefed.config.Option;
@@ -31,10 +26,8 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
-import com.android.tradefed.testtype.coverage.CoverageOptions;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.FileUtil;
-import com.android.tradefed.util.NativeCodeCoverageFlusher;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -154,6 +147,10 @@ public class GTest extends GTestBase implements IDeviceTest {
             testPath.append(testModule);
         }
         return testPath.toString();
+    }
+
+    public void setNativeTestDevicePath(String path) {
+        mNativeTestDevicePath = path;
     }
 
     /**
@@ -427,26 +424,10 @@ public class GTest extends GTestBase implements IDeviceTest {
         if (mStopRuntime) {
             mDevice.executeShellCommand("stop");
         }
-        // Insert the coverage listener if code coverage collection is enabled.
-        listener = addNativeCoverageListenerIfEnabled(listener);
-        listener = addClangCoverageListenerIfEnabled(listener);
         listener = getGTestListener(listener);
-        NativeCodeCoverageFlusher flusher =
-                new NativeCodeCoverageFlusher(mDevice, getCoverageOptions().getCoverageProcesses());
 
         Throwable throwable = null;
         try {
-            if (getCoverageOptions().isCoverageEnabled()) {
-                // Enable abd root on the device, otherwise the following commands will fail.
-                verify(mDevice.enableAdbRoot(), "Failed to enable adb root.");
-
-                flusher.resetCoverage();
-
-                // Clang will no longer create directories that are part of the GCOV_PREFIX
-                // environment variable. Force create the /data/misc/trace/testcoverage dir to
-                // prevent "No such file or directory" errors when writing test coverage to disk.
-                mDevice.executeShellCommand("mkdir /data/misc/trace/testcoverage");
-            }
             doRunAllTestsInSubdirectory(testPath, mDevice, listener);
         } catch (Throwable t) {
             throwable = t;
@@ -459,42 +440,5 @@ public class GTest extends GTestBase implements IDeviceTest {
                 }
             }
         }
-    }
-
-    /**
-     * Adds a listener to pull native code coverage measurements from the device after the test is
-     * complete if coverage is enabled, otherwise returns the same listener.
-     *
-     * @param listener the current chain of listeners
-     * @return a native coverage listener if coverage is enabled, otherwise the original listener
-     */
-    private ITestInvocationListener addNativeCoverageListenerIfEnabled(
-            ITestInvocationListener listener) {
-        CoverageOptions options = getCoverageOptions();
-
-        if (options.isCoverageEnabled() && options.getCoverageToolchains().contains(GCOV)) {
-            return new NativeCodeCoverageListener(mDevice, options, listener);
-        }
-        return listener;
-    }
-
-    /**
-     * Adds a listener to pull Clang code coverage measurements from the device after the test is
-     * complete if coverage is enabled, otherwise returns the same listener.
-     *
-     * @param listener the current chain of listeners
-     * @return a native coverage listener if coverage is enabled, otherwise the original listener
-     */
-    private ITestInvocationListener addClangCoverageListenerIfEnabled(
-            ITestInvocationListener listener) {
-        CoverageOptions options = getCoverageOptions();
-
-        if (options.isCoverageEnabled() && options.getCoverageToolchains().contains(CLANG)) {
-            ClangCodeCoverageListener clangListener =
-                    new ClangCodeCoverageListener(mDevice, listener);
-            clangListener.setConfiguration(getConfiguration());
-            return clangListener;
-        }
-        return listener;
     }
 }

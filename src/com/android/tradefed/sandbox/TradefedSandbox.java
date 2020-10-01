@@ -125,6 +125,7 @@ public class TradefedSandbox implements ISandbox {
         // Allow interruption, subprocess should handle signals itself
         mRunUtil.allowInterrupt(true);
         CommandResult result = null;
+        RuntimeException interruptedException = null;
         try {
             result =
                     mRunUtil.runTimedCmd(
@@ -132,6 +133,7 @@ public class TradefedSandbox implements ISandbox {
         } catch (RuntimeException interrupted) {
             CLog.e("Sandbox runtimedCmd threw an exception");
             CLog.e(interrupted);
+            interruptedException = interrupted;
             result = new CommandResult(CommandStatus.EXCEPTION);
             result.setStdout(StreamUtil.getStackTrace(interrupted));
         }
@@ -156,7 +158,9 @@ public class TradefedSandbox implements ISandbox {
             } else {
                 joinResult = mEventParser.joinReceiver(waitTime);
             }
-
+            if (interruptedException != null) {
+                throw interruptedException;
+            }
             if (!joinResult) {
                 if (!failedStatus) {
                     result.setStatus(CommandStatus.EXCEPTION);
@@ -164,15 +168,15 @@ public class TradefedSandbox implements ISandbox {
                 result.setStderr(
                         String.format("Event receiver thread did not complete.:\n%s", stderrText));
             }
-            if (mProtoReceiver != null) {
-                mProtoReceiver.completeModuleEvents();
-            }
             PrettyPrintDelimiter.printStageDelimiter(
                     String.format(
                             "Execution of the tests occurred in the sandbox, you can find its logs "
                                     + "under the name pattern '%s*'",
                             SANDBOX_PREFIX));
         } finally {
+            if (mProtoReceiver != null) {
+                mProtoReceiver.completeModuleEvents();
+            }
             // Log the configuration used to run
             try (InputStreamSource configFile =
                     new FileInputStreamSource(mSerializedConfiguration)) {
@@ -252,7 +256,7 @@ public class TradefedSandbox implements ISandbox {
                                     config.getCommandLine(),
                                     /** no logging */
                                     false));
-        } catch (ConfigurationException e) {
+        } catch (Exception e) {
             return e;
         }
 
@@ -289,7 +293,7 @@ public class TradefedSandbox implements ISandbox {
     @Override
     public File getTradefedSandboxEnvironment(
             IInvocationContext context, IConfiguration nonVersionedConfig, String[] args)
-            throws ConfigurationException {
+            throws Exception {
         SandboxOptions options = getSandboxOptions(nonVersionedConfig);
         // Check that we have no args conflicts.
         if (options.getSandboxTfDirectory() != null && options.getSandboxBuildId() != null) {

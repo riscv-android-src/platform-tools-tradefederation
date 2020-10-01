@@ -15,28 +15,27 @@
  */
 package com.android.tradefed.util.executor;
 
-import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
-/** Wrapper of {@link ExecutorService} to execute a function on all devices in parallel. */
+/** Wrapper of {@link ExecutorService} to execute a function in parallel. */
 public class ParallelDeviceExecutor<V> {
 
-    private List<ITestDevice> mDevices;
+    private final int mPoolSize;
     private List<Throwable> mErrors;
 
-    public ParallelDeviceExecutor(List<ITestDevice> devices) {
-        mDevices = devices;
+    public ParallelDeviceExecutor(int poolSize) {
+        mPoolSize = poolSize;
         mErrors = new ArrayList<>();
     }
 
@@ -44,14 +43,14 @@ public class ParallelDeviceExecutor<V> {
      * Invoke all the {@link Callable} with the timeout limit.
      *
      * @param callableTasks The List of tasks.
-     * @param timeout The timeout to apply.
+     * @param timeout The timeout to apply, or zero for unlimited.
      * @param unit The unit of the timeout.
      * @return The list of results for each callable task.
      */
     public List<V> invokeAll(List<Callable<V>> callableTasks, long timeout, TimeUnit unit) {
         ExecutorService executor =
                 Executors.newFixedThreadPool(
-                        mDevices.size(),
+                        mPoolSize,
                         new ThreadFactory() {
                             @Override
                             public Thread newThread(Runnable r) {
@@ -62,12 +61,15 @@ public class ParallelDeviceExecutor<V> {
                         });
         List<V> results = new ArrayList<>();
         try {
-            List<Future<V>> futures = executor.invokeAll(callableTasks);
+            List<Future<V>> futures =
+                    timeout == 0L
+                            ? executor.invokeAll(callableTasks)
+                            : executor.invokeAll(callableTasks, timeout, unit);
             for (Future<V> future : futures) {
                 try {
-                    results.add(future.get(timeout, unit));
-                } catch (TimeoutException timeoutException) {
-                    mErrors.add(timeoutException);
+                    results.add(future.get());
+                } catch (CancellationException cancellationException) {
+                    mErrors.add(cancellationException);
                 } catch (ExecutionException execException) {
                     mErrors.add(execException.getCause());
                 }

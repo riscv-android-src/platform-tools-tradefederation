@@ -26,6 +26,7 @@ import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
@@ -41,12 +42,14 @@ import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.StringEscapeUtils;
 import com.android.tradefed.util.StringUtil;
+import com.android.tradefed.util.SubprocessEventHelper.InvocationFailedEventInfo;
 import com.android.tradefed.util.SubprocessTestResultsParser;
 import com.android.tradefed.util.SystemUtil;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -133,32 +136,10 @@ public class ClusterCommandLauncher
     }
 
     @Override
-    public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
-        // Get an expanded TF_PATH value.
-        String tfPath = getEnvVar(TF_PATH, System.getProperty(TF_JAR_DIR));
-        if (tfPath == null) {
-            throw new RuntimeException("cannot find TF path!");
-        }
-
-        // Construct a Java class path based on TF_PATH value.
-        // This expects TF_PATH to be a colon(:) separated list of paths where each path
-        // points to a specific jar file or folder.
-        // (example: path/to/tradefed.jar:path/to/tradefed/folder:...)
-        final Set<String> jars = new LinkedHashSet<>();
-        for (final String path : tfPath.split(":")) {
-            final File jarFile = new File(path);
-            if (!jarFile.exists()) {
-                CLog.w("TF_PATH %s doesn't exist; ignoring", path);
-                continue;
-            }
-            if (jarFile.isFile()) {
-                jars.add(jarFile.getAbsolutePath());
-            } else {
-                jars.add(new File(path, "*").getAbsolutePath());
-            }
-        }
-
-        IRunUtil runUtil = getRunUtil();
+    public void run(TestInformation testInfo, ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
+        // Prepare a IRunUtil instance for running subprocesses.
+        final IRunUtil runUtil = getRunUtil();
         runUtil.setWorkingDir(mRootDir);
         // clear the TF_GLOBAL_CONFIG env, so another tradefed will not reuse the global config file
         runUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
@@ -171,9 +152,84 @@ public class ClusterCommandLauncher
         logDir.mkdirs();
         File stdoutFile = new File(logDir, "stdout.txt");
         File stderrFile = new File(logDir, "stderr.txt");
-        FileIdleMonitor monitor = createFileMonitor(stdoutFile, stderrFile);
 
+        // Run setup scripts.
+        runSetupScripts(runUtil, stdoutFile, stderrFile);
+
+        FileIdleMonitor monitor = createFileMonitor(stdoutFile, stderrFile);
         SubprocessTestResultsParser subprocessEventParser = null;
+        try (FileOutputStream stdout = new FileOutputStream(stdoutFile);
+                FileOutputStream stderr = new FileOutputStream(stderrFile)) {
+
+            String classpath = buildJavaClasspath();
+
+            // TODO(b/129111645): use proto reporting if a test suite supports it.
+            if (mUseSubprocessReporting) {
+                subprocessEventParser =
+                        createSubprocessTestResultsParser(listener, true, mInvocationContext);
+                final String port = Integer.toString(subprocessEventParser.getSocketServerPort());
+                // Create injection jar for subprocess result reporter, which is used
+                // for pre-R xTS. The created jar is put in front position of the class path to
+                // override class with the same name.
+                final SubprocessReportingHelper mHelper =
+                        new SubprocessReportingHelper(mCommandLine, classpath, testWorkDir, port);
+                final File subprocessReporterJar = mHelper.buildSubprocessReporterJar();
+                classpath =
+                        String.format("%s:%s", subprocessReporterJar.getAbsolutePath(), classpath);
+            }
+
+            List<String> javaCommandArgs = buildJavaCommandArgs(classpath, mCommandLine);
+            CLog.i("Running a command line: %s", mCommandLine);
+            CLog.i("args = %s", javaCommandArgs);
+            CLog.i("test working directory = %s", testWorkDir);
+
+            monitor.start();
+            runUtil.setWorkingDir(testWorkDir);
+            CommandResult result =
+                    runUtil.runTimedCmd(
+                            mConfiguration.getCommandOptions().getInvocationTimeout(),
+                            stdout,
+                            stderr,
+                            javaCommandArgs.toArray(new String[javaCommandArgs.size()]));
+            if (!result.getStatus().equals(CommandStatus.SUCCESS)) {
+                String error = null;
+                Throwable cause = null;
+                if (result.getStatus().equals(CommandStatus.TIMED_OUT)) {
+                    error =
+                            String.format(
+                                    "Command timed out after %sms",
+                                    mConfiguration.getCommandOptions().getInvocationTimeout());
+                } else {
+                    error =
+                            String.format(
+                                    "Command finished unsuccessfully: status=%s, exit_code=%s",
+                                    result.getStatus(), result.getExitCode());
+                    InvocationFailedEventInfo errorInfo =
+                            subprocessEventParser.getReportedInvocationFailedEventInfo();
+                    if (errorInfo != null) {
+                        cause = errorInfo.mCause;
+                    } else {
+                        cause = new Throwable(FileUtil.readStringFromFile(stderrFile));
+                    }
+                }
+                throw new SubprocessCommandException(error, cause);
+            }
+            CLog.i("Successfully ran a command");
+
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } finally {
+            monitor.stop();
+            if (subprocessEventParser != null) {
+                subprocessEventParser.joinReceiver(
+                        MAX_EVENT_RECEIVER_WAIT_TIME.toMillis(), /* wait for connection */ false);
+                StreamUtil.close(subprocessEventParser);
+            }
+        }
+    }
+
+    private void runSetupScripts(
+            final IRunUtil runUtil, final File stdoutFile, final File stderrFile) {
         try (FileOutputStream stdout = new FileOutputStream(stdoutFile);
                 FileOutputStream stderr = new FileOutputStream(stderrFile)) {
             long timeout = mScriptTimeout;
@@ -203,74 +259,42 @@ public class ClusterCommandLauncher
                             String.format("Setup scripts failed to run in %sms", mScriptTimeout));
                 }
             }
-
-            String classpath = ArrayUtil.join(":", jars);
-            String commandLine = mCommandLine;
-            if (classpath.isEmpty()) {
-                throw new RuntimeException(
-                        String.format("cannot find any TF jars from %s!", tfPath));
-            }
-
-            if (mOriginalCommandLine != null && !mOriginalCommandLine.equals(commandLine)) {
-                // Make sure a wrapper XML of the original command is available because retries
-                // try to run original commands in Q+. If the original command was run with
-                // subprocess reporting, a recorded command would be one with .xml suffix.
-                new SubprocessConfigBuilder()
-                        .setWorkingDir(testWorkDir)
-                        .setOriginalConfig(
-                                QuotationAwareTokenizer.tokenizeLine(mOriginalCommandLine)[0])
-                        .build();
-            }
-            if (mUseSubprocessReporting) {
-                SubprocessReportingHelper mHelper = new SubprocessReportingHelper();
-                // Create standalone jar for subprocess result reporter, which is used
-                // for pre-O cts. The created jar is put in front position of the class path to
-                // override class with the same name.
-                classpath =
-                        String.format(
-                                "%s:%s",
-                                mHelper.createSubprocessReporterJar(mRootDir).getAbsolutePath(),
-                                classpath);
-                subprocessEventParser =
-                        createSubprocessTestResultsParser(listener, true, mInvocationContext);
-                String port = Integer.toString(subprocessEventParser.getSocketServerPort());
-                commandLine = mHelper.buildNewCommandConfig(commandLine, port, testWorkDir);
-            }
-
-            List<String> javaCommandArgs = buildJavaCommandArgs(classpath, commandLine);
-            CLog.i("Running a command line: %s", commandLine);
-            CLog.i("args = %s", javaCommandArgs);
-            CLog.i("test working directory = %s", testWorkDir);
-
-            monitor.start();
-            runUtil.setWorkingDir(testWorkDir);
-            CommandResult result =
-                    runUtil.runTimedCmd(
-                            mConfiguration.getCommandOptions().getInvocationTimeout(),
-                            stdout,
-                            stderr,
-                            javaCommandArgs.toArray(new String[javaCommandArgs.size()]));
-            if (!result.getStatus().equals(CommandStatus.SUCCESS)) {
-                String error = null;
-                if (result.getStatus().equals(CommandStatus.TIMED_OUT)) {
-                    error = "timeout";
-                } else {
-                    error = FileUtil.readStringFromFile(stderrFile);
-                }
-                throw new RuntimeException(String.format("Command failed to run: %s", error));
-            }
-            CLog.i("Successfully ran a command");
-
         } catch (IOException e) {
-            throw new RuntimeException(e);
-        } finally {
-            monitor.stop();
-            if (subprocessEventParser != null) {
-                subprocessEventParser.joinReceiver(
-                        MAX_EVENT_RECEIVER_WAIT_TIME.toMillis(), /* wait for connection */ false);
-                StreamUtil.close(subprocessEventParser);
+            throw new UncheckedIOException("Error running setup scripts", e);
+        }
+    }
+
+    private String buildJavaClasspath() {
+        // Get an expanded TF_PATH value.
+        final String tfPath = getEnvVar(TF_PATH, System.getProperty(TF_JAR_DIR));
+        if (tfPath == null) {
+            throw new RuntimeException("cannot find TF path!");
+        }
+
+        // Construct a Java class path based on TF_PATH value.
+        // This expects TF_PATH to be a colon(:) separated list of paths where each path
+        // points to a specific jar file or folder.
+        // (example: path/to/tradefed.jar:path/to/tradefed/folder:...)
+        // TODO(b/162473907): deprecate TF_PATH.
+        final Set<String> jars = new LinkedHashSet<>();
+        for (final String path : tfPath.split(":")) {
+            final File jarFile = new File(path);
+            if (!jarFile.exists()) {
+                CLog.w("TF_PATH %s doesn't exist; ignoring", path);
+                continue;
+            }
+            if (jarFile.isFile()) {
+                jars.add(jarFile.getAbsolutePath());
+            } else {
+                // Add a folder path to the classpath to handle class file directories.
+                jars.add(jarFile.getAbsolutePath() + "/");
+                jars.add(new File(path, "*").getAbsolutePath());
             }
         }
+        if (jars.isEmpty()) {
+            throw new RuntimeException(String.format("cannot find any TF jars from %s!", tfPath));
+        }
+        return String.join(":", jars);
     }
 
     /** Build a shell command line to invoke a TF process. */

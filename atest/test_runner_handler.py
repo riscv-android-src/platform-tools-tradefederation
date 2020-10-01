@@ -94,11 +94,11 @@ def get_test_runner_reqs(module_info, test_infos):
     Returns:
         Set of build targets required by the test runners.
     """
-    dummy_result_dir = ''
+    unused_result_dir = ''
     test_runner_build_req = set()
     for test_runner, _ in group_tests_by_test_runners(test_infos):
         test_runner_build_req |= test_runner(
-            dummy_result_dir,
+            unused_result_dir,
             module_info=module_info).get_test_runner_build_reqs()
     return test_runner_build_req
 

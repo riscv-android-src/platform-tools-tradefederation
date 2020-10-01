@@ -304,7 +304,7 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
                     message = "Run was incomplete. Some tests might not have finished.";
                 }
                 serializer.startTag(NS, MODULES_NOT_DONE_REASON);
-                serializer.attribute(NS, MESSAGE_ATTR, message);
+                serializer.attribute(NS, MESSAGE_ATTR, sanitizeXmlContent(message));
                 serializer.endTag(NS, MODULES_NOT_DONE_REASON);
             }
             serializeTestCases(serializer, module.getTestResults());

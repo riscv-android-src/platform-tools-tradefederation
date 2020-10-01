@@ -22,7 +22,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Variant of {@link ResultForwarder} that only allows a whitelist of {@link TestDescription} to be
+ * Variant of {@link ResultForwarder} that only allows an allowlist of {@link TestDescription} to be
  * reported.
  */
 public class FilteredResultForwarder extends ResultForwarder {

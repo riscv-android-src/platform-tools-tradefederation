@@ -25,6 +25,8 @@ import java.security.InvalidParameterException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.easymock.EasyMock;
 import org.junit.Assert;
@@ -37,6 +39,7 @@ import org.junit.runners.JUnit4;
 public class ClusterHostUtilTest {
 
     private static final String DEVICE_SERIAL = "serial";
+    private static final String EMULATOR_SERIAL = "emulator-5554";
 
     @Test
     public void testIsIpPort() {
@@ -286,5 +289,72 @@ public class ClusterHostUtilTest {
                         "simState",
                         "simOperator");
         Assert.assertEquals("product", ClusterHostUtil.getRunTarget(device, format, null));
+    }
+
+    @Test
+    public void testGetRunTarget_withStubDevice() {
+        final String hostname = ClusterHostUtil.getHostName();
+        // with a stub device.
+        DeviceDescriptor device =
+                new DeviceDescriptor(
+                        DEVICE_SERIAL,
+                        true,
+                        DeviceAllocationState.Available,
+                        "product",
+                        "productVariant",
+                        "sdkVersion",
+                        "buildId",
+                        "batteryLevel");
+        Assert.assertEquals(
+                hostname + ":" + DEVICE_SERIAL,
+                ClusterHostUtil.getRunTarget(device, "{SERIAL}", null));
+    }
+
+    @Test
+    public void testGetRunTarget_withEmulator() {
+        final String hostname = ClusterHostUtil.getHostName();
+        // with a stub device.
+        DeviceDescriptor device =
+                new DeviceDescriptor(
+                        EMULATOR_SERIAL,
+                        false,
+                        DeviceAllocationState.Available,
+                        "product",
+                        "productVariant",
+                        "sdkVersion",
+                        "buildId",
+                        "batteryLevel");
+        Assert.assertEquals(
+                hostname + ":" + EMULATOR_SERIAL,
+                ClusterHostUtil.getRunTarget(device, "{SERIAL}", null));
+    }
+
+    @Test
+    public void testGetRunTarget_withEmptyDeviceSerial() {
+        final String hostname = ClusterHostUtil.getHostName();
+        // with a stub device.
+        DeviceDescriptor device =
+                new DeviceDescriptor(
+                        "",
+                        false,
+                        DeviceAllocationState.Available,
+                        "product",
+                        "productVariant",
+                        "sdkVersion",
+                        "buildId",
+                        "batteryLevel");
+        Assert.assertEquals(
+                hostname + ":" + ClusterHostUtil.NULL_DEVICE_SERIAL_PLACEHOLDER,
+                ClusterHostUtil.getRunTarget(device, "{SERIAL}", null));
+    }
+
+    @Test
+    public void testGetHostIpAddress() {
+        final String hostIp = ClusterHostUtil.getHostIpAddress();
+        Assert.assertNotEquals(hostIp, "127.0.0.1");
+        Pattern pattern =
+                Pattern.compile("[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}" + "|UNKNOWN");
+        Matcher matcher = pattern.matcher(hostIp);
+        Assert.assertTrue("host ip format not match: " + hostIp, matcher.matches());
     }
 }

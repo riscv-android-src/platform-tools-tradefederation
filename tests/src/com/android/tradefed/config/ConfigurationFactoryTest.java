@@ -90,7 +90,7 @@ public class ConfigurationFactoryTest extends TestCase {
                 };
     }
 
-    /** Sanity test to ensure all config names on classpath are loadable */
+    /** Initial test to ensure all config names on classpath are loadable */
     public void testLoadAllConfigs() throws Exception {
         ConfigurationFactory spyFactory = Mockito.spy(mRealFactory);
         Mockito.doReturn(new HashSet<String>()).when(spyFactory).getConfigNamesFromTestCases(null);
@@ -135,9 +135,7 @@ public class ConfigurationFactoryTest extends TestCase {
         }
     }
 
-    /**
-     * Sanity test to ensure all configs on classpath can be fully loaded and parsed
-     */
+    /** Initial test to ensure all configs on classpath can be fully loaded and parsed */
     public void testLoadAndPrintAllConfigs() throws ConfigurationException {
         ConfigurationFactory spyFactory = Mockito.spy(mRealFactory);
         Mockito.doReturn(new HashSet<String>()).when(spyFactory).getConfigNamesFromTestCases(null);

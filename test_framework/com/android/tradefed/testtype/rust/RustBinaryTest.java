@@ -16,10 +16,6 @@
 
 package com.android.tradefed.testtype.rust;
 
-import static com.android.tradefed.testtype.coverage.CoverageOptions.Toolchain.GCOV;
-
-import static com.google.common.base.Verify.verify;
-
 import com.android.ddmlib.FileListingService;
 import com.android.ddmlib.IShellOutputReceiver;
 import com.android.tradefed.config.IConfiguration;
@@ -33,13 +29,12 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.IDeviceTest;
-import com.android.tradefed.testtype.NativeCodeCoverageListener;
-import com.android.tradefed.testtype.coverage.CoverageOptions;
-import com.android.tradefed.util.NativeCodeCoverageFlusher;
 
 import java.io.File;
-import java.text.ParseException;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /** A Test that runs a rust binary on given device. */
@@ -155,38 +150,45 @@ public class RustBinaryTest extends RustTestBase implements IDeviceTest, IConfig
             final IShellOutputReceiver resultParser,
             final String fullPath)
             throws DeviceNotAvailableException {
-        // TODO(chh): add rerun support
         CLog.d("RustBinaryTest runTest: " + fullPath);
-        // TODO(chh): add LD_LIBRARY_PATH
-        String cmd;
-        if (getCoverageOptions().isCoverageEnabled()) {
-            cmd = "GCOV_PREFIX=/data/misc/trace/testcoverage " + fullPath;
-        } else {
-            cmd = fullPath;
-        }
-        cmd = addFiltersToCommand(cmd);
+        String cmd = fullPath;
 
-        int testCount = 0;
-        try {
-            String[] testList = testDevice.executeShellCommand(cmd + " --list").split("\n");
-            testCount = parseTestListCount(testList);
-        } catch (DeviceNotAvailableException e) {
-            CLog.e("Could not retrieve tests list from device: %s", e.getMessage());
-            throw e;
-        } catch (ParseException e) {
-            CLog.w("Parsing test list failed: %s", e.getMessage());
+        // Rust binary does not support multiple inclusion filters,
+        // so we run the test once for each include filter.
+        List<String> includeFilters = getListOfIncludeFilters();
+
+        // Call with --list once per include filter to add up testCount.
+        // Duplicated test cases selected by different include filters should not be counted.
+        Set<String> foundTests = new HashSet<>();
+        for (String filter : includeFilters) {
+            String newCmd = addFiltersToCommand(cmd, filter);
+            try {
+                String[] testList = testDevice.executeShellCommand(newCmd + " --list").split("\n");
+                collectTestLines(testList, foundTests);
+            } catch (DeviceNotAvailableException e) {
+                CLog.e("Could not retrieve tests list from device: %s", e.getMessage());
+                throw e;
+            }
         }
+        int testCount = foundTests.size();
+        CLog.d("Total test count: %d", testCount);
         long startTimeMs = System.currentTimeMillis();
         listener.testRunStarted(new File(fullPath).getName(), testCount, 0, startTimeMs);
-        try {
-            testDevice.executeShellCommand(
-                    cmd, resultParser, mTestTimeout, TimeUnit.MILLISECONDS, 0 /* retryAttempts */);
-        } catch (DeviceNotAvailableException e) {
-            listener.testRunFailed(String.format("Device not available: %s", e.getMessage()));
-        } finally {
-            listener.testRunEnded(
-                    System.currentTimeMillis() - startTimeMs, new HashMap<String, Metric>());
+        for (String filter : includeFilters) {
+            String newCmd = addFiltersToCommand(cmd, filter);
+            try {
+                testDevice.executeShellCommand(
+                        newCmd,
+                        resultParser,
+                        mTestTimeout,
+                        TimeUnit.MILLISECONDS,
+                        0 /* retryAttempts */);
+            } catch (DeviceNotAvailableException e) {
+                listener.testRunFailed(String.format("Device not available: %s", e.getMessage()));
+            }
         }
+        long testTimeMs = System.currentTimeMillis() - startTimeMs;
+        listener.testRunEnded(testTimeMs, new HashMap<String, Metric>());
     }
 
     private void wrongTestPath(String msg, String testPath, ITestInvocationListener listener) {
@@ -212,56 +214,10 @@ public class RustBinaryTest extends RustTestBase implements IDeviceTest, IConfig
             return;
         }
 
-        // Insert the coverage listener if code coverage collection is enabled.
-        listener = addNativeCoverageListenerIfEnabled(listener);
-        NativeCodeCoverageFlusher flusher =
-                new NativeCodeCoverageFlusher(mDevice, getCoverageOptions().getCoverageProcesses());
-
-        if (getCoverageOptions().isCoverageEnabled()) {
-            // Enable abd root on the device, otherwise the following commands will fail.
-            // TODO(b/159843590): Restore adb root state later.
-            verify(mDevice.enableAdbRoot(), "Failed to enable adb root.");
-
-            flusher.resetCoverage();
-
-            // Clang will no longer create directories that are part of the GCOV_PREFIX
-            // environment variable. Force create the /data/misc/trace/testcoverage dir to
-            // prevent "No such file or directory" errors when writing test coverage to disk.
-            mDevice.executeShellCommand("mkdir /data/misc/trace/testcoverage");
-        }
-
         CLog.d("To run tests in directory " + testPath);
 
         if (!doRunAllTestsInSubdirectory(testPath, mDevice, listener)) {
             wrongTestPath("No test found under ", testPath, listener);
         }
-    }
-
-    /**
-     * Returns the {@link CoverageOptions} for this test, if it exists. Otherwise returns a default
-     * {@link CoverageOptions} object with all coverage disabled.
-     */
-    protected CoverageOptions getCoverageOptions() {
-        if (mConfiguration != null) {
-            return mConfiguration.getCoverageOptions();
-        }
-        return new CoverageOptions();
-    }
-
-    /**
-     * Adds a listener to pull native code coverage measurements from the device after the test is
-     * complete if coverage is enabled, otherwise returns the same listener.
-     *
-     * @param listener the current chain of listeners
-     * @return a native coverage listener if coverage is enabled, otherwise the original listener
-     */
-    private ITestInvocationListener addNativeCoverageListenerIfEnabled(
-            ITestInvocationListener listener) {
-        CoverageOptions options = getCoverageOptions();
-
-        if (options.isCoverageEnabled() && options.getCoverageToolchains().contains(GCOV)) {
-            return new NativeCodeCoverageListener(mDevice, options, listener);
-        }
-        return listener;
     }
 }

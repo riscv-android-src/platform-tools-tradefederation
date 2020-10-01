@@ -412,11 +412,6 @@ public class TestInvocationTest {
 
         setupMockFailureListeners(exception);
         setupInvoke();
-        EasyMock.reset(mMockLogger, mMockLogRegistry);
-        mMockLogRegistry.registerLogger(mMockLogger);
-        mMockLogger.init();
-        mMockLogger.closeLog();
-        mMockLogRegistry.unregisterLogger();
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
         CommandOptions cmdOptions = new CommandOptions();
         final String expectedTestTag = "TEST_TAG";
@@ -449,13 +444,6 @@ public class TestInvocationTest {
         setupMockFailureListenersAny(
                 new BuildRetrievalError("fake", InfraErrorIdentifier.ARTIFACT_DOWNLOAD_ERROR),
                 true);
-
-        EasyMock.reset(mMockLogger, mMockLogRegistry);
-        mMockLogRegistry.registerLogger(mMockLogger);
-        mMockLogger.init();
-        mMockLogger.closeLog();
-        mMockLogRegistry.unregisterLogger();
-
         EasyMock.expect(mMockLogger.getLog()).andReturn(EMPTY_STREAM_SOURCE);
         EasyMock.expect(mMockDevice.getLogcat()).andReturn(EMPTY_STREAM_SOURCE).times(2);
         mMockDevice.clearLogcat();
@@ -483,12 +471,6 @@ public class TestInvocationTest {
                 new BuildRetrievalError(
                         "No build found to test.", InfraErrorIdentifier.ARTIFACT_NOT_FOUND),
                 true);
-
-        EasyMock.reset(mMockLogger, mMockLogRegistry);
-        mMockLogRegistry.registerLogger(mMockLogger);
-        mMockLogger.init();
-        mMockLogger.closeLog();
-        mMockLogRegistry.unregisterLogger();
 
         EasyMock.expect(mMockLogger.getLog()).andReturn(EMPTY_STREAM_SOURCE);
         EasyMock.expect(mMockDevice.getLogcat()).andReturn(EMPTY_STREAM_SOURCE).times(2);
@@ -520,13 +502,6 @@ public class TestInvocationTest {
                         "No build found to test.", InfraErrorIdentifier.ARTIFACT_NOT_FOUND),
                 true, /* don't expect host log */
                 false);
-
-        EasyMock.reset(mMockLogger, mMockLogRegistry);
-        mMockLogRegistry.registerLogger(mMockLogger);
-        mMockLogger.init();
-        mMockLogger.closeLog();
-        EasyMock.expectLastCall().times(2);
-
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
         mStubConfiguration.setTest(test);
         // Host log fails to report
@@ -537,7 +512,7 @@ public class TestInvocationTest {
         Capture<IBuildInfo> captured = new Capture<>();
         mMockBuildProvider.cleanUp(EasyMock.capture(captured));
         mMockLogRegistry.unregisterLogger();
-        EasyMock.expectLastCall().times(2);
+        mMockLogger.closeLog();
         mMockLogRegistry.dumpToGlobalLog(mMockLogger);
         replayMocks(test, mockRescheduler);
         mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
@@ -1149,9 +1124,12 @@ public class TestInvocationTest {
                 mMockTestListener.invocationFailed(EasyMock.<FailureDescription>anyObject());
                 mMockSummaryListener.invocationFailed(EasyMock.<FailureDescription>anyObject());
             } else {
+                FailureStatus failureStatus = FailureStatus.INFRA_FAILURE;
+                if (throwable instanceof BuildError) {
+                    failureStatus = FailureStatus.DEPENDENCY_ISSUE;
+                }
                 FailureDescription failure =
-                        FailureDescription.create(
-                                        throwable.getMessage(), FailureStatus.INFRA_FAILURE)
+                        FailureDescription.create(throwable.getMessage(), failureStatus)
                                 .setCause(throwable);
                 if (throwable instanceof BuildRetrievalError) {
                     failure.setActionInProgress(ActionInProgress.FETCHING_ARTIFACTS);

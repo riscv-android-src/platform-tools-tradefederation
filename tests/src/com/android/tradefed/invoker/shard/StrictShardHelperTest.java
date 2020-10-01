@@ -20,6 +20,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.StubBuildProvider;
@@ -47,6 +48,7 @@ import com.android.tradefed.testtype.StubTest;
 import com.android.tradefed.testtype.suite.ITestSuite;
 import com.android.tradefed.util.FileUtil;
 
+import java.util.Arrays;
 import org.easymock.EasyMock;
 import org.junit.Assert;
 import org.junit.Before;
@@ -256,8 +258,33 @@ public class StrictShardHelperTest {
         }
     }
 
+    public class FakeStrictShardHelper extends StrictShardHelper {
+        List<IRemoteTest> fakeModules = new ArrayList<>();
+
+        public FakeStrictShardHelper(List<IRemoteTest> modules) {
+            fakeModules.addAll(modules);
+        }
+
+        @Override
+        protected List<List<IRemoteTest>> splitTests(List<IRemoteTest> fullList, int shardCount) {
+            List<List<IRemoteTest>> shards = new ArrayList<>();
+            shards.add(new ArrayList<>(fakeModules));
+            shards.add(new ArrayList<>(fakeModules));
+            return shards;
+        }
+    }
+
     private ITestSuite createFakeSuite(String name) throws Exception {
         ITestSuite suite = new SplitITestSuite(name);
+        return suite;
+    }
+
+    private ITestSuite createFakeSuite(String name, boolean intraModuleSharding) throws Exception {
+        ITestSuite suite = new SplitITestSuite(name);
+        if (!intraModuleSharding) {
+            OptionSetter setter = new OptionSetter(suite);
+            setter.setOptionValue("intra-module-sharding", "false");
+        }
         return suite;
     }
 
@@ -282,6 +309,26 @@ public class StrictShardHelperTest {
         return mConfig.getTests();
     }
 
+    private List<IRemoteTest> createITestSuiteList(List<String> modules) throws Exception {
+        List<IRemoteTest> tests = new ArrayList<>();
+        for (String name : modules) {
+            tests.add(createFakeSuite(name, false).split(2, mTestInfo).iterator().next());
+        }
+
+        CommandOptions options = new CommandOptions();
+        OptionSetter setter = new OptionSetter(options);
+        setter.setOptionValue("shard-count", "2");
+        setter.setOptionValue("shard-index", Integer.toString(1));
+        setter.setOptionValue("optimize-mainline-test", "true");
+        mConfig.setCommandOptions(options);
+        mConfig.setCommandLine(new String[] {"empty"});
+        mConfig.setTests(tests);
+
+        FakeStrictShardHelper fakeHelper = new FakeStrictShardHelper(tests);
+        fakeHelper.shardConfig(mConfig, mTestInfo, mRescheduler, null);
+        return mConfig.getTests();
+    }
+
     /**
      * Total for all the _shardX test should be 14 tests (2 per modules). 6 for module1: 3 module1
      * shard * 2 4 for module2: 2 module2 shard * 2 4 for module3: 2 module3 shard * 2
@@ -302,6 +349,61 @@ public class StrictShardHelperTest {
         assertTrue(res.get(2) instanceof ITestSuite);
         assertEquals("module2", ((ITestSuite) res.get(2)).getDirectModule().getId());
         assertEquals(1, ((ITestSuite) res.get(2)).getDirectModule().numTests());
+    }
+
+    /**
+     * Test that the unsorted test modules are re-ordered.
+     */
+    @Test
+    public void testReorderTestModules() throws Exception {
+        List<String> unSortedModules =
+            Arrays.asList(
+                "module1[com.android.mod1.apex]",
+                "module1[com.android.mod1.apex+com.android.mod2.apex]",
+                "module2[com.android.mod1.apex]",
+                "module1[com.android.mod3.apk]",
+                "module2[com.android.mod1.apex+com.android.mod2.apex]",
+                "module2[com.android.mod3.apk]",
+                "module3[com.android.mod1.apex+com.android.mod2.apex]",
+                "module3[com.android.mod3.apk]",
+                "module4[com.android.mod3.apk]",
+                "module5[com.android.mod3.apk]"
+            );
+        List<IRemoteTest> res = createITestSuiteList(unSortedModules);
+
+        List<String> sortedModules =
+            Arrays.asList(
+                "module1[com.android.mod1.apex]",
+                "module2[com.android.mod1.apex]",
+                "module1[com.android.mod1.apex+com.android.mod2.apex]",
+                "module2[com.android.mod1.apex+com.android.mod2.apex]",
+                "module3[com.android.mod1.apex+com.android.mod2.apex]",
+                "module1[com.android.mod3.apk]",
+                "module2[com.android.mod3.apk]",
+                "module3[com.android.mod3.apk]",
+                "module4[com.android.mod3.apk]",
+                "module5[com.android.mod3.apk]"
+            );
+        for (int i = 0 ; i < sortedModules.size() ; i++) {
+            assertEquals(sortedModules.get(i), ((ITestSuite)res.get(i)).getDirectModule().getId());
+        }
+    }
+
+    /**
+     * Test that the there exist a module with invalid parameterized modules defined.
+     */
+    @Test
+    public void testReorderTestModulesWithUnexpectedMainlineModules() throws Exception {
+        List<String> modules = Arrays.asList("module1[com.mod1.apex]", "module1[com.mod1]");
+        try {
+            List<IRemoteTest> res = createITestSuiteList(modules);
+            fail("Should have thrown an exception.");
+        } catch (RuntimeException expected) {
+            // expected
+            assertTrue(expected.getMessage().contains(
+                    "Module: module1[com.mod1] doesn't match the pattern for mainline " +
+                        "modules. The pattern should end with apk/apex/apks."));
+        }
     }
 
     @Test

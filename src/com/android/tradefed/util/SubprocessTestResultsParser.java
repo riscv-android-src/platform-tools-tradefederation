@@ -80,6 +80,7 @@ public class SubprocessTestResultsParser implements Closeable {
 
     private TestDescription mCurrentTest = null;
     private IInvocationContext mCurrentModuleContext = null;
+    private InvocationFailedEventInfo mReportedInvocationFailedEventInfo = null;
 
     private Pattern mPattern = null;
     private Map<String, EventHandler> mHandlerMap = null;
@@ -423,6 +424,7 @@ public class SubprocessTestResultsParser implements Closeable {
             } else {
                 mListener.invocationFailed(ifi.mCause);
             }
+            mReportedInvocationFailedEventInfo = ifi;
         }
     }
 
@@ -652,5 +654,15 @@ public class SubprocessTestResultsParser implements Closeable {
     /** Returns the test that is currently in progress. */
     public TestDescription getCurrentTest() {
         return mCurrentTest;
+    }
+
+    /** Returns whether or not an invocation failed was reported. */
+    public boolean reportedInvocationFailed() {
+        return (mReportedInvocationFailedEventInfo != null);
+    }
+
+    /** Returns reported invocation failure event info. */
+    public InvocationFailedEventInfo getReportedInvocationFailedEventInfo() {
+        return mReportedInvocationFailedEventInfo;
     }
 }

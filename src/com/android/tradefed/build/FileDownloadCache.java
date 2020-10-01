@@ -401,7 +401,7 @@ public class FileDownloadCache {
 
     @VisibleForTesting
     File copyFile(String remotePath, File cachedFile, File destFile) throws BuildRetrievalError {
-        // attempt to create a local copy of cached file with sane name
+        // attempt to create a local copy of cached file with meaningful name
         File hardlinkFile = destFile;
         try {
             if (hardlinkFile == null) {

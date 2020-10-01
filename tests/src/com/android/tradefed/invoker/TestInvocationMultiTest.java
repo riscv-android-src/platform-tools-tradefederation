@@ -174,15 +174,17 @@ public class TestInvocationMultiTest {
         EasyMock.expect(mMockConfig.getLogOutput()).andStubReturn(mMockLogger);
         EasyMock.expect(mMockConfig.getConfigurationDescription()).andReturn(mConfigDesc);
         mMockLogger.init();
+        EasyMock.expectLastCall().times(2);
         EasyMock.expect(mMockLogger.getLog())
                 .andReturn(new ByteArrayInputStreamSource("fake".getBytes()));
         mMockLogger.closeLog();
-        EasyMock.expectLastCall().times(2);
+        EasyMock.expectLastCall().times(3);
 
         mMockLogRegistry.registerLogger(mMockLogger);
+        EasyMock.expectLastCall().times(2);
         mMockLogRegistry.dumpToGlobalLog(mMockLogger);
         mMockLogRegistry.unregisterLogger();
-        EasyMock.expectLastCall().times(2);
+        EasyMock.expectLastCall().times(3);
 
         EasyMock.expect(mMockConfig.getCommandLine()).andStubReturn("empty");
         EasyMock.expect(mMockConfig.getCommandOptions()).andStubReturn(new CommandOptions());
@@ -270,15 +272,17 @@ public class TestInvocationMultiTest {
         EasyMock.expect(mMockConfig.getLogOutput()).andStubReturn(mMockLogger);
         EasyMock.expect(mMockConfig.getConfigurationDescription()).andReturn(mConfigDesc);
         mMockLogger.init();
+        EasyMock.expectLastCall().times(2);
         EasyMock.expect(mMockLogger.getLog())
                 .andReturn(new ByteArrayInputStreamSource("fake".getBytes()));
         mMockLogger.closeLog();
-        EasyMock.expectLastCall().times(2);
+        EasyMock.expectLastCall().times(3);
 
         mMockLogRegistry.registerLogger(mMockLogger);
+        EasyMock.expectLastCall().times(2);
         mMockLogRegistry.dumpToGlobalLog(mMockLogger);
         mMockLogRegistry.unregisterLogger();
-        EasyMock.expectLastCall().times(2);
+        EasyMock.expectLastCall().times(3);
 
         EasyMock.expect(mMockConfig.getCommandLine()).andStubReturn("empty");
         EasyMock.expect(mMockConfig.getCommandOptions()).andStubReturn(new CommandOptions());
@@ -352,15 +356,17 @@ public class TestInvocationMultiTest {
         EasyMock.expect(mMockConfig.getLogOutput()).andStubReturn(mMockLogger);
         EasyMock.expect(mMockConfig.getConfigurationDescription()).andReturn(mConfigDesc);
         mMockLogger.init();
+        EasyMock.expectLastCall().times(2);
         EasyMock.expect(mMockLogger.getLog())
                 .andReturn(new ByteArrayInputStreamSource("fake".getBytes()));
         mMockLogger.closeLog();
-        EasyMock.expectLastCall().times(2);
+        EasyMock.expectLastCall().times(3);
 
         mMockLogRegistry.registerLogger(mMockLogger);
+        EasyMock.expectLastCall().times(2);
         mMockLogRegistry.dumpToGlobalLog(mMockLogger);
         mMockLogRegistry.unregisterLogger();
-        EasyMock.expectLastCall().times(2);
+        EasyMock.expectLastCall().times(3);
 
         EasyMock.expect(mMockConfig.getCommandLine()).andStubReturn("empty");
         EasyMock.expect(mMockConfig.getCommandOptions()).andStubReturn(new CommandOptions());
@@ -442,15 +448,17 @@ public class TestInvocationMultiTest {
         EasyMock.expect(mMockConfig.getLogOutput()).andStubReturn(mMockLogger);
         EasyMock.expect(mMockConfig.getConfigurationDescription()).andReturn(mConfigDesc);
         mMockLogger.init();
+        EasyMock.expectLastCall().times(2);
         EasyMock.expect(mMockLogger.getLog())
                 .andReturn(new ByteArrayInputStreamSource("fake".getBytes()));
         mMockLogger.closeLog();
-        EasyMock.expectLastCall().times(2);
+        EasyMock.expectLastCall().times(3);
 
         mMockLogRegistry.registerLogger(mMockLogger);
+        EasyMock.expectLastCall().times(2);
         mMockLogRegistry.dumpToGlobalLog(mMockLogger);
         mMockLogRegistry.unregisterLogger();
-        EasyMock.expectLastCall().times(2);
+        EasyMock.expectLastCall().times(3);
 
         EasyMock.expect(mMockConfig.getCommandLine()).andStubReturn("empty");
         EasyMock.expect(mMockConfig.getCommandOptions()).andStubReturn(new CommandOptions());

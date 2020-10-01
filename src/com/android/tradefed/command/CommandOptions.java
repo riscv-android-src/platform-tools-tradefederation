@@ -23,6 +23,7 @@ import com.android.tradefed.device.metric.AutoLogCollector;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.UniqueMultiMap;
 
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -108,6 +109,10 @@ public class CommandOptions implements ICommandOptions {
             "[0, shard-count)")
     private Integer mShardIndex;
 
+    @Option(name = "optimize-mainline-test", description =
+            "Whether or not to optimize the list of test modules for mainline.")
+    private boolean mOptimizeMainlineTest;
+
     @Option(
         name = "enable-token-sharding",
         description = "Whether or not to allow sharding with the token support enabled."
@@ -160,6 +165,12 @@ public class CommandOptions implements ICommandOptions {
             description =
                     "For remote sharded invocation, whether or not to attempt the setup in parallel.")
     private boolean mUseParallelRemoteSetup = false;
+
+    @Option(name = "parallel-setup", description = "Whether to attempt the setup in parallel.")
+    private boolean mUseParallelSetup = false;
+
+    @Option(name = "parallel-setup-timeout", description = "Timeout to use during parallel setup.")
+    private Duration mParallelSetupTimeout = Duration.ofMinutes(30L);
 
     @Option(
             name = "replicate-parent-setup",
@@ -370,6 +381,14 @@ public class CommandOptions implements ICommandOptions {
      * {@inheritDoc}
      */
     @Override
+    public boolean getOptimizeMainlineTest() {
+        return mOptimizeMainlineTest;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public Integer getShardCount() {
         return mShardCount;
     }
@@ -510,6 +529,18 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public boolean shouldUseParallelRemoteSetup() {
         return mUseParallelRemoteSetup;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean shouldUseParallelSetup() {
+        return mUseParallelSetup;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Duration getParallelSetupTimeout() {
+        return mParallelSetupTimeout;
     }
 
     /** {@inheritDoc} */
