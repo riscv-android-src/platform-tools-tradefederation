@@ -29,6 +29,9 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
+import com.android.tradefed.result.error.ErrorIdentifier;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IAbiReceiver;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
@@ -137,9 +140,10 @@ public class PushFilePreparer extends BaseTargetPreparer
      * Helper method to only throw if mAbortOnFailure is enabled. Callers should behave as if this
      * method may return.
      */
-    private void fail(String message, DeviceDescriptor descriptor) throws TargetSetupError {
+    private void fail(String message, DeviceDescriptor descriptor, ErrorIdentifier identifier)
+            throws TargetSetupError {
         if (shouldAbortOnFailure()) {
-            throw new TargetSetupError(message, descriptor);
+            throw new TargetSetupError(message, descriptor, identifier);
         } else {
             // Log the error and return
             Log.w(LOG_TAG, message);
@@ -153,7 +157,10 @@ public class PushFilePreparer extends BaseTargetPreparer
         for (String pushspec : mPushSpecs) {
             String[] pair = pushspec.split("->");
             if (pair.length != 2) {
-                fail(String.format("Invalid pushspec: '%s'", Arrays.asList(pair)), descriptor);
+                fail(
+                        String.format("Invalid pushspec: '%s'", Arrays.asList(pair)),
+                        descriptor,
+                        InfraErrorIdentifier.OPTION_CONFIGURATION_ERROR);
                 continue;
             }
             remoteToLocalMapping.put(pair[1], new File(pair[0]));
@@ -311,6 +318,22 @@ public class PushFilePreparer extends BaseTargetPreparer
                 // approach to do individual download from remote artifact.
                 // Try to stage the files from remote zip files.
                 src = buildInfo.stageRemoteFile(fileName, testDir);
+                if (src != null) {
+                    try {
+                        // Search again with filtering on ABI
+                        File srcWithAbi = FileUtil.findFile(fileName, mAbi, testDir);
+                        if (srcWithAbi != null
+                                && !srcWithAbi
+                                        .getAbsolutePath()
+                                        .startsWith(src.getAbsolutePath())) {
+                            // When multiple matches are found, return the one with matching
+                            // ABI unless src is its parent directory.
+                            return srcWithAbi;
+                        }
+                    } catch (IOException e) {
+                        CLog.w("Failed to find test files with matching ABI from directory.");
+                    }
+                }
             }
         }
         return src;
@@ -388,7 +411,8 @@ public class PushFilePreparer extends BaseTargetPreparer
         if (src == null || !src.exists()) {
             fail(
                     String.format("Local source file '%s' does not exist", localPath),
-                    device.getDeviceDescriptor());
+                    device.getDeviceDescriptor(),
+                    InfraErrorIdentifier.CONFIGURED_ARTIFACT_NOT_FOUND);
             return;
         }
         if (src.isDirectory()) {
@@ -402,7 +426,8 @@ public class PushFilePreparer extends BaseTargetPreparer
                         String.format(
                                 "Attempting to push dir '%s' to an existing device file '%s'",
                                 src.getAbsolutePath(), remotePath),
-                        device.getDeviceDescriptor());
+                        device.getDeviceDescriptor(),
+                        DeviceErrorIdentifier.FAIL_PUSH_FILE);
             }
             Set<String> filter = new HashSet<>();
             if (mAbi != null) {
@@ -415,7 +440,8 @@ public class PushFilePreparer extends BaseTargetPreparer
                 fail(
                         String.format(
                                 "Failed to push local '%s' to remote '%s'", localPath, remotePath),
-                        device.getDeviceDescriptor());
+                        device.getDeviceDescriptor(),
+                        DeviceErrorIdentifier.FAIL_PUSH_FILE);
                 return;
             } else {
                 if (deleteContentOnly) {
@@ -428,7 +454,8 @@ public class PushFilePreparer extends BaseTargetPreparer
                 fail(
                         String.format(
                                 "Failed to push local '%s' to remote '%s'", localPath, remotePath),
-                        device.getDeviceDescriptor());
+                        device.getDeviceDescriptor(),
+                        DeviceErrorIdentifier.FAIL_PUSH_FILE);
                 return;
             } else {
                 mFilesPushed.add(remotePath);

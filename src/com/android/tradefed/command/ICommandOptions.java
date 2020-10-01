@@ -19,6 +19,7 @@ package com.android.tradefed.command;
 import com.android.tradefed.device.metric.AutoLogCollector;
 import com.android.tradefed.util.UniqueMultiMap;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.Set;
 
@@ -120,6 +121,10 @@ public interface ICommandOptions {
      */
     public void setInvocationTimeout(Long mInvocationTimeout);
 
+
+    /** Returns true if we should optimize the list of test modules for mainline test. */
+    public boolean getOptimizeMainlineTest();
+
     /**
      * Return the total shard count for the command.
      */
@@ -184,6 +189,12 @@ public interface ICommandOptions {
 
     /** Whether or not to attempt parallel setup of the remote devices. */
     public boolean shouldUseParallelRemoteSetup();
+
+    /** Whether or not to attempt parallel setup. */
+    public boolean shouldUseParallelSetup();
+
+    /** Returns the timeout to use during parallel setups. */
+    public Duration getParallelSetupTimeout();
 
     /** Whether or not to use replicated setup for all the remote devices. */
     public boolean shouldUseReplicateSetup();

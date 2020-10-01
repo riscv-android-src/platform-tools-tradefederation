@@ -216,8 +216,8 @@ public class ZipUtilTest extends TestCase {
                             partialZipFile,
                             endCentralDirInfo,
                             endCentralDirInfo.getCentralDirOffset());
-            // The zip file has 3 folders, 4 files.
-            assertEquals(7, zipEntries.size());
+            // The zip file has 4 folders, 4 files.
+            assertEquals(8, zipEntries.size());
 
             CentralDirectoryInfo zipEntry;
             LocalFileHeader localFileHeader;
@@ -228,7 +228,7 @@ public class ZipUtilTest extends TestCase {
             zipEntry =
                     zipEntries
                             .stream()
-                            .filter(e -> e.getFileName().equals("empty_file"))
+                            .filter(e -> e.getFileName().equals("empty/empty_file"))
                             .findFirst()
                             .get();
             targetFile = new File(Paths.get(tmpDir.toString(), zipEntry.getFileName()).toString());
@@ -243,6 +243,7 @@ public class ZipUtilTest extends TestCase {
             // Verify file permissions - readonly - 644 rw-r--r--
             permissions = Files.getPosixFilePermissions(targetFile.toPath());
             assertEquals(PosixFilePermissions.fromString("rw-r--r--"), permissions);
+            assertTrue(targetFile.isFile());
 
             // Unzip text file
             zipEntry =
@@ -377,8 +378,8 @@ public class ZipUtilTest extends TestCase {
                             endCentralDirInfo,
                             endCentralDirInfo.getCentralDirOffset(),
                             true);
-            // The zip file has 3 folders, 4 files.
-            assertEquals(7, zipEntries.size());
+            // The zip file has 4 folders, 4 files.
+            assertEquals(8, zipEntries.size());
 
             CentralDirectoryInfo zipEntry;
             LocalFileHeader localFileHeader;
@@ -389,7 +390,7 @@ public class ZipUtilTest extends TestCase {
             zipEntry =
                     zipEntries
                             .stream()
-                            .filter(e -> e.getFileName().equals("empty_file"))
+                            .filter(e -> e.getFileName().equals("empty/empty_file"))
                             .findFirst()
                             .get();
             targetFile = new File(Paths.get(tmpDir.toString(), zipEntry.getFileName()).toString());

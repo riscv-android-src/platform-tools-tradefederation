@@ -307,6 +307,10 @@ public class TestRunResult {
         updateTestResult(test, TestStatus.ASSUMPTION_FAILURE, FailureDescription.create(trace));
     }
 
+    public void testAssumptionFailure(TestDescription test, FailureDescription failure) {
+        updateTestResult(test, TestStatus.ASSUMPTION_FAILURE, failure);
+    }
+
     public void testIgnored(TestDescription test) {
         updateTestResult(test, TestStatus.IGNORED, null);
     }

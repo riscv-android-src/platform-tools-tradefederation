@@ -81,6 +81,24 @@ public class RustBinaryHostTestTest {
         return newCommandResult(CommandStatus.SUCCESS, stderr, stdout);
     }
 
+    // shared with RustBinaryTestTest
+    static String runListOutput(int numTests) {
+        String listOutput = "";
+        for (int i = 1; i <= numTests; i++) {
+            listOutput += "test_case_" + i + ": test\n";
+        }
+        return listOutput + numTests + " tests, 0 benchmarks";
+    }
+
+    // shared with RustBinaryTestTest
+    static String runListOutput(String[] tests) {
+        String listOutput = "";
+        for (String name : tests) {
+            listOutput += name + ": test\n";
+        }
+        return listOutput + tests.length + " tests, 0 benchmarks";
+    }
+
     /** Add mocked call "binary --list" to count the number of tests. */
     private void mockCountTests(File binary, int numOfTest) throws Exception {
         EasyMock.expect(
@@ -88,7 +106,7 @@ public class RustBinaryHostTestTest {
                                 EasyMock.anyLong(),
                                 EasyMock.eq(binary.getAbsolutePath()),
                                 EasyMock.eq("--list")))
-                .andReturn(successResult("", numOfTest + " tests, 0 benchmarks"));
+                .andReturn(successResult("", runListOutput(numOfTest)));
     }
 
     /** Add mocked testRunStarted call to the listener. */
@@ -184,7 +202,6 @@ public class RustBinaryHostTestTest {
             mockListenerLog(binary);
             CommandResult res = newCommandResult(CommandStatus.EXCEPTION, "Err.", "Exception.");
             mockTestRunExpect(binary, res);
-            mMockListener.testRunFailed((String) EasyMock.anyObject());
             mMockListener.testRunFailed((FailureDescription) EasyMock.anyObject());
             mockTestRunEnded();
             callReplayRunVerify();
@@ -261,7 +278,7 @@ public class RustBinaryHostTestTest {
                                     EasyMock.eq("--skip"),
                                     EasyMock.eq("Long"),
                                     EasyMock.eq("--list")))
-                    .andReturn(successResult("", "9 tests, 0 benchmarks"));
+                    .andReturn(successResult("", runListOutput(9)));
             mockListenerStarted(binary, 9);
             mockListenerLog(binary);
             CommandResult res = successResult("", resultCount(6, 1, 2));
@@ -289,24 +306,21 @@ public class RustBinaryHostTestTest {
         try {
             OptionSetter setter = new OptionSetter(mTest);
             setter.setOptionValue("test-file", binary.getAbsolutePath());
-            setter.setOptionValue("exclude-filter", "NotMe");
-            setter.setOptionValue("include-filter", "OnlyMe");
+            setter.setOptionValue("exclude-filter", "MyTest#NotMe");
+            setter.setOptionValue("include-filter", "MyTest#OnlyMe");
             setter.setOptionValue("exclude-filter", "Other");
-            setter.setOptionValue("include-filter", "Me2");
             // We always pass the include-filter before exclude-filter strings.
-            // Multiple include filters are accepted but all except the 1st are ignored.
             EasyMock.expect(
                             mMockRunUtil.runTimedCmdSilently(
                                     EasyMock.anyLong(),
                                     EasyMock.eq(binary.getAbsolutePath()),
                                     EasyMock.eq("OnlyMe"),
-                                    EasyMock.eq("Me2"),
                                     EasyMock.eq("--skip"),
                                     EasyMock.eq("NotMe"),
                                     EasyMock.eq("--skip"),
                                     EasyMock.eq("Other"),
                                     EasyMock.eq("--list")))
-                    .andReturn(successResult("", "3 tests, 0 benchmarks"));
+                    .andReturn(successResult("", runListOutput(3)));
             mockListenerStarted(binary, 3);
 
             mockListenerLog(binary);
@@ -316,6 +330,77 @@ public class RustBinaryHostTestTest {
                                     EasyMock.anyLong(),
                                     EasyMock.eq(binary.getAbsolutePath()),
                                     EasyMock.eq("OnlyMe"),
+                                    EasyMock.eq("--skip"),
+                                    EasyMock.eq("NotMe"),
+                                    EasyMock.eq("--skip"),
+                                    EasyMock.eq("Other")))
+                    .andReturn(res);
+
+            mockTestRunEnded();
+            callReplayRunVerify();
+        } finally {
+            FileUtil.deleteFile(binary);
+        }
+    }
+
+    /** Test multiple include and exclude filters. */
+    @Test
+    public void testMultipleIncludeExcludeFilter() throws Exception {
+        File binary = FileUtil.createTempFile("rust-dir", "");
+        try {
+            OptionSetter setter = new OptionSetter(mTest);
+            setter.setOptionValue("test-file", binary.getAbsolutePath());
+            setter.setOptionValue("exclude-filter", "NotMe");
+            setter.setOptionValue("include-filter", "MyTest#OnlyMe");
+            setter.setOptionValue("exclude-filter", "MyTest#Other");
+            setter.setOptionValue("include-filter", "Me2");
+            // Multiple include filters are run one by one with --list.
+            String[] selection1 = new String[] {"test1", "test2"};
+            EasyMock.expect(
+                            mMockRunUtil.runTimedCmdSilently(
+                                    EasyMock.anyLong(),
+                                    EasyMock.eq(binary.getAbsolutePath()),
+                                    EasyMock.eq("OnlyMe"),
+                                    EasyMock.eq("--skip"),
+                                    EasyMock.eq("NotMe"),
+                                    EasyMock.eq("--skip"),
+                                    EasyMock.eq("Other"),
+                                    EasyMock.eq("--list")))
+                    .andReturn(successResult("", runListOutput(selection1)));
+            String[] selection2 = new String[] {"test2", "test3", "test4"};
+            EasyMock.expect(
+                            mMockRunUtil.runTimedCmdSilently(
+                                    EasyMock.anyLong(),
+                                    EasyMock.eq(binary.getAbsolutePath()),
+                                    EasyMock.eq("Me2"),
+                                    EasyMock.eq("--skip"),
+                                    EasyMock.eq("NotMe"),
+                                    EasyMock.eq("--skip"),
+                                    EasyMock.eq("Other"),
+                                    EasyMock.eq("--list")))
+                    .andReturn(successResult("", runListOutput(selection2)));
+            // Union of selection1 and selection2 has 4 tests.
+            mockListenerStarted(binary, 4);
+
+            // Multiple include filters are run one by one.
+            mockListenerLog(binary);
+            CommandResult res = successResult("", resultCount(2, 0, 0));
+            EasyMock.expect(
+                            mMockRunUtil.runTimedCmd(
+                                    EasyMock.anyLong(),
+                                    EasyMock.eq(binary.getAbsolutePath()),
+                                    EasyMock.eq("OnlyMe"),
+                                    EasyMock.eq("--skip"),
+                                    EasyMock.eq("NotMe"),
+                                    EasyMock.eq("--skip"),
+                                    EasyMock.eq("Other")))
+                    .andReturn(res);
+            mockListenerLog(binary);
+            res = successResult("", resultCount(3, 0, 0));
+            EasyMock.expect(
+                            mMockRunUtil.runTimedCmd(
+                                    EasyMock.anyLong(),
+                                    EasyMock.eq(binary.getAbsolutePath()),
                                     EasyMock.eq("Me2"),
                                     EasyMock.eq("--skip"),
                                     EasyMock.eq("NotMe"),

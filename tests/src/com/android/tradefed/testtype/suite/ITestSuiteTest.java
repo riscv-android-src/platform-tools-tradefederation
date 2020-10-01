@@ -59,6 +59,7 @@ import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.MultiFailureDescription;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.retry.BaseRetryDecision;
 import com.android.tradefed.retry.IRetryDecision;
@@ -227,7 +228,8 @@ public class ITestSuiteTest {
                 TestDescription test = new TestDescription(EMPTY_CONFIG, EMPTY_CONFIG);
                 listener.testStarted(test, 0);
                 if (mFailed != null) {
-                    listener.testFailed(test, mFailed);
+                    listener.testFailed(
+                            test, FailureDescription.create(mFailed, FailureStatus.TEST_FAILURE));
                 }
                 listener.testEnded(test, 5, new HashMap<String, Metric>());
             } finally {
@@ -399,7 +401,8 @@ public class ITestSuiteTest {
         TestDescription test = new TestDescription(EMPTY_CONFIG, EMPTY_CONFIG);
         listener.testStarted(test, 0);
         if (testFailed) {
-            listener.testFailed(test, message);
+            listener.testFailed(
+                    test, FailureDescription.create(message, FailureStatus.TEST_FAILURE));
         }
         listener.testEnded(test, 5, new HashMap<String, Metric>());
         listener.testRunEnded(EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
@@ -415,7 +418,9 @@ public class ITestSuiteTest {
             TestDescription test = new TestDescription(EMPTY_CONFIG, EMPTY_CONFIG);
             listener.testStarted(test, 0);
             if (testFailed) {
-                listener.testFailed(test, mTestFailedMessage);
+                listener.testFailed(
+                        test,
+                        FailureDescription.create(mTestFailedMessage, FailureStatus.TEST_FAILURE));
             }
             listener.testEnded(test, 5, new HashMap<String, Metric>());
             listener.testRunEnded(
@@ -661,7 +666,9 @@ public class ITestSuiteTest {
                             fake.setTest(
                                     new StubCollectingTest(
                                             new DeviceUnresponsiveException(
-                                                    "unresponsive", "serial")));
+                                                    "unresponsive",
+                                                    "serial",
+                                                    DeviceErrorIdentifier.DEVICE_UNRESPONSIVE)));
                             testConfig.put(TEST_CONFIG_NAME, fake);
                         } catch (ConfigurationException e) {
                             CLog.e(e);
@@ -683,7 +690,8 @@ public class ITestSuiteTest {
         mMockListener.testRunStarted(
                 EasyMock.eq(TEST_CONFIG_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         EasyMock.expectLastCall().times(1);
-        mMockListener.testRunFailed(FailureDescription.create("unresponsive"));
+        mMockListener.testRunFailed(
+                FailureDescription.create("unresponsive", FailureStatus.LOST_SYSTEM_UNDER_TEST));
         EasyMock.expect(
                         mMockDevice.logBugreport(
                                 EasyMock.eq("module-test-failure-SERIAL-bugreport"),
@@ -811,11 +819,6 @@ public class ITestSuiteTest {
         EasyMock.expectLastCall().times(1);
         Capture<FailureDescription> captured = new Capture<>();
         mMockListener.testRunFailed(EasyMock.capture(captured));
-        EasyMock.expect(
-                        mMockDevice.logBugreport(
-                                EasyMock.eq("module-test-failure-SERIAL-bugreport"),
-                                EasyMock.anyObject()))
-                .andReturn(true);
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         EasyMock.expectLastCall().times(1);
@@ -1604,7 +1607,9 @@ public class ITestSuiteTest {
                     EasyMock.anyLong());
             TestDescription testId = new TestDescription(EMPTY_CONFIG, EMPTY_CONFIG);
             mMockListener.testStarted(testId, 0);
-            mMockListener.testFailed(testId, mTestFailedMessage);
+            mMockListener.testFailed(
+                    testId,
+                    FailureDescription.create(mTestFailedMessage, FailureStatus.TEST_FAILURE));
             mMockListener.testEnded(testId, 5, new HashMap<String, Metric>());
             mMockListener.testRunEnded(
                     EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());

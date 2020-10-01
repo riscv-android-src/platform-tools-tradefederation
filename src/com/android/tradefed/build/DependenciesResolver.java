@@ -59,7 +59,7 @@ public class DependenciesResolver
     @Option(name = "protocol")
     private String mProtocol = null;
 
-    @Option(name = "use-build-api ")
+    @Option(name = "use-build-api")
     private boolean mUseBuildApi = true;
 
     private File mTestsDir;

@@ -17,6 +17,7 @@ package com.android.tradefed.cluster;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import com.android.tradefed.result.LegacySubprocessResultsReporter;
 import com.android.tradefed.util.FileUtil;
@@ -43,11 +44,13 @@ public class SubprocessConfigBuilderTest {
     private static final String REPORTER_CLASS = LegacySubprocessResultsReporter.class.getName();
 
     private SubprocessConfigBuilder mConfigBuilder;
+    private String mClasspath;
     private File mWorkDir;
 
     @Before
     public void setUp() throws IOException {
         mConfigBuilder = new SubprocessConfigBuilder();
+        mClasspath = System.getProperty("java.class.path");
         mWorkDir = FileUtil.createTempDir("tfjar");
     }
 
@@ -58,9 +61,10 @@ public class SubprocessConfigBuilderTest {
 
     @Test
     public void testCreateWrapperConfig() throws Exception {
-        String oriConfigName = "testConfig";
+        String oriConfigName = "host";
         String reporterPort = "1024";
         mConfigBuilder
+                .setClasspath(mClasspath)
                 .setWorkingDir(mWorkDir)
                 .setOriginalConfig(oriConfigName)
                 .setPort(reporterPort);
@@ -69,19 +73,33 @@ public class SubprocessConfigBuilderTest {
         DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
         DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
         Document doc = dBuilder.parse(config);
-        verifyWrapperXml(doc, oriConfigName, reporterPort);
+        verifyWrapperXml(doc, reporterPort);
     }
 
-    private void verifyWrapperXml(Document doc, String oriConfigName, String reporterPort) {
-        NodeList inc = doc.getElementsByTagName("include");
-        assertEquals(1, inc.getLength());
-        String incName = ((Element) inc.item(0)).getAttribute("name");
-        assertEquals(oriConfigName, incName);
-        NodeList reporter = doc.getElementsByTagName("result_reporter");
-        assertEquals(1, reporter.getLength());
-        String reporterClass = ((Element) reporter.item(0)).getAttribute("class");
+    @Test
+    public void testCreateWrapperConfig_forCommandWithSlashes() throws Exception {
+        String oriConfigName = "util/timewaster";
+        String reporterPort = "1024";
+        mConfigBuilder
+                .setClasspath(mClasspath)
+                .setWorkingDir(mWorkDir)
+                .setOriginalConfig(oriConfigName)
+                .setPort(reporterPort);
+        File config = mConfigBuilder.build();
+        assertNotNull(config);
+        DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+        DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+        Document doc = dBuilder.parse(config);
+        verifyWrapperXml(doc, reporterPort);
+    }
+
+    private void verifyWrapperXml(Document doc, String reporterPort) {
+        NodeList reporters = doc.getElementsByTagName("result_reporter");
+        assertTrue(0 < reporters.getLength());
+        Element reporter = (Element) reporters.item(reporters.getLength() - 1);
+        String reporterClass = reporter.getAttribute("class");
         assertEquals(REPORTER_CLASS, reporterClass);
-        NodeList option = ((Element) reporter.item(0)).getElementsByTagName("option");
+        NodeList option = reporter.getElementsByTagName("option");
         assertEquals(1, option.getLength());
         String optionName = ((Element) option.item(0)).getAttribute("name");
         assertEquals("subprocess-report-port", optionName);

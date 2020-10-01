@@ -284,6 +284,8 @@ public class BaseTestSuite extends ITestSuite {
             if (mEnableMainlineParameter) {
                 mModuleRepo.setMainlineParameterizedModules(mEnableMainlineParameter);
                 mModuleRepo.setInvocationContext(getInvocationContext());
+                mModuleRepo.setOptimizeMainlineTest(
+                        getConfiguration().getCommandOptions().getOptimizeMainlineTest());
             }
 
             mModuleRepo.setParameterizedModules(mEnableParameter);

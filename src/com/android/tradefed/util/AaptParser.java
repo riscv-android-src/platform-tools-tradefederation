@@ -54,6 +54,48 @@ public class AaptParser {
     private static final int AAPT_TIMEOUT_MS = 60000;
     private static final int INVALID_SDK = -1;
 
+    /**
+     * Enum of options for AAPT version used to parse APK files.
+     */
+    public static enum AaptVersion {
+        AAPT {
+            @Override
+            public String[] dumpBadgingCommand(File apkFile) {
+                return new String[] {"aapt", "dump", "badging", apkFile.getAbsolutePath()};
+            }
+
+            @Override
+            public String[] dumpXmlTreeCommand(File apkFile) {
+                return new String[] {
+                    "aapt", "dump", "xmltree", apkFile.getAbsolutePath(), "AndroidManifest.xml"
+                };
+            }
+        },
+
+        AAPT2 {
+            @Override
+            public String[] dumpBadgingCommand(File apkFile) {
+                return new String[] {"aapt2", "dump", "badging", apkFile.getAbsolutePath()};
+            }
+
+            @Override
+            public String[] dumpXmlTreeCommand(File apkFile) {
+                return new String[] {
+                    "aapt2",
+                    "dump",
+                    "xmltree",
+                    apkFile.getAbsolutePath(),
+                    "--file",
+                    "AndroidManifest.xml"
+                };
+            }
+        };
+
+        public abstract String[] dumpBadgingCommand(File apkFile);
+
+        public abstract String[] dumpXmlTreeCommand(File apkFile);
+    };
+
     private String mPackageName;
     private String mVersionCode;
     private String mVersionName;
@@ -130,16 +172,21 @@ public class AaptParser {
      * @return the {@link AaptParser} or <code>null</code> if failed to extract the information
      */
     public static AaptParser parse(File apkFile) {
+        return parse(apkFile, AaptVersion.AAPT);
+    }
+
+    /**
+     * Parse info from the apk.
+     *
+     * @param apkFile the apk file
+     * @param aaptVersion the aapt version
+     * @return the {@link AaptParser} or <code>null</code> if failed to extract the information
+     */
+    public static AaptParser parse(File apkFile, AaptVersion aaptVersion) {
         CommandResult result =
                 RunUtil.getDefault()
                         .runTimedCmdRetry(
-                                AAPT_TIMEOUT_MS,
-                                0L,
-                                2,
-                                "aapt",
-                                "dump",
-                                "badging",
-                                apkFile.getAbsolutePath());
+                                AAPT_TIMEOUT_MS, 0L, 2, aaptVersion.dumpBadgingCommand(apkFile));
 
         String stderr = result.getStderr();
         if (stderr != null && !stderr.isEmpty()) {
@@ -158,11 +205,7 @@ public class AaptParser {
                                 AAPT_TIMEOUT_MS,
                                 0L,
                                 2,
-                                "aapt",
-                                "dump",
-                                "xmltree",
-                                apkFile.getAbsolutePath(),
-                                "AndroidManifest.xml");
+                                aaptVersion.dumpXmlTreeCommand(apkFile));
 
         stderr = result.getStderr();
         if (stderr != null && !stderr.isEmpty()) {

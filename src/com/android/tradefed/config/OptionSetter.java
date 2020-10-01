@@ -330,8 +330,8 @@ public class OptionSetter {
     private OptionFieldsForName fieldsForArg(String name) throws ConfigurationException {
         OptionFieldsForName fields = fieldsForArgNoThrow(name);
         if (fields == null) {
-            throw new ConfigurationException(String.format("Could not find option with name %s",
-                    name));
+            throw new ConfigurationException(
+                    String.format("Could not find option with name '%s'", name));
         }
         return fields;
     }
