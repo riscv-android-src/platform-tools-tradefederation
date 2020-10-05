@@ -301,6 +301,7 @@ public class ArtRunTest implements IDeviceTest, IRemoteTest, IAbiReceiver, ITest
                 ProcessBuilder processBuilder =
                         new ProcessBuilder(
                                 CHECKER_EXECUTABLE,
+                                "--no-print-cfg",
                                 "-q",
                                 "--arch=" + checkerArch,
                                 localCfgPath.getAbsolutePath(),
