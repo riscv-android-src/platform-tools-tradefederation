@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.postprocessor;
 
+import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Measurements;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -22,14 +23,16 @@ import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.TestDescription;
 
 import com.google.common.collect.ArrayListMultimap;
+import com.google.common.math.Quantiles;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -41,6 +44,13 @@ import java.util.stream.Collectors;
  */
 @OptionClass(alias = "aggregate-post-processor")
 public class AggregatePostProcessor extends BasePostProcessor {
+    @Option(
+            name = "report-percentiles",
+            description =
+                    "Additional percentiles of each metric to report, in integers in the 0 - 100 "
+                            + "range. Can be repeated.")
+    private Set<Integer> mPercentiles = new HashSet<>();
+
     private static final String STATS_KEY_MIN = "min";
     private static final String STATS_KEY_MAX = "max";
     private static final String STATS_KEY_MEAN = "mean";
@@ -48,8 +58,14 @@ public class AggregatePostProcessor extends BasePostProcessor {
     private static final String STATS_KEY_STDEV = "stdev";
     private static final String STATS_KEY_MEDIAN = "median";
     private static final String STATS_KEY_TOTAL = "total";
+    private static final String STATS_KEY_PERCENTILE_PREFIX = "p";
     // Separator for final upload
     private static final String STATS_KEY_SEPARATOR = "-";
+
+    // Actual percentiles to calculate, which includes the 50th percentile for median. Guava's
+    // definition of percentiles agrees with the general interpretation of median. Initialized
+    // lazily.
+    private Set<Integer> mActualPercentiles = new HashSet<>();
 
     // Stores the test metrics for aggregation by test description.
     // TODO(b/118708851): Remove this workaround once AnTS is ready.
@@ -169,11 +185,9 @@ public class AggregatePostProcessor extends BasePostProcessor {
     }
 
     private HashMap<String, Double> getStats(Collection<Double> values) {
-        List<Double> valuesList = new ArrayList<>(values);
-        Collections.sort(valuesList);
         HashMap<String, Double> stats = new HashMap<>();
         double sum = values.stream().mapToDouble(Double::doubleValue).sum();
-        double count = (double) valuesList.size();
+        double count = (double) values.size();
         // The orElse situation should never happen.
         double mean =
                 values.stream()
@@ -181,19 +195,41 @@ public class AggregatePostProcessor extends BasePostProcessor {
                         .average()
                         .orElseThrow(IllegalStateException::new);
         double variance = values.stream().reduce(0.0, (a, b) -> a + Math.pow(b - mean, 2) / count);
-        // Calculate median.
-        double median = valuesList.get(valuesList.size() / 2);
-        if (valuesList.size() % 2 == 0) {
-            median = (median + valuesList.get(valuesList.size() / 2 - 1)) / 2.0;
-        }
+        // Calculate percentiles. Median will be calculated as the 50th percentile.
+        Map<Integer, Double> percentiles =
+                Quantiles.percentiles().indexes(getActualPercentiles()).compute(values);
+        double median = percentiles.get(50);
 
-        stats.put(STATS_KEY_MIN, valuesList.get(0));
-        stats.put(STATS_KEY_MAX, valuesList.get(valuesList.size() - 1));
+        stats.put(STATS_KEY_MIN, Collections.min(values));
+        stats.put(STATS_KEY_MAX, Collections.max(values));
         stats.put(STATS_KEY_MEAN, mean);
         stats.put(STATS_KEY_VAR, variance);
         stats.put(STATS_KEY_STDEV, Math.sqrt(variance));
         stats.put(STATS_KEY_MEDIAN, median);
         stats.put(STATS_KEY_TOTAL, sum);
+        percentiles
+                .entrySet()
+                .stream()
+                .forEach(
+                        e -> {
+                            // If the percentile is 50, only include it if the user asks for it
+                            // explicitly.
+                            if (e.getKey() != 50 || mPercentiles.contains(50)) {
+                                stats.put(
+                                        STATS_KEY_PERCENTILE_PREFIX + e.getKey().toString(),
+                                        e.getValue());
+                            }
+                        });
         return stats;
+    }
+
+    private Set<Integer> getActualPercentiles() {
+        if (mActualPercentiles.isEmpty()) {
+            // Empty means the set has not been initialized, since an initialized set will include
+            // at least 50.
+            mActualPercentiles.addAll(mPercentiles);
+            mActualPercentiles.add(50);
+        }
+        return mActualPercentiles;
     }
 }
