@@ -75,8 +75,8 @@ public class ArtRunTest implements IDeviceTest, IRemoteTest, IAbiReceiver, ITest
 
     private ITestDevice mDevice = null;
     private IAbi mAbi = null;
-    private Set<String> mIncludeFilters = new LinkedHashSet<>();
-    private Set<String> mExcludeFilters = new LinkedHashSet<>();
+    private final Set<String> mIncludeFilters = new LinkedHashSet<>();
+    private final Set<String> mExcludeFilters = new LinkedHashSet<>();
 
     /** {@inheritDoc} */
     @Override
