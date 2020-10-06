@@ -396,6 +396,7 @@ public abstract class SubprocessTfLauncher
                                     "Event receiver thread did not complete:" + "\n%s",
                                     FileUtil.readStringFromFile(stderrFile)));
                 }
+                protoReceiver.completeModuleEvents();
             }
             if (result.getStatus().equals(CommandStatus.SUCCESS)) {
                 CLog.d("Successfully ran TF tests for build %s", mBuildInfo.getBuildId());
