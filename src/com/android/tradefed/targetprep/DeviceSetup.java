@@ -746,21 +746,6 @@ public class DeviceSetup extends BaseTargetPreparer {
         device.executeShellCommand("chmod 644 /data/local.prop");
         CLog.i("Rebooting %s due to system property change", device.getSerialNumber());
         device.reboot();
-
-        // Verify properties have expected values.
-        List<String> unmatched = new ArrayList<>();
-        for (Map.Entry<String, String> prop : mSetProps.entrySet()) {
-            String actual = device.getProperty(prop.getKey());
-            String expected = prop.getValue();
-            if (!actual.equals(expected)) {
-                unmatched.add(String.format("%s=%s(expected:%s)", prop.getKey(), actual, expected));
-            }
-        }
-        if (unmatched.size() > 0) {
-            throw new TargetSetupError(
-                    String.format("Failed to set properties: %s", unmatched),
-                    device.getDeviceDescriptor());
-        }
     }
 
     /**
