@@ -64,6 +64,7 @@ public class ProtoResultParser {
 
     private ITestInvocationListener mListener;
     private String mCurrentRunName = null;
+    private TestDescription mCurrentTestCase = null;
     /**
      * We don't always want to report the invocation level events again. If we are within an
      * invocation scope we should not report it again.
@@ -208,6 +209,22 @@ public class ProtoResultParser {
     /** If needed to ensure consistent reporting, complete the events of the module. */
     public void completeModuleEvents() {
         if (getModuleInProgress() == null) {
+            if (mCurrentRunName != null) {
+                if (mCurrentTestCase != null) {
+                    FailureDescription failure =
+                            FailureDescription.create(
+                                    "Run was interrupted after starting, results are incomplete.");
+                    mListener.testFailed(mCurrentTestCase, failure);
+                    mListener.testEnded(mCurrentTestCase, new HashMap<String, Metric>());
+                }
+                FailureDescription failure =
+                        FailureDescription.create(
+                                "Run was interrupted after starting, results are incomplete.",
+                                FailureStatus.INFRA_FAILURE);
+                mListener.testRunFailed(failure);
+                mListener.testRunEnded(0L, new HashMap<String, Metric>());
+                mCurrentRunName = null;
+            }
             return;
         }
         mListener.testRunStarted(getModuleInProgress(), 0);
@@ -446,9 +463,11 @@ public class ProtoResultParser {
         TestDescription description = new TestDescription(info[0], info[1]);
         if (testcaseProto.hasEndTime()) {
             handleTestCaseEnd(description, testcaseProto);
+            mCurrentTestCase = null;
         } else {
             log("Test case started proto: %s", description.toString());
             mListener.testStarted(description, timeStampToMillis(testcaseProto.getStartTime()));
+            mCurrentTestCase = description;
         }
     }
 
