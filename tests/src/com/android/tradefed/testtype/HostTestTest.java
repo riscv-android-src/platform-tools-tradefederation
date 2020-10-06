@@ -25,6 +25,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.config.remote.GcsRemoteFileResolver;
 import com.android.tradefed.config.remote.IRemoteFileResolver;
+import com.android.tradefed.config.remote.IRemoteFileResolver.RemoteFileResolverArgs;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
@@ -739,7 +740,7 @@ public class HostTestTest extends TestCase {
     public void testRun_junit3TestSuite_dynamicOptions() throws Exception {
         doReturn(new File("/downloaded/somewhere"))
                 .when(mMockResolver)
-                .resolveRemoteFiles(Mockito.eq(FAKE_REMOTE_FILE_PATH), Mockito.any());
+                .resolveRemoteFiles((RemoteFileResolverArgs) Mockito.any());
         mHostTest.setClassName(DynamicTestCase.class.getName());
         TestDescription test1 = new TestDescription(DynamicTestCase.class.getName(), "testPass");
         mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
