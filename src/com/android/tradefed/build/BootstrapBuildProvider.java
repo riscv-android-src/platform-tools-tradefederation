@@ -90,6 +90,8 @@ public class BootstrapBuildProvider implements IDeviceBuildProvider {
                             + "Can be repeated. For example --extra-file file_key_1=/path/to/file")
     private Map<String, File> mExtraFiles = new LinkedHashMap<>();
 
+    private boolean mCreatedTestDir = false;
+
     @Override
     public IBuildInfo getBuild() throws BuildRetrievalError {
         throw new UnsupportedOperationException("Call getBuild(ITestDevice)");
@@ -97,6 +99,9 @@ public class BootstrapBuildProvider implements IDeviceBuildProvider {
 
     @Override
     public void cleanUp(IBuildInfo info) {
+        if (mCreatedTestDir) {
+            FileUtil.recursiveDelete(mTestsDir);
+        }
     }
 
     @Override
@@ -128,9 +133,9 @@ public class BootstrapBuildProvider implements IDeviceBuildProvider {
             info.setFile("testsdir", mTestsDir, info.getBuildId());
         }
         // Avoid tests dir being null, by creating a temporary dir.
-        boolean createdTestDir = false;
+        mCreatedTestDir = false;
         if (mTestsDir == null) {
-            createdTestDir = true;
+            mCreatedTestDir = true;
             try {
                 mTestsDir =
                         FileUtil.createTempDir(
@@ -147,7 +152,7 @@ public class BootstrapBuildProvider implements IDeviceBuildProvider {
                     .put(
                             FilesKey.TESTS_DIRECTORY,
                             mTestsDir,
-                            !createdTestDir /* shouldNotDelete */);
+                            !mCreatedTestDir /* shouldNotDelete */);
         }
         return info;
     }
