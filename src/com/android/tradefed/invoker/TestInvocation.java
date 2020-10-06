@@ -42,7 +42,6 @@ import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.device.cloud.ManagedRemoteDevice;
 import com.android.tradefed.device.cloud.NestedRemoteDevice;
 import com.android.tradefed.device.cloud.RemoteAndroidVirtualDevice;
-import com.android.tradefed.error.HarnessException;
 import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.error.IHarnessException;
 import com.android.tradefed.guice.InvocationScope;
@@ -475,7 +474,7 @@ public class TestInvocation implements ITestInvocation {
             Throwable exception, FailureStatus defaultStatus) {
         ErrorIdentifier id = null;
         if (exception instanceof IHarnessException) {
-            id = ((HarnessException) exception).getErrorId();
+            id = ((IHarnessException) exception).getErrorId();
         }
         FailureDescription failure =
                 CurrentInvocation.createFailure(exception.getMessage(), id)
