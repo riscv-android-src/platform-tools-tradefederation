@@ -44,14 +44,17 @@ public class YamlClassOptionsParser {
             if (runnerEntry.containsKey(mainkey)) {
                 ClassAndOptions classOptions = new ClassAndOptions();
                 mListClassAndOptions.add(classOptions);
-                for (Entry<String, Object> entry :
-                        ((Map<String, Object>) runnerEntry.get(mainkey)).entrySet()) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> map = (Map<String, Object>) runnerEntry.get(mainkey);
+                for (Entry<String, Object> entry : map.entrySet()) {
                     if (CLASS_NAME_KEY.equals(entry.getKey())) {
                         classOptions.mClass = (String) entry.getValue();
                     }
                     if (OPTIONS_KEY.equals(entry.getKey())) {
-                        for (Map<String, Object> optionMap :
-                                (List<Map<String, Object>>) entry.getValue()) {
+                        @SuppressWarnings("unchecked")
+                        List<Map<String, Object>> optionMapList =
+                                (List<Map<String, Object>>) entry.getValue();
+                        for (Map<String, Object> optionMap : optionMapList) {
                             for (Entry<String, Object> optionVal : optionMap.entrySet()) {
                                 // TODO: Support map option
                                 classOptions.mOptions.put(
