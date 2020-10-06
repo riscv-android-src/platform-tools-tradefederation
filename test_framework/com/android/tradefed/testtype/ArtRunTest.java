@@ -32,6 +32,9 @@ import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.FileUtil;
 
+import difflib.DiffUtils;
+import difflib.Patch;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -40,6 +43,7 @@ import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -215,13 +219,27 @@ public class ArtRunTest implements IDeviceTest, IRemoteTest, IAbiReceiver, ITest
                             testInfo.getDependencyFile(expectedFileName, /* targetFirst */ true);
                     CLog.i("Found expected output for run-test %s: %s", mRunTestName, expectedFile);
                     String expected = FileUtil.readStringFromFile(expectedFile);
+
+                    // TODO: The "check" step should be configurable, as is the case in current ART
+                    // `run-test` scripts).
                     if (!output.equals(expected)) {
-                        String error = String.format("'%s' instead of '%s'", output, expected);
-                        // TODO: Implement better reporting, e.g. using a diff output.
-                        // Also, the "check" step should be configurable, as this is the case in
-                        // current ART run-test scripts).
-                        CLog.i("%s FAILED: %s", mRunTestName, error);
-                        listener.testFailed(testId, error);
+                        // Compute the difference between the expected and actual outputs.
+                        List<String> expectedLines = Arrays.asList(expected.split("\\r?\\n"));
+                        List<String> outputLines = Arrays.asList(output.split("\\r?\\n"));
+                        Patch<String> diff = DiffUtils.diff(expectedLines, outputLines);
+                        List<String> unifiedDiff =
+                                DiffUtils.generateUnifiedDiff(
+                                        "expected.txt", "stdout", expectedLines, diff, 3);
+                        // Produce a unified diff output for the error message.
+                        StringBuilder errorMessage =
+                                new StringBuilder(
+                                        "The test's standard output does not match the expected "
+                                                + "output:\n");
+                        for (String delta : unifiedDiff) {
+                            errorMessage.append(delta).append('\n');
+                        }
+                        CLog.i("%s FAILED: %s", mRunTestName, errorMessage.toString());
+                        listener.testFailed(testId, errorMessage.toString());
                         return;
                     }
                 } catch (IOException ioe) {
