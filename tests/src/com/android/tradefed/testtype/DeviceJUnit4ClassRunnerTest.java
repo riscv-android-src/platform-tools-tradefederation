@@ -28,6 +28,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.config.remote.GcsRemoteFileResolver;
 import com.android.tradefed.config.remote.IRemoteFileResolver;
+import com.android.tradefed.config.remote.IRemoteFileResolver.RemoteFileResolverArgs;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
@@ -70,7 +71,7 @@ public class DeviceJUnit4ClassRunnerTest {
             try {
                 doReturn(new File("/downloaded/somewhere"))
                         .when(mockResolver)
-                        .resolveRemoteFiles(Mockito.eq(FAKE_REMOTE_FILE_PATH), Mockito.any());
+                        .resolveRemoteFiles((RemoteFileResolverArgs) Mockito.any());
             } catch (BuildRetrievalError e) {
                 CLog.e(e);
             }
