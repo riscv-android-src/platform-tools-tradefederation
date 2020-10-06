@@ -877,9 +877,6 @@ public class DeviceSetupTest extends TestCase {
         doCheckExternalStoreSpaceExpectations();
         EasyMock.expect(mMockDevice.setProperty("persist.sys.timezone", "America/Los_Angeles"))
                 .andReturn(true);
-        EasyMock.expect(mMockDevice.getProperty("persist.sys.timezone"))
-                .andReturn("America/Los_Angeles")
-                .anyTimes();
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setTimezone("America/Los_Angeles");
@@ -982,9 +979,6 @@ public class DeviceSetupTest extends TestCase {
         Capture<String> setPropCapture = new Capture<>();
         doSetupExpectations(true, setPropCapture);
         doCheckExternalStoreSpaceExpectations();
-        EasyMock.expect(mMockDevice.getProperty("dalvik.vm.dexopt-flags"))
-                .andReturn("v=n")
-                .anyTimes();
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setDisableDalvikVerifier(true);
@@ -1053,7 +1047,6 @@ public class DeviceSetupTest extends TestCase {
         Capture<String> setPropCapture = new Capture<>();
         doSetupExpectations(true, setPropCapture);
         doCheckExternalStoreSpaceExpectations();
-        EasyMock.expect(mMockDevice.getProperty("key")).andReturn("value").anyTimes();
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setDeprecatedAudioSilent(false);
@@ -1127,7 +1120,6 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.expect(mMockDevice.pushFile(f, "/data/local.prop")).andReturn(true).once();
         mMockDevice.reboot();
         EasyMock.expectLastCall().once();
-        EasyMock.expect(mMockDevice.getProperty("key")).andReturn("value").anyTimes();
 
         EasyMock.replay(mMockDevice);
 
@@ -1146,7 +1138,6 @@ public class DeviceSetupTest extends TestCase {
         mMockDevice.deleteFile("/data/local.prop");
         mMockDevice.reboot();
         EasyMock.expectLastCall().once();
-        EasyMock.expect(mMockDevice.getProperty("key")).andReturn("value").anyTimes();
 
         EasyMock.replay(mMockDevice);
 
@@ -1367,16 +1358,7 @@ public class DeviceSetupTest extends TestCase {
         if (testHarness) {
             EasyMock.expect(mMockDevice.setProperty("persist.sys.test_harness", "1"))
                     .andReturn(true);
-            EasyMock.expect(mMockDevice.getProperty("persist.sys.test_harness"))
-                    .andReturn("1")
-                    .anyTimes();
         }
-        EasyMock.expect(mMockDevice.getProperty("ro.telephony.disable-call"))
-                .andReturn("true")
-                .anyTimes();
-        EasyMock.expect(mMockDevice.getProperty("ro.audio.silent")).andReturn("1").anyTimes();
-        EasyMock.expect(mMockDevice.getProperty("ro.test_harness")).andReturn("1").anyTimes();
-        EasyMock.expect(mMockDevice.getProperty("ro.monkey")).andReturn("1").anyTimes();
     }
 
     /**
