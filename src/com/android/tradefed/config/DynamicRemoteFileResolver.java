@@ -19,6 +19,7 @@ import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.config.OptionSetter.OptionFieldsForName;
 import com.android.tradefed.config.remote.IRemoteFileResolver;
+import com.android.tradefed.config.remote.IRemoteFileResolver.RemoteFileResolverArgs;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.logger.CurrentInvocation;
 import com.android.tradefed.invoker.logger.CurrentInvocation.InvocationInfo;
@@ -317,7 +318,11 @@ public class DynamicRemoteFileResolver {
         try {
             IRemoteFileResolver resolver = getResolver(protocol);
             resolver.setPrimaryDevice(mDevice);
-            resolver.resolveRemoteFiles(new File(remoteZipFilePath), queryArgs);
+            RemoteFileResolverArgs args = new RemoteFileResolverArgs();
+            args.setConsideredFile(new File(remoteZipFilePath))
+                    .addQueryArgs(queryArgs)
+                    .setDestinationDir(destDir);
+            resolver.resolveRemoteFiles(args);
         } catch (BuildRetrievalError e) {
             if (isOptional(queryArgs)) {
                 CLog.d(
@@ -391,7 +396,9 @@ public class DynamicRemoteFileResolver {
 
             CLog.d("Considering option '%s' with path: '%s' for download.", option.name(), path);
             resolver.setPrimaryDevice(mDevice);
-            return resolver.resolveRemoteFiles(fileToResolve, query);
+            RemoteFileResolverArgs args = new RemoteFileResolverArgs();
+            args.setConsideredFile(fileToResolve).addQueryArgs(query);
+            return resolver.resolveRemoteFiles(args);
         } catch (BuildRetrievalError e) {
             if (isOptional(query)) {
                 CLog.d(
