@@ -247,7 +247,14 @@ public class ArtRunTestTest {
         mockTestOutputWrite("unexpected\n");
         EasyMock.expect(mMockITestDevice.getSerialNumber()).andReturn("");
         // End of test.
-        mMockInvocationListener.testFailed(testId, "'unexpected\n' instead of 'output\n'");
+        String errorMessage =
+                "The test's standard output does not match the expected output:\n"
+                        + "--- expected.txt\n"
+                        + "+++ stdout\n"
+                        + "@@ -1,1 +1,1 @@\n"
+                        + "-output\n"
+                        + "+unexpected\n";
+        mMockInvocationListener.testFailed(testId, errorMessage);
         mMockInvocationListener.testEnded(
                 EasyMock.eq(testId), (HashMap<String, Metric>) EasyMock.anyObject());
         mMockInvocationListener.testRunEnded(
