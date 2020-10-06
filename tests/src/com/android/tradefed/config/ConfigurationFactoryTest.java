@@ -1819,9 +1819,13 @@ public class ConfigurationFactoryTest extends TestCase {
         IBuildProvider provider = config.getBuildProvider();
         assertTrue(provider instanceof IDeviceBuildProvider);
         IBuildInfo info = ((IDeviceBuildProvider) provider).getBuild(null);
-        assertEquals("5", info.getBuildId());
-        assertEquals("test", info.getBuildFlavor());
-        assertEquals("main", info.getBuildBranch());
+        try {
+            assertEquals("5", info.getBuildId());
+            assertEquals("test", info.getBuildFlavor());
+            assertEquals("main", info.getBuildBranch());
+        } finally {
+            info.cleanUp();
+        }
     }
 
     private static String getClassName(String name) {
