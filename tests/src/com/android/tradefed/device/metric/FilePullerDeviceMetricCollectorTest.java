@@ -1,11 +1,13 @@
 package com.android.tradefed.device.metric;
 
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
+import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -39,6 +41,7 @@ public class FilePullerDeviceMetricCollectorTest {
     @Before
     public void setUp() {
         MockitoAnnotations.initMocks(this);
+        doReturn(TestDeviceState.ONLINE).when(mMockDevice).getDeviceState();
         mContext = new InvocationContext();
         mContext.addAllocatedDevice("default", mMockDevice);
         mContext.addAllocatedDevice("stub", mStubDevice);
