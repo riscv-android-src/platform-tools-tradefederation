@@ -76,4 +76,14 @@ public class HarnessException extends Exception implements IHarnessException {
             mOrigin = clazz;
         }
     }
+
+    @Override
+    public String toString() {
+        String s = getClass().getName();
+        if (mErrorId != null) {
+            s += "[" + mErrorId.name() + "|" + mErrorId.code() + "|" + mErrorId.status() + "]";
+        }
+        String message = getLocalizedMessage();
+        return (message != null) ? (s + ": " + message) : s;
+    }
 }
