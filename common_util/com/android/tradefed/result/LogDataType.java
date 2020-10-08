@@ -21,6 +21,7 @@ package com.android.tradefed.result;
 public enum LogDataType {
 
     TEXT("txt", "text/plain", false, true),
+    UIX("uix", "text/xml", false, true),
     XML("xml", "text/xml", false, true),
     HTML("html", "text/html", true, true),
     PNG("png", "image/png", true, false),
