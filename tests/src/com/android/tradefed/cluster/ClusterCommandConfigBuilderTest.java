@@ -42,6 +42,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.mockito.Answers;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
@@ -74,6 +75,8 @@ public class ClusterCommandConfigBuilderTest {
     private IConfiguration mConfig;
 
     private ClusterCommandConfigBuilder builder;
+
+    @Captor private ArgumentCaptor<List<IDeviceConfiguration>> captor;
 
     @Before
     public void setUp() throws IOException {
@@ -129,7 +132,6 @@ public class ClusterCommandConfigBuilderTest {
 
         builder.build();
         // StubTargetPreparer was added to the device configuration
-        ArgumentCaptor<List<IDeviceConfiguration>> captor = ArgumentCaptor.forClass(List.class);
         verify(mConfig, times(1)).setDeviceConfigList(captor.capture());
         List<ITargetPreparer> preparers = captor.getValue().get(0).getTargetPreparers();
         assertEquals(1, preparers.size());
