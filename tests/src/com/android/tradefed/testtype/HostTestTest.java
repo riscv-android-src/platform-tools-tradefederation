@@ -1342,7 +1342,9 @@ public class HostTestTest extends TestCase {
         assertTrue(
                 failure.getErrorMessage()
                         .startsWith(
-                                "com.android.tradefed.device.DeviceNotAvailableException: dnae"));
+                                "com.android.tradefed.device.DeviceNotAvailableException"
+                                        + "[DEVICE_UNAVAILABLE|520750|LOST_SYSTEM_UNDER_TEST]: "
+                                        + "dnae"));
         assertEquals(FailureStatus.LOST_SYSTEM_UNDER_TEST, failure.getFailureStatus());
     }
 
