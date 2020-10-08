@@ -25,7 +25,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyCollectionOf;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
@@ -115,6 +115,9 @@ public class InstrumentationTestTest {
     @Mock ListInstrumentationParser mMockListInstrumentationParser;
 
     @Captor private ArgumentCaptor<Collection<TestDescription>> testCaptor;
+    @Captor private ArgumentCaptor<HashMap<String, Metric>> testCapture1;
+    @Captor private ArgumentCaptor<HashMap<String, Metric>> testCapture2;
+    @Captor private ArgumentCaptor<HashMap<String, Metric>> runCapture;
 
     /**
      * Helper class for providing an {@link IAnswer} to a {@link
@@ -957,7 +960,7 @@ public class InstrumentationTestTest {
     public void testCollectWorks_RunCrash() throws Exception {
         doReturn(mock(IRemoteTest.class))
                 .when(mInstrumentationTest)
-                .getTestReRunner(anyCollectionOf(TestDescription.class));
+                .getTestReRunner(anyCollection());
 
         // We collect successfully 5 tests
         RunInstrumentationTestsAnswer collected =
@@ -1005,7 +1008,7 @@ public class InstrumentationTestTest {
     public void testRun_noMoreTests() throws Exception {
         doReturn(mock(IRemoteTest.class))
                 .when(mInstrumentationTest)
-                .getTestReRunner(anyCollectionOf(TestDescription.class));
+                .getTestReRunner(anyCollection());
 
         // We collect successfully 1 tests
         RunInstrumentationTestsAnswer collected =
@@ -1104,20 +1107,15 @@ public class InstrumentationTestTest {
         inOrder.verify(mMockListener)
                 .testRunStarted(eq(TEST_PACKAGE_VALUE), eq(2), eq(0), anyLong());
         inOrder.verify(mMockListener).testStarted(eq(TEST1), anyLong());
-        ArgumentCaptor<HashMap<String, Metric>> testCapture1 =
-                ArgumentCaptor.forClass(HashMap.class);
         inOrder.verify(mMockListener).testEnded(eq(TEST1), anyLong(), testCapture1.capture());
         HashMap<String, Metric> test1Metric = testCapture1.getValue();
         assertTrue(test1Metric.containsKey("called"));
         assertFalse(test1Metric.containsKey("not-called"));
         inOrder.verify(mMockListener).testStarted(eq(TEST2), anyLong());
-        ArgumentCaptor<HashMap<String, Metric>> testCapture2 =
-                ArgumentCaptor.forClass(HashMap.class);
         inOrder.verify(mMockListener).testEnded(eq(TEST2), anyLong(), testCapture2.capture());
         HashMap<String, Metric> test2Metric = testCapture2.getValue();
         assertTrue(test2Metric.containsKey("called"));
         assertFalse(test2Metric.containsKey("not-called"));
-        ArgumentCaptor<HashMap<String, Metric>> runCapture = ArgumentCaptor.forClass(HashMap.class);
         inOrder.verify(mMockListener).testRunEnded(anyLong(), runCapture.capture());
         HashMap<String, Metric> runMetric = runCapture.getValue();
         assertTrue(runMetric.containsKey("called"));
