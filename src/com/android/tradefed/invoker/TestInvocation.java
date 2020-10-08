@@ -262,8 +262,10 @@ public class TestInvocation implements ITestInvocation {
         } catch (DeviceNotAvailableException e) {
             exception = e;
             // log a warning here so its captured before reportLogs is called
-            CLog.w("Invocation did not complete due to device %s becoming not available. " +
-                    "Reason: %s", e.getSerial(), e.getMessage());
+            CLog.w(
+                    "Invocation did not complete due to device %s becoming not available. "
+                            + "Reason: %s",
+                    e.getSerial(), e.toString());
             badDevice = context.getDeviceBySerial(e.getSerial());
             if ((e instanceof DeviceUnresponsiveException) && badDevice != null
                     && TestDeviceState.ONLINE.equals(badDevice.getDeviceState())) {
