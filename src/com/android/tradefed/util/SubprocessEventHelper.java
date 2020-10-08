@@ -339,12 +339,14 @@ public class SubprocessEventHelper {
             try {
                 if (mFailure != null) {
                     tags.put(REASON_KEY, mFailure.getErrorMessage());
-                    tags.putOpt(FAILURE_STATUS_KEY, mFailure.getFailureStatus());
                     tags.putOpt(ACTION_IN_PROGRESS_KEY, mFailure.getActionInProgress());
                     tags.putOpt(ERROR_ORIGIN_KEY, mFailure.getOrigin());
                     if (mFailure.getErrorIdentifier() != null) {
                         tags.putOpt(ERROR_NAME_KEY, mFailure.getErrorIdentifier().name());
                         tags.putOpt(ERROR_CODE_KEY, mFailure.getErrorIdentifier().code());
+                        tags.putOpt(FAILURE_STATUS_KEY, mFailure.getErrorIdentifier().status());
+                    } else {
+                        tags.putOpt(FAILURE_STATUS_KEY, mFailure.getFailureStatus());
                     }
                 }
                 if (mCause != null) {
