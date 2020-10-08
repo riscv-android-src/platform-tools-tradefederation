@@ -179,7 +179,7 @@ public class SubprocessResultsReporterTest {
                             .setFailureStatus(FailureStatus.TEST_FAILURE)
                             .setOrigin("origin")
                             .setActionInProgress(ActionInProgress.FETCHING_ARTIFACTS)
-                            .setErrorIdentifier(InfraErrorIdentifier.UNDETERMINED);
+                            .setErrorIdentifier(InfraErrorIdentifier.EXPECTED_TESTS_MISMATCH);
             mReporter.testRunFailed(runFailure);
             FailureDescription invocationFailure =
                     FailureDescription.create("invoc error")
@@ -187,7 +187,7 @@ public class SubprocessResultsReporterTest {
                             .setFailureStatus(FailureStatus.INFRA_FAILURE)
                             .setActionInProgress(ActionInProgress.TEST)
                             .setOrigin("invoc origin")
-                            .setErrorIdentifier(InfraErrorIdentifier.UNDETERMINED);
+                            .setErrorIdentifier(InfraErrorIdentifier.RUNNER_ALLOCATION_ERROR);
             mReporter.invocationFailed(invocationFailure);
             mReporter.close();
             receiver.joinReceiver(LONG_TIMEOUT_MS);
@@ -201,10 +201,10 @@ public class SubprocessResultsReporterTest {
         assertEquals(ActionInProgress.FETCHING_ARTIFACTS, capturedFailure.getActionInProgress());
         assertEquals("origin", capturedFailure.getOrigin());
         assertEquals(
-                InfraErrorIdentifier.UNDETERMINED.name(),
+                InfraErrorIdentifier.EXPECTED_TESTS_MISMATCH.name(),
                 capturedFailure.getErrorIdentifier().name());
         assertEquals(
-                InfraErrorIdentifier.UNDETERMINED.code(),
+                InfraErrorIdentifier.EXPECTED_TESTS_MISMATCH.code(),
                 capturedFailure.getErrorIdentifier().code());
 
         FailureDescription capturedInvocation = invocationFailureCaptured.getValue();
@@ -213,10 +213,10 @@ public class SubprocessResultsReporterTest {
         assertEquals(ActionInProgress.TEST, capturedInvocation.getActionInProgress());
         assertEquals("invoc origin", capturedInvocation.getOrigin());
         assertEquals(
-                InfraErrorIdentifier.UNDETERMINED.name(),
+                InfraErrorIdentifier.RUNNER_ALLOCATION_ERROR.name(),
                 capturedInvocation.getErrorIdentifier().name());
         assertEquals(
-                InfraErrorIdentifier.UNDETERMINED.code(),
+                InfraErrorIdentifier.RUNNER_ALLOCATION_ERROR.code(),
                 capturedInvocation.getErrorIdentifier().code());
     }
 
