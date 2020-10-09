@@ -22,7 +22,6 @@ import static org.hamcrest.CoreMatchers.hasItems;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.core.StringStartsWith.startsWith;
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
@@ -39,6 +38,8 @@ import com.android.tradefed.build.DeviceBuildInfo;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
@@ -63,6 +64,7 @@ import java.io.InputStream;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 
 @RunWith(JUnit4.class)
@@ -179,19 +181,14 @@ public class MoblyBinaryHostTestTest {
         setter.setOptionValue("par-file-name", mMoblyBinary2.getName());
         Mockito.doReturn(mMoblyTestDir).when(mMockBuildInfo).getTestsDir();
         FileUtil.deleteFile(mMoblyBinary2);
+        ITestInvocationListener mockListener = Mockito.mock(ITestInvocationListener.class);
 
-        try {
-            mSpyTest.run(Mockito.mock(ITestInvocationListener.class));
-            fail("Should have thrown an exception");
-        } catch (RuntimeException e) {
-            verify(mSpyTest, never()).reportLogs(any(), any());
-            assertEquals(
-                    String.format(
-                            "An unexpected exception was thrown, full stack trace: %s",
-                            Throwables.getStackTraceAsString(e)),
-                    e.getMessage(),
-                    String.format("Couldn't find a par file %s", mMoblyBinary2.getName()));
-        }
+        mSpyTest.run(mockListener);
+
+        verify(mSpyTest, never()).reportLogs(any(), any());
+        verify(mockListener, times(1)).testRunStarted(eq(mMoblyBinary2.getName()), eq(0));
+        verify(mockListener, times(1)).testRunFailed(any(FailureDescription.class));
+        verify(mockListener, times(1)).testRunEnded(eq(0L), eq(new HashMap<String, Metric>()));
     }
 
     @Test
