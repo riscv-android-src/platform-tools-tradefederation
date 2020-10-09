@@ -184,10 +184,9 @@ public class MoblyBinaryHostTest
             if (res == null) {
                 reportFailure(
                         listener, binaryName, "Couldn't find Mobly test binary " + binaryName);
-                throw new RuntimeException(
-                        String.format("Couldn't find a par file %s", binaryName));
+            } else {
+                files.add(res);
             }
-            files.add(res);
         }
         files.addAll(mBinaries);
         return files;
