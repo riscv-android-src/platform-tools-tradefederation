@@ -22,7 +22,7 @@ import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FailureDescription;
@@ -34,7 +34,6 @@ import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.targetprep.adb.AdbStopServerPreparer;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
-import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
@@ -62,8 +61,7 @@ import org.yaml.snakeyaml.Yaml;
 
 /** Host test meant to run a mobly python binary file from the Android Build system (Soong) */
 @OptionClass(alias = "mobly-host")
-public class MoblyBinaryHostTest
-        implements IRemoteTest, IDeviceTest, IBuildReceiver, IInvocationContextReceiver {
+public class MoblyBinaryHostTest implements IRemoteTest, IDeviceTest, IBuildReceiver {
 
     private static final String ANDROID_SERIAL_VAR = "ANDROID_SERIAL";
     private static final String PATH_VAR = "PATH";
@@ -114,9 +112,8 @@ public class MoblyBinaryHostTest
 
     private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
-    private IInvocationContext mContext;
     private File mLogDir;
-
+    private TestInformation mTestInfo;
     private IRunUtil mRunUtil;
 
     @Override
@@ -135,12 +132,10 @@ public class MoblyBinaryHostTest
     }
 
     @Override
-    public void setInvocationContext(IInvocationContext invocationContext) {
-        mContext = invocationContext;
-    }
-
-    @Override
-    public final void run(ITestInvocationListener listener) {
+    public final void run(TestInformation testInfo, ITestInvocationListener listener) {
+        mTestInfo = testInfo;
+        mBuildInfo = mTestInfo.getBuildInfo();
+        mDevice = mTestInfo.getDevice();
         List<File> parFilesList = findParFiles(listener);
         File venvDir = mBuildInfo.getFile("VIRTUAL_ENV");
         if (venvDir != null) {
