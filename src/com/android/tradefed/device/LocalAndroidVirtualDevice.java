@@ -58,13 +58,13 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
     // The name of the GZIP file containing launch_cvd and stop_cvd.
     private static final String CVD_HOST_PACKAGE_NAME = "cvd-host_package.tar.gz";
 
-    private static final String ACLOUD_CVD_TEMP_DIR_NAME = "acloud_cvd_temp";
     private static final String CUTTLEFISH_RUNTIME_DIR_NAME = "cuttlefish_runtime";
 
     private ITestLogger mTestLogger = null;
 
-    // Temporary directories for images and tools.
+    // Temporary directories for images, runtime files, and tools.
     private File mImageDir = null;
+    private File mInstanceDir = null;
     private File mHostPackageDir = null;
     private List<File> mTempDirs = new ArrayList<File>();
 
@@ -141,9 +141,7 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
                 CLog.i("Skip stopping the virtual device.");
             }
 
-            if (instanceName != null) {
-                reportInstanceLogs(instanceName);
-            }
+            reportInstanceLogs();
         } finally {
             restoreStubDevice();
 
@@ -152,10 +150,12 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
             } else {
                 CLog.i(
                         "Skip deleting the temporary directories.\n"
-                                + "Address: %s\nName: %s\nHost package: %s\nImage: %s",
-                        hostAndPort, instanceName, mHostPackageDir, mImageDir);
+                                + "Address: %s\nName: %s\n"
+                                + "Host package: %s\nImage: %s\nInstance: %s",
+                        hostAndPort, instanceName, mHostPackageDir, mImageDir, mInstanceDir);
                 mTempDirs.clear();
                 mHostPackageDir = null;
+                mInstanceDir = null;
                 mImageDir = null;
             }
 
@@ -240,11 +240,24 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
         }
     }
 
+    /** Create a temporary directory that will be deleted when teardown. */
+    private File createTempDir() throws TargetSetupError {
+        try {
+            File tempDir = FileUtil.createTempDir("LocalVirtualDevice");
+            mTempDirs.add(tempDir);
+            return tempDir;
+        } catch (IOException ex) {
+            throw new TargetSetupError(
+                    "Cannot create temporary directory.", ex, getDeviceDescriptor());
+        }
+    }
+
     /** Get the necessary files to create the instance. */
-    void createTempDirs(IBuildInfo info) throws TargetSetupError {
+    private void createTempDirs(IBuildInfo info) throws TargetSetupError {
         try {
             mHostPackageDir = findHostPackage(info);
             mImageDir = findDeviceImages(info);
+            mInstanceDir = createTempDir();
         } catch (TargetSetupError ex) {
             deleteTempDirs();
             throw ex;
@@ -259,6 +272,7 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
         }
         mTempDirs.clear();
         mImageDir = null;
+        mInstanceDir = null;
         mHostPackageDir = null;
     }
 
@@ -329,8 +343,9 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
             LogLevel logLevel,
             List<String> args) {
         IRunUtil runUtil = createRunUtil();
-        // The command creates the instance directory under TMPDIR.
-        runUtil.setEnvVariable(TMPDIR, getTmpDir().getAbsolutePath());
+        // The command creates files under TMPDIR.
+        runUtil.setEnvVariable(
+                TMPDIR, new File(System.getProperty("java.io.tmpdir")).getAbsolutePath());
 
         List<String> command =
                 new ArrayList<String>(
@@ -340,6 +355,8 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
                                 "--local-instance",
                                 "--local-image",
                                 mImageDir.getAbsolutePath(),
+                                "--local-instance-dir",
+                                mInstanceDir.getAbsolutePath(),
                                 "--local-tool",
                                 mHostPackageDir.getAbsolutePath(),
                                 "--report_file",
@@ -405,7 +422,8 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
         acloud.setExecutable(true);
 
         IRunUtil runUtil = createRunUtil();
-        runUtil.setEnvVariable(TMPDIR, getTmpDir().getAbsolutePath());
+        runUtil.setEnvVariable(
+                TMPDIR, new File(System.getProperty("java.io.tmpdir")).getAbsolutePath());
 
         List<String> command =
                 new ArrayList<String>(
@@ -424,20 +442,15 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
         return result;
     }
 
-    private void reportInstanceLogs(String instanceName) {
-        if (mTestLogger == null) {
+    private void reportInstanceLogs() {
+        if (mTestLogger == null || mInstanceDir == null) {
             return;
         }
-        File instanceDir =
-                FileUtil.getFileForPath(
-                        getTmpDir(),
-                        ACLOUD_CVD_TEMP_DIR_NAME,
-                        instanceName,
-                        CUTTLEFISH_RUNTIME_DIR_NAME);
-        reportInstanceLog(new File(instanceDir, "kernel.log"), LogDataType.KERNEL_LOG);
-        reportInstanceLog(new File(instanceDir, "logcat"), LogDataType.LOGCAT);
-        reportInstanceLog(new File(instanceDir, "launcher.log"), LogDataType.TEXT);
-        reportInstanceLog(new File(instanceDir, "cuttlefish_config.json"), LogDataType.TEXT);
+        File runtimeDir = new File(mInstanceDir, CUTTLEFISH_RUNTIME_DIR_NAME);
+        reportInstanceLog(new File(runtimeDir, "kernel.log"), LogDataType.KERNEL_LOG);
+        reportInstanceLog(new File(runtimeDir, "logcat"), LogDataType.LOGCAT);
+        reportInstanceLog(new File(runtimeDir, "launcher.log"), LogDataType.TEXT);
+        reportInstanceLog(new File(runtimeDir, "cuttlefish_config.json"), LogDataType.TEXT);
     }
 
     private void reportInstanceLog(File file, LogDataType type) {
@@ -453,10 +466,5 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
     @VisibleForTesting
     IRunUtil createRunUtil() {
         return new RunUtil();
-    }
-
-    @VisibleForTesting
-    File getTmpDir() {
-        return new File(System.getProperty("java.io.tmpdir"));
     }
 }
