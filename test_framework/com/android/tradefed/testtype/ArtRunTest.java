@@ -30,6 +30,8 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.ArrayUtil;
+import com.android.tradefed.util.CommandResult;
+import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 
 import difflib.DiffUtils;
@@ -177,8 +179,7 @@ public class ArtRunTest implements IDeviceTest, IRemoteTest, IAbiReceiver, ITest
      * Run a single ART run-test (on device).
      *
      * @param listener {@link ITestInvocationListener} listener for test
-     * @throws DeviceNotAvailableException If there was a problem communicating with
-     *      the test device.
+     * @throws DeviceNotAvailableException If there was a problem communicating with the device.
      */
     void runArtTest(TestInformation testInfo, ITestInvocationListener listener)
             throws DeviceNotAvailableException {
@@ -258,13 +259,29 @@ public class ArtRunTest implements IDeviceTest, IRemoteTest, IAbiReceiver, ITest
                 // not particularly reliable way of constructing a temporary dir
                 String cfgPathDir =
                         String.format("/data/local/tmp/%s", mRunTestName.replaceAll("/", "-"));
-                mDevice.executeShellCommand(String.format("mkdir -p \"%s\"", cfgPathDir));
+                String mkdirCmd = String.format("mkdir -p \"%s\"", cfgPathDir);
+                CommandResult result = mDevice.executeShellV2Command(mkdirCmd);
+                if (result.getStatus() != CommandStatus.SUCCESS) {
+                    String stderr = result.getStderr();
+                    CLog.e("Cannot create a directory on the device: %s", stderr);
+                    listener.testFailed(testId,
+                            String.format("Cannot create a directory on the device: %s", stderr));
+                    return;
+                }
 
                 String cfgPath = cfgPathDir + "/graph.cfg";
-                mDevice.executeShellCommand(
+                String dex2outCmd =
                         String.format(
                                 "dex2oat --dex-file=%s --oat-file=/dev/null --dump-cfg=%s -j1",
-                                mClasspath.get(0), cfgPath));
+                                mClasspath.get(0), cfgPath);
+                result = mDevice.executeShellV2Command(dex2outCmd);
+                if (result.getStatus() != CommandStatus.SUCCESS) {
+                    String stderr = result.getStderr();
+                    CLog.e("Error while running dex2oat: %s", stderr);
+                    listener.testFailed(testId,
+                            String.format("Error while running dex2oat: %s", stderr));
+                    return;
+                }
 
                 File runTestDir;
                 try {
@@ -279,10 +296,16 @@ public class ArtRunTest implements IDeviceTest, IRemoteTest, IAbiReceiver, ITest
                     localCfgPath.delete();
                 }
 
-                mDevice.pullFile(cfgPath, localCfgPath);
+                if (!mDevice.pullFile(cfgPath, localCfgPath)) {
+                    listener.testFailed(testId, "Cannot pull cfg file from the device");
+                    return;
+                }
 
                 File tempJar = new File(runTestDir, "temp.jar");
-                mDevice.pullFile(mClasspath.get(0), tempJar);
+                if (!mDevice.pullFile(mClasspath.get(0), tempJar)) {
+                    listener.testFailed(testId, "Cannot pull jar file from the device");
+                    return;
+                }
 
                 try (ZipFile archive = new ZipFile(tempJar)) {
                     File srcFile = new File(runTestDir, "src");
