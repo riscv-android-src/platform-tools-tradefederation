@@ -1141,17 +1141,18 @@ public class ClusterCommandSchedulerTest {
         for (int i = 0; i < cmd.getTargetDeviceSerials().size(); i++) {
             String serial =
                     ClusterHostUtil.getLocalDeviceSerial(cmd.getTargetDeviceSerials().get(i));
-            Collection<String> serials =
-                    deviceConfigs.get(i).getDeviceRequirements().getSerials(null);
+            IDeviceConfiguration deviceConfig = deviceConfigs.get(i);
+            Collection<String> serials = deviceConfig.getDeviceRequirements().getSerials(null);
             assertTrue(serials.size() == 1 && serials.contains(serial));
+
+            ClusterBuildProvider buildProvider =
+                    (ClusterBuildProvider) deviceConfig.getBuildProvider();
+            assertEquals(testResources.size(), buildProvider.getTestResources().size());
+            for (TestResource r : testResources) {
+                assertEquals(r.getUrl(), buildProvider.getTestResources().get(r.getName()));
+            }
         }
 
-        ClusterBuildProvider buildProvider =
-                (ClusterBuildProvider) deviceConfigs.get(0).getBuildProvider();
-        assertEquals(testResources.size(), buildProvider.getTestResources().size());
-        for (TestResource r : testResources) {
-            assertEquals(r.getUrl(), buildProvider.getTestResources().get(r.getName()));
-        }
         ClusterCommandLauncher test = (ClusterCommandLauncher) config.getTests().get(0);
         assertEquals(cmd.getCommandLine(), test.getCommandLine());
 
