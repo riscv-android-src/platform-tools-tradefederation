@@ -37,6 +37,9 @@ import static org.mockito.Mockito.verify;
 import com.android.tradefed.build.DeviceBuildInfo;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FailureDescription;
@@ -85,6 +88,7 @@ public class MoblyBinaryHostTestTest {
     private File mMoblyBinary2; // used by par-file-name option
     private File mVenvDir;
     private DeviceBuildInfo mMockBuildInfo;
+    private TestInformation mTestInfo;
 
     @Before
     public void setUp() throws Exception {
@@ -92,6 +96,10 @@ public class MoblyBinaryHostTestTest {
         mMockDevice = Mockito.mock(ITestDevice.class);
         mMockRunUtil = Mockito.mock(IRunUtil.class);
         mMockBuildInfo = Mockito.mock(DeviceBuildInfo.class);
+        IInvocationContext context = new InvocationContext();
+        context.addAllocatedDevice("device", mMockDevice);
+        context.addDeviceBuildInfo("device", mMockBuildInfo);
+        mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
         mSpyTest.setDevice(mMockDevice);
 
         mVenvDir = FileUtil.createTempDir("venv");
@@ -103,7 +111,6 @@ public class MoblyBinaryHostTestTest {
         mMoblyTestDir = FileUtil.createTempDir("mobly_tests");
         mMoblyBinary = FileUtil.createTempFile("mobly_binary", ".par", mMoblyTestDir);
         mMoblyBinary2 = FileUtil.createTempFile("mobly_binary_2", ".par", mMoblyTestDir);
-        mSpyTest.setBuild(mMockBuildInfo);
     }
 
     @After
@@ -132,7 +139,7 @@ public class MoblyBinaryHostTestTest {
                             }
                         });
 
-        mSpyTest.run(Mockito.mock(ITestInvocationListener.class));
+        mSpyTest.run(mTestInfo, Mockito.mock(ITestInvocationListener.class));
 
         verify(mSpyTest.getRunUtil()).runTimedCmd(anyLong(), any());
         assertFalse(new File(mSpyTest.getLogDirAbsolutePath()).exists());
@@ -144,7 +151,7 @@ public class MoblyBinaryHostTestTest {
         setter.setOptionValue("python-binaries", mMoblyBinary.getAbsolutePath());
         FileUtil.deleteFile(mMoblyBinary);
 
-        mSpyTest.run(Mockito.mock(ITestInvocationListener.class));
+        mSpyTest.run(mTestInfo, Mockito.mock(ITestInvocationListener.class));
 
         verify(mSpyTest, never()).reportLogs(any(), any());
     }
@@ -169,7 +176,7 @@ public class MoblyBinaryHostTestTest {
                             }
                         });
 
-        mSpyTest.run(Mockito.mock(ITestInvocationListener.class));
+        mSpyTest.run(mTestInfo, Mockito.mock(ITestInvocationListener.class));
 
         verify(mSpyTest.getRunUtil()).runTimedCmd(anyLong(), any());
         assertFalse(new File(mSpyTest.getLogDirAbsolutePath()).exists());
@@ -183,7 +190,7 @@ public class MoblyBinaryHostTestTest {
         FileUtil.deleteFile(mMoblyBinary2);
         ITestInvocationListener mockListener = Mockito.mock(ITestInvocationListener.class);
 
-        mSpyTest.run(mockListener);
+        mSpyTest.run(mTestInfo, mockListener);
 
         verify(mSpyTest, never()).reportLogs(any(), any());
         verify(mockListener, times(1)).testRunStarted(eq(mMoblyBinary2.getName()), eq(0));
@@ -207,7 +214,7 @@ public class MoblyBinaryHostTestTest {
                         });
 
         try {
-            mSpyTest.run(Mockito.mock(ITestInvocationListener.class));
+            mSpyTest.run(mTestInfo, Mockito.mock(ITestInvocationListener.class));
             fail("Should have thrown an exception");
         } catch (RuntimeException e) {
             assertThat(
@@ -253,7 +260,7 @@ public class MoblyBinaryHostTestTest {
         Mockito.when(mMockRunUtil.runTimedCmd(anyLong(), anyString(), eq("show"), eq("pip")))
                 .thenReturn(result);
 
-        mSpyTest.run(Mockito.mock(ITestInvocationListener.class));
+        mSpyTest.run(mTestInfo, Mockito.mock(ITestInvocationListener.class));
 
         verify(mSpyTest.getRunUtil(), times(1))
                 .setEnvVariable(eq("VIRTUAL_ENV"), eq(mVenvDir.getAbsolutePath()));
@@ -280,7 +287,7 @@ public class MoblyBinaryHostTestTest {
                             }
                         });
 
-        mSpyTest.run(Mockito.mock(ITestInvocationListener.class));
+        mSpyTest.run(mTestInfo, Mockito.mock(ITestInvocationListener.class));
 
         verify(mSpyTest.getRunUtil(), never())
                 .setEnvVariable(eq("VIRTUAL_ENV"), eq(mVenvDir.getAbsolutePath()));
