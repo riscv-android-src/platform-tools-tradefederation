@@ -50,6 +50,11 @@ public class HarnessException extends Exception implements IHarnessException {
     public HarnessException(String message, Throwable cause, ErrorIdentifier errorId) {
         super(message, cause);
         mErrorId = errorId;
+        if (mErrorId == null && cause != null) {
+            if (cause instanceof IHarnessException) {
+                mErrorId = ((IHarnessException) cause).getErrorId();
+            }
+        }
         setCallerClass(StackWalker.getInstance(Option.RETAIN_CLASS_REFERENCE).getCallerClass());
     }
 
