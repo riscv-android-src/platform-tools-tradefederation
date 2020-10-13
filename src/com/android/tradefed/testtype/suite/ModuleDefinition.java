@@ -765,7 +765,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                     break;
                 case ASSUMPTION_FAILURE:
                     listener.testAssumptionFailure(
-                            testEntry.getKey(), testEntry.getValue().getStackTrace());
+                            testEntry.getKey(), testEntry.getValue().getFailure());
                     break;
                 case IGNORED:
                     listener.testIgnored(testEntry.getKey());
