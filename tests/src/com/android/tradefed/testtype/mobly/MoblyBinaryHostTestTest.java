@@ -84,8 +84,8 @@ public class MoblyBinaryHostTestTest {
     private MoblyYamlResultParser mMockParser;
     private InputStream mMockSummaryInputStream;
     private File mMoblyTestDir;
-    private File mMoblyBinary; // used by python-binaries option
-    private File mMoblyBinary2; // used by par-file-name option
+    private File mMoblyBinary; // used by mobly-binaries option
+    private File mMoblyBinary2; // used by mobly-par-file-name option
     private File mVenvDir;
     private DeviceBuildInfo mMockBuildInfo;
     private TestInformation mTestInfo;
@@ -122,7 +122,7 @@ public class MoblyBinaryHostTestTest {
     @Test
     public void testRun_withPythonBinariesOption() throws Exception {
         OptionSetter setter = new OptionSetter(mSpyTest);
-        setter.setOptionValue("python-binaries", mMoblyBinary.getAbsolutePath());
+        setter.setOptionValue("mobly-binaries", mMoblyBinary.getAbsolutePath());
         File testResult = new File(mSpyTest.getLogDirAbsolutePath(), TEST_RESULT_FILE_NAME);
         // Mimics the behavior of a successful test run.
         Mockito.when(mMockRunUtil.runTimedCmd(anyLong(), any()))
@@ -148,7 +148,7 @@ public class MoblyBinaryHostTestTest {
     @Test
     public void testRun_withPythonBinariesOption_binaryNotFound() throws Exception {
         OptionSetter setter = new OptionSetter(mSpyTest);
-        setter.setOptionValue("python-binaries", mMoblyBinary.getAbsolutePath());
+        setter.setOptionValue("mobly-binaries", mMoblyBinary.getAbsolutePath());
         FileUtil.deleteFile(mMoblyBinary);
 
         mSpyTest.run(mTestInfo, Mockito.mock(ITestInvocationListener.class));
@@ -159,7 +159,7 @@ public class MoblyBinaryHostTestTest {
     @Test
     public void testRun_withParFileNameOption() throws Exception {
         OptionSetter setter = new OptionSetter(mSpyTest);
-        setter.setOptionValue("par-file-name", mMoblyBinary2.getName());
+        setter.setOptionValue("mobly-par-file-name", mMoblyBinary2.getName());
         Mockito.doReturn(mMoblyTestDir).when(mMockBuildInfo).getTestsDir();
         File testResult = new File(mSpyTest.getLogDirAbsolutePath(), TEST_RESULT_FILE_NAME);
         Mockito.when(mMockRunUtil.runTimedCmd(anyLong(), any()))
@@ -185,7 +185,7 @@ public class MoblyBinaryHostTestTest {
     @Test
     public void testRun_withParFileNameOption_binaryNotFound() throws Exception {
         OptionSetter setter = new OptionSetter(mSpyTest);
-        setter.setOptionValue("par-file-name", mMoblyBinary2.getName());
+        setter.setOptionValue("mobly-par-file-name", mMoblyBinary2.getName());
         Mockito.doReturn(mMoblyTestDir).when(mMockBuildInfo).getTestsDir();
         FileUtil.deleteFile(mMoblyBinary2);
         ITestInvocationListener mockListener = Mockito.mock(ITestInvocationListener.class);
@@ -201,7 +201,7 @@ public class MoblyBinaryHostTestTest {
     @Test
     public void testRun_testResultIsMissing() throws Exception {
         OptionSetter setter = new OptionSetter(mSpyTest);
-        setter.setOptionValue("python-binaries", mMoblyBinary.getAbsolutePath());
+        setter.setOptionValue("mobly-binaries", mMoblyBinary.getAbsolutePath());
         // Test result and log files were not created for some reasons during test run.
         Mockito.when(mMockRunUtil.runTimedCmd(anyLong(), any()))
                 .thenAnswer(
@@ -232,7 +232,7 @@ public class MoblyBinaryHostTestTest {
     public void testRun_shouldActivateVenvAndCleanUp_whenVenvIsSet() throws Exception {
         Mockito.when(mMockBuildInfo.getFile(eq("VIRTUAL_ENV"))).thenReturn(mVenvDir);
         OptionSetter setter = new OptionSetter(mSpyTest);
-        setter.setOptionValue("python-binaries", mMoblyBinary.getAbsolutePath());
+        setter.setOptionValue("mobly-binaries", mMoblyBinary.getAbsolutePath());
         File testResult = new File(mSpyTest.getLogDirAbsolutePath(), TEST_RESULT_FILE_NAME);
         Mockito.when(
                         mMockRunUtil.runTimedCmd(
@@ -271,7 +271,7 @@ public class MoblyBinaryHostTestTest {
     public void testRun_shouldNotActivateVenv_whenVenvIsNotSet() throws Exception {
         FileUtil.recursiveDelete(mVenvDir);
         OptionSetter setter = new OptionSetter(mSpyTest);
-        setter.setOptionValue("python-binaries", mMoblyBinary.getAbsolutePath());
+        setter.setOptionValue("mobly-binaries", mMoblyBinary.getAbsolutePath());
         File testResult = new File(mSpyTest.getLogDirAbsolutePath(), TEST_RESULT_FILE_NAME);
         Mockito.when(mMockRunUtil.runTimedCmd(anyLong(), any()))
                 .thenAnswer(
