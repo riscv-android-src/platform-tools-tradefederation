@@ -67,6 +67,8 @@ public class MixImageZipPreparerTest {
     private static final String PRODUCT_IMAGE_NAME = "product.img";
     private static final String VBMETA_IMAGE_NAME = "vbmeta.img";
     private static final String SUPER_IMAGE_NAME = "super.img";
+    private static final String BOOT_IMAGE_NAME = "boot.img";
+    private static final String GKI_BOOT_IMAGE_NAME = "boot-5.4.img";
     private static final String MISC_INFO_FILE_NAME = "misc_info.txt";
     private static final String DEVICE_BUILD_FLAVOR = "device_flavor";
     private static final String SYSTEM_BUILD_FLAVOR = "system_flavor";
@@ -173,11 +175,38 @@ public class MixImageZipPreparerTest {
         setUpPreparerAndSystem(SYSTEM_IMAGE_NAME);
     }
 
+    private void setUpPreparerAndSystemWithFileMapping() throws IOException {
+        mMockContext = Mockito.mock(InvocationContext.class);
+
+        ITestDevice mockSystem = Mockito.mock(ITestDevice.class);
+        mSystemImageZip = createImageZip(SYSTEM_CONTENT, SYSTEM_IMAGE_NAME, GKI_BOOT_IMAGE_NAME);
+        mSystemBuild = createDeviceBuildInfo(SYSTEM_BUILD_FLAVOR, SYSTEM_BUILD_ID, mSystemImageZip);
+
+        Mockito.when(mMockContext.getDevice(SYSTEM_LABEL)).thenReturn(mockSystem);
+        Mockito.when(mMockContext.getBuildInfo(mockSystem)).thenReturn(mSystemBuild);
+
+        mPreparer =
+                new MixImageZipPreparer() {
+                    @Override
+                    IRunUtil createRunUtil() {
+                        Assert.assertNotNull(
+                                "Did not setup super image in device build.",
+                                mMockRunRepackSuperImage);
+                        return mMockRunRepackSuperImage;
+                    }
+                };
+
+        mPreparer.addSystemFileName(SYSTEM_IMAGE_NAME);
+        mPreparer.addSystemFileNameMap(BOOT_IMAGE_NAME, GKI_BOOT_IMAGE_NAME);
+        mPreparer.addStubFileName(PRODUCT_IMAGE_NAME);
+    }
+
     private void setUpDevice() throws IOException {
         ITestDevice mockDevice = Mockito.mock(ITestDevice.class);
         mDeviceImageZip =
                 createImageZip(
                         DEVICE_CONTENT,
+                        BOOT_IMAGE_NAME,
                         VENDOR_IMAGE_NAME,
                         SYSTEM_IMAGE_NAME,
                         PRODUCT_IMAGE_NAME,
@@ -191,7 +220,11 @@ public class MixImageZipPreparerTest {
         ITestDevice mockDevice = Mockito.mock(ITestDevice.class);
         mDeviceImageZip =
                 createImageZip(
-                        DEVICE_CONTENT, VENDOR_IMAGE_NAME, VBMETA_IMAGE_NAME, SUPER_IMAGE_NAME);
+                        DEVICE_CONTENT,
+                        BOOT_IMAGE_NAME,
+                        VENDOR_IMAGE_NAME,
+                        VBMETA_IMAGE_NAME,
+                        SUPER_IMAGE_NAME);
         mDeviceBuild = createDeviceBuildInfo(DEVICE_BUILD_FLAVOR, DEVICE_BUILD_ID, mDeviceImageZip);
         mMiscInfoFile = FileUtil.createTempFile("misc_info", ".txt");
         FileUtil.writeToFile(DEVICE_CONTENT, mMiscInfoFile);
@@ -325,11 +358,17 @@ public class MixImageZipPreparerTest {
         }
     }
 
-    private void verifyImages(File mixedImageZip) throws FileNotFoundException, IOException {
+    private void verifyImages(File mixedImageZip, boolean bootImgFromDevice)
+            throws FileNotFoundException, IOException {
         File mixedImageDir = ZipUtil.extractZipToTemp(mixedImageZip, "verifyImages");
         try {
             verifyImage(DEVICE_CONTENT, mixedImageDir, VENDOR_IMAGE_NAME);
 
+            if (bootImgFromDevice) {
+                verifyImage(DEVICE_CONTENT, mixedImageDir, BOOT_IMAGE_NAME);
+            } else {
+                verifyImage(SYSTEM_CONTENT, mixedImageDir, BOOT_IMAGE_NAME);
+            }
             if (mMockRunRepackSuperImage != null) {
                 // setUpDeviceWithSuper was called.
                 Mockito.verify(mMockRunRepackSuperImage)
@@ -349,7 +388,17 @@ public class MixImageZipPreparerTest {
         }
     }
 
+    private void verifyImages(File mixedImageZip) throws FileNotFoundException, IOException {
+        verifyImages(mixedImageZip, true);
+    }
+
     private void runPreparerTest()
+            throws TargetSetupError, BuildError, DeviceNotAvailableException, ZipException,
+                    IOException {
+        runPreparerTest(true);
+    }
+
+    private void runPreparerTest(boolean bootImgFromDevice)
             throws TargetSetupError, BuildError, DeviceNotAvailableException, ZipException,
                     IOException {
         TestInformation testInformation =
@@ -367,7 +416,7 @@ public class MixImageZipPreparerTest {
 
             Assert.assertEquals(SYSTEM_BUILD_FLAVOR, addedBuildInfo.getBuildFlavor());
             Assert.assertEquals(SYSTEM_BUILD_ID, addedBuildInfo.getDeviceBuildId());
-            verifyImages(addedBuildInfo.getDeviceImageFile());
+            verifyImages(addedBuildInfo.getDeviceImageFile(), bootImgFromDevice);
         } finally {
             addedBuildInfo.cleanUp();
         }
@@ -397,6 +446,15 @@ public class MixImageZipPreparerTest {
         setUpPreparerAndSystem();
         setUpDevice();
         runPreparerTest();
+    }
+
+    /** Test that the mixed {@link IDeviceBuildInfo} contains the system image file mapping. */
+    @Test
+    public void testSetUpWithSystemFileMapping()
+            throws TargetSetupError, BuildError, DeviceNotAvailableException, IOException {
+        setUpPreparerAndSystemWithFileMapping();
+        setUpDevice();
+        runPreparerTest(false);
     }
 
     /**
