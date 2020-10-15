@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.device.metric;
 
+import org.mockito.ArgumentMatchers;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyLong;
 import static org.mockito.Mockito.argThat;
@@ -73,7 +74,7 @@ public class RebootReasonCollectorTest {
         when(mContext.getDevices()).thenReturn(Arrays.asList(testDevice));
         doReturn(CONFIG_ID_1)
                 .when(mCollector)
-                .pushStatsConfig(any(ITestDevice.class), any(List.class));
+                .pushStatsConfig(any(ITestDevice.class), ArgumentMatchers.<List<Integer>>any());
         doReturn(new ArrayList<EventMetricData>())
                 .when(mCollector)
                 .getEventMetricData(any(ITestDevice.class), anyLong());
@@ -97,7 +98,7 @@ public class RebootReasonCollectorTest {
         when(mContext.getDevices()).thenReturn(Arrays.asList(testDevice));
         doReturn(CONFIG_ID_1)
                 .when(mCollector)
-                .pushStatsConfig(any(ITestDevice.class), any(List.class));
+                .pushStatsConfig(any(ITestDevice.class), ArgumentMatchers.<List<Integer>>any());
         doReturn(
                         Arrays.asList(
                                 mockBootEventMetric("bootloader_reason", "system_reason_1"),
@@ -167,8 +168,12 @@ public class RebootReasonCollectorTest {
         ITestDevice testDevice1 = mockTestDevice(DEVICE_SERIAL_1);
         ITestDevice testDevice2 = mockTestDevice(DEVICE_SERIAL_2);
         doReturn(Arrays.asList(testDevice1, testDevice2)).when(mContext).getDevices();
-        doReturn(CONFIG_ID_1).when(mCollector).pushStatsConfig(eq(testDevice1), any(List.class));
-        doReturn(CONFIG_ID_2).when(mCollector).pushStatsConfig(eq(testDevice2), any(List.class));
+        doReturn(CONFIG_ID_1)
+                .when(mCollector)
+                .pushStatsConfig(eq(testDevice1), ArgumentMatchers.<List<Integer>>any());
+        doReturn(CONFIG_ID_2)
+                .when(mCollector)
+                .pushStatsConfig(eq(testDevice2), ArgumentMatchers.<List<Integer>>any());
         doReturn(new ArrayList<EventMetricData>())
                 .when(mCollector)
                 .getEventMetricData(any(ITestDevice.class), anyLong());
@@ -199,8 +204,12 @@ public class RebootReasonCollectorTest {
         doReturn(Arrays.asList(testDevice1, testDevice2)).when(mContext).getDevices();
         doReturn(DEVICE_SERIAL_1).when(mContext).getDeviceName(testDevice1);
         doReturn(DEVICE_SERIAL_2).when(mContext).getDeviceName(testDevice2);
-        doReturn(CONFIG_ID_1).when(mCollector).pushStatsConfig(eq(testDevice1), any(List.class));
-        doReturn(CONFIG_ID_2).when(mCollector).pushStatsConfig(eq(testDevice2), any(List.class));
+        doReturn(CONFIG_ID_1)
+                .when(mCollector)
+                .pushStatsConfig(eq(testDevice1), ArgumentMatchers.<List<Integer>>any());
+        doReturn(CONFIG_ID_2)
+                .when(mCollector)
+                .pushStatsConfig(eq(testDevice2), ArgumentMatchers.<List<Integer>>any());
         doReturn(Arrays.asList(mockBootEventMetric("bootloader_reason", "system_reason")))
                 .when(mCollector)
                 .getEventMetricData(any(ITestDevice.class), eq(CONFIG_ID_1));
@@ -283,7 +292,7 @@ public class RebootReasonCollectorTest {
         when(mContext.getDevices()).thenReturn(Arrays.asList(testDevice));
         doReturn(CONFIG_ID_1)
                 .when(mCollector)
-                .pushStatsConfig(any(ITestDevice.class), any(List.class));
+                .pushStatsConfig(any(ITestDevice.class), ArgumentMatchers.<List<Integer>>any());
         doReturn(new ArrayList<EventMetricData>())
                 .when(mCollector)
                 .getEventMetricData(any(ITestDevice.class), anyLong());
