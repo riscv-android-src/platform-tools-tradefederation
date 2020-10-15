@@ -428,9 +428,11 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
         CommandResult result = getRunUtil().runTimedCmd(mFastbootWaitTime, mFastbootPath, "-s",
                 monitor.getSerialNumber(), "getvar", "product");
         if (result.getStatus().equals(CommandStatus.TIMED_OUT)) {
-            throw new DeviceNotAvailableException(String.format(
-                    "Device %s is in fastboot but unresponsive", monitor.getSerialNumber()),
-                    monitor.getSerialNumber());
+            throw new DeviceNotAvailableException(
+                    String.format(
+                            "Device %s is in fastboot but unresponsive", monitor.getSerialNumber()),
+                    monitor.getSerialNumber(),
+                    DeviceErrorIdentifier.DEVICE_UNRESPONSIVE);
         }
     }
 
