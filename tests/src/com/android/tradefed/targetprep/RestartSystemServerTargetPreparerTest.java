@@ -16,9 +16,13 @@
 package com.android.tradefed.targetprep;
 
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 
 import org.easymock.EasyMock;
 import org.junit.Before;
@@ -31,6 +35,7 @@ import org.junit.runners.JUnit4;
 public class RestartSystemServerTargetPreparerTest {
 
     private RestartSystemServerTargetPreparer mRestartSystemServerTargetPreparer;
+    private TestInformation mTestInformation;
     private ITestDevice mMockDevice;
     private IBuildInfo mMockBuildInfo;
 
@@ -38,6 +43,10 @@ public class RestartSystemServerTargetPreparerTest {
     public void setUp() {
         mMockDevice = EasyMock.createMock(ITestDevice.class);
         mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
+        IInvocationContext context = new InvocationContext();
+        context.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
+        context.addDeviceBuildInfo(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockBuildInfo);
+        mTestInformation = TestInformation.newBuilder().setInvocationContext(context).build();
         mRestartSystemServerTargetPreparer = new RestartSystemServerTargetPreparer();
     }
 
@@ -55,7 +64,7 @@ public class RestartSystemServerTargetPreparerTest {
         EasyMock.expectLastCall().once();
         EasyMock.replay(mMockDevice, mMockBuildInfo);
 
-        mRestartSystemServerTargetPreparer.setUp(mMockDevice, mMockBuildInfo);
+        mRestartSystemServerTargetPreparer.setUp(mTestInformation);
         EasyMock.verify(mMockDevice, mMockBuildInfo);
     }
 
@@ -73,7 +82,7 @@ public class RestartSystemServerTargetPreparerTest {
         EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException("test", "serial"));
         EasyMock.replay(mMockDevice, mMockBuildInfo);
 
-        mRestartSystemServerTargetPreparer.setUp(mMockDevice, mMockBuildInfo);
+        mRestartSystemServerTargetPreparer.setUp(mTestInformation);
     }
 
     @Test
@@ -94,7 +103,7 @@ public class RestartSystemServerTargetPreparerTest {
         EasyMock.expectLastCall().once();
         EasyMock.replay(mMockDevice, mMockBuildInfo);
 
-        mRestartSystemServerTargetPreparer.tearDown(mMockDevice, mMockBuildInfo, null);
+        mRestartSystemServerTargetPreparer.tearDown(mTestInformation, null);
         EasyMock.verify(mMockDevice, mMockBuildInfo);
     }
 
@@ -105,7 +114,7 @@ public class RestartSystemServerTargetPreparerTest {
         optionSetter.setOptionValue("restart-teardown", "false");
         EasyMock.replay(mMockDevice, mMockBuildInfo);
 
-        mRestartSystemServerTargetPreparer.setUp(mMockDevice, mMockBuildInfo);
+        mRestartSystemServerTargetPreparer.setUp(mTestInformation);
         EasyMock.verify(mMockDevice, mMockBuildInfo);
     }
 }
