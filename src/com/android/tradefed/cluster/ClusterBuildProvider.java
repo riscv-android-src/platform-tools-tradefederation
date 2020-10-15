@@ -52,6 +52,7 @@ public class ClusterBuildProvider implements IBuildProvider {
 
     // The keys are the URLs; the values are the downloaded files shared among all build providers
     // in the invocation.
+    // TODO(b/139876060): Use dynamic download when it supports caching HTTPS and GCS files.
     @VisibleForTesting
     static final InvocationLocal<Map<String, File>> sDownloadCache =
             new InvocationLocal<Map<String, File>>() {
