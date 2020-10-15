@@ -16,10 +16,10 @@
 
 package com.android.tradefed.targetprep;
 
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 
 import java.util.ArrayList;
@@ -35,13 +35,11 @@ public class RemoveSystemAppPreparer extends BaseTargetPreparer {
             description = "the name of the file to remove (extension included)")
     private List<String> mFiles= new ArrayList<String>();
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
-            DeviceNotAvailableException {
-
+    public void setUp(TestInformation testInformation)
+            throws TargetSetupError, DeviceNotAvailableException {
+        ITestDevice device = testInformation.getDevice();
         device.remountSystemWritable();
         for (String file : mFiles) {
             CLog.d("Removing system app %s from /system/app", file);
