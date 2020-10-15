@@ -882,4 +882,9 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
     public void setSkipApexTearDown(boolean skip) {
         mSkipApexTearDown = skip;
     }
+
+    @VisibleForTesting
+    public void setIgnoreIfNotPreloaded(boolean skip) {
+        mIgnoreIfNotPreloaded = skip;
+    }
 }

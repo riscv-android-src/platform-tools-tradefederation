@@ -199,6 +199,12 @@ public class BaseTestSuite extends ITestSuite {
                             + " an empty result.")
     private boolean mFailOnEverythingFiltered = false;
 
+    @Option(
+            name = "ignore-non-preloaded-mainline-module",
+            description = "Skip installing the module(s) when the module(s) that are not"
+                            + "preloaded on device. Otherwise an exception will be thrown.")
+    private boolean mIgnoreNonPreloadedMainlineModule = false;
+
     private SuiteModuleLoader mModuleRepo;
     private Map<String, List<SuiteTestFilter>> mIncludeFiltersParsed = new HashMap<>();
     private Map<String, List<SuiteTestFilter>> mExcludeFiltersParsed = new HashMap<>();
@@ -286,6 +292,7 @@ public class BaseTestSuite extends ITestSuite {
                 mModuleRepo.setInvocationContext(getInvocationContext());
                 mModuleRepo.setOptimizeMainlineTest(
                         getConfiguration().getCommandOptions().getOptimizeMainlineTest());
+                mModuleRepo.setIgnoreNonPreloadedMainlineModule(mIgnoreNonPreloadedMainlineModule);
             }
 
             mModuleRepo.setParameterizedModules(mEnableParameter);
