@@ -27,14 +27,15 @@ import com.android.tradefed.util.FileUtil;
 import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
+import java.util.ArrayList;
 import java.util.Map;
 
 /** Unit tests for {@link ClusterBuildProvider}. */
 @RunWith(JUnit4.class)
 public class ClusterBuildProviderTest {
 
-    private static final String RESOURCE_KEY_1 = "resource_key_1";
-    private static final String RESOURCE_KEY_2 = "resource_key_2";
+    private static final String RESOURCE_KEY = "resource_key_1";
+    private static final String EXTRA_RESOURCE_KEY = "resource_key_2";
 
     private File mRootDir;
     private File mResourceFile;
@@ -51,7 +52,9 @@ public class ClusterBuildProviderTest {
 
     @After
     public void tearDown() {
-        mDownloadCache.clear();
+        if (mDownloadCache != null) {
+            mDownloadCache.clear();
+        }
         FileUtil.deleteFile(mResourceFile);
         FileUtil.recursiveDelete(mRootDir);
     }
@@ -65,25 +68,30 @@ public class ClusterBuildProviderTest {
                     }
                 };
         provider.setRootDir(mRootDir);
-        provider.getTestResources().put(RESOURCE_KEY_1, mResourceFile.toURI().toURL().toString());
+        provider.getTestResources().put(RESOURCE_KEY, mResourceFile.toURI().toURL().toString());
         return provider;
+    }
+
+    private void verifyDownloadedResource() throws IOException {
+        File file = new File(mRootDir, RESOURCE_KEY);
+        Assert.assertTrue(file.isFile());
+        Assert.assertEquals(file, mDownloadCache.get(mResourceFile.toURI().toURL().toString()));
+        Mockito.verify(mSpyDownloader).download(Mockito.any(), Mockito.eq(file));
     }
 
     /** Test one provider with two identical URLs. */
     @Test
     public void testGetBuild_multipleTestResources() throws BuildRetrievalError, IOException {
         ClusterBuildProvider provider = createClusterBuildProvider();
-        provider.getTestResources().put(RESOURCE_KEY_2, mResourceFile.toURI().toURL().toString());
+        provider.getTestResources()
+                .put(EXTRA_RESOURCE_KEY, mResourceFile.toURI().toURL().toString());
         provider.getBuild();
 
-        File file1 = new File(mRootDir, RESOURCE_KEY_1);
-        File file2 = new File(mRootDir, RESOURCE_KEY_2);
-        Assert.assertTrue(file1.isFile());
-        Assert.assertTrue(file2.isFile());
+        verifyDownloadedResource();
         Assert.assertEquals(1, mDownloadCache.size());
-        Assert.assertEquals(file1, mDownloadCache.get(mResourceFile.toURI().toURL().toString()));
-        Mockito.verify(mSpyDownloader).download(Mockito.any(), Mockito.eq(file1));
-        Mockito.verify(mSpyDownloader, Mockito.never()).download(Mockito.any(), Mockito.eq(file2));
+        File file = new File(mRootDir, EXTRA_RESOURCE_KEY);
+        Assert.assertTrue(file.isFile());
+        Mockito.verify(mSpyDownloader, Mockito.never()).download(Mockito.any(), Mockito.eq(file));
     }
 
     /** Test two providers downloading from the same URL. */
@@ -94,10 +102,61 @@ public class ClusterBuildProviderTest {
         provider1.getBuild();
         provider2.getBuild();
 
-        File file = new File(mRootDir, RESOURCE_KEY_1);
-        Assert.assertTrue(file.isFile());
+        verifyDownloadedResource();
         Assert.assertEquals(1, mDownloadCache.size());
-        Assert.assertEquals(file, mDownloadCache.get(mResourceFile.toURI().toURL().toString()));
+    }
+
+    /** Test {@link ClusterBuildProvider#getBuild()} in an invocation thread. */
+    private void testGetBuild(File extraResourceFile) throws BuildRetrievalError, IOException {
+        ClusterBuildProvider provider = createClusterBuildProvider();
+        provider.getTestResources()
+                .put(EXTRA_RESOURCE_KEY, extraResourceFile.toURI().toURL().toString());
+        provider.getBuild();
+
+        verifyDownloadedResource();
+        Assert.assertEquals(2, mDownloadCache.size());
+        File file = new File(mRootDir, EXTRA_RESOURCE_KEY);
+        Assert.assertTrue(file.isFile());
         Mockito.verify(mSpyDownloader).download(Mockito.any(), Mockito.eq(file));
+    }
+
+    /** Test two invocation threads downloading twice from the same URL. */
+    @Test
+    public void testGetBuild_multipleInvocations()
+            throws BuildRetrievalError, IOException, InterruptedException {
+        File sharedResourceFile = FileUtil.createTempFile("SharedTestResource", ".txt");
+        ClusterBuildProviderTest anotherTest = new ClusterBuildProviderTest();
+        try {
+            ArrayList<Throwable> threadExceptions = new ArrayList<>();
+            Runnable runnable =
+                    new Runnable() {
+                        @Override
+                        public void run() {
+                            try {
+                                anotherTest.setUp();
+                                anotherTest.testGetBuild(sharedResourceFile);
+                            } catch (Throwable e) {
+                                threadExceptions.add(e);
+                            }
+                        }
+                    };
+
+            ThreadGroup anotherGroup = new ThreadGroup("unit test");
+            anotherGroup.setDaemon(true);
+            Thread anotherThread =
+                    new Thread(anotherGroup, runnable, "ClusterBuildProviderTestThread");
+            // Terminate the thread when the main thread throws an exception and exits.
+            anotherThread.setDaemon(true);
+            anotherThread.start();
+            testGetBuild(sharedResourceFile);
+            anotherThread.join();
+            if (threadExceptions.size() > 0) {
+                throw new AssertionError(
+                        anotherThread.getName() + " failed.", threadExceptions.get(0));
+            }
+        } finally {
+            FileUtil.deleteFile(sharedResourceFile);
+            anotherTest.tearDown();
+        }
     }
 }
