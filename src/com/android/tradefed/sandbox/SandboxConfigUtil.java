@@ -18,6 +18,7 @@ package com.android.tradefed.sandbox;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.proxy.AutomatedReporters;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.sandbox.SandboxConfigDump.DumpCmd;
 import com.android.tradefed.util.CommandResult;
@@ -62,6 +63,7 @@ public class SandboxConfigUtil {
         }
         runUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
         runUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
+        runUtil.unsetEnvVariable(AutomatedReporters.PROTO_REPORTING_PORT);
         File destination = null;
         try {
             destination = FileUtil.createTempFile("config-container", ".xml");
