@@ -26,6 +26,7 @@ import static org.junit.Assert.fail;
 
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.OptionSetter;
+import com.android.tradefed.config.proxy.AutomatedReporters;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -257,6 +258,7 @@ public class NoisyDryRunTestTest {
         mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
         EasyMock.expectLastCall().times(2);
         mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
+        mMockRunUtil.unsetEnvVariable(AutomatedReporters.PROTO_REPORTING_PORT);
         mMockRunUtil.setEnvVariable(
                 EasyMock.eq(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE), anyObject());
         mMockRunUtil.setEnvVariablePriority(EnvPriority.SET);
@@ -318,6 +320,7 @@ public class NoisyDryRunTestTest {
         mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
         EasyMock.expectLastCall().times(2);
         mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
+        mMockRunUtil.unsetEnvVariable(AutomatedReporters.PROTO_REPORTING_PORT);
         mMockRunUtil.setEnvVariable(
                 EasyMock.eq(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE), anyObject());
         mMockRunUtil.setEnvVariablePriority(EnvPriority.SET);
