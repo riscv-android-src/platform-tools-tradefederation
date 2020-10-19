@@ -21,6 +21,7 @@ import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.CommandResult;
@@ -62,8 +63,10 @@ public class DynamicSystemPreparer extends BaseTargetPreparer {
     }
 
     @Override
-    public void setUp(ITestDevice device, IBuildInfo buildInfo)
+    public void setUp(TestInformation testInfo)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
+        ITestDevice device = testInfo.getDevice();
+        IBuildInfo buildInfo = testInfo.getBuildInfo();
         File systemImageZipFile = buildInfo.getFile(mSystemImageZipName);
         if (systemImageZipFile == null) {
             throw new BuildError(
@@ -149,12 +152,12 @@ public class DynamicSystemPreparer extends BaseTargetPreparer {
     }
 
     @Override
-    public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
-            throws DeviceNotAvailableException {
+    public void tearDown(TestInformation testInfo, Throwable e) throws DeviceNotAvailableException {
         if (e instanceof DeviceNotAvailableException) {
             CLog.e("skip tearDown on DeviceNotAvailableException");
             return;
         }
+        ITestDevice device = testInfo.getDevice();
         // Disable the DynamicSystemUpdate installation
         device.executeShellCommand("gsi_tool disable");
         // Enable the one-shot mode when DynamicSystemUpdate is disabled
