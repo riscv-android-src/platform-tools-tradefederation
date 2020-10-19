@@ -912,6 +912,7 @@ public class TestInvocation implements ITestInvocation {
                         // The host_log is not available yet to reporters that don't support
                         // granular results, so forward it.
                         aggregator.forwardAggregatedInvocationLogs();
+                        aggregator.cleanEventsFiles();
                     }
                     return;
                 }
