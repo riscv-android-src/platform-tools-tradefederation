@@ -17,6 +17,11 @@ package com.android.tradefed.build;
 
 import com.android.tradefed.config.Option;
 
+/**
+ * Utility meant to capture the usual build information arguments from a command line and create a
+ * {@link IBuildInfo} from them. We use this to create a placeholder build info in case of download
+ * issue while reporting the appropriate build number.
+ */
 public class CommandLineBuildInfoBuilder {
 
     @Option(name = "build-id", description = "build id to supply.")
