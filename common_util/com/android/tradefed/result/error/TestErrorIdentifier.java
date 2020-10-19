@@ -19,7 +19,8 @@ import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 
 /** Error identifier from tests and tests runners. */
 public enum TestErrorIdentifier implements ErrorIdentifier {
-    MODULE_DID_NOT_EXECUTE(530_001, FailureStatus.NOT_EXECUTED);
+    MODULE_DID_NOT_EXECUTE(530_001, FailureStatus.NOT_EXECUTED),
+    INSTRUMENTATION_NULL_METHOD(530_002, FailureStatus.TEST_FAILURE);
 
     private final long code;
     private final FailureStatus status;
