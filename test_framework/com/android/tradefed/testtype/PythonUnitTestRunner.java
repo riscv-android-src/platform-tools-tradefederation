@@ -21,6 +21,7 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.python.PythonBinaryHostTest;
@@ -85,7 +86,8 @@ public class PythonUnitTestRunner implements IRemoteTest, IBuildReceiver {
     }
 
     @Override
-    public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
+    public void run(TestInformation testInfo, ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
         setPythonPath();
         if (mPythonBin == null) {
             mPythonBin = getPythonBinary();

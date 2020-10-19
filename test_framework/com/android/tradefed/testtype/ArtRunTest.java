@@ -57,7 +57,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 /** A test runner to run ART run-tests. */
-public class ArtRunTest implements IDeviceTest, IRemoteTest, IAbiReceiver, ITestFilterReceiver {
+public class ArtRunTest implements IRemoteTest, IAbiReceiver, ITestFilterReceiver {
 
     private static final String RUNTEST_TAG = "ArtRunTest";
 
@@ -83,18 +83,6 @@ public class ArtRunTest implements IDeviceTest, IRemoteTest, IAbiReceiver, ITest
     private IAbi mAbi = null;
     private final Set<String> mIncludeFilters = new LinkedHashSet<>();
     private final Set<String> mExcludeFilters = new LinkedHashSet<>();
-
-    /** {@inheritDoc} */
-    @Override
-    public void setDevice(ITestDevice device) {
-        mDevice = device;
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public ITestDevice getDevice() {
-        return mDevice;
-    }
 
     /** {@inheritDoc} */
     @Override
@@ -159,6 +147,7 @@ public class ArtRunTest implements IDeviceTest, IRemoteTest, IAbiReceiver, ITest
     @Override
     public void run(TestInformation testInfo, ITestInvocationListener listener)
             throws DeviceNotAvailableException {
+        mDevice = testInfo.getDevice();
         if (mDevice == null) {
             throw new IllegalArgumentException("Device has not been set.");
         }
