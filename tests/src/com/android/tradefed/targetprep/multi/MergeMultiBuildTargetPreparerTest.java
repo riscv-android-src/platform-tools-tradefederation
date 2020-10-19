@@ -26,6 +26,7 @@ import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.targetprep.TargetSetupError;
 
 import org.easymock.EasyMock;
@@ -42,10 +43,10 @@ public class MergeMultiBuildTargetPreparerTest {
 
     private static final String EXAMPLE_KEY = "testsdir";
     private MergeMultiBuildTargetPreparer mPreparer;
-    private IInvocationContext mContext;
     private IDeviceBuildInfo mMockInfo1;
     private IDeviceBuildInfo mMockInfo2;
     private ITestDevice mMockDevice1;
+    private TestInformation mTestInfo;
 
     @Before
     public void setUp() {
@@ -53,11 +54,12 @@ public class MergeMultiBuildTargetPreparerTest {
         EasyMock.expect(mMockDevice1.getDeviceDescriptor()).andStubReturn(null);
         mMockInfo1 = new DeviceBuildInfo("id1", "target1");
         mMockInfo2 = new DeviceBuildInfo("id2", "target2");
-        mContext = new InvocationContext();
-        mContext.addDeviceBuildInfo("device1", mMockInfo1);
-        mContext.addDeviceBuildInfo("device2", mMockInfo2);
-        mContext.addAllocatedDevice("device1", mMockDevice1);
+        IInvocationContext context = new InvocationContext();
+        context.addDeviceBuildInfo("device1", mMockInfo1);
+        context.addDeviceBuildInfo("device2", mMockInfo2);
+        context.addAllocatedDevice("device1", mMockDevice1);
         mPreparer = new MergeMultiBuildTargetPreparer();
+        mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
     }
 
     /** Test that a file was moved from one build to another if the key exists. */
@@ -73,7 +75,7 @@ public class MergeMultiBuildTargetPreparerTest {
         assertNotNull(mMockInfo1.getFile(EXAMPLE_KEY));
         assertNull(mMockInfo2.getFile(EXAMPLE_KEY));
 
-        mPreparer.setUp(mContext);
+        mPreparer.setUp(mTestInfo);
         // Now mock info 2 has the file.
         assertNotNull(mMockInfo2.getFile(EXAMPLE_KEY));
         // The version of the provider build is preserved.
@@ -97,7 +99,7 @@ public class MergeMultiBuildTargetPreparerTest {
         assertNotNull(mMockInfo1.getFile(EXAMPLE_KEY));
         assertNotNull(mMockInfo2.getFile(EXAMPLE_KEY));
 
-        mPreparer.setUp(mContext);
+        mPreparer.setUp(mTestInfo);
         // Now mock info 2 still has the original file
         assertNotNull(mMockInfo2.getFile(EXAMPLE_KEY));
         assertEquals("/orig", mMockInfo2.getFile(EXAMPLE_KEY).getAbsolutePath());
@@ -111,7 +113,7 @@ public class MergeMultiBuildTargetPreparerTest {
         setter.setOptionValue("dest-device", "device2");
         setter.setOptionValue("key-to-copy", EXAMPLE_KEY);
 
-        mPreparer.setUp(mContext);
+        mPreparer.setUp(mTestInfo);
         // receiver build info is still null because the key did not have an entry.
         assertNull(mMockInfo2.getFile(EXAMPLE_KEY));
     }
@@ -124,7 +126,7 @@ public class MergeMultiBuildTargetPreparerTest {
         setter.setOptionValue("dest-device", "doesnotexists");
         try {
             EasyMock.replay(mMockDevice1);
-            mPreparer.setUp(mContext);
+            mPreparer.setUp(mTestInfo);
             fail("Should have thrown an exception.");
         } catch (TargetSetupError expected) {
             assertEquals(
@@ -142,7 +144,7 @@ public class MergeMultiBuildTargetPreparerTest {
         setter.setOptionValue("dest-device", "device2");
         try {
             EasyMock.replay(mMockDevice1);
-            mPreparer.setUp(mContext);
+            mPreparer.setUp(mTestInfo);
             fail("Should have thrown an exception.");
         } catch (TargetSetupError expected) {
             assertEquals(
