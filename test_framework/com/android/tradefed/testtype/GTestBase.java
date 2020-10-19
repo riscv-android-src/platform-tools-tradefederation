@@ -17,6 +17,7 @@
 package com.android.tradefed.testtype;
 
 import com.android.ddmlib.IShellOutputReceiver;
+import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.Option;
@@ -24,7 +25,6 @@ import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
-import com.android.tradefed.testtype.coverage.CoverageOptions;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.FileUtil;
 
@@ -559,10 +559,6 @@ public abstract class GTestBase
             gTestCmdLine.append(String.format("LD_LIBRARY_PATH=%s ", mLdLibraryPath));
         }
 
-        if (getCoverageOptions().isCoverageEnabled()) {
-            gTestCmdLine.append("GCOV_PREFIX=/data/misc/trace/testcoverage ");
-        }
-
         // su to requested user
         if (mRunTestAs != null) {
             gTestCmdLine.append(String.format("su %s ", mRunTestAs));
@@ -665,18 +661,10 @@ public abstract class GTestBase
      * @return an IConfiguration
      */
     protected IConfiguration getConfiguration() {
-        return mConfiguration;
-    }
-
-    /**
-     * Returns the {@link CoverageOptions} for this test, if it exists. Otherwise returns a default
-     * {@link CoverageOptions} object with all coverage disabled.
-     */
-    protected CoverageOptions getCoverageOptions() {
-        if (mConfiguration != null) {
-            return mConfiguration.getCoverageOptions();
+        if (mConfiguration == null) {
+            return new Configuration("", "");
         }
-        return new CoverageOptions();
+        return mConfiguration;
     }
 
     /**
