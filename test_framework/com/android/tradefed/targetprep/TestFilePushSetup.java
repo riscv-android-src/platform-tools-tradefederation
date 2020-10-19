@@ -23,6 +23,7 @@ import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.FileUtil;
@@ -107,12 +108,12 @@ public class TestFilePushSetup extends BaseTargetPreparer {
         return null;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
-            BuildError, DeviceNotAvailableException {
+    public void setUp(TestInformation testInfo)
+            throws TargetSetupError, BuildError, DeviceNotAvailableException {
+        ITestDevice device = testInfo.getDevice();
+        IBuildInfo buildInfo = testInfo.getBuildInfo();
         if (!(buildInfo instanceof IDeviceBuildInfo)) {
             throw new IllegalArgumentException(String.format("Provided buildInfo is not a %s",
                     IDeviceBuildInfo.class.getCanonicalName()));

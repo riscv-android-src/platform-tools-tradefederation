@@ -20,6 +20,9 @@ import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.DeviceBuildInfo;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.util.FakeTestsZipFolder;
 import com.android.tradefed.util.FakeTestsZipFolder.ItemType;
 import com.android.tradefed.util.FileUtil;
@@ -50,6 +53,7 @@ public class TestFilePushSetupTest extends TestCase {
     private static final String ALT_FILENAME2 = "barfoo";
 
     private ITestDevice mMockDevice;
+    private TestInformation mTestInfo;
 
     @Override
     protected void setUp() throws Exception {
@@ -111,7 +115,12 @@ public class TestFilePushSetupTest extends TestCase {
         for (String file : mFiles.keySet()) {
             testFilePushSetup.addTestFileName(file);
         }
-        testFilePushSetup.setUp(device, stubBuild);
+
+        IInvocationContext context = new InvocationContext();
+        context.addAllocatedDevice("device", device);
+        context.addDeviceBuildInfo("device", stubBuild);
+        mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
+        testFilePushSetup.setUp(mTestInfo);
         assertTrue(mDeviceLocationList.isEmpty());
         EasyMock.verify(device);
     }
@@ -122,8 +131,12 @@ public class TestFilePushSetupTest extends TestCase {
     public void testSetup_notDeviceBuildInfo() throws Exception {
         TestFilePushSetup testFilePushSetup = new TestFilePushSetup();
         BuildInfo stubBuild = new BuildInfo("stub", "stub");
+        IInvocationContext context = new InvocationContext();
+        context.addAllocatedDevice("device", EasyMock.createMock(ITestDevice.class));
+        context.addDeviceBuildInfo("device", stubBuild);
+        mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
         try {
-            testFilePushSetup.setUp(EasyMock.createMock(ITestDevice.class), stubBuild);
+            testFilePushSetup.setUp(mTestInfo);
             fail("should have thrown an exception");
         } catch (IllegalArgumentException expected) {
             assertEquals("Provided buildInfo is not a com.android.tradefed.build.IDeviceBuildInfo",
@@ -141,8 +154,12 @@ public class TestFilePushSetupTest extends TestCase {
         setup.addTestFileName("file-not-in-test-zip");
         DeviceBuildInfo stubBuild = new DeviceBuildInfo("0", "stub");
         stubBuild.setTestsDir(mFakeTestsZipFolder.getBasePath(), "0");
+        IInvocationContext context = new InvocationContext();
+        context.addAllocatedDevice("device", mMockDevice);
+        context.addDeviceBuildInfo("device", stubBuild);
+        mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
         try {
-            setup.setUp(mMockDevice, stubBuild);
+            setup.setUp(mTestInfo);
             fail("Should have thrown an exception");
         } catch (TargetSetupError expected) {
             assertEquals(
@@ -163,7 +180,11 @@ public class TestFilePushSetupTest extends TestCase {
         setup.addTestFileName("file-not-in-test-zip");
         DeviceBuildInfo stubBuild = new DeviceBuildInfo("0", "stub");
         stubBuild.setTestsDir(mFakeTestsZipFolder.getBasePath(), "0");
+        IInvocationContext context = new InvocationContext();
+        context.addAllocatedDevice("device", mMockDevice);
+        context.addDeviceBuildInfo("device", stubBuild);
+        mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
         // test that it does not throw
-        setup.setUp(mMockDevice, stubBuild);
+        setup.setUp(mTestInfo);
     }
 }
