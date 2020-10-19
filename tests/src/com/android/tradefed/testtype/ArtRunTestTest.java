@@ -24,6 +24,8 @@ import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -75,12 +77,17 @@ public class ArtRunTestTest {
                     }
                 };
         mArtRunTest.setAbi(mMockAbi);
-        mArtRunTest.setDevice(mMockITestDevice);
         mSetter = new OptionSetter(mArtRunTest);
+        IInvocationContext context = new InvocationContext();
+        context.addAllocatedDevice("device", mMockITestDevice);
 
         // Temporary test directory (e.g. for the expected-output file).
         mTmpDepsDir = FileUtil.createTempDir("art-run-test-deps");
-        mTestInfo = TestInformation.newBuilder().setDependenciesFolder(mTmpDepsDir).build();
+        mTestInfo =
+                TestInformation.newBuilder()
+                        .setInvocationContext(context)
+                        .setDependenciesFolder(mTmpDepsDir)
+                        .build();
     }
 
     @After
@@ -111,24 +118,10 @@ public class ArtRunTestTest {
         EasyMock.verify(mMockInvocationListener, mMockAbi, mMockITestDevice);
     }
 
-    /** Test run when no device is set should throw an exception. */
-    @Test
-    public void testRun_noDevice() throws DeviceNotAvailableException {
-        mArtRunTest.setDevice(null);
-        replayMocks();
-        try {
-            mArtRunTest.run(mTestInfo, mMockInvocationListener);
-            fail("An exception should have been thrown.");
-        } catch (IllegalArgumentException e) {
-            // Expected.
-        }
-        verifyMocks();
-    }
-
     /** Test the behavior of the run method when the `run-test-name` option is not set. */
     @Test
     public void testRunSingleTest_unsetRunTestNameOption()
-            throws ConfigurationException, DeviceNotAvailableException, IOException {
+            throws ConfigurationException, DeviceNotAvailableException {
         final String classpath = "/data/local/tmp/test/test.jar";
         mSetter.setOptionValue("classpath", classpath);
 
