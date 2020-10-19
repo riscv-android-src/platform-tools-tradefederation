@@ -18,10 +18,12 @@ package com.android.tradefed.invoker;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.BuildRetrievalError;
+import com.android.tradefed.build.CommandLineBuildInfoBuilder;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.command.CommandRunner.ExitCode;
 import com.android.tradefed.command.CommandScheduler;
 import com.android.tradefed.command.ICommandScheduler.IScheduledInvocationListener;
+import com.android.tradefed.config.ArgsOptionParser;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.config.GlobalConfiguration;
@@ -83,6 +85,7 @@ import com.android.tradefed.testtype.SubprocessTfLauncher;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.PrettyPrintDelimiter;
+import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.RunInterruptedException;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.TimeUtil;
@@ -680,13 +683,13 @@ public class TestInvocation implements ITestInvocation {
             CurrentInvocation.setActionInProgress(ActionInProgress.UNSET);
             return true;
         } catch (RuntimeException | BuildRetrievalError | ConfigurationException e) {
+            // We don't have a reporting buildInfo at this point
+            IBuildInfo info = backFillBuildInfoForReporting(config.getCommandLine());
+
             // In case of build not found issues.
             mStatus = "(failed dynamic download)";
             // Set the exit code to error
             setExitCode(ExitCode.NO_BUILD, e);
-
-            // We don't have a reporting buildInfo at this point
-            IBuildInfo info = new BuildInfo();
             context.addDeviceBuildInfo(context.getDeviceConfigNames().get(0), info);
 
             // Report an empty invocation, so this error is sent to listeners
@@ -1178,6 +1181,28 @@ public class TestInvocation implements ITestInvocation {
                 getLogRegistry().unregisterLogger();
             }
         }
+    }
+
+    /**
+     * Helper that use the command line to backfill a {@link IBuildInfo} for reporting in case of
+     * download failure.
+     */
+    public static IBuildInfo backFillBuildInfoForReporting(String commandLine) {
+        IBuildInfo info = new BuildInfo();
+        CommandLineBuildInfoBuilder builder = new CommandLineBuildInfoBuilder();
+        try {
+            List<String> command =
+                    new ArrayList<>(
+                            Arrays.asList(
+                                    QuotationAwareTokenizer.tokenizeLine(commandLine, false)));
+            command.remove(0);
+            ArgsOptionParser parser = new ArgsOptionParser(builder);
+            parser.parseBestEffort(command, true);
+            info = builder.createBuild();
+        } catch (ConfigurationException ignore) {
+            CLog.e(ignore);
+        }
+        return info;
     }
 
     /** Helper Thread that ensures host_log is reported in case of killed JVM */

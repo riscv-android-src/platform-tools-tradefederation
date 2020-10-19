@@ -453,12 +453,13 @@ public class TestInvocationTest {
         mMockLogRegistry.unregisterLogger();
         mMockLogRegistry.dumpToGlobalLog(mMockLogger);
         mMockLogger.closeLog();
+        mStubConfiguration.setCommandLine(new String[] {"empty", "--build-id", "5"});
         replayMocks(mockRescheduler);
         mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
         verifyMocks();
 
         IBuildInfo stubBuild = captured.getValue();
-        assertEquals(BuildInfo.UNKNOWN_BUILD_ID, stubBuild.getBuildId());
+        assertEquals("5", stubBuild.getBuildId());
         stubBuild.cleanUp();
     }
 

@@ -175,7 +175,8 @@ public class InvocationExecution implements IInvocationExecution {
             throw e;
         } catch (RuntimeException re) {
             if (currentDeviceName != null) {
-                IBuildInfo errorBuild = new BuildInfo();
+                IBuildInfo errorBuild =
+                        TestInvocation.backFillBuildInfoForReporting(config.getCommandLine());
                 updateBuild(errorBuild, config);
                 testInfo.getContext().addDeviceBuildInfo(currentDeviceName, errorBuild);
             }
