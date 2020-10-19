@@ -324,6 +324,8 @@ public class ShardHelper implements IShardHelper {
         for (ITestInvocationListener l : config.getTestInvocationListeners()) {
             if (!(l instanceof IShardableListener)) {
                 newListeners.add(l);
+            } else if (!((IShardableListener) l).supportShardListener()) {
+                newListeners.add(l);
             }
         }
         newListeners.add(lastShardDetector);
@@ -341,7 +343,8 @@ public class ShardHelper implements IShardHelper {
             List<ITestInvocationListener> origListeners) {
         List<ITestInvocationListener> shardListeners = new ArrayList<ITestInvocationListener>();
         for (ITestInvocationListener l : origListeners) {
-            if (l instanceof IShardableListener) {
+            if (l instanceof IShardableListener
+                    && ((IShardableListener) l).supportShardListener()) {
                 shardListeners.add(((IShardableListener) l).clone());
             }
         }
