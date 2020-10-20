@@ -15,8 +15,6 @@
  */
 package com.android.tradefed.config.yaml;
 
-import com.android.tradefed.config.ConfigurationException;
-
 import com.google.common.collect.LinkedListMultimap;
 import com.google.common.collect.Multimap;
 
@@ -28,7 +26,6 @@ import java.util.Map.Entry;
 /** Helper to parse test runner information from the YAML Tradefed Configuration. */
 public class YamlClassOptionsParser {
 
-    private static final String CLASS_NAME_KEY = "name";
     private static final String OPTIONS_KEY = "options";
 
     class ClassAndOptions {
@@ -38,18 +35,19 @@ public class YamlClassOptionsParser {
 
     private List<ClassAndOptions> mListClassAndOptions = new ArrayList<>();
 
-    public YamlClassOptionsParser(String mainkey, String category, List<Map<String, Object>> tests)
-            throws ConfigurationException {
+    public YamlClassOptionsParser(List<Map<String, Object>> tests) {
         for (Map<String, Object> runnerEntry : tests) {
-            if (runnerEntry.containsKey(mainkey)) {
+            for (String classString : runnerEntry.keySet()) {
                 ClassAndOptions classOptions = new ClassAndOptions();
                 mListClassAndOptions.add(classOptions);
+                classOptions.mClass = classString;
                 @SuppressWarnings("unchecked")
-                Map<String, Object> map = (Map<String, Object>) runnerEntry.get(mainkey);
+                Map<String, Object> map = (Map<String, Object>) runnerEntry.get(classString);
+                // If there are no option the map is null
+                if (map == null) {
+                    continue;
+                }
                 for (Entry<String, Object> entry : map.entrySet()) {
-                    if (CLASS_NAME_KEY.equals(entry.getKey())) {
-                        classOptions.mClass = (String) entry.getValue();
-                    }
                     if (OPTIONS_KEY.equals(entry.getKey())) {
                         @SuppressWarnings("unchecked")
                         List<Map<String, Object>> optionMapList =
@@ -63,9 +61,6 @@ public class YamlClassOptionsParser {
                         }
                     }
                 }
-            } else {
-                throw new ConfigurationException(
-                        String.format("'%s' key is mandatory in '%s'", mainkey, category));
             }
         }
     }
