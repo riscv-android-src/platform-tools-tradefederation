@@ -19,6 +19,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 import com.android.tradefed.build.BuildRetrievalError;
+import com.android.tradefed.config.remote.IRemoteFileResolver.RemoteFileResolverArgs;
+import com.android.tradefed.config.remote.IRemoteFileResolver.ResolvedFile;
 import com.android.tradefed.util.FileUtil;
 
 import org.junit.Before;
@@ -44,8 +46,10 @@ public class LocalFileResolverTest {
         File testFile = FileUtil.createTempFile("test-local-file", ".txt");
         try {
             File markedFile = new File("file:" + testFile.getAbsolutePath());
-            File returned = mResolver.resolveRemoteFiles(markedFile);
-            assertEquals(testFile, returned);
+            RemoteFileResolverArgs args = new RemoteFileResolverArgs();
+            args.setConsideredFile(markedFile);
+            ResolvedFile returned = mResolver.resolveRemoteFile(args);
+            assertEquals(testFile, returned.getResolvedFile());
         } finally {
             FileUtil.deleteFile(testFile);
         }
