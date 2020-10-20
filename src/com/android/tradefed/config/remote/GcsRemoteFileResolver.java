@@ -24,7 +24,6 @@ import com.android.tradefed.result.error.InfraErrorIdentifier;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Map;
 
 import javax.annotation.Nonnull;
 
@@ -36,15 +35,16 @@ public class GcsRemoteFileResolver implements IRemoteFileResolver {
     private GCSDownloaderHelper mHelper = null;
 
     @Override
-    public File resolveRemoteFiles(File consideredFile, Map<String, String> query)
-            throws BuildRetrievalError {
+    public ResolvedFile resolveRemoteFile(RemoteFileResolverArgs args) throws BuildRetrievalError {
+        File consideredFile = args.getConsideredFile();
         // Don't use absolute path as it would not start with gs:
         String path = consideredFile.getPath();
         try {
             // We need to download the file from the bucket
             File downloadedFile = getDownloader().fetchTestResource(path);
             // Unzip it if required
-            return DynamicRemoteFileResolver.unzipIfRequired(downloadedFile, query);
+            return new ResolvedFile(
+                    DynamicRemoteFileResolver.unzipIfRequired(downloadedFile, args.getQueryArgs()));
         } catch (IOException e) {
             CLog.e(e);
             throw new BuildRetrievalError(
