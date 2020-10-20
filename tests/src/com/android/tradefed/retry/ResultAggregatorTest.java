@@ -176,13 +176,13 @@ public class ResultAggregatorTest {
         EasyMock.expect(
                         mLogger.saveLogData(
                                 EasyMock.contains("aggregated-events"),
-                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
                                 EasyMock.anyObject()))
                 .andReturn(null);
         EasyMock.expect(
                         mLogger.saveLogData(
                                 EasyMock.contains("detailed-events"),
-                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
                                 EasyMock.anyObject()))
                 .andReturn(null);
 
@@ -316,13 +316,13 @@ public class ResultAggregatorTest {
         EasyMock.expect(
                         mLogger.saveLogData(
                                 EasyMock.contains("aggregated-events"),
-                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
                                 EasyMock.anyObject()))
                 .andReturn(null);
         EasyMock.expect(
                         mLogger.saveLogData(
                                 EasyMock.contains("detailed-events"),
-                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
                                 EasyMock.anyObject()))
                 .andReturn(null);
 
@@ -435,13 +435,13 @@ public class ResultAggregatorTest {
         EasyMock.expect(
                         mLogger.saveLogData(
                                 EasyMock.contains("aggregated-events"),
-                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
                                 EasyMock.anyObject()))
                 .andReturn(null);
         EasyMock.expect(
                         mLogger.saveLogData(
                                 EasyMock.contains("detailed-events"),
-                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
                                 EasyMock.anyObject()))
                 .andReturn(null);
 
@@ -535,13 +535,13 @@ public class ResultAggregatorTest {
         EasyMock.expect(
                         mLogger.saveLogData(
                                 EasyMock.contains("aggregated-events"),
-                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
                                 EasyMock.anyObject()))
                 .andReturn(null);
         EasyMock.expect(
                         mLogger.saveLogData(
                                 EasyMock.contains("detailed-events"),
-                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
                                 EasyMock.anyObject()))
                 .andReturn(null);
 
@@ -653,13 +653,13 @@ public class ResultAggregatorTest {
         EasyMock.expect(
                         mLogger.saveLogData(
                                 EasyMock.contains("aggregated-events"),
-                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
                                 EasyMock.anyObject()))
                 .andReturn(null);
         EasyMock.expect(
                         mLogger.saveLogData(
                                 EasyMock.contains("detailed-events"),
-                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
                                 EasyMock.anyObject()))
                 .andReturn(null);
 
@@ -760,13 +760,13 @@ public class ResultAggregatorTest {
         EasyMock.expect(
                         mLogger.saveLogData(
                                 EasyMock.contains("aggregated-events"),
-                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
                                 EasyMock.anyObject()))
                 .andReturn(null);
         EasyMock.expect(
                         mLogger.saveLogData(
                                 EasyMock.contains("detailed-events"),
-                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
                                 EasyMock.anyObject()))
                 .andReturn(null);
 
@@ -863,13 +863,13 @@ public class ResultAggregatorTest {
         EasyMock.expect(
                         mLogger.saveLogData(
                                 EasyMock.contains("aggregated-events"),
-                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
                                 EasyMock.anyObject()))
                 .andReturn(null);
         EasyMock.expect(
                         mLogger.saveLogData(
                                 EasyMock.contains("detailed-events"),
-                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
                                 EasyMock.anyObject()))
                 .andReturn(null);
 
@@ -983,13 +983,13 @@ public class ResultAggregatorTest {
         EasyMock.expect(
                         mLogger.saveLogData(
                                 EasyMock.contains("aggregated-events"),
-                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
                                 EasyMock.anyObject()))
                 .andReturn(null);
         EasyMock.expect(
                         mLogger.saveLogData(
                                 EasyMock.contains("detailed-events"),
-                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
                                 EasyMock.anyObject()))
                 .andReturn(null);
 
@@ -1120,13 +1120,13 @@ public class ResultAggregatorTest {
         EasyMock.expect(
                         mLogger.saveLogData(
                                 EasyMock.contains("aggregated-events"),
-                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
                                 EasyMock.anyObject()))
                 .andReturn(null);
         EasyMock.expect(
                         mLogger.saveLogData(
                                 EasyMock.contains("detailed-events"),
-                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
                                 EasyMock.anyObject()))
                 .andReturn(null);
 
@@ -1271,13 +1271,13 @@ public class ResultAggregatorTest {
         EasyMock.expect(
                         mLogger.saveLogData(
                                 EasyMock.contains("aggregated-events"),
-                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
                                 EasyMock.anyObject()))
                 .andReturn(null);
         EasyMock.expect(
                         mLogger.saveLogData(
                                 EasyMock.contains("detailed-events"),
-                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
                                 EasyMock.anyObject()))
                 .andReturn(null);
 
@@ -1422,13 +1422,13 @@ public class ResultAggregatorTest {
         EasyMock.expect(
                         mLogger.saveLogData(
                                 EasyMock.contains("aggregated-events"),
-                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
                                 EasyMock.anyObject()))
                 .andReturn(null);
         EasyMock.expect(
                         mLogger.saveLogData(
                                 EasyMock.contains("detailed-events"),
-                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
                                 EasyMock.anyObject()))
                 .andReturn(null);
 
@@ -1576,13 +1576,13 @@ public class ResultAggregatorTest {
         EasyMock.expect(
                         mLogger.saveLogData(
                                 EasyMock.contains("aggregated-events"),
-                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
                                 EasyMock.anyObject()))
                 .andReturn(null);
         EasyMock.expect(
                         mLogger.saveLogData(
                                 EasyMock.contains("detailed-events"),
-                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
                                 EasyMock.anyObject()))
                 .andReturn(null);
 
@@ -1703,13 +1703,13 @@ public class ResultAggregatorTest {
         EasyMock.expect(
                         mLogger.saveLogData(
                                 EasyMock.contains("aggregated-events"),
-                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
                                 EasyMock.anyObject()))
                 .andReturn(null);
         EasyMock.expect(
                         mLogger.saveLogData(
                                 EasyMock.contains("detailed-events"),
-                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
                                 EasyMock.anyObject()))
                 .andReturn(null);
 
@@ -1834,13 +1834,13 @@ public class ResultAggregatorTest {
         EasyMock.expect(
                         mLogger.saveLogData(
                                 EasyMock.contains("aggregated-events"),
-                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
                                 EasyMock.anyObject()))
                 .andReturn(null);
         EasyMock.expect(
                         mLogger.saveLogData(
                                 EasyMock.contains("detailed-events"),
-                                EasyMock.eq(LogDataType.TEXT),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
                                 EasyMock.anyObject()))
                 .andReturn(null);
 
