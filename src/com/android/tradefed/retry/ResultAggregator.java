@@ -511,7 +511,9 @@ public class ResultAggregator extends CollectingTestListener {
             try (FileInputStreamSource source = new FileInputStreamSource(eventsLog, true)) {
                 LogFile logged =
                         mLogSaver.saveLogData(
-                                eventsLog.getName(), LogDataType.TEXT, source.createInputStream());
+                                eventsLog.getName(),
+                                LogDataType.TF_EVENTS,
+                                source.createInputStream());
                 if (logged != null) {
                     mAggregatedForwarder.logAssociation(key, logged);
                     mDetailedForwarder.logAssociation(key, logged);
