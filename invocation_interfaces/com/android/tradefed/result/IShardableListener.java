@@ -22,5 +22,11 @@ package com.android.tradefed.result;
  */
 public interface IShardableListener extends ITestInvocationListener {
 
+    /** Whether or not a {@link IShardableListener} implementation wants to enable this behavior. */
+    public default boolean supportShardListener() {
+        return true;
+    }
+
+    /** Clone itself to be used in the shard. */
     IShardableListener clone();
 }
