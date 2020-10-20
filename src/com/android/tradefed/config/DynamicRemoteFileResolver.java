@@ -20,6 +20,7 @@ import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.config.OptionSetter.OptionFieldsForName;
 import com.android.tradefed.config.remote.IRemoteFileResolver;
 import com.android.tradefed.config.remote.IRemoteFileResolver.RemoteFileResolverArgs;
+import com.android.tradefed.config.remote.IRemoteFileResolver.ResolvedFile;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.logger.CurrentInvocation;
 import com.android.tradefed.invoker.logger.CurrentInvocation.InvocationInfo;
@@ -398,7 +399,8 @@ public class DynamicRemoteFileResolver {
             resolver.setPrimaryDevice(mDevice);
             RemoteFileResolverArgs args = new RemoteFileResolverArgs();
             args.setConsideredFile(fileToResolve).addQueryArgs(query);
-            return resolver.resolveRemoteFiles(args);
+            ResolvedFile resolvedFile = resolver.resolveRemoteFile(args);
+            return resolvedFile.getResolvedFile();
         } catch (BuildRetrievalError e) {
             if (isOptional(query)) {
                 CLog.d(

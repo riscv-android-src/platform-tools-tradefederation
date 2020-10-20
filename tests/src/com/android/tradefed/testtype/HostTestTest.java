@@ -26,6 +26,7 @@ import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.config.remote.GcsRemoteFileResolver;
 import com.android.tradefed.config.remote.IRemoteFileResolver;
 import com.android.tradefed.config.remote.IRemoteFileResolver.RemoteFileResolverArgs;
+import com.android.tradefed.config.remote.IRemoteFileResolver.ResolvedFile;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
@@ -544,7 +545,7 @@ public class HostTestTest extends TestCase {
             assertTrue(
                     "Expect a GCS bucket file: "
                             + (mGcsBucketFile != null ? mGcsBucketFile.toString() : "null"),
-                    FAKE_REMOTE_FILE_PATH.equals(mGcsBucketFile));
+                    "/downloaded/somewhere".equals(mGcsBucketFile.getPath()));
             metrics.addTestMetric("gcs-bucket-file", mGcsBucketFile.toURI().toString());
         }
 
@@ -738,9 +739,9 @@ public class HostTestTest extends TestCase {
      * test to run is a {@link TestSuite} and has dynamic options.
      */
     public void testRun_junit3TestSuite_dynamicOptions() throws Exception {
-        doReturn(new File("/downloaded/somewhere"))
+        doReturn(new ResolvedFile(new File("/downloaded/somewhere")))
                 .when(mMockResolver)
-                .resolveRemoteFiles((RemoteFileResolverArgs) Mockito.any());
+                .resolveRemoteFile((RemoteFileResolverArgs) Mockito.any());
         mHostTest.setClassName(DynamicTestCase.class.getName());
         TestDescription test1 = new TestDescription(DynamicTestCase.class.getName(), "testPass");
         mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
@@ -2301,6 +2302,9 @@ public class HostTestTest extends TestCase {
      * test to run is a {@link TestSuite} and has set-options with the char ':' escaped.
      */
     public void testRun_junit3TestSuite_optionEscapeColon() throws Exception {
+        doReturn(new ResolvedFile(new File("/downloaded/somewhere")))
+                .when(mMockResolver)
+                .resolveRemoteFile((RemoteFileResolverArgs) Mockito.any());
         mHostTest.setClassName(OptionEscapeColonTestCase.class.getName());
         OptionSetter setter = new OptionSetter(mHostTest);
         setter.setOptionValue(

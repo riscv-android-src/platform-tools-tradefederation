@@ -58,7 +58,7 @@ public interface IRemoteFileResolver {
     }
 
     /**
-     * Resolve the remote file in a future-proof interface
+     * Resolve the remote file with a builder args.
      *
      * @param args {@link RemoteFileResolverArgs} describing the remote to download and how.
      * @return The resolved local file.
@@ -67,6 +67,19 @@ public interface IRemoteFileResolver {
     public default @Nonnull File resolveRemoteFiles(RemoteFileResolverArgs args)
             throws BuildRetrievalError {
         return resolveRemoteFiles(args.getConsideredFile(), args.getQueryArgs());
+    }
+
+    /**
+     * Resolve the remote file in a future-proof interface
+     *
+     * @param args {@link RemoteFileResolverArgs} describing the remote to download and how.
+     * @return The resolved local file representation.
+     * @throws BuildRetrievalError if something goes wrong.
+     */
+    public default @Nonnull ResolvedFile resolveRemoteFile(RemoteFileResolverArgs args)
+            throws BuildRetrievalError {
+        File file = resolveRemoteFiles(args);
+        return new ResolvedFile(file);
     }
 
     /** Returns the associated protocol supported for download. */
@@ -142,6 +155,19 @@ public interface IRemoteFileResolver {
                 if (other.mQueryArgs != null) return false;
             } else if (!mQueryArgs.equals(other.mQueryArgs)) return false;
             return true;
+        }
+    }
+
+    /** Class holding information about the resolved file and some metadata. */
+    public class ResolvedFile {
+        private File mResolvedFile;
+
+        public ResolvedFile(File resolvedFile) {
+            mResolvedFile = resolvedFile;
+        }
+
+        public File getResolvedFile() {
+            return mResolvedFile;
         }
     }
 }
