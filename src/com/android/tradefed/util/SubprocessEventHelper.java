@@ -38,6 +38,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
+import javax.annotation.Nonnull;
+
 /**
  * Helper to serialize/deserialize the events to be passed to the log.
  */
@@ -182,8 +184,9 @@ public class SubprocessEventHelper {
                             }
 
                             @Override
-                            public FailureStatus status() {
-                                return mFailure.getFailureStatus();
+                            public @Nonnull FailureStatus status() {
+                                FailureStatus status = mFailure.getFailureStatus();
+                                return (status == null ? FailureStatus.UNSET : status);
                             }
                         };
                 mFailure.setErrorIdentifier(errorId);
@@ -202,6 +205,7 @@ public class SubprocessEventHelper {
                     if (mFailure.getErrorIdentifier() != null) {
                         tags.putOpt(ERROR_NAME_KEY, mFailure.getErrorIdentifier().name());
                         tags.putOpt(ERROR_CODE_KEY, mFailure.getErrorIdentifier().code());
+                        tags.putOpt(FAILURE_STATUS_KEY, mFailure.getErrorIdentifier().status());
                     }
                 }
                 if (mReason != null) {
@@ -324,8 +328,9 @@ public class SubprocessEventHelper {
                                 }
 
                                 @Override
-                                public FailureStatus status() {
-                                    return mFailure.getFailureStatus();
+                                public @Nonnull FailureStatus status() {
+                                    FailureStatus status = mFailure.getFailureStatus();
+                                    return (status == null ? FailureStatus.UNSET : status);
                                 }
                             };
                     mFailure.setErrorIdentifier(errorId);
