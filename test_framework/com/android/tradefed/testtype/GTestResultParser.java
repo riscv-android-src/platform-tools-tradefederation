@@ -22,6 +22,8 @@ import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.error.ErrorIdentifier;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 
 import java.util.ArrayList;
@@ -723,7 +725,7 @@ public class GTestResultParser extends MultiLineReceiver {
      *
      * @param errorMsg The message to output about the nature of the error
      */
-    private void handleTestRunFailed(String errorMsg) {
+    private void handleTestRunFailed(String errorMsg, ErrorIdentifier errorId) {
         errorMsg = (errorMsg == null ? "Unknown error" : errorMsg);
         CLog.i("Test run failed: %s", errorMsg);
         String testRunStackTrace = "";
@@ -750,8 +752,11 @@ public class GTestResultParser extends MultiLineReceiver {
             clearCurrentTestResult();
         }
         // Report the test run failed
-        FailureDescription error = FailureDescription.create(errorMsg);
-        error.setFailureStatus(FailureStatus.TEST_FAILURE);
+        FailureDescription error =
+                FailureDescription.create(errorMsg).setFailureStatus(FailureStatus.TEST_FAILURE);
+        if (errorId != null) {
+            error.setErrorIdentifier(errorId);
+        }
         for (ITestInvocationListener listener : mTestListeners) {
             listener.testRunFailed(error);
             listener.testRunEnded(mTotalRunTime, getRunMetrics());
@@ -766,13 +771,16 @@ public class GTestResultParser extends MultiLineReceiver {
         super.done();
         // To make sure the test fail run will only be reported for this run.
         if (mTestRunStartReported && (mNumTestsExpected > mNumTestsRun)) {
-            handleTestRunFailed(String.format("Test run incomplete. Expected %d tests, received %d",
-                    mNumTestsExpected, mNumTestsRun));
+            handleTestRunFailed(
+                    String.format(
+                            "Test run incomplete. Expected %d tests, received %d",
+                            mNumTestsExpected, mNumTestsRun),
+                    InfraErrorIdentifier.EXPECTED_TESTS_MISMATCH);
             // Reset TestRunStart flag to prevent report twice in the same run.
             mTestRunStartReported = false;
             mTestRunInProgress = false;
         } else if (mTestRunInProgress) {
-            handleTestRunFailed("No test results");
+            handleTestRunFailed("No test results", InfraErrorIdentifier.UNDETERMINED);
             mTestRunInProgress = false;
         } else if (!mSeenOneTestRunStart) {
             for (ITestInvocationListener listener : mTestListeners) {
