@@ -427,7 +427,7 @@ public class DynamicRemoteFileResolverTest {
         args1.setConsideredFile(new File("gs:/fake/path"))
                 .addQueryArgs(queryArgs)
                 .setDestinationDir(new File("/tmp"));
-        EasyMock.expect(mMockResolver.resolveRemoteFiles(args1)).andReturn(null);
+        EasyMock.expect(mMockResolver.resolveRemoteFile(args1)).andReturn(null);
         EasyMock.replay(mMockResolver);
 
         mResolver.resolvePartialDownloadZip(
@@ -451,7 +451,7 @@ public class DynamicRemoteFileResolverTest {
         args1.setConsideredFile(new File("gs:/fake/path?optional=true"))
                 .addQueryArgs(queryArgs)
                 .setDestinationDir(new File("/tmp"));
-        EasyMock.expect(mMockResolver.resolveRemoteFiles(args1))
+        EasyMock.expect(mMockResolver.resolveRemoteFile(args1))
                 .andThrow(
                         new BuildRetrievalError(
                                 "should not throw this exception.",
