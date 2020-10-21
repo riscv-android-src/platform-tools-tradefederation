@@ -323,7 +323,7 @@ public class DynamicRemoteFileResolver {
             args.setConsideredFile(new File(remoteZipFilePath))
                     .addQueryArgs(queryArgs)
                     .setDestinationDir(destDir);
-            resolver.resolveRemoteFiles(args);
+            resolver.resolveRemoteFile(args);
         } catch (BuildRetrievalError e) {
             if (isOptional(queryArgs)) {
                 CLog.d(
