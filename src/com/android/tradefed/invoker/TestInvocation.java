@@ -609,15 +609,13 @@ public class TestInvocation implements ITestInvocation {
      * @param listener the {@link ITestInvocation} to report build download failures.
      * @param invocationPath the {@link IInvocationExecution} driving the invocation.
      * @return True if we successfully downloaded the build, false otherwise.
-     * @throws DeviceNotAvailableException
      */
     private boolean invokeFetchBuild(
             TestInformation testInfo,
             IConfiguration config,
             IRescheduler rescheduler,
             ITestInvocationListener listener,
-            IInvocationExecution invocationPath)
-            throws DeviceNotAvailableException {
+            IInvocationExecution invocationPath) {
         CurrentInvocation.setActionInProgress(ActionInProgress.FETCHING_ARTIFACTS);
         Exception buildException = null;
         boolean res = false;
@@ -634,7 +632,7 @@ public class TestInvocation implements ITestInvocation {
             buildException =
                     new BuildRetrievalError(
                             "No build found to test.", InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
-        } catch (BuildRetrievalError | RuntimeException e) {
+        } catch (BuildRetrievalError | RuntimeException | DeviceNotAvailableException e) {
             buildException = e;
         }
         setExitCode(ExitCode.NO_BUILD, buildException);
