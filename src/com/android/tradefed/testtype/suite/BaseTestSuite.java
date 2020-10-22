@@ -22,9 +22,11 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.suite.params.IModuleParameter;
@@ -318,11 +320,12 @@ public class BaseTestSuite extends ITestSuite {
             if (mFailOnEverythingFiltered
                     && loadedTests.isEmpty()
                     && !mIncludeFiltersParsed.isEmpty()) {
-                throw new IllegalStateException(
+                throw new HarnessRuntimeException(
                         String.format(
                                 "Include filter '%s' was specified"
                                         + " but resulted in an empty test set.",
-                                includeFilter));
+                                includeFilter),
+                        InfraErrorIdentifier.OPTION_CONFIGURATION_ERROR);
             }
             return loadedTests;
         } catch (DeviceNotAvailableException | FileNotFoundException e) {
@@ -480,14 +483,16 @@ public class BaseTestSuite extends ITestSuite {
             }
         }
         if (modules.size() == 0) {
-            throw new IllegalArgumentException(
-                    String.format("No modules found matching %s", mModuleName));
+            throw new HarnessRuntimeException(
+                    String.format("No modules found matching %s", mModuleName),
+                    InfraErrorIdentifier.OPTION_CONFIGURATION_ERROR);
         } else if (modules.size() > 1) {
-            throw new IllegalArgumentException(
+            throw new HarnessRuntimeException(
                     String.format(
                             "Multiple modules found matching %s:\n%s\nWhich one did you "
                                     + "mean?\n",
-                            mModuleName, ArrayUtil.join("\n", modules)));
+                            mModuleName, ArrayUtil.join("\n", modules)),
+                    InfraErrorIdentifier.OPTION_CONFIGURATION_ERROR);
         } else {
             File mod = modules.iterator().next();
             String moduleName = mod.getName().replace(".config", "");
