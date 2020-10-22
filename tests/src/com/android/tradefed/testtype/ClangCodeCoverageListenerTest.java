@@ -28,7 +28,6 @@ import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
@@ -39,6 +38,7 @@ import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
+import com.google.common.base.VerifyException;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.ByteString;
@@ -86,7 +86,6 @@ public class ClangCodeCoverageListenerTest {
     @Mock IConfiguration mMockConfiguration;
     @Mock IBuildProvider mMockBuildProvider;
     @Mock ITestDevice mMockDevice;
-    @Mock IInvocationContext mMockContext;
     @Spy CommandArgumentCaptor mCommandArgumentCaptor;
     LogFileReader mFakeListener = new LogFileReader();
 
@@ -112,12 +111,9 @@ public class ClangCodeCoverageListenerTest {
         doReturn(mMockBuildProvider).when(mMockConfiguration).getBuildProvider();
         doReturn(mMockBuildInfo).when(mMockBuildProvider).getBuild();
 
-        doReturn(ImmutableList.of(mMockDevice)).when(mMockContext).getDevices();
-
-        mListener = new ClangCodeCoverageListener();
+        mListener = new ClangCodeCoverageListener(mMockDevice, mFakeListener);
         mListener.setConfiguration(mMockConfiguration);
         mListener.setRunUtil(mCommandArgumentCaptor);
-        mListener.init(mMockContext, mFakeListener);
     }
 
     @Test
@@ -281,7 +277,7 @@ public class ClangCodeCoverageListenerTest {
     }
 
     @Test
-    public void testProfileToolNotFound_noLog() throws Exception {
+    public void testProfileToolNotFound_throwsException() throws Exception {
         mCoverageOptionsSetter.setOptionValue("coverage", "true");
         mCoverageOptionsSetter.setOptionValue("coverage-toolchain", "CLANG");
 
@@ -297,16 +293,22 @@ public class ClangCodeCoverageListenerTest {
         doReturn(tarGz).when(mMockDevice).pullFile(anyString());
 
         // Simulate a test run.
-        mListener.testRunStarted(RUN_NAME, TEST_COUNT);
-        mListener.testRunEnded(ELAPSED_TIME, mMetrics);
-        mListener.invocationEnded(ELAPSED_TIME);
+        try {
+            mListener.testRunStarted(RUN_NAME, TEST_COUNT);
+            mListener.testRunEnded(ELAPSED_TIME, mMetrics);
+            mListener.invocationEnded(ELAPSED_TIME);
+            fail("an exception should have been thrown");
+        } catch (VerifyException e) {
+            // Expected.
+            assertThat(e).hasMessageThat().contains("llvm-profdata");
+        }
 
         // Verify testLog(..) was never called.
         assertThat(mFakeListener.getLogs()).isEmpty();
     }
 
     @Test
-    public void testProfileToolFailed_noLog() throws Exception {
+    public void testProfileToolFailed_throwsException() throws Exception {
         mCoverageOptionsSetter.setOptionValue("coverage", "true");
         mCoverageOptionsSetter.setOptionValue("coverage-toolchain", "CLANG");
 
@@ -325,8 +327,14 @@ public class ClangCodeCoverageListenerTest {
         mCommandArgumentCaptor.setResult(CommandStatus.FAILED);
 
         // Simulate a test run.
-        mListener.testRunStarted(RUN_NAME, TEST_COUNT);
-        mListener.testRunEnded(ELAPSED_TIME, mMetrics);
+        try {
+            mListener.testRunStarted(RUN_NAME, TEST_COUNT);
+            mListener.testRunEnded(ELAPSED_TIME, mMetrics);
+            fail("an exception should have been thrown");
+        } catch (RuntimeException e) {
+            // Expected.
+            assertThat(e).hasMessageThat().contains("merge Clang profile data");
+        }
         mListener.invocationEnded(ELAPSED_TIME);
 
         // Verify testLog(..) was never called.

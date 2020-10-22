@@ -431,7 +431,7 @@ public class GTest extends GTestBase implements IDeviceTest {
         }
         // Insert the coverage listener if code coverage collection is enabled.
         listener = addGcovCoverageListenerIfEnabled(testInfo.getContext(), listener);
-        listener = addClangCoverageListenerIfEnabled(testInfo.getContext(), listener);
+        listener = addClangCoverageListenerIfEnabled(listener);
         listener = getGTestListener(listener);
         NativeCodeCoverageFlusher flusher =
                 new NativeCodeCoverageFlusher(
@@ -491,13 +491,14 @@ public class GTest extends GTestBase implements IDeviceTest {
      * @return a native coverage listener if coverage is enabled, otherwise the original listener
      */
     private ITestInvocationListener addClangCoverageListenerIfEnabled(
-            IInvocationContext context, ITestInvocationListener listener) {
+            ITestInvocationListener listener) {
         CoverageOptions options = getConfiguration().getCoverageOptions();
 
         if (options.isCoverageEnabled() && options.getCoverageToolchains().contains(CLANG)) {
-            ClangCodeCoverageListener clangListener = new ClangCodeCoverageListener();
+            ClangCodeCoverageListener clangListener =
+                    new ClangCodeCoverageListener(mDevice, listener);
             clangListener.setConfiguration(getConfiguration());
-            listener = clangListener.init(context, listener);
+            return clangListener;
         }
         return listener;
     }
