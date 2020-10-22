@@ -28,7 +28,6 @@ import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.device.metric.ClangCodeCoverageCollector;
 import com.android.tradefed.device.metric.GcovCodeCoverageCollector;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.TestInformation;
@@ -496,7 +495,7 @@ public class GTest extends GTestBase implements IDeviceTest {
         CoverageOptions options = getConfiguration().getCoverageOptions();
 
         if (options.isCoverageEnabled() && options.getCoverageToolchains().contains(CLANG)) {
-            ClangCodeCoverageCollector clangListener = new ClangCodeCoverageCollector();
+            ClangCodeCoverageListener clangListener = new ClangCodeCoverageListener();
             clangListener.setConfiguration(getConfiguration());
             listener = clangListener.init(context, listener);
         }
