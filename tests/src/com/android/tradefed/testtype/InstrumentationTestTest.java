@@ -56,6 +56,7 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLifeCycleReceiver;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.testtype.coverage.CoverageOptions;
 import com.android.tradefed.testtype.suite.GranularRetriableTestWrapperTest.CalledMetricCollector;
@@ -1056,7 +1057,8 @@ public class InstrumentationTestTest {
         TestDescription tid = new TestDescription("fakeclass", "fakemethod0");
         inOrder.verify(mMockListener).testStarted(tid, 0L);
         FailureDescription failure =
-                FailureDescription.create("Instrumentation run failed due to 'Process crashed.'");
+                FailureDescription.create("Instrumentation run failed due to 'Process crashed.'")
+                        .setErrorIdentifier(DeviceErrorIdentifier.INSTRUMENTATION_CRASH);
         inOrder.verify(mMockListener).testFailed(tid, failure);
         inOrder.verify(mMockListener).testEnded(tid, 15L, EMPTY_STRING_MAP);
         inOrder.verify(mMockListener)
