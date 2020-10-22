@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.tradefed.device.metric;
+package com.android.tradefed.testtype;
 
 import static com.android.tradefed.testtype.coverage.CoverageOptions.Toolchain.CLANG;
 import static com.google.common.base.Verify.verify;
@@ -55,7 +55,7 @@ import java.util.Set;
  * A {@link BaseDeviceMetricCollector} that will pull Clang coverage measurements off of the device
  * and log them as test artifacts.
  */
-public final class ClangCodeCoverageCollector extends BaseDeviceMetricCollector
+public final class ClangCodeCoverageListener extends BaseDeviceMetricCollector
         implements IConfigurationReceiver {
 
     private static final String NATIVE_COVERAGE_DEVICE_PATH = "/data/misc/trace";
