@@ -17,6 +17,8 @@ package com.android.tradefed.result.error;
 
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 
+import javax.annotation.Nonnull;
+
 /** Error Identifiers from Trade Federation infra, and dependent infra (like Build infra). */
 public enum InfraErrorIdentifier implements ErrorIdentifier {
 
@@ -57,11 +59,11 @@ public enum InfraErrorIdentifier implements ErrorIdentifier {
     UNDETERMINED(510_000, FailureStatus.UNSET);
 
     private final long code;
-    private final FailureStatus status;
+    private final @Nonnull FailureStatus status;
 
     InfraErrorIdentifier(int code, FailureStatus status) {
         this.code = code;
-        this.status = status;
+        this.status = (status == null ? FailureStatus.UNSET : status);
     }
 
     @Override
@@ -70,7 +72,7 @@ public enum InfraErrorIdentifier implements ErrorIdentifier {
     }
 
     @Override
-    public FailureStatus status() {
+    public @Nonnull FailureStatus status() {
         return status;
     }
 }

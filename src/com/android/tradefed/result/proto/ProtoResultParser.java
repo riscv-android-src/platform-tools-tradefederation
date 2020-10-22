@@ -59,6 +59,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
 
+import javax.annotation.Nonnull;
+
 /** Parser for the Tradefed results proto format. */
 public class ProtoResultParser {
 
@@ -702,8 +704,9 @@ public class ProtoResultParser {
                         }
 
                         @Override
-                        public FailureStatus status() {
-                            return failure.getFailureStatus();
+                        public @Nonnull FailureStatus status() {
+                            FailureStatus status = failure.getFailureStatus();
+                            return (status == null ? FailureStatus.UNSET : status);
                         }
                     };
             failure.setErrorIdentifier(errorId);
