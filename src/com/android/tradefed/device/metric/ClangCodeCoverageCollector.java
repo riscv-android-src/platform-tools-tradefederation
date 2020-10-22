@@ -17,6 +17,7 @@
 package com.android.tradefed.device.metric;
 
 import static com.android.tradefed.testtype.coverage.CoverageOptions.Toolchain.CLANG;
+import static com.google.common.base.Verify.verify;
 import static com.google.common.base.Verify.verifyNotNull;
 
 import com.android.tradefed.build.BuildRetrievalError;
@@ -25,13 +26,12 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.device.metric.BaseDeviceMetricCollector;
+import com.android.tradefed.device.metric.DeviceMetricData;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FileInputStreamSource;
-import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.util.AdbRootElevator;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -52,8 +52,8 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * A {@link com.android.tradefed.device.metric.BaseDeviceMetricCollector} that will pull Clang
- * coverage measurements off of the device and log them as test artifacts.
+ * A {@link BaseDeviceMetricCollector} that will pull Clang coverage measurements off of the device
+ * and log them as test artifacts.
  */
 public final class ClangCodeCoverageCollector extends BaseDeviceMetricCollector
         implements IConfigurationReceiver {
@@ -80,23 +80,6 @@ public final class ClangCodeCoverageCollector extends BaseDeviceMetricCollector
     private NativeCodeCoverageFlusher mFlusher;
 
     @Override
-    public ITestInvocationListener init(
-            IInvocationContext context, ITestInvocationListener listener) {
-        super.init(context, listener);
-
-        if (isClangCoverageEnabled()) {
-            // Clear coverage measurements on the device.
-            try (AdbRootElevator adbRoot = new AdbRootElevator(getDevices().get(0))) {
-                getCoverageFlusher().resetCoverage();
-            } catch (DeviceNotAvailableException e) {
-                throw new RuntimeException(e);
-            }
-        }
-
-        return this;
-    }
-
-    @Override
     public void setConfiguration(IConfiguration configuration) {
         mConfiguration = configuration;
     }
@@ -109,14 +92,18 @@ public final class ClangCodeCoverageCollector extends BaseDeviceMetricCollector
     @Override
     public void onTestRunEnd(
             DeviceMetricData runData, final Map<String, Metric> currentRunMetrics) {
-        if (!isClangCoverageEnabled()) {
+        if (!mConfiguration.getCoverageOptions().isCoverageEnabled()
+                || !mConfiguration.getCoverageOptions().getCoverageToolchains().contains(CLANG)) {
             return;
         }
+        try {
+            ITestDevice device = getRealDevices().get(0);
 
-        ITestDevice device = getRealDevices().get(0);
-        try (AdbRootElevator adbRoot = new AdbRootElevator(device)) {
+            // Enable abd root on the device, otherwise the following commands will fail.
+            verify(device.enableAdbRoot(), "Failed to enable adb root.");
+
             if (mConfiguration.getCoverageOptions().isCoverageFlushEnabled()) {
-                getCoverageFlusher().forceCoverageFlush();
+                getCoverageFlusher(device).forceCoverageFlush();
             }
             logCoverageMeasurement(device, getRunName());
 
@@ -207,21 +194,15 @@ public final class ClangCodeCoverageCollector extends BaseDeviceMetricCollector
      *
      * @return a NativeCodeCoverageFlusher
      */
-    private NativeCodeCoverageFlusher getCoverageFlusher() {
+    private NativeCodeCoverageFlusher getCoverageFlusher(ITestDevice device) {
         if (mFlusher == null) {
             verifyNotNull(mConfiguration);
+            verifyNotNull(device);
             mFlusher =
                     new NativeCodeCoverageFlusher(
-                            getDevices().get(0),
-                            mConfiguration.getCoverageOptions().getCoverageProcesses());
+                            device, mConfiguration.getCoverageOptions().getCoverageProcesses());
         }
         return mFlusher;
-    }
-
-    private boolean isClangCoverageEnabled() {
-        return mConfiguration != null
-                && mConfiguration.getCoverageOptions().isCoverageEnabled()
-                && mConfiguration.getCoverageOptions().getCoverageToolchains().contains(CLANG);
     }
 
     /**

@@ -20,7 +20,6 @@ import static com.android.tradefed.device.metric.JavaCodeCoverageCollector.MERGE
 
 import static com.google.common.truth.Truth.assertThat;
 
-import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -123,6 +122,7 @@ public class JavaCodeCoverageCollectorTest {
 
         mCodeCoverageCollector = new JavaCodeCoverageCollector();
         mCodeCoverageCollector.setConfiguration(mMockConfiguration);
+        mCodeCoverageCollector.init(mMockContext, mFakeListener);
     }
 
     @Test
@@ -131,7 +131,6 @@ public class JavaCodeCoverageCollectorTest {
         HashMap<String, Metric> runMetrics = new HashMap<>();
 
         // Simulate a test run.
-        mCodeCoverageCollector.init(mMockContext, mFakeListener);
         mCodeCoverageCollector.testRunStarted(RUN_NAME, TEST_COUNT);
         mCodeCoverageCollector.testRunEnded(ELAPSED_TIME, runMetrics);
 
@@ -151,7 +150,6 @@ public class JavaCodeCoverageCollectorTest {
         doReturn("").when(mMockDevice).executeShellCommand(anyString());
 
         // Simulate a test run.
-        mCodeCoverageCollector.init(mMockContext, mFakeListener);
         mCodeCoverageCollector.testRunStarted(RUN_NAME, TEST_COUNT);
         mCodeCoverageCollector.testRunEnded(ELAPSED_TIME, runMetrics);
 
@@ -167,12 +165,7 @@ public class JavaCodeCoverageCollectorTest {
     public void testFailure_noCoverageMetric() throws Exception {
         enableJavaCoverage();
 
-        // Setup mocks.
-        when(mMockDevice.executeShellCommand("ps -e")).thenReturn("");
-        when(mMockDevice.executeShellCommand("pm list packages -a")).thenReturn("");
-
         // Simulate a test run.
-        mCodeCoverageCollector.init(mMockContext, mFakeListener);
         mCodeCoverageCollector.testRunStarted(RUN_NAME, TEST_COUNT);
         mCodeCoverageCollector.testRunEnded(ELAPSED_TIME, new HashMap<String, Metric>());
 
@@ -192,7 +185,6 @@ public class JavaCodeCoverageCollectorTest {
         doReturn(null).when(mMockDevice).pullFile(DEVICE_PATH);
 
         // Simulate a test run.
-        mCodeCoverageCollector.init(mMockContext, mFakeListener);
         mCodeCoverageCollector.testRunStarted(RUN_NAME, TEST_COUNT);
         mCodeCoverageCollector.testRunEnded(ELAPSED_TIME, runMetrics);
 
@@ -208,8 +200,6 @@ public class JavaCodeCoverageCollectorTest {
         when(mMockDevice.isAdbRoot()).thenReturn(false);
         doReturn("").when(mMockDevice).executeShellCommand(anyString());
 
-        // Simulate a test run.
-        mCodeCoverageCollector.init(mMockContext, mFakeListener);
         mCodeCoverageCollector.testRunStarted(RUN_NAME, TEST_COUNT);
         mCodeCoverageCollector.testRunEnded(ELAPSED_TIME, runMetrics);
 
@@ -227,13 +217,8 @@ public class JavaCodeCoverageCollectorTest {
         when(mMockDevice.isAdbRoot()).thenReturn(false);
         when(mMockDevice.enableAdbRoot()).thenReturn(false);
 
-        // Simulate a test run.
-        try {
-            mCodeCoverageCollector.init(mMockContext, mFakeListener);
-            fail("An exception should have been thrown.");
-        } catch (RuntimeException e) {
-            // Expected.
-        }
+        mCodeCoverageCollector.testRunStarted(RUN_NAME, TEST_COUNT);
+        mCodeCoverageCollector.testRunEnded(ELAPSED_TIME, runMetrics);
 
         verify(mFakeListener, never())
                 .testLog(anyString(), eq(LogDataType.COVERAGE), any(InputStreamSource.class));
@@ -247,8 +232,6 @@ public class JavaCodeCoverageCollectorTest {
         when(mMockDevice.isAdbRoot()).thenReturn(false);
         doReturn("").when(mMockDevice).executeShellCommand(anyString());
 
-        // Simulate a test run.
-        mCodeCoverageCollector.init(mMockContext, mFakeListener);
         mCodeCoverageCollector.testRunStarted(RUN_NAME, TEST_COUNT);
         mCodeCoverageCollector.testRunEnded(ELAPSED_TIME, runMetrics);
 
@@ -256,6 +239,21 @@ public class JavaCodeCoverageCollectorTest {
         inOrder.verify(mMockDevice).pullFile(anyString());
         inOrder.verify(mMockDevice).deleteFile(anyString());
         inOrder.verify(mMockDevice).disableAdbRoot();
+    }
+
+    @Test
+    public void testRunEnded_rootDisabled_noLogIfCannotDisableRoot() throws Exception {
+        enableJavaCoverage();
+        HashMap<String, Metric> runMetrics = createMetricsWithCoverageMeasurement(DEVICE_PATH);
+        mockCoverageFileOnDevice(DEVICE_PATH);
+        when(mMockDevice.isAdbRoot()).thenReturn(false);
+        when(mMockDevice.disableAdbRoot()).thenReturn(false);
+
+        mCodeCoverageCollector.testRunStarted(RUN_NAME, TEST_COUNT);
+        mCodeCoverageCollector.testRunEnded(ELAPSED_TIME, runMetrics);
+
+        verify(mFakeListener, never())
+                .testLog(anyString(), eq(LogDataType.COVERAGE), any(InputStreamSource.class));
     }
 
     @Test
@@ -287,7 +285,6 @@ public class JavaCodeCoverageCollectorTest {
         doReturn("").when(mMockDevice).executeShellCommand(anyString());
         doReturn(coverageFile1).doReturn(coverageFile2).when(mMockDevice).pullFile(DEVICE_PATH);
 
-        mCodeCoverageCollector.init(mMockContext, mFakeListener);
         mCodeCoverageCollector.testRunStarted(RUN_NAME, TEST_COUNT);
         mCodeCoverageCollector.testRunEnded(ELAPSED_TIME, TfMetricProtoUtil.upgradeConvert(metric));
         mCodeCoverageCollector.testRunStarted(RUN_NAME + "2", TEST_COUNT);
@@ -344,7 +341,6 @@ public class JavaCodeCoverageCollectorTest {
         mCodeCoverageCollector.setCoverageFlusher(mMockFlusher);
 
         // Simulate a test run.
-        mCodeCoverageCollector.init(mMockContext, mFakeListener);
         mCodeCoverageCollector.testRunStarted(RUN_NAME, TEST_COUNT);
         Map<String, String> metric = new HashMap<>();
         metric.put("coverageFilePath", DEVICE_PATH);
