@@ -22,7 +22,8 @@ import javax.annotation.Nonnull;
 /** Error identifier from tests and tests runners. */
 public enum TestErrorIdentifier implements ErrorIdentifier {
     MODULE_DID_NOT_EXECUTE(530_001, FailureStatus.NOT_EXECUTED),
-    INSTRUMENTATION_NULL_METHOD(530_002, FailureStatus.TEST_FAILURE);
+    INSTRUMENTATION_NULL_METHOD(530_002, FailureStatus.TEST_FAILURE),
+    INSTRUMENTATION_TIMED_OUT(530_003, FailureStatus.TIMED_OUT);
 
     private final long code;
     private final @Nonnull FailureStatus status;
