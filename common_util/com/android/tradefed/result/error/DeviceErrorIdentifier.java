@@ -17,6 +17,8 @@ package com.android.tradefed.result.error;
 
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 
+import javax.annotation.Nonnull;
+
 /** Error Identifiers from Device errors and device reported errors. */
 public enum DeviceErrorIdentifier implements ErrorIdentifier {
 
@@ -44,11 +46,11 @@ public enum DeviceErrorIdentifier implements ErrorIdentifier {
     DEVICE_UNRESPONSIVE(520_751, FailureStatus.LOST_SYSTEM_UNDER_TEST);
 
     private final long code;
-    private final FailureStatus status;
+    private final @Nonnull FailureStatus status;
 
     DeviceErrorIdentifier(int code, FailureStatus status) {
         this.code = code;
-        this.status = status;
+        this.status = (status == null ? FailureStatus.UNSET : status);
     }
 
     @Override
@@ -57,7 +59,7 @@ public enum DeviceErrorIdentifier implements ErrorIdentifier {
     }
 
     @Override
-    public FailureStatus status() {
+    public @Nonnull FailureStatus status() {
         return status;
     }
 }
