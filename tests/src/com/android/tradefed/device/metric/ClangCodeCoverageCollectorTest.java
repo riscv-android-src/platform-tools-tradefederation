@@ -21,9 +21,7 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IBuildProvider;
@@ -53,9 +51,7 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.mockito.InOrder;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.mockito.Spy;
 
@@ -121,12 +117,11 @@ public class ClangCodeCoverageCollectorTest {
         mListener = new ClangCodeCoverageCollector();
         mListener.setConfiguration(mMockConfiguration);
         mListener.setRunUtil(mCommandArgumentCaptor);
+        mListener.init(mMockContext, mFakeListener);
     }
 
     @Test
     public void coverageDisabled_noCoverageLog() {
-        mListener.init(mMockContext, mFakeListener);
-
         // Simulate a test run.
         mListener.testRunStarted(RUN_NAME, TEST_COUNT);
         mListener.testRunEnded(ELAPSED_TIME, mMetrics);
@@ -139,8 +134,6 @@ public class ClangCodeCoverageCollectorTest {
     @Test
     public void clangCoverageDisabled_noCoverageLog() throws Exception {
         mCoverageOptionsSetter.setOptionValue("coverage", "true");
-
-        mListener.init(mMockContext, mFakeListener);
 
         // Simulate a test run.
         mListener.testRunStarted(RUN_NAME, TEST_COUNT);
@@ -158,18 +151,17 @@ public class ClangCodeCoverageCollectorTest {
         mCoverageOptionsSetter.setOptionValue("coverage-flush", "true");
 
         // Setup mocks.
+        doReturn(true).when(mMockDevice).enableAdbRoot();
         doReturn(true).when(mMockDevice).isAdbRoot();
         doReturn(createTar(ImmutableMap.of())).when(mMockDevice).pullFile(anyString());
 
         // Simulate a test run.
-        mListener.init(mMockContext, mFakeListener);
         mListener.testRunStarted(RUN_NAME, TEST_COUNT);
         mListener.testRunEnded(ELAPSED_TIME, mMetrics);
         mListener.invocationEnded(ELAPSED_TIME);
 
-        // Verify the flush-all-coverage command was called twice - once on init() and once during
-        // the end of the test run.
-        verify(mMockDevice, times(2)).executeShellCommand("kill -37 -1");
+        // Verify the flush-all-coverage command was called.
+        verify(mMockDevice).executeShellCommand("kill -37 -1");
     }
 
     @Test
@@ -178,7 +170,7 @@ public class ClangCodeCoverageCollectorTest {
         mCoverageOptionsSetter.setOptionValue("coverage-toolchain", "CLANG");
 
         // Setup mocks.
-        doReturn(true).when(mMockDevice).isAdbRoot();
+        doReturn(true).when(mMockDevice).enableAdbRoot();
         File tarGz =
                 createTar(
                         ImmutableMap.of(
@@ -191,7 +183,6 @@ public class ClangCodeCoverageCollectorTest {
         doReturn(createProfileToolZip()).when(mMockBuildInfo).getFile(anyString());
 
         // Simulate a test run.
-        mListener.init(mMockContext, mFakeListener);
         mListener.testRunStarted(RUN_NAME, TEST_COUNT);
         mListener.testRunEnded(ELAPSED_TIME, mMetrics);
         mListener.invocationEnded(ELAPSED_TIME);
@@ -216,7 +207,7 @@ public class ClangCodeCoverageCollectorTest {
         mCoverageOptionsSetter.setOptionValue("coverage-toolchain", "CLANG");
 
         // Setup mocks.
-        doReturn(true).when(mMockDevice).isAdbRoot();
+        doReturn(true).when(mMockDevice).enableAdbRoot();
         File tarGz =
                 createTar(
                         ImmutableMap.of(
@@ -229,7 +220,6 @@ public class ClangCodeCoverageCollectorTest {
         doReturn(createProfileToolZip()).when(mMockBuildInfo).getFile(anyString());
 
         // Simulate a test run.
-        mListener.init(mMockContext, mFakeListener);
         mListener.testRunStarted(RUN_NAME, TEST_COUNT);
         mListener.testRunEnded(ELAPSED_TIME, mMetrics);
         mListener.invocationEnded(ELAPSED_TIME);
@@ -251,11 +241,10 @@ public class ClangCodeCoverageCollectorTest {
         mCoverageOptionsSetter.setOptionValue("coverage-toolchain", "CLANG");
 
         // Setup mocks.
-        doReturn(true).when(mMockDevice).isAdbRoot();
+        doReturn(true).when(mMockDevice).enableAdbRoot();
         doReturn(createTar(ImmutableMap.of())).when(mMockDevice).pullFile(anyString());
 
         // Simulate a test run.
-        mListener.init(mMockContext, mFakeListener);
         mListener.testRunStarted(RUN_NAME, TEST_COUNT);
         mListener.testRunEnded(ELAPSED_TIME, mMetrics);
         mListener.invocationEnded(ELAPSED_TIME);
@@ -271,7 +260,7 @@ public class ClangCodeCoverageCollectorTest {
         mCoverageOptionsSetter.setOptionValue("llvm-profdata-path", "/path/to/some/directory");
 
         // Setup mocks.
-        doReturn(true).when(mMockDevice).isAdbRoot();
+        doReturn(true).when(mMockDevice).enableAdbRoot();
         File tarGz =
                 createTar(
                         ImmutableMap.of(
@@ -282,7 +271,6 @@ public class ClangCodeCoverageCollectorTest {
         doReturn(tarGz).when(mMockDevice).pullFile(anyString());
 
         // Simulate a test run.
-        mListener.init(mMockContext, mFakeListener);
         mListener.testRunStarted(RUN_NAME, TEST_COUNT);
         mListener.testRunEnded(ELAPSED_TIME, mMetrics);
         mListener.invocationEnded(ELAPSED_TIME);
@@ -298,7 +286,7 @@ public class ClangCodeCoverageCollectorTest {
         mCoverageOptionsSetter.setOptionValue("coverage-toolchain", "CLANG");
 
         // Setup mocks.
-        doReturn(true).when(mMockDevice).isAdbRoot();
+        doReturn(true).when(mMockDevice).enableAdbRoot();
         File tarGz =
                 createTar(
                         ImmutableMap.of(
@@ -309,7 +297,6 @@ public class ClangCodeCoverageCollectorTest {
         doReturn(tarGz).when(mMockDevice).pullFile(anyString());
 
         // Simulate a test run.
-        mListener.init(mMockContext, mFakeListener);
         mListener.testRunStarted(RUN_NAME, TEST_COUNT);
         mListener.testRunEnded(ELAPSED_TIME, mMetrics);
         mListener.invocationEnded(ELAPSED_TIME);
@@ -324,7 +311,7 @@ public class ClangCodeCoverageCollectorTest {
         mCoverageOptionsSetter.setOptionValue("coverage-toolchain", "CLANG");
 
         // Setup mocks.
-        doReturn(true).when(mMockDevice).isAdbRoot();
+        doReturn(true).when(mMockDevice).enableAdbRoot();
         File tarGz =
                 createTar(
                         ImmutableMap.of(
@@ -338,34 +325,12 @@ public class ClangCodeCoverageCollectorTest {
         mCommandArgumentCaptor.setResult(CommandStatus.FAILED);
 
         // Simulate a test run.
-        mListener.init(mMockContext, mFakeListener);
         mListener.testRunStarted(RUN_NAME, TEST_COUNT);
         mListener.testRunEnded(ELAPSED_TIME, mMetrics);
         mListener.invocationEnded(ELAPSED_TIME);
 
         // Verify testLog(..) was never called.
         assertThat(mFakeListener.getLogs()).isEmpty();
-    }
-
-    @Test
-    public void testInit_adbRootAndCoverageFlush() throws Exception {
-        mCoverageOptionsSetter.setOptionValue("coverage", "true");
-        mCoverageOptionsSetter.setOptionValue("coverage-toolchain", "CLANG");
-
-        // Setup mocks.
-        when(mMockDevice.isAdbRoot()).thenReturn(false).thenReturn(true);
-        doReturn(true).when(mMockDevice).enableAdbRoot();
-
-        // Call init(...).
-        mListener.init(mMockContext, mFakeListener);
-
-        // Verify.
-        InOrder inOrder = Mockito.inOrder(mMockDevice);
-        inOrder.verify(mMockDevice).isAdbRoot();
-        inOrder.verify(mMockDevice).enableAdbRoot();
-        inOrder.verify(mMockDevice).executeShellCommand("kill -37 -1");
-        inOrder.verify(mMockDevice).executeShellCommand(anyString());
-        inOrder.verify(mMockDevice).disableAdbRoot();
     }
 
     abstract static class CommandArgumentCaptor implements IRunUtil {
