@@ -18,8 +18,6 @@ package com.android.tradefed.testtype;
 
 import static org.junit.Assert.fail;
 
-import com.android.ddmlib.CollectingOutputReceiver;
-
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -30,6 +28,8 @@ import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.util.CommandResult;
+import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 
 import java.io.File;
@@ -54,7 +54,6 @@ public class ArtRunTestTest {
     private IAbi mMockAbi;
     private ITestDevice mMockITestDevice;
 
-    private CollectingOutputReceiver mOutputReceiver;
     private ArtRunTest mArtRunTest;
     private OptionSetter mSetter;
     private TestInformation mTestInfo;
@@ -68,14 +67,7 @@ public class ArtRunTestTest {
         mMockInvocationListener = EasyMock.createMock(ITestInvocationListener.class);
         mMockAbi = EasyMock.createMock(IAbi.class);
         mMockITestDevice = EasyMock.createMock(ITestDevice.class);
-        mOutputReceiver = new CollectingOutputReceiver();
-        mArtRunTest =
-                new ArtRunTest() {
-                    @Override
-                    protected CollectingOutputReceiver createTestOutputReceiver() {
-                        return mOutputReceiver;
-                    }
-                };
+        mArtRunTest = new ArtRunTest();
         mArtRunTest.setAbi(mMockAbi);
         mSetter = new OptionSetter(mArtRunTest);
         IInvocationContext context = new InvocationContext();
@@ -103,9 +95,13 @@ public class ArtRunTestTest {
         fw.close();
     }
 
-    /** Helper mocking writing the output of a test command. */
-    private void mockTestOutputWrite(String output) {
-        mOutputReceiver.addOutput(output.getBytes(), 0, output.length());
+    /** Helper creating a mock CommandResult object. */
+    private CommandResult createMockCommandResult(String stdout) {
+        CommandResult result = new CommandResult(CommandStatus.SUCCESS);
+        result.setStdout(stdout);
+        result.setStderr("");
+        result.setExitCode(0);
+        return result;
     }
 
     /** Helper that replays all mocks. */
@@ -170,9 +166,11 @@ public class ArtRunTestTest {
         mMockInvocationListener.testStarted(testId);
         String cmd = String.format("dalvikvm64 -classpath %s Main", classpath);
         // Test execution.
-        mMockITestDevice.executeShellCommand(
-                cmd, mOutputReceiver, 60000L, TimeUnit.MILLISECONDS, 0);
-        mockTestOutputWrite("output\n");
+        CommandResult result = createMockCommandResult("output\n");
+        EasyMock.expect(
+                        mMockITestDevice.executeShellV2Command(
+                                cmd, 60000L, TimeUnit.MILLISECONDS, 0))
+                .andReturn(result);
         EasyMock.expect(mMockITestDevice.getSerialNumber()).andReturn("");
         // End of test.
         mMockInvocationListener.testEnded(
@@ -235,9 +233,11 @@ public class ArtRunTestTest {
         mMockInvocationListener.testStarted(testId);
         String cmd = String.format("dalvikvm64 -classpath %s Main", classpath);
         // Test execution.
-        mMockITestDevice.executeShellCommand(
-                cmd, mOutputReceiver, 60000L, TimeUnit.MILLISECONDS, 0);
-        mockTestOutputWrite("unexpected\n");
+        CommandResult result = createMockCommandResult("unexpected\n");
+        EasyMock.expect(
+                        mMockITestDevice.executeShellV2Command(
+                                cmd, 60000L, TimeUnit.MILLISECONDS, 0))
+                .andReturn(result);
         EasyMock.expect(mMockITestDevice.getSerialNumber()).andReturn("");
         // End of test.
         String errorMessage =
