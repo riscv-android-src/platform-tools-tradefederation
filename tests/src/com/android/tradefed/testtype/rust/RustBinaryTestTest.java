@@ -312,10 +312,18 @@ public class RustBinaryTestTest {
 
         MockFileUtil.setMockDirContents(mMockITestDevice, testPath, test1, test2);
         EasyMock.expect(mMockITestDevice.getIDevice()).andReturn(null);
+        EasyMock.expect(mMockITestDevice.enableAdbRoot()).andReturn(true);
+        EasyMock.expect(mMockITestDevice.enableAdbRoot()).andReturn(true);
+        EasyMock.expect(mMockITestDevice.executeShellCommand("mkdir /data/misc/trace/testcoverage"))
+                .andReturn("");
         EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
         EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
         EasyMock.expect(mMockITestDevice.executeShellCommand("kill -37 -1")).andReturn("");
+        EasyMock.expect(mMockITestDevice.executeShellCommand("kill -37 -1")).andReturn("");
+        EasyMock.expect(mMockITestDevice.executeShellCommand("kill -37 -1")).andReturn("");
         // Wait up to 5 minutes for the device to be available after flushing coverage data.
+        mMockITestDevice.waitForDeviceAvailable(5 * 60 * 1000);
+        mMockITestDevice.waitForDeviceAvailable(5 * 60 * 1000);
         mMockITestDevice.waitForDeviceAvailable(5 * 60 * 1000);
         EasyMock.expect(mMockITestDevice.executeShellCommand("rm -rf /data/misc/trace/*"))
                 .andReturn("");
@@ -327,12 +335,11 @@ public class RustBinaryTestTest {
         EasyMock.expect(mMockITestDevice.isDirectory(testPath2)).andReturn(false);
         // report the file as executable
         EasyMock.expect(mMockITestDevice.isExecutable(testPath2)).andReturn(true);
-
-        // End of test1
-        EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
-        EasyMock.expect(mMockITestDevice.executeShellCommand("kill -37 -1")).andReturn("");
-        mMockITestDevice.waitForDeviceAvailable(5 * 60 * 1000);
+        EasyMock.expect(
+                        mMockITestDevice.executeShellCommand(
+                                "find /data/misc/trace -name '*.gcda' | tar -cvf"
+                                        + " /data/misc/trace/coverage.tar -T -"))
+                .andReturn("");
         EasyMock.expect(
                         mMockITestDevice.executeShellCommand(
                                 "find /data/misc/trace -name '*.gcda' | tar -cvf"
@@ -340,29 +347,14 @@ public class RustBinaryTestTest {
                 .andReturn("");
         File tmpFile1 = FileUtil.createTempFile("coverage", ".tar");
         EasyMock.expect(mMockITestDevice.pullFile(coverageTarPath)).andReturn(tmpFile1);
+        File tmpFile2 = FileUtil.createTempFile("coverage", ".tar");
+        EasyMock.expect(mMockITestDevice.pullFile(coverageTarPath)).andReturn(tmpFile2);
+        mMockITestDevice.deleteFile(coverageTarPath);
         mMockITestDevice.deleteFile(coverageTarPath);
         mMockInvocationListener.testLog(
                 EasyMock.eq("test1_native_runtime_coverage"),
                 EasyMock.eq(LogDataType.NATIVE_COVERAGE),
                 EasyMock.anyObject());
-        EasyMock.expect(
-                        mMockITestDevice.executeShellCommand(
-                                "find /data/misc/trace -name '*.gcda' -delete"))
-                .andReturn("");
-
-        // End of test2
-        EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
-        EasyMock.expect(mMockITestDevice.executeShellCommand("kill -37 -1")).andReturn("");
-        mMockITestDevice.waitForDeviceAvailable(5 * 60 * 1000);
-        EasyMock.expect(
-                        mMockITestDevice.executeShellCommand(
-                                "find /data/misc/trace -name '*.gcda' | tar -cvf"
-                                        + " /data/misc/trace/coverage.tar -T -"))
-                .andReturn("");
-        File tmpFile2 = FileUtil.createTempFile("coverage", ".tar");
-        EasyMock.expect(mMockITestDevice.pullFile(coverageTarPath)).andReturn(tmpFile2);
-        mMockITestDevice.deleteFile(coverageTarPath);
         mMockInvocationListener.testLog(
                 EasyMock.eq("test2_native_runtime_coverage"),
                 EasyMock.eq(LogDataType.NATIVE_COVERAGE),
@@ -371,15 +363,21 @@ public class RustBinaryTestTest {
                         mMockITestDevice.executeShellCommand(
                                 "find /data/misc/trace -name '*.gcda' -delete"))
                 .andReturn("");
+        EasyMock.expect(
+                        mMockITestDevice.executeShellCommand(
+                                "find /data/misc/trace -name '*.gcda' -delete"))
+                .andReturn("");
+        EasyMock.expect(mMockITestDevice.enableAdbRoot()).andReturn(true);
+        EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
 
         String[] files = new String[] {"test1", "test2"};
         EasyMock.expect(mMockITestDevice.getChildren(testPath)).andReturn(files);
 
-        mockCountTests(testPath1, runListOutput(1));
+        mockCountTests("GCOV_PREFIX=/data/misc/trace/testcoverage " + testPath1, runListOutput(1));
         mockTestRunStarted("test1", 1);
         mockShellCommand(test1);
         mockTestRunEnded();
-        mockCountTests(testPath2, runListOutput(1));
+        mockCountTests("GCOV_PREFIX=/data/misc/trace/testcoverage " + testPath2, runListOutput(1));
         mockTestRunStarted("test2", 1);
         mockShellCommand(test2);
         mockTestRunEnded();
@@ -409,11 +407,11 @@ public class RustBinaryTestTest {
 
         MockFileUtil.setMockDirContents(mMockITestDevice, testPath, test1, test2);
         EasyMock.expect(mMockITestDevice.getIDevice()).andReturn(null);
+        EasyMock.expect(mMockITestDevice.enableAdbRoot()).andReturn(true);
+        EasyMock.expect(mMockITestDevice.enableAdbRoot()).andReturn(true);
+        EasyMock.expect(mMockITestDevice.executeShellCommand("mkdir /data/misc/trace/testcoverage"))
+                .andReturn("");
         // Get the pids to flush coverage data.
-        EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
         EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
         EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
         EasyMock.expect(mMockITestDevice.getProcessPid(processNames.get(0))).andReturn("1");
@@ -471,15 +469,17 @@ public class RustBinaryTestTest {
                         mMockITestDevice.executeShellCommand(
                                 "find /data/misc/trace -name '*.gcda' -delete"))
                 .andReturn("");
+        EasyMock.expect(mMockITestDevice.enableAdbRoot()).andReturn(true);
+        EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
 
         String[] files = new String[] {"test1", "test2"};
         EasyMock.expect(mMockITestDevice.getChildren(testPath)).andReturn(files);
 
-        mockCountTests(testPath1, runListOutput(1));
+        mockCountTests("GCOV_PREFIX=/data/misc/trace/testcoverage " + testPath1, runListOutput(1));
         mockTestRunStarted("test1", 1);
         mockShellCommand(test1);
         mockTestRunEnded();
-        mockCountTests(testPath2, runListOutput(1));
+        mockCountTests("GCOV_PREFIX=/data/misc/trace/testcoverage " + testPath2, runListOutput(1));
         mockTestRunStarted("test2", 1);
         mockShellCommand(test2);
         mockTestRunEnded();

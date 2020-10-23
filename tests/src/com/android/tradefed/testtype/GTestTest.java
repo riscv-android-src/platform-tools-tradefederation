@@ -28,12 +28,9 @@ import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.MockFileUtil;
-import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.coverage.CoverageOptions;
-
-import com.google.common.collect.ImmutableList;
 
 import org.easymock.EasyMock;
 import org.junit.Before;
@@ -51,7 +48,6 @@ import java.util.concurrent.TimeUnit;
 @RunWith(JUnit4.class)
 public class GTestTest {
     private static final String GTEST_FLAG_FILTER = "--gtest_filter";
-    private IInvocationContext mMockContext = null;
     private ITestInvocationListener mMockInvocationListener = null;
     private IShellOutputReceiver mMockReceiver = null;
     private ITestDevice mMockITestDevice = null;
@@ -66,15 +62,12 @@ public class GTestTest {
     /** Helper to initialize the various EasyMocks we'll need. */
     @Before
     public void setUp() throws Exception {
-        mMockContext = EasyMock.createMock(IInvocationContext.class);
         mMockInvocationListener = EasyMock.createMock(ITestInvocationListener.class);
         mMockReceiver = EasyMock.createMock(IShellOutputReceiver.class);
         mMockITestDevice = EasyMock.createMock(ITestDevice.class);
         mMockReceiver.flush();
         EasyMock.expectLastCall().anyTimes();
         EasyMock.expect(mMockITestDevice.getSerialNumber()).andStubReturn("serial");
-        EasyMock.expect(mMockContext.getDevices())
-                .andStubReturn(ImmutableList.of(mMockITestDevice));
         mGTest =
                 new GTest() {
                     @Override
@@ -105,21 +98,21 @@ public class GTestTest {
         mConfiguration.setCoverageOptions(mCoverageOptions);
         mGTest.setConfiguration(mConfiguration);
 
-        mTestInfo = TestInformation.newBuilder().setInvocationContext(mMockContext).build();
+        mTestInfo = TestInformation.newBuilder().build();
     }
 
     /**
      * Helper that replays all mocks.
      */
     private void replayMocks() {
-        EasyMock.replay(mMockContext, mMockInvocationListener, mMockITestDevice, mMockReceiver);
+      EasyMock.replay(mMockInvocationListener, mMockITestDevice, mMockReceiver);
     }
 
     /**
      * Helper that verifies all mocks.
      */
     private void verifyMocks() {
-        EasyMock.verify(mMockContext, mMockInvocationListener, mMockITestDevice, mMockReceiver);
+      EasyMock.verify(mMockInvocationListener, mMockITestDevice, mMockReceiver);
     }
 
     /** Test run when the test dir is not found on the device. */
@@ -510,7 +503,9 @@ public class GTestTest {
         final String testPath2 = String.format("%s/%s", nativeTestPath, test2);
 
         MockFileUtil.setMockDirContents(mMockITestDevice, nativeTestPath, test1, test2);
-        EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
+        EasyMock.expect(mMockITestDevice.enableAdbRoot()).andReturn(true);
+        EasyMock.expect(mMockITestDevice.executeShellCommand("mkdir /data/misc/trace/testcoverage"))
+                .andReturn("");
         EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
         EasyMock.expect(mMockITestDevice.executeShellCommand("kill -37 -1")).andReturn("");
         // Wait up to 5 minutes for the device to be available after flushing coverage data.
@@ -568,7 +563,9 @@ public class GTestTest {
         final String testPath2 = String.format("%s/%s", nativeTestPath, test2);
 
         MockFileUtil.setMockDirContents(mMockITestDevice, nativeTestPath, test1, test2);
-        EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
+        EasyMock.expect(mMockITestDevice.enableAdbRoot()).andReturn(true);
+        EasyMock.expect(mMockITestDevice.executeShellCommand("mkdir /data/misc/trace/testcoverage"))
+                .andReturn("");
         // Get the pids to flush coverage data.
         EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
         EasyMock.expect(mMockITestDevice.getProcessPid(processNames.get(0))).andReturn("1");

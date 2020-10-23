@@ -22,6 +22,7 @@ import static com.android.tradefed.testtype.coverage.CoverageOptions.Toolchain.J
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
+import static com.google.common.base.Verify.verify;
 
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log;
@@ -36,7 +37,6 @@ import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.device.metric.ClangCodeCoverageCollector;
 import com.android.tradefed.device.metric.GcovCodeCoverageCollector;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
@@ -54,10 +54,13 @@ import com.android.tradefed.result.ddmlib.DefaultRemoteAndroidTestRunner;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.retry.RetryStrategy;
+import com.android.tradefed.testtype.coverage.CoverageOptions;
 import com.android.tradefed.util.AbiFormatter;
 import com.android.tradefed.util.ArrayUtil;
+import com.android.tradefed.util.JavaCodeCoverageFlusher;
 import com.android.tradefed.util.ListInstrumentationParser;
 import com.android.tradefed.util.ListInstrumentationParser.InstrumentationTarget;
+import com.android.tradefed.util.NativeCodeCoverageFlusher;
 import com.android.tradefed.util.StringEscapeUtils;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -912,7 +915,29 @@ public class InstrumentationTest
             listener = addBugreportListenerIfEnabled(listener);
             listener = addJavaCoverageListenerIfEnabled(testInfo, listener);
             listener = addGcovCoverageListenerIfEnabled(testInfo, listener);
-            listener = addClangCoverageListenerIfEnabled(testInfo, listener);
+            listener = addClangCoverageListenerIfEnabled(listener);
+
+            // Clear coverage measurements on the device before running.
+            if (mConfiguration != null
+                    && mConfiguration.getCoverageOptions().isCoverageFlushEnabled()) {
+                CoverageOptions options = mConfiguration.getCoverageOptions();
+
+                if (options.getCoverageToolchains().contains(GCOV)
+                        || options.getCoverageToolchains().contains(CLANG)) {
+                    // Enable abd root on the device, otherwise the following commands will fail.
+                    verify(mDevice.enableAdbRoot(), "Failed to enable adb root.");
+
+                    NativeCodeCoverageFlusher flusher =
+                            new NativeCodeCoverageFlusher(mDevice, options.getCoverageProcesses());
+                    flusher.resetCoverage();
+                }
+
+                if (options.getCoverageToolchains().contains(JACOCO)) {
+                    JavaCodeCoverageFlusher flusher =
+                            new JavaCodeCoverageFlusher(mDevice, options.getCoverageProcesses());
+                    flusher.resetCoverage();
+                }
+            }
 
             // TODO: Convert to device-side collectors when possible.
             for (IMetricCollector collector : mCollectors) {
@@ -1010,16 +1035,16 @@ public class InstrumentationTest
      * Returns a listener that will collect Clang coverage measurements, or the original {@code
      * listener} if this feature is disabled.
      */
-    ITestInvocationListener addClangCoverageListenerIfEnabled(
-            TestInformation testInfo, ITestInvocationListener listener) {
+    ITestInvocationListener addClangCoverageListenerIfEnabled(ITestInvocationListener listener) {
         if (mConfiguration == null) {
             return listener;
         }
         if (mConfiguration.getCoverageOptions().isCoverageEnabled()
                 && mConfiguration.getCoverageOptions().getCoverageToolchains().contains(CLANG)) {
-            ClangCodeCoverageCollector clangListener = new ClangCodeCoverageCollector();
+            ClangCodeCoverageListener clangListener =
+                    new ClangCodeCoverageListener(getDevice(), listener);
             clangListener.setConfiguration(mConfiguration);
-            listener = clangListener.init(testInfo.getContext(), listener);
+            return clangListener;
         }
         return listener;
     }
