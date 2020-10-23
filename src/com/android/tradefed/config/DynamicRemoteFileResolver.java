@@ -174,9 +174,12 @@ public class DynamicRemoteFileResolver {
 
                     if (value instanceof File) {
                         File consideredFile = (File) value;
-                        File downloadedFile = resolveRemoteFiles(consideredFile, option);
-                        if (downloadedFile != null) {
-                            downloadedFiles.add(downloadedFile);
+                        ResolvedFile resolvedFile = resolveRemoteFiles(consideredFile, option);
+                        if (resolvedFile != null) {
+                            File downloadedFile = resolvedFile.getResolvedFile();
+                            if (resolvedFile.shouldCleanUp()) {
+                                downloadedFiles.add(downloadedFile);
+                            }
                             // Replace the field value
                             try {
                                 field.set(obj, downloadedFile);
@@ -196,9 +199,13 @@ public class DynamicRemoteFileResolver {
                         for (Object o : copy) {
                             if (o instanceof File) {
                                 File consideredFile = (File) o;
-                                File downloadedFile = resolveRemoteFiles(consideredFile, option);
-                                if (downloadedFile != null) {
-                                    downloadedFiles.add(downloadedFile);
+                                ResolvedFile resolvedFile =
+                                        resolveRemoteFiles(consideredFile, option);
+                                if (resolvedFile != null) {
+                                    File downloadedFile = resolvedFile.getResolvedFile();
+                                    if (resolvedFile.shouldCleanUp()) {
+                                        downloadedFiles.add(downloadedFile);
+                                    }
                                     // TODO: See if order could be preserved.
                                     c.remove(consideredFile);
                                     c.add(downloadedFile);
@@ -216,17 +223,23 @@ public class DynamicRemoteFileResolver {
                             Object finalKey = key;
                             Object finalVal = val;
                             if (key instanceof File) {
-                                key = resolveRemoteFiles((File) key, option);
-                                if (key != null) {
-                                    downloadedFiles.add((File) key);
-                                    finalKey = key;
+                                ResolvedFile resolved = resolveRemoteFiles((File) key, option);
+                                if (resolved != null) {
+                                    File downloaded = resolved.getResolvedFile();
+                                    if (resolved.shouldCleanUp()) {
+                                        downloadedFiles.add(downloaded);
+                                    }
+                                    finalKey = downloaded;
                                 }
                             }
                             if (val instanceof File) {
-                                val = resolveRemoteFiles((File) val, option);
-                                if (val != null) {
-                                    downloadedFiles.add((File) val);
-                                    finalVal = val;
+                                ResolvedFile resolved = resolveRemoteFiles((File) val, option);
+                                if (resolved != null) {
+                                    File downloaded = resolved.getResolvedFile();
+                                    if (resolved.shouldCleanUp()) {
+                                        downloadedFiles.add(downloaded);
+                                    }
+                                    finalVal = downloaded;
                                 }
                             }
 
@@ -244,18 +257,24 @@ public class DynamicRemoteFileResolver {
                                 m.remove(key);
                                 Object finalKey = key;
                                 if (key instanceof File) {
-                                    key = resolveRemoteFiles((File) key, option);
-                                    if (key != null) {
-                                        downloadedFiles.add((File) key);
-                                        finalKey = key;
+                                    ResolvedFile resolved = resolveRemoteFiles((File) key, option);
+                                    if (resolved != null) {
+                                        File downloaded = resolved.getResolvedFile();
+                                        if (resolved.shouldCleanUp()) {
+                                            downloadedFiles.add(downloaded);
+                                        }
+                                        finalKey = downloaded;
                                     }
                                 }
                                 for (Object mapValue : mapValues) {
                                     if (mapValue instanceof File) {
-                                        File f = resolveRemoteFiles((File) mapValue, option);
-                                        if (f != null) {
-                                            downloadedFiles.add(f);
-                                            mapValue = f;
+                                        ResolvedFile resolvedFile =
+                                                resolveRemoteFiles((File) mapValue, option);
+                                        if (resolvedFile != null) {
+                                            if (resolvedFile.shouldCleanUp()) {
+                                                downloadedFiles.add(resolvedFile.getResolvedFile());
+                                            }
+                                            mapValue = resolvedFile.getResolvedFile();
                                         }
                                     }
                                     m.put(finalKey, mapValue);
@@ -374,7 +393,8 @@ public class DynamicRemoteFileResolver {
         return downloadedFile;
     }
 
-    private File resolveRemoteFiles(File consideredFile, Option option) throws BuildRetrievalError {
+    private ResolvedFile resolveRemoteFiles(File consideredFile, Option option)
+            throws BuildRetrievalError {
         File fileToResolve;
         String path = consideredFile.getPath();
         String protocol;
@@ -400,7 +420,7 @@ public class DynamicRemoteFileResolver {
             RemoteFileResolverArgs args = new RemoteFileResolverArgs();
             args.setConsideredFile(fileToResolve).addQueryArgs(query);
             ResolvedFile resolvedFile = resolver.resolveRemoteFile(args);
-            return resolvedFile.getResolvedFile();
+            return resolvedFile;
         } catch (BuildRetrievalError e) {
             if (isOptional(query)) {
                 CLog.d(
