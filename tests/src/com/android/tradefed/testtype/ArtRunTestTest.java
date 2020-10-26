@@ -96,11 +96,11 @@ public class ArtRunTestTest {
     }
 
     /** Helper creating a mock CommandResult object. */
-    private CommandResult createMockCommandResult(String stdout) {
+    private CommandResult createMockCommandResult(String stdout, int exitCode) {
         CommandResult result = new CommandResult(CommandStatus.SUCCESS);
         result.setStdout(stdout);
         result.setStderr("");
-        result.setExitCode(0);
+        result.setExitCode(exitCode);
         return result;
     }
 
@@ -166,7 +166,7 @@ public class ArtRunTestTest {
         mMockInvocationListener.testStarted(testId);
         String cmd = String.format("dalvikvm64 -classpath %s Main", classpath);
         // Test execution.
-        CommandResult result = createMockCommandResult("output\n");
+        CommandResult result = createMockCommandResult("output\n", /* exitCode */ 0);
         EasyMock.expect(
                         mMockITestDevice.executeShellV2Command(
                                 cmd, 60000L, TimeUnit.MILLISECONDS, 0))
@@ -233,7 +233,7 @@ public class ArtRunTestTest {
         mMockInvocationListener.testStarted(testId);
         String cmd = String.format("dalvikvm64 -classpath %s Main", classpath);
         // Test execution.
-        CommandResult result = createMockCommandResult("unexpected\n");
+        CommandResult result = createMockCommandResult("unexpected\n", /* exitCode */ 0);
         EasyMock.expect(
                         mMockITestDevice.executeShellV2Command(
                                 cmd, 60000L, TimeUnit.MILLISECONDS, 0))
@@ -248,6 +248,48 @@ public class ArtRunTestTest {
                         + "-output\n"
                         + "+unexpected\n";
         mMockInvocationListener.testFailed(testId, errorMessage);
+        mMockInvocationListener.testEnded(
+                EasyMock.eq(testId), (HashMap<String, Metric>) EasyMock.anyObject());
+        mMockInvocationListener.testRunEnded(
+                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+
+        replayMocks();
+
+        mArtRunTest.run(mTestInfo, mMockInvocationListener);
+
+        verifyMocks();
+    }
+
+    /**
+     * Test the behavior of the run method when the shell command on device returns a non-zero exit
+     * code.
+     */
+    @Test
+    public void testRunSingleTest_nonZeroExitCode()
+            throws ConfigurationException, DeviceNotAvailableException, IOException {
+        final String runTestName = "test";
+        mSetter.setOptionValue("run-test-name", runTestName);
+        createExpectedOutputFile(runTestName);
+        final String classpath = "/data/local/tmp/test/test.jar";
+        mSetter.setOptionValue("classpath", classpath);
+
+        // Pre-test checks.
+        EasyMock.expect(mMockAbi.getName()).andReturn("abi");
+        EasyMock.expect(mMockITestDevice.getSerialNumber()).andReturn("");
+        String runName = "ArtRunTest_abi";
+        // Beginning of test.
+        mMockInvocationListener.testRunStarted(runName, 1);
+        TestDescription testId = new TestDescription(runName, runTestName);
+        mMockInvocationListener.testStarted(testId);
+        String cmd = String.format("dalvikvm64 -classpath %s Main", classpath);
+        // Test execution.
+        CommandResult result = createMockCommandResult("output\n", /* exitCode */ 1);
+        EasyMock.expect(
+                        mMockITestDevice.executeShellV2Command(
+                                cmd, 60000L, TimeUnit.MILLISECONDS, 0))
+                .andReturn(result);
+        EasyMock.expect(mMockITestDevice.getSerialNumber()).andReturn("");
+        mMockInvocationListener.testFailed(testId, "Test exited with code 1");
         mMockInvocationListener.testEnded(
                 EasyMock.eq(testId), (HashMap<String, Metric>) EasyMock.anyObject());
         mMockInvocationListener.testRunEnded(

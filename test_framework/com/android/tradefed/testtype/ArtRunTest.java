@@ -220,7 +220,7 @@ public class ArtRunTest implements IRemoteTest, IAbiReceiver, ITestFilterReceive
             output += testResult.getStderr();
             CLog.v("%s on %s returned %s", testCmd, mDevice.getSerialNumber(), output);
 
-            // Check the output producted by the test.
+            // Check the output produced by the test.
             if (output != null) {
                 try {
                     String expectedFileName = String.format("%s-expected.txt", mRunTestName);
@@ -369,6 +369,14 @@ public class ArtRunTest implements IRemoteTest, IAbiReceiver, ITestFilterReceive
                 } catch (IOException | InterruptedException e) {
                     listener.testFailed(testId, "I/O error while starting Checker process");
                 }
+            }
+
+            // Check the test's exit code.
+            if (testResult.getExitCode() != 0) {
+                listener.testFailed(
+                        testId,
+                        String.format("Test exited with code %s", testResult.getExitCode()));
+                return;
             }
         } finally {
             HashMap<String, Metric> emptyTestMetrics = new HashMap<>();
