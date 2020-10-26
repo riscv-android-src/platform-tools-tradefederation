@@ -746,6 +746,18 @@ public class DeviceSetup extends BaseTargetPreparer {
         device.executeShellCommand("chmod 644 /data/local.prop");
         CLog.i("Rebooting %s due to system property change", device.getSerialNumber());
         device.reboot();
+
+        // Log nonpersistent device properties (that change/lose values after reboot).
+        for (Map.Entry<String, String> prop : mSetProps.entrySet()) {
+            String expected = prop.getValue();
+            String actual = device.getProperty(prop.getKey());
+            if ((expected != null && !expected.equals(actual))
+                    || (expected == null && actual != null)) {
+                String entry = String.format("%s(%s:%s)", prop.getKey(), expected, actual);
+                InvocationMetricLogger.addInvocationMetrics(
+                        InvocationMetricKey.NONPERSISTENT_DEVICE_PROPERTIES, entry);
+            }
+        }
     }
 
     /**
