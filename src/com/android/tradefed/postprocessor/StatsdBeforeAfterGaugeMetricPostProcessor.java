@@ -98,7 +98,7 @@ import java.util.stream.Collectors;
  *   <li>An atom or metric key is present in one snapshot but not the other
  * </ul>
  */
-@OptionClass(alias = "statsd-event-metric-processor")
+@OptionClass(alias = "statsd-before-after-gauge-metric-processor")
 public class StatsdBeforeAfterGaugeMetricPostProcessor extends StatsdGenericPostProcessor {
     @Option(
             name = "metric-formatter",
