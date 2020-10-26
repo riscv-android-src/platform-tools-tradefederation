@@ -215,11 +215,11 @@ public final class ConfigurationYamlParser {
     }
 
     private void convertClassAndOptionsToObjects(
-            ConfigurationDef def, List<ClassAndOptions> tests, String configObjType) {
-        if (tests.isEmpty()) {
+            ConfigurationDef def, List<ClassAndOptions> classAndOptionsList, String configObjType) {
+        if (classAndOptionsList.isEmpty()) {
             return;
         }
-        for (ClassAndOptions classOptions : tests) {
+        for (ClassAndOptions classOptions : classAndOptionsList) {
             String className = classOptions.mClass;
             int classCount = def.addConfigObjectDef(configObjType, className);
             for (Entry<String, String> options : classOptions.mOptions.entries()) {
