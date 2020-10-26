@@ -35,14 +35,14 @@ public class YamlClassOptionsParser {
 
     private List<ClassAndOptions> mListClassAndOptions = new ArrayList<>();
 
-    public YamlClassOptionsParser(List<Map<String, Object>> tests) {
-        for (Map<String, Object> runnerEntry : tests) {
-            for (String classString : runnerEntry.keySet()) {
+    public YamlClassOptionsParser(List<Map<String, Object>> objList) {
+        for (Map<String, Object> objEntry : objList) {
+            for (String classString : objEntry.keySet()) {
                 ClassAndOptions classOptions = new ClassAndOptions();
                 mListClassAndOptions.add(classOptions);
                 classOptions.mClass = classString;
                 @SuppressWarnings("unchecked")
-                Map<String, Object> map = (Map<String, Object>) runnerEntry.get(classString);
+                Map<String, Object> map = (Map<String, Object>) objEntry.get(classString);
                 // If there are no option the map is null
                 if (map == null) {
                     continue;
