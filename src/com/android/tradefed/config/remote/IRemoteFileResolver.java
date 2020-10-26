@@ -161,6 +161,7 @@ public interface IRemoteFileResolver {
     /** Class holding information about the resolved file and some metadata. */
     public class ResolvedFile {
         private File mResolvedFile;
+        private boolean mShouldCleanUp = true;
 
         public ResolvedFile(File resolvedFile) {
             mResolvedFile = resolvedFile;
@@ -168,6 +169,19 @@ public interface IRemoteFileResolver {
 
         public File getResolvedFile() {
             return mResolvedFile;
+        }
+
+        /**
+         * Whether the resolved file should be deleted at the end of the invocation or not. Set to
+         * false for a file that shouldn't be deleted. For example: a local file you own.
+         */
+        public ResolvedFile cleanUp(boolean cleanUp) {
+            mShouldCleanUp = cleanUp;
+            return this;
+        }
+
+        public boolean shouldCleanUp() {
+            return mShouldCleanUp;
         }
     }
 }
