@@ -34,7 +34,7 @@ public class LocalFileResolver implements IRemoteFileResolver {
         String pathWithoutProtocol = path.replaceFirst(PROTOCOL + ":", "");
         File localFile = new File(pathWithoutProtocol);
         if (localFile.exists()) {
-            return new ResolvedFile(localFile);
+            return new ResolvedFile(localFile).cleanUp(false);
         }
         throw new BuildRetrievalError(
                 String.format("Failed to find local file %s.", localFile),
