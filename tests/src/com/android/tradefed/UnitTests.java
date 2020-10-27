@@ -253,6 +253,7 @@ import com.android.tradefed.targetprep.adb.AdbStopServerPreparerTest;
 import com.android.tradefed.targetprep.app.NoApkTestSkipperTest;
 import com.android.tradefed.targetprep.multi.MergeMultiBuildTargetPreparerTest;
 import com.android.tradefed.targetprep.multi.MixImageZipPreparerTest;
+import com.android.tradefed.targetprep.multi.PairingMultiTargetPreparerTest;
 import com.android.tradefed.targetprep.suite.SuiteApkInstallerTest;
 import com.android.tradefed.testtype.AndroidJUnitTestTest;
 import com.android.tradefed.testtype.ArtGTestTest;
@@ -716,6 +717,7 @@ import org.junit.runners.Suite.SuiteClasses;
     // targetprep.multi
     MergeMultiBuildTargetPreparerTest.class,
     MixImageZipPreparerTest.class,
+    PairingMultiTargetPreparerTest.class,
 
     // targetprep.suite
     SuiteApkInstallerTest.class,
