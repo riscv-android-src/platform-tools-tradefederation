@@ -1126,7 +1126,8 @@ public class TestInvocation implements ITestInvocation {
         for (Entry<ITestDevice, FreeDeviceState> fds : devicesStates.entrySet()) {
             // TODO: Rely on the FailureStatus for lost devices instead
             if ((fds.getKey().getIDevice() instanceof TcpDevice
-                            || fds.getKey() instanceof RemoteAndroidDevice)
+                            || fds.getKey() instanceof RemoteAndroidDevice
+                            || fds.getKey() instanceof NestedRemoteDevice)
                     && exception instanceof DeviceNotAvailableException) {
                 countVirtualLost++;
                 continue;
