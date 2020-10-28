@@ -89,7 +89,7 @@ public class ArtRunTestTest {
 
     /** Helper creating an expected-output file within the (temporary) test directory. */
     private void createExpectedOutputFile(String runTestName) throws IOException {
-        mTmpExpectedFile = new File(mTmpDepsDir, runTestName + "-expected.txt");
+        mTmpExpectedFile = new File(mTmpDepsDir, runTestName + "-expected-stdout.txt");
         FileWriter fw = new FileWriter(mTmpExpectedFile);
         fw.write("output\n");
         fw.close();
@@ -242,7 +242,7 @@ public class ArtRunTestTest {
         // End of test.
         String errorMessage =
                 "The test's standard output does not match the expected output:\n"
-                        + "--- expected.txt\n"
+                        + "--- expected-stdout.txt\n"
                         + "+++ stdout\n"
                         + "@@ -1,1 +1,1 @@\n"
                         + "-output\n"
