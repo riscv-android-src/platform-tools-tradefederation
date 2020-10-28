@@ -70,17 +70,19 @@ public class MoblyBinaryHostTest implements IRemoteTest, IDeviceTest, IBuildRece
     private static final String MOBLY_TEST_SUMMARY_XML = "converted_test_summary.xml";
 
     // TODO(b/159366744): merge this and next options.
-    @Option(name = "par-file-name", description = "The binary names inside the build info to run.")
+    @Option(
+            name = "mobly-par-file-name",
+            description = "The binary names inside the build info to run.")
     private Set<String> mBinaryNames = new HashSet<>();
 
     @Option(
-            name = "python-binaries",
+            name = "mobly-binaries",
             description = "The full path to a runnable python binary. Can be repeated.")
     private Set<File> mBinaries = new HashSet<>();
 
     @Option(
-            name = "test-timeout",
-            description = "Timeout for a single par file to terminate.",
+            name = "mobly-test-timeout",
+            description = "The timeout limit of a single Mobly test binary.",
             isTimeVal = true)
     private long mTestTimeout = 20 * 1000L;
 
@@ -90,7 +92,7 @@ public class MoblyBinaryHostTest implements IRemoteTest, IDeviceTest, IBuildRece
     private boolean mInjectAndroidSerialVar = true;
 
     @Option(
-            name = "python-options",
+            name = "mobly-options",
             description = "Option string to be passed to the binary when running")
     private List<String> mTestOptions = new ArrayList<>();
 
