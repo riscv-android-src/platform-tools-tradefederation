@@ -38,6 +38,7 @@ public class ClusterCommandEvent implements IClusterEvent {
     public static final String DATA_KEY_PASSED_TEST_COUNT = "passed_test_count";
     public static final String DATA_KEY_FAILED_TEST_RUN_COUNT = "failed_test_run_count";
     public static final String DATA_KEY_LOST_DEVICE_DETECTED = "device_lost_detected";
+    public static final String DATA_KEY_SUBPROCESS_COMMAND_ERROR = "subprocess_command_error";
 
     // Maximum size of an individual data string value.
     public static final int MAX_DATA_STRING_SIZE = 4095;

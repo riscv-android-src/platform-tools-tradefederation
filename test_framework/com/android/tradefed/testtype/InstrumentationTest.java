@@ -47,6 +47,7 @@ import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.BugreportCollector;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.ITestLifeCycleReceiver;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
@@ -99,6 +100,8 @@ public class InstrumentationTest
 
     /** default timeout for tests collection */
     static final long TEST_COLLECTION_TIMEOUT_MS = 2 * 60 * 1000;
+
+    static final String RUN_TESTS_AS_USER_KEY = "RUN_TESTS_AS_USER";
 
     /** test run name for merging coverage measurements */
     static final String MERGE_COVERAGE_MEASUREMENTS_TEST_NAME = "mergeCoverageMeasurements";
@@ -886,7 +889,8 @@ public class InstrumentationTest
                     "Tests to run should not be set explicitly when --collect-tests-only is set.");
 
             // Use the actual listener to collect the tests, and print a error if this fails
-            Collection<TestDescription> collectedTests = collectTestsToRun(mRunner, listener);
+            Collection<TestDescription> collectedTests =
+                    collectTestsToRun(testInfo, mRunner, listener);
             if (collectedTests == null) {
                 CLog.e("Failed to collect tests for %s", mPackageName);
             } else {
@@ -899,7 +903,7 @@ public class InstrumentationTest
         Collection<TestDescription> testsToRun = mTestsToRun;
         if (testsToRun == null) {
             // Don't notify the listener since it's not a real run.
-            testsToRun = collectTestsToRun(mRunner, null);
+            testsToRun = collectTestsToRun(testInfo, mRunner, null);
         }
 
         // Only set the debug flag after collecting tests.
@@ -962,7 +966,7 @@ public class InstrumentationTest
 
         if (testsToRun == null) {
             // Failed to collect the tests or collection is off. Just try to run them all.
-            mDevice.runInstrumentationTests(mRunner, listener);
+            runInstrumentationTests(testInfo, mRunner, listener);
         } else if (!testsToRun.isEmpty()) {
             runWithRerun(testInfo, listener, testsToRun);
         } else {
@@ -975,6 +979,20 @@ public class InstrumentationTest
             listener.testRunStarted(MERGE_COVERAGE_MEASUREMENTS_TEST_NAME, 0);
             listener.testRunEnded(0, new HashMap<String, Metric>());
         }
+    }
+
+    private boolean runInstrumentationTests(
+            TestInformation testInfo,
+            IRemoteAndroidTestRunner runner,
+            ITestLifeCycleReceiver... receivers)
+            throws DeviceNotAvailableException {
+        if (testInfo != null && testInfo.properties().containsKey(RUN_TESTS_AS_USER_KEY)) {
+            return mDevice.runInstrumentationTestsAsUser(
+                    runner,
+                    Integer.parseInt(testInfo.properties().get(RUN_TESTS_AS_USER_KEY)),
+                    receivers);
+        }
+        return mDevice.runInstrumentationTests(runner, receivers);
     }
 
     /**
@@ -1071,7 +1089,7 @@ public class InstrumentationTest
                     getDevice().getProcessByName("system_server"));
         }
         instrumentationListener.setReportUnexecutedTests(mReportUnexecuted);
-        mDevice.runInstrumentationTests(mRunner, instrumentationListener);
+        runInstrumentationTests(testInfo, mRunner, instrumentationListener);
         TestRunResult testRun = testTracker.getCurrentRunResults();
         if (testRun.isRunFailure() || !testRun.getCompletedTests().containsAll(expectedTests)) {
             // Don't re-run any completed tests, unless this is a coverage run.
@@ -1172,7 +1190,9 @@ public class InstrumentationTest
      * @throws DeviceNotAvailableException
      */
     private Collection<TestDescription> collectTestsToRun(
-            final IRemoteAndroidTestRunner runner, final ITestInvocationListener listener)
+            final TestInformation testInfo,
+            final IRemoteAndroidTestRunner runner,
+            final ITestInvocationListener listener)
             throws DeviceNotAvailableException {
         if (isRerunMode()) {
             Log.d(LOG_TAG, String.format("Collecting test info for %s on device %s",
@@ -1182,7 +1202,7 @@ public class InstrumentationTest
             runner.setDebug(false);
             // try to collect tests multiple times, in case device is temporarily not available
             // on first attempt
-            Collection<TestDescription> tests = collectTestsAndRetry(runner, listener);
+            Collection<TestDescription> tests = collectTestsAndRetry(testInfo, runner, listener);
             // done with "logOnly" mode, restore proper test timeout before real test execution
             addTimeoutsToRunner(runner);
             runner.setTestCollection(false);
@@ -1202,7 +1222,9 @@ public class InstrumentationTest
      */
     @VisibleForTesting
     Collection<TestDescription> collectTestsAndRetry(
-            final IRemoteAndroidTestRunner runner, final ITestInvocationListener listener)
+            final TestInformation testInfo,
+            final IRemoteAndroidTestRunner runner,
+            final ITestInvocationListener listener)
             throws DeviceNotAvailableException {
         boolean communicationFailure = false;
         for (int i=0; i < COLLECT_TESTS_ATTEMPTS; i++) {
@@ -1211,9 +1233,9 @@ public class InstrumentationTest
             // We allow to override the ddmlib default timeout for collection of tests.
             runner.setMaxTimeToOutputResponse(mCollectTestTimeout, TimeUnit.MILLISECONDS);
             if (listener == null) {
-                instrResult = mDevice.runInstrumentationTests(runner, collector);
+                instrResult = runInstrumentationTests(testInfo, runner, collector);
             } else {
-                instrResult = mDevice.runInstrumentationTests(runner, collector, listener);
+                instrResult = runInstrumentationTests(testInfo, runner, collector, listener);
             }
             TestRunResult runResults = collector.getCurrentRunResults();
             if (!instrResult || !runResults.isRunComplete()) {

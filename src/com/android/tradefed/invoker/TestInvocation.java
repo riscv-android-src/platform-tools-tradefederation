@@ -43,6 +43,7 @@ import com.android.tradefed.device.cloud.ManagedRemoteDevice;
 import com.android.tradefed.device.cloud.NestedRemoteDevice;
 import com.android.tradefed.device.cloud.RemoteAndroidVirtualDevice;
 import com.android.tradefed.error.HarnessException;
+import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.error.IHarnessException;
 import com.android.tradefed.guice.InvocationScope;
 import com.android.tradefed.invoker.logger.CurrentInvocation;
@@ -164,6 +165,7 @@ public class TestInvocation implements ITestInvocation {
     private Long mStopRequestTime = null;
     private boolean mTestStarted = false;
     private boolean mInvocationFailed = false;
+    private boolean mDelegatedInvocation = false;
     private List<IScheduledInvocationListener> mSchedulerListeners = new ArrayList<>();
 
     /**
@@ -214,7 +216,6 @@ public class TestInvocation implements ITestInvocation {
             throws Throwable {
         ReportHostLog reportThread = new ReportHostLog(listener, config);
         Runtime.getRuntime().addShutdownHook(reportThread);
-        boolean resumed = false;
         String bugreportName = null;
         long startTime = System.currentTimeMillis();
         long elapsedTime = -1;
@@ -306,37 +307,39 @@ public class TestInvocation implements ITestInvocation {
             }
             CurrentInvocation.setActionInProgress(ActionInProgress.TEAR_DOWN);
             getRunUtil().allowInterrupt(false);
-            if (config.getCommandOptions().takeBugreportOnInvocationEnded() ||
-                    config.getCommandOptions().takeBugreportzOnInvocationEnded()) {
-                if (bugreportName != null) {
-                    CLog.i("Bugreport to be taken for failure instead of invocation ended.");
-                } else {
-                    bugreportName = INVOCATION_ENDED_BUGREPORT_NAME;
+            if (!mDelegatedInvocation) {
+                if (config.getCommandOptions().takeBugreportOnInvocationEnded()
+                        || config.getCommandOptions().takeBugreportzOnInvocationEnded()) {
+                    if (bugreportName != null) {
+                        CLog.i("Bugreport to be taken for failure instead of invocation ended.");
+                    } else {
+                        bugreportName = INVOCATION_ENDED_BUGREPORT_NAME;
+                    }
                 }
-            }
-            if (bugreportName != null) {
-                if (context.getDevices().size() == 1 || badDevice != null) {
-                    ITestDevice collectBugreport = badDevice;
-                    if (collectBugreport == null) {
-                        collectBugreport = context.getDevices().get(0);
+                if (bugreportName != null) {
+                    if (context.getDevices().size() == 1 || badDevice != null) {
+                        ITestDevice collectBugreport = badDevice;
+                        if (collectBugreport == null) {
+                            collectBugreport = context.getDevices().get(0);
+                        }
+                        // If we have identified a faulty device only take the bugreport on it.
+                        takeBugreport(collectBugreport, listener, bugreportName);
+                    } else if (context.getDevices().size() > 1) {
+                        ParallelDeviceExecutor<Boolean> executor =
+                                new ParallelDeviceExecutor<>(context.getDevices().size());
+                        List<Callable<Boolean>> callableTasks = new ArrayList<>();
+                        final String reportName = bugreportName;
+                        for (ITestDevice device : context.getDevices()) {
+                            Callable<Boolean> callableTask =
+                                    () -> {
+                                        takeBugreport(device, listener, reportName);
+                                        return true;
+                                    };
+                            callableTasks.add(callableTask);
+                        }
+                        // Capture the bugreports best effort, ignore the results.
+                        executor.invokeAll(callableTasks, 5, TimeUnit.MINUTES);
                     }
-                    // If we have identified a faulty device only take the bugreport on it.
-                    takeBugreport(collectBugreport, listener, bugreportName);
-                } else if (context.getDevices().size() > 1) {
-                    ParallelDeviceExecutor<Boolean> executor =
-                            new ParallelDeviceExecutor<>(context.getDevices().size());
-                    List<Callable<Boolean>> callableTasks = new ArrayList<>();
-                    final String reportName = bugreportName;
-                    for (ITestDevice device : context.getDevices()) {
-                        Callable<Boolean> callableTask =
-                                () -> {
-                                    takeBugreport(device, listener, reportName);
-                                    return true;
-                                };
-                        callableTasks.add(callableTask);
-                    }
-                    // Capture the bugreports best effort, ignore the results.
-                    executor.invokeAll(callableTasks, 5, TimeUnit.MINUTES);
                 }
             }
             // Save the device executeShellCommand logs
@@ -384,6 +387,10 @@ public class TestInvocation implements ITestInvocation {
                                     mStopCause);
                     FailureDescription failure =
                             FailureDescription.create(message, FailureStatus.CANCELLED);
+                    failure.setErrorIdentifier(InfraErrorIdentifier.INVOCATION_CANCELLED);
+                    failure.setCause(
+                            new HarnessRuntimeException(
+                                    message, InfraErrorIdentifier.INVOCATION_CANCELLED));
                     reportFailure(failure, listener);
                     PrettyPrintDelimiter.printStageDelimiter(message);
                     if (mStopRequestTime != null) {
@@ -399,22 +406,7 @@ public class TestInvocation implements ITestInvocation {
                 Runtime.getRuntime().removeShutdownHook(reportThread);
 
                 elapsedTime = System.currentTimeMillis() - startTime;
-                if (!resumed) {
-                    // Init a log for the end of the host_log.
-                    ILeveledLogOutput endHostLog = config.getLogOutput();
-                    endHostLog.init();
-                    getLogRegistry().registerLogger(endHostLog);
-                    PrettyPrintDelimiter.printStageDelimiter("===== Result Reporters =====");
-                    try {
-                        // Copy the invocation metrics to the context
-                        ((InvocationContext) context).logInvocationMetrics();
-                        listener.invocationEnded(elapsedTime);
-                    } finally {
-                        InvocationMetricLogger.clearInvocationMetrics();
-                        endHostLog.closeLog();
-                        getLogRegistry().unregisterLogger();
-                    }
-                }
+                reportInvocationEnded(config, context, listener, elapsedTime);
             } finally {
                 TfObjectTracker.clearTracking();
                 CurrentInvocation.clearInvocationInfos();
@@ -498,7 +490,7 @@ public class TestInvocation implements ITestInvocation {
 
     private void reportHostLog(ITestInvocationListener listener, IConfiguration config) {
         String name = TRADEFED_LOG_NAME;
-        if (config.getConfigurationObject(TradefedDelegator.DELEGATE_OBJECT) != null) {
+        if (mDelegatedInvocation) {
             name = TRADEFED_DELEGATED_LOG_NAME;
         }
         reportHostLog(listener, config, name);
@@ -650,7 +642,7 @@ public class TestInvocation implements ITestInvocation {
             invocationPath.reportLogs(device, listener, Stage.ERROR);
         }
         reportHostLog(listener, config);
-        listener.invocationEnded(0L);
+        reportInvocationEnded(config, testInfo.getContext(), listener, 0L);
         return false;
     }
 
@@ -703,7 +695,7 @@ public class TestInvocation implements ITestInvocation {
                 invocationPath.reportLogs(device, listener, Stage.ERROR);
             }
             reportHostLog(listener, config);
-            listener.invocationEnded(0L);
+            reportInvocationEnded(config, context, listener, 0L);
             return false;
         }
     }
@@ -797,6 +789,7 @@ public class TestInvocation implements ITestInvocation {
             mode = RunMode.REMOTE_INVOCATION;
         }
         if (config.getConfigurationObject(TradefedDelegator.DELEGATE_OBJECT) != null) {
+            mDelegatedInvocation = true;
             mode = RunMode.DELEGATED_INVOCATION;
         }
         IInvocationExecution invocationPath = createInvocationExec(mode);
@@ -1154,6 +1147,35 @@ public class TestInvocation implements ITestInvocation {
             addInvocationMetric(InvocationMetricKey.VIRTUAL_DEVICE_LOST_DETECTED, countVirtualLost);
         }
         return devicesStates;
+    }
+
+    private void reportInvocationEnded(
+            IConfiguration config,
+            IInvocationContext context,
+            ITestInvocationListener listener,
+            long elapsedTime) {
+        // Init a log for the end of the host_log.
+        ILeveledLogOutput endHostLog = config.getLogOutput();
+        try {
+            endHostLog.init();
+            getLogRegistry().registerLogger(endHostLog);
+        } catch (IOException e) {
+            CLog.e(e);
+            endHostLog = null;
+        }
+
+        PrettyPrintDelimiter.printStageDelimiter("===== Result Reporters =====");
+        try {
+            // Copy the invocation metrics to the context
+            ((InvocationContext) context).logInvocationMetrics();
+            listener.invocationEnded(elapsedTime);
+        } finally {
+            InvocationMetricLogger.clearInvocationMetrics();
+            if (endHostLog != null) {
+                endHostLog.closeLog();
+                getLogRegistry().unregisterLogger();
+            }
+        }
     }
 
     /** Helper Thread that ensures host_log is reported in case of killed JVM */

@@ -12,6 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+java_library_host {
+    name: "tradefed-test-protos",
+    srcs: ["res/**/*.proto"],
+    libs: [
+        "libprotobuf-java-full",
+    ],
+    proto: {
+        include_dirs: ["external/protobuf/src"],
+        type: "full",
+    }
+}
+
 tradefed_java_library_host {
     name: "tradefed-tests",
     defaults: ["tradefed_errorprone_defaults"],
@@ -30,6 +42,7 @@ tradefed_java_library_host {
         "easymock",
         "objenesis",
         "mockito",
+        "tradefed-test-protos",
     ],
     libs: [
         "tradefed",

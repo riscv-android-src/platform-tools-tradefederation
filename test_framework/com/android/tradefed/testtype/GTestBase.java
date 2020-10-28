@@ -547,6 +547,14 @@ public abstract class GTestBase
     }
 
     /**
+     * Helper which allows derived classes to wrap the gtest command under some other tool (chroot,
+     * strace, gdb, and similar).
+     */
+    protected String getGTestCmdLineWrapper(String fullPath, String flags) {
+        return String.format("%s %s", fullPath, flags);
+    }
+
+    /**
      * Helper method to build the gtest command to run.
      *
      * @param fullPath absolute file system path to gtest binary on device
@@ -568,7 +576,7 @@ public abstract class GTestBase
             gTestCmdLine.append(String.format("su %s ", mRunTestAs));
         }
 
-        gTestCmdLine.append(String.format("%s %s", fullPath, flags));
+        gTestCmdLine.append(getGTestCmdLineWrapper(fullPath, flags));
         return gTestCmdLine.toString();
     }
 

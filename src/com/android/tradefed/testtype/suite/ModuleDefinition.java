@@ -59,6 +59,7 @@ import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.result.error.ErrorIdentifier;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
+import com.android.tradefed.result.error.TestErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.retry.RetryStatistics;
@@ -125,10 +126,13 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     private IConfiguration mInternalTestConfiguration;
     private IConfiguration mInternalTargetPreparerConfiguration;
     private ILogSaver mLogSaver;
+    private TestInformation mModuleInfo;
+    private ITestInvocationListener mInvocationListener;
 
     private final String mId;
     private Collection<IRemoteTest> mTests = null;
     private Map<String, List<ITargetPreparer>> mPreparersPerDevice = null;
+    private Map<String, List<ITargetPreparer>> mSuitePreparersPerDevice = null;
 
     private List<IMultiTargetPreparer> mMultiPreparers = new ArrayList<>();
     private IBuildInfo mBuild;
@@ -174,6 +178,24 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             Map<String, List<ITargetPreparer>> preparersPerDevice,
             List<IMultiTargetPreparer> multiPreparers,
             IConfiguration moduleConfig) {
+        this(name, tests, preparersPerDevice, null, multiPreparers, moduleConfig);
+    }
+
+    /**
+     * Constructor
+     *
+     * @param name unique name of the test configuration.
+     * @param tests list of {@link IRemoteTest} that needs to run.
+     * @param preparersPerDevice list of {@link ITargetPreparer} to be used to setup the device.
+     * @param moduleConfig the {@link IConfiguration} of the underlying module config.
+     */
+    public ModuleDefinition(
+            String name,
+            Collection<IRemoteTest> tests,
+            Map<String, List<ITargetPreparer>> preparersPerDevice,
+            Map<String, List<ITargetPreparer>> suitePreparersPerDevice,
+            List<IMultiTargetPreparer> multiPreparers,
+            IConfiguration moduleConfig) {
         mId = name;
         mTests = tests;
         mModuleConfiguration = moduleConfig;
@@ -204,6 +226,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
 
         mMultiPreparers.addAll(multiPreparers);
         mPreparersPerDevice = preparersPerDevice;
+        mSuitePreparersPerDevice = suitePreparersPerDevice;
 
         // Get the tokens of the module
         List<String> tokens = configDescriptor.getMetaData(ITestSuite.TOKEN_KEY);
@@ -343,6 +366,9 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             TestFailureListener failureListener,
             int maxRunLimit)
             throws DeviceNotAvailableException {
+        mModuleInfo = moduleInfo;
+        mInvocationListener = listener;
+
         mStartModuleRunDate = System.currentTimeMillis();
         // Load extra configuration for the module from module_controller
         // TODO: make module_controller a full TF object
@@ -390,22 +416,10 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                             moduleInfo.getDevice(), mInternalTargetPreparerConfiguration);
         }
         // Setup
-        long prepStartTime = getCurrentTime();
         if (preparationException == null) {
-            preparationException = runTargetPreparation(moduleInfo, listener);
+            preparationException = runPreparation(false);
         }
-        // Skip multi-preparation if preparation already failed.
-        if (preparationException == null) {
-            for (IMultiTargetPreparer multiPreparer : mMultiPreparers) {
-                preparationException = runMultiPreparerSetup(multiPreparer, moduleInfo, listener);
-                if (preparationException != null) {
-                    mIsFailedModule = true;
-                    CLog.e("Some preparation step failed. failing the module %s", getId());
-                    break;
-                }
-            }
-        }
-        mElapsedPreparation = getCurrentTime() - prepStartTime;
+
         // Run the tests
         try {
             if (preparationException != null) {
@@ -604,7 +618,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             int maxRunLimit) {
         GranularRetriableTestWrapper retriableTest =
                 new GranularRetriableTestWrapper(
-                        test, listener, failureListener, moduleLevelListeners, maxRunLimit);
+                        test, this, listener, failureListener, moduleLevelListeners, maxRunLimit);
         retriableTest.setModuleId(getId());
         retriableTest.setMarkTestsSkipped(skipTestCases);
         retriableTest.setMetricCollectors(mRunMetricCollectors);
@@ -781,11 +795,41 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         }
     }
 
+    /**
+     * Run preparers of the test, including suite level preparers if specified.
+     *
+     * @param includeSuitePreparers Set to {@code true} to also run suite level preparers.
+     * @return {@link Throwable} of any exception raised when running preparers.
+     */
+    public Throwable runPreparation(boolean includeSuitePreparers) {
+        Throwable preparationException = null;
+        long prepStartTime = getCurrentTime();
+        if (includeSuitePreparers) {
+            // Run suite level preparers.
+            preparationException = runTargetPreparation(mSuitePreparersPerDevice);
+        }
+
+        if (preparationException == null) {
+            preparationException = runTargetPreparation(mPreparersPerDevice);
+        }
+        // Skip multi-preparation if preparation already failed.
+        if (preparationException == null) {
+            for (IMultiTargetPreparer multiPreparer : mMultiPreparers) {
+                preparationException = runMultiPreparerSetup(multiPreparer);
+                if (preparationException != null) {
+                    mIsFailedModule = true;
+                    CLog.e("Some preparation step failed. failing the module %s", getId());
+                    break;
+                }
+            }
+        }
+        mElapsedPreparation = getCurrentTime() - prepStartTime;
+        return preparationException;
+    }
+
     /** Run all the prepare steps. */
     private Throwable runPreparerSetup(
-            TestInformation moduleInfo,
             ITargetPreparer preparer,
-            ITestLogger logger,
             int deviceIndex) {
         if (preparer.isDisabled()) {
             // If disabled skip completely.
@@ -796,14 +840,14 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         try {
             // set the logger in case they need it.
             if (preparer instanceof ITestLoggerReceiver) {
-                ((ITestLoggerReceiver) preparer).setTestLogger(logger);
+                ((ITestLoggerReceiver) preparer).setTestLogger(mInvocationListener);
             }
             if (preparer instanceof IInvocationContextReceiver) {
                 ((IInvocationContextReceiver) preparer)
                         .setInvocationContext(mModuleInvocationContext);
             }
-            moduleInfo.setActiveDeviceIndex(deviceIndex);
-            preparer.setUp(moduleInfo);
+            mModuleInfo.setActiveDeviceIndex(deviceIndex);
+            preparer.setUp(mModuleInfo);
             return null;
         } catch (BuildError
                 | TargetSetupError
@@ -817,13 +861,12 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             CLog.e(e);
             return e;
         } finally {
-            moduleInfo.setActiveDeviceIndex(0);
+            mModuleInfo.setActiveDeviceIndex(0);
         }
     }
 
     /** Run all multi target preparer step. */
-    private Throwable runMultiPreparerSetup(
-            IMultiTargetPreparer preparer, TestInformation moduleInfo, ITestLogger logger) {
+    private Throwable runMultiPreparerSetup(IMultiTargetPreparer preparer) {
         if (preparer.isDisabled()) {
             // If disabled skip completely.
             return null;
@@ -833,13 +876,13 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         try {
             // set the logger in case they need it.
             if (preparer instanceof ITestLoggerReceiver) {
-                ((ITestLoggerReceiver) preparer).setTestLogger(logger);
+                ((ITestLoggerReceiver) preparer).setTestLogger(mInvocationListener);
             }
             if (preparer instanceof IInvocationContextReceiver) {
                 ((IInvocationContextReceiver) preparer)
                         .setInvocationContext(mModuleInvocationContext);
             }
-            preparer.setUp(moduleInfo);
+            preparer.setUp(mModuleInfo);
             return null;
         } catch (BuildError
                 | TargetSetupError
@@ -991,6 +1034,14 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     }
 
     /**
+     * Returns the list of suite level {@link ITargetPreparer} associated with the given device name
+     */
+    @VisibleForTesting
+    List<ITargetPreparer> getSuitePreparerForDevice(String deviceName) {
+        return mSuitePreparersPerDevice.get(deviceName);
+    }
+
+    /**
      * When running unit tests for ModuleDefinition we don't want to unnecessarily report some auto
      * retry times.
      */
@@ -1011,7 +1062,9 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         }
         listener.testRunStarted(getId(), 0, 0, System.currentTimeMillis());
         FailureDescription description =
-                FailureDescription.create(message).setFailureStatus(FailureStatus.NOT_EXECUTED);
+                FailureDescription.create(message)
+                        .setFailureStatus(FailureStatus.NOT_EXECUTED)
+                        .setErrorIdentifier(TestErrorIdentifier.MODULE_DID_NOT_EXECUTE);
         listener.testRunFailed(description);
         listener.testRunEnded(0, new HashMap<String, Metric>());
         listener.testModuleEnded();
@@ -1059,28 +1112,28 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 InvocationMetricKey.AUTO_RETRY_TIME, retryTimeMs);
     }
 
-    private Throwable runTargetPreparation(TestInformation moduleInfo, ITestLogger logger) {
+    private Throwable runTargetPreparation(Map<String, List<ITargetPreparer>> preparersPerDevice) {
         Throwable preparationException = null;
         for (int i = 0; i < mModuleInvocationContext.getDeviceConfigNames().size(); i++) {
             String deviceName = mModuleInvocationContext.getDeviceConfigNames().get(i);
-            if (i >= mPreparersPerDevice.size()) {
+            if (i >= preparersPerDevice.size()) {
                 CLog.d(
                         "Main configuration has more devices than the module configuration. '%s' "
                                 + "will not run any preparation.",
                         deviceName);
                 continue;
             }
-            List<ITargetPreparer> preparers = mPreparersPerDevice.get(deviceName);
+            List<ITargetPreparer> preparers = preparersPerDevice.get(deviceName);
             if (preparers == null) {
                 CLog.w(
                         "Module configuration devices mismatch the main configuration "
                                 + "(Missing device '%s'), resolving preparers by index.",
                         deviceName);
-                String key = new ArrayList<>(mPreparersPerDevice.keySet()).get(i);
-                preparers = mPreparersPerDevice.get(key);
+                String key = new ArrayList<>(preparersPerDevice.keySet()).get(i);
+                preparers = preparersPerDevice.get(key);
             }
             for (ITargetPreparer preparer : preparers) {
-                preparationException = runPreparerSetup(moduleInfo, preparer, logger, i);
+                preparationException = runPreparerSetup(preparer, i);
                 if (preparationException != null) {
                     mIsFailedModule = true;
                     CLog.e("Some preparation step failed. failing the module %s", getId());

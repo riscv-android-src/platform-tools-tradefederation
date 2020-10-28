@@ -40,9 +40,9 @@ import org.yaml.snakeyaml.constructor.SafeConstructor;
 public class MoblyYamlResultParser {
     private static final String TYPE = "Type";
     private ImmutableList.Builder<ITestInvocationListener> mListenersBuilder =
-            new ImmutableList.Builder();
+            new ImmutableList.Builder<>();
     private final String mRunName;
-    private ImmutableList.Builder<ITestResult> mResultCacheBuilder = new ImmutableList.Builder();
+    private ImmutableList.Builder<ITestResult> mResultCacheBuilder = new ImmutableList.Builder<>();
     private int mTestCount;
     private long mRunStartTime;
     private long mRunEndTime;

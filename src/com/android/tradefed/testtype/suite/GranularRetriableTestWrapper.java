@@ -73,6 +73,7 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
 
     private IRetryDecision mRetryDecision;
     private IRemoteTest mTest;
+    private ModuleDefinition mModule;
     private List<IMetricCollector> mRunMetricCollectors;
     private TestFailureListener mFailureListener;
     private IInvocationContext mModuleInvocationContext;
@@ -95,7 +96,18 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
             TestFailureListener failureListener,
             List<ITestInvocationListener> moduleLevelListeners,
             int maxRunLimit) {
+        this(test, null, mainListener, failureListener, moduleLevelListeners, maxRunLimit);
+    }
+
+    public GranularRetriableTestWrapper(
+            IRemoteTest test,
+            ModuleDefinition module,
+            ITestInvocationListener mainListener,
+            TestFailureListener failureListener,
+            List<ITestInvocationListener> moduleLevelListeners,
+            int maxRunLimit) {
         mTest = test;
+        mModule = module;
         mMainGranularRunListener = new ModuleListener(mainListener);
         mFailureListener = failureListener;
         mModuleLevelListeners = moduleLevelListeners;
@@ -230,7 +242,7 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
 
         // Bail out early if there is no need to retry at all.
         if (!mRetryDecision.shouldRetry(
-                mTest, 0, mMainGranularRunListener.getTestRunForAttempts(0))) {
+                mTest, mModule, 0, mMainGranularRunListener.getTestRunForAttempts(0))) {
             return;
         }
         // Avoid rechecking the shouldRetry below the first time as it could retrigger reboot.
@@ -245,6 +257,7 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
                     boolean retry =
                             mRetryDecision.shouldRetry(
                                     mTest,
+                                    mModule,
                                     attemptNumber - 1,
                                     mMainGranularRunListener.getTestRunForAttempts(
                                             attemptNumber - 1));
