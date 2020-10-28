@@ -58,18 +58,6 @@ public interface IRemoteFileResolver {
     }
 
     /**
-     * Resolve the remote file with a builder args.
-     *
-     * @param args {@link RemoteFileResolverArgs} describing the remote to download and how.
-     * @return The resolved local file.
-     * @throws BuildRetrievalError if something goes wrong.
-     */
-    public default @Nonnull File resolveRemoteFiles(RemoteFileResolverArgs args)
-            throws BuildRetrievalError {
-        return resolveRemoteFiles(args.getConsideredFile(), args.getQueryArgs());
-    }
-
-    /**
      * Resolve the remote file in a future-proof interface
      *
      * @param args {@link RemoteFileResolverArgs} describing the remote to download and how.
@@ -78,7 +66,7 @@ public interface IRemoteFileResolver {
      */
     public default @Nonnull ResolvedFile resolveRemoteFile(RemoteFileResolverArgs args)
             throws BuildRetrievalError {
-        File file = resolveRemoteFiles(args);
+        File file = resolveRemoteFiles(args.getConsideredFile(), args.getQueryArgs());
         return new ResolvedFile(file);
     }
 
