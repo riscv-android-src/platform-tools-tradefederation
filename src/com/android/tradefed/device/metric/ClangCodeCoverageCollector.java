@@ -76,6 +76,7 @@ public final class ClangCodeCoverageCollector extends BaseDeviceMetricCollector
     private IBuildInfo mBuildInfo;
     private IConfiguration mConfiguration;
     private IRunUtil mRunUtil = RunUtil.getDefault();
+    private File mLlvmProfileTool;
 
     private NativeCodeCoverageFlusher mFlusher;
 
@@ -197,7 +198,7 @@ public final class ClangCodeCoverageCollector extends BaseDeviceMetricCollector
         } finally {
             FileUtil.deleteFile(coverageTarGz);
             FileUtil.recursiveDelete(untarDir);
-            FileUtil.recursiveDelete(profileTool);
+            FileUtil.recursiveDelete(mLlvmProfileTool);
             FileUtil.deleteFile(indexedProfileFile);
         }
     }
@@ -245,7 +246,8 @@ public final class ClangCodeCoverageCollector extends BaseDeviceMetricCollector
                     verifyNotNull(
                             buildInfo.getFile("llvm-profdata.zip"),
                             "Could not get llvm-profdata.zip from the build.");
-            return ZipUtil.extractZipToTemp(profileToolZip, "llvm-profdata");
+            mLlvmProfileTool = ZipUtil.extractZipToTemp(profileToolZip, "llvm-profdata");
+            return mLlvmProfileTool;
         } catch (BuildRetrievalError e) {
             throw new RuntimeException(e);
         } finally {
