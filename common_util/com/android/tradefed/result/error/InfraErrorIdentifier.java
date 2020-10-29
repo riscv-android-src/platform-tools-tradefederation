@@ -37,6 +37,7 @@ public enum InfraErrorIdentifier implements ErrorIdentifier {
     RUNNER_ALLOCATION_ERROR(500_009, FailureStatus.INFRA_FAILURE),
     SCHEDULER_ALLOCATION_ERROR(500_010, FailureStatus.CUSTOMER_ISSUE),
     HOST_BINARY_FAILURE(500_011, FailureStatus.DEPENDENCY_ISSUE),
+    MISMATCHED_BUILD_DEVICE(500_012, FailureStatus.CUSTOMER_ISSUE),
 
     // 500_501 - 501_000: Build, Artifacts download related errors
     ARTIFACT_REMOTE_PATH_NULL(500_501, FailureStatus.INFRA_FAILURE),
