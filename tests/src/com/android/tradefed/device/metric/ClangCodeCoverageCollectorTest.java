@@ -266,9 +266,10 @@ public class ClangCodeCoverageCollectorTest {
 
     @Test
     public void testProfileToolInConfiguration_notFromBuild() throws Exception {
+        File profileToolFolder = folder.newFolder();
         mCoverageOptionsSetter.setOptionValue("coverage", "true");
         mCoverageOptionsSetter.setOptionValue("coverage-toolchain", "CLANG");
-        mCoverageOptionsSetter.setOptionValue("llvm-profdata-path", "/path/to/some/directory");
+        mCoverageOptionsSetter.setOptionValue("llvm-profdata-path", profileToolFolder.getPath());
 
         // Setup mocks.
         doReturn(true).when(mMockDevice).isAdbRoot();
@@ -289,7 +290,10 @@ public class ClangCodeCoverageCollectorTest {
 
         // Verify that the command line contains the llvm-profile-path set above.
         List<String> command = mCommandArgumentCaptor.getCommand();
-        assertThat(command.get(0)).isEqualTo("/path/to/some/directory/bin/llvm-profdata");
+        assertThat(command.get(0)).isEqualTo(profileToolFolder.getPath() + "/bin/llvm-profdata");
+
+        // Verify that the profile tool was not deleted.
+        assertThat(profileToolFolder.exists()).isTrue();
     }
 
     @Test
