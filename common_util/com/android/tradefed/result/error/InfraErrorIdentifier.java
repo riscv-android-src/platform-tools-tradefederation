@@ -57,6 +57,10 @@ public enum InfraErrorIdentifier implements ErrorIdentifier {
     NO_ACLOUD_REPORT(505_000, FailureStatus.DEPENDENCY_ISSUE),
     ACLOUD_UNDETERMINED(505_001, FailureStatus.DEPENDENCY_ISSUE),
 
+    // 505_251 - 505_300: Configuration errors
+    INTERNAL_CONFIG_ERROR(505_251, FailureStatus.INFRA_FAILURE),
+    CLASS_NOT_FOUND(505_252, FailureStatus.CUSTOMER_ISSUE),
+
     UNDETERMINED(510_000, FailureStatus.UNSET);
 
     private final long code;
