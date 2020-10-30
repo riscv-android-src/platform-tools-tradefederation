@@ -26,6 +26,7 @@ import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.BinaryState;
 import com.android.tradefed.util.MultiMap;
@@ -431,8 +432,10 @@ public class DeviceSetup extends BaseTargetPreparer {
         CLog.i("Performing setup on %s", device.getSerialNumber());
 
         if (device.getOptions().isEnableAdbRoot() && !device.enableAdbRoot()) {
-            throw new TargetSetupError(String.format("Failed to enable adb root on %s",
-                    device.getSerialNumber()), device.getDeviceDescriptor());
+            throw new TargetSetupError(
+                    String.format("Failed to enable adb root on %s", device.getSerialNumber()),
+                    device.getDeviceDescriptor(),
+                    DeviceErrorIdentifier.DEVICE_UNEXPECTED_RESPONSE);
         }
 
         // Convert deprecated options into current options
@@ -739,8 +742,11 @@ public class DeviceSetup extends BaseTargetPreparer {
         CLog.d("Pushing the following properties to /data/local.prop:\n%s", sb.toString());
         boolean result = device.pushString(sb.toString(), "/data/local.prop");
         if (!result) {
-            throw new TargetSetupError(String.format("Failed to push /data/local.prop to %s",
-                    device.getSerialNumber()), device.getDeviceDescriptor());
+            throw new TargetSetupError(
+                    String.format(
+                            "Failed to push /data/local.prop to %s", device.getSerialNumber()),
+                    device.getDeviceDescriptor(),
+                    DeviceErrorIdentifier.FAIL_PUSH_FILE);
         }
         // Set reasonable permissions for /data/local.prop
         device.executeShellCommand("chmod 644 /data/local.prop");

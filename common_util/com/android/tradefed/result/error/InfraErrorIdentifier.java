@@ -56,6 +56,7 @@ public enum InfraErrorIdentifier implements ErrorIdentifier {
     // 505_000 - 505_250: Acloud errors
     NO_ACLOUD_REPORT(505_000, FailureStatus.DEPENDENCY_ISSUE),
     ACLOUD_UNDETERMINED(505_001, FailureStatus.DEPENDENCY_ISSUE),
+    ACLOUD_TIMED_OUT(505_002, FailureStatus.DEPENDENCY_ISSUE),
 
     UNDETERMINED(510_000, FailureStatus.UNSET);
 
