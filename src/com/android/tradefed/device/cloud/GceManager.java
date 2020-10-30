@@ -203,7 +203,8 @@ public class GceManager {
                     mGceAvdInfo = new GceAvdInfo(instanceName, null, errors, GceStatus.BOOT_FAIL);
                     return mGceAvdInfo;
                 }
-                throw new TargetSetupError(errors, mDeviceDescriptor);
+                throw new TargetSetupError(
+                        errors, mDeviceDescriptor, InfraErrorIdentifier.ACLOUD_TIMED_OUT);
             } else if (!CommandStatus.SUCCESS.equals(cmd.getStatus())) {
                 CLog.w("Error when booting the Gce instance, reading output of gce driver");
                 mGceAvdInfo =
