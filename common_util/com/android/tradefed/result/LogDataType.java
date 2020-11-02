@@ -62,7 +62,9 @@ public enum LogDataType {
     KERNEL_TRACE("dat", "text/plain", false, false), // raw kernel ftrace buffer
     DIR("", "text/plain", false, false),
     CFG("cfg", "application/octet-stream", false, true),
-    TF_EVENTS("txt", "text/plain", false, false),
+    TF_EVENTS("txt", "text/plain", false, true),
+    HARNESS_STD_LOG("txt", "text/plain", false, true),
+    HARNESS_CONFIG("xml", "text/xml", false, true),
     /* Unknown file type */
     UNKNOWN("dat", "text/plain", false, false);
 
