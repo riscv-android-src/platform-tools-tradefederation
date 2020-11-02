@@ -167,9 +167,9 @@ public class DelegatedInvocationExecution extends InvocationExecution {
         } finally {
             StreamUtil.close(mStderr);
             StreamUtil.close(mStdout);
-            logAndCleanFile(mStdoutFile, LogDataType.TEXT, listener);
-            logAndCleanFile(mStderrFile, LogDataType.TEXT, listener);
-            logAndCleanFile(mGlobalConfig, LogDataType.XML, listener);
+            logAndCleanFile(mStdoutFile, LogDataType.HARNESS_STD_LOG, listener);
+            logAndCleanFile(mStderrFile, LogDataType.HARNESS_STD_LOG, listener);
+            logAndCleanFile(mGlobalConfig, LogDataType.HARNESS_CONFIG, listener);
         }
     }
 

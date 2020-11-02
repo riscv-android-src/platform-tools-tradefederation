@@ -118,7 +118,7 @@ public class TradefedSandboxTest {
         mMockRunUtil.setEnvVariablePriority(EnvPriority.SET);
         mMockListener.testLog(
                 EasyMock.eq("sandbox-global-config"),
-                EasyMock.eq(LogDataType.XML),
+                EasyMock.eq(LogDataType.HARNESS_CONFIG),
                 EasyMock.anyObject());
         CommandResult result = new CommandResult();
         result.setStatus(CommandStatus.SUCCESS);
@@ -162,7 +162,7 @@ public class TradefedSandboxTest {
         mMockRunUtil.setEnvVariablePriority(EnvPriority.SET);
         mMockListener.testLog(
                 EasyMock.eq("sandbox-global-config"),
-                EasyMock.eq(LogDataType.XML),
+                EasyMock.eq(LogDataType.HARNESS_CONFIG),
                 EasyMock.anyObject());
         CommandResult result = new CommandResult();
         result.setStatus(CommandStatus.FAILED);
@@ -204,7 +204,7 @@ public class TradefedSandboxTest {
         mMockRunUtil.setEnvVariablePriority(EnvPriority.SET);
         mMockListener.testLog(
                 EasyMock.eq("sandbox-global-config"),
-                EasyMock.eq(LogDataType.XML),
+                EasyMock.eq(LogDataType.HARNESS_CONFIG),
                 EasyMock.anyObject());
         CommandResult result = new CommandResult();
         result.setStatus(CommandStatus.FAILED);
