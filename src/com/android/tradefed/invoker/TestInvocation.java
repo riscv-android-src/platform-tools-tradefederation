@@ -364,6 +364,10 @@ public class TestInvocation implements ITestInvocation {
                             listener);
                 }
             }
+            // Capture last logcat before releasing the device.
+            for (ITestDevice device : context.getDevices()) {
+                invocationPath.reportLogs(device, listener, Stage.TEARDOWN);
+            }
             mStatus = "done running tests";
             CurrentInvocation.setActionInProgress(ActionInProgress.FREE_RESOURCES);
             // Track the timestamp when we are done with devices
@@ -380,9 +384,6 @@ public class TestInvocation implements ITestInvocation {
             try {
                 // Clean up host.
                 invocationPath.doCleanUp(context, config, exception);
-                for (ITestDevice device : context.getDevices()) {
-                    invocationPath.reportLogs(device, listener, Stage.TEARDOWN);
-                }
                 if (mStopCause != null) {
                     String message =
                             String.format(
