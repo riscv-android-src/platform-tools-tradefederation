@@ -507,7 +507,7 @@ public class ResultAggregator extends CollectingTestListener {
     }
 
     private void saveEventsLog(File eventsLog, String key) {
-        if (eventsLog != null && mLogSaver != null) {
+        if (eventsLog != null && eventsLog.length() > 0 && mLogSaver != null) {
             try (FileInputStreamSource source = new FileInputStreamSource(eventsLog, true)) {
                 LogFile logged =
                         mLogSaver.saveLogData(
