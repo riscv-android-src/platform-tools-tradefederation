@@ -265,9 +265,9 @@ public class ArtRunTest implements IRemoteTest, IAbiReceiver, ITestFilterReceive
 
             if (mRunTestName.contains("-checker-")) {
                 // not particularly reliable way of constructing a temporary dir
-                String cfgPathDir =
+                String tmpCheckerDir =
                         String.format("/data/local/tmp/%s", mRunTestName.replaceAll("/", "-"));
-                String mkdirCmd = String.format("mkdir -p \"%s\"", cfgPathDir);
+                String mkdirCmd = String.format("mkdir -p \"%s\"", tmpCheckerDir);
                 CommandResult mkdirResult = mDevice.executeShellV2Command(mkdirCmd);
                 if (mkdirResult.getStatus() != CommandStatus.SUCCESS) {
                     String stderr = mkdirResult.getStderr();
@@ -277,11 +277,12 @@ public class ArtRunTest implements IRemoteTest, IAbiReceiver, ITestFilterReceive
                     return;
                 }
 
-                String cfgPath = cfgPathDir + "/graph.cfg";
+                String cfgPath = tmpCheckerDir + "/graph.cfg";
+                String oatPath = tmpCheckerDir + "/output.oat";
                 String dex2oatCmd =
                         String.format(
-                                "dex2oat --dex-file=%s --oat-file=/dev/null --dump-cfg=%s -j1",
-                                mClasspath.get(0), cfgPath);
+                                "dex2oat --dex-file=%s --oat-file=%s --dump-cfg=%s -j1",
+                                mClasspath.get(0), oatPath, cfgPath);
                 CommandResult dex2oatResult = mDevice.executeShellV2Command(dex2oatCmd);
                 if (dex2oatResult.getStatus() != CommandStatus.SUCCESS) {
                     String stderr = dex2oatResult.getStderr();
@@ -338,6 +339,9 @@ public class ArtRunTest implements IRemoteTest, IAbiReceiver, ITestFilterReceive
                             }
                         }
                     }
+
+                    // TODO(b/162408889): Clean up files on device (i.e. remove `tmpCheckerDir`)
+                    // after running the Checker test.
                 } catch (IOException e) {
                     listener.testFailed(testId, "Error unpacking test jar");
                     CLog.e("Jar unpacking failed with exception %s", e);
