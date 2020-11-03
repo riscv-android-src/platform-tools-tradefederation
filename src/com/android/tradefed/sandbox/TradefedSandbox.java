@@ -181,7 +181,7 @@ public class TradefedSandbox implements ISandbox {
             // Log the configuration used to run
             try (InputStreamSource configFile =
                     new FileInputStreamSource(mSerializedConfiguration)) {
-                logger.testLog("sandbox-config", LogDataType.XML, configFile);
+                logger.testLog("sandbox-config", LogDataType.HARNESS_CONFIG, configFile);
             }
             try (InputStreamSource contextFile = new FileInputStreamSource(mSerializedContext)) {
                 logger.testLog("sandbox-context", LogDataType.PB, contextFile);
@@ -189,11 +189,11 @@ public class TradefedSandbox implements ISandbox {
             // Log stdout and stderr
             if (mStdoutFile != null) {
                 try (InputStreamSource sourceStdOut = new FileInputStreamSource(mStdoutFile)) {
-                    logger.testLog("sandbox-stdout", LogDataType.TEXT, sourceStdOut);
+                    logger.testLog("sandbox-stdout", LogDataType.HARNESS_STD_LOG, sourceStdOut);
                 }
             }
             try (InputStreamSource sourceStdErr = new FileInputStreamSource(mStderrFile)) {
-                logger.testLog("sandbox-stderr", LogDataType.TEXT, sourceStdErr);
+                logger.testLog("sandbox-stderr", LogDataType.HARNESS_STD_LOG, sourceStdErr);
             }
             // Collect heap dump if any
             logAndCleanHeapDump(mHeapDump, logger);
@@ -360,7 +360,7 @@ public class TradefedSandbox implements ISandbox {
                     QuotationAwareTokenizer.tokenizeLine(commandLine, /* No Logging */ false);
             mGlobalConfig = dumpGlobalConfig(config, new HashSet<>());
             try (InputStreamSource source = new FileInputStreamSource(mGlobalConfig)) {
-                listener.testLog("sandbox-global-config", LogDataType.XML, source);
+                listener.testLog("sandbox-global-config", LogDataType.HARNESS_CONFIG, source);
             }
             DumpCmd mode = DumpCmd.RUN_CONFIG;
             if (config.getCommandOptions().shouldUseSandboxTestMode()) {
@@ -386,7 +386,8 @@ public class TradefedSandbox implements ISandbox {
                     File parentConfig = handleChildMissingConfig(args);
                     if (parentConfig != null) {
                         try (InputStreamSource source = new FileInputStreamSource(parentConfig)) {
-                            listener.testLog("sandbox-parent-config", LogDataType.XML, source);
+                            listener.testLog(
+                                    "sandbox-parent-config", LogDataType.HARNESS_CONFIG, source);
                         }
                         try {
                             mSerializedConfiguration =
