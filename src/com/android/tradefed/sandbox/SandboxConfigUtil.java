@@ -20,6 +20,7 @@ import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.proxy.AutomatedReporters;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.sandbox.SandboxConfigDump.DumpCmd;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
@@ -59,7 +60,8 @@ public class SandboxConfigUtil {
             throws SandboxConfigurationException, IOException {
         if (Strings.isNullOrEmpty(classpath)) {
             throw new SandboxConfigurationException(
-                    "Something went wrong with the sandbox setup, classpath was empty.");
+                    "Something went wrong with the sandbox setup, classpath was empty.",
+                    InfraErrorIdentifier.INTERNAL_CONFIG_ERROR);
         }
         runUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
         runUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
@@ -104,7 +106,8 @@ public class SandboxConfigUtil {
                     String.format(" Timed out after %s.", TimeUtil.formatElapsedTime(DUMP_TIMEOUT));
         }
         errorMessage += String.format(" stderr: %s", result.getStderr());
-        throw new SandboxConfigurationException(errorMessage);
+        throw new SandboxConfigurationException(
+                errorMessage, InfraErrorIdentifier.INTERNAL_CONFIG_ERROR);
     }
 
     /**
