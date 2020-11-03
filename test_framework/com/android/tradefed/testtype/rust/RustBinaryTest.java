@@ -16,8 +16,6 @@
 
 package com.android.tradefed.testtype.rust;
 
-import static com.android.tradefed.testtype.coverage.CoverageOptions.Toolchain.GCOV;
-
 import com.android.ddmlib.FileListingService;
 import com.android.ddmlib.IShellOutputReceiver;
 import com.android.tradefed.config.IConfiguration;
@@ -26,14 +24,11 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.device.metric.GcovCodeCoverageCollector;
-import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.IDeviceTest;
-import com.android.tradefed.testtype.coverage.CoverageOptions;
 
 import java.io.File;
 import java.util.HashMap;
@@ -219,43 +214,10 @@ public class RustBinaryTest extends RustTestBase implements IDeviceTest, IConfig
             return;
         }
 
-        // Insert the coverage listener if code coverage collection is enabled.
-        listener = addGcovCoverageListenerIfEnabled(testInfo.getContext(), listener);
-
         CLog.d("To run tests in directory " + testPath);
 
         if (!doRunAllTestsInSubdirectory(testPath, mDevice, listener)) {
             wrongTestPath("No test found under ", testPath, listener);
         }
-    }
-
-    /**
-     * Returns the {@link CoverageOptions} for this test, if it exists. Otherwise returns a default
-     * {@link CoverageOptions} object with all coverage disabled.
-     */
-    protected CoverageOptions getCoverageOptions() {
-        if (mConfiguration != null) {
-            return mConfiguration.getCoverageOptions();
-        }
-        return new CoverageOptions();
-    }
-
-    /**
-     * Adds a listener to pull native code coverage measurements from the device after the test is
-     * complete if coverage is enabled, otherwise returns the same listener.
-     *
-     * @param listener the current chain of listeners
-     * @return a native coverage listener if coverage is enabled, otherwise the original listener
-     */
-    private ITestInvocationListener addGcovCoverageListenerIfEnabled(
-            IInvocationContext context, ITestInvocationListener listener) {
-        CoverageOptions options = getCoverageOptions();
-
-        if (options.isCoverageEnabled() && options.getCoverageToolchains().contains(GCOV)) {
-            GcovCodeCoverageCollector nativeListener = new GcovCodeCoverageCollector();
-            nativeListener.setConfiguration(mConfiguration);
-            listener = nativeListener.init(context, listener);
-        }
-        return listener;
     }
 }
