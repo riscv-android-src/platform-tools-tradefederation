@@ -143,7 +143,7 @@ public class GTestResultParser extends MultiLineReceiver {
         private String mTestName = null;
         private String mTestClass = null;
         private StringBuilder mStackTrace = null;
-        @SuppressWarnings("unused")
+        private long mStartTimeMs;
         private Long mRunTime = null;
 
         /** Returns whether expected values have been parsed
@@ -575,6 +575,7 @@ public class GTestResultParser extends MultiLineReceiver {
         TestResult testResult = getCurrentTestResult();
         testResult.mTestClass = parsedResults.mTestClassName;
         testResult.mTestName = parsedResults.mTestName;
+        testResult.mStartTimeMs = System.currentTimeMillis();
         TestDescription testId = null;
         if (getTestClass(testResult) !=null && testResult.mTestName !=null) {
             testId = new TestDescription(getTestClass(testResult), testResult.mTestName);
@@ -585,7 +586,7 @@ public class GTestResultParser extends MultiLineReceiver {
         }
 
         for (ITestInvocationListener listener : mTestListeners) {
-            listener.testStarted(testId);
+            listener.testStarted(testId, testResult.mStartTimeMs);
         }
         setTestStarted();
     }
@@ -622,6 +623,9 @@ public class GTestResultParser extends MultiLineReceiver {
             } catch (NumberFormatException e) {
                 CLog.e("Test run time value is invalid, received: %s", parsedResults.mTestRunTime);
             }
+        } else {
+            CLog.d("No runtime for %s, defaulting to 0ms.", testId);
+            testResult.mRunTime = 0L;
         }
 
         // Check that the test result is for the same test/class we're expecting it to be for
@@ -664,9 +668,9 @@ public class GTestResultParser extends MultiLineReceiver {
 
         // For all cases (pass or fail), we ultimately need to report test has ended
         HashMap<String, Metric> emptyMap = new HashMap<>();
+        long endTimeMs = testResult.mStartTimeMs + testResult.mRunTime;
         for (ITestInvocationListener listener : mTestListeners) {
-            // @TODO: Add reporting of test run time to ITestInvocationListener
-            listener.testEnded(testId, emptyMap);
+            listener.testEnded(testId, endTimeMs, emptyMap);
         }
 
         setTestEnded();
