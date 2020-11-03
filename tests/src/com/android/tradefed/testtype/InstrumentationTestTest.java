@@ -26,9 +26,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
@@ -46,9 +44,7 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.device.metric.GcovCodeCoverageCollector;
 import com.android.tradefed.device.metric.IMetricCollector;
-import com.android.tradefed.device.metric.JavaCodeCoverageCollector;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
@@ -59,7 +55,6 @@ import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLifeCycleReceiver;
 import com.android.tradefed.result.InputStreamSource;
-import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
@@ -751,53 +746,6 @@ public class InstrumentationTestTest {
         inOrder.verifyNoMoreInteractions();
     }
 
-    /** Verify that all tests are re-run when there is a failure during a coverage run. */
-    @Test
-    public void testRun_mergedCoverage()
-            throws ConfigurationException, DeviceNotAvailableException {
-        mInstrumentationTest.setRerunMode(true);
-        mInstrumentationTest.setMergeCoverageMeasurements(true);
-        mCoverageOptionsSetter.setOptionValue("coverage", "true");
-        mCoverageOptionsSetter.setOptionValue("coverage-toolchain", "JACOCO");
-
-        // Mock collected tests
-        RunInstrumentationTestsAnswer runTests =
-                (runner, listener) -> {
-                    // perform call back on listener to show run of two tests
-                    listener.testRunStarted(TEST_PACKAGE_VALUE, 2);
-                    listener.testStarted(TEST1);
-                    listener.testEnded(TEST1, EMPTY_STRING_MAP);
-                    listener.testStarted(TEST2);
-                    listener.testEnded(TEST2, EMPTY_STRING_MAP);
-                    listener.testRunEnded(1, EMPTY_STRING_MAP);
-                    return true;
-                };
-
-        doAnswer(runTests)
-                .when(mMockTestDevice)
-                .runInstrumentationTests(
-                        any(IRemoteAndroidTestRunner.class), any(ITestLifeCycleReceiver.class));
-        doReturn(true).when(mMockTestDevice).enableAdbRoot();
-        doReturn("").when(mMockTestDevice).executeShellCommand(anyString());
-
-        mInstrumentationTest.run(mTestInfo, mMockListener);
-
-        InOrder inOrder = Mockito.inOrder(mMockListener);
-        inOrder.verify(mMockListener)
-                .testRunStarted(eq(TEST_PACKAGE_VALUE), eq(2), anyInt(), anyLong());
-        inOrder.verify(mMockListener).testStarted(eq(TEST1), anyLong());
-        inOrder.verify(mMockListener).testEnded(eq(TEST1), anyLong(), eq(EMPTY_STRING_MAP));
-        inOrder.verify(mMockListener).testStarted(eq(TEST2), anyLong());
-        inOrder.verify(mMockListener).testEnded(eq(TEST2), anyLong(), eq(EMPTY_STRING_MAP));
-        inOrder.verify(mMockListener).testRunEnded(1, EMPTY_STRING_MAP);
-        inOrder.verify(mMockListener)
-                .testRunStarted(eq("mergeCoverageMeasurements"), anyInt(), anyInt(), anyLong());
-        inOrder.verify(mMockListener)
-                .testLog(eq("merged_runtime_coverage"), eq(LogDataType.COVERAGE), any());
-        inOrder.verify(mMockListener).testRunEnded(anyLong(), eq(EMPTY_STRING_MAP));
-        inOrder.verifyNoMoreInteractions();
-    }
-
     /** Test the reboot before re-run option. */
     @Test
     public void testRun_rebootBeforeReRun() throws DeviceNotAvailableException {
@@ -1119,39 +1067,6 @@ public class InstrumentationTestTest {
                                 "Instrumentation run failed due to 'Process crashed.'",
                                 FailureStatus.TEST_FAILURE));
         inOrder.verify(mMockListener).testRunEnded(1, EMPTY_STRING_MAP);
-    }
-
-    @Test
-    public void testAddCoverageListener_enabledAndFlushes() throws Exception {
-        mCoverageOptionsSetter.setOptionValue("coverage", "true");
-        mCoverageOptionsSetter.setOptionValue("coverage-toolchain", "GCOV");
-        mCoverageOptionsSetter.setOptionValue("coverage-toolchain", "JACOCO");
-
-        doReturn(true).when(mMockTestDevice).isAdbRoot();
-        doReturn("").when(mMockTestDevice).executeShellCommand("ps -e");
-        doReturn("").when(mMockTestDevice).executeShellCommand("pm list packages -a");
-
-        ITestInvocationListener listener =
-                mInstrumentationTest.addJavaCoverageListenerIfEnabled(mTestInfo, mMockListener);
-        assertThat(listener).isInstanceOf(JavaCodeCoverageCollector.class);
-
-        listener = mInstrumentationTest.addGcovCoverageListenerIfEnabled(mTestInfo, mMockListener);
-        assertThat(listener).isInstanceOf(GcovCodeCoverageCollector.class);
-
-        // Ensure that a native coverage flush was executed.
-        verify(mMockTestDevice).executeShellCommand("kill -37 -1");
-    }
-
-    @Test
-    public void testAddCoverageListener_disabled() throws ConfigurationException {
-        mCoverageOptionsSetter.setOptionValue("coverage", "false");
-
-        ITestInvocationListener listener =
-                mInstrumentationTest.addJavaCoverageListenerIfEnabled(mTestInfo, mMockListener);
-        assertThat(listener).isSameInstanceAs(mMockListener);
-
-        listener = mInstrumentationTest.addGcovCoverageListenerIfEnabled(mTestInfo, mMockListener);
-        assertThat(listener).isSameInstanceAs(mMockListener);
     }
 
     /** Test normal run scenario when {@link IMetricCollector} are specified. */
