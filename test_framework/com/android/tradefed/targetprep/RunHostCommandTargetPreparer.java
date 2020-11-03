@@ -233,8 +233,8 @@ public class RunHostCommandTargetPreparer extends BaseTargetPreparer
             switch (result.getStatus()) {
                 case SUCCESS:
                     CLog.i(
-                            "Command %s finished successfully, stdout = [%s].",
-                            command, result.getStdout());
+                            "Command %s finished successfully, stdout = [%s], stderr = [%s].",
+                            command, result.getStdout(), result.getStderr());
                     break;
                 case FAILED:
                     throw new TargetSetupError(
@@ -244,11 +244,15 @@ public class RunHostCommandTargetPreparer extends BaseTargetPreparer
                             device.getDeviceDescriptor());
                 case TIMED_OUT:
                     throw new TargetSetupError(
-                            String.format("Command %s timed out.", command),
+                            String.format(
+                                    "Command %s timed out, stdout = [%s], stderr = [%s].",
+                                    command, result.getStdout(), result.getStderr()),
                             device.getDeviceDescriptor());
                 case EXCEPTION:
                     throw new TargetSetupError(
-                            String.format("Exception occurred when running command %s.", command),
+                            String.format(
+                                    "Exception occurred when running command %s, stdout = [%s], stderr = [%s].",
+                                    command, result.getStdout(), result.getStderr()),
                             device.getDeviceDescriptor());
             }
         }
