@@ -483,6 +483,10 @@ public abstract class ProtoResultReporter
 
     @Override
     public final void logAssociation(String dataName, LogFile logFile) {
+        if (mLatestChild == null || mLatestChild.isEmpty()) {
+            CLog.w("Skip logging '%s' logAssociation called out of sequence.", dataName);
+            return;
+        }
         TestRecord.Builder current = mLatestChild.peek();
         Map<String, Any> fullmap = new HashMap<>();
         fullmap.putAll(current.getArtifactsMap());

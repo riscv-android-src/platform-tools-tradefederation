@@ -52,6 +52,16 @@ public class DependenciesResolver
     @Option(name = "dependency", description = "The set of dependency to provide for the test")
     private Set<File> mDependencies = new LinkedHashSet<>();
 
+    // TODO(b/157936948): Remove those three options when they are no longer injected
+    @Option(name = "hostname")
+    private String mHostName = null;
+
+    @Option(name = "protocol")
+    private String mProtocol = null;
+
+    @Option(name = "use-build-api ")
+    private boolean mUseBuildApi = true;
+
     private File mTestsDir;
     private IInvocationContext mInvocationContext;
 
@@ -61,6 +71,7 @@ public class DependenciesResolver
         IDeviceBuildInfo build =
                 new DeviceBuildInfo(
                         mBuildId, String.format("%s-%s-%s", mBranch, mBuildOs, mBuildFlavor));
+        build.setBuildBranch(mBranch);
         build.setBuildFlavor(mBuildFlavor);
         for (File dependency : mDependencies) {
             File f =

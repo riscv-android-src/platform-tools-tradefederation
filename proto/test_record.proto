@@ -120,6 +120,13 @@ enum FailureStatus {
   NOT_EXECUTED = 30;
   // System under test became unavailable and never came back available again.
   LOST_SYSTEM_UNDER_TEST = 35;
+  // Represent an error caused by an unmet dependency that the current infra
+  // depends on. For example: Unfound resources, Device error, Hardware issue
+  // (lab host, device wear), Underlying tools
+  DEPENDENCY_ISSUE = 40;
+  // Represent an error caused by the input from the end user. For example:
+  // Unexpected option combination, Configuration error, Bad flags
+  CUSTOMER_ISSUE = 41;
 }
 
 // A context to DebugInfo that allows to optionally specify some debugging context.

@@ -24,9 +24,11 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
@@ -130,8 +132,9 @@ public class RustBinaryHostTest extends RustTestBase implements IBuildReceiver {
         commandLine.add(file.getAbsolutePath());
         CLog.d("Run single Rust File: " + file.getAbsolutePath());
 
-        // Add all the other options
+        // Add all the other options and include/exclude filters.
         commandLine.addAll(mTestOptions);
+        addFiltersToArgs(commandLine);
 
         List<String> listCommandLine = new ArrayList<>(commandLine);
         listCommandLine.add("--list");
@@ -162,11 +165,15 @@ public class RustBinaryHostTest extends RustTestBase implements IBuildReceiver {
                 getRunUtil().runTimedCmd(mTestTimeout, commandLine.toArray(new String[0]));
         long testTimeMs = System.currentTimeMillis() - startTimeMs;
         if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
-            listener.testRunFailed("Fail to run: " + file.getAbsolutePath());
-            CLog.e(
-                    "Something went wrong when running the rust binary:\nstdout: "
-                            + "%s\nstderr:%s",
-                    result.getStdout(), result.getStderr());
+            String message =
+                    String.format(
+                            "Something went wrong when running the rust binary:Exit Code: %s"
+                                    + "\nstdout: %s\nstderr: %s",
+                            result.getExitCode(), result.getStdout(), result.getStderr());
+            FailureDescription failure =
+                    FailureDescription.create(message, FailureStatus.TEST_FAILURE);
+            listener.testRunFailed(failure);
+            CLog.e(message);
         }
 
         File resultFile = null;

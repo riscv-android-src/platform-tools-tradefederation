@@ -29,6 +29,7 @@ import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.util.CommandResult;
@@ -158,8 +159,14 @@ public class ExecutableHostTest extends ExecutableBaseTest {
             try {
                 getTestInfo().getDevice().waitForDeviceAvailable();
             } catch (DeviceNotAvailableException e) {
-                listener.testRunFailed(
-                        String.format("Device became unavailable after %s.", binaryPath));
+                FailureDescription failure =
+                        FailureDescription.create(
+                                        String.format(
+                                                "Device became unavailable after %s.", binaryPath),
+                                        FailureStatus.LOST_SYSTEM_UNDER_TEST)
+                                .setErrorIdentifier(DeviceErrorIdentifier.DEVICE_UNAVAILABLE)
+                                .setCause(e);
+                listener.testRunFailed(failure);
                 throw e;
             }
         }

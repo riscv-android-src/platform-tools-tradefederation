@@ -22,14 +22,18 @@ import static org.junit.Assert.assertTrue;
 import com.android.ddmlib.IDevice;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
+import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.invoker.ExecutionFiles;
 import com.android.tradefed.invoker.TestInformation;
+import com.android.tradefed.util.FileUtil;
 
 import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+
+import java.io.File;
 
 /** Unit tests for {@link BootstrapBuildProvider}. */
 @RunWith(JUnit4.class)
@@ -68,6 +72,34 @@ public class BootstrapBuildProviderTest {
             EasyMock.verify(mMockDevice);
         } finally {
             mProvider.cleanUp(res);
+        }
+    }
+
+    @Test
+    public void testGetBuild_add_extra_file() throws Exception {
+        EasyMock.expect(mMockDevice.getBuildId()).andReturn("5");
+        EasyMock.expect(mMockDevice.getIDevice()).andReturn(EasyMock.createMock(IDevice.class));
+        EasyMock.expect(mMockDevice.waitForDeviceShell(EasyMock.anyLong())).andReturn(true);
+        EasyMock.expect(mMockDevice.getProperty(EasyMock.anyObject())).andStubReturn("property");
+        EasyMock.expect(mMockDevice.getProductVariant()).andStubReturn("variant");
+        EasyMock.expect(mMockDevice.getBuildFlavor()).andStubReturn("flavor");
+        EasyMock.expect(mMockDevice.getBuildAlias()).andStubReturn("alias");
+        EasyMock.replay(mMockDevice);
+        OptionSetter setter = new OptionSetter(mProvider);
+        File tmpDir = FileUtil.createTempDir("tmp");
+        File file_1 = new File(tmpDir, "sys.img");
+        setter.setOptionValue("extra-file", "file_1", file_1.getAbsolutePath());
+        IBuildInfo res = mProvider.getBuild(mMockDevice);
+        assertNotNull(res);
+        try {
+            assertTrue(res instanceof IDeviceBuildInfo);
+            // Ensure tests dir is never null
+            assertTrue(((IDeviceBuildInfo) res).getTestsDir() != null);
+            assertEquals(((IDeviceBuildInfo) res).getFile("file_1"), file_1);
+            EasyMock.verify(mMockDevice);
+        } finally {
+            mProvider.cleanUp(res);
+            FileUtil.recursiveDelete(tmpDir);
         }
     }
 

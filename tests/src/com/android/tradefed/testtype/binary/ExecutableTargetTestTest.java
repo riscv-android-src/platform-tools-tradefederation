@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.testtype.binary;
 
+import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.eq;
 
 import com.android.tradefed.config.ConfigurationException;
@@ -24,8 +25,12 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
+import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.util.CommandResult;
 
 import org.junit.Before;
@@ -35,6 +40,8 @@ import org.junit.runners.JUnit4;
 import org.mockito.Mockito;
 
 import java.util.HashMap;
+import java.util.Collection;
+import java.util.Map;
 
 /** Unit tests for {@link com.android.tradefed.testtype.binary.ExecutableTargetTest}. */
 @RunWith(JUnit4.class)
@@ -45,7 +52,6 @@ public class ExecutableTargetTestTest {
     private final String testCmd2 = "cmd2";
     private final String testName3 = "testName3";
     private final String testCmd3 = "cmd3";
-    private static final String NO_BINARY_ERROR = "Binary %s does not exist.";
     private static final String ERROR_MESSAGE = "binary returned non-zero exit code.";
 
     private ITestInvocationListener mListener = null;
@@ -133,12 +139,20 @@ public class ExecutableTargetTestTest {
         mExecutableTargetTest.run(mTestInfo, mListener);
         // run cmd1 test
         Mockito.verify(mListener, Mockito.times(0)).testRunStarted(eq(testName1), eq(1));
-        Mockito.verify(mListener, Mockito.times(1))
-                .testRunFailed(String.format(NO_BINARY_ERROR, testCmd1));
+        FailureDescription failure1 =
+                FailureDescription.create(
+                                String.format(ExecutableBaseTest.NO_BINARY_ERROR, testCmd1),
+                                FailureStatus.TEST_FAILURE)
+                        .setErrorIdentifier(InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
+        Mockito.verify(mListener, Mockito.times(1)).testRunFailed(failure1);
         // run cmd2 test
         Mockito.verify(mListener, Mockito.times(0)).testRunStarted(eq(testName2), eq(1));
-        Mockito.verify(mListener, Mockito.times(1))
-                .testRunFailed(String.format(NO_BINARY_ERROR, testCmd2));
+        FailureDescription failure2 =
+                FailureDescription.create(
+                                String.format(ExecutableBaseTest.NO_BINARY_ERROR, testCmd2),
+                                FailureStatus.TEST_FAILURE)
+                        .setErrorIdentifier(InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
+        Mockito.verify(mListener, Mockito.times(1)).testRunFailed(failure2);
         Mockito.verify(mListener, Mockito.times(2))
                 .testRunEnded(
                         Mockito.anyLong(),
@@ -357,5 +371,32 @@ public class ExecutableTargetTestTest {
                 .testEnded(
                         Mockito.eq(testDescription3),
                         Mockito.eq(new HashMap<String, MetricMeasurement.Metric>()));
+    }
+
+    /** Test split() for sharding */
+    @Test
+    public void testShard_Split() throws ConfigurationException {
+        mExecutableTargetTest = new ExecutableTargetTest();
+        // Set test commands
+        OptionSetter setter = new OptionSetter(mExecutableTargetTest);
+        setter.setOptionValue("test-command-line", testName1, testCmd1);
+        setter.setOptionValue("test-command-line", testName2, testCmd2);
+        setter.setOptionValue("test-command-line", testName3, testCmd3);
+        // Split the shard.
+        Collection<IRemoteTest> testShards = mExecutableTargetTest.split();
+        // Test the size of the test Shard.
+        assertEquals(3, testShards.size());
+        // Test the command of each shard.
+        for (IRemoteTest test : testShards) {
+            Map<String, String> TestCommands = ((ExecutableTargetTest) test).getTestCommands();
+            String cmd1 = TestCommands.get(testName1);
+            if (cmd1 != null) assertEquals(testCmd1, cmd1);
+            String cmd2 = TestCommands.get(testName2);
+            if (cmd2 != null) assertEquals(testCmd2, cmd2);
+            String cmd3 = TestCommands.get(testName3);
+            if (cmd3 != null) assertEquals(testCmd3, cmd3);
+            // The test command should equals to one of them.
+            assertEquals(true, cmd1 != null || cmd2 != null || cmd3 != null);
+        }
     }
 }

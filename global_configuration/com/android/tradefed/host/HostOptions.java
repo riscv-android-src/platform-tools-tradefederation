@@ -19,9 +19,14 @@ package com.android.tradefed.host;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
+import com.android.tradefed.log.LogUtil.CLog;
 
 import java.io.File;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
 import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -96,6 +101,11 @@ public class HostOptions implements IHostOptions {
             description = "Whether to use zip64 format in partial download.")
     private boolean mUseZip64InPartialDownload = false;
 
+    @Option(
+            name = "use-network-interface",
+            description = "The network interface used to connect to test devices.")
+    private String mNetworkInterface = null;
+
     /** {@inheritDoc} */
     @Override
     public Integer getConcurrentFlasherLimit() {
@@ -166,5 +176,38 @@ public class HostOptions implements IHostOptions {
     @Override
     public boolean getUseZip64InPartialDownload() {
         return mUseZip64InPartialDownload;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public String getNetworkInterface() {
+        if (mNetworkInterface != null) {
+            return mNetworkInterface;
+        }
+
+        try {
+            for (Enumeration<NetworkInterface> enNetI = NetworkInterface.getNetworkInterfaces();
+                    enNetI.hasMoreElements(); ) {
+                NetworkInterface netI = enNetI.nextElement();
+                if (!netI.isUp()) {
+                    continue;
+                }
+                for (Enumeration<InetAddress> enumIpAddr = netI.getInetAddresses();
+                        enumIpAddr.hasMoreElements(); ) {
+                    InetAddress inetAddress = enumIpAddr.nextElement();
+                    if (!inetAddress.isAnyLocalAddress()
+                            && !inetAddress.isLinkLocalAddress()
+                            && !inetAddress.isLoopbackAddress()
+                            && !inetAddress.isMulticastAddress()) {
+                        mNetworkInterface = netI.getName();
+                        return mNetworkInterface;
+                    }
+                }
+            }
+        } catch (SocketException e) {
+            CLog.w("Failed to get host's active interface");
+            CLog.w(e);
+        }
+        return null;
     }
 }

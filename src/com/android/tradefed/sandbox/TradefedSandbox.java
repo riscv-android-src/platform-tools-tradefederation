@@ -124,8 +124,17 @@ public class TradefedSandbox implements ISandbox {
         long timeout = config.getCommandOptions().getInvocationTimeout();
         // Allow interruption, subprocess should handle signals itself
         mRunUtil.allowInterrupt(true);
-        CommandResult result =
-                mRunUtil.runTimedCmd(timeout, mStdout, mStderr, mCmdArgs.toArray(new String[0]));
+        CommandResult result = null;
+        try {
+            result =
+                    mRunUtil.runTimedCmd(
+                            timeout, mStdout, mStderr, mCmdArgs.toArray(new String[0]));
+        } catch (RuntimeException interrupted) {
+            CLog.e("Sandbox runtimedCmd threw an exception");
+            CLog.e(interrupted);
+            result = new CommandResult(CommandStatus.EXCEPTION);
+            result.setStdout(StreamUtil.getStackTrace(interrupted));
+        }
 
         boolean failedStatus = false;
         String stderrText;

@@ -46,6 +46,7 @@ public final class ConfigurationYamlParser {
     private static final List<String> REQUIRED_KEYS =
             ImmutableList.of(DESCRIPTION_KEY, DEPENDENCIES_KEY, TESTS_KEY);
     private Set<String> mSeenKeys = new HashSet<>();
+    private boolean mCreatedAsModule = false;
 
     /**
      * Main entry point of the parser to parse a given YAML file into Trade Federation objects.
@@ -53,9 +54,15 @@ public final class ConfigurationYamlParser {
      * @param configDef
      * @param source
      * @param yamlInput
+     * @param createdAsModule
      */
-    public void parse(ConfigurationDef configDef, String source, InputStream yamlInput)
+    public void parse(
+            ConfigurationDef configDef,
+            String source,
+            InputStream yamlInput,
+            boolean createdAsModule)
             throws ConfigurationException {
+        mCreatedAsModule = createdAsModule;
         // We don't support multi-device in YAML
         configDef.setMultiDeviceMode(false);
         Yaml yaml = new Yaml();
@@ -105,7 +112,10 @@ public final class ConfigurationYamlParser {
 
         // Add default configured objects
         LoaderConfiguration loadConfiguration = new LoaderConfiguration();
-        loadConfiguration.setConfigurationDef(configDef).addDependencies(dependencyFiles);
+        loadConfiguration
+                .setConfigurationDef(configDef)
+                .addDependencies(dependencyFiles)
+                .setCreatedAsModule(mCreatedAsModule);
         ServiceLoader<IDefaultObjectLoader> serviceLoader =
                 ServiceLoader.load(IDefaultObjectLoader.class);
         for (IDefaultObjectLoader loader : serviceLoader) {
