@@ -1125,9 +1125,7 @@ public class TestInvocation implements ITestInvocation {
         int countVirtualLost = 0;
         for (Entry<ITestDevice, FreeDeviceState> fds : devicesStates.entrySet()) {
             // TODO: Rely on the FailureStatus for lost devices instead
-            if ((fds.getKey().getIDevice() instanceof TcpDevice
-                            || fds.getKey() instanceof RemoteAndroidDevice
-                            || fds.getKey() instanceof NestedRemoteDevice)
+            if ((fds.getKey().getIDevice() instanceof TcpDevice)
                     && exception instanceof DeviceNotAvailableException) {
                 countVirtualLost++;
                 continue;
@@ -1136,7 +1134,13 @@ public class TestInvocation implements ITestInvocation {
                 continue;
             }
             if (FreeDeviceState.UNAVAILABLE.equals(fds.getValue())) {
-                countPhysicalLost++;
+                // Remote devices are not seen as stub, but are still virtual devices
+                if (fds.getKey() instanceof RemoteAndroidDevice
+                        || fds.getKey() instanceof NestedRemoteDevice) {
+                    countVirtualLost++;
+                } else {
+                    countPhysicalLost++;
+                }
             }
         }
         if (countPhysicalLost > 0) {
