@@ -21,8 +21,10 @@ import com.android.tradefed.config.OptionClass;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /** Class that can receive and provide options to a {@link ISandbox}. */
 @OptionClass(alias = "sandbox", global_namespace = true)
@@ -35,10 +37,9 @@ public final class SandboxOptions {
     public static final String PARENT_PREPARER_CONFIG = "parent-preparer-config";
     public static final String WAIT_FOR_EVENTS_TIMEOUT = "wait-for-events";
     public static final String ENABLE_DEBUG_THREAD = "sandbox-debug-thread";
-    public static final String EXTRA_BRANCH_TARGET = "extra-branch-target";
-    public static final String EXTRA_BUILD_ID_TARGET = "extra-build-id-target";
     private static final String SANDBOX_JAVA_OPTIONS = "sandbox-java-options";
     private static final String SANDBOX_ENV_VARIABLE_OPTIONS = "sandbox-env-variable";
+    private static final String SANDBOX_TESTS_ZIPS_OPTIONS = "sandbox-tests-zips";
 
     @Option(
         name = TF_LOCATION,
@@ -89,20 +90,6 @@ public final class SandboxOptions {
     private boolean mEnableDebugThread = false;
 
     @Option(
-            name = EXTRA_BRANCH_TARGET,
-            description =
-                    "Which branch to target to download the sandbox extras. Default will be "
-                            + "current target branch.")
-    private String mExtraBranchTarget = null;
-
-    @Option(
-            name = EXTRA_BUILD_ID_TARGET,
-            description =
-                    "Which build-id to target to download the sandbox extras. Default will be "
-                            + "current target build-id.")
-    private String mExtraBuildIdTarget = null;
-
-    @Option(
             name = SANDBOX_JAVA_OPTIONS,
             description = "Pass options for the java process of the sandbox.")
     private List<String> mSandboxJavaOptions = new ArrayList<>();
@@ -111,6 +98,11 @@ public final class SandboxOptions {
             name = SANDBOX_ENV_VARIABLE_OPTIONS,
             description = "Pass environment variable and its value to the sandbox process.")
     private Map<String, String> mSandboxEnvVariable = new LinkedHashMap<>();
+
+    @Option(
+            name = SANDBOX_TESTS_ZIPS_OPTIONS,
+            description = "The set of tests zips to stage during sandboxing.")
+    private Set<String> mSandboxTestsZips = new LinkedHashSet<>();
 
     /**
      * Returns the provided directories containing the Trade Federation version to use for
@@ -155,22 +147,6 @@ public final class SandboxOptions {
         return mEnableDebugThread;
     }
 
-    /**
-     * Returns the branch from which to download the sandbox extras. If null, extras will be
-     * downloaded from the branch under tests.
-     */
-    public String getExtraBranchTarget() {
-        return mExtraBranchTarget;
-    }
-
-    /**
-     * Returns the build-id from which to download the sandbox extras. If null, extras will be
-     * downloaded from the build-id under tests.
-     */
-    public String getExtraBuildIdTarget() {
-        return mExtraBuildIdTarget;
-    }
-
     /** The list of options to pass the java process of the sandbox. */
     public List<String> getJavaOptions() {
         return mSandboxJavaOptions;
@@ -179,5 +155,10 @@ public final class SandboxOptions {
     /** The map of environment variable to pass to the java process of the sandbox. */
     public Map<String, String> getEnvVariables() {
         return mSandboxEnvVariable;
+    }
+
+    /** Returns the set of tests zips to stage for the sandbox. */
+    public Set<String> getTestsZips() {
+        return mSandboxTestsZips;
     }
 }
