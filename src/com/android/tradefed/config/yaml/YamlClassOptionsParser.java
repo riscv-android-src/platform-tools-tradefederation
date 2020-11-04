@@ -35,28 +35,36 @@ public class YamlClassOptionsParser {
 
     private List<ClassAndOptions> mListClassAndOptions = new ArrayList<>();
 
-    public YamlClassOptionsParser(List<Map<String, Object>> objList) {
-        for (Map<String, Object> objEntry : objList) {
-            for (String classString : objEntry.keySet()) {
+    public YamlClassOptionsParser(List<Object> objList) {
+        for (Object obj : objList) {
+            if (obj instanceof String) {
                 ClassAndOptions classOptions = new ClassAndOptions();
                 mListClassAndOptions.add(classOptions);
-                classOptions.mClass = classString;
+                classOptions.mClass = (String) obj;
+            } else if (obj instanceof Map) {
                 @SuppressWarnings("unchecked")
-                Map<String, Object> map = (Map<String, Object>) objEntry.get(classString);
-                // If there are no option the map is null
-                if (map == null) {
-                    continue;
-                }
-                for (Entry<String, Object> entry : map.entrySet()) {
-                    if (OPTIONS_KEY.equals(entry.getKey())) {
-                        @SuppressWarnings("unchecked")
-                        List<Map<String, Object>> optionMapList =
-                                (List<Map<String, Object>>) entry.getValue();
-                        for (Map<String, Object> optionMap : optionMapList) {
-                            for (Entry<String, Object> optionVal : optionMap.entrySet()) {
-                                // TODO: Support map option
-                                classOptions.mOptions.put(
-                                        optionVal.getKey(), optionVal.getValue().toString());
+                Map<String, Object> objEntry = (Map<String, Object>) obj;
+                for (String classString : objEntry.keySet()) {
+                    ClassAndOptions classOptions = new ClassAndOptions();
+                    mListClassAndOptions.add(classOptions);
+                    classOptions.mClass = classString;
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> map = (Map<String, Object>) objEntry.get(classString);
+                    // If there are no option the map is null
+                    if (map == null) {
+                        continue;
+                    }
+                    for (Entry<String, Object> entry : map.entrySet()) {
+                        if (OPTIONS_KEY.equals(entry.getKey())) {
+                            @SuppressWarnings("unchecked")
+                            List<Map<String, Object>> optionMapList =
+                                    (List<Map<String, Object>>) entry.getValue();
+                            for (Map<String, Object> optionMap : optionMapList) {
+                                for (Entry<String, Object> optionVal : optionMap.entrySet()) {
+                                    // TODO: Support map option
+                                    classOptions.mOptions.put(
+                                            optionVal.getKey(), optionVal.getValue().toString());
+                                }
                             }
                         }
                     }
