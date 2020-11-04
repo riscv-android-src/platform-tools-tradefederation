@@ -95,8 +95,7 @@ public final class ConfigurationYamlParser {
         Set<String> dependencyFiles = new LinkedHashSet<>();
         if (yamlObjects.containsKey(PRE_SETUP_ACTION_KEY)) {
             @SuppressWarnings("unchecked")
-            List<Map<String, Object>> objList =
-                    (List<Map<String, Object>>) yamlObjects.get(PRE_SETUP_ACTION_KEY);
+            List<Object> objList = (List<Object>) yamlObjects.get(PRE_SETUP_ACTION_KEY);
             YamlClassOptionsParser classAndOptions = new YamlClassOptionsParser(objList);
             mSeenKeys.add(PRE_SETUP_ACTION_KEY);
             convertClassAndOptionsToObjects(
@@ -114,8 +113,7 @@ public final class ConfigurationYamlParser {
         }
         if (yamlObjects.containsKey(TESTS_KEY)) {
             @SuppressWarnings("unchecked")
-            List<Map<String, Object>> objList =
-                    (List<Map<String, Object>>) yamlObjects.get(TESTS_KEY);
+            List<Object> objList = (List<Object>) yamlObjects.get(TESTS_KEY);
             YamlClassOptionsParser runnerInfo = new YamlClassOptionsParser(objList);
             mSeenKeys.add(TESTS_KEY);
             convertClassAndOptionsToObjects(
@@ -123,8 +121,7 @@ public final class ConfigurationYamlParser {
         }
         if (yamlObjects.containsKey(TARGET_PREPARERS_KEY)) {
             @SuppressWarnings("unchecked")
-            List<Map<String, Object>> objList =
-                    (List<Map<String, Object>>) yamlObjects.get(TARGET_PREPARERS_KEY);
+            List<Object> objList = (List<Object>) yamlObjects.get(TARGET_PREPARERS_KEY);
             YamlClassOptionsParser runnerInfo = new YamlClassOptionsParser(objList);
             mSeenKeys.add(TARGET_PREPARERS_KEY);
             convertClassAndOptionsToObjects(
