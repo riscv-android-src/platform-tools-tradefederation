@@ -28,6 +28,7 @@ import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.TextResultReporter;
 import com.android.tradefed.result.suite.SuiteResultReporter;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.PushFilePreparer;
@@ -155,8 +156,7 @@ public class ConfigurationYamlParserTest {
                             new File("tobepushed.txt"));
             // Result reporters aren't set
             List<ITestInvocationListener> listeners = config.getTestInvocationListeners();
-            // TODO: Renable when matching project is updated
-            // assertTrue(listeners.get(0) instanceof TextResultReporter);
+            assertTrue(listeners.get(0) instanceof TextResultReporter);
         }
     }
 
