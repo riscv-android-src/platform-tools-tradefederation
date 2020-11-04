@@ -175,7 +175,10 @@ public class ManagedRemoteDevice extends TestDevice implements ITestLoggerReceiv
         } else {
             CLog.i("GCE AVD has been started: %s", mGceAvd);
             if (GceAvdInfo.GceStatus.BOOT_FAIL.equals(mGceAvd.getStatus())) {
-                throw new TargetSetupError(mGceAvd.getErrors(), getDeviceDescriptor());
+                throw new TargetSetupError(
+                        mGceAvd.getErrors(),
+                        getDeviceDescriptor(),
+                        DeviceErrorIdentifier.FAILED_TO_LAUNCH_GCE);
             }
         }
     }
