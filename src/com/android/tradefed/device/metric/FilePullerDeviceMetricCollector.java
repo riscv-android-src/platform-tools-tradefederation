@@ -212,6 +212,9 @@ public abstract class FilePullerDeviceMetricCollector extends BaseDeviceMetricCo
                 if (device.getIDevice() instanceof StubDevice) {
                     continue;
                 }
+                if (!shouldCollect(device)) {
+                    continue;
+                }
                 try {
                     if (device.pullDir(keyDirectory, tmpDestDir)) {
                         if (mCleanUp) {
