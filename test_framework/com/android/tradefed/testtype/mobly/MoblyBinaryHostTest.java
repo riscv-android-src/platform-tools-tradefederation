@@ -17,7 +17,6 @@ package com.android.tradefed.testtype.mobly;
 
 import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.build.IBuildInfo;
-import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
@@ -166,23 +165,17 @@ public class MoblyBinaryHostTest implements IRemoteTest, IDeviceTest, IBuildRece
     }
 
     private List<File> findParFiles(ITestInvocationListener listener) {
-        File testsDir = null;
-        if (mBuildInfo instanceof IDeviceBuildInfo) {
-            testsDir = ((IDeviceBuildInfo) mBuildInfo).getTestsDir();
-        }
         // TODO(b/159369297): make naming and log message more "mobly".
         List<File> files = new ArrayList<>();
         for (String binaryName : mBinaryNames) {
             File res = null;
             // search tests dir
-            if (testsDir != null) {
-                res = FileUtil.findFile(testsDir, binaryName);
-            }
-            if (res == null) {
+            try {
+                res = mTestInfo.getDependencyFile(binaryName, /* targetFirst */ false);
+                files.add(res);
+            } catch (FileNotFoundException e) {
                 reportFailure(
                         listener, binaryName, "Couldn't find Mobly test binary " + binaryName);
-            } else {
-                files.add(res);
             }
         }
         files.addAll(mBinaries);
