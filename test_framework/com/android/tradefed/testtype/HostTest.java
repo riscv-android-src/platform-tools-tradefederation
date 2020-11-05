@@ -28,6 +28,7 @@ import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -35,6 +36,7 @@ import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.testtype.host.PrettyTestEventLogger;
 import com.android.tradefed.testtype.junit4.CarryDnaeError;
@@ -531,7 +533,8 @@ public class HostTest
                 failureDescription.setFailureStatus(FailureStatus.TEST_FAILURE);
                 listener.testRunFailed(failureDescription);
                 listener.testRunEnded(0L, new HashMap<String, Metric>());
-                throw e;
+                throw new HarnessRuntimeException(
+                        e.getMessage(), e, InfraErrorIdentifier.OPTION_CONFIGURATION_ERROR);
             }
 
             // Add a pretty logger to the events to mark clearly start/end of test cases.
