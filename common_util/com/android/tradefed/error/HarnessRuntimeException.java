@@ -48,7 +48,7 @@ public class HarnessRuntimeException extends RuntimeException implements IHarnes
      * @param cause The {@link IHarnessException} that caused the exception.
      */
     public HarnessRuntimeException(String message, IHarnessException cause) {
-        super(message);
+        super(message, (cause instanceof Throwable) ? (Throwable) cause : null);
         mErrorId = cause.getErrorId();
         mOrigin = cause.getOrigin();
     }
