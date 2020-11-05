@@ -238,10 +238,10 @@ import com.android.tradefed.targetprep.RebootTargetPreparerTest;
 import com.android.tradefed.targetprep.RestartSystemServerTargetPreparerTest;
 import com.android.tradefed.targetprep.RootTargetPreparerTest;
 import com.android.tradefed.targetprep.RunCommandTargetPreparerTest;
-import com.android.tradefed.targetprep.RunOnSecondaryUserTargetPreparerTest;
-import com.android.tradefed.targetprep.RunOnWorkProfileTargetPreparerTest;
 import com.android.tradefed.targetprep.RunHostCommandTargetPreparerTest;
 import com.android.tradefed.targetprep.RunHostScriptTargetPreparerTest;
+import com.android.tradefed.targetprep.RunOnSecondaryUserTargetPreparerTest;
+import com.android.tradefed.targetprep.RunOnWorkProfileTargetPreparerTest;
 import com.android.tradefed.targetprep.StopServicesSetupTest;
 import com.android.tradefed.targetprep.SwitchUserTargetPreparerTest;
 import com.android.tradefed.targetprep.SystemUpdaterDeviceFlasherTest;
@@ -285,6 +285,7 @@ import com.android.tradefed.testtype.NativeStressTestTest;
 import com.android.tradefed.testtype.NoisyDryRunTestTest;
 import com.android.tradefed.testtype.PythonUnitTestResultParserTest;
 import com.android.tradefed.testtype.PythonUnitTestRunnerTest;
+import com.android.tradefed.testtype.TestTimeoutEnforcerTest;
 import com.android.tradefed.testtype.TfTestLauncherTest;
 import com.android.tradefed.testtype.UsbResetTestTest;
 import com.android.tradefed.testtype.binary.ExecutableHostTestTest;
@@ -774,6 +775,7 @@ import org.junit.runners.Suite.SuiteClasses;
     NoisyDryRunTestTest.class,
     PythonUnitTestResultParserTest.class,
     PythonUnitTestRunnerTest.class,
+    TestTimeoutEnforcerTest.class,
     TfTestLauncherTest.class,
     UsbResetTestTest.class,
 
