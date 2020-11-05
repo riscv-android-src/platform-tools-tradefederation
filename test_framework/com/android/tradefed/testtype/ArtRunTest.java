@@ -223,7 +223,7 @@ public class ArtRunTest implements IRemoteTest, IAbiReceiver, ITestFilterReceive
             // Check the output produced by the test.
             if (output != null) {
                 try {
-                    String expectedFileName = String.format("%s-expected.txt", mRunTestName);
+                    String expectedFileName = String.format("%s-expected-stdout.txt", mRunTestName);
                     File expectedFile =
                             testInfo.getDependencyFile(expectedFileName, /* targetFirst */ true);
                     CLog.i("Found expected output for run-test %s: %s", mRunTestName, expectedFile);
@@ -238,7 +238,7 @@ public class ArtRunTest implements IRemoteTest, IAbiReceiver, ITestFilterReceive
                         Patch<String> diff = DiffUtils.diff(expectedLines, outputLines);
                         List<String> unifiedDiff =
                                 DiffUtils.generateUnifiedDiff(
-                                        "expected.txt", "stdout", expectedLines, diff, 3);
+                                        "expected-stdout.txt", "stdout", expectedLines, diff, 3);
                         // Produce a unified diff output for the error message.
                         StringBuilder errorMessage =
                                 new StringBuilder(
