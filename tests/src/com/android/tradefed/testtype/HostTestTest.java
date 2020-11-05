@@ -29,6 +29,7 @@ import com.android.tradefed.config.remote.IRemoteFileResolver.RemoteFileResolver
 import com.android.tradefed.config.remote.IRemoteFileResolver.ResolvedFile;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
@@ -797,8 +798,9 @@ public class HostTestTest extends TestCase {
         try {
             mHostTest.run(mTestInfo, mListener);
             fail("IllegalArgumentException not thrown");
-        } catch (IllegalArgumentException e) {
-            // expected
+        } catch (HarnessRuntimeException expected) {
+            // Expected
+            assertTrue(expected.getCause() instanceof IllegalArgumentException);
         }
     }
 
@@ -811,8 +813,9 @@ public class HostTestTest extends TestCase {
             mHostTest.setClassName("foo");
             mHostTest.run(mTestInfo, mListener);
             fail("IllegalArgumentException not thrown");
-        } catch (IllegalArgumentException e) {
-            // expected
+        } catch (HarnessRuntimeException expected) {
+            // Expected
+            assertTrue(expected.getCause() instanceof IllegalArgumentException);
         }
     }
 
@@ -898,8 +901,9 @@ public class HostTestTest extends TestCase {
             mHostTest.setMethodName("testPass3");
             mHostTest.run(mTestInfo, mListener);
             fail("IllegalArgumentException not thrown");
-        } catch (IllegalArgumentException e) {
-            // expected
+        } catch (HarnessRuntimeException expected) {
+            // Expected
+            assertTrue(expected.getCause() instanceof IllegalArgumentException);
         }
     }
 
@@ -2287,8 +2291,9 @@ public class HostTestTest extends TestCase {
         try {
             mHostTest.run(mTestInfo, mListener);
             fail("Should have thrown an exception");
-        } catch (IllegalArgumentException expected) {
-            // expected
+        } catch (HarnessRuntimeException expected) {
+            // Expected
+            assertTrue(expected.getCause() instanceof IllegalArgumentException);
         }
         EasyMock.verify(mListener);
         assertTrue(
