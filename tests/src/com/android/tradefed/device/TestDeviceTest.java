@@ -70,9 +70,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -2302,6 +2304,38 @@ public class TestDeviceTest extends TestCase {
         injectShellResponse(TestDevice.LIST_APEXES_CMD, output);
         EasyMock.replay(mMockIDevice, mMockStateMonitor);
         Set<ApexInfo> actual = mTestDevice.getActiveApexes();
+        assertEquals(0, actual.size());
+    }
+
+    /** Unit test for {@link TestDevice#getMainlineModuleInfo()}. */
+    public void testGetMainlineModuleInfo() throws Exception {
+        final String output =
+            "ModuleInfo{foo123456 Module NameFoo} packageName: com.android.foo\n"
+                    + "ModuleInfo{bar123456 Module NameBar} packageName: com.android.bar";
+        injectSystemProperty("ro.build.version.sdk", "29");
+        injectSystemProperty(DeviceProperties.BUILD_CODENAME, "REL");
+        injectShellResponse(TestDevice.GET_MODULEINFOS_CMD, output);
+        EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable()).andReturn(mMockIDevice);
+        replayMocks();
+        Set<String> actual = mTestDevice.getMainlineModuleInfo();
+        Set<String> expected = new HashSet<>(Arrays.asList("com.android.foo", "com.android.bar"));
+        assertEquals(2, actual.size());
+        assertEquals(expected, actual);
+    }
+
+    /**
+     * Unit test for {@link TestDevice#getMainlineModuleInfo()}.
+     *
+     * <p>Test bad output.
+     */
+    public void testGetMainlineModuleInfoForBadOutput() throws Exception {
+        final String output = "junk output";
+        injectSystemProperty("ro.build.version.sdk", "29");
+        injectSystemProperty(DeviceProperties.BUILD_CODENAME, "REL");
+        injectShellResponse(TestDevice.GET_MODULEINFOS_CMD, output);
+        EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable()).andReturn(mMockIDevice);
+        replayMocks();
+        Set<String> actual = mTestDevice.getMainlineModuleInfo();
         assertEquals(0, actual.size());
     }
 
