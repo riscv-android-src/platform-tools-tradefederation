@@ -22,10 +22,13 @@ import com.android.tradefed.config.remote.IRemoteFileResolver;
 import com.android.tradefed.config.remote.IRemoteFileResolver.RemoteFileResolverArgs;
 import com.android.tradefed.config.remote.IRemoteFileResolver.ResolvedFile;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.error.HarnessRuntimeException;
+import com.android.tradefed.error.IHarnessException;
 import com.android.tradefed.invoker.logger.CurrentInvocation;
 import com.android.tradefed.invoker.logger.CurrentInvocation.InvocationInfo;
 import com.android.tradefed.invoker.logger.InvocationLocal;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.ErrorIdentifier;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.MultiMap;
@@ -476,16 +479,12 @@ public class DynamicRemoteFileResolver {
 
     /** Exception thrown if a resolver cannot be loaded or initialized. */
     @VisibleForTesting
-    static final class ResolverLoadingException extends RuntimeException {
-        public ResolverLoadingException(@Nullable String message) {
-            super(message);
+    static final class ResolverLoadingException extends HarnessRuntimeException {
+        public ResolverLoadingException(@Nullable String message, ErrorIdentifier errorId) {
+            super(message, errorId);
         }
 
-        public ResolverLoadingException(@Nullable Throwable cause) {
-            super(cause);
-        }
-
-        public ResolverLoadingException(@Nullable String message, @Nullable Throwable cause) {
+        public ResolverLoadingException(@Nullable String message, IHarnessException cause) {
             super(message, cause);
         }
     }
@@ -591,7 +590,9 @@ public class DynamicRemoteFileResolver {
                     }
 
                     if (setter.isMapOption(name)) {
-                        throw new ConfigurationException("Map options are not supported: " + name);
+                        throw new ConfigurationException(
+                                "Map options are not supported: " + name,
+                                InfraErrorIdentifier.OPTION_CONFIGURATION_ERROR);
                     }
 
                     setter.setOptionValue(name, e.getValue());
@@ -602,7 +603,8 @@ public class DynamicRemoteFileResolver {
                     throw new ConfigurationException(
                             String.format(
                                     "Found missing mandatory options %s for resolver %s",
-                                    missingOptions, resolver.toString()));
+                                    missingOptions, resolver.toString()),
+                            InfraErrorIdentifier.OPTION_CONFIGURATION_ERROR);
                 }
 
                 DynamicRemoteFileResolver dynamicResolver =
@@ -643,7 +645,8 @@ public class DynamicRemoteFileResolver {
                         // catch.
                         throw new ResolverLoadingException(
                                 "Cycle detected while initializing resolver options: "
-                                        + mResolver.toString());
+                                        + mResolver.toString(),
+                                InfraErrorIdentifier.OPTION_CONFIGURATION_ERROR);
                     }
 
                     CLog.i("Initializing file resolver options: %s", mResolver);
