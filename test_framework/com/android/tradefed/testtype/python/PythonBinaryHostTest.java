@@ -38,6 +38,7 @@ import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFilterReceiver;
 import com.android.tradefed.testtype.PythonUnitTestResultParser;
+import com.android.tradefed.testtype.TestTimeoutEnforcer;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -49,14 +50,15 @@ import com.google.common.base.Joiner;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Formatter;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Host test meant to run a python binary file from the Android Build system (Soong)
@@ -126,6 +128,11 @@ public class PythonBinaryHostTest implements IRemoteTest, ITestFilterReceiver {
                             + "test have the necessary logic to accept the flag and write results "
                             + "in the expected format.")
     private boolean mUseTestOutputFile = false;
+
+    @Option(
+            name = TestTimeoutEnforcer.TEST_CASE_TIMEOUT_OPTION,
+            description = TestTimeoutEnforcer.TEST_CASE_TIMEOUT_DESCRIPTION)
+    private Duration mTestCaseTimeout = Duration.ofSeconds(0L);
 
     private TestInformation mTestInfo;
     private IRunUtil mRunUtil;
@@ -348,10 +355,16 @@ public class PythonBinaryHostTest implements IRemoteTest, ITestFilterReceiver {
 
             // If it doesn't have the std output TEST_RUN_STARTED, use regular parser.
             if (!testOutput.contains("TEST_RUN_STARTED")) {
+                ITestInvocationListener receiver = forwarder;
+                if (mTestCaseTimeout.toMillis() > 0L) {
+                    receiver =
+                            new TestTimeoutEnforcer(
+                                    mTestCaseTimeout.toMillis(), TimeUnit.MILLISECONDS, receiver);
+                }
                 // Attempt to parse the pure python output
                 PythonUnitTestResultParser pythonParser =
                         new PythonUnitTestResultParser(
-                                Arrays.asList(forwarder),
+                                Arrays.asList(receiver),
                                 "python-run",
                                 mIncludeFilters,
                                 mExcludeFilters);
@@ -370,20 +383,20 @@ public class PythonBinaryHostTest implements IRemoteTest, ITestFilterReceiver {
             }
         } catch (RuntimeException e) {
             StringBuilder message = new StringBuilder();
-            Formatter formatter = new Formatter(message);
-
-            formatter.format(
-                    "Failed to parse the python logs: %s. Please ensure that verbosity of "
-                            + "output is high enough to be parsed.",
-                    e.getMessage());
+            message.append(
+                    String.format(
+                            "Failed to parse the python logs: %s. Please ensure that verbosity of "
+                                    + "output is high enough to be parsed.",
+                            e.getMessage()));
 
             if (mUseTestOutputFile) {
-                formatter.format(
-                        " Make sure that your test writes its output to the file specified "
-                                + "by the --%s flag and that its contents (%s) are in the format "
-                                + "expected by the test runner.",
-                        TEST_OUTPUT_FILE_FLAG,
-                        String.format(PYTHON_LOG_TEST_OUTPUT_FORMAT, runName));
+                message.append(
+                        String.format(
+                                " Make sure that your test writes its output to the file specified "
+                                        + "by the --%s flag and that its contents (%s) are in the "
+                                        + "format expected by the test runner.",
+                                TEST_OUTPUT_FILE_FLAG,
+                                String.format(PYTHON_LOG_TEST_OUTPUT_FORMAT, runName)));
             }
 
             reportFailure(listener, runName, message.toString());
