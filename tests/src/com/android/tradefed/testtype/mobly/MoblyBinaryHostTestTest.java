@@ -63,6 +63,7 @@ import org.mockito.stubbing.Answer;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.io.StringWriter;
 import java.io.Writer;
@@ -99,7 +100,7 @@ public class MoblyBinaryHostTestTest {
         IInvocationContext context = new InvocationContext();
         context.addAllocatedDevice("device", mMockDevice);
         context.addDeviceBuildInfo("device", mMockBuildInfo);
-        mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
+        mTestInfo = Mockito.spy(TestInformation.newBuilder().setInvocationContext(context).build());
         mSpyTest.setDevice(mMockDevice);
 
         mVenvDir = FileUtil.createTempDir("venv");
@@ -160,7 +161,9 @@ public class MoblyBinaryHostTestTest {
     public void testRun_withParFileNameOption() throws Exception {
         OptionSetter setter = new OptionSetter(mSpyTest);
         setter.setOptionValue("mobly-par-file-name", mMoblyBinary2.getName());
-        Mockito.doReturn(mMoblyTestDir).when(mMockBuildInfo).getTestsDir();
+        Mockito.doReturn(mMoblyTestDir)
+                .when(mTestInfo)
+                .getDependencyFile(eq(mMoblyBinary2.getName()), eq(false));
         File testResult = new File(mSpyTest.getLogDirAbsolutePath(), TEST_RESULT_FILE_NAME);
         Mockito.when(mMockRunUtil.runTimedCmd(anyLong(), any()))
                 .thenAnswer(
@@ -186,7 +189,9 @@ public class MoblyBinaryHostTestTest {
     public void testRun_withParFileNameOption_binaryNotFound() throws Exception {
         OptionSetter setter = new OptionSetter(mSpyTest);
         setter.setOptionValue("mobly-par-file-name", mMoblyBinary2.getName());
-        Mockito.doReturn(mMoblyTestDir).when(mMockBuildInfo).getTestsDir();
+        Mockito.doThrow(new FileNotFoundException())
+                .when(mTestInfo)
+                .getDependencyFile(eq(mMoblyBinary2.getName()), eq(false));
         FileUtil.deleteFile(mMoblyBinary2);
         ITestInvocationListener mockListener = Mockito.mock(ITestInvocationListener.class);
 
