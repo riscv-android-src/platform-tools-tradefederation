@@ -17,7 +17,6 @@ package com.android.tradefed.testtype.python;
 
 import com.android.annotations.VisibleForTesting;
 import com.android.ddmlib.Log;
-import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
@@ -48,6 +47,7 @@ import com.android.tradefed.util.SubprocessTestResultsParser;
 import com.google.common.base.Joiner;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -215,24 +215,17 @@ public class PythonBinaryHostTest implements IRemoteTest, ITestFilterReceiver {
     }
 
     private List<File> findParFiles() {
-        File testsDir = null;
-        if (mTestInfo.getBuildInfo() instanceof IDeviceBuildInfo) {
-            testsDir = ((IDeviceBuildInfo) mTestInfo.getBuildInfo()).getTestsDir();
-        }
         List<File> files = new ArrayList<>();
         for (String parFileName : mBinaryNames) {
             File res = null;
             // search tests dir
-            if (testsDir != null) {
-                res = FileUtil.findFile(testsDir, parFileName);
-            }
-
-            // TODO: is there other places to search?
-            if (res == null) {
+            try {
+                res = mTestInfo.getDependencyFile(parFileName, /* targetFirst */ false);
+                files.add(res);
+            } catch (FileNotFoundException e) {
                 throw new RuntimeException(
                         String.format("Couldn't find a par file %s", parFileName));
             }
-            files.add(res);
         }
         files.addAll(mBinaries);
         return files;
