@@ -36,6 +36,11 @@ import java.util.concurrent.TimeUnit;
  * <p>Note that this enforcer doesn't interrupt the tests, but will make them fail.
  */
 public final class TestTimeoutEnforcer extends ResultForwarder {
+    // The option name & description we want to share across class that uses the enforcer.
+    public static final String TEST_CASE_TIMEOUT_OPTION = "test-case-timeout";
+    public static final String TEST_CASE_TIMEOUT_DESCRIPTION =
+            "The timeout that will be applied to each test case of the run.";
+
     // Timeout limit to enforce on test cases. 0L means nothing will be enforced.
     private long mPerTestCaseTimeoutMs = 0L;
 
