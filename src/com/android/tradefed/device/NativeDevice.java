@@ -4013,6 +4013,12 @@ public class NativeDevice implements IManagedTestDevice {
         throw new UnsupportedOperationException("No support for Package's feature");
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public Set<String> getMainlineModuleInfo() throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for Package's feature");
+    }
+
     /**
      * {@inheritDoc}
      */
