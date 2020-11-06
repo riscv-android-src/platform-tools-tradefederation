@@ -24,6 +24,7 @@ import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.DeviceBuildInfo;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.invoker.ExecutionFiles.FilesKey;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
@@ -276,7 +277,7 @@ public class JarHostTestTest {
         try {
             mTest.run(mTestInfo, mListener);
             fail("Should have thrown an exception.");
-        } catch (IllegalArgumentException expected) {
+        } catch (HarnessRuntimeException expected) {
             // expected
             assertEquals(
                     "java.io.FileNotFoundException: "
