@@ -20,10 +20,14 @@ import com.android.loganalysis.util.config.OptionClass;
 import com.android.tradefed.cluster.ClusterHostUtil;
 import com.android.tradefed.cluster.IClusterOptions;
 import com.android.tradefed.command.remote.DeviceDescriptor;
+import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.device.DeviceAllocationState;
 import com.android.tradefed.device.IDeviceMonitor;
-import com.android.tradefed.log.LogUtil;
+import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.monitoring.collector.IResourceMetricCollector;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.util.concurrent.MoreExecutors;
 import com.google.dualhomelab.monitoringagent.resourcemonitoring.Attribute;
 import com.google.dualhomelab.monitoringagent.resourcemonitoring.LabResource;
 import com.google.dualhomelab.monitoringagent.resourcemonitoring.LabResourceRequest;
@@ -38,72 +42,82 @@ import java.net.InetSocketAddress;
 import java.util.Optional;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
 import io.grpc.Server;
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder;
 import io.grpc.stub.StreamObserver;
 
-/** The cached LabResource response data. */
-class CachedLabResource {
-    final LabResource mLabResource;
-    final Instant mInstant;
-
-    CachedLabResource(LabResource labResource) {
-        this.mLabResource = labResource;
-        this.mInstant = Instant.now();
-    }
-
-    /** Checks if the cached data is valid or not. */
-    boolean isValid(long lifeTimeSec) {
-        return Instant.now().minusSeconds(lifeTimeSec).isBefore(mInstant);
-    }
-}
-
-/** The lab resource monitor which initializes/manages the gRPC server for LabResourceService. */
+/**
+ * The lab resource monitor which initializes/manages the gRPC server for LabResourceService. To add
+ * resource metric collectors, please add resource_metric_collector tags in global configuration to
+ * load the collectors.
+ */
 @OptionClass(alias = "lab-resource-monitor")
 public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResourceServiceImplBase
         implements IDeviceMonitor {
-    public static final String SERVER_HOSTNAME = "localhost";
     public static final String DEVICE_SERIAL_KEY = "device_serial";
     public static final String HOST_NAME_KEY = "hostname";
     public static final String LAB_NAME_KEY = "lab_name";
     public static final String TEST_HARNESS_KEY = "test_harness";
     public static final String TEST_HARNESS = "tradefed";
     public static final String HOST_GROUP_KEY = "host_group";
+    public static final String SERVER_HOSTNAME = "localhost";
     public static final int DEFAULT_PORT = 8887;
     public static final int DEFAULT_THREAD_COUNT = 1;
-    public static final long DEFAULT_MAX_CACHE_AGE_SEC = 60;
+    public static final long DEFAULT_METRICIZE_CYCLE_SEC = 300;
     public static final String POOL_ATTRIBUTE_NAME = "pool";
     public static final String RUN_TARGET_ATTRIBUTE_NAME = "run_target";
     public static final String STATUS_RESOURCE_NAME = "status";
     public static final float FIXED_METRIC_VALUE = 1.0f;
+    public static final long METRICIZE_TIMEOUT_MS = 1000;
     private Optional<Server> mServer = Optional.empty();
-    private Optional<CachedLabResource> mCachedLabResource = Optional.empty();
-    private final long mMaxCacheAgeSec;
     private final IClusterOptions mClusterOptions;
     private DeviceLister mDeviceLister;
+    private final Collection<IResourceMetricCollector> mMetricCollectors = new ArrayList<>();
+    private final long mMetricizeCycleSec;
+    private final ReadWriteLock mLabResourceLock = new ReentrantReadWriteLock();
+    private LabResource mLabResource = LabResource.newBuilder().build();
+    private ScheduledExecutorService mMetricizeExecutor;
+    private ExecutorService mSharedCollectorExecutor;
 
     LabResourceDeviceMonitor() {
         super();
-        mMaxCacheAgeSec = DEFAULT_MAX_CACHE_AGE_SEC;
+        mMetricizeCycleSec = DEFAULT_METRICIZE_CYCLE_SEC;
         mClusterOptions = ClusterHostUtil.getClusterOptions();
     }
 
-    LabResourceDeviceMonitor(long maxCacheAgeSec, IClusterOptions clusterOptions) {
+    LabResourceDeviceMonitor(long metricizeCycleSec, IClusterOptions clusterOptions) {
         super();
-        mMaxCacheAgeSec = maxCacheAgeSec;
+        mMetricizeCycleSec = metricizeCycleSec;
         mClusterOptions = clusterOptions;
     }
 
-    Optional<Server> getServer() {
-        return mServer;
+    private void loadMetricCollectors() {
+        List<IResourceMetricCollector> collectors =
+                GlobalConfiguration.getInstance().getResourceMetricCollectors();
+        if (collectors != null) {
+            mMetricCollectors.addAll(collectors);
+        }
     }
 
-    Optional<CachedLabResource> getCachedLabResource() {
-        return mCachedLabResource;
+    @VisibleForTesting
+    Optional<Server> getServer() {
+        return mServer;
     }
 
     /** {@inheritDoc} */
@@ -119,16 +133,79 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
                                     .build());
             try {
                 mServer.get().start();
+                loadMetricCollectors();
+                Executors.newSingleThreadScheduledExecutor();
+                mMetricizeExecutor =
+                        MoreExecutors.getExitingScheduledExecutorService(
+                                new ScheduledThreadPoolExecutor(1));
+                mSharedCollectorExecutor =
+                        MoreExecutors.getExitingExecutorService(
+                                (ThreadPoolExecutor) Executors.newFixedThreadPool(1));
+                scheduleMetricizeTask();
             } catch (IOException e) {
-                LogUtil.CLog.e(e);
+                CLog.e(e);
             }
         }
+    }
+
+    private void setCachedLabResource(LabResource resource) {
+        mLabResourceLock.writeLock().lock();
+        try {
+            mLabResource = resource;
+        } finally {
+            mLabResourceLock.writeLock().unlock();
+        }
+    }
+
+    private LabResource getCachedLabResource() {
+        mLabResourceLock.readLock().lock();
+        try {
+            return mLabResource;
+        } finally {
+            mLabResourceLock.readLock().unlock();
+        }
+    }
+
+    @VisibleForTesting
+    ExecutorService getSharedCollectorExecutor() {
+        return mSharedCollectorExecutor;
+    }
+
+    private void scheduleMetricizeTask() {
+        if (mMetricizeExecutor == null || mSharedCollectorExecutor == null) {
+            CLog.d(
+                    "schedule metricize task before the mMetricizeExecutor or mSharedCollectorExecutor initialized.");
+            return;
+        }
+        mMetricizeExecutor.scheduleAtFixedRate(
+                () -> {
+                    LabResource.Builder builder =
+                            LabResource.newBuilder().setHost(buildMonitoredHost(mMetricCollectors));
+                    List<DeviceDescriptor> descriptors =
+                            mDeviceLister
+                                    .listDevices()
+                                    .stream()
+                                    .filter(descriptor -> !descriptor.isTemporary())
+                                    .collect(Collectors.toList());
+                    for (DeviceDescriptor descriptor : descriptors) {
+                        if (mMetricizeExecutor.isShutdown()) {
+                            break;
+                        }
+                        builder.addDevice(buildMonitoredDevice(descriptor, mMetricCollectors));
+                    }
+                    setCachedLabResource(builder.build());
+                },
+                0,
+                mMetricizeCycleSec,
+                TimeUnit.SECONDS);
     }
 
     /** {@inheritDoc} */
     @Override
     public void stop() {
-        mServer.ifPresent(Server::shutdown);
+        mServer.ifPresent(Server::shutdownNow);
+        mMetricizeExecutor.shutdownNow();
+        mSharedCollectorExecutor.shutdownNow();
     }
 
     /** {@inheritDoc} */
@@ -141,58 +218,68 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
     @Override
     public void notifyDeviceStateChange(
             String serial, DeviceAllocationState oldState, DeviceAllocationState newState) {
-        // Ignore
+        // ignored
     }
 
     /** The gRPC request handler. */
     @Override
     public void getLabResource(
             LabResourceRequest request, StreamObserver<LabResource> responseObserver) {
-        LabResource response;
-        if (mCachedLabResource.isPresent() && mCachedLabResource.get().isValid(mMaxCacheAgeSec)) {
-            response = mCachedLabResource.get().mLabResource;
-        } else {
-            response =
-                    LabResource.newBuilder()
-                            .setHost(buildMonitoredHost())
-                            .addAllDevice(
-                                    mDeviceLister
-                                            .listDevices()
-                                            .stream()
-                                            .filter(d -> !d.isTemporary())
-                                            .map(this::buildMonitoredDevice)
-                                            .collect(Collectors.toList()))
-                            .build();
-            mCachedLabResource = Optional.of(new CachedLabResource(response));
-        }
-        responseObserver.onNext(response);
+        super.getLabResource(request, responseObserver);
+        responseObserver.onNext(getCachedLabResource());
         responseObserver.onCompleted();
     }
 
-    /** Fetches host identifier, attributes and metrics. */
-    MonitoredEntity buildMonitoredHost() {
-        IClusterOptions options = mClusterOptions;
-        return MonitoredEntity.newBuilder()
-                .putIdentifier(HOST_NAME_KEY, ClusterHostUtil.getHostName())
-                .putIdentifier(LAB_NAME_KEY, options.getLabName())
-                .putIdentifier(TEST_HARNESS_KEY, TEST_HARNESS)
-                .addAttribute(
-                        Attribute.newBuilder()
-                                .setName(HOST_GROUP_KEY)
-                                .setValue(options.getClusterId()))
-                .build();
+    private Collection<Resource> enqueueCollectorTask(Callable<Collection<Resource>> task) {
+        Future<Collection<Resource>> future = mSharedCollectorExecutor.submit(task);
+        try {
+            return future.get(METRICIZE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException | ExecutionException | TimeoutException e) {
+            CLog.e(e);
+            future.cancel(true);
+        }
+        return List.of();
     }
 
-    /** Fetches device identifier, attributes and metrics. */
-    MonitoredEntity buildMonitoredDevice(DeviceDescriptor descriptor) {
-        MonitoredEntity.Builder device = MonitoredEntity.newBuilder();
-        device.putIdentifier(DEVICE_SERIAL_KEY, descriptor.getSerial())
-                .addAllAttribute(getDeviceAttributes(descriptor))
-                .addResource(getStatus(descriptor));
-        return device.build();
+    /** Build host {@link MonitoredEntity}. */
+    @VisibleForTesting
+    MonitoredEntity buildMonitoredHost(Collection<IResourceMetricCollector> collectors) {
+        MonitoredEntity.Builder builder =
+                MonitoredEntity.newBuilder()
+                        .putIdentifier(HOST_NAME_KEY, ClusterHostUtil.getHostName())
+                        .putIdentifier(LAB_NAME_KEY, mClusterOptions.getLabName())
+                        .putIdentifier(TEST_HARNESS_KEY, TEST_HARNESS)
+                        .addAttribute(
+                                Attribute.newBuilder()
+                                        .setName(HOST_GROUP_KEY)
+                                        .setValue(mClusterOptions.getClusterId()));
+        for (IResourceMetricCollector collector : collectors) {
+            builder.addAllResource(enqueueCollectorTask(collector::getHostResourceMetrics));
+        }
+        return builder.build();
+    }
+
+    /** Builds device {@link MonitoredEntity}. */
+    @VisibleForTesting
+    MonitoredEntity buildMonitoredDevice(
+            DeviceDescriptor descriptor, Collection<IResourceMetricCollector> collectors) {
+        MonitoredEntity.Builder builder = MonitoredEntity.newBuilder();
+        builder.putIdentifier(DEVICE_SERIAL_KEY, descriptor.getSerial());
+        builder.addAllAttribute(getDeviceAttributes(descriptor));
+        builder.addResource(getStatus(descriptor));
+        for (IResourceMetricCollector collector : collectors) {
+            builder.addAllResource(
+                    enqueueCollectorTask(
+                            () ->
+                                    collector.getDeviceResourceMetrics(
+                                            descriptor,
+                                            GlobalConfiguration.getDeviceManagerInstance())));
+        }
+        return builder.build();
     }
 
     /** Gets device attributes. */
+    @VisibleForTesting
     List<Attribute> getDeviceAttributes(DeviceDescriptor descriptor) {
         final List<Attribute> attributes = new ArrayList<>();
         attributes.add(
@@ -219,6 +306,7 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
     }
 
     /** Gets device status. */
+    @VisibleForTesting
     Resource getStatus(DeviceDescriptor descriptor) {
         return Resource.newBuilder()
                 .setResourceName(STATUS_RESOURCE_NAME)

@@ -18,6 +18,7 @@ package com.android.tradefed.device;
 import com.android.ddmlib.IDevice;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
+import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.ConditionPriorityBlockingQueue;
 import com.android.tradefed.util.ConditionPriorityBlockingQueue.IMatcher;
 import com.android.tradefed.util.IRunUtil;
@@ -28,6 +29,7 @@ import org.junit.Assert;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * A {@link IDeviceManager} that simulates the resource allocation of {@link DeviceManager}
@@ -448,6 +450,12 @@ public class MockDeviceManager implements IDeviceManager {
     @Override
     public void returnFlashingPermit() {
         // ignore
+    }
+
+    @Override
+    public CommandResult executeCmdOnAvailableDevice(
+            String serial, String command, long timeout, TimeUnit timeUnit) {
+        return null;
     }
 
     @Override
