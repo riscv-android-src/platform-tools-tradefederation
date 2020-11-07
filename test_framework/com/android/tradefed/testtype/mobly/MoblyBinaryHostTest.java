@@ -30,10 +30,10 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
-import com.android.tradefed.targetprep.adb.AdbStopServerPreparer;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.util.AdbUtils;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -63,8 +63,6 @@ import org.yaml.snakeyaml.Yaml;
 public class MoblyBinaryHostTest implements IRemoteTest, IDeviceTest, IBuildReceiver {
 
     private static final String ANDROID_SERIAL_VAR = "ANDROID_SERIAL";
-    private static final String PATH_VAR = "PATH";
-    private static final long PATH_TIMEOUT_MS = 60000L;
     private static final String MOBLY_TEST_SUMMARY = "test_summary.yaml";
     private static final String MOBLY_TEST_SUMMARY_XML = "converted_test_summary.xml";
 
@@ -186,7 +184,7 @@ public class MoblyBinaryHostTest implements IRemoteTest, IDeviceTest, IBuildRece
         if (mInjectAndroidSerialVar) {
             getRunUtil().setEnvVariable(ANDROID_SERIAL_VAR, getDevice().getSerialNumber());
         }
-        updateAdb();
+        AdbUtils.updateAdb(mTestInfo, getRunUtil(), getAdbPath());
         if (mConfigFile != null) {
             updateConfigFile();
         }
@@ -197,47 +195,6 @@ public class MoblyBinaryHostTest implements IRemoteTest, IDeviceTest, IBuildRece
                     "Something went wrong when running the python binary:\nstdout: "
                             + "%s\nstderr:%s\nStatus:%s",
                     result.getStdout(), result.getStderr(), result.getStatus());
-        }
-    }
-
-    private void updateAdb() {
-        File updatedAdb = mBuildInfo.getFile(AdbStopServerPreparer.ADB_BINARY_KEY);
-        if (updatedAdb == null) {
-            String adbPath = getAdbPath();
-            // Don't check if it's the adb on the $PATH
-            if (!adbPath.equals("adb")) {
-                updatedAdb = new File(adbPath);
-                if (!updatedAdb.exists()) {
-                    updatedAdb = null;
-                }
-            }
-        }
-        if (updatedAdb != null) {
-            CLog.d("Testing with adb binary at: %s", updatedAdb);
-            // If a special adb version is used, pass it to the PATH
-            CommandResult pathResult =
-                    getRunUtil()
-                            .runTimedCmd(PATH_TIMEOUT_MS, "/bin/bash", "-c", "echo $" + PATH_VAR);
-            if (!CommandStatus.SUCCESS.equals(pathResult.getStatus())) {
-                throw new RuntimeException(
-                        String.format(
-                                "Failed to get the $PATH. status: %s, stdout: %s, stderr: %s",
-                                pathResult.getStatus(),
-                                pathResult.getStdout(),
-                                pathResult.getStderr()));
-            }
-            // Include the directory of the adb on the PATH to be used.
-            String path =
-                    String.format(
-                            "%s:%s",
-                            updatedAdb.getParentFile().getAbsolutePath(),
-                            pathResult.getStdout().trim());
-            CLog.d("Using $PATH with updated adb: %s", path);
-            getRunUtil().setEnvVariable(PATH_VAR, path);
-            // Log the version of adb seen
-            CommandResult versionRes = getRunUtil().runTimedCmd(PATH_TIMEOUT_MS, "adb", "version");
-            CLog.d("%s", versionRes.getStdout());
-            CLog.d("%s", versionRes.getStderr());
         }
     }
 
