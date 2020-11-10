@@ -541,7 +541,12 @@ public class SubprocessEventHelper {
         public TestLogEventInfo(JSONObject jsonObject) throws JSONException {
             mDataName = jsonObject.getString(DATA_NAME_KEY);
             jsonObject.remove(DATA_NAME_KEY);
-            mLogType = LogDataType.valueOf(jsonObject.getString(DATA_TYPE_KEY));
+            try {
+                mLogType = LogDataType.valueOf(jsonObject.getString(DATA_TYPE_KEY));
+            } catch (IllegalArgumentException e) {
+                CLog.e("Failed to parse type: %s", jsonObject.getString(DATA_TYPE_KEY));
+                mLogType = LogDataType.TEXT;
+            }
             jsonObject.remove(DATA_TYPE_KEY);
             mDataFile = new File(jsonObject.getString(DATA_FILE_KEY));
         }
