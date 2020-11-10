@@ -502,6 +502,18 @@ public class NativeDevice implements IManagedTestDevice {
         return result.getStdout().trim();
     }
 
+    /** Version of getProperty that allows to check device status and trigger recovery if needed. */
+    private String getPropertyWithRecovery(final String name) throws DeviceNotAvailableException {
+        if (getIDevice() instanceof StubDevice) {
+            return null;
+        }
+        if (!TestDeviceState.ONLINE.equals(getDeviceState())) {
+            // Only query property for online device so trigger recovery before getting property.
+            recoverDevice();
+        }
+        return getProperty(name);
+    }
+
     /** {@inheritDoc} */
     @Override
     public long getIntProperty(String name, long defaultValue) throws DeviceNotAvailableException {
@@ -4067,7 +4079,7 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public boolean checkApiLevelAgainstNextRelease(int strictMinLevel)
             throws DeviceNotAvailableException {
-        String codeName = getProperty(DeviceProperties.BUILD_CODENAME);
+        String codeName = getPropertyWithRecovery(DeviceProperties.BUILD_CODENAME);
         if (codeName == null) {
             throw new DeviceRuntimeException(
                     String.format(
