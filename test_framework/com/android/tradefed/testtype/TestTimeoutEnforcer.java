@@ -95,6 +95,27 @@ public final class TestTimeoutEnforcer extends ResultForwarder {
     }
 
     @Override
+    public void testIgnored(TestDescription test) {
+        super.testIgnored(test);
+        // If the test is ignored, don't consider for timeout.
+        mTrackingStartTime.remove(test);
+    }
+
+    @Override
+    public void testAssumptionFailure(TestDescription test, FailureDescription failure) {
+        super.testAssumptionFailure(test, failure);
+        // If the test is assumption failure, don't consider for timeout.
+        mTrackingStartTime.remove(test);
+    }
+
+    @Override
+    public void testAssumptionFailure(TestDescription test, String trace) {
+        super.testAssumptionFailure(test, trace);
+        // If the test is assumption failure, don't consider for timeout.
+        mTrackingStartTime.remove(test);
+    }
+
+    @Override
     public void testEnded(TestDescription test, long endTime, HashMap<String, Metric> testMetrics) {
         try {
             if (mPerTestCaseTimeoutMs == 0L) {
