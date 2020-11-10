@@ -536,12 +536,18 @@ public class ProtoResultParser {
         for (Entry<String, Any> entry : proto.getArtifactsMap().entrySet()) {
             try {
                 LogFileInfo info = entry.getValue().unpack(LogFileInfo.class);
+                LogDataType dataType = null;
+                try {
+                    dataType = LogDataType.valueOf(info.getLogType());
+                } catch (NullPointerException | IllegalArgumentException e) {
+                    dataType = LogDataType.TEXT;
+                }
                 LogFile file =
                         new LogFile(
                                 info.getPath(),
                                 info.getUrl(),
                                 info.getIsCompressed(),
-                                LogDataType.valueOf(info.getLogType()),
+                                dataType,
                                 info.getSize());
                 if (Strings.isNullOrEmpty(file.getPath())) {
                     CLog.e("Log '%s' was registered but without a path.", entry.getKey());
