@@ -59,8 +59,10 @@ public class ArtRunTestTest {
     private TestInformation mTestInfo;
     // Test dependencies directory on host.
     private File mTmpDepsDir;
-    // Expected output file (within the dependencies directory).
-    private File mTmpExpectedFile;
+    // Expected standard output file (within the dependencies directory).
+    private File mTmpExpectedStdoutFile;
+    // Expected standard error file (within the dependencies directory).
+    private File mTmpExpectedStderrFile;
 
     @Before
     public void setUp() throws ConfigurationException, IOException {
@@ -73,7 +75,7 @@ public class ArtRunTestTest {
         IInvocationContext context = new InvocationContext();
         context.addAllocatedDevice("device", mMockITestDevice);
 
-        // Temporary test directory (e.g. for the expected-output file).
+        // Temporary test directory (e.g. for the expectation files).
         mTmpDepsDir = FileUtil.createTempDir("art-run-test-deps");
         mTestInfo =
                 TestInformation.newBuilder()
@@ -87,19 +89,27 @@ public class ArtRunTestTest {
         FileUtil.recursiveDelete(mTmpDepsDir);
     }
 
-    /** Helper creating an expected-output file within the (temporary) test directory. */
-    private void createExpectedOutputFile(String runTestName) throws IOException {
-        mTmpExpectedFile = new File(mTmpDepsDir, runTestName + "-expected-stdout.txt");
-        FileWriter fw = new FileWriter(mTmpExpectedFile);
-        fw.write("output\n");
-        fw.close();
+    /** Helper creating an expected standard output file within the (temporary) test directory. */
+    private void createExpectedStdoutFile(String runTestName) throws IOException {
+        mTmpExpectedStdoutFile = new File(mTmpDepsDir, runTestName + "-expected-stdout.txt");
+        try (FileWriter fw = new FileWriter(mTmpExpectedStdoutFile)) {
+            fw.write("output\n");
+        }
+    }
+
+    /** Helper creating an expected standard error file within the (temporary) test directory. */
+    private void createExpectedStderrFile(String runTestName) throws IOException {
+        mTmpExpectedStderrFile = new File(mTmpDepsDir, runTestName + "-expected-stderr.txt");
+        try (FileWriter fw = new FileWriter(mTmpExpectedStderrFile)) {
+            fw.write("no error\n");
+        }
     }
 
     /** Helper creating a mock CommandResult object. */
-    private CommandResult createMockCommandResult(String stdout, int exitCode) {
+    private CommandResult createMockCommandResult(String stdout, String stderr, int exitCode) {
         CommandResult result = new CommandResult(CommandStatus.SUCCESS);
         result.setStdout(stdout);
-        result.setStderr("");
+        result.setStderr(stderr);
         result.setExitCode(exitCode);
         return result;
     }
@@ -137,7 +147,8 @@ public class ArtRunTestTest {
             throws ConfigurationException, DeviceNotAvailableException, IOException {
         final String runTestName = "test";
         mSetter.setOptionValue("run-test-name", runTestName);
-        createExpectedOutputFile(runTestName);
+        createExpectedStdoutFile(runTestName);
+        createExpectedStderrFile(runTestName);
 
         replayMocks();
         try {
@@ -153,7 +164,8 @@ public class ArtRunTestTest {
     private void doTestRunSingleTest(final String runTestName, final String classpath)
             throws ConfigurationException, DeviceNotAvailableException, IOException {
         mSetter.setOptionValue("run-test-name", runTestName);
-        createExpectedOutputFile(runTestName);
+        createExpectedStdoutFile(runTestName);
+        createExpectedStderrFile(runTestName);
         mSetter.setOptionValue("classpath", classpath);
 
         // Pre-test checks.
@@ -166,12 +178,11 @@ public class ArtRunTestTest {
         mMockInvocationListener.testStarted(testId);
         String cmd = String.format("dalvikvm64 -classpath %s Main", classpath);
         // Test execution.
-        CommandResult result = createMockCommandResult("output\n", /* exitCode */ 0);
+        CommandResult result = createMockCommandResult("output\n", "no error\n", /* exitCode */ 0);
         EasyMock.expect(
                         mMockITestDevice.executeShellV2Command(
                                 cmd, 60000L, TimeUnit.MILLISECONDS, 0))
                 .andReturn(result);
-        EasyMock.expect(mMockITestDevice.getSerialNumber()).andReturn("");
         // End of test.
         mMockInvocationListener.testEnded(
                 EasyMock.eq(testId), (HashMap<String, Metric>) EasyMock.anyObject());
@@ -189,7 +200,8 @@ public class ArtRunTestTest {
     private void doTestDoNotRunSingleTest(final String runTestName, final String classpath)
             throws ConfigurationException, DeviceNotAvailableException, IOException {
         mSetter.setOptionValue("run-test-name", runTestName);
-        createExpectedOutputFile(runTestName);
+        createExpectedStdoutFile(runTestName);
+        createExpectedStderrFile(runTestName);
         mSetter.setOptionValue("classpath", classpath);
 
         EasyMock.expect(mMockAbi.getName()).andReturn("abi");
@@ -211,15 +223,16 @@ public class ArtRunTestTest {
     }
 
     /**
-     * Test the behavior of the run method when the output produced by the shell command on device
-     * differs from the expected output.
+     * Test the behavior of the run method when the standard output produced by the shell command on
+     * device differs from the expected standard output.
      */
     @Test
-    public void testRunSingleTest_unexpectedOutput()
+    public void testRunSingleTest_unexpectedStandardOutput()
             throws ConfigurationException, DeviceNotAvailableException, IOException {
         final String runTestName = "test";
         mSetter.setOptionValue("run-test-name", runTestName);
-        createExpectedOutputFile(runTestName);
+        createExpectedStdoutFile(runTestName);
+        createExpectedStderrFile(runTestName);
         final String classpath = "/data/local/tmp/test/test.jar";
         mSetter.setOptionValue("classpath", classpath);
 
@@ -233,20 +246,71 @@ public class ArtRunTestTest {
         mMockInvocationListener.testStarted(testId);
         String cmd = String.format("dalvikvm64 -classpath %s Main", classpath);
         // Test execution.
-        CommandResult result = createMockCommandResult("unexpected\n", /* exitCode */ 0);
+        CommandResult result =
+                createMockCommandResult("unexpected\n", "no error\n", /* exitCode */ 0);
         EasyMock.expect(
                         mMockITestDevice.executeShellV2Command(
                                 cmd, 60000L, TimeUnit.MILLISECONDS, 0))
                 .andReturn(result);
-        EasyMock.expect(mMockITestDevice.getSerialNumber()).andReturn("");
         // End of test.
         String errorMessage =
-                "The test's standard output does not match the expected output:\n"
+                "The test's standard output does not match the expected standard output:\n"
                         + "--- expected-stdout.txt\n"
                         + "+++ stdout\n"
                         + "@@ -1,1 +1,1 @@\n"
                         + "-output\n"
                         + "+unexpected\n";
+        mMockInvocationListener.testFailed(testId, errorMessage);
+        mMockInvocationListener.testEnded(
+                EasyMock.eq(testId), (HashMap<String, Metric>) EasyMock.anyObject());
+        mMockInvocationListener.testRunEnded(
+                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+
+        replayMocks();
+
+        mArtRunTest.run(mTestInfo, mMockInvocationListener);
+
+        verifyMocks();
+    }
+
+    /**
+     * Test the behavior of the run method when the standard error produced by the shell command on
+     * device differs from the expected standard error.
+     */
+    @Test
+    public void testRunSingleTest_unexpectedStandardError()
+            throws ConfigurationException, DeviceNotAvailableException, IOException {
+        final String runTestName = "test";
+        mSetter.setOptionValue("run-test-name", runTestName);
+        createExpectedStdoutFile(runTestName);
+        createExpectedStderrFile(runTestName);
+        final String classpath = "/data/local/tmp/test/test.jar";
+        mSetter.setOptionValue("classpath", classpath);
+
+        // Pre-test checks.
+        EasyMock.expect(mMockAbi.getName()).andReturn("abi");
+        EasyMock.expect(mMockITestDevice.getSerialNumber()).andReturn("");
+        String runName = "ArtRunTest_abi";
+        // Beginning of test.
+        mMockInvocationListener.testRunStarted(runName, 1);
+        TestDescription testId = new TestDescription(runName, runTestName);
+        mMockInvocationListener.testStarted(testId);
+        String cmd = String.format("dalvikvm64 -classpath %s Main", classpath);
+        // Test execution.
+        CommandResult result =
+                createMockCommandResult("output\n", "unexpected error\n", /* exitCode */ 0);
+        EasyMock.expect(
+                        mMockITestDevice.executeShellV2Command(
+                                cmd, 60000L, TimeUnit.MILLISECONDS, 0))
+                .andReturn(result);
+        // End of test.
+        String errorMessage =
+                "The test's standard error does not match the expected standard error:\n"
+                        + "--- expected-stderr.txt\n"
+                        + "+++ stderr\n"
+                        + "@@ -1,1 +1,1 @@\n"
+                        + "-no error\n"
+                        + "+unexpected error\n";
         mMockInvocationListener.testFailed(testId, errorMessage);
         mMockInvocationListener.testEnded(
                 EasyMock.eq(testId), (HashMap<String, Metric>) EasyMock.anyObject());
@@ -269,7 +333,8 @@ public class ArtRunTestTest {
             throws ConfigurationException, DeviceNotAvailableException, IOException {
         final String runTestName = "test";
         mSetter.setOptionValue("run-test-name", runTestName);
-        createExpectedOutputFile(runTestName);
+        createExpectedStdoutFile(runTestName);
+        createExpectedStderrFile(runTestName);
         final String classpath = "/data/local/tmp/test/test.jar";
         mSetter.setOptionValue("classpath", classpath);
 
@@ -283,12 +348,11 @@ public class ArtRunTestTest {
         mMockInvocationListener.testStarted(testId);
         String cmd = String.format("dalvikvm64 -classpath %s Main", classpath);
         // Test execution.
-        CommandResult result = createMockCommandResult("output\n", /* exitCode */ 1);
+        CommandResult result = createMockCommandResult("output\n", "no error\n", /* exitCode */ 1);
         EasyMock.expect(
                         mMockITestDevice.executeShellV2Command(
                                 cmd, 60000L, TimeUnit.MILLISECONDS, 0))
                 .andReturn(result);
-        EasyMock.expect(mMockITestDevice.getSerialNumber()).andReturn("");
         mMockInvocationListener.testFailed(testId, "Test exited with code 1");
         mMockInvocationListener.testEnded(
                 EasyMock.eq(testId), (HashMap<String, Metric>) EasyMock.anyObject());
