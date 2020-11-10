@@ -430,9 +430,11 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
         // wait for device to reboot
         monitor.waitForDeviceNotAvailable(20*1000);
         if (!monitor.waitForDeviceBootloader(mBootloaderWaitTime)) {
-            throw new DeviceNotAvailableException(String.format(
-                    "Device %s not in bootloader after reboot", monitor.getSerialNumber()),
-                    monitor.getSerialNumber());
+            throw new DeviceNotAvailableException(
+                    String.format(
+                            "Device %s not in bootloader after reboot", monitor.getSerialNumber()),
+                    monitor.getSerialNumber(),
+                    DeviceErrorIdentifier.DEVICE_UNAVAILABLE);
         }
         // running a meaningless command just to see whether the device is responsive.
         CommandResult result = getRunUtil().runTimedCmd(mFastbootWaitTime, mFastbootPath, "-s",

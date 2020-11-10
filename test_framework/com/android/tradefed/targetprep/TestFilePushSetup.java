@@ -25,6 +25,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.FileUtil;
 
@@ -96,7 +97,8 @@ public class TestFilePushSetup extends BaseTargetPreparer {
         if (dirs.isEmpty()) {
             throw new TargetSetupError(
                     "Provided buildInfo does not contain a valid tests directory.",
-                    device.getDeviceDescriptor());
+                    device.getDeviceDescriptor(),
+                    InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
         }
 
         for (File dir : dirs) {
@@ -127,9 +129,12 @@ public class TestFilePushSetup extends BaseTargetPreparer {
             File localFile = getLocalPathForFilename(buildInfo, fileName, device);
             if (localFile == null) {
                 if (mThrowIfNoFile) {
-                    throw new TargetSetupError(String.format(
-                            "Could not find test file %s directory in extracted tests.zip",
-                            fileName), device.getDeviceDescriptor());
+                    throw new TargetSetupError(
+                            String.format(
+                                    "Could not find test file %s directory in extracted tests.zip",
+                                    fileName),
+                            device.getDeviceDescriptor(),
+                            InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
                 } else {
                     CLog.w(
                             "Could not find test file %s directory in extracted tests.zip, but will"
