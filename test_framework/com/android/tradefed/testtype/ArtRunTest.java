@@ -178,7 +178,8 @@ public class ArtRunTest implements IRemoteTest, IAbiReceiver, ITestFilterReceive
             return;
         }
 
-        CLog.i("Running ArtRunTest %s on %s", mRunTestName, mDevice.getSerialNumber());
+        String deviceSerialNumber = mDevice.getSerialNumber();
+        CLog.i("Running ArtRunTest %s on %s", mRunTestName, deviceSerialNumber);
 
         String testCmd = DALVIKVM_CMD;
         testCmd = testCmd.replace("|#BITNESS#|", AbiUtils.getBitness(abi));
@@ -206,60 +207,91 @@ public class ArtRunTest implements IRemoteTest, IAbiReceiver, ITestFilterReceive
                 listener.testFailed(testId, message);
                 return;
             }
-            String output = testResult.getStdout();
-            // Some tests produce their output on the standard error instead of the standard output;
-            // however ART run-tests have been historically designed to support a single reference
-            // output per test. To work around this, the original ART run-test test runner
-            // (`art/test/run-test`) multiplexes the standard output and standard error (which is
-            // not great, as the result is not deterministic; fortunately, the vast majority of
-            // tests use either the standard output or the standard error, not both). Simulate that
-            // behavior here.
-            //
-            // TODO(rpl): Implement a separate verification of the test's standard output and
-            // standard error, both in this TradeFed test runner and in the original test runner.
-            output += testResult.getStderr();
-            CLog.v("%s on %s returned %s", testCmd, mDevice.getSerialNumber(), output);
+            String actualStdoutText = testResult.getStdout();
+            CLog.v("%s on %s returned stdout: %s", testCmd, deviceSerialNumber, actualStdoutText);
+            String actualStderrText = testResult.getStderr();
+            CLog.v("%s on %s returned stderr: %s", testCmd, deviceSerialNumber, actualStderrText);
 
-            // Check the output produced by the test.
-            if (output != null) {
-                try {
-                    String expectedFileName = String.format("%s-expected-stdout.txt", mRunTestName);
-                    File expectedFile =
-                            testInfo.getDependencyFile(expectedFileName, /* targetFirst */ true);
-                    CLog.i("Found expected output for run-test %s: %s", mRunTestName, expectedFile);
-                    String expected = FileUtil.readStringFromFile(expectedFile);
+            // TODO: The "check" step should be configurable, as is the case in current ART
+            // `run-test` scripts).
 
-                    // TODO: The "check" step should be configurable, as is the case in current ART
-                    // `run-test` scripts).
-                    if (!output.equals(expected)) {
-                        // Compute the difference between the expected and actual outputs.
-                        List<String> expectedLines = Arrays.asList(expected.split("\\r?\\n"));
-                        List<String> outputLines = Arrays.asList(output.split("\\r?\\n"));
-                        Patch<String> diff = DiffUtils.diff(expectedLines, outputLines);
-                        List<String> unifiedDiff =
-                                DiffUtils.generateUnifiedDiff(
-                                        "expected-stdout.txt", "stdout", expectedLines, diff, 3);
-                        // Produce a unified diff output for the error message.
-                        StringBuilder errorMessage =
-                                new StringBuilder(
-                                        "The test's standard output does not match the expected "
-                                                + "output:\n");
-                        for (String delta : unifiedDiff) {
-                            errorMessage.append(delta).append('\n');
-                        }
-                        CLog.i("%s FAILED: %s", mRunTestName, errorMessage.toString());
-                        listener.testFailed(testId, errorMessage.toString());
-                        return;
-                    }
-                } catch (IOException ioe) {
-                    CLog.e(
-                            "I/O error while accessing expected output file for test %s: %s",
-                            mRunTestName, ioe);
-                    listener.testFailed(testId, "I/O error while accessing expected output file.");
+            // Check the test's standard output.
+            if (actualStdoutText == null) {
+                listener.testFailed(testId, "No standard output received to compare to.");
+                return;
+            }
+            try {
+                String expectedStdoutFileName =
+                        String.format("%s-expected-stdout.txt", mRunTestName);
+                File expectedStdoutFile =
+                        testInfo.getDependencyFile(expectedStdoutFileName, /* targetFirst */ true);
+                CLog.i(
+                        "Found expected standard output for run-test %s: %s",
+                        mRunTestName, expectedStdoutFile);
+                String expectedStdoutText = FileUtil.readStringFromFile(expectedStdoutFile);
+
+                if (!actualStdoutText.equals(expectedStdoutText)) {
+                    // Produce a unified diff output for the error message.
+                    String diff =
+                            computeDiff(
+                                    expectedStdoutText,
+                                    actualStdoutText,
+                                    "expected-stdout.txt",
+                                    "stdout");
+                    String errorMessage =
+                            "The test's standard output does not match the expected standard "
+                                    + "output:\n"
+                                    + diff;
+                    CLog.i("%s FAILED: %s", mRunTestName, errorMessage);
+                    listener.testFailed(testId, errorMessage);
                     return;
                 }
-            } else {
-                listener.testFailed(testId, "No output received to compare to.");
+            } catch (IOException ioe) {
+                CLog.e(
+                        "I/O error while accessing expected standard output file for test %s: %s",
+                        mRunTestName, ioe);
+                listener.testFailed(
+                        testId, "I/O error while accessing expected standard output file.");
+                return;
+            }
+
+            // Check the test's standard error.
+            if (actualStderrText == null) {
+                listener.testFailed(testId, "No standard error received to compare to.");
+                return;
+            }
+            try {
+                String expectedStderrFileName =
+                        String.format("%s-expected-stderr.txt", mRunTestName);
+                File expectedStderrFile =
+                        testInfo.getDependencyFile(expectedStderrFileName, /* targetFirst */ true);
+                CLog.i(
+                        "Found expected standard error for run-test %s: %s",
+                        mRunTestName, expectedStderrFile);
+                String expectedStderrText = FileUtil.readStringFromFile(expectedStderrFile);
+
+                if (!actualStderrText.equals(expectedStderrText)) {
+                    // Produce a unified diff output for the error message.
+                    String diff =
+                            computeDiff(
+                                    expectedStderrText,
+                                    actualStderrText,
+                                    "expected-stderr.txt",
+                                    "stderr");
+                    String errorMessage =
+                            "The test's standard error does not match the expected standard "
+                                    + "error:\n"
+                                    + diff;
+                    CLog.i("%s FAILED: %s", mRunTestName, errorMessage);
+                    listener.testFailed(testId, errorMessage);
+                    return;
+                }
+            } catch (IOException ioe) {
+                CLog.e(
+                        "I/O error while accessing expected standard error file for test %s: %s",
+                        mRunTestName, ioe);
+                listener.testFailed(
+                        testId, "I/O error while accessing expected standard error file.");
                 return;
             }
 
@@ -270,10 +302,12 @@ public class ArtRunTest implements IRemoteTest, IAbiReceiver, ITestFilterReceive
                 String mkdirCmd = String.format("mkdir -p \"%s\"", tmpCheckerDir);
                 CommandResult mkdirResult = mDevice.executeShellV2Command(mkdirCmd);
                 if (mkdirResult.getStatus() != CommandStatus.SUCCESS) {
-                    String stderr = mkdirResult.getStderr();
-                    CLog.e("Cannot create a directory on the device: %s", stderr);
-                    listener.testFailed(testId,
-                            String.format("Cannot create a directory on the device: %s", stderr));
+                    String message =
+                            String.format(
+                                    "Cannot create a directory on the device: %s",
+                                    mkdirResult.getStderr());
+                    CLog.e(message);
+                    listener.testFailed(testId, message);
                     return;
                 }
 
@@ -285,10 +319,11 @@ public class ArtRunTest implements IRemoteTest, IAbiReceiver, ITestFilterReceive
                                 mClasspath.get(0), oatPath, cfgPath);
                 CommandResult dex2oatResult = mDevice.executeShellV2Command(dex2oatCmd);
                 if (dex2oatResult.getStatus() != CommandStatus.SUCCESS) {
-                    String stderr = dex2oatResult.getStderr();
-                    CLog.e("Error while running dex2oat: %s", stderr);
-                    listener.testFailed(testId,
-                            String.format("Error while running dex2oat: %s", stderr));
+                    String message =
+                            String.format(
+                                    "Error while running dex2oat: %s", dex2oatResult.getStderr());
+                    CLog.e(message);
+                    listener.testFailed(testId, message);
                     return;
                 }
 
@@ -409,6 +444,30 @@ public class ArtRunTest implements IRemoteTest, IAbiReceiver, ITestFilterReceive
             return !mIncludeFilters.contains(testName) && !mIncludeFilters.contains(descString);
         }
         return false;
+    }
+
+    /**
+     * Compute the difference between expected and actual outputs as a unified diff.
+     *
+     * @param expected The expected output
+     * @param actual The actual output
+     * @param expectedFileName The name of the expected output file name (used in diff header)
+     * @param actualFileName The name of the actual output file name (used in diff header)
+     * @return The unified diff between the expected and actual outputs
+     */
+    private String computeDiff(
+            String expected, String actual, String expectedFileName, String actualFileName) {
+        List<String> expectedLines = Arrays.asList(expected.split("\\r?\\n"));
+        List<String> actualLines = Arrays.asList(actual.split("\\r?\\n"));
+        Patch<String> diff = DiffUtils.diff(expectedLines, actualLines);
+        List<String> unifiedDiff =
+                DiffUtils.generateUnifiedDiff(
+                        expectedFileName, actualFileName, expectedLines, diff, 3);
+        StringBuilder diffOutput = new StringBuilder();
+        for (String delta : unifiedDiff) {
+            diffOutput.append(delta).append('\n');
+        }
+        return diffOutput.toString();
     }
 
     private File getRunTestDir(TestInformation testInfo) throws FileNotFoundException {
