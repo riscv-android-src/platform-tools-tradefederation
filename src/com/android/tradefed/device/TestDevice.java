@@ -209,7 +209,7 @@ public class TestDevice extends NativeDevice {
                 packageFile.getAbsolutePath(), extraArgs.toString(), getSerialNumber());
         performDeviceAction(String.format("install %s", packageFile.getAbsolutePath()),
                 installAction, MAX_RETRY_ATTEMPTS);
-        List<File> packageFiles = new ArrayList();
+        List<File> packageFiles = new ArrayList<>();
         packageFiles.add(packageFile);
         allowLegacyStorageForApps(packageFiles);
         return response[0];
@@ -350,7 +350,7 @@ public class TestDevice extends NativeDevice {
                 };
         performDeviceAction(String.format("install %s", packageFile.getAbsolutePath()),
                 installAction, MAX_RETRY_ATTEMPTS);
-        List<File> packageFiles = new ArrayList();
+        List<File> packageFiles = new ArrayList<>();
         packageFiles.add(packageFile);
         allowLegacyStorageForApps(packageFiles);
         return response[0];
