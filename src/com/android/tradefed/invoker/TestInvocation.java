@@ -482,8 +482,12 @@ public class TestInvocation implements ITestInvocation {
         if (exception instanceof IHarnessException) {
             id = ((IHarnessException) exception).getErrorId();
         }
+        String message = exception.getMessage();
+        if (message == null) {
+            message = "No error message";
+        }
         FailureDescription failure =
-                CurrentInvocation.createFailure(exception.getMessage(), id)
+                CurrentInvocation.createFailure(message, id)
                         .setCause(exception)
                         .setFailureStatus(defaultStatus);
         if (id != null) {
@@ -532,11 +536,17 @@ public class TestInvocation implements ITestInvocation {
             return;
         }
         // logBugreport will report a regular bugreport if bugreportz is not supported.
-        boolean res =
-                device.logBugreport(
-                        String.format("%s_%s", bugreportName, device.getSerialNumber()), listener);
-        if (!res) {
-            CLog.w("Error when collecting bugreport for device '%s'", device.getSerialNumber());
+        try {
+            boolean res =
+                    device.logBugreport(
+                            String.format("%s_%s", bugreportName, device.getSerialNumber()),
+                            listener);
+            if (!res) {
+                CLog.w("Error when collecting bugreport for device '%s'", device.getSerialNumber());
+            }
+        } catch (RuntimeException e) {
+            CLog.e("Harness Exception while collecting bugreport");
+            CLog.e(e);
         }
     }
 
