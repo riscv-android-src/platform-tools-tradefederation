@@ -126,6 +126,7 @@ public class TradefedSandboxTest {
                         mMockRunUtil.runTimedCmd(
                                 EasyMock.anyLong(),
                                 EasyMock.endsWith("/java"),
+                                EasyMock.contains("-Djava.io.tmpdir="),
                                 EasyMock.eq("-cp"),
                                 EasyMock.anyObject(),
                                 EasyMock.eq(SandboxConfigDump.class.getCanonicalName()),
@@ -171,6 +172,7 @@ public class TradefedSandboxTest {
                         mMockRunUtil.runTimedCmd(
                                 EasyMock.anyLong(),
                                 EasyMock.endsWith("/java"),
+                                EasyMock.contains("-Djava.io.tmpdir="),
                                 EasyMock.eq("-cp"),
                                 EasyMock.anyObject(),
                                 EasyMock.eq(SandboxConfigDump.class.getCanonicalName()),
@@ -213,6 +215,7 @@ public class TradefedSandboxTest {
                         mMockRunUtil.runTimedCmd(
                                 EasyMock.anyLong(),
                                 EasyMock.endsWith("/java"),
+                                EasyMock.contains("-Djava.io.tmpdir="),
                                 EasyMock.eq("-cp"),
                                 EasyMock.anyObject(),
                                 EasyMock.eq(SandboxConfigDump.class.getCanonicalName()),
