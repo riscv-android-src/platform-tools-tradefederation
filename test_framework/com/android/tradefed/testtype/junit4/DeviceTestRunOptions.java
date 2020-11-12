@@ -40,6 +40,7 @@ public class DeviceTestRunOptions {
     private boolean mDisableTestApiCheck = true; // optional
     private boolean mDisableIsolatedStorage = false; // optional
     private boolean mDisableWindowAnimation = false; // optional
+    private boolean mDisableRestart = false; // optional
     private Map<String, String> mInstrumentationArgs = new LinkedHashMap<>(); // optional
     private List<ITestLifeCycleReceiver> mExtraListeners = new ArrayList<>(); // optional
 
@@ -211,6 +212,16 @@ public class DeviceTestRunOptions {
 
     public boolean isWindowAnimationDisabled() {
         return mDisableWindowAnimation;
+    }
+
+    /** Sets whether or not to add --no-restart to the 'am instrument' used from the host side. */
+    public DeviceTestRunOptions setDisableRestart(boolean disableRestart) {
+        this.mDisableRestart = disableRestart;
+        return this;
+    }
+
+    public boolean isRestartDisabled() {
+        return mDisableRestart;
     }
 
     /** Add an argument that will be passed to the instrumentation. */

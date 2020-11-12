@@ -289,6 +289,18 @@ public class InstrumentationTestTest {
         assertThat(runner.getRunOptions()).contains("--no-window-animation");
     }
 
+    /** Test normal run scenario with --no-restart specified */
+    @Test
+    public void testRun_noRestart() throws Exception {
+        doReturn(true).when(mMockTestDevice).checkApiLevelAgainstNextRelease(31);
+        OptionSetter setter = new OptionSetter(mInstrumentationTest);
+        setter.setOptionValue("restart", "false");
+        RemoteAndroidTestRunner runner =
+                (RemoteAndroidTestRunner)
+                        mInstrumentationTest.createRemoteAndroidTestRunner("", "", mMockIDevice);
+        assertThat(runner.getRunOptions()).contains("--no-restart");
+    }
+
     /** Test normal run scenario with a test class specified. */
     @Test
     public void testRun_class() {

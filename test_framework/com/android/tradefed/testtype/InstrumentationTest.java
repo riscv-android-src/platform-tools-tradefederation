@@ -318,6 +318,13 @@ public class InstrumentationTest
                     "Whether or not to enable reporting all unexecuted tests from instrumentation.")
     private boolean mReportUnexecuted = true;
 
+    @Option(
+            name = "restart",
+            description =
+                    "If set to false, the '--no-restart' flag will be passed to the am "
+                            + "instrument command. Only works for S or later.")
+    private boolean mRestart = true;
+
     private IAbi mAbi = null;
 
     private Collection<String> mInstallArgs = new ArrayList<>();
@@ -693,6 +700,9 @@ public class InstrumentationTest
         // window-animation flag only exists in ICS and after
         if (!mWindowAnimation && apiLevel >= 14) {
             runOptions += "--no-window-animation ";
+        }
+        if (!mRestart && getDevice().checkApiLevelAgainstNextRelease(31)) {
+            runOptions += "--no-restart ";
         }
 
         if (abiName != null && getDevice().getApiLevel() > 20) {
