@@ -51,6 +51,11 @@ public class EventsLoggerListener implements ITestInvocationListener {
     }
 
     @Override
+    public void invocationFailed(FailureDescription failure) {
+        writeToFile(String.format("[invocation failed: %s]\n", failure));
+    }
+
+    @Override
     public void invocationEnded(long elapsedTime) {
         writeToFile("[invocation ended]\n");
     }
