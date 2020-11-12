@@ -38,7 +38,6 @@ import difflib.Patch;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
@@ -62,7 +61,6 @@ public class ArtRunTest implements IRemoteTest, IAbiReceiver, ITestFilterReceive
 
     private static final String DALVIKVM_CMD =
             "dalvikvm|#BITNESS#| -classpath |#CLASSPATH#| |#MAINCLASS#|";
-    public static final String CHECKER_EXECUTABLE = "art/tools/checker/checker.py";
 
     @Option(
             name = "test-timeout",
@@ -329,9 +327,13 @@ public class ArtRunTest implements IRemoteTest, IAbiReceiver, ITestFilterReceive
 
                 File runTestDir;
                 try {
-                    runTestDir = getRunTestDir(testInfo);
-                } catch (FileNotFoundException e) {
-                    listener.testFailed(testId, "I/O error while accessing test dir.");
+                    runTestDir =
+                            Files.createTempDirectory(
+                                    testInfo.dependenciesFolder().toPath(), mRunTestName)
+                                    .toFile();
+                } catch (IOException e) {
+                    CLog.e(e);
+                    listener.testFailed(testId, "I/O error while creating test dir.");
                     return;
                 }
 
@@ -386,9 +388,25 @@ public class ArtRunTest implements IRemoteTest, IAbiReceiver, ITestFilterReceive
 
                 String checkerArch = AbiUtils.getArchForAbi(abi).toUpperCase();
 
+                // Checker path for testsuites
+                File checkerBinary = new File(
+                        testInfo.executionFiles().get(FilesKey.TESTS_DIRECTORY),
+                        "art-run-test-checker");
+
+                if (!checkerBinary.isFile()) {
+                    // Checker path for single atest runs
+                    checkerBinary = new File(
+                            testInfo.executionFiles().get(FilesKey.HOST_TESTS_DIRECTORY),
+                            "art-run-test-checker/art-run-test-checker");
+                    if (!checkerBinary.isFile()) {
+                        listener.testFailed(testId, "Checker binary not found");
+                        return;
+                    }
+                }
+
                 ProcessBuilder processBuilder =
                         new ProcessBuilder(
-                                CHECKER_EXECUTABLE,
+                                checkerBinary.getAbsolutePath(),
                                 "--no-print-cfg",
                                 "-q",
                                 "--arch=" + checkerArch,
@@ -468,15 +486,5 @@ public class ArtRunTest implements IRemoteTest, IAbiReceiver, ITestFilterReceive
             diffOutput.append(delta).append('\n');
         }
         return diffOutput.toString();
-    }
-
-    private File getRunTestDir(TestInformation testInfo) throws FileNotFoundException {
-        File testsDir = testInfo.executionFiles().get(FilesKey.TARGET_TESTS_DIRECTORY);
-        if (testsDir == null || !testsDir.exists()) {
-            throw new FileNotFoundException(
-                    String.format(
-                            "Could not find target tests directory for test %s.", mRunTestName));
-        }
-        return new File(testsDir, mRunTestName);
     }
 }
