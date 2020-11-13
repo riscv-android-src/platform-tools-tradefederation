@@ -79,19 +79,26 @@ public class SandboxConfigUtil {
             FileUtil.deleteFile(destination);
             throw e;
         }
-        List<String> mCmdArgs = new ArrayList<>();
-        mCmdArgs.add(SystemUtil.getRunningJavaBinaryPath().getAbsolutePath());
-        mCmdArgs.add("-cp");
-        mCmdArgs.add(classpath);
-        mCmdArgs.add(SandboxConfigDump.class.getCanonicalName());
-        mCmdArgs.add(dump.toString());
-        mCmdArgs.add(destination.getAbsolutePath());
-        for (String arg : args) {
-            mCmdArgs.add(arg);
-        }
-        CommandResult result = runUtil.runTimedCmd(DUMP_TIMEOUT, mCmdArgs.toArray(new String[0]));
-        if (CommandStatus.SUCCESS.equals(result.getStatus())) {
-            return destination;
+        File tmpDir = FileUtil.createTempDir("config-dump-temp-dir");
+        CommandResult result = null;
+        try {
+            List<String> mCmdArgs = new ArrayList<>();
+            mCmdArgs.add(SystemUtil.getRunningJavaBinaryPath().getAbsolutePath());
+            mCmdArgs.add(String.format("-Djava.io.tmpdir=%s", tmpDir.getAbsolutePath()));
+            mCmdArgs.add("-cp");
+            mCmdArgs.add(classpath);
+            mCmdArgs.add(SandboxConfigDump.class.getCanonicalName());
+            mCmdArgs.add(dump.toString());
+            mCmdArgs.add(destination.getAbsolutePath());
+            for (String arg : args) {
+                mCmdArgs.add(arg);
+            }
+            result = runUtil.runTimedCmd(DUMP_TIMEOUT, mCmdArgs.toArray(new String[0]));
+            if (CommandStatus.SUCCESS.equals(result.getStatus())) {
+                return destination;
+            }
+        } finally {
+            FileUtil.recursiveDelete(tmpDir);
         }
 
         if (result.getStderr() != null && !result.getStderr().isEmpty()) {
