@@ -62,6 +62,7 @@ public class HostUnitTestsConfigValidation implements IBuildReceiver {
                             "com.android.compatibility.common.tradefed.testtype.JarHostTest",
                             "com.android.tradefed.testtype.HostTest",
                             "com.android.tradefed.testtype.HostGTest",
+                            "com.android.tradefed.testtype.IsolatedHostTest",
                             "com.android.tradefed.testtype.python.PythonBinaryHostTest",
                             "com.android.tradefed.testtype.binary.ExecutableHostTest",
                             "com.android.tradefed.testtype.rust.RustBinaryHostTest"));
