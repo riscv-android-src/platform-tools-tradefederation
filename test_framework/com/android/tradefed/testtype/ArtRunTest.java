@@ -32,14 +32,10 @@ import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.RunUtil;
 
-import difflib.DiffUtils;
-import difflib.Patch;
-
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -54,6 +50,9 @@ import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import difflib.DiffUtils;
+import difflib.Patch;
+
 /** A test runner to run ART run-tests. */
 public class ArtRunTest implements IRemoteTest, IAbiReceiver, ITestFilterReceiver {
 
@@ -61,6 +60,11 @@ public class ArtRunTest implements IRemoteTest, IAbiReceiver, ITestFilterReceive
 
     private static final String DALVIKVM_CMD =
             "dalvikvm|#BITNESS#| -classpath |#CLASSPATH#| |#MAINCLASS#|";
+
+    private static final long CHECKER_TIMEOUT_MS = 30 * 1000;
+    public static final String TESTSUITE_CHECKER_PATH = "art-run-test-checker";
+    public static final String SINGLE_TEST_CHECKER_PATH =
+            "art-run-test-checker/art-run-test-checker";
 
     @Option(
             name = "test-timeout",
@@ -353,32 +357,8 @@ public class ArtRunTest implements IRemoteTest, IAbiReceiver, ITestFilterReceive
                     return;
                 }
 
-                try (ZipFile archive = new ZipFile(tempJar)) {
-                    File srcFile = new File(runTestDir, "src");
-                    if (srcFile.exists()) {
-                        Files.walk(srcFile.toPath())
-                                .map(Path::toFile)
-                                .sorted(Comparator.reverseOrder())
-                                .forEach(File::delete);
-                    }
-
-                    List<? extends ZipEntry> entries = archive.stream()
-                            .sorted(Comparator.comparing(ZipEntry::getName))
-                            .collect(Collectors.toList());
-
-                    for (ZipEntry entry : entries) {
-                        if (entry.getName().startsWith("src")) {
-                            Path entryDest = runTestDir.toPath().resolve(entry.getName());
-                            if (entry.isDirectory()) {
-                                Files.createDirectory(entryDest);
-                            } else {
-                                Files.copy(archive.getInputStream(entry), entryDest);
-                            }
-                        }
-                    }
-
-                    // TODO(b/162408889): Clean up files on device (i.e. remove `tmpCheckerDir`)
-                    // after running the Checker test.
+                try {
+                    extractSourcesFromJar(runTestDir, tempJar);
                 } catch (IOException e) {
                     listener.testFailed(testId, "Error unpacking test jar");
                     CLog.e("Jar unpacking failed with exception %s", e);
@@ -388,44 +368,35 @@ public class ArtRunTest implements IRemoteTest, IAbiReceiver, ITestFilterReceive
 
                 String checkerArch = AbiUtils.getArchForAbi(abi).toUpperCase();
 
-                // Checker path for testsuites
-                File checkerBinary = new File(
-                        testInfo.executionFiles().get(FilesKey.TESTS_DIRECTORY),
-                        "art-run-test-checker");
-
-                if (!checkerBinary.isFile()) {
-                    // Checker path for single atest runs
-                    checkerBinary = new File(
-                            testInfo.executionFiles().get(FilesKey.HOST_TESTS_DIRECTORY),
-                            "art-run-test-checker/art-run-test-checker");
-                    if (!checkerBinary.isFile()) {
-                        listener.testFailed(testId, "Checker binary not found");
-                        return;
-                    }
+                File checkerBinary = getCheckerBinaryPath(testInfo);
+                if (checkerBinary == null) {
+                    listener.testFailed(testId, "Checker binary not found");
+                    return;
                 }
 
-                ProcessBuilder processBuilder =
-                        new ProcessBuilder(
-                                checkerBinary.getAbsolutePath(),
-                                "--no-print-cfg",
-                                "-q",
-                                "--arch=" + checkerArch,
-                                localCfgPath.getAbsolutePath(),
-                                runTestDir.getAbsolutePath());
+                String[] checkerCommandLine = {
+                        checkerBinary.getAbsolutePath(),
+                        "--no-print-cfg",
+                        "-q",
+                        "--arch=" + checkerArch,
+                        localCfgPath.getAbsolutePath(),
+                        runTestDir.getAbsolutePath()
+                };
 
                 try {
-                    Process process = processBuilder.start();
-                    if (process.waitFor() != 0) {
-                        String checkerOutput = new BufferedReader(
-                                new InputStreamReader(process.getErrorStream())).lines().collect(
-                                Collectors.joining("\n"));
+                    String checkerOutput = runAndCollectStderr(checkerCommandLine);
+                    if (checkerOutput != null && !checkerOutput.isEmpty()) {
                         listener.testFailed(testId, "Checker failed\n" + checkerOutput);
-                        listener.testLog("graph.cfg", LogDataType.CFG,
+                        listener.testLog(
+                                "graph.cfg",
+                                LogDataType.CFG,
                                 new FileInputStreamSource(localCfgPath));
                     }
-                } catch (IOException | InterruptedException e) {
-                    listener.testFailed(testId, "I/O error while starting Checker process");
+                } catch (RuntimeException e) {
+                    CLog.e(e);
+                    listener.testFailed(testId, "Error while starting Checker process");
                 }
+                FileUtil.recursiveDelete(runTestDir);
             }
 
             // Check the test's exit code.
@@ -433,7 +404,6 @@ public class ArtRunTest implements IRemoteTest, IAbiReceiver, ITestFilterReceive
                 listener.testFailed(
                         testId,
                         String.format("Test exited with code %s", testResult.getExitCode()));
-                return;
             }
         } finally {
             HashMap<String, Metric> emptyTestMetrics = new HashMap<>();
@@ -441,6 +411,65 @@ public class ArtRunTest implements IRemoteTest, IAbiReceiver, ITestFilterReceive
             HashMap<String, Metric> emptyTestRunMetrics = new HashMap<>();
             // TODO: Pass an actual value as `elapsedTimeMillis` argument.
             listener.testRunEnded(/* elapsedTimeMillis*/ 0, emptyTestRunMetrics);
+        }
+    }
+
+    /**
+     * Try to find compiled Checker binary in its typical locations
+     */
+    protected File getCheckerBinaryPath(TestInformation testInfo) {
+        File checkerBinary = new File(
+                testInfo.executionFiles().get(FilesKey.TESTS_DIRECTORY),
+                TESTSUITE_CHECKER_PATH);
+
+        if (!checkerBinary.isFile()) {
+            checkerBinary = new File(
+                    testInfo.executionFiles().get(FilesKey.HOST_TESTS_DIRECTORY),
+                    SINGLE_TEST_CHECKER_PATH);
+            if (!checkerBinary.isFile()) {
+                return null;
+            }
+        }
+        return checkerBinary;
+    }
+
+    protected String runAndCollectStderr(String[] checkerCommandLine) {
+        CommandResult result = RunUtil.getDefault().runTimedCmd(CHECKER_TIMEOUT_MS,
+                checkerCommandLine);
+        if (result.getStatus() != CommandStatus.SUCCESS) {
+            if (result.getStatus() == CommandStatus.TIMED_OUT) {
+                throw new RuntimeException("Checker timed out");
+            }
+            throw new RuntimeException("Error running Checker\n" + result.getStderr());
+        }
+        return result.getStderr();
+    }
+
+    /**
+     * Extract src directory from given jar file to given directory
+     */
+    protected void extractSourcesFromJar(File runTestDir, File jar) throws IOException {
+        try (ZipFile archive = new ZipFile(jar)) {
+            File srcFile = new File(runTestDir, "src");
+            if (srcFile.exists()) {
+                FileUtil.recursiveDelete(srcFile);
+            }
+
+            List<? extends ZipEntry> entries =
+                    archive.stream()
+                            .sorted(Comparator.comparing(ZipEntry::getName))
+                            .collect(Collectors.toList());
+
+            for (ZipEntry entry : entries) {
+                if (entry.getName().startsWith("src")) {
+                    Path entryDest = runTestDir.toPath().resolve(entry.getName());
+                    if (entry.isDirectory()) {
+                        Files.createDirectory(entryDest);
+                    } else {
+                        Files.copy(archive.getInputStream(entry), entryDest);
+                    }
+                }
+            }
         }
     }
 
