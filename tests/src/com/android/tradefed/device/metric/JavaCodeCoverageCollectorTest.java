@@ -164,27 +164,6 @@ public class JavaCodeCoverageCollectorTest {
     }
 
     @Test
-    public void testFailure_noCoverageMetric() throws Exception {
-        enableJavaCoverage();
-
-        // Setup mocks.
-        when(mMockDevice.executeShellCommand("ps -e")).thenReturn("");
-        when(mMockDevice.executeShellCommand("pm list packages -a")).thenReturn("");
-
-        // Simulate a test run.
-        mCodeCoverageCollector.init(mMockContext, mFakeListener);
-        mCodeCoverageCollector.testRunStarted(RUN_NAME, TEST_COUNT);
-        mCodeCoverageCollector.testRunEnded(ELAPSED_TIME, new HashMap<String, Metric>());
-
-        // Verify that the test run is marked as a failure.
-        verify(mFakeListener).testRunFailed(anyString());
-
-        // Verify testLog(..) was not called.
-        verify(mFakeListener, never())
-                .testLog(anyString(), eq(LogDataType.COVERAGE), any(InputStreamSource.class));
-    }
-
-    @Test
     public void testFailure_unableToPullFile() throws Exception {
         enableJavaCoverage();
         HashMap<String, Metric> runMetrics = createMetricsWithCoverageMeasurement(DEVICE_PATH);
