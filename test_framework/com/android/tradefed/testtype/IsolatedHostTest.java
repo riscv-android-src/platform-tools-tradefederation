@@ -65,6 +65,11 @@ import java.util.stream.Collectors;
 /**
  * Implements a TradeFed runner that uses a subprocess to execute the tests in a low-dependency
  * environment instead of executing them on the main process.
+ *
+ * <p>This runner assumes that all of the jars configured are in the same test directory and
+ * launches the subprocess in that directory. Since it must choose a working directory for the
+ * subprocess, and many tests benefit from that directory being the test directory, this was the
+ * best compromise available.
  */
 @OptionClass(alias = "isolated-host-test")
 public class IsolatedHostTest
@@ -170,6 +175,15 @@ public class IsolatedHostTest
             List<String> cmdArgs = this.compileCommandArgs(classpath);
             CLog.v(String.join(" ", cmdArgs));
             RunUtil runner = new RunUtil();
+
+            // Note the below chooses a working directory based on the jar that happens to
+            // be first in the list of configured jars.  The baked-in assumption is that
+            // all configured jars are in the same parent directory, otherwise the behavior
+            // here is non-deterministic.
+            File workDir = this.findJarDirectory();
+            runner.setWorkingDir(workDir);
+            CLog.v("Using PWD: %s", workDir.getAbsolutePath());
+
             Process isolationRunner = runner.runCmdInBackground(Redirect.INHERIT, cmdArgs);
             CLog.v("Started subprocess.");
 
@@ -210,6 +224,7 @@ public class IsolatedHostTest
         }
     }
 
+    /** Assembles the command arguments to execute the subprocess runner. */
     public List<String> compileCommandArgs(String classpath) throws ClassNotFoundException {
         List<String> cmdArgs = new ArrayList<>();
 
@@ -247,6 +262,23 @@ public class IsolatedHostTest
                         "--timeout",
                         Integer.toString(mSocketTimeout)));
         return cmdArgs;
+    }
+
+    /**
+     * Finds the directory where the first configured jar is located.
+     *
+     * <p>This is used to determine the correct folder to use for a working directory for the
+     * subprocess runner.
+     */
+    private File findJarDirectory() {
+        File testDir = findTestDirectory();
+        for (String jar : mJars) {
+            File f = FileUtil.findFile(testDir, jar);
+            if (f != null && f.exists()) {
+                return f.getParentFile();
+            }
+        }
+        return null;
     }
 
     /**
@@ -298,6 +330,16 @@ public class IsolatedHostTest
         if (mClasspathOverride != null) {
             paths.add(mClasspathOverride);
         } else {
+            if (mRobolectricResources) {
+                // This is contingent on the current android-all version.
+                File androidAllJar = FileUtil.findFile(testDir, "android-all-R-robolectric-r0.jar");
+                if (androidAllJar == null) {
+                    throw new RuntimeException(
+                            "Could not find android-all jar needed for test execution.");
+                }
+                paths.add(androidAllJar.getAbsolutePath());
+            }
+
             for (String jar : mJars) {
                 File f = FileUtil.findFile(testDir, jar);
                 if (f != null && f.exists()) {
@@ -307,11 +349,6 @@ public class IsolatedHostTest
                         paths.add(parentPath);
                     }
                 }
-            }
-
-            if (mRobolectricResources) {
-                paths.add(testDir.getAbsolutePath() + "/android-all/*");
-                paths.add(testDir.getAbsolutePath() + "/robolectric-prebuilts/*");
             }
         }
 
