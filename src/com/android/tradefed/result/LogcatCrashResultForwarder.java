@@ -26,11 +26,11 @@ import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.result.error.TestErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
-import com.android.tradefed.util.StreamUtil;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -172,10 +172,13 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
             if (logSource.size() == 0L) {
                 return null;
             }
-            String message = StreamUtil.getStringFromStream(logSource.createInputStream());
             LogcatParser parser = new LogcatParser();
-            List<String> lines = Arrays.asList(message.split("\n"));
-            return parser.parse(lines);
+            LogcatItem result = null;
+            try (BufferedReader reader =
+                    new BufferedReader(new InputStreamReader(logSource.createInputStream()))) {
+                result = parser.parse(reader);
+            }
+            return result;
         } catch (IOException e) {
             CLog.e(e);
         }
