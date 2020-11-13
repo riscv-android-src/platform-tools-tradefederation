@@ -124,6 +124,14 @@ public class SubprocessResultsReporter
 
     /** {@inheritDoc} */
     @Override
+    public void testFailed(TestDescription testId, FailureDescription failure) {
+        FailedTestEventInfo info =
+                new FailedTestEventInfo(testId.getClassName(), testId.getTestName(), failure);
+        printEvent(SubprocessTestResultsParser.StatusKeys.TEST_FAILED, info);
+    }
+
+    /** {@inheritDoc} */
+    @Override
     public void testIgnored(TestDescription testId) {
         BaseTestEventInfo info = new BaseTestEventInfo(testId.getClassName(), testId.getTestName());
         printEvent(SubprocessTestResultsParser.StatusKeys.TEST_IGNORED, info);
