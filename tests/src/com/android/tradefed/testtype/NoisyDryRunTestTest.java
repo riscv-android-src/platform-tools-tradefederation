@@ -17,6 +17,7 @@ package com.android.tradefed.testtype;
 
 import static org.easymock.EasyMock.anyLong;
 import static org.easymock.EasyMock.anyObject;
+import static org.easymock.EasyMock.contains;
 import static org.easymock.EasyMock.endsWith;
 import static org.easymock.EasyMock.eq;
 import static org.easymock.EasyMock.getCurrentArguments;
@@ -267,6 +268,7 @@ public class NoisyDryRunTestTest {
                         mMockRunUtil.runTimedCmd(
                                 anyLong(),
                                 endsWith("/java"),
+                                contains("-Djava.io.tmpdir="),
                                 eq("-cp"),
                                 anyObject(),
                                 eq(SandboxConfigDump.class.getCanonicalName()),
@@ -279,7 +281,7 @@ public class NoisyDryRunTestTest {
                             @Override
                             public CommandResult answer() throws Throwable {
                                 // Fake the command dump to avoid possible timeouts
-                                String path = (String) getCurrentArguments()[6];
+                                String path = (String) getCurrentArguments()[7];
                                 FileUtil.writeToFile(
                                         "<configuration></configuration>", new File(path), false);
                                 return result;
@@ -329,6 +331,7 @@ public class NoisyDryRunTestTest {
                         mMockRunUtil.runTimedCmd(
                                 anyLong(),
                                 endsWith("/java"),
+                                contains("-Djava.io.tmpdir="),
                                 eq("-cp"),
                                 anyObject(),
                                 eq(SandboxConfigDump.class.getCanonicalName()),
