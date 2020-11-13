@@ -16,6 +16,7 @@
 package com.android.tradefed.config;
 
 import static org.easymock.EasyMock.anyObject;
+import static org.easymock.EasyMock.contains;
 import static org.easymock.EasyMock.endsWith;
 import static org.easymock.EasyMock.eq;
 import static org.junit.Assert.assertEquals;
@@ -79,6 +80,7 @@ public class SandboxConfigurationFactoryTest {
                         mMockRunUtil.runTimedCmd(
                                 EasyMock.anyLong(),
                                 endsWith("/java"),
+                                contains("-Djava.io.tmpdir="),
                                 eq("-cp"),
                                 anyObject(),
                                 eq(SandboxConfigDump.class.getCanonicalName()),
@@ -89,7 +91,7 @@ public class SandboxConfigurationFactoryTest {
                         new IAnswer<CommandResult>() {
                             @Override
                             public CommandResult answer() throws Throwable {
-                                String resFile = (String) EasyMock.getCurrentArguments()[6];
+                                String resFile = (String) EasyMock.getCurrentArguments()[7];
                                 FileUtil.writeToFile(
                                         "<configuration><test class=\"com.android.tradefed.test"
                                                 + "type.StubTest\" /></configuration>",
