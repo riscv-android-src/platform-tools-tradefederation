@@ -85,8 +85,8 @@ public class TestMappingsValidation implements IBuildReceiver {
     private static final Set<String> TEST_GROUPS_TO_VALIDATE =
             new HashSet<>(Arrays.asList("presubmit", "postsubmit"));
     private static final long GIGABYTE = 1024L * 1024L * 1024L;
-    // Limit the size of general-tests.zip at 5GB
-    private static final long SIZE_LIMITATION = 5L;
+    // Limit the size of general-tests.zip at 5.5GB
+    private static final double SIZE_LIMITATION = 5.5;
 
     private static final Set<String> MAINLINE_TEST_GROUPS_TO_VALIDATE =
             new HashSet<>(Arrays.asList("mainline-presubmit", "mainline-postsubmit"));
@@ -142,7 +142,7 @@ public class TestMappingsValidation implements IBuildReceiver {
         if (generalTestsZip == null || !generalTestsZip.exists()) {
             error = String.format("general-tests.zip is null or doesn't exist");
         } else {
-            if (generalTestsZip.length() / GIGABYTE >= SIZE_LIMITATION) {
+            if ((double) generalTestsZip.length() / GIGABYTE >= SIZE_LIMITATION) {
                 error =
                         String.format(
                                 "The size of general-tests.zip is: %s Bytes, which "
