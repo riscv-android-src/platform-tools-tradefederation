@@ -32,7 +32,10 @@ import java.util.StringJoiner;
 public final class NativeCodeCoverageFlusher {
 
     private static final String COVERAGE_FLUSH_COMMAND_FORMAT = "kill -37 %s";
-    private static final String CLEAR_NATIVE_COVERAGE_FILES = "rm -rf /data/misc/trace/*";
+    private static final String CLEAR_CLANG_COVERAGE_FILES =
+            "find /data/misc/trace -name '*.profraw' -delete";
+    private static final String CLEAR_GCOV_COVERAGE_FILES =
+            "find /data/misc/trace -name '*.gcda' -delete";
 
     private final ITestDevice mDevice;
     private final List<String> mProcessNames;
@@ -50,7 +53,8 @@ public final class NativeCodeCoverageFlusher {
      */
     public void resetCoverage() throws DeviceNotAvailableException {
         forceCoverageFlush();
-        mDevice.executeShellCommand(CLEAR_NATIVE_COVERAGE_FILES);
+        mDevice.executeShellCommand(CLEAR_CLANG_COVERAGE_FILES);
+        mDevice.executeShellCommand(CLEAR_GCOV_COVERAGE_FILES);
     }
 
     /**
