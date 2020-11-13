@@ -235,7 +235,9 @@ public class IsolatedHostTest
             File javaExec = FileUtil.findFile(mJdkFolder, "java");
             if (javaExec == null) {
                 throw new IllegalArgumentException(
-                        "Couldn't find java executable in given JDK folder");
+                        String.format(
+                                "Couldn't find java executable in given JDK folder: %s",
+                                mJdkFolder.getAbsolutePath()));
             }
             String javaPath = javaExec.getAbsolutePath();
             cmdArgs.add(javaPath);
