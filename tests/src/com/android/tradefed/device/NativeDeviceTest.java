@@ -2918,7 +2918,8 @@ public class NativeDeviceTest {
                 EasyMock.eq(String.format("logcat -v threadtime -t '%s'", dateFormatted)),
                 EasyMock.anyObject());
         EasyMock.replay(mMockIDevice);
-        mTestDevice.getLogcatSince(date);
+        InputStreamSource res = mTestDevice.getLogcatSince(date);
+        StreamUtil.close(res);
         EasyMock.verify(mMockIDevice);
     }
 
