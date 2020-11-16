@@ -217,6 +217,7 @@ public class ShardListener extends CollectingTestListener implements ISupportGra
             for (String name : resultNames) {
                 clearResultsForName(name);
             }
+            forwardLogAssociation(getModuleLogFiles(), mMainListener);
             mMainListener.testModuleEnded();
         }
         mModuleContext = null;
