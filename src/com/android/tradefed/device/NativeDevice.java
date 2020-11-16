@@ -2337,20 +2337,29 @@ public class NativeDevice implements IManagedTestDevice {
         SimpleDateFormat format = new SimpleDateFormat("MM-dd HH:mm:ss.mmm");
         String dateFormatted = format.format(new Date(date));
 
-        byte[] output = new byte[0];
+        LargeOutputReceiver largeReceiver = null;
         try {
             // use IDevice directly because we don't want callers to handle
             // DeviceNotAvailableException for this method
-            CollectingByteOutputReceiver receiver = new CollectingByteOutputReceiver();
+            largeReceiver =
+                    new LargeOutputReceiver(
+                            "getLogcatSince",
+                            getSerialNumber(),
+                            getOptions().getMaxLogcatDataSize());
             String command = String.format("%s -t '%s'", LogcatReceiver.LOGCAT_CMD, dateFormatted);
-            getIDevice().executeShellCommand(command, receiver);
-            output = receiver.getOutput();
+            getIDevice().executeShellCommand(command, largeReceiver);
+            return largeReceiver.getData();
         } catch (IOException|AdbCommandRejectedException|
                 ShellCommandUnresponsiveException|TimeoutException e) {
             CLog.w("Failed to get logcat dump from %s: %s", getSerialNumber(), e.getMessage());
             CLog.e(e);
+        } finally {
+            if (largeReceiver != null) {
+                largeReceiver.cancel();
+                largeReceiver.delete();
+            }
         }
-        return new ByteArrayInputStreamSource(output);
+        return new ByteArrayInputStreamSource(new byte[0]);
     }
 
     /**
