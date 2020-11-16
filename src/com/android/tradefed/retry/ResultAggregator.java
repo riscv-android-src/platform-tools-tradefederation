@@ -173,8 +173,10 @@ public class ResultAggregator extends CollectingTestListener {
      * results.
      */
     public final void forwardAggregatedInvocationLogs() {
-        for (Entry<String, LogFile> invocLog : getNonAssociatedLogFiles().entrySet()) {
-            mAggregatedForwarder.logAssociation(invocLog.getKey(), invocLog.getValue());
+        for (String key : getNonAssociatedLogFiles().keySet()) {
+            for (LogFile log : getNonAssociatedLogFiles().get(key)) {
+                mAggregatedForwarder.logAssociation(key, log);
+            }
         }
     }
 
@@ -395,6 +397,12 @@ public class ResultAggregator extends CollectingTestListener {
         mAggregatedForwarder.testRunEnded(
                 getCurrentRunResults().getElapsedTime(),
                 getCurrentRunResults().getRunProtoMetrics());
+        // Log all the module only logs
+        for (String key : getModuleLogFiles().keySet()) {
+            for (LogFile log : getModuleLogFiles().get(key)) {
+                mAggregatedForwarder.logAssociation(key, log);
+            }
+        }
         mAggregatedForwarder.testModuleEnded();
         // Ensure we don't carry results from one module to another.
         for (String name : resultNames) {
