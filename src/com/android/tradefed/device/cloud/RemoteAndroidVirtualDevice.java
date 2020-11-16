@@ -492,6 +492,7 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
             return false;
         }
         getMonitor().waitForDeviceAvailable();
+        resetContentProviderSetup();
         return true;
     }
 }
