@@ -65,6 +65,7 @@ public enum LogDataType {
     TF_EVENTS("txt", "text/plain", false, true),
     HARNESS_STD_LOG("txt", "text/plain", false, true),
     HARNESS_CONFIG("xml", "text/xml", false, true),
+    ADB_HOST_LOG("txt", "text/plain", false, true),
     /* Unknown file type */
     UNKNOWN("dat", "text/plain", false, false);
 
