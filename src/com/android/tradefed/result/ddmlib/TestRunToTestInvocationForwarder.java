@@ -109,7 +109,9 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
         }
         for (ITestLifeCycleReceiver listener : mListeners) {
             try {
-                listener.testFailed(TestDescription.createFromTestIdentifier(testId), trace);
+                listener.testFailed(
+                        TestDescription.createFromTestIdentifier(testId),
+                        FailureDescription.create(trace));
             } catch (RuntimeException any) {
                 CLog.e(
                         "RuntimeException when invoking %s#testFailed",
