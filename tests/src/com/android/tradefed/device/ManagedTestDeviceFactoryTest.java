@@ -82,6 +82,8 @@ public class ManagedTestDeviceFactoryTest {
 
     @Test
     public void testNestedDevice() throws Exception {
+        EasyMock.expect(mMockDeviceManager.isFileSystemMountCheckEnabled()).andReturn(false);
+        EasyMock.expect(mMockDeviceManager.getFastbootPath()).andReturn("fastboot");
         mFactory =
                 new ManagedTestDeviceFactory(true, mMockDeviceManager, mMockDeviceMonitor) {
                     @Override
@@ -91,10 +93,10 @@ public class ManagedTestDeviceFactoryTest {
                 };
         EasyMock.expect(mMockIDevice.getSerialNumber()).andStubReturn("127.0.0.1:6520");
         EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.ONLINE);
-        EasyMock.replay(mMockIDevice);
+        EasyMock.replay(mMockIDevice, mMockDeviceManager);
         IManagedTestDevice result = mFactory.createDevice(mMockIDevice);
         assertTrue(result instanceof NestedRemoteDevice);
-        EasyMock.verify(mMockIDevice);
+        EasyMock.verify(mMockIDevice, mMockDeviceManager);
     }
 
     /**
