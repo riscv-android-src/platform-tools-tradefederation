@@ -115,12 +115,13 @@ public final class IsolationRunner {
         List<Class<?>> klasses = this.getClasses(params);
 
         for (Class<?> klass : klasses) {
-            System.out.println("Running class: " + klass);
+            System.out.println("Starting class: " + klass);
             IsolationResultForwarder list = new IsolationResultForwarder(output);
             JUnitCore runnerCore = new JUnitCore();
             runnerCore.addListener(list);
 
             Request req = Request.aClass(klass);
+
             if (params.hasFilter()) {
                 req = req.filterWith(new IsolationFilter(params.getFilter()));
             }
@@ -131,8 +132,11 @@ public final class IsolationRunner {
                 // don't have a way to report an error for a single test class.
                 System.err.println(
                         String.format("Found ErrorRunner when trying to run class: %s", klass));
+                runnerCore.run(req.getRunner());
             } else {
-                Runner checkRunner;
+                System.out.println("Executing class: " + klass);
+                Runner checkRunner = req.getRunner();
+
                 if (params.getDryRun()) {
                     checkRunner = new DryRunner(req.getRunner().getDescription());
                 } else {

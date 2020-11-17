@@ -24,6 +24,9 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -51,6 +54,7 @@ public class DynamicSystemPreparerTest {
 
     private IBuildInfo mBuildInfo;
     private ITestDevice mMockDevice;
+    private TestInformation mTestInfo;
     private File mSystemImageZip;
     // The object under test.
     private DynamicSystemPreparer mPreparer;
@@ -63,6 +67,11 @@ public class DynamicSystemPreparerTest {
         mBuildInfo.setFile("system-img.zip", mSystemImageZip, "0");
 
         mPreparer = new DynamicSystemPreparer();
+
+        IInvocationContext context = new InvocationContext();
+        context.addAllocatedDevice("device", mMockDevice);
+        context.addDeviceBuildInfo("device", mBuildInfo);
+        mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
     }
 
     @After
@@ -124,7 +133,7 @@ public class DynamicSystemPreparerTest {
         res.setStdout("");
         res.setStatus(CommandStatus.SUCCESS);
         Mockito.when(mMockDevice.executeShellV2Command("gsi_tool enable")).thenReturn(res);
-        mPreparer.setUp(mMockDevice, mBuildInfo);
+        mPreparer.setUp(mTestInfo);
     }
 
     @Test
@@ -133,7 +142,7 @@ public class DynamicSystemPreparerTest {
                 .thenReturn(Boolean.TRUE);
         Mockito.when(mMockDevice.waitForDeviceNotAvailable(Mockito.anyLong())).thenReturn(false);
         try {
-            mPreparer.setUp(mMockDevice, mBuildInfo);
+            mPreparer.setUp(mTestInfo);
             Assert.fail("setUp() should have thrown.");
         } catch (TargetSetupError e) {
             Assert.assertEquals(
@@ -149,7 +158,7 @@ public class DynamicSystemPreparerTest {
         Mockito.when(mMockDevice.waitForDeviceNotAvailable(Mockito.anyLong())).thenReturn(true);
         Mockito.doThrow(new DeviceNotAvailableException()).when(mMockDevice).waitForDeviceOnline();
         try {
-            mPreparer.setUp(mMockDevice, mBuildInfo);
+            mPreparer.setUp(mTestInfo);
             Assert.fail("setUp() should have thrown.");
         } catch (TargetSetupError e) {
             Assert.assertEquals("Timed out booting into DSU", e.getMessage());
@@ -164,7 +173,7 @@ public class DynamicSystemPreparerTest {
         Mockito.when(mMockDevice.waitForDeviceNotAvailable(Mockito.anyLong())).thenReturn(true);
         mockGsiToolStatus("normal");
         try {
-            mPreparer.setUp(mMockDevice, mBuildInfo);
+            mPreparer.setUp(mTestInfo);
             Assert.fail("setUp() should have thrown.");
         } catch (TargetSetupError e) {
             Assert.assertEquals("Failed to boot into DSU", e.getMessage());

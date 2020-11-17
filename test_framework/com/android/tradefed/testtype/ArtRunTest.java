@@ -16,7 +16,6 @@
 
 package com.android.tradefed.testtype;
 
-import com.android.ddmlib.CollectingOutputReceiver;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
@@ -30,16 +29,13 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.ArrayUtil;
+import com.android.tradefed.util.CommandResult;
+import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.RunUtil;
 
-import difflib.DiffUtils;
-import difflib.Patch;
-
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -54,14 +50,21 @@ import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import difflib.DiffUtils;
+import difflib.Patch;
+
 /** A test runner to run ART run-tests. */
-public class ArtRunTest implements IDeviceTest, IRemoteTest, IAbiReceiver, ITestFilterReceiver {
+public class ArtRunTest implements IRemoteTest, IAbiReceiver, ITestFilterReceiver {
 
     private static final String RUNTEST_TAG = "ArtRunTest";
 
     private static final String DALVIKVM_CMD =
             "dalvikvm|#BITNESS#| -classpath |#CLASSPATH#| |#MAINCLASS#|";
-    public static final String CHECKER_EXECUTABLE = "art/tools/checker/checker.py";
+
+    private static final long CHECKER_TIMEOUT_MS = 30 * 1000;
+    public static final String TESTSUITE_CHECKER_PATH = "art-run-test-checker";
+    public static final String SINGLE_TEST_CHECKER_PATH =
+            "art-run-test-checker/art-run-test-checker";
 
     @Option(
             name = "test-timeout",
@@ -79,20 +82,8 @@ public class ArtRunTest implements IDeviceTest, IRemoteTest, IAbiReceiver, ITest
 
     private ITestDevice mDevice = null;
     private IAbi mAbi = null;
-    private Set<String> mIncludeFilters = new LinkedHashSet<>();
-    private Set<String> mExcludeFilters = new LinkedHashSet<>();
-
-    /** {@inheritDoc} */
-    @Override
-    public void setDevice(ITestDevice device) {
-        mDevice = device;
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public ITestDevice getDevice() {
-        return mDevice;
-    }
+    private final Set<String> mIncludeFilters = new LinkedHashSet<>();
+    private final Set<String> mExcludeFilters = new LinkedHashSet<>();
 
     /** {@inheritDoc} */
     @Override
@@ -157,6 +148,7 @@ public class ArtRunTest implements IDeviceTest, IRemoteTest, IAbiReceiver, ITest
     @Override
     public void run(TestInformation testInfo, ITestInvocationListener listener)
             throws DeviceNotAvailableException {
+        mDevice = testInfo.getDevice();
         if (mDevice == null) {
             throw new IllegalArgumentException("Device has not been set.");
         }
@@ -177,8 +169,7 @@ public class ArtRunTest implements IDeviceTest, IRemoteTest, IAbiReceiver, ITest
      * Run a single ART run-test (on device).
      *
      * @param listener {@link ITestInvocationListener} listener for test
-     * @throws DeviceNotAvailableException If there was a problem communicating with
-     *      the test device.
+     * @throws DeviceNotAvailableException If there was a problem communicating with the device.
      */
     void runArtTest(TestInformation testInfo, ITestInvocationListener listener)
             throws DeviceNotAvailableException {
@@ -189,15 +180,16 @@ public class ArtRunTest implements IDeviceTest, IRemoteTest, IAbiReceiver, ITest
             return;
         }
 
-        CLog.i("Running ArtRunTest %s on %s", mRunTestName, mDevice.getSerialNumber());
+        String deviceSerialNumber = mDevice.getSerialNumber();
+        CLog.i("Running ArtRunTest %s on %s", mRunTestName, deviceSerialNumber);
 
-        String cmd = DALVIKVM_CMD;
-        cmd = cmd.replace("|#BITNESS#|", AbiUtils.getBitness(abi));
-        cmd = cmd.replace("|#CLASSPATH#|", ArrayUtil.join(File.pathSeparator, mClasspath));
+        String testCmd = DALVIKVM_CMD;
+        testCmd = testCmd.replace("|#BITNESS#|", AbiUtils.getBitness(abi));
+        testCmd = testCmd.replace("|#CLASSPATH#|", ArrayUtil.join(File.pathSeparator, mClasspath));
         // TODO: Turn this into an an option of the `ArtRunTest` class?
-        cmd = cmd.replace("|#MAINCLASS#|", "Main");
+        testCmd = testCmd.replace("|#MAINCLASS#|", "Main");
 
-        CLog.d("About to run run-test command: %s", cmd);
+        CLog.d("About to run run-test command: %s", testCmd);
         // Note: We only run one test at the moment.
         int testCount = 1;
         listener.testRunStarted(runName, testCount);
@@ -205,72 +197,147 @@ public class ArtRunTest implements IDeviceTest, IRemoteTest, IAbiReceiver, ITest
 
         try {
             // Execute the test on device.
-            CollectingOutputReceiver receiver = createTestOutputReceiver();
-            mDevice.executeShellCommand(
-                    cmd, receiver, mMaxTestTimeMs, TimeUnit.MILLISECONDS, /* retryAttempts */ 0);
-            String output = receiver.getOutput();
-            CLog.v("%s on %s returned %s", cmd, mDevice.getSerialNumber(), output);
+            CommandResult testResult =
+                    mDevice.executeShellV2Command(
+                            testCmd, mMaxTestTimeMs, TimeUnit.MILLISECONDS, /* retryAttempts */ 0);
+            if (testResult.getStatus() != CommandStatus.SUCCESS) {
+                String message =
+                        String.format(
+                                "Test command execution failed with status %s: %s",
+                                testResult.getStatus(), testResult);
+                CLog.e(message);
+                listener.testFailed(testId, message);
+                return;
+            }
+            String actualStdoutText = testResult.getStdout();
+            CLog.v("%s on %s returned stdout: %s", testCmd, deviceSerialNumber, actualStdoutText);
+            String actualStderrText = testResult.getStderr();
+            CLog.v("%s on %s returned stderr: %s", testCmd, deviceSerialNumber, actualStderrText);
 
-            // Check the output producted by the test.
-            if (output != null) {
-                try {
-                    String expectedFileName = String.format("%s-expected.txt", mRunTestName);
-                    File expectedFile =
-                            testInfo.getDependencyFile(expectedFileName, /* targetFirst */ true);
-                    CLog.i("Found expected output for run-test %s: %s", mRunTestName, expectedFile);
-                    String expected = FileUtil.readStringFromFile(expectedFile);
+            // TODO: The "check" step should be configurable, as is the case in current ART
+            // `run-test` scripts).
 
-                    // TODO: The "check" step should be configurable, as is the case in current ART
-                    // `run-test` scripts).
-                    if (!output.equals(expected)) {
-                        // Compute the difference between the expected and actual outputs.
-                        List<String> expectedLines = Arrays.asList(expected.split("\\r?\\n"));
-                        List<String> outputLines = Arrays.asList(output.split("\\r?\\n"));
-                        Patch<String> diff = DiffUtils.diff(expectedLines, outputLines);
-                        List<String> unifiedDiff =
-                                DiffUtils.generateUnifiedDiff(
-                                        "expected.txt", "stdout", expectedLines, diff, 3);
-                        // Produce a unified diff output for the error message.
-                        StringBuilder errorMessage =
-                                new StringBuilder(
-                                        "The test's standard output does not match the expected "
-                                                + "output:\n");
-                        for (String delta : unifiedDiff) {
-                            errorMessage.append(delta).append('\n');
-                        }
-                        CLog.i("%s FAILED: %s", mRunTestName, errorMessage.toString());
-                        listener.testFailed(testId, errorMessage.toString());
-                        return;
-                    }
-                } catch (IOException ioe) {
-                    CLog.e(
-                            "I/O error while accessing expected output file for test %s: %s",
-                            mRunTestName, ioe);
-                    listener.testFailed(testId, "I/O error while accessing expected output file.");
+            // Check the test's standard output.
+            if (actualStdoutText == null) {
+                listener.testFailed(testId, "No standard output received to compare to.");
+                return;
+            }
+            try {
+                String expectedStdoutFileName =
+                        String.format("%s-expected-stdout.txt", mRunTestName);
+                File expectedStdoutFile =
+                        testInfo.getDependencyFile(expectedStdoutFileName, /* targetFirst */ true);
+                CLog.i(
+                        "Found expected standard output for run-test %s: %s",
+                        mRunTestName, expectedStdoutFile);
+                String expectedStdoutText = FileUtil.readStringFromFile(expectedStdoutFile);
+
+                if (!actualStdoutText.equals(expectedStdoutText)) {
+                    // Produce a unified diff output for the error message.
+                    String diff =
+                            computeDiff(
+                                    expectedStdoutText,
+                                    actualStdoutText,
+                                    "expected-stdout.txt",
+                                    "stdout");
+                    String errorMessage =
+                            "The test's standard output does not match the expected standard "
+                                    + "output:\n"
+                                    + diff;
+                    CLog.i("%s FAILED: %s", mRunTestName, errorMessage);
+                    listener.testFailed(testId, errorMessage);
                     return;
                 }
-            } else {
-                listener.testFailed(testId, "No output received to compare to.");
+            } catch (IOException ioe) {
+                CLog.e(
+                        "I/O error while accessing expected standard output file for test %s: %s",
+                        mRunTestName, ioe);
+                listener.testFailed(
+                        testId, "I/O error while accessing expected standard output file.");
+                return;
+            }
+
+            // Check the test's standard error.
+            if (actualStderrText == null) {
+                listener.testFailed(testId, "No standard error received to compare to.");
+                return;
+            }
+            try {
+                String expectedStderrFileName =
+                        String.format("%s-expected-stderr.txt", mRunTestName);
+                File expectedStderrFile =
+                        testInfo.getDependencyFile(expectedStderrFileName, /* targetFirst */ true);
+                CLog.i(
+                        "Found expected standard error for run-test %s: %s",
+                        mRunTestName, expectedStderrFile);
+                String expectedStderrText = FileUtil.readStringFromFile(expectedStderrFile);
+
+                if (!actualStderrText.equals(expectedStderrText)) {
+                    // Produce a unified diff output for the error message.
+                    String diff =
+                            computeDiff(
+                                    expectedStderrText,
+                                    actualStderrText,
+                                    "expected-stderr.txt",
+                                    "stderr");
+                    String errorMessage =
+                            "The test's standard error does not match the expected standard "
+                                    + "error:\n"
+                                    + diff;
+                    CLog.i("%s FAILED: %s", mRunTestName, errorMessage);
+                    listener.testFailed(testId, errorMessage);
+                    return;
+                }
+            } catch (IOException ioe) {
+                CLog.e(
+                        "I/O error while accessing expected standard error file for test %s: %s",
+                        mRunTestName, ioe);
+                listener.testFailed(
+                        testId, "I/O error while accessing expected standard error file.");
                 return;
             }
 
             if (mRunTestName.contains("-checker-")) {
                 // not particularly reliable way of constructing a temporary dir
-                String cfgPathDir =
+                String tmpCheckerDir =
                         String.format("/data/local/tmp/%s", mRunTestName.replaceAll("/", "-"));
-                mDevice.executeShellCommand(String.format("mkdir -p \"%s\"", cfgPathDir));
+                String mkdirCmd = String.format("mkdir -p \"%s\"", tmpCheckerDir);
+                CommandResult mkdirResult = mDevice.executeShellV2Command(mkdirCmd);
+                if (mkdirResult.getStatus() != CommandStatus.SUCCESS) {
+                    String message =
+                            String.format(
+                                    "Cannot create a directory on the device: %s",
+                                    mkdirResult.getStderr());
+                    CLog.e(message);
+                    listener.testFailed(testId, message);
+                    return;
+                }
 
-                String cfgPath = cfgPathDir + "/graph.cfg";
-                mDevice.executeShellCommand(
+                String cfgPath = tmpCheckerDir + "/graph.cfg";
+                String oatPath = tmpCheckerDir + "/output.oat";
+                String dex2oatCmd =
                         String.format(
-                                "dex2oat --dex-file=%s --oat-file=/dev/null --dump-cfg=%s -j1",
-                                mClasspath.get(0), cfgPath));
+                                "dex2oat --dex-file=%s --oat-file=%s --dump-cfg=%s -j1",
+                                mClasspath.get(0), oatPath, cfgPath);
+                CommandResult dex2oatResult = mDevice.executeShellV2Command(dex2oatCmd);
+                if (dex2oatResult.getStatus() != CommandStatus.SUCCESS) {
+                    String message =
+                            String.format(
+                                    "Error while running dex2oat: %s", dex2oatResult.getStderr());
+                    CLog.e(message);
+                    listener.testFailed(testId, message);
+                    return;
+                }
 
                 File runTestDir;
                 try {
-                    runTestDir = getRunTestDir(testInfo);
-                } catch (FileNotFoundException e) {
-                    listener.testFailed(testId, "I/O error while accessing test dir.");
+                    runTestDir =
+                            Files.createTempDirectory(
+                                    testInfo.dependenciesFolder().toPath(), mRunTestName)
+                                    .toFile();
+                } catch (IOException e) {
+                    CLog.e(e);
+                    listener.testFailed(testId, "I/O error while creating test dir.");
                     return;
                 }
 
@@ -279,34 +346,19 @@ public class ArtRunTest implements IDeviceTest, IRemoteTest, IAbiReceiver, ITest
                     localCfgPath.delete();
                 }
 
-                mDevice.pullFile(cfgPath, localCfgPath);
+                if (!mDevice.pullFile(cfgPath, localCfgPath)) {
+                    listener.testFailed(testId, "Cannot pull cfg file from the device");
+                    return;
+                }
 
                 File tempJar = new File(runTestDir, "temp.jar");
-                mDevice.pullFile(mClasspath.get(0), tempJar);
+                if (!mDevice.pullFile(mClasspath.get(0), tempJar)) {
+                    listener.testFailed(testId, "Cannot pull jar file from the device");
+                    return;
+                }
 
-                try (ZipFile archive = new ZipFile(tempJar)) {
-                    File srcFile = new File(runTestDir, "src");
-                    if (srcFile.exists()) {
-                        Files.walk(srcFile.toPath())
-                                .map(Path::toFile)
-                                .sorted(Comparator.reverseOrder())
-                                .forEach(File::delete);
-                    }
-
-                    List<? extends ZipEntry> entries = archive.stream()
-                            .sorted(Comparator.comparing(ZipEntry::getName))
-                            .collect(Collectors.toList());
-
-                    for (ZipEntry entry : entries) {
-                        if (entry.getName().startsWith("src")) {
-                            Path entryDest = runTestDir.toPath().resolve(entry.getName());
-                            if (entry.isDirectory()) {
-                                Files.createDirectory(entryDest);
-                            } else {
-                                Files.copy(archive.getInputStream(entry), entryDest);
-                            }
-                        }
-                    }
+                try {
+                    extractSourcesFromJar(runTestDir, tempJar);
                 } catch (IOException e) {
                     listener.testFailed(testId, "Error unpacking test jar");
                     CLog.e("Jar unpacking failed with exception %s", e);
@@ -316,27 +368,42 @@ public class ArtRunTest implements IDeviceTest, IRemoteTest, IAbiReceiver, ITest
 
                 String checkerArch = AbiUtils.getArchForAbi(abi).toUpperCase();
 
-                ProcessBuilder processBuilder =
-                        new ProcessBuilder(
-                                CHECKER_EXECUTABLE,
-                                "-q",
-                                "--arch=" + checkerArch,
-                                localCfgPath.getAbsolutePath(),
-                                runTestDir.getAbsolutePath());
+                File checkerBinary = getCheckerBinaryPath(testInfo);
+                if (checkerBinary == null) {
+                    listener.testFailed(testId, "Checker binary not found");
+                    return;
+                }
+
+                String[] checkerCommandLine = {
+                        checkerBinary.getAbsolutePath(),
+                        "--no-print-cfg",
+                        "-q",
+                        "--arch=" + checkerArch,
+                        localCfgPath.getAbsolutePath(),
+                        runTestDir.getAbsolutePath()
+                };
 
                 try {
-                    Process process = processBuilder.start();
-                    if (process.waitFor() != 0) {
-                        String checkerOutput = new BufferedReader(
-                                new InputStreamReader(process.getErrorStream())).lines().collect(
-                                Collectors.joining("\n"));
+                    String checkerOutput = runAndCollectStderr(checkerCommandLine);
+                    if (checkerOutput != null && !checkerOutput.isEmpty()) {
                         listener.testFailed(testId, "Checker failed\n" + checkerOutput);
-                        listener.testLog("graph.cfg", LogDataType.CFG,
+                        listener.testLog(
+                                "graph.cfg",
+                                LogDataType.CFG,
                                 new FileInputStreamSource(localCfgPath));
                     }
-                } catch (IOException | InterruptedException e) {
-                    listener.testFailed(testId, "I/O error while starting Checker process");
+                } catch (RuntimeException e) {
+                    CLog.e(e);
+                    listener.testFailed(testId, "Error while starting Checker process");
                 }
+                FileUtil.recursiveDelete(runTestDir);
+            }
+
+            // Check the test's exit code.
+            if (testResult.getExitCode() != 0) {
+                listener.testFailed(
+                        testId,
+                        String.format("Test exited with code %s", testResult.getExitCode()));
             }
         } finally {
             HashMap<String, Metric> emptyTestMetrics = new HashMap<>();
@@ -344,6 +411,65 @@ public class ArtRunTest implements IDeviceTest, IRemoteTest, IAbiReceiver, ITest
             HashMap<String, Metric> emptyTestRunMetrics = new HashMap<>();
             // TODO: Pass an actual value as `elapsedTimeMillis` argument.
             listener.testRunEnded(/* elapsedTimeMillis*/ 0, emptyTestRunMetrics);
+        }
+    }
+
+    /**
+     * Try to find compiled Checker binary in its typical locations
+     */
+    protected File getCheckerBinaryPath(TestInformation testInfo) {
+        File checkerBinary = new File(
+                testInfo.executionFiles().get(FilesKey.TESTS_DIRECTORY),
+                TESTSUITE_CHECKER_PATH);
+
+        if (!checkerBinary.isFile()) {
+            checkerBinary = new File(
+                    testInfo.executionFiles().get(FilesKey.HOST_TESTS_DIRECTORY),
+                    SINGLE_TEST_CHECKER_PATH);
+            if (!checkerBinary.isFile()) {
+                return null;
+            }
+        }
+        return checkerBinary;
+    }
+
+    protected String runAndCollectStderr(String[] checkerCommandLine) {
+        CommandResult result = RunUtil.getDefault().runTimedCmd(CHECKER_TIMEOUT_MS,
+                checkerCommandLine);
+        if (result.getStatus() != CommandStatus.SUCCESS) {
+            if (result.getStatus() == CommandStatus.TIMED_OUT) {
+                throw new RuntimeException("Checker timed out");
+            }
+            throw new RuntimeException("Error running Checker\n" + result.getStderr());
+        }
+        return result.getStderr();
+    }
+
+    /**
+     * Extract src directory from given jar file to given directory
+     */
+    protected void extractSourcesFromJar(File runTestDir, File jar) throws IOException {
+        try (ZipFile archive = new ZipFile(jar)) {
+            File srcFile = new File(runTestDir, "src");
+            if (srcFile.exists()) {
+                FileUtil.recursiveDelete(srcFile);
+            }
+
+            List<? extends ZipEntry> entries =
+                    archive.stream()
+                            .sorted(Comparator.comparing(ZipEntry::getName))
+                            .collect(Collectors.toList());
+
+            for (ZipEntry entry : entries) {
+                if (entry.getName().startsWith("src")) {
+                    Path entryDest = runTestDir.toPath().resolve(entry.getName());
+                    if (entry.isDirectory()) {
+                        Files.createDirectory(entryDest);
+                    } else {
+                        Files.copy(archive.getInputStream(entry), entryDest);
+                    }
+                }
+            }
         }
     }
 
@@ -367,18 +493,27 @@ public class ArtRunTest implements IDeviceTest, IRemoteTest, IAbiReceiver, ITest
         return false;
     }
 
-    /** Create an output receiver for the test command executed on the device. */
-    protected CollectingOutputReceiver createTestOutputReceiver() {
-        return new CollectingOutputReceiver();
-    }
-
-    private File getRunTestDir(TestInformation testInfo) throws FileNotFoundException {
-        File testsDir = testInfo.executionFiles().get(FilesKey.TARGET_TESTS_DIRECTORY);
-        if (testsDir == null || !testsDir.exists()) {
-            throw new FileNotFoundException(
-                    String.format(
-                            "Could not find target tests directory for test %s.", mRunTestName));
+    /**
+     * Compute the difference between expected and actual outputs as a unified diff.
+     *
+     * @param expected The expected output
+     * @param actual The actual output
+     * @param expectedFileName The name of the expected output file name (used in diff header)
+     * @param actualFileName The name of the actual output file name (used in diff header)
+     * @return The unified diff between the expected and actual outputs
+     */
+    private String computeDiff(
+            String expected, String actual, String expectedFileName, String actualFileName) {
+        List<String> expectedLines = Arrays.asList(expected.split("\\r?\\n"));
+        List<String> actualLines = Arrays.asList(actual.split("\\r?\\n"));
+        Patch<String> diff = DiffUtils.diff(expectedLines, actualLines);
+        List<String> unifiedDiff =
+                DiffUtils.generateUnifiedDiff(
+                        expectedFileName, actualFileName, expectedLines, diff, 3);
+        StringBuilder diffOutput = new StringBuilder();
+        for (String delta : unifiedDiff) {
+            diffOutput.append(delta).append('\n');
         }
-        return new File(testsDir, mRunTestName);
+        return diffOutput.toString();
     }
 }

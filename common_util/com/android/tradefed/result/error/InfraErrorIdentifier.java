@@ -17,6 +17,8 @@ package com.android.tradefed.result.error;
 
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 
+import javax.annotation.Nonnull;
+
 /** Error Identifiers from Trade Federation infra, and dependent infra (like Build infra). */
 public enum InfraErrorIdentifier implements ErrorIdentifier {
 
@@ -34,6 +36,8 @@ public enum InfraErrorIdentifier implements ErrorIdentifier {
     OPTION_CONFIGURATION_ERROR(500_008, FailureStatus.CUSTOMER_ISSUE),
     RUNNER_ALLOCATION_ERROR(500_009, FailureStatus.INFRA_FAILURE),
     SCHEDULER_ALLOCATION_ERROR(500_010, FailureStatus.CUSTOMER_ISSUE),
+    HOST_BINARY_FAILURE(500_011, FailureStatus.DEPENDENCY_ISSUE),
+    MISMATCHED_BUILD_DEVICE(500_012, FailureStatus.CUSTOMER_ISSUE),
 
     // 500_501 - 501_000: Build, Artifacts download related errors
     ARTIFACT_REMOTE_PATH_NULL(500_501, FailureStatus.INFRA_FAILURE),
@@ -51,15 +55,21 @@ public enum InfraErrorIdentifier implements ErrorIdentifier {
 
     // 505_000 - 505_250: Acloud errors
     NO_ACLOUD_REPORT(505_000, FailureStatus.DEPENDENCY_ISSUE),
+    ACLOUD_UNDETERMINED(505_001, FailureStatus.DEPENDENCY_ISSUE),
+    ACLOUD_TIMED_OUT(505_002, FailureStatus.DEPENDENCY_ISSUE),
+
+    // 505_251 - 505_300: Configuration errors
+    INTERNAL_CONFIG_ERROR(505_251, FailureStatus.INFRA_FAILURE),
+    CLASS_NOT_FOUND(505_252, FailureStatus.CUSTOMER_ISSUE),
 
     UNDETERMINED(510_000, FailureStatus.UNSET);
 
     private final long code;
-    private final FailureStatus status;
+    private final @Nonnull FailureStatus status;
 
     InfraErrorIdentifier(int code, FailureStatus status) {
         this.code = code;
-        this.status = status;
+        this.status = (status == null ? FailureStatus.UNSET : status);
     }
 
     @Override
@@ -68,7 +78,7 @@ public enum InfraErrorIdentifier implements ErrorIdentifier {
     }
 
     @Override
-    public FailureStatus status() {
+    public @Nonnull FailureStatus status() {
         return status;
     }
 }

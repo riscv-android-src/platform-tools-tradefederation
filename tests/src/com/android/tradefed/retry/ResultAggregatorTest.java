@@ -50,6 +50,7 @@ public class ResultAggregatorTest {
     private TestableResultAggregator mAggregator;
     private ILogSaverListener mAggListener;
     private ITestDetailedReceiver mDetailedListener;
+    private ILogSaver mLogger;
     private IInvocationContext mInvocationContext;
     private IInvocationContext mModuleContext;
 
@@ -77,9 +78,10 @@ public class ResultAggregatorTest {
     }
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
         mAggListener = EasyMock.createMock(ILogSaverListener.class);
         mDetailedListener = EasyMock.createMock(ITestDetailedReceiver.class);
+        mLogger = EasyMock.createMock(ILogSaver.class);
         mInvocationContext = new InvocationContext();
         mInvocationContext.addDeviceBuildInfo(
                 ConfigurationDef.DEFAULT_DEVICE_NAME, new BuildInfo());
@@ -87,7 +89,7 @@ public class ResultAggregatorTest {
     }
 
     @Test
-    public void testForwarding() {
+    public void testForwarding() throws Exception {
         mDetailedListener = EasyMock.createStrictMock(ITestDetailedReceiver.class);
         LogFile test1Log = new LogFile("test1", "url", LogDataType.TEXT);
         LogFile test2LogBefore = new LogFile("test2-before", "url", LogDataType.TEXT);
@@ -99,15 +101,14 @@ public class ResultAggregatorTest {
         LogFile moduleLog = new LogFile("module-log", "url", LogDataType.TEXT);
         TestDescription test1 = new TestDescription("classname", "test1");
         TestDescription test2 = new TestDescription("classname", "test2");
-        ILogSaver logger = EasyMock.createMock(ILogSaver.class);
 
         EasyMock.expect(mDetailedListener.supportGranularResults()).andStubReturn(true);
 
         // Invocation level
-        mAggListener.setLogSaver(logger);
+        mAggListener.setLogSaver(mLogger);
         mAggListener.invocationStarted(mInvocationContext);
         EasyMock.expect(mAggListener.getSummary()).andStubReturn(null);
-        mDetailedListener.setLogSaver(logger);
+        mDetailedListener.setLogSaver(mLogger);
         mDetailedListener.invocationStarted(mInvocationContext);
         EasyMock.expect(mDetailedListener.getSummary()).andStubReturn(null);
 
@@ -172,13 +173,25 @@ public class ResultAggregatorTest {
         mAggListener.invocationEnded(500L);
         mDetailedListener.logAssociation("before-end", beforeEnd);
         mDetailedListener.invocationEnded(500L);
+        EasyMock.expect(
+                        mLogger.saveLogData(
+                                EasyMock.contains("aggregated-events"),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
+                                EasyMock.anyObject()))
+                .andReturn(null);
+        EasyMock.expect(
+                        mLogger.saveLogData(
+                                EasyMock.contains("detailed-events"),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
+                                EasyMock.anyObject()))
+                .andReturn(null);
 
-        EasyMock.replay(mAggListener, mDetailedListener);
+        EasyMock.replay(mAggListener, mDetailedListener, mLogger);
         mAggregator =
                 new TestableResultAggregator(
                         Arrays.asList(mAggListener, mDetailedListener),
                         RetryStrategy.RETRY_ANY_FAILURE);
-        mAggregator.setLogSaver(logger);
+        mAggregator.setLogSaver(mLogger);
         mAggregator.invocationStarted(mInvocationContext);
         mAggregator.testModuleStarted(mModuleContext);
         // Attempt 1
@@ -206,12 +219,12 @@ public class ResultAggregatorTest {
         mAggregator.testModuleEnded();
         mAggregator.logAssociation("before-end", beforeEnd);
         mAggregator.invocationEnded(500L);
-        EasyMock.verify(mAggListener, mDetailedListener);
+        EasyMock.verify(mAggListener, mDetailedListener, mLogger);
         assertEquals("run fail", mAggregator.getInvocationMetricRunError());
     }
 
     @Test
-    public void testForwarding_assumptionFailure() {
+    public void testForwarding_assumptionFailure() throws Exception {
         mDetailedListener = EasyMock.createStrictMock(ITestDetailedReceiver.class);
         LogFile test1Log = new LogFile("test1", "url", LogDataType.TEXT);
         LogFile test2LogBefore = new LogFile("test2-before", "url", LogDataType.TEXT);
@@ -223,15 +236,14 @@ public class ResultAggregatorTest {
         LogFile moduleLog = new LogFile("module-log", "url", LogDataType.TEXT);
         TestDescription test1 = new TestDescription("classname", "test1");
         TestDescription test2 = new TestDescription("classname", "test2");
-        ILogSaver logger = EasyMock.createMock(ILogSaver.class);
 
         EasyMock.expect(mDetailedListener.supportGranularResults()).andStubReturn(true);
 
         // Invocation level
-        mAggListener.setLogSaver(logger);
+        mAggListener.setLogSaver(mLogger);
         mAggListener.invocationStarted(mInvocationContext);
         EasyMock.expect(mAggListener.getSummary()).andStubReturn(null);
-        mDetailedListener.setLogSaver(logger);
+        mDetailedListener.setLogSaver(mLogger);
         mDetailedListener.invocationStarted(mInvocationContext);
         EasyMock.expect(mDetailedListener.getSummary()).andStubReturn(null);
 
@@ -301,12 +313,25 @@ public class ResultAggregatorTest {
         mDetailedListener.logAssociation("before-end", beforeEnd);
         mDetailedListener.invocationEnded(500L);
 
-        EasyMock.replay(mAggListener, mDetailedListener);
+        EasyMock.expect(
+                        mLogger.saveLogData(
+                                EasyMock.contains("aggregated-events"),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
+                                EasyMock.anyObject()))
+                .andReturn(null);
+        EasyMock.expect(
+                        mLogger.saveLogData(
+                                EasyMock.contains("detailed-events"),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
+                                EasyMock.anyObject()))
+                .andReturn(null);
+
+        EasyMock.replay(mAggListener, mDetailedListener, mLogger);
         mAggregator =
                 new TestableResultAggregator(
                         Arrays.asList(mAggListener, mDetailedListener),
                         RetryStrategy.RETRY_ANY_FAILURE);
-        mAggregator.setLogSaver(logger);
+        mAggregator.setLogSaver(mLogger);
         mAggregator.invocationStarted(mInvocationContext);
         mAggregator.testModuleStarted(mModuleContext);
         // Attempt 1
@@ -335,16 +360,16 @@ public class ResultAggregatorTest {
         mAggregator.testModuleEnded();
         mAggregator.logAssociation("before-end", beforeEnd);
         mAggregator.invocationEnded(500L);
-        EasyMock.verify(mAggListener, mDetailedListener);
+        EasyMock.verify(mAggListener, mDetailedListener, mLogger);
         assertEquals("run fail", mAggregator.getInvocationMetricRunError());
     }
 
     @Test
-    public void testForwarding_runFailure() {
+    public void testForwarding_runFailure() throws Exception {
         mDetailedListener = EasyMock.createStrictMock(ITestDetailedReceiver.class);
         TestDescription test1 = new TestDescription("classname", "test1");
         TestDescription test2 = new TestDescription("classname", "test2");
-        ILogSaver logger = EasyMock.createMock(ILogSaver.class);
+
         MultiFailureDescription aggFailure =
                 new MultiFailureDescription(
                         FailureDescription.create("run fail"),
@@ -352,10 +377,10 @@ public class ResultAggregatorTest {
         EasyMock.expect(mDetailedListener.supportGranularResults()).andStubReturn(true);
 
         // Invocation level
-        mAggListener.setLogSaver(logger);
+        mAggListener.setLogSaver(mLogger);
         mAggListener.invocationStarted(mInvocationContext);
         EasyMock.expect(mAggListener.getSummary()).andStubReturn(null);
-        mDetailedListener.setLogSaver(logger);
+        mDetailedListener.setLogSaver(mLogger);
         mDetailedListener.invocationStarted(mInvocationContext);
         EasyMock.expect(mDetailedListener.getSummary()).andStubReturn(null);
 
@@ -407,13 +432,25 @@ public class ResultAggregatorTest {
         mDetailedListener.testModuleEnded();
         mAggListener.invocationEnded(500L);
         mDetailedListener.invocationEnded(500L);
+        EasyMock.expect(
+                        mLogger.saveLogData(
+                                EasyMock.contains("aggregated-events"),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
+                                EasyMock.anyObject()))
+                .andReturn(null);
+        EasyMock.expect(
+                        mLogger.saveLogData(
+                                EasyMock.contains("detailed-events"),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
+                                EasyMock.anyObject()))
+                .andReturn(null);
 
-        EasyMock.replay(mAggListener, mDetailedListener);
+        EasyMock.replay(mAggListener, mDetailedListener, mLogger);
         mAggregator =
                 new TestableResultAggregator(
                         Arrays.asList(mAggListener, mDetailedListener),
                         RetryStrategy.RETRY_ANY_FAILURE);
-        mAggregator.setLogSaver(logger);
+        mAggregator.setLogSaver(mLogger);
         mAggregator.invocationStarted(mInvocationContext);
         mAggregator.testModuleStarted(mModuleContext);
         // Attempt 1
@@ -434,23 +471,23 @@ public class ResultAggregatorTest {
 
         mAggregator.testModuleEnded();
         mAggregator.invocationEnded(500L);
-        EasyMock.verify(mAggListener, mDetailedListener);
+        EasyMock.verify(mAggListener, mDetailedListener, mLogger);
         assertNull(mAggregator.getInvocationMetricRunError());
     }
 
     @Test
-    public void testForwarding_runFailure_noRerun() {
+    public void testForwarding_runFailure_noRerun() throws Exception {
         TestDescription test1 = new TestDescription("classname", "test1");
         TestDescription test2 = new TestDescription("classname", "test2");
-        ILogSaver logger = EasyMock.createMock(ILogSaver.class);
+
 
         EasyMock.expect(mDetailedListener.supportGranularResults()).andStubReturn(true);
 
         // Invocation level
-        mAggListener.setLogSaver(logger);
+        mAggListener.setLogSaver(mLogger);
         mAggListener.invocationStarted(mInvocationContext);
         EasyMock.expect(mAggListener.getSummary()).andStubReturn(null);
-        mDetailedListener.setLogSaver(logger);
+        mDetailedListener.setLogSaver(mLogger);
         mDetailedListener.invocationStarted(mInvocationContext);
         EasyMock.expect(mDetailedListener.getSummary()).andStubReturn(null);
 
@@ -495,13 +532,25 @@ public class ResultAggregatorTest {
         mDetailedListener.testModuleEnded();
         mAggListener.invocationEnded(500L);
         mDetailedListener.invocationEnded(500L);
+        EasyMock.expect(
+                        mLogger.saveLogData(
+                                EasyMock.contains("aggregated-events"),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
+                                EasyMock.anyObject()))
+                .andReturn(null);
+        EasyMock.expect(
+                        mLogger.saveLogData(
+                                EasyMock.contains("detailed-events"),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
+                                EasyMock.anyObject()))
+                .andReturn(null);
 
-        EasyMock.replay(mAggListener, mDetailedListener);
+        EasyMock.replay(mAggListener, mDetailedListener, mLogger);
         mAggregator =
                 new TestableResultAggregator(
                         Arrays.asList(mAggListener, mDetailedListener),
                         RetryStrategy.RETRY_ANY_FAILURE);
-        mAggregator.setLogSaver(logger);
+        mAggregator.setLogSaver(mLogger);
         mAggregator.invocationStarted(mInvocationContext);
         mAggregator.testModuleStarted(mModuleContext);
         // Attempt 1
@@ -515,23 +564,23 @@ public class ResultAggregatorTest {
         mAggregator.testRunEnded(450L, new HashMap<String, Metric>());
         mAggregator.testModuleEnded();
         mAggregator.invocationEnded(500L);
-        EasyMock.verify(mAggListener, mDetailedListener);
+        EasyMock.verify(mAggListener, mDetailedListener, mLogger);
         assertNull(mAggregator.getInvocationMetricRunError());
     }
 
     @Test
-    public void testForwarding_runFailure_aggregation() {
+    public void testForwarding_runFailure_aggregation() throws Exception {
         TestDescription test1 = new TestDescription("classname", "test1");
         TestDescription test2 = new TestDescription("classname", "test2");
-        ILogSaver logger = EasyMock.createMock(ILogSaver.class);
+
 
         EasyMock.expect(mDetailedListener.supportGranularResults()).andStubReturn(true);
 
         // Invocation level
-        mAggListener.setLogSaver(logger);
+        mAggListener.setLogSaver(mLogger);
         mAggListener.invocationStarted(mInvocationContext);
         EasyMock.expect(mAggListener.getSummary()).andStubReturn(null);
-        mDetailedListener.setLogSaver(logger);
+        mDetailedListener.setLogSaver(mLogger);
         mDetailedListener.invocationStarted(mInvocationContext);
         EasyMock.expect(mDetailedListener.getSummary()).andStubReturn(null);
 
@@ -601,13 +650,25 @@ public class ResultAggregatorTest {
         mDetailedListener.testModuleEnded();
         mAggListener.invocationEnded(500L);
         mDetailedListener.invocationEnded(500L);
+        EasyMock.expect(
+                        mLogger.saveLogData(
+                                EasyMock.contains("aggregated-events"),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
+                                EasyMock.anyObject()))
+                .andReturn(null);
+        EasyMock.expect(
+                        mLogger.saveLogData(
+                                EasyMock.contains("detailed-events"),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
+                                EasyMock.anyObject()))
+                .andReturn(null);
 
-        EasyMock.replay(mAggListener, mDetailedListener);
+        EasyMock.replay(mAggListener, mDetailedListener, mLogger);
         mAggregator =
                 new TestableResultAggregator(
                         Arrays.asList(mAggListener, mDetailedListener),
                         RetryStrategy.RETRY_ANY_FAILURE);
-        mAggregator.setLogSaver(logger);
+        mAggregator.setLogSaver(mLogger);
         mAggregator.invocationStarted(mInvocationContext);
         mAggregator.testModuleStarted(mModuleContext);
         // Attempt 1
@@ -631,25 +692,25 @@ public class ResultAggregatorTest {
         mAggregator.testRunEnded(450L, new HashMap<String, Metric>());
         mAggregator.testModuleEnded();
         mAggregator.invocationEnded(500L);
-        EasyMock.verify(mAggListener, mDetailedListener);
+        EasyMock.verify(mAggListener, mDetailedListener, mLogger);
         assertNull(mAggregator.getInvocationMetricRunError());
     }
 
     @Test
-    public void testForwarding_noModules() {
+    public void testForwarding_noModules() throws Exception {
         TestDescription test1 = new TestDescription("classname", "test1");
         TestDescription test2 = new TestDescription("classname", "test2");
-        ILogSaver logger = EasyMock.createMock(ILogSaver.class);
+
         LogFile afterRunLog = new LogFile("after-run", "url", LogDataType.TEXT);
 
         mDetailedListener = EasyMock.createStrictMock(ITestDetailedReceiver.class);
         EasyMock.expect(mDetailedListener.supportGranularResults()).andStubReturn(true);
 
         // Invocation level
-        mAggListener.setLogSaver(logger);
+        mAggListener.setLogSaver(mLogger);
         mAggListener.invocationStarted(mInvocationContext);
         EasyMock.expect(mAggListener.getSummary()).andStubReturn(null);
-        mDetailedListener.setLogSaver(logger);
+        mDetailedListener.setLogSaver(mLogger);
         mDetailedListener.invocationStarted(mInvocationContext);
         EasyMock.expect(mDetailedListener.getSummary()).andStubReturn(null);
 
@@ -696,13 +757,25 @@ public class ResultAggregatorTest {
         mAggListener.logAssociation("after-run", afterRunLog);
         mAggListener.invocationEnded(500L);
         mDetailedListener.invocationEnded(500L);
+        EasyMock.expect(
+                        mLogger.saveLogData(
+                                EasyMock.contains("aggregated-events"),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
+                                EasyMock.anyObject()))
+                .andReturn(null);
+        EasyMock.expect(
+                        mLogger.saveLogData(
+                                EasyMock.contains("detailed-events"),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
+                                EasyMock.anyObject()))
+                .andReturn(null);
 
-        EasyMock.replay(mAggListener, mDetailedListener);
+        EasyMock.replay(mAggListener, mDetailedListener, mLogger);
         mAggregator =
                 new TestableResultAggregator(
                         Arrays.asList(mAggListener, mDetailedListener),
                         RetryStrategy.RETRY_ANY_FAILURE);
-        mAggregator.setLogSaver(logger);
+        mAggregator.setLogSaver(mLogger);
         mAggregator.invocationStarted(mInvocationContext);
         // Attempt 1
         mAggregator.testRunStarted("run1", 2, 0);
@@ -721,15 +794,15 @@ public class ResultAggregatorTest {
 
         mAggregator.logAssociation("after-run", afterRunLog);
         mAggregator.invocationEnded(500L);
-        EasyMock.verify(mAggListener, mDetailedListener);
+        EasyMock.verify(mAggListener, mDetailedListener, mLogger);
         assertEquals("I failed", mAggregator.getInvocationMetricRunError());
     }
 
     @Test
-    public void testForwarding_singleRun_noModules_runFailures() {
+    public void testForwarding_singleRun_noModules_runFailures() throws Exception {
         TestDescription test1 = new TestDescription("classname", "test1");
         TestDescription test2 = new TestDescription("classname", "test2");
-        ILogSaver logger = EasyMock.createMock(ILogSaver.class);
+
         MultiFailureDescription aggFailure =
                 new MultiFailureDescription(
                         FailureDescription.create("I failed"),
@@ -737,10 +810,10 @@ public class ResultAggregatorTest {
         EasyMock.expect(mDetailedListener.supportGranularResults()).andStubReturn(true);
 
         // Invocation level
-        mAggListener.setLogSaver(logger);
+        mAggListener.setLogSaver(mLogger);
         mAggListener.invocationStarted(mInvocationContext);
         EasyMock.expect(mAggListener.getSummary()).andStubReturn(null);
-        mDetailedListener.setLogSaver(logger);
+        mDetailedListener.setLogSaver(mLogger);
         mDetailedListener.invocationStarted(mInvocationContext);
         EasyMock.expect(mDetailedListener.getSummary()).andStubReturn(null);
 
@@ -787,13 +860,25 @@ public class ResultAggregatorTest {
 
         mAggListener.invocationEnded(500L);
         mDetailedListener.invocationEnded(500L);
+        EasyMock.expect(
+                        mLogger.saveLogData(
+                                EasyMock.contains("aggregated-events"),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
+                                EasyMock.anyObject()))
+                .andReturn(null);
+        EasyMock.expect(
+                        mLogger.saveLogData(
+                                EasyMock.contains("detailed-events"),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
+                                EasyMock.anyObject()))
+                .andReturn(null);
 
-        EasyMock.replay(mAggListener, mDetailedListener);
+        EasyMock.replay(mAggListener, mDetailedListener, mLogger);
         mAggregator =
                 new TestableResultAggregator(
                         Arrays.asList(mAggListener, mDetailedListener),
                         RetryStrategy.RETRY_ANY_FAILURE);
-        mAggregator.setLogSaver(logger);
+        mAggregator.setLogSaver(mLogger);
         mAggregator.invocationStarted(mInvocationContext);
         // Attempt 1
         mAggregator.testRunStarted("run1", 2, 0);
@@ -812,15 +897,15 @@ public class ResultAggregatorTest {
         mAggregator.testRunEnded(450L, new HashMap<String, Metric>());
 
         mAggregator.invocationEnded(500L);
-        EasyMock.verify(mAggListener, mDetailedListener);
+        EasyMock.verify(mAggListener, mDetailedListener, mLogger);
         assertNull(mAggregator.getInvocationMetricRunError());
     }
 
     @Test
-    public void testForwarding_noModules_runFailures() {
+    public void testForwarding_noModules_runFailures() throws Exception {
         TestDescription test1 = new TestDescription("classname", "test1");
         TestDescription test2 = new TestDescription("classname", "test2");
-        ILogSaver logger = EasyMock.createMock(ILogSaver.class);
+
         MultiFailureDescription aggFailure =
                 new MultiFailureDescription(
                         FailureDescription.create("I failed"),
@@ -828,10 +913,10 @@ public class ResultAggregatorTest {
         EasyMock.expect(mDetailedListener.supportGranularResults()).andStubReturn(true);
 
         // Invocation level
-        mAggListener.setLogSaver(logger);
+        mAggListener.setLogSaver(mLogger);
         mAggListener.invocationStarted(mInvocationContext);
         EasyMock.expect(mAggListener.getSummary()).andStubReturn(null);
-        mDetailedListener.setLogSaver(logger);
+        mDetailedListener.setLogSaver(mLogger);
         mDetailedListener.invocationStarted(mInvocationContext);
         EasyMock.expect(mDetailedListener.getSummary()).andStubReturn(null);
 
@@ -895,13 +980,25 @@ public class ResultAggregatorTest {
 
         mAggListener.invocationEnded(500L);
         mDetailedListener.invocationEnded(500L);
+        EasyMock.expect(
+                        mLogger.saveLogData(
+                                EasyMock.contains("aggregated-events"),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
+                                EasyMock.anyObject()))
+                .andReturn(null);
+        EasyMock.expect(
+                        mLogger.saveLogData(
+                                EasyMock.contains("detailed-events"),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
+                                EasyMock.anyObject()))
+                .andReturn(null);
 
-        EasyMock.replay(mAggListener, mDetailedListener);
+        EasyMock.replay(mAggListener, mDetailedListener, mLogger);
         mAggregator =
                 new TestableResultAggregator(
                         Arrays.asList(mAggListener, mDetailedListener),
                         RetryStrategy.RETRY_ANY_FAILURE);
-        mAggregator.setLogSaver(logger);
+        mAggregator.setLogSaver(mLogger);
         mAggregator.invocationStarted(mInvocationContext);
         // Attempt 1
         mAggregator.testRunStarted("run1", 2, 0);
@@ -925,24 +1022,24 @@ public class ResultAggregatorTest {
         mAggregator.testRunEnded(450L, new HashMap<String, Metric>());
 
         mAggregator.invocationEnded(500L);
-        EasyMock.verify(mAggListener, mDetailedListener);
+        EasyMock.verify(mAggListener, mDetailedListener, mLogger);
         assertNull(mAggregator.getInvocationMetricRunError());
     }
 
     /** Test aggregation of results coming from a module first then from a simple test run. */
     @Test
-    public void testForwarding_module_noModule() {
+    public void testForwarding_module_noModule() throws Exception {
         TestDescription test1 = new TestDescription("classname", "test1");
         TestDescription test2 = new TestDescription("classname", "test2");
-        ILogSaver logger = EasyMock.createMock(ILogSaver.class);
+
 
         EasyMock.expect(mDetailedListener.supportGranularResults()).andStubReturn(true);
 
         // Invocation level
-        mAggListener.setLogSaver(logger);
+        mAggListener.setLogSaver(mLogger);
         mAggListener.invocationStarted(mInvocationContext);
         EasyMock.expect(mAggListener.getSummary()).andStubReturn(null);
-        mDetailedListener.setLogSaver(logger);
+        mDetailedListener.setLogSaver(mLogger);
         mDetailedListener.invocationStarted(mInvocationContext);
         EasyMock.expect(mDetailedListener.getSummary()).andStubReturn(null);
 
@@ -1020,15 +1117,28 @@ public class ResultAggregatorTest {
                 EasyMock.<HashMap<String, Metric>>anyObject());
         mAggListener.testRunEnded(900L, new HashMap<String, Metric>());
 
+        EasyMock.expect(
+                        mLogger.saveLogData(
+                                EasyMock.contains("aggregated-events"),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
+                                EasyMock.anyObject()))
+                .andReturn(null);
+        EasyMock.expect(
+                        mLogger.saveLogData(
+                                EasyMock.contains("detailed-events"),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
+                                EasyMock.anyObject()))
+                .andReturn(null);
+
         mAggListener.invocationEnded(500L);
         mDetailedListener.invocationEnded(500L);
 
-        EasyMock.replay(mAggListener, mDetailedListener);
+        EasyMock.replay(mAggListener, mDetailedListener, mLogger);
         mAggregator =
                 new TestableResultAggregator(
                         Arrays.asList(mAggListener, mDetailedListener),
                         RetryStrategy.RETRY_ANY_FAILURE);
-        mAggregator.setLogSaver(logger);
+        mAggregator.setLogSaver(mLogger);
         mAggregator.invocationStarted(mInvocationContext);
         mAggregator.testModuleStarted(mModuleContext);
         // Attempt 1
@@ -1060,24 +1170,24 @@ public class ResultAggregatorTest {
         mAggregator.testRunEnded(450L, new HashMap<String, Metric>());
 
         mAggregator.invocationEnded(500L);
-        EasyMock.verify(mAggListener, mDetailedListener);
+        EasyMock.verify(mAggListener, mDetailedListener, mLogger);
         assertEquals("I failed", mAggregator.getInvocationMetricRunError());
     }
 
     /** Test aggregation of results coming from a simple test run first then from a module. */
     @Test
-    public void testForwarding_noModule_module() {
+    public void testForwarding_noModule_module() throws Exception {
         TestDescription test1 = new TestDescription("classname", "test1");
         TestDescription test2 = new TestDescription("classname", "test2");
-        ILogSaver logger = EasyMock.createMock(ILogSaver.class);
+
 
         EasyMock.expect(mDetailedListener.supportGranularResults()).andStubReturn(true);
 
         // Invocation level
-        mAggListener.setLogSaver(logger);
+        mAggListener.setLogSaver(mLogger);
         mAggListener.invocationStarted(mInvocationContext);
         EasyMock.expect(mAggListener.getSummary()).andStubReturn(null);
-        mDetailedListener.setLogSaver(logger);
+        mDetailedListener.setLogSaver(mLogger);
         mDetailedListener.invocationStarted(mInvocationContext);
         EasyMock.expect(mDetailedListener.getSummary()).andStubReturn(null);
 
@@ -1158,12 +1268,25 @@ public class ResultAggregatorTest {
         mAggListener.invocationEnded(500L);
         mDetailedListener.invocationEnded(500L);
 
-        EasyMock.replay(mAggListener, mDetailedListener);
+        EasyMock.expect(
+                        mLogger.saveLogData(
+                                EasyMock.contains("aggregated-events"),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
+                                EasyMock.anyObject()))
+                .andReturn(null);
+        EasyMock.expect(
+                        mLogger.saveLogData(
+                                EasyMock.contains("detailed-events"),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
+                                EasyMock.anyObject()))
+                .andReturn(null);
+
+        EasyMock.replay(mAggListener, mDetailedListener, mLogger);
         mAggregator =
                 new TestableResultAggregator(
                         Arrays.asList(mAggListener, mDetailedListener),
                         RetryStrategy.RETRY_ANY_FAILURE);
-        mAggregator.setLogSaver(logger);
+        mAggregator.setLogSaver(mLogger);
         mAggregator.invocationStarted(mInvocationContext);
         // First run that is not a module
         mAggregator.testRunStarted("run2", 1, 0);
@@ -1195,15 +1318,15 @@ public class ResultAggregatorTest {
         mAggregator.testModuleEnded();
 
         mAggregator.invocationEnded(500L);
-        EasyMock.verify(mAggListener, mDetailedListener);
+        EasyMock.verify(mAggListener, mDetailedListener, mLogger);
         assertNull(mAggregator.getInvocationMetricRunError());
     }
 
     @Test
-    public void testForwarding_noModule_module_runFailure() {
+    public void testForwarding_noModule_module_runFailure() throws Exception {
         TestDescription test1 = new TestDescription("classname", "test1");
         TestDescription test2 = new TestDescription("classname", "test2");
-        ILogSaver logger = EasyMock.createMock(ILogSaver.class);
+
         MultiFailureDescription aggFailure =
                 new MultiFailureDescription(
                         FailureDescription.create("I failed"),
@@ -1211,10 +1334,10 @@ public class ResultAggregatorTest {
         EasyMock.expect(mDetailedListener.supportGranularResults()).andStubReturn(true);
 
         // Invocation level
-        mAggListener.setLogSaver(logger);
+        mAggListener.setLogSaver(mLogger);
         mAggListener.invocationStarted(mInvocationContext);
         EasyMock.expect(mAggListener.getSummary()).andStubReturn(null);
-        mDetailedListener.setLogSaver(logger);
+        mDetailedListener.setLogSaver(mLogger);
         mDetailedListener.invocationStarted(mInvocationContext);
         EasyMock.expect(mDetailedListener.getSummary()).andStubReturn(null);
 
@@ -1296,13 +1419,25 @@ public class ResultAggregatorTest {
 
         mAggListener.invocationEnded(500L);
         mDetailedListener.invocationEnded(500L);
+        EasyMock.expect(
+                        mLogger.saveLogData(
+                                EasyMock.contains("aggregated-events"),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
+                                EasyMock.anyObject()))
+                .andReturn(null);
+        EasyMock.expect(
+                        mLogger.saveLogData(
+                                EasyMock.contains("detailed-events"),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
+                                EasyMock.anyObject()))
+                .andReturn(null);
 
-        EasyMock.replay(mAggListener, mDetailedListener);
+        EasyMock.replay(mAggListener, mDetailedListener, mLogger);
         mAggregator =
                 new TestableResultAggregator(
                         Arrays.asList(mAggListener, mDetailedListener),
                         RetryStrategy.RETRY_ANY_FAILURE);
-        mAggregator.setLogSaver(logger);
+        mAggregator.setLogSaver(mLogger);
         mAggregator.invocationStarted(mInvocationContext);
         // First run that is not a module
         mAggregator.testRunStarted("run2", 1, 0);
@@ -1336,24 +1471,23 @@ public class ResultAggregatorTest {
         mAggregator.testModuleEnded();
 
         mAggregator.invocationEnded(500L);
-        EasyMock.verify(mAggListener, mDetailedListener);
+        EasyMock.verify(mAggListener, mDetailedListener, mLogger);
         assertNull(mAggregator.getInvocationMetricRunError());
     }
 
     /** Test when two modules follow each others. */
     @Test
-    public void testForwarding_module_module() {
+    public void testForwarding_module_module() throws Exception {
         TestDescription test1 = new TestDescription("classname", "test1");
         TestDescription test2 = new TestDescription("classname", "test2");
-        ILogSaver logger = EasyMock.createMock(ILogSaver.class);
 
         EasyMock.expect(mDetailedListener.supportGranularResults()).andStubReturn(true);
 
         // Invocation level
-        mAggListener.setLogSaver(logger);
+        mAggListener.setLogSaver(mLogger);
         mAggListener.invocationStarted(mInvocationContext);
         EasyMock.expect(mAggListener.getSummary()).andStubReturn(null);
-        mDetailedListener.setLogSaver(logger);
+        mDetailedListener.setLogSaver(mLogger);
         mDetailedListener.invocationStarted(mInvocationContext);
         EasyMock.expect(mDetailedListener.getSummary()).andStubReturn(null);
 
@@ -1439,13 +1573,25 @@ public class ResultAggregatorTest {
 
         mAggListener.invocationEnded(500L);
         mDetailedListener.invocationEnded(500L);
+        EasyMock.expect(
+                        mLogger.saveLogData(
+                                EasyMock.contains("aggregated-events"),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
+                                EasyMock.anyObject()))
+                .andReturn(null);
+        EasyMock.expect(
+                        mLogger.saveLogData(
+                                EasyMock.contains("detailed-events"),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
+                                EasyMock.anyObject()))
+                .andReturn(null);
 
-        EasyMock.replay(mAggListener, mDetailedListener);
+        EasyMock.replay(mAggListener, mDetailedListener, mLogger);
         mAggregator =
                 new TestableResultAggregator(
                         Arrays.asList(mAggListener, mDetailedListener),
                         RetryStrategy.RETRY_ANY_FAILURE);
-        mAggregator.setLogSaver(logger);
+        mAggregator.setLogSaver(mLogger);
         mAggregator.invocationStarted(mInvocationContext);
 
         // Module 1 starts
@@ -1480,23 +1626,22 @@ public class ResultAggregatorTest {
         mAggregator.testModuleEnded();
 
         mAggregator.invocationEnded(500L);
-        EasyMock.verify(mAggListener, mDetailedListener);
+        EasyMock.verify(mAggListener, mDetailedListener, mLogger);
         assertNull(mAggregator.getInvocationMetricRunError());
     }
 
     @Test
-    public void testForwarding_module_pass_fail_fail() {
+    public void testForwarding_module_pass_fail_fail() throws Exception {
         TestDescription test1 = new TestDescription("classname", "test1");
         TestDescription test2 = new TestDescription("classname", "test2");
-        ILogSaver logger = EasyMock.createMock(ILogSaver.class);
 
         EasyMock.expect(mDetailedListener.supportGranularResults()).andStubReturn(true);
 
         // Invocation level
-        mAggListener.setLogSaver(logger);
+        mAggListener.setLogSaver(mLogger);
         mAggListener.invocationStarted(mInvocationContext);
         EasyMock.expect(mAggListener.getSummary()).andStubReturn(null);
-        mDetailedListener.setLogSaver(logger);
+        mDetailedListener.setLogSaver(mLogger);
         mDetailedListener.invocationStarted(mInvocationContext);
         EasyMock.expect(mDetailedListener.getSummary()).andStubReturn(null);
 
@@ -1555,13 +1700,25 @@ public class ResultAggregatorTest {
 
         mAggListener.invocationEnded(500L);
         mDetailedListener.invocationEnded(500L);
+        EasyMock.expect(
+                        mLogger.saveLogData(
+                                EasyMock.contains("aggregated-events"),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
+                                EasyMock.anyObject()))
+                .andReturn(null);
+        EasyMock.expect(
+                        mLogger.saveLogData(
+                                EasyMock.contains("detailed-events"),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
+                                EasyMock.anyObject()))
+                .andReturn(null);
 
-        EasyMock.replay(mAggListener, mDetailedListener);
+        EasyMock.replay(mAggListener, mDetailedListener, mLogger);
         mAggregator =
                 new TestableResultAggregator(
                         Arrays.asList(mAggListener, mDetailedListener),
                         RetryStrategy.RETRY_ANY_FAILURE);
-        mAggregator.setLogSaver(logger);
+        mAggregator.setLogSaver(mLogger);
         mAggregator.invocationStarted(mInvocationContext);
 
         // Module 1 starts
@@ -1589,7 +1746,7 @@ public class ResultAggregatorTest {
         mAggregator.testModuleEnded();
 
         mAggregator.invocationEnded(500L);
-        EasyMock.verify(mAggListener, mDetailedListener);
+        EasyMock.verify(mAggListener, mDetailedListener, mLogger);
         assertEquals(
                 "There were 2 failures:\n  failed2\n  failed3",
                 mAggregator.getInvocationMetricRunError());
@@ -1601,18 +1758,17 @@ public class ResultAggregatorTest {
      * will not be right after the original attempt.
      */
     @Test
-    public void testForwarding_noModules_runFailures_unordered() {
+    public void testForwarding_noModules_runFailures_unordered() throws Exception {
         TestDescription test1 = new TestDescription("classname", "test1");
         TestDescription test2 = new TestDescription("classname", "test2");
-        ILogSaver logger = EasyMock.createMock(ILogSaver.class);
 
         EasyMock.expect(mDetailedListener.supportGranularResults()).andStubReturn(true);
 
         // Invocation level
-        mAggListener.setLogSaver(logger);
+        mAggListener.setLogSaver(mLogger);
         mAggListener.invocationStarted(mInvocationContext);
         EasyMock.expect(mAggListener.getSummary()).andStubReturn(null);
-        mDetailedListener.setLogSaver(logger);
+        mDetailedListener.setLogSaver(mLogger);
         mDetailedListener.invocationStarted(mInvocationContext);
         EasyMock.expect(mDetailedListener.getSummary()).andStubReturn(null);
 
@@ -1675,13 +1831,25 @@ public class ResultAggregatorTest {
 
         mAggListener.invocationEnded(500L);
         mDetailedListener.invocationEnded(500L);
+        EasyMock.expect(
+                        mLogger.saveLogData(
+                                EasyMock.contains("aggregated-events"),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
+                                EasyMock.anyObject()))
+                .andReturn(null);
+        EasyMock.expect(
+                        mLogger.saveLogData(
+                                EasyMock.contains("detailed-events"),
+                                EasyMock.eq(LogDataType.TF_EVENTS),
+                                EasyMock.anyObject()))
+                .andReturn(null);
 
-        EasyMock.replay(mAggListener, mDetailedListener);
+        EasyMock.replay(mAggListener, mDetailedListener, mLogger);
         mAggregator =
                 new TestableResultAggregator(
                         Arrays.asList(mAggListener, mDetailedListener),
                         RetryStrategy.RETRY_ANY_FAILURE);
-        mAggregator.setLogSaver(logger);
+        mAggregator.setLogSaver(mLogger);
         mAggregator.invocationStarted(mInvocationContext);
         // Run 1 - Attempt 1
         mAggregator.testRunStarted("run1", 2, 0);
@@ -1704,7 +1872,7 @@ public class ResultAggregatorTest {
         mAggregator.testRunEnded(450L, new HashMap<String, Metric>());
 
         mAggregator.invocationEnded(500L);
-        EasyMock.verify(mAggListener, mDetailedListener);
+        EasyMock.verify(mAggListener, mDetailedListener, mLogger);
         assertNull(mAggregator.getInvocationMetricRunError());
     }
 }

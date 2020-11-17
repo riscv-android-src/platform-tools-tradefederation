@@ -24,6 +24,7 @@ import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.config.IGlobalConfiguration;
+import com.android.tradefed.config.proxy.AutomatedReporters;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.logger.CurrentInvocation;
@@ -180,7 +181,7 @@ public class TradefedSandbox implements ISandbox {
             // Log the configuration used to run
             try (InputStreamSource configFile =
                     new FileInputStreamSource(mSerializedConfiguration)) {
-                logger.testLog("sandbox-config", LogDataType.XML, configFile);
+                logger.testLog("sandbox-config", LogDataType.HARNESS_CONFIG, configFile);
             }
             try (InputStreamSource contextFile = new FileInputStreamSource(mSerializedContext)) {
                 logger.testLog("sandbox-context", LogDataType.PB, contextFile);
@@ -188,11 +189,11 @@ public class TradefedSandbox implements ISandbox {
             // Log stdout and stderr
             if (mStdoutFile != null) {
                 try (InputStreamSource sourceStdOut = new FileInputStreamSource(mStdoutFile)) {
-                    logger.testLog("sandbox-stdout", LogDataType.TEXT, sourceStdOut);
+                    logger.testLog("sandbox-stdout", LogDataType.HARNESS_STD_LOG, sourceStdOut);
                 }
             }
             try (InputStreamSource sourceStdErr = new FileInputStreamSource(mStderrFile)) {
-                logger.testLog("sandbox-stderr", LogDataType.TEXT, sourceStdErr);
+                logger.testLog("sandbox-stderr", LogDataType.HARNESS_STD_LOG, sourceStdErr);
             }
             // Collect heap dump if any
             logAndCleanHeapDump(mHeapDump, logger);
@@ -238,7 +239,7 @@ public class TradefedSandbox implements ISandbox {
         mRunUtil = createRunUtil();
         mRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
         mRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
-        // TODO: add handling of setting and creating the subprocess global configuration
+        mRunUtil.unsetEnvVariable(AutomatedReporters.PROTO_REPORTING_PORT);
         if (getSandboxOptions(config).shouldEnableDebugThread()) {
             mRunUtil.setEnvVariable(TradefedSandboxRunner.DEBUG_THREAD_KEY, "true");
         }
@@ -359,7 +360,7 @@ public class TradefedSandbox implements ISandbox {
                     QuotationAwareTokenizer.tokenizeLine(commandLine, /* No Logging */ false);
             mGlobalConfig = dumpGlobalConfig(config, new HashSet<>());
             try (InputStreamSource source = new FileInputStreamSource(mGlobalConfig)) {
-                listener.testLog("sandbox-global-config", LogDataType.XML, source);
+                listener.testLog("sandbox-global-config", LogDataType.HARNESS_CONFIG, source);
             }
             DumpCmd mode = DumpCmd.RUN_CONFIG;
             if (config.getCommandOptions().shouldUseSandboxTestMode()) {
@@ -385,7 +386,8 @@ public class TradefedSandbox implements ISandbox {
                     File parentConfig = handleChildMissingConfig(args);
                     if (parentConfig != null) {
                         try (InputStreamSource source = new FileInputStreamSource(parentConfig)) {
-                            listener.testLog("sandbox-parent-config", LogDataType.XML, source);
+                            listener.testLog(
+                                    "sandbox-parent-config", LogDataType.HARNESS_CONFIG, source);
                         }
                         try {
                             mSerializedConfiguration =

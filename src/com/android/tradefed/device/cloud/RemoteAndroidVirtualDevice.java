@@ -481,7 +481,7 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
                         mGceAvd,
                         this.getOptions(),
                         getRunUtil(),
-                        60000L,
+                        Math.max(300000L, this.getOptions().getGceCmdTimeout()),
                         powerwashCommand.split(" "));
         if (!CommandStatus.SUCCESS.equals(powerwashRes.getStatus())) {
             CLog.e("%s", powerwashRes.getStderr());

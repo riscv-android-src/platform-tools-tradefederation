@@ -502,6 +502,18 @@ public class NativeDevice implements IManagedTestDevice {
         return result.getStdout().trim();
     }
 
+    /** Version of getProperty that allows to check device status and trigger recovery if needed. */
+    private String getPropertyWithRecovery(final String name) throws DeviceNotAvailableException {
+        if (getIDevice() instanceof StubDevice) {
+            return null;
+        }
+        if (!TestDeviceState.ONLINE.equals(getDeviceState())) {
+            // Only query property for online device so trigger recovery before getting property.
+            recoverDevice();
+        }
+        return getProperty(name);
+    }
+
     /** {@inheritDoc} */
     @Override
     public long getIntProperty(String name, long defaultValue) throws DeviceNotAvailableException {
@@ -2346,15 +2358,23 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public InputStreamSource getLogcatDump() {
-        byte[] output = new byte[0];
+        LargeOutputReceiver largeReceiver = null;
         try {
             // use IDevice directly because we don't want callers to handle
             // DeviceNotAvailableException for this method
-            CollectingByteOutputReceiver receiver = new CollectingByteOutputReceiver();
+            largeReceiver =
+                    new LargeOutputReceiver(
+                            "getLogcatDump",
+                            getSerialNumber(),
+                            getOptions().getMaxLogcatDataSize());
             // add -d parameter to make this a non blocking call
-            getIDevice().executeShellCommand(LogcatReceiver.LOGCAT_CMD + " -d", receiver,
-                    LOGCAT_DUMP_TIMEOUT, TimeUnit.MILLISECONDS);
-            output = receiver.getOutput();
+            getIDevice()
+                    .executeShellCommand(
+                            LogcatReceiver.LOGCAT_CMD + " -d",
+                            largeReceiver,
+                            LOGCAT_DUMP_TIMEOUT,
+                            TimeUnit.MILLISECONDS);
+            return largeReceiver.getData();
         } catch (IOException e) {
             CLog.w("Failed to get logcat dump from %s: ", getSerialNumber(), e.getMessage());
         } catch (TimeoutException e) {
@@ -2363,8 +2383,13 @@ public class NativeDevice implements IManagedTestDevice {
             CLog.w("Failed to get logcat dump from %s: ", getSerialNumber(), e.getMessage());
         } catch (ShellCommandUnresponsiveException e) {
             CLog.w("Failed to get logcat dump from %s: ", getSerialNumber(), e.getMessage());
+        } finally {
+            if (largeReceiver != null) {
+                largeReceiver.cancel();
+                largeReceiver.delete();
+            }
         }
-        return new ByteArrayInputStreamSource(output);
+        return new ByteArrayInputStreamSource(new byte[0]);
     }
 
     /**
@@ -4013,6 +4038,12 @@ public class NativeDevice implements IManagedTestDevice {
         throw new UnsupportedOperationException("No support for Package's feature");
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public Set<String> getMainlineModuleInfo() throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for Package's feature");
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -4061,7 +4092,7 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public boolean checkApiLevelAgainstNextRelease(int strictMinLevel)
             throws DeviceNotAvailableException {
-        String codeName = getProperty(DeviceProperties.BUILD_CODENAME);
+        String codeName = getPropertyWithRecovery(DeviceProperties.BUILD_CODENAME);
         if (codeName == null) {
             throw new DeviceRuntimeException(
                     String.format(
