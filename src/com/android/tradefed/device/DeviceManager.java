@@ -182,6 +182,13 @@ public class DeviceManager implements IDeviceManager {
     )
     private File mFastbootFile = new File("fastboot");
 
+    @Option(
+            name = "enabled-filesystem-check",
+            description =
+                    "Whether or not to check the file system type as part of device storage "
+                            + "readiness")
+    private boolean mMountFileSystemCheckEnabled = false;
+
     private File mUnpackedFastbootDir = null;
     private File mUnpackedFastboot = null;
 
@@ -1603,5 +1610,11 @@ public class DeviceManager implements IDeviceManager {
     @Override
     public void addMonitoringTcpFastbootDevice(String serial, String fastboot_serial) {
         mMonitoringTcpFastbootDevices.put(serial, fastboot_serial);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean isFileSystemMountCheckEnabled() {
+        return mMountFileSystemCheckEnabled;
     }
 }
