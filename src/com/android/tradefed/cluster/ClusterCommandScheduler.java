@@ -781,9 +781,7 @@ public class ClusterCommandScheduler extends CommandScheduler {
                     getClusterClient().getHostEventUploader();
             ClusterHostEvent.Builder builder =
                     new ClusterHostEvent.Builder()
-                            .setClusterId(getClusterOptions().getClusterId())
                             .setHostEventType(HostEventType.HostStateChanged)
-                            .setHostName(ClusterHostUtil.getHostName())
                             .setHostState(state);
             CLog.d("event uploading with state %s", state.toString());
             ClusterHostEvent event = builder.build();
