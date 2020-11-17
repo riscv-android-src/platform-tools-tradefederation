@@ -84,7 +84,12 @@ public class QuotationAwareTokenizer {
                         // this is the end of a non-empty token; dump it in our list of tokens,
                         // clear our temp storage, and keep rolling
                         log(String.format("Finished token '%s'", token.toString()), logging);
-                        tokens.add(token.toString());
+                        // Handle escaped empty string by '' to restore and empty string
+                        if (token.toString().equals("''")) {
+                            tokens.add("");
+                        } else {
+                            tokens.add(token.toString());
+                        }
                         token.delete(0, token.length());
                     }
                     // otherwise, this is the non-first in a sequence of spaces; ignore.
@@ -108,7 +113,12 @@ public class QuotationAwareTokenizer {
         // Add the final token to the tokens array.
         if (token.length() > 0) {
             log(String.format("Finished final token '%s'", token.toString()), logging);
-            tokens.add(token.toString());
+            // Handle escaped empty string by '' to restore and empty string
+            if (token.toString().equals("''")) {
+                tokens.add("");
+            } else {
+                tokens.add(token.toString());
+            }
             token.delete(0, token.length());
         }
 
