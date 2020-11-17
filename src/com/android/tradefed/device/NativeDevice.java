@@ -141,9 +141,11 @@ public class NativeDevice implements IManagedTestDevice {
             Pattern.compile("DispatchEnabled:\\s?([01])");
     /** regex to match build signing key type */
     private static final Pattern KEYS_PATTERN = Pattern.compile("^.*-keys$");
-    private static final Pattern DF_PATTERN = Pattern.compile(
-            //Fs 1K-blks Used    Available Use%      Mounted on
-            "^/\\S+\\s+\\d+\\s+\\d+\\s+(\\d+)\\s+\\d+%\\s+/\\S*$", Pattern.MULTILINE);
+
+    public static final Pattern DF_PATTERN =
+            Pattern.compile(
+                    // Fs 1K-blks Used    Available Use%      Mounted on
+                    "^/(\\S+)\\s+\\d+\\s+\\d+\\s+(\\d+)\\s+\\d+%\\s+/\\S*$", Pattern.MULTILINE);
     private static final Pattern BUGREPORTZ_RESPONSE_PATTERN = Pattern.compile("(OK:)(.*)");
 
     protected static final long MAX_HOST_DEVICE_TIME_OFFSET = 5 * 1000;
@@ -1462,7 +1464,7 @@ public class NativeDevice implements IManagedTestDevice {
         Matcher matcher = DF_PATTERN.matcher(dfOutput);
         if (matcher.find()) {
             try {
-                return Long.parseLong(matcher.group(1));
+                return Long.parseLong(matcher.group(2));
             } catch (NumberFormatException e) {
                 // fall through
             }

@@ -15,25 +15,31 @@
  */
 package com.android.tradefed.device;
 
-import com.google.common.util.concurrent.SettableFuture;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import com.android.ddmlib.CollectingOutputReceiver;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.IDevice.DeviceState;
 import com.android.tradefed.util.RunUtil;
 
-import junit.framework.TestCase;
+import com.google.common.util.concurrent.SettableFuture;
 
 import org.easymock.EasyMock;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
-/**
- * Unit tests for {@link DeviceStateMonitorTest}.
- */
-public class DeviceStateMonitorTest extends TestCase {
+/** Unit tests for {@link DeviceStateMonitorTest}. */
+@RunWith(JUnit4.class)
+public class DeviceStateMonitorTest {
     private static final int WAIT_TIMEOUT_NOT_REACHED_MS = 500;
     private static final int WAIT_TIMEOUT_REACHED_MS = 100;
     private static final int WAIT_STATE_CHANGE_MS = 50;
@@ -45,10 +51,14 @@ public class DeviceStateMonitorTest extends TestCase {
     private IDeviceManager mMockMgr;
     private String mStubValue = "not found";
 
-    @Override
-    protected void setUp() {
+    @Before
+    public void setUp() {
         mStubValue = "not found";
         mMockMgr = EasyMock.createMock(IDeviceManager.class);
+        EasyMock.expect(mMockMgr.isFileSystemMountCheckEnabled()).andReturn(false).anyTimes();
+        mMockMgr.addFastbootListener(EasyMock.anyObject());
+        mMockMgr.removeFastbootListener(EasyMock.anyObject());
+        EasyMock.replay(mMockMgr);
         mMockDevice = EasyMock.createMock(IDevice.class);
         EasyMock.expect(mMockDevice.getState()).andReturn(DeviceState.ONLINE);
         EasyMock.expect(mMockDevice.getSerialNumber()).andReturn(SERIAL_NUMBER).anyTimes();
@@ -56,16 +66,14 @@ public class DeviceStateMonitorTest extends TestCase {
         mMonitor = new DeviceStateMonitor(mMockMgr, mMockDevice, true);
     }
 
-    /**
-     * Test {@link DeviceStateMonitor#waitForDeviceOnline()} when device is already online
-     */
+    /** Test {@link DeviceStateMonitor#waitForDeviceOnline()} when device is already online */
+    @Test
     public void testWaitForDeviceOnline_alreadyOnline() {
         assertEquals(mMockDevice, mMonitor.waitForDeviceOnline());
     }
 
-    /**
-     * Test {@link DeviceStateMonitor#waitForDeviceOnline()} when device becomes online
-     */
+    /** Test {@link DeviceStateMonitor#waitForDeviceOnline()} when device becomes online */
+    @Test
     public void testWaitForDeviceOnline() {
         mMonitor.setState(TestDeviceState.NOT_AVAILABLE);
         Thread test =
@@ -85,14 +93,14 @@ public class DeviceStateMonitorTest extends TestCase {
      * Test {@link DeviceStateMonitor#waitForDeviceOnline()} when device does not becomes online
      * within allowed time
      */
+    @Test
     public void testWaitForDeviceOnline_timeout() {
         mMonitor.setState(TestDeviceState.NOT_AVAILABLE);
         assertNull(mMonitor.waitForDeviceOnline(WAIT_TIMEOUT_REACHED_MS));
     }
 
-    /**
-     * Test {@link DeviceStateMonitor#isAdbTcp()} with a USB serial number.
-     */
+    /** Test {@link DeviceStateMonitor#isAdbTcp()} with a USB serial number. */
+    @Test
     public void testIsAdbTcp_usb() {
         IDevice mockDevice = EasyMock.createMock(IDevice.class);
         EasyMock.expect(mockDevice.getSerialNumber()).andStubReturn("2345asdf");
@@ -102,9 +110,8 @@ public class DeviceStateMonitorTest extends TestCase {
         assertFalse(monitor.isAdbTcp());
     }
 
-    /**
-     * Test {@link DeviceStateMonitor#isAdbTcp()} with a TCP serial number.
-     */
+    /** Test {@link DeviceStateMonitor#isAdbTcp()} with a TCP serial number. */
+    @Test
     public void testIsAdbTcp_tcp() {
         IDevice mockDevice = EasyMock.createMock(IDevice.class);
         EasyMock.expect(mockDevice.getSerialNumber()).andStubReturn("192.168.1.1:5555");
@@ -118,6 +125,7 @@ public class DeviceStateMonitorTest extends TestCase {
      * Test {@link DeviceStateMonitor#waitForDeviceNotAvailable(long)} when device is already
      * offline
      */
+    @Test
     public void testWaitForDeviceOffline_alreadyOffline() {
         mMonitor.setState(TestDeviceState.NOT_AVAILABLE);
         boolean res = mMonitor.waitForDeviceNotAvailable(WAIT_TIMEOUT_NOT_REACHED_MS);
@@ -125,9 +133,9 @@ public class DeviceStateMonitorTest extends TestCase {
     }
 
     /**
-     * Test {@link DeviceStateMonitor#waitForDeviceNotAvailable(long)} when device becomes
-     * offline
+     * Test {@link DeviceStateMonitor#waitForDeviceNotAvailable(long)} when device becomes offline
      */
+    @Test
     public void testWaitForDeviceOffline() {
         mMonitor.setState(TestDeviceState.ONLINE);
         Thread test =
@@ -148,15 +156,15 @@ public class DeviceStateMonitorTest extends TestCase {
      * Test {@link DeviceStateMonitor#waitForDeviceNotAvailable(long)} when device doesn't become
      * offline
      */
+    @Test
     public void testWaitForDeviceOffline_timeout() {
         mMonitor.setState(TestDeviceState.ONLINE);
         boolean res = mMonitor.waitForDeviceNotAvailable(WAIT_TIMEOUT_REACHED_MS);
         assertFalse(res);
     }
 
-    /**
-     * Test {@link DeviceStateMonitor#waitForDeviceShell(long)} when shell is available.
-     */
+    /** Test {@link DeviceStateMonitor#waitForDeviceShell(long)} when shell is available. */
+    @Test
     public void testWaitForShellAvailable() throws Exception {
         mMockDevice = EasyMock.createMock(IDevice.class);
         EasyMock.expect(mMockDevice.getState()).andReturn(DeviceState.ONLINE);
@@ -181,9 +189,8 @@ public class DeviceStateMonitorTest extends TestCase {
         assertTrue(res);
     }
 
-    /**
-     * Test {@link DeviceStateMonitor#waitForDeviceShell(long)} when shell become available.
-     */
+    /** Test {@link DeviceStateMonitor#waitForDeviceShell(long)} when shell become available. */
+    @Test
     public void testWaitForShell_becomeAvailable() throws Exception {
         mMockDevice = EasyMock.createMock(IDevice.class);
         EasyMock.expect(mMockDevice.getState()).andReturn(DeviceState.ONLINE);
@@ -225,6 +232,7 @@ public class DeviceStateMonitorTest extends TestCase {
     /**
      * Test {@link DeviceStateMonitor#waitForDeviceShell(long)} when shell never become available.
      */
+    @Test
     public void testWaitForShell_timeout() throws Exception {
         mMockDevice = EasyMock.createMock(IDevice.class);
         EasyMock.expect(mMockDevice.getState()).andReturn(DeviceState.ONLINE);
@@ -253,9 +261,8 @@ public class DeviceStateMonitorTest extends TestCase {
         assertFalse(res);
     }
 
-    /**
-     * Test {@link DeviceStateMonitor#waitForBootComplete(long)} when boot is already complete.
-     */
+    /** Test {@link DeviceStateMonitor#waitForBootComplete(long)} when boot is already complete. */
+    @Test
     public void testWaitForBootComplete() throws Exception {
         IDevice mFakeDevice = new StubDevice("serial") {
             @Override
@@ -273,6 +280,7 @@ public class DeviceStateMonitorTest extends TestCase {
     /**
      * Test {@link DeviceStateMonitor#waitForBootComplete(long)} when boot complete status change.
      */
+    @Test
     public void testWaitForBoot_becomeComplete() throws Exception {
         mStubValue = "0";
         IDevice mFakeDevice = new StubDevice("serial") {
@@ -303,9 +311,8 @@ public class DeviceStateMonitorTest extends TestCase {
         assertTrue(res);
     }
 
-    /**
-     * Test {@link DeviceStateMonitor#waitForBootComplete(long)} when boot complete timeout.
-     */
+    /** Test {@link DeviceStateMonitor#waitForBootComplete(long)} when boot complete timeout. */
+    @Test
     public void testWaitForBoot_timeout() throws Exception {
         mStubValue = "0";
         IDevice mFakeDevice = new StubDevice("serial") {
@@ -330,6 +337,7 @@ public class DeviceStateMonitorTest extends TestCase {
      * Test {@link DeviceStateMonitor#waitForPmResponsive(long)} when package manager is already
      * responsive.
      */
+    @Test
     public void testWaitForPmResponsive() throws Exception {
         mMockDevice = EasyMock.createMock(IDevice.class);
         EasyMock.expect(mMockDevice.getState()).andReturn(DeviceState.ONLINE);
@@ -358,6 +366,7 @@ public class DeviceStateMonitorTest extends TestCase {
      * Test {@link DeviceStateMonitor#waitForPmResponsive(long)} when package manager becomes
      * responsive
      */
+    @Test
     public void testWaitForPm_becomeResponsive() throws Exception {
         mMockDevice = EasyMock.createMock(IDevice.class);
         EasyMock.expect(mMockDevice.getState()).andReturn(DeviceState.ONLINE);
@@ -400,6 +409,7 @@ public class DeviceStateMonitorTest extends TestCase {
      * Test {@link DeviceStateMonitor#waitForPmResponsive(long)} when package manager check timeout
      * before becoming responsive.
      */
+    @Test
     public void testWaitForPm_timeout() throws Exception {
         mMockDevice = EasyMock.createMock(IDevice.class);
         EasyMock.expect(mMockDevice.getState()).andReturn(DeviceState.ONLINE);
@@ -428,9 +438,8 @@ public class DeviceStateMonitorTest extends TestCase {
         assertFalse(res);
     }
 
-    /**
-     * Test {@link DeviceStateMonitor#getMountPoint(String)} return the cached mount point.
-     */
+    /** Test {@link DeviceStateMonitor#getMountPoint(String)} return the cached mount point. */
+    @Test
     public void testgetMountPoint() throws Exception {
         String expectedMountPoint = "NOT NULL";
         mMockDevice = EasyMock.createMock(IDevice.class);
@@ -447,6 +456,7 @@ public class DeviceStateMonitorTest extends TestCase {
      * Test {@link DeviceStateMonitor#getMountPoint(String)} return the mount point that is not
      * cached.
      */
+    @Test
     public void testgetMountPoint_nonCached() throws Exception {
         mMockDevice = EasyMock.createMock(IDevice.class);
         EasyMock.expect(mMockDevice.getState()).andReturn(DeviceState.ONLINE);
@@ -473,6 +483,7 @@ public class DeviceStateMonitorTest extends TestCase {
     /**
      * Test {@link DeviceStateMonitor#waitForStoreMount(long)} when mount point is already mounted
      */
+    @Test
     public void testWaitForStoreMount() throws Exception {
         mMockDevice = EasyMock.createMock(IDevice.class);
         EasyMock.expect(mMockDevice.getState()).andReturn(DeviceState.ONLINE);
@@ -509,6 +520,7 @@ public class DeviceStateMonitorTest extends TestCase {
      * Test {@link DeviceStateMonitor#waitForStoreMount(long)} when mount point return permission
      * denied should return directly false.
      */
+    @Test
     public void testWaitForStoreMount_PermDenied() throws Exception {
         mMockDevice = EasyMock.createMock(IDevice.class);
         EasyMock.expect(mMockDevice.getState()).andReturn(DeviceState.ONLINE).anyTimes();
@@ -562,9 +574,8 @@ public class DeviceStateMonitorTest extends TestCase {
         assertFalse(mMonitor.waitForStoreMount(WAIT_TIMEOUT_NOT_REACHED_MS));
     }
 
-    /**
-     * Test {@link DeviceStateMonitor#waitForStoreMount(long)} when mount point become available
-     */
+    /** Test {@link DeviceStateMonitor#waitForStoreMount(long)} when mount point become available */
+    @Test
     public void testWaitForStoreMount_becomeAvailable() throws Exception {
         mStubValue = null;
         mMockDevice = EasyMock.createMock(IDevice.class);
@@ -613,9 +624,10 @@ public class DeviceStateMonitorTest extends TestCase {
     }
 
     /**
-     * Test {@link DeviceStateMonitor#waitForStoreMount(long)} when mount point is available and
-     * the output of the check (string in the file) become valid.
+     * Test {@link DeviceStateMonitor#waitForStoreMount(long)} when mount point is available and the
+     * output of the check (string in the file) become valid.
      */
+    @Test
     public void testWaitForStoreMount_outputBecomeValid() throws Exception {
         mStubValue = "INVALID";
         mMockDevice = EasyMock.createMock(IDevice.class);
@@ -663,9 +675,8 @@ public class DeviceStateMonitorTest extends TestCase {
         assertTrue(res);
     }
 
-    /**
-     * Test {@link DeviceStateMonitor#waitForStoreMount(long)} when mount point check timeout
-     */
+    /** Test {@link DeviceStateMonitor#waitForStoreMount(long)} when mount point check timeout */
+    @Test
     public void testWaitForStoreMount_timeout() throws Exception {
         mStubValue = null;
         mMockDevice = EasyMock.createMock(IDevice.class);
@@ -691,9 +702,10 @@ public class DeviceStateMonitorTest extends TestCase {
     }
 
     /**
-     * Test {@link DeviceStateMonitor#waitForDeviceAvailable(long)} wait for device available
-     * when device is already available.
+     * Test {@link DeviceStateMonitor#waitForDeviceAvailable(long)} wait for device available when
+     * device is already available.
      */
+    @Test
     public void testWaitForDeviceAvailable() throws Exception {
         mMockDevice = EasyMock.createMock(IDevice.class);
         EasyMock.expect(mMockDevice.getState()).andReturn(DeviceState.ONLINE).anyTimes();
@@ -720,9 +732,85 @@ public class DeviceStateMonitorTest extends TestCase {
         assertEquals(mMockDevice, mMonitor.waitForDeviceAvailable(WAIT_TIMEOUT_NOT_REACHED_MS));
     }
 
-    /**
-     * Test {@link DeviceStateMonitor#waitForDeviceAvailable(long)} when device is not online.
-     */
+    @Test
+    public void testWaitForDeviceAvailable_mounted() throws Exception {
+        mMockDevice = EasyMock.createMock(IDevice.class);
+        EasyMock.expect(mMockDevice.getState()).andReturn(DeviceState.ONLINE).anyTimes();
+        EasyMock.expect(mMockDevice.getSerialNumber()).andReturn(SERIAL_NUMBER).anyTimes();
+        EasyMock.expect(mMockDevice.getMountPoint((String) EasyMock.anyObject()))
+                .andStubReturn("/sdcard");
+        mMockDevice.executeShellCommand(
+                EasyMock.eq("df /sdcard"),
+                EasyMock.anyObject(),
+                EasyMock.anyLong(),
+                EasyMock.eq(TimeUnit.MILLISECONDS));
+        EasyMock.expectLastCall()
+                .andAnswer(
+                        () -> {
+                            CollectingOutputReceiver df =
+                                    (CollectingOutputReceiver) EasyMock.getCurrentArguments()[1];
+                            String dfOutput =
+                                    "Filesystem     1K-blocks    Used Available Use% Mounted on\n"
+                                            + "/dev/fuse       54089708 7177216  46912492  14% /storage/emulated\n";
+                            df.addOutput(dfOutput.getBytes(), 0, dfOutput.length());
+                            return null;
+                        });
+        String[] input = new String[1];
+        mMockDevice.executeShellCommand(
+                EasyMock.contains("echo"),
+                EasyMock.anyObject(),
+                EasyMock.anyLong(),
+                EasyMock.eq(TimeUnit.MILLISECONDS));
+        EasyMock.expectLastCall()
+                .andAnswer(
+                        () -> {
+                            input[0] = (String) EasyMock.getCurrentArguments()[0];
+                            return null;
+                        });
+        mMockDevice.executeShellCommand(
+                EasyMock.contains("cat"),
+                EasyMock.anyObject(),
+                EasyMock.anyLong(),
+                EasyMock.eq(TimeUnit.MILLISECONDS));
+        EasyMock.expectLastCall()
+                .andAnswer(
+                        () -> {
+                            CollectingOutputReceiver output =
+                                    (CollectingOutputReceiver) EasyMock.getCurrentArguments()[1];
+                            output.addOutput(input[0].getBytes(), 0, input[0].length());
+                            return null;
+                        });
+        mMockDevice.executeShellCommand(
+                EasyMock.contains("rm"),
+                EasyMock.anyObject(),
+                EasyMock.anyLong(),
+                EasyMock.eq(TimeUnit.MILLISECONDS));
+        EasyMock.replay(mMockDevice);
+        EasyMock.reset(mMockMgr);
+        EasyMock.expect(mMockMgr.isFileSystemMountCheckEnabled()).andReturn(true);
+        EasyMock.replay(mMockMgr);
+        mMonitor =
+                new DeviceStateMonitor(mMockMgr, mMockDevice, true) {
+                    @Override
+                    public IDevice waitForDeviceOnline(long waitTime) {
+                        return mMockDevice;
+                    }
+
+                    @Override
+                    public boolean waitForBootComplete(long waitTime) {
+                        return true;
+                    }
+
+                    @Override
+                    protected boolean waitForPmResponsive(long waitTime) {
+                        return true;
+                    }
+                };
+        assertEquals(mMockDevice, mMonitor.waitForDeviceAvailable(WAIT_TIMEOUT_NOT_REACHED_MS));
+    }
+
+    /** Test {@link DeviceStateMonitor#waitForDeviceAvailable(long)} when device is not online. */
+    @Test
     public void testWaitForDeviceAvailable_notOnline() throws Exception {
         mMockDevice = EasyMock.createMock(IDevice.class);
         EasyMock.expect(mMockDevice.getState()).andReturn(DeviceState.ONLINE).anyTimes();
@@ -741,6 +829,7 @@ public class DeviceStateMonitorTest extends TestCase {
      * Test {@link DeviceStateMonitor#waitForDeviceAvailable(long)} when device boot is not
      * complete.
      */
+    @Test
     public void testWaitForDeviceAvailable_notBootComplete() throws Exception {
         mMockDevice = EasyMock.createMock(IDevice.class);
         EasyMock.expect(mMockDevice.getState()).andReturn(DeviceState.ONLINE).anyTimes();
@@ -759,9 +848,8 @@ public class DeviceStateMonitorTest extends TestCase {
         assertNull(mMonitor.waitForDeviceAvailable(WAIT_TIMEOUT_REACHED_MS));
     }
 
-    /**
-     * Test {@link DeviceStateMonitor#waitForDeviceAvailable(long)} when pm is not responsive.
-     */
+    /** Test {@link DeviceStateMonitor#waitForDeviceAvailable(long)} when pm is not responsive. */
+    @Test
     public void testWaitForDeviceAvailable_pmNotResponsive() throws Exception {
         mMockDevice = EasyMock.createMock(IDevice.class);
         EasyMock.expect(mMockDevice.getState()).andReturn(DeviceState.ONLINE).anyTimes();
@@ -787,6 +875,7 @@ public class DeviceStateMonitorTest extends TestCase {
     /**
      * Test {@link DeviceStateMonitor#waitForDeviceAvailable(long)} when mount point is not ready
      */
+    @Test
     public void testWaitForDeviceAvailable_notMounted() throws Exception {
         mMockDevice = EasyMock.createMock(IDevice.class);
         EasyMock.expect(mMockDevice.getState()).andReturn(DeviceState.ONLINE).anyTimes();
@@ -814,6 +903,7 @@ public class DeviceStateMonitorTest extends TestCase {
     }
 
     /** Test {@link DeviceStateMonitor#waitForDeviceInSideload(long)} */
+    @Test
     public void testWaitForDeviceInSideload() throws Exception {
         mMockDevice = EasyMock.createMock(IDevice.class);
         EasyMock.expect(mMockDevice.getState()).andReturn(DeviceState.SIDELOAD).anyTimes();
