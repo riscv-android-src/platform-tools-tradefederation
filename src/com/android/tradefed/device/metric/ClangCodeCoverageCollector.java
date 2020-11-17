@@ -120,9 +120,6 @@ public final class ClangCodeCoverageCollector extends BaseDeviceMetricCollector
                 getCoverageFlusher().forceCoverageFlush();
             }
             logCoverageMeasurement(device, getRunName());
-
-            // Delete coverage files on the device.
-            device.executeShellCommand(DELETE_COVERAGE_FILES_COMMAND);
         } catch (DeviceNotAvailableException | IOException e) {
             throw new RuntimeException(e);
         }
@@ -196,6 +193,8 @@ public final class ClangCodeCoverageCollector extends BaseDeviceMetricCollector
                 testLog(runName + "_clang_runtime_coverage", LogDataType.CLANG_COVERAGE, source);
             }
         } finally {
+            // Delete coverage files on the device.
+            device.executeShellCommand(DELETE_COVERAGE_FILES_COMMAND);
             FileUtil.deleteFile(coverageTarGz);
             FileUtil.recursiveDelete(untarDir);
             FileUtil.recursiveDelete(mLlvmProfileTool);
