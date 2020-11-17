@@ -151,6 +151,13 @@ public class IsolatedHostTest
                             + " added to this classpath)")
     private String mClasspathOverride = null;
 
+    @Option(
+            name = "robolectric-android-all-name",
+            description =
+                    "The android-all resource jar to be used, e.g."
+                            + " 'android-all-R-robolectric-r0.jar'")
+    private String mAndroidAllName = "android-all-S-robolectric-r0.jar";
+
     private IConfiguration mConfig;
     private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
@@ -320,11 +327,20 @@ public class IsolatedHostTest
                             .getLocation()
                             .toURI();
 
-            String isolationJarPath =
-                    new File(tradefedJarPath).getParentFile().getAbsolutePath()
-                            + "/tradefed-isolation.jar";
+            File tradefedJar = new File(tradefedJarPath);
 
-            paths.add(isolationJarPath);
+            if (tradefedJar == null || !tradefedJar.exists()) {
+                throw new RuntimeException("tradefed.jar not found or does not exist.");
+            }
+
+            File isolationJar =
+                    FileUtil.findFile(tradefedJar.getParentFile(), "tradefed-isolation.jar");
+
+            if (isolationJar == null || !isolationJar.exists()) {
+                throw new RuntimeException("tradefed-isolation.jar not found or does not exist.");
+            }
+
+            paths.add(isolationJar.getAbsolutePath());
         } catch (URISyntaxException e) {
             throw new RuntimeException(e);
         }
@@ -334,7 +350,7 @@ public class IsolatedHostTest
         } else {
             if (mRobolectricResources) {
                 // This is contingent on the current android-all version.
-                File androidAllJar = FileUtil.findFile(testDir, "android-all-R-robolectric-r0.jar");
+                File androidAllJar = FileUtil.findFile(testDir, mAndroidAllName);
                 if (androidAllJar == null) {
                     throw new RuntimeException(
                             "Could not find android-all jar needed for test execution.");
