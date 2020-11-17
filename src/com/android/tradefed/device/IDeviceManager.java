@@ -295,4 +295,12 @@ public interface IDeviceManager {
      * @param fastboot_serial the device's fastboot mode serial number.
      */
     public void addMonitoringTcpFastbootDevice(String serial, String fastboot_serial);
+
+    /**
+     * Returns whether or not we should check in {@link NativeDeviceStateMonitor} the file system is
+     * mounted properly.
+     */
+    public default boolean isFileSystemMountCheckEnabled() {
+        return false;
+    }
 }
