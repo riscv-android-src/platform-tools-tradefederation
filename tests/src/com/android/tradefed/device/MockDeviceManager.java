@@ -454,4 +454,9 @@ public class MockDeviceManager implements IDeviceManager {
     public String getAdbVersion() {
         return null;
     }
+
+    @Override
+    public void addMonitoringTcpFastbootDevice(String serial, String fastboot_serial) {
+        // ignore
+    }
 }

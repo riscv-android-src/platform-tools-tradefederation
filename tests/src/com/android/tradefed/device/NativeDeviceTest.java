@@ -1697,10 +1697,16 @@ public class NativeDeviceTest {
                     public TestDeviceState getDeviceState() {
                         return TestDeviceState.ONLINE;
                     }
+
+                    @Override
+                    public String getFastbootSerialNumber() {
+                        return MOCK_DEVICE_SERIAL;
+                    }
                 };
         String into = "bootloader";
         mMockIDevice.reboot(into);
         EasyMock.expectLastCall();
+        mMockStateMonitor.setFastbootSerialNumber(MOCK_DEVICE_SERIAL);
         EasyMock.expect(mMockStateMonitor.waitForDeviceBootloader(EasyMock.anyLong()))
                 .andReturn(true);
         EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
@@ -1729,7 +1735,13 @@ public class NativeDeviceTest {
                         }
                         return new CommandResult();
                     }
+
+                    @Override
+                    public String getFastbootSerialNumber() {
+                        return MOCK_DEVICE_SERIAL;
+                    }
                 };
+        mMockStateMonitor.setFastbootSerialNumber(MOCK_DEVICE_SERIAL);
         EasyMock.expect(mMockStateMonitor.waitForDeviceBootloader(EasyMock.anyLong()))
                 .andReturn(true);
         EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
@@ -1747,10 +1759,16 @@ public class NativeDeviceTest {
                     public TestDeviceState getDeviceState() {
                         return TestDeviceState.ONLINE;
                     }
+
+                    @Override
+                    public String getFastbootSerialNumber() {
+                        return MOCK_DEVICE_SERIAL;
+                    }
                 };
         String into = "fastboot";
         mMockIDevice.reboot(into);
         EasyMock.expectLastCall();
+        mMockStateMonitor.setFastbootSerialNumber(MOCK_DEVICE_SERIAL);
         EasyMock.expect(mMockStateMonitor.waitForDeviceBootloader(EasyMock.anyLong()))
                 .andReturn(true);
         EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
@@ -1779,7 +1797,13 @@ public class NativeDeviceTest {
                         }
                         return new CommandResult();
                     }
+
+                    @Override
+                    public String getFastbootSerialNumber() {
+                        return MOCK_DEVICE_SERIAL;
+                    }
                 };
+        mMockStateMonitor.setFastbootSerialNumber(MOCK_DEVICE_SERIAL);
         EasyMock.expect(mMockStateMonitor.waitForDeviceBootloader(EasyMock.anyLong()))
                 .andReturn(true);
         EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
@@ -3246,5 +3270,117 @@ public class NativeDeviceTest {
                                 EasyMock.eq(property)))
                 .andReturn(stubResult);
         EasyMock.replay(mMockRunUtil);
+    }
+
+    /** Test {@link NativeDevice#getFastbootSerialNumber()} with USB adb. */
+    @Test
+    public void testGetFastbootSerialNumber_usb_adb() {
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public boolean isAdbTcp() {
+                        return false;
+                    }
+                };
+        EasyMock.replay(mMockIDevice);
+        assertEquals(MOCK_DEVICE_SERIAL, mTestDevice.getFastbootSerialNumber());
+        EasyMock.verify(mMockIDevice);
+    }
+
+    /** Test {@link NativeDevice#getFastbootSerialNumber()} with non-root TCP adb. */
+    @Test
+    public void testGetFastbootSerialNumber_non_root_tcp_adb() throws Exception {
+        String address = "00:30:1b:ba:81:28";
+        IDevice device =
+                new StubDevice(MOCK_DEVICE_SERIAL) {
+                    @Override
+                    public void executeShellCommand(String command, IShellOutputReceiver receiver)
+                            throws TimeoutException, AdbCommandRejectedException,
+                                    ShellCommandUnresponsiveException, IOException {
+                        receiver.addOutput(address.getBytes(), 0, address.length());
+                    }
+                };
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    IHostOptions getHostOptions() {
+                        return new HostOptions() {
+                            @Override
+                            public String getNetworkInterface() {
+                                return "en0";
+                            }
+                        };
+                    }
+
+                    @Override
+                    public boolean isAdbTcp() {
+                        return true;
+                    }
+
+                    @Override
+                    public boolean isAdbRoot() throws DeviceNotAvailableException {
+                        return false;
+                    }
+
+                    @Override
+                    public boolean enableAdbRoot() throws DeviceNotAvailableException {
+                        return true;
+                    }
+
+                    @Override
+                    public boolean disableAdbRoot() throws DeviceNotAvailableException {
+                        return true;
+                    }
+                };
+        mMockIDevice.executeShellCommand(EasyMock.anyObject(), EasyMock.anyObject());
+        EasyMock.expectLastCall().andDelegateTo(device).anyTimes();
+        EasyMock.replay(mMockIDevice);
+        assertEquals(
+                "tcp:fe80:0:0:0:230:1bff:feba:8128%en0", mTestDevice.getFastbootSerialNumber());
+        EasyMock.verify(mMockIDevice);
+    }
+
+    /** Test {@link NativeDevice#getFastbootSerialNumber()} with root TCP adb. */
+    @Test
+    public void testGetFastbootSerialNumber_root_tcp_adb() throws Exception {
+        String address = "00:30:1b:ba:81:28";
+        IDevice device =
+                new StubDevice(MOCK_DEVICE_SERIAL) {
+                    @Override
+                    public void executeShellCommand(String command, IShellOutputReceiver receiver)
+                            throws TimeoutException, AdbCommandRejectedException,
+                                    ShellCommandUnresponsiveException, IOException {
+                        receiver.addOutput(address.getBytes(), 0, address.length());
+                    }
+                };
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    IHostOptions getHostOptions() {
+                        return new HostOptions() {
+                            @Override
+                            public String getNetworkInterface() {
+                                return "en0";
+                            }
+                        };
+                    }
+
+                    @Override
+                    public boolean isAdbTcp() {
+                        return true;
+                    }
+
+                    @Override
+                    public boolean isAdbRoot() throws DeviceNotAvailableException {
+                        return true;
+                    }
+                };
+
+        mMockIDevice.executeShellCommand(EasyMock.anyObject(), EasyMock.anyObject());
+        EasyMock.expectLastCall().andDelegateTo(device).anyTimes();
+        EasyMock.replay(mMockIDevice);
+        assertEquals(
+                "tcp:fe80:0:0:0:230:1bff:feba:8128%en0", mTestDevice.getFastbootSerialNumber());
+        EasyMock.verify(mMockIDevice);
     }
 }

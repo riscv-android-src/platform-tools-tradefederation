@@ -137,8 +137,13 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
                             "Found device %s in %s but expected online. Rebooting...",
                             monitor.getSerialNumber(), state));
             // TODO: retry if failed
-            getRunUtil().runTimedCmd(mFastbootWaitTime, mFastbootPath, "-s",
-                    monitor.getSerialNumber(), "reboot");
+            getRunUtil()
+                    .runTimedCmd(
+                            mFastbootWaitTime,
+                            mFastbootPath,
+                            "-s",
+                            monitor.getFastbootSerialNumber(),
+                            "reboot");
         }
 
         // wait for device online
