@@ -14,6 +14,11 @@
 
 java_library_host {
   name: "tf-remote-client",
+  // Restrict visibility to only those targets that need to access it.
+  visibility: [
+    "//tools/tradefederation/core",
+    "//tools/tradefederation/core/device_build_interfaces",
+  ],
   defaults: ["tradefed_defaults"],
 
   srcs: ["src/**/*.java"],

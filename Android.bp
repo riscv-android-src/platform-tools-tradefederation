@@ -65,6 +65,14 @@ java_defaults {
 
 java_library_host {
     name: "tradefed-protos",
+    // Restrict visibility to only those targets that need to access it.
+    visibility: [
+        "//tools/tradefederation/core/clearcut_client",
+        "//tools/tradefederation/core/common_util",
+        "//tools/tradefederation/core/device_build_interfaces",
+        "//tools/tradefederation/core/invocation_interfaces",
+        "//tools/tradefederation/core/test_result_interfaces",
+    ],
     srcs: ["proto/**/*.proto"],
     libs: [
         "libprotobuf-java-full",
