@@ -69,6 +69,7 @@ import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ResultForwarder;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.result.suite.SuiteResultReporter;
 import com.android.tradefed.sandbox.ISandbox;
 import com.android.tradefed.testtype.IRemoteTest;
@@ -1075,8 +1076,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 IConfiguration config = cmd.getConfiguration();
                 IInvocationContext context = new InvocationContext();
                 context.setConfigurationDescriptor(config.getConfigurationDescription());
-                Map<String, ITestDevice> devices = allocateDevices(config, manager);
-                if (!devices.isEmpty()) {
+                DeviceAllocationResult allocationResults = allocateDevices(config, manager);
+                if (allocationResults.wasAllocationSuccessful()) {
+                    Map<String, ITestDevice> devices = allocationResults.getAllocatedDevices();
                     cmdIter.remove();
                     mExecutingCommands.add(cmd);
                     context.addAllocatedDevice(devices);
@@ -1534,8 +1536,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
         ExecutableCommand execCmd = createExecutableCommand(cmdTracker, config, false);
         context.setConfigurationDescriptor(config.getConfigurationDescription());
-        Map<String, ITestDevice> devices = allocateDevices(config, manager);
-        if (!devices.isEmpty()) {
+        DeviceAllocationResult allocationResults = allocateDevices(config, manager);
+        if (allocationResults.wasAllocationSuccessful()) {
+            Map<String, ITestDevice> devices = allocationResults.getAllocatedDevices();
             context.addAllocatedDevice(devices);
             synchronized (this) {
                 mExecutingCommands.add(execCmd);
@@ -1543,8 +1546,16 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             CLog.d("Executing '%s' on '%s'", cmdTracker.getArgs()[0], devices);
             startInvocation(context, execCmd, listener, new FreeDeviceHandler(manager));
         } else {
+            // Log adb output just to help debug
+            String adbOutput =
+                    ((DeviceManager) GlobalConfiguration.getDeviceManagerInstance())
+                            .executeGlobalAdbCommand("devices");
+            CLog.e("'adb devices' output:\n%s", adbOutput);
             throw new NoDeviceException(
-                    "no devices is available for command: " + Arrays.asList(args));
+                    String.format(
+                            "no devices is available for command: %s\n%s",
+                            Arrays.asList(args), allocationResults.formattedReason()),
+                    InfraErrorIdentifier.SCHEDULER_ALLOCATION_ERROR);
         }
     }
 
@@ -1585,11 +1596,12 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
     /**
      * Allocate devices for a config.
+     *
      * @param config a {@link IConfiguration} has device requirements.
      * @param manager a {@link IDeviceManager}
      * @return allocated devices
      */
-    Map<String, ITestDevice> allocateDevices(IConfiguration config, IDeviceManager manager) {
+    DeviceAllocationResult allocateDevices(IConfiguration config, IDeviceManager manager) {
         Map<String, ITestDevice> devices = new LinkedHashMap<String, ITestDevice>();
         ITestDevice device = null;
         if (config.getDeviceConfig().isEmpty()) {
@@ -1598,6 +1610,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         // If we need to replicate the setup on all devices
         ParentShardReplicate.replicatedSetup(config, getKeyStoreClient());
         synchronized(this) {
+            DeviceAllocationResult allocationResults = new DeviceAllocationResult();
             for (IDeviceConfiguration deviceConfig : config.getDeviceConfig()) {
                 device =
                         manager.allocateDevice(
@@ -1605,6 +1618,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 if (device != null) {
                     devices.put(deviceConfig.getDeviceName(), device);
                 } else {
+                    allocationResults.addAllocationFailureReason(
+                            deviceConfig.getDeviceName(),
+                            deviceConfig.getDeviceRequirements().getNoMatchReason());
                     // If one of the several device cannot be allocated, we de-allocate
                     // all the previous one.
                     for (ITestDevice allocatedDevice : devices.values()) {
@@ -1623,7 +1639,8 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                     break;
                 }
             }
-            return devices;
+            allocationResults.addAllocatedDevices(devices);
+            return allocationResults;
         }
     }
 

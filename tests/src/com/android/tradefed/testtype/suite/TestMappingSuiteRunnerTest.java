@@ -20,6 +20,7 @@ import static org.junit.Assert.assertTrue;
 
 import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.IDeviceBuildInfo;
+import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
@@ -87,6 +88,7 @@ public class TestMappingSuiteRunnerTest {
     private IDeviceBuildInfo mBuildInfo;
     private ITestDevice mMockDevice;
     private TestInformation mTestInfo;
+    private IConfiguration mStubMainConfiguration;
 
     private static final String TEST_MAINLINE_CONFIG =
         "<configuration description=\"Runs a stub tests part of some suite\">\n"
@@ -115,6 +117,8 @@ public class TestMappingSuiteRunnerTest {
         mMainlineRunner = new FakeMainlineTMSR();
         mMainlineRunner.setBuild(mBuildInfo);
         mMainlineRunner.setDevice(mMockDevice);
+        mStubMainConfiguration = new Configuration("stub", "stub");
+        mMainlineRunner.setConfiguration(mStubMainConfiguration);
         mMainlineOptionSetter = new OptionSetter(mMainlineRunner);
 
         IInvocationContext context = new InvocationContext();

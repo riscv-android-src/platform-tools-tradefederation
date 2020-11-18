@@ -521,6 +521,23 @@ public class ClusterCommandSchedulerTest {
                 new String[] {CMD_LINE, "--serial", "deviceSerial"}, getExecCommandArgs());
     }
 
+    /**
+     * If a unique device serial (one with a hostname prefix) is specified for a command task,
+     * convert it to a local device serial before appending it.
+     */
+    @Test
+    public void testExecCommandWithVirtualDeviceSerial() {
+        List<ClusterCommand> cmds = new ArrayList<>();
+        ClusterCommand cmd = new ClusterCommand(COMMAND_ID, TASK_ID, CMD_LINE);
+        cmd.setTargetDeviceSerials(
+                ArrayUtil.list(ClusterHostUtil.getHostName() + ":emulator-5554"));
+        cmds.add(cmd);
+        mScheduler.execCommands(cmds);
+        assertEquals(CMD_LINE, cmds.get(0).getCommandLine());
+        assertArrayEquals(
+                new String[] {CMD_LINE, "--serial", "emulator-5554"}, getExecCommandArgs());
+    }
+
     /** Multiple serials specified for a command task. */
     @Test
     public void testExecCommandWithMultipleSerials() {
@@ -828,6 +845,70 @@ public class ClusterCommandSchedulerTest {
         handler.invocationInitiated(context);
     }
 
+    @Test
+    public void testInvocationEventHandler_withSubprocessCommandException() {
+        ClusterCommand mockCommand = new ClusterCommand(COMMAND_ID, TASK_ID, CMD_LINE);
+        IInvocationContext context = new InvocationContext();
+        ITestDevice mockTestDevice = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(mockTestDevice.getSerialNumber()).andReturn(DEVICE_SERIAL);
+        EasyMock.expect(mockTestDevice.getIDevice()).andReturn(new StubDevice(DEVICE_SERIAL));
+        context.addAllocatedDevice("", mockTestDevice);
+        IBuildInfo mockBuildInfo = EasyMock.createMock(IBuildInfo.class);
+        context.addDeviceBuildInfo("", mockBuildInfo);
+        ClusterCommandScheduler.InvocationEventHandler handler =
+                mScheduler.new InvocationEventHandler(mockCommand);
+        mMockClusterOptions.setCollectEarlyTestSummary(true);
+
+        mMockEventUploader.postEvent(
+                checkClusterCommandEvent(ClusterCommandEvent.Type.InvocationInitiated));
+        mMockEventUploader.flush();
+        mMockEventUploader.postEvent(
+                checkClusterCommandEvent(ClusterCommandEvent.Type.InvocationStarted));
+        mMockEventUploader.flush();
+        mMockEventUploader.postEvent(
+                checkClusterCommandEvent(ClusterCommandEvent.Type.TestRunInProgress));
+        EasyMock.expectLastCall().anyTimes();
+        mMockEventUploader.postEvent(
+                checkClusterCommandEvent(ClusterCommandEvent.Type.InvocationEnded));
+        mMockEventUploader.flush();
+        Capture<ClusterCommandEvent> capture = new Capture<>();
+        mMockEventUploader.postEvent(EasyMock.capture(capture));
+        mMockEventUploader.flush();
+
+        EasyMock.replay(mMockEventUploader, mockBuildInfo, mockTestDevice);
+        handler.invocationInitiated(context);
+        List<TestSummary> summaries = new ArrayList<>();
+        summaries.add(
+                new TestSummary(new TestSummary.TypedString("http://uri", TestSummary.Type.URI)));
+        handler.putEarlySummary(summaries);
+        handler.putSummary(summaries);
+        handler.invocationStarted(context);
+        handler.invocationFailed(
+                new SubprocessCommandException(
+                        "error_message", new Throwable("subprocess_command_error_message")));
+        handler.invocationEnded(100L);
+        context.addAllocatedDevice(DEVICE_SERIAL, mockTestDevice);
+        Map<ITestDevice, FreeDeviceState> releaseMap = new HashMap<>();
+        releaseMap.put(mockTestDevice, FreeDeviceState.AVAILABLE);
+        handler.invocationComplete(context, releaseMap);
+        EasyMock.verify(mMockEventUploader, mockBuildInfo, mockTestDevice);
+        ClusterCommandEvent capturedEvent = capture.getValue();
+        assertTrue(capturedEvent.getType().equals(ClusterCommandEvent.Type.InvocationCompleted));
+        assertTrue(
+                ((String) capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_ERROR))
+                        .contains("SubprocessCommandException"));
+        assertEquals(
+                "subprocess_command_error_message",
+                capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_SUBPROCESS_COMMAND_ERROR));
+        assertEquals(
+                "0", capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_FAILED_TEST_COUNT));
+        assertEquals(
+                "0", capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_PASSED_TEST_COUNT));
+        assertEquals(
+                "URI: http://uri\n",
+                capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_SUMMARY));
+    }
+
     /**
      * Test that when dry-run is used we validate the config and no ConfigurationException gets
      * thrown.
@@ -1058,7 +1139,8 @@ public class ClusterCommandSchedulerTest {
         List<IDeviceConfiguration> deviceConfigs = config.getDeviceConfig();
         assertEquals(cmd.getTargetDeviceSerials().size(), deviceConfigs.size());
         for (int i = 0; i < cmd.getTargetDeviceSerials().size(); i++) {
-            String serial = cmd.getTargetDeviceSerials().get(i);
+            String serial =
+                    ClusterHostUtil.getLocalDeviceSerial(cmd.getTargetDeviceSerials().get(i));
             Collection<String> serials =
                     deviceConfigs.get(i).getDeviceRequirements().getSerials(null);
             assertTrue(serials.size() == 1 && serials.contains(serial));
@@ -1135,6 +1217,44 @@ public class ClusterCommandSchedulerTest {
         File workDir = null;
         try {
             ClusterCommand cmd = createMockManagedCommand(1);
+            workDir = new File(System.getProperty("java.io.tmpdir"), cmd.getAttemptId());
+            TestEnvironment testEnvironment = createMockTestEnvironment();
+            List<TestResource> testResources = createMockTestResources();
+            TestContext testContext = new TestContext();
+            mMockClusterClient = Mockito.spy(mMockClusterClient);
+            Mockito.doReturn(testEnvironment)
+                    .when(mMockClusterClient)
+                    .getTestEnvironment(REQUEST_ID);
+            Mockito.doReturn(testResources).when(mMockClusterClient).getTestResources(REQUEST_ID);
+            Mockito.doReturn(testContext)
+                    .when(mMockClusterClient)
+                    .getTestContext(REQUEST_ID, COMMAND_ID);
+            InvocationEventHandler invocationEventHandler =
+                    mScheduler.new InvocationEventHandler(cmd);
+
+            mScheduler.execManagedClusterCommand(cmd, invocationEventHandler);
+
+            String[] args = getExecCommandArgs();
+            assertTrue(args.length > 0);
+            IConfiguration config =
+                    ConfigurationFactory.getInstance().createConfigurationFromArgs(args);
+            verifyConfig(config, cmd, testEnvironment, testResources, workDir);
+        } finally {
+            if (workDir != null) {
+                // Clean up work directory
+                FileUtil.recursiveDelete(workDir);
+            }
+        }
+    }
+
+    /** Tests an execution of a managed cluster command. */
+    @Test
+    public void testExecManagedClusterCommand_virtualDeviceTest() throws Exception {
+        File workDir = null;
+        try {
+            ClusterCommand cmd = createMockManagedCommand(1);
+            cmd.setTargetDeviceSerials(
+                    ArrayUtil.list(ClusterHostUtil.getHostName() + ":emulator-5554"));
             workDir = new File(System.getProperty("java.io.tmpdir"), cmd.getAttemptId());
             TestEnvironment testEnvironment = createMockTestEnvironment();
             List<TestResource> testResources = createMockTestResources();

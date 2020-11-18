@@ -33,6 +33,8 @@ import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.testtype.coverage.CoverageOptions;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.JavaCodeCoverageFlusher;
+import com.android.tradefed.util.ProcessInfo;
+import com.android.tradefed.util.PsParser;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Splitter;
@@ -42,6 +44,7 @@ import org.jacoco.core.tools.ExecFileLoader;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.List;
 
@@ -148,7 +151,6 @@ public final class JavaCodeCoverageCollector extends BaseDeviceMetricCollector
                 devicePaths.addAll(Splitter.on('\n').omitEmptyStrings().split(fileList));
 
                 collectAndLogCoverageMeasurementsAsRoot(device, devicePaths.build());
-
             } catch (DeviceNotAvailableException | IOException e) {
                 throw new RuntimeException(e);
             }
@@ -191,9 +193,24 @@ public final class JavaCodeCoverageCollector extends BaseDeviceMetricCollector
 
     private void collectAndLogCoverageMeasurements(ITestDevice device, List<String> devicePaths)
             throws IOException, DeviceNotAvailableException {
+        List<Integer> activePids = getRunningProcessIds(device);
 
         for (String devicePath : devicePaths) {
             File coverageFile = device.pullFile(devicePath);
+
+            if (devicePath.endsWith(".mm.ec")) {
+                // Check if the process was still running. The file will have the format
+                // /data/misc/trace/jacoco-XXXXX.mm.ec where XXXXX is the process id.
+                int start = devicePath.indexOf('-') + 1;
+                int end = devicePath.indexOf('.');
+                int pid = Integer.parseInt(devicePath.substring(start, end));
+                if (!activePids.contains(pid)) {
+                    device.deleteFile(devicePath);
+                }
+            } else {
+                device.deleteFile(devicePath);
+            }
+
             verifyNotNull(
                     coverageFile, "Failed to pull the Java code coverage file from %s", devicePath);
 
@@ -214,6 +231,17 @@ public final class JavaCodeCoverageCollector extends BaseDeviceMetricCollector
                 FileUtil.deleteFile(coverageFile);
             }
         }
+    }
+
+    private List<Integer> getRunningProcessIds(ITestDevice device)
+            throws DeviceNotAvailableException {
+        List<ProcessInfo> processes = PsParser.getProcesses(device.executeShellCommand("ps -e"));
+        List<Integer> pids = new ArrayList<>();
+
+        for (ProcessInfo process : processes) {
+            pids.add(process.getPid());
+        }
+        return pids;
     }
 
     private FailureDescription createCodeCoverageFailure(String message) {

@@ -26,7 +26,7 @@ import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.result.error.DeviceErrorIdentifier;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.CommandResult;
@@ -221,7 +221,7 @@ public class GceManager {
                     throw new TargetSetupError(
                             String.format("acloud errors: %s", errors),
                             mDeviceDescriptor,
-                            DeviceErrorIdentifier.FAILED_TO_LAUNCH_GCE);
+                            InfraErrorIdentifier.NO_ACLOUD_REPORT);
                 }
             }
             mGceAvdInfo =
@@ -229,7 +229,11 @@ public class GceManager {
                             reportFile, mDeviceDescriptor, mDeviceOptions.getRemoteAdbPort());
             return mGceAvdInfo;
         } catch (IOException e) {
-            throw new TargetSetupError("failed to create log file", e, mDeviceDescriptor);
+            throw new TargetSetupError(
+                    "failed to create log file",
+                    e,
+                    mDeviceDescriptor,
+                    InfraErrorIdentifier.FAIL_TO_CREATE_FILE);
         } finally {
             FileUtil.deleteFile(reportFile);
         }

@@ -16,6 +16,8 @@
 
 package com.android.tradefed.testtype;
 
+import static com.android.tradefed.testtype.InstrumentationTest.RUN_TESTS_AS_USER_KEY;
+
 import static com.google.common.truth.Truth.assertThat;
 
 import static org.junit.Assert.assertEquals;
@@ -28,6 +30,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
@@ -202,6 +205,27 @@ public class InstrumentationTestTest {
         inOrder.verify(mMockListener).testStarted(eq(TEST2), anyLong());
         inOrder.verify(mMockListener).testEnded(eq(TEST2), anyLong(), eq(EMPTY_STRING_MAP));
         inOrder.verify(mMockListener).testRunEnded(1, EMPTY_STRING_MAP);
+    }
+
+    @Test
+    public void testRun_nullTestInfo() throws Exception {
+        mInstrumentationTest.run(/* testInfo= */ null, mMockListener);
+
+        verify(mMockTestDevice, atLeastOnce())
+                .runInstrumentationTests(
+                        any(IRemoteAndroidTestRunner.class), any(ITestInvocationListener.class));
+    }
+
+    @Test
+    public void testRun_runTestsAsUser() throws DeviceNotAvailableException {
+        mTestInfo.properties().put(RUN_TESTS_AS_USER_KEY, "10");
+        mInstrumentationTest.run(mTestInfo, mMockListener);
+
+        verify(mMockTestDevice, atLeastOnce())
+                .runInstrumentationTestsAsUser(
+                        any(IRemoteAndroidTestRunner.class),
+                        eq(10),
+                        any(ITestInvocationListener.class));
     }
 
     @Test

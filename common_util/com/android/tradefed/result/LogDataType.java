@@ -32,7 +32,7 @@ public enum LogDataType {
     JPEG("jpeg", "image/jpeg", true, false),
     TAR_GZ("tar.gz", "application/gzip", true, false),
     GZIP("gz", "application/gzip", true, false),
-    HPROF("hprof", "text/plain", true, false),
+    HPROF("hprof", "application/octet-stream", true, false),
     COVERAGE("ec", "text/plain", false, false), // Emma coverage file
     NATIVE_COVERAGE("zip", "application/zip", true, false), // gcov coverage archive
     CLANG_COVERAGE("profdata", "text/plain", false, false), // LLVM indexed profile data
@@ -60,6 +60,7 @@ public enum LogDataType {
     ATRACE("atr", "text/plain", true, false), // atrace -z format
     KERNEL_TRACE("dat", "text/plain", false, false), // raw kernel ftrace buffer
     DIR("", "text/plain", false, false),
+    CFG("cfg", "application/octet-stream", false, true),
     /* Unknown file type */
     UNKNOWN("dat", "text/plain", false, false);
 

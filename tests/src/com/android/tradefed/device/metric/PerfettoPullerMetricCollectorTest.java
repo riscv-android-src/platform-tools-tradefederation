@@ -16,6 +16,7 @@
 
 package com.android.tradefed.device.metric;
 
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.times;
 
@@ -120,7 +121,45 @@ public class PerfettoPullerMetricCollectorTest {
         assertTrue("Trace duration metrics not available but expected.",
                 currentMetrics.get("perfetto_trace_extractor_runtime").getMeasurements()
                         .getSingleDouble() >= 0);
-        assertTrue("Trace file size metric is not available.",
+        assertNull("Trace duration metrics not available but expected.",
+                currentMetrics.get("perfetto_trace_file_size_bytes"));
+    }
+
+    @Test
+    public void testProcessingFlowWithFileSizeMetric() throws Exception {
+
+        OptionSetter setter = new OptionSetter(mPerfettoMetricCollector);
+        setter.setOptionValue("pull-pattern-keys", "perfettofile");
+        setter.setOptionValue("perfetto-binary-path", "trx");
+        setter.setOptionValue("convert-metric-file", "false");
+        setter.setOptionValue("collect-perfetto-file-size", "true");
+        HashMap<String, Metric> currentMetrics = new HashMap<>();
+        currentMetrics.put("perfettofile", TfMetricProtoUtil.stringToMetric("/data/trace.pb"));
+        Mockito.when(mMockDevice.pullFile(Mockito.eq("/data/trace.pb")))
+                .thenReturn(new File("trace"));
+
+        TestDescription testDesc = new TestDescription("xyz", "abc");
+        CommandResult cr = new CommandResult();
+        cr.setStatus(CommandStatus.SUCCESS);
+        cr.setStdout("abc:efg");
+
+        Mockito.doReturn(cr).when(mPerfettoMetricCollector).runHostCommand(Mockito.anyLong(),
+                Mockito.any(), Mockito.any(), Mockito.any());
+
+        mPerfettoMetricCollector.testStarted(testDesc);
+        mPerfettoMetricCollector.testEnded(testDesc, currentMetrics);
+
+        Mockito.verify(mPerfettoMetricCollector).runHostCommand(Mockito.anyLong(),
+                Mockito.any(), Mockito.any(), Mockito.any());
+        Mockito.verify(mMockListener)
+                .testLog(Mockito.eq("trace"), Mockito.eq(LogDataType.PERFETTO), Mockito.any());
+        assertTrue("Expected two metrics that includes success status",
+                currentMetrics.get("perfetto_trace_extractor_status").getMeasurements()
+                        .getSingleString().equals("1"));
+        assertTrue("Trace duration metrics not available but expected.",
+                currentMetrics.get("perfetto_trace_extractor_runtime").getMeasurements()
+                        .getSingleDouble() >= 0);
+        assertTrue("Trace file size metric is not available in the final metrics.",
                 currentMetrics.get("perfetto_trace_file_size_bytes").getMeasurements()
                         .getSingleDouble() >= 0);
     }
@@ -331,3 +370,4 @@ public class PerfettoPullerMetricCollectorTest {
     }
 
 }
+

@@ -257,6 +257,12 @@ public class ResultAggregator extends CollectingTestListener {
     }
 
     @Override
+    public void testAssumptionFailure(TestDescription test, FailureDescription failure) {
+        super.testAssumptionFailure(test, failure);
+        mDetailedForwarder.testAssumptionFailure(test, failure);
+    }
+
+    @Override
     public void testFailed(TestDescription test, String trace) {
         super.testFailed(test, trace);
         mDetailedForwarder.testFailed(test, trace);

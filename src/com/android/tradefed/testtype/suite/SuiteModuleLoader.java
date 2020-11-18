@@ -79,6 +79,7 @@ public class SuiteModuleLoader {
 
     private boolean mAllowParameterizedModules = false;
     private boolean mAllowMainlineParameterizedModules = false;
+    private boolean mOptimizeMainlineTest = false;
     private boolean mAllowOptionalParameterizedModules = false;
     private ModuleParameters mForcedModuleParameter = null;
     private Set<ModuleParameters> mExcludedModuleParameters = new HashSet<>();
@@ -119,6 +120,11 @@ public class SuiteModuleLoader {
     /** Sets whether or not to allow parameterized mainline modules. */
     public final void setMainlineParameterizedModules(boolean allowed) {
         mAllowMainlineParameterizedModules = allowed;
+    }
+
+    /** Sets whether or not to optimize mainline test. */
+    public final void setOptimizeMainlineTest(boolean allowed) {
+        mOptimizeMainlineTest = allowed;
     }
 
     /** Sets whether or not to allow optional parameterized modules. */
@@ -378,7 +384,8 @@ public class SuiteModuleLoader {
                                 new MainlineModuleHandler(
                                         param,
                                         abi,
-                                        mContext
+                                        mContext,
+                                        mOptimizeMainlineTest
                                 );
                         skipCreatingBaseConfig = true;
                         IConfiguration paramConfig =

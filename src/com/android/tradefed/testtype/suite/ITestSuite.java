@@ -69,13 +69,17 @@ import com.android.tradefed.testtype.ITestCollector;
 import com.android.tradefed.util.AbiFormatter;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.MultiMap;
+import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.TimeUtil;
 
+import com.google.common.collect.ImmutableSet;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -130,6 +134,9 @@ public abstract class ITestSuite
     public static final String REBOOT_BEFORE_TEST = "reboot-before-test";
 
     private static final String PRODUCT_CPU_ABI_KEY = "ro.product.cpu.abi";
+
+    private static final Set<String> ALLOWED_PREPARERS_CONFIGS =
+            ImmutableSet.of("/suite/allowed-preparers.txt", "/suite/google-allowed-preparers.txt");
 
     // Options for test failure case
     @Option(
@@ -509,6 +516,9 @@ public abstract class ITestSuite
             return runModules;
         }
 
+        Map<String, List<ITargetPreparer>> suitePreparersPerDevice =
+                getAllowedPreparerPerDevice(mMainConfiguration);
+
         for (Entry<String, IConfiguration> config : runConfig.entrySet()) {
             // Validate the configuration, it will throw if not valid.
             ValidateSuiteConfigHelper.validateConfig(config.getValue());
@@ -519,6 +529,7 @@ public abstract class ITestSuite
                             config.getKey(),
                             config.getValue().getTests(),
                             preparersPerDevice,
+                            suitePreparersPerDevice,
                             config.getValue().getMultiTargetPreparers(),
                             config.getValue());
             if (mDisableAutoRetryTimeReporting) {
@@ -581,6 +592,40 @@ public abstract class ITestSuite
             List<ITargetPreparer> preparers = new ArrayList<>();
             res.put(holder.getDeviceName(), preparers);
             preparers.addAll(holder.getTargetPreparers());
+        }
+        return res;
+    }
+
+    /** Create the mapping of device to its target_preparer that's allowed to rerun. */
+    private Map<String, List<ITargetPreparer>> getAllowedPreparerPerDevice(IConfiguration config) {
+        // For unittests, mMainConfiguration might not have been set.
+        if (config == null) {
+            return new LinkedHashMap<String, List<ITargetPreparer>>();
+        }
+        // Read the list of allowed suite level target preparers from resource files.
+        Set<String> allowedSuitePreparers = new HashSet<>();
+        for (String resource : ALLOWED_PREPARERS_CONFIGS) {
+            try (InputStream resStream = ITestSuite.class.getResourceAsStream(resource)) {
+                if (resStream == null) {
+                    CLog.d("Resource not found for allowed preparers: %s", resource);
+                    continue;
+                }
+                List<String> preparers =
+                        Arrays.asList(StreamUtil.getStringFromStream(resStream).split("\n"));
+                allowedSuitePreparers.addAll(preparers);
+            } catch (IOException e) {
+                CLog.e(e);
+            }
+        }
+
+        Map<String, List<ITargetPreparer>> res = new LinkedHashMap<>();
+        for (IDeviceConfiguration holder : config.getDeviceConfig()) {
+            List<ITargetPreparer> preparers = new ArrayList<>();
+            for (ITargetPreparer preparer : holder.getTargetPreparers()) {
+                if (allowedSuitePreparers.contains(preparer.getClass().getCanonicalName()))
+                    preparers.add(preparer);
+            }
+            res.put(holder.getDeviceName(), preparers);
         }
         return res;
     }
@@ -948,6 +993,7 @@ public abstract class ITestSuite
                     ModuleSplitter.splitConfiguration(
                             testInfo,
                             runConfig,
+                            getAllowedPreparerPerDevice(mMainConfiguration),
                             shardCountHint,
                             mShouldMakeDynamicModule,
                             mIntraModuleSharding);

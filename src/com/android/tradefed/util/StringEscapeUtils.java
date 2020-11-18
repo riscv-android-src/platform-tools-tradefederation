@@ -47,6 +47,15 @@ public class StringEscapeUtils {
                 case '\\':
                     out.append("\\\\");
                     break;
+                case '>':
+                    out.append("\\>");
+                    break;
+                case '<':
+                    out.append("\\<");
+                    break;
+                case '|':
+                    out.append("\\|");
+                    break;
                 default:
                     out.append(ch);
                     break;

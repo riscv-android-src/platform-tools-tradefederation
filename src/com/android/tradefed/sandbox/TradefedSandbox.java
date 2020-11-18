@@ -256,7 +256,7 @@ public class TradefedSandbox implements ISandbox {
                                     config.getCommandLine(),
                                     /** no logging */
                                     false));
-        } catch (ConfigurationException e) {
+        } catch (Exception e) {
             return e;
         }
 
@@ -293,7 +293,7 @@ public class TradefedSandbox implements ISandbox {
     @Override
     public File getTradefedSandboxEnvironment(
             IInvocationContext context, IConfiguration nonVersionedConfig, String[] args)
-            throws ConfigurationException {
+            throws Exception {
         SandboxOptions options = getSandboxOptions(nonVersionedConfig);
         // Check that we have no args conflicts.
         if (options.getSandboxTfDirectory() != null && options.getSandboxBuildId() != null) {

@@ -15,7 +15,7 @@
  */
 package com.android.tradefed.targetprep;
 
-import com.android.tradefed.build.IDeviceBuildInfo;
+import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
@@ -80,7 +80,7 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
     public void setUp(TestInformation testInfo)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
         ITestDevice device = testInfo.getDevice();
-        IDeviceBuildInfo buildInfo = (IDeviceBuildInfo) testInfo.getBuildInfo();
+        IBuildInfo buildInfo = testInfo.getBuildInfo();
 
         File tmpDir = null;
         try {
@@ -138,10 +138,10 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
      * Flash GKI images.
      *
      * @param device the {@link ITestDevice}
-     * @param buildInfo the {@link IDeviceBuildInfo} the device build info
+     * @param buildInfo the {@link IBuildInfo} the build info
      * @throws TargetSetupError, DeviceNotAvailableException, IOException
      */
-    private void flashGki(ITestDevice device, IDeviceBuildInfo buildInfo)
+    private void flashGki(ITestDevice device, IBuildInfo buildInfo)
             throws TargetSetupError, DeviceNotAvailableException {
         IDeviceManager deviceManager = getDeviceManager();
         device.waitForDeviceOnline();
@@ -180,13 +180,13 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
      * Validate GKI boot image is expected. (Obsoleted. Please call with tmpDir provided)
      *
      * @param device the {@link ITestDevice}
-     * @param buildInfo the {@link IDeviceBuildInfo} the device build info
+     * @param buildInfo the {@link IBuildInfo} the build info
      * @throws TargetSetupError if there is no valid gki boot.img
      */
-    public void validateGkiBootImg(ITestDevice device, IDeviceBuildInfo buildInfo)
+    public void validateGkiBootImg(ITestDevice device, IBuildInfo buildInfo)
             throws TargetSetupError {
         throw new TargetSetupError(
-                "Obsoleted. Please use validateGkiBootImg(ITestDevice, IDeviceBuildInfo, File)",
+                "Obsoleted. Please use validateGkiBootImg(ITestDevice, IBuildInfo, File)",
                 device.getDeviceDescriptor());
     }
 
@@ -194,12 +194,12 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
      * Validate GKI boot image is expected. Throw exception if there is no valid boot.img.
      *
      * @param device the {@link ITestDevice}
-     * @param buildInfo the {@link IDeviceBuildInfo} the device build info
+     * @param buildInfo the {@link IBuildInfo} the build info
      * @param tmpDir the temporary directory {@link File}
      * @throws TargetSetupError if there is no valid gki boot.img
      */
     @VisibleForTesting
-    protected void validateGkiBootImg(ITestDevice device, IDeviceBuildInfo buildInfo, File tmpDir)
+    protected void validateGkiBootImg(ITestDevice device, IBuildInfo buildInfo, File tmpDir)
             throws TargetSetupError {
         if (buildInfo.getFile(GKI_BOOT_IMG) != null && mBootImageFileName != null) {
             mBootImg =
@@ -306,7 +306,10 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
                 ZipUtil2.extractZip(sourceFile, destDir);
                 requestedFile = FileUtil.findFile(destDir, requestedFileName);
             } catch (IOException e) {
-                throw new TargetSetupError(e.getMessage(), e, device.getDeviceDescriptor());
+                throw new TargetSetupError(
+                        String.format("Fail to get %s from %s", requestedFileName, sourceFile),
+                        e,
+                        device.getDeviceDescriptor());
             }
         } else if (sourceFile.isDirectory()) {
             requestedFile = FileUtil.findFile(sourceFile, requestedFileName);
@@ -349,7 +352,7 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
             throw new TargetSetupError(
                     String.format(
                             "fastboot command %s failed in device %s. stdout: %s, stderr: %s",
-                            cmdArgs[0],
+                            cmdArgs,
                             device.getSerialNumber(),
                             result.getStdout(),
                             result.getStderr()),

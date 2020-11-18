@@ -344,7 +344,14 @@ public class PerfettoGenericPostProcessor extends BasePostProcessor {
         for (Entry<FieldDescriptor, Object> entry : fields.entrySet()) {
             if (!(entry.getValue() instanceof Message) && !(entry.getValue() instanceof List)) {
                 if (isNumeric(entry.getValue().toString())) {
-                    // Construct the metric if it is numeric value.
+                    // Check if the current field has to be used as prefix for other fields
+                    // and add it to the list of prefixes.
+                    if (mPerfettoPrefixKeyFields.contains(entry.getKey().toString())) {
+                        keyPrefixOtherFields.add(String.format("%s-%s",
+                                entry.getKey().getName().toString(), entry.getValue().toString()));
+                        continue;
+                    }
+                    // Otherwise treat this numeric field as metric.
                     if (mNumberPattern.matcher(entry.getValue().toString()).matches()) {
                         convertedMetrics.put(
                                 entry.getKey().getName(),
@@ -355,9 +362,9 @@ public class PerfettoGenericPostProcessor extends BasePostProcessor {
                         convertedMetrics.put(
                                 entry.getKey().getName(),
                                 TfMetricProtoUtil.stringToMetric(
-                                                Long.toString(
-                                                        Double.valueOf(entry.getValue().toString())
-                                                                .longValue()))
+                                        Long.toString(
+                                                Double.valueOf(entry.getValue().toString())
+                                                        .longValue()))
                                         .toBuilder());
                     }
                 } else {
@@ -374,20 +381,6 @@ public class PerfettoGenericPostProcessor extends BasePostProcessor {
                 }
             }
         }
-
-        // Add prefix key to all the keys in current proto message which has numeric values.
-        Map<String, Metric.Builder> additionalConvertedMetrics =
-                new HashMap<String, Metric.Builder>();
-        for (String prefix : keyPrefixOtherFields) {
-            for (Map.Entry<String, Metric.Builder> currentMetric : convertedMetrics.entrySet()) {
-                additionalConvertedMetrics.put(String.format("%s-%s", prefix,
-                        currentMetric.getKey()), currentMetric.getValue());
-            }
-        }
-
-        // Not cleaning up the other metrics without prefix fields.
-        convertedMetrics.putAll(additionalConvertedMetrics);
-
 
         // Recursively expand the proto messages and repeated fields(i.e list).
         // Recursion when there are no messages or list with in the current message.
@@ -458,6 +451,20 @@ public class PerfettoGenericPostProcessor extends BasePostProcessor {
                 }
             }
         }
+
+        // Add prefix key to all the keys in current proto message which has numeric values.
+        Map<String, Metric.Builder> additionalConvertedMetrics =
+                new HashMap<String, Metric.Builder>();
+        for (String prefix : keyPrefixOtherFields) {
+            for (Map.Entry<String, Metric.Builder> currentMetric : convertedMetrics.entrySet()) {
+                additionalConvertedMetrics.put(String.format("%s-%s", prefix,
+                        currentMetric.getKey()), currentMetric.getValue());
+            }
+        }
+
+        // Not cleaning up the other metrics without prefix fields.
+        convertedMetrics.putAll(additionalConvertedMetrics);
+
         return convertedMetrics;
     }
 
@@ -511,3 +518,4 @@ public class PerfettoGenericPostProcessor extends BasePostProcessor {
         return mProcessedMetric ? DataType.PROCESSED : DataType.RAW;
     }
 }
+

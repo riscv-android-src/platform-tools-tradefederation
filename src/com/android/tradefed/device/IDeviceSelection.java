@@ -116,4 +116,10 @@ public interface IDeviceSelection extends IMatcher<IDevice> {
      */
     public void setSerial(String... serialNumber);
 
+    /**
+     * Returns the reason for which the device was not matched.
+     *
+     * @return a Map of serial number to reason for which it wasn't allocated
+     */
+    public Map<String, String> getNoMatchReason();
 }

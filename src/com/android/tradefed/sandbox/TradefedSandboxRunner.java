@@ -125,6 +125,8 @@ public class TradefedSandboxRunner {
             initGlobalConfig(new String[] {});
             mScheduler = getCommandScheduler();
             mScheduler.start();
+            // Wait 2 secs to let device discovery finish
+            RunUtil.getDefault().sleep(2000);
             mScheduler.execCommand(
                     context, new StubScheduledInvocationListener(), argList.toArray(new String[0]));
         } catch (NoDeviceException e) {

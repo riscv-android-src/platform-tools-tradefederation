@@ -48,6 +48,8 @@ java_defaults {
       "-Xep:TryFailThrowable:ERROR",
       "-Xep:UnnecessaryParentheses:ERROR",
       "-Xep:UseCorrectAssertInTests:ERROR",
+      "-XepDisableWarningsInGeneratedCode",  // Disable warnings in gRPC generated code.
+      "-XepExcludedPaths:.*/srcjars/.*"
     ],
   },
 }
@@ -75,6 +77,24 @@ java_library_host {
         "platformprotos",
         "asuite_proto_java",
     ],
+}
+
+java_genrule_host {
+    name: "lab-resource-grpc-gen",
+    srcs: [
+        "proto/monitoring/server/lab_resource.proto",
+    ],
+    tools: [
+        "aprotoc",
+        "protoc-gen-grpc-java-plugin",
+        "soong_zip",
+     ],
+     arch: "common",
+     cmd: "$(location aprotoc) -Iexternal/protobuf/src" +
+        " -Itools/tradefederation/core/proto/monitoring/server" +
+        " --plugin=protoc-gen-grpc=$(location protoc-gen-grpc-java-plugin) $(in)" +
+        " --grpc_out=$(genDir) && $(location soong_zip) -o $(out) -C $(genDir) -D $(genDir)",
+     out: ["tradefed-grpc.srcjar"],
 }
 
 python_library_host {
@@ -133,6 +153,7 @@ java_library_host {
     srcs: [
         "src/**/*.java",
         "global_configuration/**/*.java",
+        ":lab-resource-grpc-gen",
     ],
     static_libs: [
         "tradefed-common-util",
@@ -159,6 +180,14 @@ java_library_host {
         "tradefed-protos",
         "tradefed-isolation-protos",
         "tradefed-lite",
+        "guava",
+        "guava-testlib",
+        "grpc-java",
+        "grpc-java-testing",
+        "grpc-java-netty-shaded",
+        "javax-annotation-api-prebuilt-host-jar",
+        "opencensus-java-api",
+        "opencensus-java-contrib-grpc-metrics",
     ],
     libs: [
         "loganalysis",
@@ -210,7 +239,6 @@ droiddoc_host {
           "-werror " +
           "-package " +
           "-devsite ",
-    create_stubs: false,
 }
 
 sh_binary_host {

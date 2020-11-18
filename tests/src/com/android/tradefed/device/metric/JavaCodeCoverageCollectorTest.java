@@ -347,6 +347,49 @@ public class JavaCodeCoverageCollectorTest {
         mCodeCoverageCollector.testRunEnded(ELAPSED_TIME, TfMetricProtoUtil.upgradeConvert(metric));
     }
 
+    @Test
+    public void testRunningProcess_coverageFileNotDeleted() throws Exception {
+        enableJavaCoverage();
+
+        List<String> coverageFileList =
+                ImmutableList.of(
+                        "/data/misc/trace/coverage1.ec",
+                        "/data/misc/trace/coverage2.ec",
+                        "/data/misc/trace/jacoco-123.mm.ec",
+                        "/data/misc/trace/jacoco-456.mm.ec");
+        String psOutput =
+                "USER       PID   PPID  VSZ   RSS   WCHAN       PC  S NAME\n"
+                        + "bluetooth   123  1366  123    456   SyS_epoll+   0  S com.android.bluetooth\n"
+                        + "radio       890     1 7890   123   binder_io+   0  S com.android.phone\n"
+                        + "root         11  1234  567   890   binder_io+   0  S not.a.java.package\n";
+
+        // Setup mocks.
+        mockCoverageFileOnDevice(DEVICE_PATH);
+
+        for (String additionalFile : coverageFileList) {
+            mockCoverageFileOnDevice(additionalFile);
+        }
+
+        doReturn("").when(mMockDevice).executeShellCommand("pm list packages -a");
+        doReturn(psOutput).when(mMockDevice).executeShellCommand("ps -e");
+        doReturn(String.join("\n", coverageFileList))
+                .when(mMockDevice)
+                .executeShellCommand("find /data/misc/trace -name '*.ec'");
+
+        // Simulate a test run.
+        mCodeCoverageCollector.init(mMockContext, mFakeListener);
+        mCodeCoverageCollector.testRunStarted(RUN_NAME, TEST_COUNT);
+        Map<String, String> metric = new HashMap<>();
+        metric.put("coverageFilePath", DEVICE_PATH);
+        mCodeCoverageCollector.testRunEnded(ELAPSED_TIME, TfMetricProtoUtil.upgradeConvert(metric));
+
+        // Verify the correct files were deleted and some files were not deleted.
+        verify(mMockDevice).deleteFile(coverageFileList.get(0));
+        verify(mMockDevice).deleteFile(coverageFileList.get(1));
+        verify(mMockDevice, never()).deleteFile(coverageFileList.get(2));
+        verify(mMockDevice).deleteFile(coverageFileList.get(3));
+    }
+
     private void mockCoverageFileOnDevice(String devicePath)
             throws IOException, DeviceNotAvailableException {
         File coverageFile = folder.newFile(new File(devicePath).getName());

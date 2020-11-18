@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.cluster;
 
+import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -35,11 +36,15 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.FileUtil;
 
+import org.hamcrest.CoreMatchers;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.InOrder;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.Spy;
 import org.mockito.junit.MockitoJUnitRunner;
 
@@ -52,8 +57,9 @@ import java.util.HashMap;
 public class ClusterCommandLauncherFuncTest {
 
     private static final String LEGACY_TRADEFED_JAR = "/testdata/tradefed-prebuilt-cts-8.0_r21.jar";
-    private static final String LEGACY_TRADEFED_COMMAND =
-            "host --null-device --class com.android.tradefed.device.DeviceDiagTest";
+    private static final String LEGACY_TRADEFED_COMMAND = "fake.xml --null-device --run testRun PF";
+    private static final String LEGACY_TRADEFED_COMMAND_FOR_INVOCATION_FAILURE =
+            "fake.xml --null-device --fail-invocation-with-cause cause";
 
     private File mRootDir;
     private IConfiguration mConfiguration;
@@ -82,22 +88,51 @@ public class ClusterCommandLauncherFuncTest {
         FileUtil.recursiveDelete(mRootDir);
     }
 
-    // @Ignore
     @Test
     public void testRun_withLegacyTradefed()
             throws IOException, ConfigurationException, DeviceNotAvailableException {
         File tfJar = new File(mRootDir, "tradefed.jar");
         FileUtil.writeToFile(getClass().getResourceAsStream(LEGACY_TRADEFED_JAR), tfJar);
+        FileUtil.writeToFile(
+                getClass().getResourceAsStream("/config/tf/fake.xml"),
+                new File(mRootDir, "fake.xml"));
         mOptionSetter.setOptionValue("cluster:env-var", "TF_PATH", mRootDir.getAbsolutePath());
         mOptionSetter.setOptionValue("cluster:use-subprocess-reporting", "true");
         mOptionSetter.setOptionValue("cluster:command-line", LEGACY_TRADEFED_COMMAND);
 
         mLauncher.run(mTestInformation, mListener);
 
+        InOrder inOrder = Mockito.inOrder(mListener);
         HashMap<String, MetricMeasurement.Metric> emptyMap = new HashMap<>();
-        verify(mListener).testRunStarted(anyString(), anyInt(), anyInt(), anyLong());
-        verify(mListener).testStarted(any(TestDescription.class), anyLong());
-        verify(mListener).testEnded(any(TestDescription.class), anyLong(), eq(emptyMap));
-        verify(mListener).testRunEnded(anyLong(), eq(emptyMap));
+        inOrder.verify(mListener).testRunStarted(eq("testRun"), anyInt(), anyInt(), anyLong());
+        inOrder.verify(mListener).testStarted(any(TestDescription.class), anyLong());
+        inOrder.verify(mListener).testEnded(any(TestDescription.class), anyLong(), eq(emptyMap));
+        inOrder.verify(mListener).testStarted(any(TestDescription.class), anyLong());
+        inOrder.verify(mListener).testFailed(any(TestDescription.class), anyString());
+        inOrder.verify(mListener).testEnded(any(TestDescription.class), anyLong(), eq(emptyMap));
+        inOrder.verify(mListener).testRunEnded(anyLong(), eq(emptyMap));
+    }
+
+    @Test
+    public void testRun_withLegacyTradefed_invocationFailed()
+            throws IOException, ConfigurationException, DeviceNotAvailableException {
+        File tfJar = new File(mRootDir, "tradefed.jar");
+        FileUtil.writeToFile(getClass().getResourceAsStream(LEGACY_TRADEFED_JAR), tfJar);
+        FileUtil.writeToFile(
+                getClass().getResourceAsStream("/config/tf/fake.xml"),
+                new File(mRootDir, "fake.xml"));
+        mOptionSetter.setOptionValue("cluster:env-var", "TF_PATH", mRootDir.getAbsolutePath());
+        mOptionSetter.setOptionValue("cluster:use-subprocess-reporting", "true");
+        mOptionSetter.setOptionValue(
+                "cluster:command-line", LEGACY_TRADEFED_COMMAND_FOR_INVOCATION_FAILURE);
+
+        try {
+            mLauncher.run(mTestInformation, mListener);
+            fail("SubprocessCommandException should be thrown");
+        } catch (SubprocessCommandException e) {
+            Assert.assertThat(e.getCause().getMessage(), CoreMatchers.containsString("cause"));
+        }
+
+        verify(mListener).invocationFailed(any(Throwable.class));
     }
 }

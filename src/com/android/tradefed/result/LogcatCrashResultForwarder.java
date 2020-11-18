@@ -19,6 +19,8 @@ import com.android.loganalysis.item.JavaCrashItem;
 import com.android.loganalysis.item.LogcatItem;
 import com.android.loganalysis.parser.LogcatParser;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.error.DeviceErrorIdentifier;
@@ -41,6 +43,11 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
     /** Special error message from the instrumentation when something goes wrong on device side. */
     public static final String ERROR_MESSAGE = "Process crashed.";
     public static final String SYSTEM_CRASH_MESSAGE = "System has crashed.";
+    public static final String TIMEOUT_MESSAGES[] = {
+        "Failed to receive adb shell test output",
+        "TimeoutException when running tests",
+        "TestTimedOutException: test timed out after",
+    };
 
     public static final int MAX_NUMBER_CRASH = 3;
 
@@ -76,8 +83,16 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
         if (trace.compareTo(failure.getErrorMessage()) != 0) {
             // Crash stack trace found, consider this a test failure.
             failure.setFailureStatus(FailureStatus.TEST_FAILURE);
+        } else if (isTimeout(failure.getErrorMessage())) {
+            failure.setFailureStatus(FailureStatus.TIMED_OUT);
         }
         failure.setErrorMessage(trace);
+        // Add metrics for assessing uncaught IntrumentationTest crash failures (test level).
+        InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.TEST_CRASH_FAILURES, 1);
+        if (FailureStatus.UNSET.equals(failure.getFailureStatus())) {
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.UNCAUGHT_TEST_CRASH_FAILURES, 1);
+        }
         super.testFailed(test, failure);
     }
 
@@ -109,6 +124,12 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
         if (isCrash(errorMessage)) {
             error.setErrorIdentifier(DeviceErrorIdentifier.INSTRUMENTATION_CRASH);
         }
+        // Add metrics for assessing uncaught IntrumentationTest crash failures.
+        InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.CRASH_FAILURES, 1);
+        if (FailureStatus.UNSET.equals(error.getFailureStatus())) {
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.UNCAUGHT_CRASH_FAILURES, 1);
+        }
         super.testRunFailed(error);
     }
 
@@ -131,6 +152,14 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
         return errorMessage.contains(ERROR_MESSAGE) || errorMessage.contains(SYSTEM_CRASH_MESSAGE);
     }
 
+    private boolean isTimeout(String errorMessage) {
+        for (String timeoutMessage : TIMEOUT_MESSAGES) {
+            if (errorMessage.contains(timeoutMessage)) {
+                return true;
+            }
+        }
+        return false;
+    }
     /**
      * Extract a formatted object from the logcat snippet.
      *

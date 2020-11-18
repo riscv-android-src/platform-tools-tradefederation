@@ -192,7 +192,9 @@ public class ClusterCommandConfigBuilder {
         envVars.put("TF_WORK_DIR", mWorkDir.getAbsolutePath());
         envVars.putAll(mTestEnvironment.getEnvVars());
         envVars.putAll(mTestContext.getEnvVars());
+
         for (String serial : mCommand.getTargetDeviceSerials()) {
+            serial = ClusterHostUtil.getLocalDeviceSerial(serial);
             IDeviceConfiguration device =
                     new DeviceConfigurationHolder(String.format("TF_DEVICE_%d", index++));
             device.getDeviceRequirements().setSerial(serial);
@@ -203,6 +205,11 @@ public class ClusterCommandConfigBuilder {
         }
         deviceConfigs.get(0).addSpecificConfig(new ClusterBuildProvider());
         config.setDeviceConfigList(deviceConfigs);
+        // Perform target preparation in parallel with an unlimited timeout
+        // TODO(b/166455187): Consider making parallel setup options configurable
+        config.injectOptionValue("parallel-setup", "true");
+        config.injectOptionValue("parallel-setup-timeout", "0");
+
         config.setTest(new ClusterCommandLauncher());
         config.setLogSaver(new ClusterLogSaver());
         // TODO(b/135636270): return log path to TFC instead of relying on a specific filename

@@ -45,6 +45,8 @@ public class MoblyYamlResultHandlerFactory {
         return resultHandler;
     }
 
+    // MoblyYamlResultHandlerFactory won't be serialized so suppress serial warning.
+    @SuppressWarnings("serial")
     public class InvalidResultTypeException extends Exception {
         public InvalidResultTypeException(String errorMsg) {
             super(errorMsg);
@@ -59,9 +61,9 @@ public class MoblyYamlResultHandlerFactory {
         SUMMARY("Summary", MoblyYamlResultSummaryHandler.class);
 
         private String tag;
-        private Class handlerClass;
+        private Class<?> handlerClass;
 
-        Type(String tag, Class handlerClass) {
+        Type(String tag, Class<?> handlerClass) {
             this.tag = tag;
             this.handlerClass = handlerClass;
         }

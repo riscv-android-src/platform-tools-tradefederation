@@ -24,10 +24,13 @@ import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.targetprep.adb.AdbStopServerPreparer;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
@@ -37,6 +40,7 @@ import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.PythonVirtualenvHelper;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 
@@ -48,6 +52,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.Writer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -136,7 +141,11 @@ public class MoblyBinaryHostTest
 
     @Override
     public final void run(ITestInvocationListener listener) {
-        List<File> parFilesList = findParFiles();
+        List<File> parFilesList = findParFiles(listener);
+        File venvDir = mBuildInfo.getFile("VIRTUAL_ENV");
+        if (venvDir != null) {
+            PythonVirtualenvHelper.activate(getRunUtil(), venvDir);
+        }
         for (File parFile : parFilesList) {
             // TODO(b/159365341): add a failure reporting for nonexistent binary.
             if (!parFile.exists()) {
@@ -153,9 +162,13 @@ public class MoblyBinaryHostTest
                 reportLogs(getLogDir(), listener);
             }
         }
+        if (venvDir != null
+                && venvDir.getAbsolutePath().startsWith(System.getProperty("java.io.tmpdir"))) {
+            FileUtil.recursiveDelete(venvDir);
+        }
     }
 
-    private List<File> findParFiles() {
+    private List<File> findParFiles(ITestInvocationListener listener) {
         File testsDir = null;
         if (mBuildInfo instanceof IDeviceBuildInfo) {
             testsDir = ((IDeviceBuildInfo) mBuildInfo).getTestsDir();
@@ -169,6 +182,8 @@ public class MoblyBinaryHostTest
                 res = FileUtil.findFile(testsDir, binaryName);
             }
             if (res == null) {
+                reportFailure(
+                        listener, binaryName, "Couldn't find Mobly test binary " + binaryName);
                 throw new RuntimeException(
                         String.format("Couldn't find a par file %s", binaryName));
             }
@@ -251,31 +266,43 @@ public class MoblyBinaryHostTest
         InputStream inputStream = null;
         try {
             inputStream = new FileInputStream(yamlSummaryFile);
-            processYamlTestResults(inputStream, parser);
+            processYamlTestResults(inputStream, parser, listener, runName);
         } catch (FileNotFoundException ex) {
-            // TODO(b/159367088): report a test failure.
-            CLog.e("Fail processing test results: ", ex);
+            reportFailure(
+                    listener,
+                    runName,
+                    "Fail processing test results, result file not found.\n" + ex);
         } finally {
             StreamUtil.close(inputStream);
         }
     }
 
+    /**
+     * Parses Mobly test results and does result reporting.
+     *
+     * @param inputStream An InputStream object reading in Mobly test result file.
+     * @param parser An MoblyYamlResultParser object that processes Mobly test results.
+     * @param listener An ITestInvocationListener instance that does various reporting.
+     * @param runName str, the name of the Mobly test binary run.
+     */
     @VisibleForTesting
-    protected void processYamlTestResults(InputStream inputStream, MoblyYamlResultParser parser) {
+    protected void processYamlTestResults(
+            InputStream inputStream,
+            MoblyYamlResultParser parser,
+            ITestInvocationListener listener,
+            String runName) {
         try {
             parser.parse(inputStream);
         } catch (MoblyYamlResultHandlerFactory.InvalidResultTypeException
                 | IllegalAccessException
                 | InstantiationException ex) {
-            // TODO(b/159367088): report a test failure.
-            CLog.e("Failed to parse result file: %s", ex);
+            reportFailure(listener, runName, "Failed to parse the result file.\n" + ex);
         }
     }
 
     private void updateConfigFile() {
         InputStream inputStream = null;
         FileWriter fileWriter = null;
-        // TODO(b/159369745): clean up the tmp files created.
         File localConfigFile = new File(getLogDir(), "local_config.yaml");
         try {
             inputStream = new FileInputStream(mConfigFile);
@@ -334,6 +361,15 @@ public class MoblyBinaryHostTest
         return mLogDir;
     }
 
+    private void reportFailure(
+            ITestInvocationListener listener, String runName, String errorMessage) {
+        listener.testRunStarted(runName, 0);
+        FailureDescription description =
+                FailureDescription.create(errorMessage, FailureStatus.TEST_FAILURE);
+        listener.testRunFailed(description);
+        listener.testRunEnded(0L, new HashMap<String, Metric>());
+    }
+
     @VisibleForTesting
     String getLogDirAbsolutePath() {
         return getLogDir().getAbsolutePath();
@@ -348,6 +384,8 @@ public class MoblyBinaryHostTest
     protected String[] buildCommandLineArray(String filePath) {
         List<String> commandLine = new ArrayList<>();
         commandLine.add(filePath);
+        // TODO(b/166468397): some test binaries are actually a wrapper of Mobly runner and need --
+        //  to separate Python options.
         commandLine.add("--");
         if (getConfigPath() != null) {
             commandLine.add("--config=" + getConfigPath());
