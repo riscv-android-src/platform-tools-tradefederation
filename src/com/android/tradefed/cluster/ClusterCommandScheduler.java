@@ -611,14 +611,22 @@ public class ClusterCommandScheduler extends CommandScheduler {
                 CLog.w(e);
                 IClusterEventUploader<ClusterCommandEvent> eventUploader =
                         getClusterClient().getCommandEventUploader();
-                eventUploader.postEvent(
+                ClusterCommandEvent.Builder eventBuilder =
                         ClusterCommandEvent.createEventBuilder(commandTask)
                                 .setHostName(ClusterHostUtil.getHostName())
                                 .setType(ClusterCommandEvent.Type.AllocationFailed)
                                 .setData(
                                         ClusterCommandEvent.DATA_KEY_ERROR,
-                                        StreamUtil.getStackTrace(e))
-                                .build());
+                                        StreamUtil.getStackTrace(e));
+                if (e.getErrorId() != null) {
+                    eventBuilder.setData(
+                            ClusterCommandEvent.DATA_KEY_ERROR_ID_NAME, e.getErrorId().name());
+                    eventBuilder.setData(
+                            ClusterCommandEvent.DATA_KEY_ERROR_ID_CODE, e.getErrorId().code());
+                    eventBuilder.setData(
+                            ClusterCommandEvent.DATA_KEY_ERROR_STATUS, e.getErrorId().status());
+                }
+                eventUploader.postEvent(eventBuilder.build());
                 eventUploader.flush();
             } catch (ConfigurationException | IOException | JSONException e) {
                 CLog.w("failed to execute cluster command [%s]: %s", commandTask.getTaskId(), e);
