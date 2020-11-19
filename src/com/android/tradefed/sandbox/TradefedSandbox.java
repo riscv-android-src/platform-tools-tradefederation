@@ -29,6 +29,8 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.logger.CurrentInvocation;
 import com.android.tradefed.invoker.logger.CurrentInvocation.InvocationInfo;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.invoker.proto.InvocationContext.Context;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -47,6 +49,7 @@ import com.android.tradefed.util.PrettyPrintDelimiter;
 import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
+import com.android.tradefed.util.SubprocessExceptionParser;
 import com.android.tradefed.util.SubprocessTestResultsParser;
 import com.android.tradefed.util.SystemUtil;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
@@ -200,6 +203,22 @@ public class TradefedSandbox implements ISandbox {
             mHeapDump = null;
         }
 
+        if (result.getExitCode() != null) {
+            // Log the exit code
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.SANDBOX_EXIT_CODE, result.getExitCode());
+        }
+        if (mProtoReceiver != null && mProtoReceiver.hasInvocationFailed()) {
+            // If an invocation failed has already been reported, skip the logic below to report it
+            // again.
+            return result;
+        }
+        if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
+            CLog.e(
+                    "Sandbox finished with status: %s and exit code: %s",
+                    result.getStatus(), result.getExitCode());
+            SubprocessExceptionParser.handleStderrException(result);
+        }
         return result;
     }
 

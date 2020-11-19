@@ -82,6 +82,9 @@ public class ProtoResultParser {
     private boolean mQuietParsing = true;
 
     private boolean mInvocationStarted = false;
+    /** Track whether or not invocationFailed was called. */
+    private boolean mInvocationFailed = false;
+
     private boolean mInvocationEnded = false;
     private boolean mFirstModule = true;
     /** Track the name of the module in progress. */
@@ -206,6 +209,11 @@ public class ProtoResultParser {
     /** Returns the id of the module in progress. Returns null if none in progress. */
     public String getModuleInProgress() {
         return mModuleInProgress;
+    }
+
+    /** Returns whether or not the invocation failed has been reported. */
+    public boolean hasInvocationFailed() {
+        return mInvocationFailed;
     }
 
     /** If needed to ensure consistent reporting, complete the events of the module. */
@@ -349,6 +357,7 @@ public class ProtoResultParser {
                 }
             }
             mListener.invocationFailed(failure);
+            mInvocationFailed = true;
         }
 
         log("Invocation ended proto");
