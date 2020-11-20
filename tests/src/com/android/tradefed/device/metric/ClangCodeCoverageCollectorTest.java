@@ -384,7 +384,7 @@ public class ClangCodeCoverageCollectorTest {
         inOrder.verify(mMockDevice).isAdbRoot();
         inOrder.verify(mMockDevice).enableAdbRoot();
         inOrder.verify(mMockDevice).executeShellCommand("kill -37 -1");
-        inOrder.verify(mMockDevice).executeShellCommand(anyString());
+        inOrder.verify(mMockDevice, times(2)).executeShellCommand(anyString());
         inOrder.verify(mMockDevice).disableAdbRoot();
     }
 
