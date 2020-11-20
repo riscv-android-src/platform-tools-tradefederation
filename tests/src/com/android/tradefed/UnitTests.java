@@ -150,6 +150,7 @@ import com.android.tradefed.log.SimpleFileLoggerTest;
 import com.android.tradefed.log.TerribleFailureEmailHandlerTest;
 import com.android.tradefed.monitoring.LabResourceDeviceMonitorTest;
 import com.android.tradefed.monitoring.collector.DeviceBatteryResourceMetricCollectorTest;
+import com.android.tradefed.monitoring.collector.DeviceStorageAgeResourceMetricCollectorTest;
 import com.android.tradefed.monitoring.collector.ResourceMetricUtilTest;
 import com.android.tradefed.postprocessor.AggregatePostProcessorTest;
 import com.android.tradefed.postprocessor.AveragePostProcessorTest;
@@ -943,6 +944,7 @@ import org.junit.runners.Suite.SuiteClasses;
     LabResourceDeviceMonitorTest.class,
     // monitoring/collector
     DeviceBatteryResourceMetricCollectorTest.class,
+    DeviceStorageAgeResourceMetricCollectorTest.class,
     ResourceMetricUtilTest.class
 })
 public class UnitTests {
