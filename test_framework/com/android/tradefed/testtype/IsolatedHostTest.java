@@ -296,13 +296,15 @@ public class IsolatedHostTest
      * @return a {@link File} object representing the test directory
      */
     private File findTestDirectory() {
-        File testDir = mBuildInfo.getFile(BuildInfoFileKey.HOST_LINKED_DIR);
-
-        if (testDir == null || !testDir.exists()) {
-            throw new IllegalArgumentException("Test directory not found, cannot proceed");
+        File testsDir = mBuildInfo.getFile(BuildInfoFileKey.HOST_LINKED_DIR);
+        if (testsDir != null && testsDir.exists()) {
+            return testsDir;
         }
-
-        return testDir;
+        testsDir = mBuildInfo.getFile(BuildInfoFileKey.TESTDIR_IMAGE);
+        if (testsDir != null && testsDir.exists()) {
+            return testsDir;
+        }
+        throw new IllegalArgumentException("Test directory not found, cannot proceed");
     }
 
     /**
