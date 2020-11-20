@@ -708,6 +708,11 @@ public class InvocationExecution implements IInvocationExecution {
      * @param config the {@link IConfiguration}
      */
     void updateBuild(IBuildInfo info, IConfiguration config) {
+        setTestTag(info, config);
+        if (config.getCommandOptions().getInvocationData().containsKey("subprocess")) {
+            // Avoid relogging the properties in a subprocess
+            return;
+        }
         if (config.getCommandLine() != null) {
             // TODO: obfuscate the password if any.
             info.addBuildAttribute(TestInvocation.COMMAND_ARGS_KEY, config.getCommandLine());
@@ -720,7 +725,6 @@ public class InvocationExecution implements IInvocationExecution {
             info.addBuildAttribute(
                     "shard_index", config.getCommandOptions().getShardIndex().toString());
         }
-        setTestTag(info, config);
     }
 
     private void runTest(

@@ -1079,6 +1079,11 @@ public class TestInvocation implements ITestInvocation {
      * @param config the {@link IConfiguration}
      */
     private void updateInvocationContext(IInvocationContext context, IConfiguration config) {
+        context.setTestTag(getTestTag(config));
+        if (config.getCommandOptions().getInvocationData().containsKey("subprocess")) {
+            // Avoid relogging the properties in a subprocess
+            return;
+        }
         if (config.getCommandLine() != null) {
             context.addInvocationAttribute(
                     TestInvocation.COMMAND_ARGS_KEY, config.getCommandLine());
@@ -1091,7 +1096,6 @@ public class TestInvocation implements ITestInvocation {
             context.addInvocationAttribute(
                     "shard_index", config.getCommandOptions().getShardIndex().toString());
         }
-        context.setTestTag(getTestTag(config));
     }
 
     /** Helper to create the test tag from the configuration. */
