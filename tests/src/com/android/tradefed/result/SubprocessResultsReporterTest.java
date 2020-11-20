@@ -295,4 +295,23 @@ public class SubprocessResultsReporterTest {
             FileUtil.deleteFile(tmpReportFile);
         }
     }
+
+    @Test
+    public void testTestAssumptionFailure_PrintsFailureStatus() throws Exception {
+        OptionSetter setter = new OptionSetter(mReporter);
+        File tmpReportFile = FileUtil.createTempFile("subprocess-reporter", "unittest");
+        try {
+            setter.setOptionValue("subprocess-report-file", tmpReportFile.getAbsolutePath());
+            TestDescription testId = new TestDescription("com.fakeclass", "faketest");
+            FailureDescription failure =
+                    FailureDescription.create("assumption failure")
+                            .setFailureStatus(FailureStatus.TEST_FAILURE);
+            mReporter.testAssumptionFailure(testId, failure);
+            String content = FileUtil.readStringFromFile(tmpReportFile);
+            assertTrue(content.contains("\"trace\":\"assumption failure\""));
+            assertTrue(content.contains("\"failure_status\":\"TEST_FAILURE\""));
+        } finally {
+            FileUtil.deleteFile(tmpReportFile);
+        }
+    }
 }
