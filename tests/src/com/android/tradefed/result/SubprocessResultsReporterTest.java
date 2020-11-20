@@ -276,4 +276,23 @@ public class SubprocessResultsReporterTest {
             assertFalse(testLogCalled.get());
         }
     }
+
+    @Test
+    public void testTestFailed_PrintsFailureStatus() throws Exception {
+        OptionSetter setter = new OptionSetter(mReporter);
+        File tmpReportFile = FileUtil.createTempFile("subprocess-reporter", "unittest");
+        try {
+            setter.setOptionValue("subprocess-report-file", tmpReportFile.getAbsolutePath());
+            TestDescription testId = new TestDescription("com.fakeclass", "faketest");
+            FailureDescription failure =
+                    FailureDescription.create("not executed")
+                            .setFailureStatus(FailureStatus.NOT_EXECUTED);
+            mReporter.testFailed(testId, failure);
+            String content = FileUtil.readStringFromFile(tmpReportFile);
+            assertTrue(content.contains("\"trace\":\"not executed\""));
+            assertTrue(content.contains("\"failure_status\":\"NOT_EXECUTED\""));
+        } finally {
+            FileUtil.deleteFile(tmpReportFile);
+        }
+    }
 }
