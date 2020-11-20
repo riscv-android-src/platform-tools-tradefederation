@@ -169,6 +169,7 @@ public class TestInvocation implements ITestInvocation {
     private boolean mInvocationFailed = false;
     private boolean mDelegatedInvocation = false;
     private List<IScheduledInvocationListener> mSchedulerListeners = new ArrayList<>();
+    private DeviceUnavailableMonitor mUnavailableMonitor = new DeviceUnavailableMonitor();
 
     /**
      * Display a log message informing the user of a invocation being started.
@@ -373,6 +374,12 @@ public class TestInvocation implements ITestInvocation {
             // Track the timestamp when we are done with devices
             addInvocationMetric(
                     InvocationMetricKey.DEVICE_DONE_TIMESTAMP, System.currentTimeMillis());
+            if (exception == null) {
+                exception = mUnavailableMonitor.getUnavailableException();
+                if (exception != null) {
+                    CLog.e("Found a test level only device unavailable exception.");
+                }
+            }
             Map<ITestDevice, FreeDeviceState> devicesStates =
                     handleAndLogReleaseState(context, exception);
             if (config.getCommandOptions().earlyDeviceRelease()) {
@@ -758,6 +765,7 @@ public class TestInvocation implements ITestInvocation {
                 new ArrayList<>(config.getTestInvocationListeners().size() + extraListeners.length);
         allListeners.addAll(config.getTestInvocationListeners());
         allListeners.addAll(Arrays.asList(extraListeners));
+        allListeners.add(mUnavailableMonitor);
         ITestInvocationListener listener = null;
 
         // Auto retry feature
@@ -1144,7 +1152,8 @@ public class TestInvocation implements ITestInvocation {
             if (fds.getKey().getIDevice() instanceof StubDevice) {
                 continue;
             }
-            if (FreeDeviceState.UNAVAILABLE.equals(fds.getValue())) {
+            if (FreeDeviceState.UNAVAILABLE.equals(fds.getValue())
+                    || FreeDeviceState.UNRESPONSIVE.equals(fds.getValue())) {
                 // Remote devices are not seen as stub, but are still virtual devices
                 if (fds.getKey() instanceof RemoteAndroidDevice
                         || fds.getKey() instanceof NestedRemoteDevice) {
@@ -1163,6 +1172,7 @@ public class TestInvocation implements ITestInvocation {
                 CLog.e("'adb devices' output:\n%s", adbOutput);
             }
         } else if (countVirtualLost > 0) {
+            CLog.e("Counting as virtual_device_lost.");
             addInvocationMetric(InvocationMetricKey.VIRTUAL_DEVICE_LOST_DETECTED, countVirtualLost);
         }
         return devicesStates;
