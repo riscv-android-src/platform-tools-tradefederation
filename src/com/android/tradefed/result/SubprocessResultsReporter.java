@@ -97,6 +97,14 @@ public class SubprocessResultsReporter
 
     /** {@inheritDoc} */
     @Override
+    public void testAssumptionFailure(TestDescription testId, FailureDescription failure) {
+        FailedTestEventInfo info =
+                new FailedTestEventInfo(testId.getClassName(), testId.getTestName(), failure);
+        printEvent(SubprocessTestResultsParser.StatusKeys.TEST_ASSUMPTION_FAILURE, info);
+    }
+
+    /** {@inheritDoc} */
+    @Override
     public void testEnded(TestDescription testId, HashMap<String, Metric> metrics) {
         testEnded(testId, System.currentTimeMillis(), metrics);
     }
