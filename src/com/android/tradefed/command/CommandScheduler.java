@@ -841,6 +841,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 deviceStates.put(badDevice, FreeDeviceState.UNAVAILABLE);
             }
         }
+        CLog.d("Release map of the devices: %s", deviceStates);
         return deviceStates;
     }
 
