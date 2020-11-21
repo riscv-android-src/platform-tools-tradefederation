@@ -158,11 +158,10 @@ public abstract class ITestSuite
 
     @Deprecated
     @Option(
-        name = "logcat-on-failure-size",
-        description =
-                "The max number of logcat data in bytes to capture when "
-                        + "--logcat-on-failure is on. Should be an amount that can comfortably fit in memory."
-    )
+            name = "logcat-on-failure-size",
+            description =
+                    "The max number of logcat data in bytes to capture when --logcat-on-failure is"
+                            + " on. Should be an amount that can comfortably fit in memory.")
     private int mMaxLogcatBytes = 500 * 1024; // 500K
 
     @Deprecated
@@ -805,7 +804,7 @@ public abstract class ITestSuite
             }
         }
 
-        if (!mSkipAllSystemStatusCheck) {
+        if (!mSkipAllSystemStatusCheck && !mSystemStatusCheckers.isEmpty()) {
             runPreModuleCheck(module.getId(), mSystemStatusCheckers, mDevice, listener);
         }
         if (mCollectTestsOnly) {
@@ -839,7 +838,7 @@ public abstract class ITestSuite
                 failureListener,
                 getConfiguration().getRetryDecision().getMaxRetryCount());
 
-        if (!mSkipAllSystemStatusCheck) {
+        if (!mSkipAllSystemStatusCheck && !mSystemStatusCheckers.isEmpty()) {
             runPostModuleCheck(module.getId(), mSystemStatusCheckers, mDevice, listener);
         }
     }
