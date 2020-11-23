@@ -57,6 +57,7 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 
 /** Unit tests for {@link DeviceManager}. */
 @RunWith(JUnit4.class)
@@ -1504,5 +1505,65 @@ public class DeviceManagerTest {
             // Attempt to reset concurrent flash settings to defaults
             manager.setConcurrentFlashSettings(null, true);
         }
+    }
+
+    /** Test the command fails without execution when the device is not available. */
+    @Test
+    public void testExecCmdOnAvailableDevice_deviceNotAvailable() {
+        setCheckAvailableDeviceExpectations();
+        EasyMock.expect(mMockTestDevice.getAllocationState())
+                .andReturn(DeviceAllocationState.Allocated);
+        replayMocks();
+        DeviceManager manager = createDeviceManager(null, mMockIDevice);
+        CommandResult res =
+                manager.executeCmdOnAvailableDevice(
+                        mMockTestDevice.getSerialNumber(), "mock cmd", 1, TimeUnit.SECONDS);
+        assertEquals(CommandStatus.FAILED, res.getStatus());
+        assertEquals("The device is not available to execute the command", res.getStderr());
+    }
+
+    /** Test the command fails with long timeout. */
+    @Test
+    public void testExecCmdOnAvailableDevice_longRunCmd() throws DeviceNotAvailableException {
+        setCheckAvailableDeviceExpectations();
+        EasyMock.expect(mMockTestDevice.getAllocationState())
+                .andReturn(DeviceAllocationState.Available);
+        EasyMock.expect(mMockTestDevice.executeShellV2Command("foo", 2, TimeUnit.SECONDS))
+                .andReturn(new CommandResult(CommandStatus.SUCCESS));
+        replayMocks();
+        DeviceManager manager = createDeviceManager(null, mMockIDevice);
+        CommandResult res =
+                manager.executeCmdOnAvailableDevice(
+                        mMockTestDevice.getSerialNumber(), "mock cmd", 2, TimeUnit.SECONDS);
+        assertEquals(res.getStatus(), CommandStatus.FAILED);
+        assertEquals(res.getStderr(), "The maximum timeout value is 1000 ms, but got 2000 ms.");
+    }
+
+    /** Test the command success. */
+    @Test
+    public void testExecCmdOnAvailableDevice_success() throws DeviceNotAvailableException {
+        setCheckAvailableDeviceExpectations();
+        EasyMock.expect(mMockTestDevice.getAllocationState())
+                .andReturn(DeviceAllocationState.Available);
+        EasyMock.expect(mMockTestDevice.executeShellV2Command("foo", 1, TimeUnit.SECONDS))
+                .andReturn(
+                        new CommandResult() {
+                            @Override
+                            public CommandStatus getStatus() {
+                                return CommandStatus.SUCCESS;
+                            }
+
+                            @Override
+                            public String getStdout() {
+                                return "bar";
+                            }
+                        });
+        replayMocks();
+        DeviceManager manager = createDeviceManager(null, mMockIDevice);
+        CommandResult res =
+                manager.executeCmdOnAvailableDevice(
+                        mMockTestDevice.getSerialNumber(), "foo", 1, TimeUnit.SECONDS);
+        assertEquals(CommandStatus.SUCCESS, res.getStatus());
+        assertEquals("bar", res.getStdout());
     }
 }
