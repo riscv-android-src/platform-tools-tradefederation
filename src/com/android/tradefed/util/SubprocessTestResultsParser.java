@@ -446,7 +446,7 @@ public class SubprocessTestResultsParser implements Closeable {
         public void handleEvent(String eventJson) throws JSONException {
             FailedTestEventInfo fti = new FailedTestEventInfo(new JSONObject(eventJson));
             checkCurrentTestId(fti.mClassName, fti.mTestName);
-            mListener.testFailed(mCurrentTest, fti.mTrace);
+            mListener.testFailed(mCurrentTest, fti.mFailure);
         }
     }
 
