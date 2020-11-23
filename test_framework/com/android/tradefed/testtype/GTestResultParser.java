@@ -440,6 +440,7 @@ public class GTestResultParser extends MultiLineReceiver {
             }
             mTestRunStartReported = true;
             mSeenOneTestRunStart = true;
+            mTrackLogsBeforeRunStart.clear();
         }
     }
 
