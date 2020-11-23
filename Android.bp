@@ -157,6 +157,9 @@ java_library_host {
 
 java_library_host {
     name: "tradefed-lib-core",
+    visibility: [
+        "//tools/tradefederation/core/test_framework",
+    ],
     defaults: ["tradefed_defaults"],
     srcs: [
         "src/**/*.java",
