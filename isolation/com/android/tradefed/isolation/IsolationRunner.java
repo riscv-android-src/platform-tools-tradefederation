@@ -25,6 +25,7 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
+import org.junit.internal.builders.IgnoredClassRunner;
 import org.junit.internal.runners.ErrorReportingRunner;
 import org.junit.runner.JUnitCore;
 import org.junit.runner.Request;
@@ -133,6 +134,8 @@ public final class IsolationRunner {
                 System.err.println(
                         String.format("Found ErrorRunner when trying to run class: %s", klass));
                 runnerCore.run(req.getRunner());
+            } else if (req.getRunner() instanceof IgnoredClassRunner) {
+                // Do nothing since class was ignored
             } else {
                 System.out.println("Executing class: " + klass);
                 Runner checkRunner = req.getRunner();
@@ -144,6 +147,7 @@ public final class IsolationRunner {
                 }
 
                 runnerCore.run(checkRunner);
+                System.out.println("Done executing class: " + klass);
             }
         }
 
