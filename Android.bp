@@ -58,6 +58,9 @@ python_library_host {
     name: "tradefed-protos-py",
     pkg_path: "atest",
     srcs: ["proto/**/*.proto"],
+    visibility: [
+        "//tools/asuite/atest",
+    ],
     libs: [
         "libprotobuf-python",
     ],
