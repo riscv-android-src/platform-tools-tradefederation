@@ -42,7 +42,35 @@ public final class DeviceUnavailableMonitor implements ITestInvocationListener {
     }
 
     @Override
+    public void testRunFailed(FailureDescription failure) {
+        analyzeFailure(failure);
+    }
+
+    @Override
     public void testFailed(TestDescription test, FailureDescription failure) {
+        analyzeFailure(failure);
+    }
+
+    @Override
+    public void invocationFailed(FailureDescription failure) {
+        // Clear the tracking, let the invocation failure be evaluated
+        mUnavailableException = null;
+        mInvocationFailed = true;
+    }
+
+    @Override
+    public void invocationFailed(Throwable cause) {
+        // Clear the tracking, let the invocation failure be evaluated
+        mUnavailableException = null;
+        mInvocationFailed = true;
+    }
+
+    /** Returns the exception if any was captured. */
+    public DeviceNotAvailableException getUnavailableException() {
+        return mUnavailableException;
+    }
+
+    private void analyzeFailure(FailureDescription failure) {
         if (mUnavailableException != null || mInvocationFailed) {
             return;
         }
@@ -63,24 +91,5 @@ public final class DeviceUnavailableMonitor implements ITestInvocationListener {
                         new DeviceUnresponsiveException(failure.getErrorMessage(), mSerial);
             }
         }
-    }
-
-    @Override
-    public void invocationFailed(FailureDescription failure) {
-        // Clear the tracking, let the invocation failure be evaluated
-        mUnavailableException = null;
-        mInvocationFailed = true;
-    }
-
-    @Override
-    public void invocationFailed(Throwable cause) {
-        // Clear the tracking, let the invocation failure be evaluated
-        mUnavailableException = null;
-        mInvocationFailed = true;
-    }
-
-    /** Returns the exception if any was captured. */
-    public DeviceNotAvailableException getUnavailableException() {
-        return mUnavailableException;
     }
 }
