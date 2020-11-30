@@ -923,7 +923,7 @@ public class InvocationExecution implements IInvocationExecution {
         }
         try (InputStreamSource source =
                 new ByteArrayInputStreamSource(truncAdb.getStdout().getBytes())) {
-            logger.testLog("host_adb_log", LogDataType.TEXT, source);
+            logger.testLog("host_adb_log", LogDataType.ADB_HOST_LOG, source);
         }
     }
 
