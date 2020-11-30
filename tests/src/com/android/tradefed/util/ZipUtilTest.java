@@ -243,6 +243,7 @@ public class ZipUtilTest extends TestCase {
             // Verify file permissions - readonly - 644 rw-r--r--
             permissions = Files.getPosixFilePermissions(targetFile.toPath());
             assertEquals(PosixFilePermissions.fromString("rw-r--r--"), permissions);
+            assertTrue(targetFile.isFile());
 
             // Unzip text file
             zipEntry =

@@ -22,6 +22,7 @@ import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.config.proxy.AutomatedReporters;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.invoker.IInvocationContext;
@@ -272,6 +273,7 @@ public abstract class SubprocessTfLauncher
         mRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
         mRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
         mRunUtil.unsetEnvVariable(ANDROID_SERIAL_VAR);
+        mRunUtil.unsetEnvVariable(AutomatedReporters.PROTO_REPORTING_PORT);
 
         if (mGlobalConfig == null) {
             // If the global configuration is not set in option, create a filtered global
@@ -396,6 +398,7 @@ public abstract class SubprocessTfLauncher
                                     "Event receiver thread did not complete:" + "\n%s",
                                     FileUtil.readStringFromFile(stderrFile)));
                 }
+                protoReceiver.completeModuleEvents();
             }
             if (result.getStatus().equals(CommandStatus.SUCCESS)) {
                 CLog.d("Successfully ran TF tests for build %s", mBuildInfo.getBuildId());

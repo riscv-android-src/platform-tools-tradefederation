@@ -70,9 +70,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -128,6 +130,11 @@ public class TestDeviceTest extends TestCase {
         IHostOptions getHostOptions() {
             // Avoid issue with GlobalConfiguration
             return new HostOptions();
+        }
+
+        @Override
+        public boolean isAdbTcp() {
+            return false;
         }
     }
 
@@ -2302,6 +2309,38 @@ public class TestDeviceTest extends TestCase {
         injectShellResponse(TestDevice.LIST_APEXES_CMD, output);
         EasyMock.replay(mMockIDevice, mMockStateMonitor);
         Set<ApexInfo> actual = mTestDevice.getActiveApexes();
+        assertEquals(0, actual.size());
+    }
+
+    /** Unit test for {@link TestDevice#getMainlineModuleInfo()}. */
+    public void testGetMainlineModuleInfo() throws Exception {
+        final String output =
+            "ModuleInfo{foo123456 Module NameFoo} packageName: com.android.foo\n"
+                    + "ModuleInfo{bar123456 Module NameBar} packageName: com.android.bar";
+        injectSystemProperty("ro.build.version.sdk", "29");
+        injectSystemProperty(DeviceProperties.BUILD_CODENAME, "REL");
+        injectShellResponse(TestDevice.GET_MODULEINFOS_CMD, output);
+        EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable()).andReturn(mMockIDevice);
+        replayMocks();
+        Set<String> actual = mTestDevice.getMainlineModuleInfo();
+        Set<String> expected = new HashSet<>(Arrays.asList("com.android.foo", "com.android.bar"));
+        assertEquals(2, actual.size());
+        assertEquals(expected, actual);
+    }
+
+    /**
+     * Unit test for {@link TestDevice#getMainlineModuleInfo()}.
+     *
+     * <p>Test bad output.
+     */
+    public void testGetMainlineModuleInfoForBadOutput() throws Exception {
+        final String output = "junk output";
+        injectSystemProperty("ro.build.version.sdk", "29");
+        injectSystemProperty(DeviceProperties.BUILD_CODENAME, "REL");
+        injectShellResponse(TestDevice.GET_MODULEINFOS_CMD, output);
+        EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable()).andReturn(mMockIDevice);
+        replayMocks();
+        Set<String> actual = mTestDevice.getMainlineModuleInfo();
         assertEquals(0, actual.size());
     }
 
@@ -4742,64 +4781,43 @@ public class TestDeviceTest extends TestCase {
     }
 
     /**
-     * Test {@link TestDevice#doesFileExist(String)} when the file exists on an sdcard from another
-     * user.
+     * Test {@link TestDevice#doesFileExist(String)} using content provider when the file is in
+     * external storage path.
      */
     public void testDoesFileExists_sdcard() throws Exception {
-        mTestDevice =
-                new TestableTestDevice() {
-                    @Override
-                    public int getCurrentUser()
-                            throws DeviceNotAvailableException, DeviceRuntimeException {
-                        return 10;
-                    }
-                };
-        injectShellResponse("ls \"/storage/emulated/10/file\"", "file");
+        mTestDevice = createTestDevice();
+
+        TestableTestDevice spy = (TestableTestDevice) Mockito.spy(mTestDevice);
+        ContentProviderHandler cp = Mockito.mock(ContentProviderHandler.class);
+        doReturn(cp).when(spy).getContentProvider();
+
+        final String fakeFile = "/sdcard/file";
+        final String targetFilePath = "/storage/emulated/10/file";
+
+        doReturn("").when(spy).executeShellCommand(Mockito.contains("content query --user 10"));
+
         EasyMock.replay(mMockIDevice);
-        assertTrue(mTestDevice.doesFileExist("/sdcard/file"));
+        spy.doesFileExist(fakeFile);
         EasyMock.verify(mMockIDevice);
+
+        verify(spy, times(1)).getContentProvider();
+        verify(cp, times(1)).doesFileExist(targetFilePath);
     }
 
     /** Push a file using the content provider. */
     public void testPushFile_contentProvider() throws Exception {
-        mTestDevice =
-                new TestableTestDevice() {
-                    @Override
-                    public int getApiLevel() throws DeviceNotAvailableException {
-                        return 29;
-                    }
-
-                    @Override
-                    public int getCurrentUser()
-                            throws DeviceNotAvailableException, DeviceRuntimeException {
-                        return 10;
-                    }
-
-                    @Override
-                    public boolean isPackageInstalled(String packageName, String userId)
-                            throws DeviceNotAvailableException {
-                        return false;
-                    }
-                };
+        mTestDevice = createTestDevice();
         TestableTestDevice spy = (TestableTestDevice) Mockito.spy(mTestDevice);
+        setupContentProvider(spy);
+
         final String fakeRemotePath = "/sdcard/";
         File tmpFile = FileUtil.createTempFile("push", ".test");
-        doReturn(null)
-                .when(spy)
-                .installPackage(Mockito.any(), Mockito.anyBoolean(), Mockito.anyBoolean());
-        CommandResult setLegacy = new CommandResult(CommandStatus.SUCCESS);
-        doReturn(setLegacy).when(spy).executeShellV2Command(Mockito.contains("cmd appops set"));
-
-        CommandResult getLegacy = new CommandResult(CommandStatus.SUCCESS);
-        getLegacy.setStdout("LEGACY_STORAGE: allow");
-        doReturn(getLegacy).when(spy).executeShellV2Command(Mockito.contains("cmd appops get"));
 
         CommandResult writeContent = new CommandResult(CommandStatus.SUCCESS);
         writeContent.setStdout("");
         doReturn(writeContent)
                 .when(spy)
                 .executeShellV2Command(Mockito.contains("content write"), (File) Mockito.any());
-        doReturn(null).when(spy).uninstallPackage(Mockito.eq("android.tradefed.contentprovider"));
         EasyMock.replay(mMockIDevice);
         try {
             boolean res = spy.pushFile(tmpFile, fakeRemotePath);
@@ -4820,37 +4838,12 @@ public class TestDeviceTest extends TestCase {
 
     /** Push a file using the content provider. */
     public void testPushFile_contentProvider_notFound() throws Exception {
-        mTestDevice =
-                new TestableTestDevice() {
-                    @Override
-                    public int getApiLevel() throws DeviceNotAvailableException {
-                        return 29;
-                    }
-
-                    @Override
-                    public int getCurrentUser()
-                            throws DeviceNotAvailableException, DeviceRuntimeException {
-                        return 10;
-                    }
-
-                    @Override
-                    public boolean isPackageInstalled(String packageName, String userId)
-                            throws DeviceNotAvailableException {
-                        return false;
-                    }
-                };
+        mTestDevice = createTestDevice();
         TestableTestDevice spy = (TestableTestDevice) Mockito.spy(mTestDevice);
+        setupContentProvider(spy);
+
         final String fakeRemotePath = "/sdcard/";
         File tmpFile = FileUtil.createTempFile("push", ".test");
-        doReturn(null)
-                .when(spy)
-                .installPackage(Mockito.any(), Mockito.anyBoolean(), Mockito.anyBoolean());
-        CommandResult setLegacy = new CommandResult(CommandStatus.SUCCESS);
-        doReturn(setLegacy).when(spy).executeShellV2Command(Mockito.contains("cmd appops set"));
-
-        CommandResult getLegacy = new CommandResult(CommandStatus.SUCCESS);
-        getLegacy.setStdout("LEGACY_STORAGE: allow");
-        doReturn(getLegacy).when(spy).executeShellV2Command(Mockito.contains("cmd appops get"));
 
         CommandResult writeContent = new CommandResult(CommandStatus.SUCCESS);
         writeContent.setStdout("");
@@ -4895,5 +4888,39 @@ public class TestDeviceTest extends TestCase {
                                 EasyMock.eq("getprop"),
                                 EasyMock.eq(property)))
                 .andReturn(stubResult);
+    }
+
+    private void setupContentProvider(TestableTestDevice spy) throws Exception {
+        doReturn(null)
+                .when(spy)
+                .installPackage(Mockito.any(), Mockito.anyBoolean(), Mockito.anyBoolean());
+        CommandResult setLegacy = new CommandResult(CommandStatus.SUCCESS);
+        doReturn(setLegacy).when(spy).executeShellV2Command(Mockito.contains("cmd appops set"));
+
+        CommandResult getLegacy = new CommandResult(CommandStatus.SUCCESS);
+        getLegacy.setStdout("LEGACY_STORAGE: allow");
+        doReturn(getLegacy).when(spy).executeShellV2Command(Mockito.contains("cmd appops get"));
+
+        doReturn(null).when(spy).uninstallPackage(Mockito.eq("android.tradefed.contentprovider"));
+    }
+
+    private TestableTestDevice createTestDevice() {
+        return new TestableTestDevice() {
+            @Override
+            public int getApiLevel() throws DeviceNotAvailableException {
+                return 29;
+            }
+
+            @Override
+            public int getCurrentUser() throws DeviceNotAvailableException, DeviceRuntimeException {
+                return 10;
+            }
+
+            @Override
+            public boolean isPackageInstalled(String packageName, String userId)
+                    throws DeviceNotAvailableException {
+                return false;
+            }
+        };
     }
 }

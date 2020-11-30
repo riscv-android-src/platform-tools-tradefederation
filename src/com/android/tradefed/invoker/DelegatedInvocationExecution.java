@@ -18,6 +18,7 @@ package com.android.tradefed.invoker;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.proxy.AutomatedReporters;
 import com.android.tradefed.config.proxy.TradefedDelegator;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
@@ -104,7 +105,7 @@ public class DelegatedInvocationExecution extends InvocationExecution {
         try (PrintWriter pw = new PrintWriter(dumpConfig)) {
             config.dumpXml(pw);
         }
-        logAndCleanFile(dumpConfig, LogDataType.XML, listener);
+        logAndCleanFile(dumpConfig, LogDataType.HARNESS_CONFIG, listener);
 
         if (config.getConfigurationObject(TradefedDelegator.DELEGATE_OBJECT) == null) {
             throw new ConfigurationException(
@@ -166,9 +167,9 @@ public class DelegatedInvocationExecution extends InvocationExecution {
         } finally {
             StreamUtil.close(mStderr);
             StreamUtil.close(mStdout);
-            logAndCleanFile(mStdoutFile, LogDataType.TEXT, listener);
-            logAndCleanFile(mStderrFile, LogDataType.TEXT, listener);
-            logAndCleanFile(mGlobalConfig, LogDataType.XML, listener);
+            logAndCleanFile(mStdoutFile, LogDataType.HARNESS_STD_LOG, listener);
+            logAndCleanFile(mStderrFile, LogDataType.HARNESS_STD_LOG, listener);
+            logAndCleanFile(mGlobalConfig, LogDataType.HARNESS_CONFIG, listener);
         }
     }
 
@@ -188,7 +189,7 @@ public class DelegatedInvocationExecution extends InvocationExecution {
         mGlobalConfig = createGlobalConfig();
         runUtil.setEnvVariable(
                 GlobalConfiguration.GLOBAL_CONFIG_VARIABLE, mGlobalConfig.getAbsolutePath());
-        runUtil.setEnvVariable("PROTO_REPORTING_PORT", Integer.toString(port));
+        runUtil.setEnvVariable(AutomatedReporters.PROTO_REPORTING_PORT, Integer.toString(port));
         return runUtil;
     }
 

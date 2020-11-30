@@ -526,7 +526,7 @@ public class ZipUtil {
                 return;
             } else if (zipEntry.getCompressedSize() == 0) {
                 // The file is empty, just create an empty file.
-                FileUtil.mkdirsRWX(targetFile);
+                FileUtil.mkdirsRWX(targetFile.getParentFile());
                 targetFile.createNewFile();
                 return;
             }

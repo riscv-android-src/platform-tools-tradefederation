@@ -59,11 +59,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
 
+import javax.annotation.Nonnull;
+
 /** Parser for the Tradefed results proto format. */
 public class ProtoResultParser {
 
     private ITestInvocationListener mListener;
     private String mCurrentRunName = null;
+    private TestDescription mCurrentTestCase = null;
     /**
      * We don't always want to report the invocation level events again. If we are within an
      * invocation scope we should not report it again.
@@ -79,6 +82,9 @@ public class ProtoResultParser {
     private boolean mQuietParsing = true;
 
     private boolean mInvocationStarted = false;
+    /** Track whether or not invocationFailed was called. */
+    private boolean mInvocationFailed = false;
+
     private boolean mInvocationEnded = false;
     private boolean mFirstModule = true;
     /** Track the name of the module in progress. */
@@ -205,9 +211,30 @@ public class ProtoResultParser {
         return mModuleInProgress;
     }
 
+    /** Returns whether or not the invocation failed has been reported. */
+    public boolean hasInvocationFailed() {
+        return mInvocationFailed;
+    }
+
     /** If needed to ensure consistent reporting, complete the events of the module. */
     public void completeModuleEvents() {
         if (getModuleInProgress() == null) {
+            if (mCurrentRunName != null) {
+                if (mCurrentTestCase != null) {
+                    FailureDescription failure =
+                            FailureDescription.create(
+                                    "Run was interrupted after starting, results are incomplete.");
+                    mListener.testFailed(mCurrentTestCase, failure);
+                    mListener.testEnded(mCurrentTestCase, new HashMap<String, Metric>());
+                }
+                FailureDescription failure =
+                        FailureDescription.create(
+                                "Run was interrupted after starting, results are incomplete.",
+                                FailureStatus.INFRA_FAILURE);
+                mListener.testRunFailed(failure);
+                mListener.testRunEnded(0L, new HashMap<String, Metric>());
+                mCurrentRunName = null;
+            }
             return;
         }
         mListener.testRunStarted(getModuleInProgress(), 0);
@@ -330,6 +357,7 @@ public class ProtoResultParser {
                 }
             }
             mListener.invocationFailed(failure);
+            mInvocationFailed = true;
         }
 
         log("Invocation ended proto");
@@ -446,9 +474,11 @@ public class ProtoResultParser {
         TestDescription description = new TestDescription(info[0], info[1]);
         if (testcaseProto.hasEndTime()) {
             handleTestCaseEnd(description, testcaseProto);
+            mCurrentTestCase = null;
         } else {
             log("Test case started proto: %s", description.toString());
             mListener.testStarted(description, timeStampToMillis(testcaseProto.getStartTime()));
+            mCurrentTestCase = description;
         }
     }
 
@@ -515,12 +545,18 @@ public class ProtoResultParser {
         for (Entry<String, Any> entry : proto.getArtifactsMap().entrySet()) {
             try {
                 LogFileInfo info = entry.getValue().unpack(LogFileInfo.class);
+                LogDataType dataType = null;
+                try {
+                    dataType = LogDataType.valueOf(info.getLogType());
+                } catch (NullPointerException | IllegalArgumentException e) {
+                    dataType = LogDataType.TEXT;
+                }
                 LogFile file =
                         new LogFile(
                                 info.getPath(),
                                 info.getUrl(),
                                 info.getIsCompressed(),
-                                LogDataType.valueOf(info.getLogType()),
+                                dataType,
                                 info.getSize());
                 if (Strings.isNullOrEmpty(file.getPath())) {
                     CLog.e("Log '%s' was registered but without a path.", entry.getKey());
@@ -683,8 +719,9 @@ public class ProtoResultParser {
                         }
 
                         @Override
-                        public FailureStatus status() {
-                            return failure.getFailureStatus();
+                        public @Nonnull FailureStatus status() {
+                            FailureStatus status = failure.getFailureStatus();
+                            return (status == null ? FailureStatus.UNSET : status);
                         }
                     };
             failure.setErrorIdentifier(errorId);

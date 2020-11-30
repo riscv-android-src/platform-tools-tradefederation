@@ -31,6 +31,7 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
@@ -111,7 +112,7 @@ public class BaseTestSuiteTest {
             setter.setOptionValue("module", "my_module");
             mRunner.setupFilters(tmpDir);
             fail("Should have thrown exception");
-        } catch (IllegalArgumentException expected) {
+        } catch (HarnessRuntimeException expected) {
             assertEquals("No modules found matching my_module", expected.getMessage());
         } finally {
             FileUtil.recursiveDelete(tmpDir);
@@ -238,7 +239,7 @@ public class BaseTestSuiteTest {
             setter.setOptionValue("module", "module_name");
             mRunner.setupFilters(tmpDir);
             fail("Should have thrown exception");
-        } catch (IllegalArgumentException expected) {
+        } catch (HarnessRuntimeException expected) {
             assertThat(
                     expected.getMessage(),
                     containsString("Multiple modules found matching module_name:"));
@@ -330,7 +331,7 @@ public class BaseTestSuiteTest {
         try {
             mRunner.loadTests();
             fail("Should have thrown exception");
-        } catch (IllegalStateException ex) {
+        } catch (HarnessRuntimeException ex) {
             assertEquals(
                     "Include filter '{arm64-v8a Doesntexist=[Doesntexist], armeabi-v7a "
                             + "Doesntexist=[Doesntexist]}' was specified but resulted in "

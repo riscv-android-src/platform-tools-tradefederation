@@ -175,7 +175,8 @@ public class InvocationExecution implements IInvocationExecution {
             throw e;
         } catch (RuntimeException re) {
             if (currentDeviceName != null) {
-                IBuildInfo errorBuild = new BuildInfo();
+                IBuildInfo errorBuild =
+                        TestInvocation.backFillBuildInfoForReporting(config.getCommandLine());
                 updateBuild(errorBuild, config);
                 testInfo.getContext().addDeviceBuildInfo(currentDeviceName, errorBuild);
             }
@@ -707,6 +708,11 @@ public class InvocationExecution implements IInvocationExecution {
      * @param config the {@link IConfiguration}
      */
     void updateBuild(IBuildInfo info, IConfiguration config) {
+        setTestTag(info, config);
+        if (config.getCommandOptions().getInvocationData().containsKey("subprocess")) {
+            // Avoid relogging the properties in a subprocess
+            return;
+        }
         if (config.getCommandLine() != null) {
             // TODO: obfuscate the password if any.
             info.addBuildAttribute(TestInvocation.COMMAND_ARGS_KEY, config.getCommandLine());
@@ -719,7 +725,6 @@ public class InvocationExecution implements IInvocationExecution {
             info.addBuildAttribute(
                     "shard_index", config.getCommandOptions().getShardIndex().toString());
         }
-        setTestTag(info, config);
     }
 
     private void runTest(
@@ -918,7 +923,7 @@ public class InvocationExecution implements IInvocationExecution {
         }
         try (InputStreamSource source =
                 new ByteArrayInputStreamSource(truncAdb.getStdout().getBytes())) {
-            logger.testLog("host_adb_log", LogDataType.TEXT, source);
+            logger.testLog("host_adb_log", LogDataType.ADB_HOST_LOG, source);
         }
     }
 

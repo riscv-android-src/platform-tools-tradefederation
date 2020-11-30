@@ -12,57 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Set of error prone rules to ensure code quality
-// PackageLocation check requires the androidCompatible=false otherwise it does not do anything.
-java_defaults {
-  name: "tradefed_errorprone_defaults",
-  errorprone: {
-    javacflags: [
-      "-XDandroidCompatible=false",
-      "-Xep:ArrayToString:ERROR",
-      "-Xep:BoxedPrimitiveConstructor:ERROR",
-      "-Xep:CatchFail:ERROR",
-      "-Xep:ConstantField:ERROR",
-      "-Xep:DeadException:ERROR",
-      "-Xep:EqualsIncompatibleType:ERROR",
-      "-Xep:ExtendingJUnitAssert:ERROR",
-      "-Xep:FormatString:ERROR",
-      "-Xep:GetClassOnClass:ERROR",
-      "-Xep:IdentityBinaryExpression:ERROR",
-      "-Xep:JUnit3TestNotRun:ERROR",
-      "-Xep:JUnit4TestNotRun:ERROR",
-      "-Xep:JUnit4ClassUsedInJUnit3:ERROR",
-      "-Xep:JUnitAmbiguousTestClass:ERROR",
-      "-Xep:MissingFail:ERROR",
-      "-Xep:MissingOverride:ERROR",
-      "-Xep:ModifiedButNotUsed:ERROR",
-      "-Xep:MustBeClosedChecker:ERROR",
-      "-Xep:Overrides:ERROR",
-      "-Xep:PackageLocation:ERROR",
-      "-Xep:ParameterName:ERROR",
-      "-Xep:ReferenceEquality:ERROR",
-      "-Xep:RemoveUnusedImports:ERROR",
-      "-Xep:ReturnValueIgnored:ERROR",
-      "-Xep:SelfEquals:ERROR",
-      "-Xep:SizeGreaterThanOrEqualsZero:ERROR",
-      "-Xep:TryFailThrowable:ERROR",
-      "-Xep:UnnecessaryParentheses:ERROR",
-      "-Xep:UseCorrectAssertInTests:ERROR",
-    ],
-  },
-}
-
-java_defaults {
-  name: "tradefed_defaults",
-  defaults: [ "tradefed_errorprone_defaults" ],
-  javacflags: [
-    "-g",
-    "-Xlint",
-  ],
-}
-
 java_library_host {
     name: "tradefed-protos",
+    // Restrict visibility to only those targets that need to access it.
+    visibility: [
+        "//tools/tradefederation/core/clearcut_client",
+        "//tools/tradefederation/core/common_util",
+        "//tools/tradefederation/core/device_build_interfaces",
+        "//tools/tradefederation/core/invocation_interfaces",
+        "//tools/tradefederation/core/test_result_interfaces",
+    ],
     srcs: ["proto/**/*.proto"],
     libs: [
         "libprotobuf-java-full",
@@ -77,10 +36,31 @@ java_library_host {
     ],
 }
 
+java_genrule_host {
+    name: "lab-resource-grpc-gen",
+    srcs: [
+        "proto/monitoring/server/lab_resource.proto",
+    ],
+    tools: [
+        "aprotoc",
+        "protoc-gen-grpc-java-plugin",
+        "soong_zip",
+     ],
+     arch: "common",
+     cmd: "$(location aprotoc) -Iexternal/protobuf/src" +
+        " -Itools/tradefederation/core/proto/monitoring/server" +
+        " --plugin=protoc-gen-grpc=$(location protoc-gen-grpc-java-plugin) $(in)" +
+        " --grpc_out=$(genDir) && $(location soong_zip) -o $(out) -C $(genDir) -D $(genDir)",
+     out: ["tradefed-grpc.srcjar"],
+}
+
 python_library_host {
     name: "tradefed-protos-py",
     pkg_path: "atest",
     srcs: ["proto/**/*.proto"],
+    visibility: [
+        "//tools/asuite/atest",
+    ],
     libs: [
         "libprotobuf-python",
     ],
@@ -129,10 +109,14 @@ java_library_host {
 
 java_library_host {
     name: "tradefed-lib-core",
+    visibility: [
+        "//tools/tradefederation/core/test_framework",
+    ],
     defaults: ["tradefed_defaults"],
     srcs: [
         "src/**/*.java",
         "global_configuration/**/*.java",
+        ":lab-resource-grpc-gen",
     ],
     static_libs: [
         "tradefed-common-util",
@@ -165,6 +149,8 @@ java_library_host {
         "grpc-java-testing",
         "grpc-java-netty-shaded",
         "javax-annotation-api-prebuilt-host-jar",
+        "opencensus-java-api",
+        "opencensus-java-contrib-grpc-metrics",
     ],
     libs: [
         "loganalysis",
@@ -179,6 +165,10 @@ java_library_host {
 // feed to metalava when generating the stubs.
 tradefed_docs_only_args = " -hide 101 -hide 111 -hide 113 -hide 125 -hide 126 -hide 127 -hide 128 "
 
+tradefed_doc_stubs_args = " -hide UnresolvedLink -hide HiddenSuperclass " +
+  "-hide DeprecationMismatch -hide RequiresPermission " +
+  "-hide BroadcastBehavior -hide SdkConstant -hide Todo "
+
 droidstubs_host {
     name: "tradefed-doc-stubs",
     srcs: [
@@ -188,7 +178,7 @@ droidstubs_host {
         "loganalysis",
         "tradefed",
     ],
-    args: tradefed_docs_only_args + "--package",
+    args: tradefed_doc_stubs_args + "--package",
     create_doc_stubs: true,
 }
 

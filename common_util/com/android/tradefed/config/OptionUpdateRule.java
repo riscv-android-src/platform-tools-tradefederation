@@ -16,6 +16,8 @@
 
 package com.android.tradefed.config;
 
+import com.android.tradefed.result.error.InfraErrorIdentifier;
+
 import java.lang.reflect.Field;
 import java.util.Collection;  // imported for javadoc
 import java.util.Map;  // imported for javadoc
@@ -89,8 +91,10 @@ public enum OptionUpdateRule {
         try {
             current = field.get(optionSource);
         } catch (IllegalAccessException e) {
-            throw new ConfigurationException(String.format(
-                    "internal error when setting option '%s'", optionName), e);
+            throw new ConfigurationException(
+                    String.format("internal error when setting option '%s'", optionName),
+                    e,
+                    InfraErrorIdentifier.INTERNAL_CONFIG_ERROR);
         }
         return shouldUpdate(optionName, current, update);
     }
@@ -106,18 +110,26 @@ public enum OptionUpdateRule {
         if (current instanceof Comparable) {
             compCurrent = (Comparable) current;
         } else {
-            throw new ConfigurationException(String.format(
-                    "internal error: Class %s for option %s was used with GREATEST or LEAST " +
-                    "updateRule, but does not implement Comparable.",
-                    current.getClass().getSimpleName(), optionName));
+            throw new ConfigurationException(
+                    String.format(
+                            "internal error: Class %s for option %s was used with GREATEST or LEAST "
+                                    + "updateRule, but does not implement Comparable.",
+                            current.getClass().getSimpleName(), optionName),
+                    InfraErrorIdentifier.INTERNAL_CONFIG_ERROR);
         }
 
         try {
             return compCurrent.compareTo(update);
         } catch (ClassCastException e) {
-            throw new ConfigurationException(String.format(
-                    "internal error: Failed to compare %s (%s) and %s (%s)",
-                    current.getClass().getName(), current, update.getClass().getName(), update), e);
+            throw new ConfigurationException(
+                    String.format(
+                            "internal error: Failed to compare %s (%s) and %s (%s)",
+                            current.getClass().getName(),
+                            current,
+                            update.getClass().getName(),
+                            update),
+                    e,
+                    InfraErrorIdentifier.INTERNAL_CONFIG_ERROR);
         }
     }
 }
