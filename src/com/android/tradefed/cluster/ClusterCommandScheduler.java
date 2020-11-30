@@ -40,6 +40,8 @@ import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestSummaryListener;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.result.TestSummary;
+import com.android.tradefed.result.error.ErrorIdentifier;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.QuotationAwareTokenizer;
@@ -145,6 +147,7 @@ public class ClusterCommandScheduler extends CommandScheduler {
         private String mSummary;
         private Set<String> processedSummaries = new HashSet<>();
         private String mError;
+        private String mSubprocessCommandError;
         private File mWorkDir;
         private InvocationStatus mInvocationStatus;
 
@@ -261,6 +264,10 @@ public class ClusterCommandScheduler extends CommandScheduler {
             super.invocationFailed(cause);
 
             mError = StreamUtil.getStackTrace(cause);
+            if (cause instanceof SubprocessCommandException && cause.getCause() != null) {
+                // The inner exception holds an exception stack trace from a subprocess.
+                mSubprocessCommandError = cause.getCause().getMessage();
+            }
         }
 
         /** {@inheritDoc} */
@@ -272,6 +279,9 @@ public class ClusterCommandScheduler extends CommandScheduler {
                     createEventBuilder()
                             .setType(ClusterCommandEvent.Type.InvocationEnded)
                             .setData(ClusterCommandEvent.DATA_KEY_ERROR, mError)
+                            .setData(
+                                    ClusterCommandEvent.DATA_KEY_SUBPROCESS_COMMAND_ERROR,
+                                    mSubprocessCommandError)
                             .build();
             getClusterClient().getCommandEventUploader().postEvent(event);
             getClusterClient().getCommandEventUploader().flush();
@@ -286,8 +296,21 @@ public class ClusterCommandScheduler extends CommandScheduler {
             }
 
             // TODO: handle multi-device where only one of the build could be missing.
+            ErrorIdentifier errorId = null;
             if (getPrimaryBuildInfo() == null && mError == null) {
                 mError = "build not found";
+                // Test that the filesystem is working as it's the main reason for this error
+                // situation to occur
+                try {
+                    File f = FileUtil.createTempFile("test-filesystem", ".txt");
+                    FileUtil.deleteFile(f);
+                } catch (IOException e) {
+                    mError =
+                            String.format(
+                                    "Filesystem error on %s. Please notify lab admin.",
+                                    ClusterHostUtil.getHostName());
+                    errorId = InfraErrorIdentifier.LAB_HOST_FILESYSTEM_ERROR;
+                }
             }
 
             String fetchBuildTimeMillis = "-1";
@@ -318,6 +341,9 @@ public class ClusterCommandScheduler extends CommandScheduler {
                             .setType(ClusterCommandEvent.Type.InvocationCompleted)
                             .setInvocationStatus(mInvocationStatus)
                             .setData(ClusterCommandEvent.DATA_KEY_ERROR, mError)
+                            .setData(
+                                    ClusterCommandEvent.DATA_KEY_SUBPROCESS_COMMAND_ERROR,
+                                    mSubprocessCommandError)
                             .setData(ClusterCommandEvent.DATA_KEY_SUMMARY, mSummary)
                             .setData(
                                     ClusterCommandEvent.DATA_KEY_FETCH_BUILD_TIME_MILLIS,
@@ -336,6 +362,11 @@ public class ClusterCommandScheduler extends CommandScheduler {
                             .setData(
                                     ClusterCommandEvent.DATA_KEY_FAILED_TEST_RUN_COUNT,
                                     Integer.toString(getNumAllFailedTestRuns()));
+            if (errorId != null) {
+                eventBuilder.setData(ClusterCommandEvent.DATA_KEY_ERROR_ID_NAME, errorId.name());
+                eventBuilder.setData(ClusterCommandEvent.DATA_KEY_ERROR_ID_CODE, errorId.code());
+                eventBuilder.setData(ClusterCommandEvent.DATA_KEY_ERROR_STATUS, errorId.status());
+            }
             if (lostDevice != null) {
                 eventBuilder.setData(ClusterCommandEvent.DATA_KEY_LOST_DEVICE_DETECTED, lostDevice);
             }
@@ -390,8 +421,9 @@ public class ClusterCommandScheduler extends CommandScheduler {
                         if (ClusterCommand.State.CANCELED.equals(commandStatus.getState())) {
                             String cause =
                                     String.format(
-                                            "The cluster client %s has marked command "
-                                                    + "(requestId=%s, commandId=%s) canceled with reason: %s",
+                                            "The cluster client %s has marked command"
+                                                    + " (requestId=%s, commandId=%s) canceled with"
+                                                    + " reason: %s",
                                             getClusterClient().getClass().getSimpleName(),
                                             mCommandTask.getRequestId(),
                                             mCommandTask.getCommandId(),
@@ -600,14 +632,22 @@ public class ClusterCommandScheduler extends CommandScheduler {
                 CLog.w(e);
                 IClusterEventUploader<ClusterCommandEvent> eventUploader =
                         getClusterClient().getCommandEventUploader();
-                eventUploader.postEvent(
+                ClusterCommandEvent.Builder eventBuilder =
                         ClusterCommandEvent.createEventBuilder(commandTask)
                                 .setHostName(ClusterHostUtil.getHostName())
                                 .setType(ClusterCommandEvent.Type.AllocationFailed)
                                 .setData(
                                         ClusterCommandEvent.DATA_KEY_ERROR,
-                                        StreamUtil.getStackTrace(e))
-                                .build());
+                                        StreamUtil.getStackTrace(e));
+                if (e.getErrorId() != null) {
+                    eventBuilder.setData(
+                            ClusterCommandEvent.DATA_KEY_ERROR_ID_NAME, e.getErrorId().name());
+                    eventBuilder.setData(
+                            ClusterCommandEvent.DATA_KEY_ERROR_ID_CODE, e.getErrorId().code());
+                    eventBuilder.setData(
+                            ClusterCommandEvent.DATA_KEY_ERROR_STATUS, e.getErrorId().status());
+                }
+                eventUploader.postEvent(eventBuilder.build());
                 eventUploader.flush();
             } catch (ConfigurationException | IOException | JSONException e) {
                 CLog.w("failed to execute cluster command [%s]: %s", commandTask.getTaskId(), e);

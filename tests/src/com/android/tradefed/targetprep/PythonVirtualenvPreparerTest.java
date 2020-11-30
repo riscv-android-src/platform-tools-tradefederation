@@ -21,7 +21,10 @@ import static org.easymock.EasyMock.anyObject;
 import static org.easymock.EasyMock.createMock;
 import static org.easymock.EasyMock.createNiceMock;
 import static org.easymock.EasyMock.expect;
+import static org.easymock.EasyMock.eq;
 import static org.easymock.EasyMock.replay;
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.junit.Assert.assertThat;
 
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.IBuildInfo;
@@ -29,6 +32,8 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.IRunUtil;
+
+import com.google.common.base.Throwables;
 
 import junit.framework.TestCase;
 
@@ -104,5 +109,45 @@ public class PythonVirtualenvPreparerTest extends TestCase {
         BuildInfo buildInfo = new BuildInfo();
         mPreparer.installDeps(buildInfo, mMockDevice);
         assertTrue(buildInfo.getFile("PYTHONPATH") == null);
+    }
+
+    public void testStartVirtualenv_throwTSE_whenVirtualenvNotFound() throws Exception {
+        CommandResult result = new CommandResult(CommandStatus.SUCCESS);
+        result.setStdout("bash: virtualenv: command not found");
+        expect(mMockRunUtil.runTimedCmd(anyLong(), eq("virtualenv"), eq("--version")))
+                .andReturn(result);
+        replay(mMockRunUtil);
+
+        try {
+            mPreparer.startVirtualenv(new BuildInfo(), mMockDevice);
+            fail("startVirtualenv succeeded despite a failed command");
+        } catch (TargetSetupError e) {
+            assertThat(
+                    String.format(
+                            "An unexpected exception was thrown:\n%s",
+                            Throwables.getStackTraceAsString(e)),
+                    e.getMessage(),
+                    containsString("virtualenv is not installed."));
+        }
+    }
+
+    public void testStartVirtualenv_throwTSE_whenVirtualenvIsTooOld() throws Exception {
+        CommandResult result = new CommandResult(CommandStatus.SUCCESS);
+        result.setStdout("virtualenv 16.7.10 from /path/to/site-packages/virtualenv/__init__.py");
+        expect(mMockRunUtil.runTimedCmd(anyLong(), eq("virtualenv"), eq("--version")))
+                .andReturn(result);
+        replay(mMockRunUtil);
+
+        try {
+            mPreparer.startVirtualenv(new BuildInfo(), mMockDevice);
+            fail("startVirtualenv succeeded despite a failed command");
+        } catch (TargetSetupError e) {
+            assertEquals(
+                    String.format(
+                            "An unexpected exception was thrown:\n%s",
+                            Throwables.getStackTraceAsString(e)),
+                    e.getMessage(),
+                    "virtualenv is too old. Required: >=20.0.1, yours: 16.7.10");
+        }
     }
 }

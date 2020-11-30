@@ -130,6 +130,14 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
                             + "preparer does not verify if the apks are successfully removed.")
     private boolean mCleanup = true;
 
+    @VisibleForTesting static final String CHECK_MIN_SDK_OPTION = "check-min-sdk";
+
+    @Option(
+            name = CHECK_MIN_SDK_OPTION,
+            description =
+                    "check app's min sdk prior to install and skip if device api level is too low.")
+    private boolean mCheckMinSdk = false;
+
     /** @deprecated use test-file-name instead now that it is a File. */
     @Deprecated
     @Option(
@@ -182,6 +190,12 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
     /** Adds a file name to the list of apks to installed. */
     public void addTestFileName(String fileName) {
         addTestFile(new File(fileName));
+    }
+
+    /** Helper to parse an apk file with aapt. */
+    @VisibleForTesting
+    AaptParser doAaptParse(File apkFile) {
+        return AaptParser.parse(apkFile);
     }
 
     @VisibleForTesting
@@ -286,7 +300,6 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
             CLog.i("No test apps to install, skipping");
             return;
         }
-
         // resolve abi flags
         if (mAbi != null && mForceAbi != null) {
             throw new IllegalStateException("cannot specify both abi flags: --abi and --force-abi");
@@ -297,7 +310,6 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
         } else if (mForceAbi != null) {
             abiName = AbiFormatter.getDefaultAbi(getDevice(), mForceAbi);
         }
-
         // Set all the extra install args outside the loop to avoid adding them several times.
         if (abiName != null && testInfo.getDevice().getApiLevel() > 20) {
             mInstallArgs.add(String.format("--abi %s", abiName));
@@ -460,8 +472,9 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
     }
 
     /** Helper to resolve some apk to their File and Package. */
+    @VisibleForTesting
     protected Map<File, String> resolveApkFiles(TestInformation testInfo, List<File> apkFiles)
-            throws TargetSetupError {
+            throws TargetSetupError, DeviceNotAvailableException {
         Map<File, String> appFiles = new LinkedHashMap<>();
         ITestDevice device = testInfo.getDevice();
         for (File apkFile : apkFiles) {
@@ -494,7 +507,32 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
                 }
             }
 
-            appFiles.put(testAppFile, parsePackageName(testAppFile, device.getDeviceDescriptor()));
+            if (mCheckMinSdk) {
+                AaptParser aaptParser = doAaptParse(testAppFile);
+                if (aaptParser == null) {
+                    throw new TargetSetupError(
+                            String.format(
+                                    "Failed to extract info from `%s` using aapt",
+                                    testAppFile.getAbsoluteFile().getName()),
+                            device.getDeviceDescriptor());
+                }
+                if (device.getApiLevel() < aaptParser.getSdkVersion()) {
+                    CLog.w(
+                            "Skipping installing apk %s on device %s because "
+                                    + "SDK level require is %d, but device SDK level is %d",
+                            apkFile.toString(),
+                            device.getSerialNumber(),
+                            aaptParser.getSdkVersion(),
+                            device.getApiLevel());
+                } else {
+                    appFiles.put(
+                            testAppFile,
+                            parsePackageName(testAppFile, device.getDeviceDescriptor()));
+                }
+            } else {
+                appFiles.put(
+                        testAppFile, parsePackageName(testAppFile, device.getDeviceDescriptor()));
+            }
         }
         return appFiles;
     }

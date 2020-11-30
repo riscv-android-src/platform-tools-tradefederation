@@ -37,6 +37,7 @@ import com.android.tradefed.device.cloud.NestedRemoteDevice;
 import com.android.tradefed.device.metric.CollectorHelper;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
+import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
@@ -46,9 +47,12 @@ import com.android.tradefed.invoker.shard.token.TokenProperty;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLoggerReceiver;
 import com.android.tradefed.result.ResultForwarder;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
+import com.android.tradefed.result.error.TestErrorIdentifier;
 import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.retry.RetryStrategy;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
@@ -156,11 +160,10 @@ public abstract class ITestSuite
 
     @Deprecated
     @Option(
-        name = "logcat-on-failure-size",
-        description =
-                "The max number of logcat data in bytes to capture when "
-                        + "--logcat-on-failure is on. Should be an amount that can comfortably fit in memory."
-    )
+            name = "logcat-on-failure-size",
+            description =
+                    "The max number of logcat data in bytes to capture when --logcat-on-failure is"
+                            + " on. Should be an amount that can comfortably fit in memory.")
     private int mMaxLogcatBytes = 500 * 1024; // 500K
 
     @Deprecated
@@ -803,7 +806,7 @@ public abstract class ITestSuite
             }
         }
 
-        if (!mSkipAllSystemStatusCheck) {
+        if (!mSkipAllSystemStatusCheck && !mSystemStatusCheckers.isEmpty()) {
             runPreModuleCheck(module.getId(), mSystemStatusCheckers, mDevice, listener);
         }
         if (mCollectTestsOnly) {
@@ -837,7 +840,7 @@ public abstract class ITestSuite
                 failureListener,
                 getConfiguration().getRetryDecision().getMaxRetryCount());
 
-        if (!mSkipAllSystemStatusCheck) {
+        if (!mSkipAllSystemStatusCheck && !mSystemStatusCheckers.isEmpty()) {
             runPostModuleCheck(module.getId(), mSystemStatusCheckers, mDevice, listener);
         }
     }
@@ -955,7 +958,11 @@ public abstract class ITestSuite
         // Avoid messing with the final test count by making them empty runs.
         listener.testRunStarted(identifier + "_" + moduleName, 0, 0, System.currentTimeMillis());
         if (!failures.isEmpty()) {
-            listener.testRunFailed(String.format("%s failed '%s' checkers", moduleName, failures));
+            FailureDescription description =
+                    FailureDescription.create(
+                                    String.format("%s failed '%s' checkers", moduleName, failures))
+                            .setErrorIdentifier(TestErrorIdentifier.MODULE_CHANGED_SYSTEM_STATUS);
+            listener.testRunFailed(description);
         }
         listener.testRunEnded(
                 System.currentTimeMillis() - startTime, new HashMap<String, Metric>());
@@ -1260,10 +1267,11 @@ public abstract class ITestSuite
             // Run on all abi in common between the device and suite builds.
             List<String> deviceAbis = getDeviceAbis(device);
             if (deviceAbis.isEmpty()) {
-                throw new IllegalArgumentException(
+                throw new HarnessRuntimeException(
                         String.format(
                                 "Couldn't determinate the abi of the device '%s'.",
-                                device.getSerialNumber()));
+                                device.getSerialNumber()),
+                        DeviceErrorIdentifier.DEVICE_UNEXPECTED_RESPONSE);
             }
             for (String abi : deviceAbis) {
                 if ((mSkipHostArchCheck || archAbis.contains(abi))

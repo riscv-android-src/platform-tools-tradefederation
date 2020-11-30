@@ -43,13 +43,17 @@ import com.android.tradefed.util.ZipUtil;
 
 import com.google.common.annotations.VisibleForTesting;
 
+import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 /**
  * A {@link com.android.tradefed.device.metric.BaseDeviceMetricCollector} that will pull Clang
@@ -62,12 +66,15 @@ public final class ClangCodeCoverageCollector extends BaseDeviceMetricCollector
     private static final String COVERAGE_TAR_PATH =
             String.format("%s/coverage.tar", NATIVE_COVERAGE_DEVICE_PATH);
 
+    // Timeout for pulling coverage measurements from the device, in minutes.
+    private static final long TIMEOUT = 20;
+
     // Finds .profraw files in /data/misc/trace and compresses those files only. Stores the full
     // path of the file on the device.
     private static final String ZIP_CLANG_FILES_COMMAND =
             String.format(
-                    "find %s -name '*.profraw' | tar -cvf %s -T -",
-                    NATIVE_COVERAGE_DEVICE_PATH, COVERAGE_TAR_PATH);
+                    "find %s -name '*.profraw' | tar -czf - -T - 2>/dev/null",
+                    NATIVE_COVERAGE_DEVICE_PATH);
 
     // Deletes .profraw files in /data/misc/trace.
     private static final String DELETE_COVERAGE_FILES_COMMAND =
@@ -76,6 +83,7 @@ public final class ClangCodeCoverageCollector extends BaseDeviceMetricCollector
     private IBuildInfo mBuildInfo;
     private IConfiguration mConfiguration;
     private IRunUtil mRunUtil = RunUtil.getDefault();
+    private File mLlvmProfileTool;
 
     private NativeCodeCoverageFlusher mFlusher;
 
@@ -119,9 +127,6 @@ public final class ClangCodeCoverageCollector extends BaseDeviceMetricCollector
                 getCoverageFlusher().forceCoverageFlush();
             }
             logCoverageMeasurement(device, getRunName());
-
-            // Delete coverage files on the device.
-            device.executeShellCommand(DELETE_COVERAGE_FILES_COMMAND);
         } catch (DeviceNotAvailableException | IOException e) {
             throw new RuntimeException(e);
         }
@@ -141,17 +146,20 @@ public final class ClangCodeCoverageCollector extends BaseDeviceMetricCollector
         File profileTool = null;
         File indexedProfileFile = null;
         try {
-            // Compress coverage measurements on the device before pulling.
-            device.executeShellCommand(ZIP_CLANG_FILES_COMMAND);
-            coverageTarGz = device.pullFile(COVERAGE_TAR_PATH);
-            verifyNotNull(
-                    coverageTarGz,
-                    "Failed to pull the Clang code coverage file %s",
-                    COVERAGE_TAR_PATH);
-            device.deleteFile(COVERAGE_TAR_PATH);
+            coverageTarGz = FileUtil.createTempFile("clang_coverage", ".tar.gz");
 
-            untarDir = FileUtil.createTempDir("clang_coverage");
-            TarUtil.unTar(coverageTarGz, untarDir);
+            // Compress coverage measurements on the device before streaming to the host.
+            try (OutputStream out = new BufferedOutputStream(new FileOutputStream(coverageTarGz))) {
+                device.executeShellV2Command(
+                        ZIP_CLANG_FILES_COMMAND, // Command
+                        null, // File pipe as input
+                        out, // OutputStream to write to
+                        TIMEOUT, // Timeout in minutes
+                        TimeUnit.MINUTES, // Timeout units
+                        1); // Retry count
+            }
+
+            untarDir = TarUtil.extractTarGzipToTemp(coverageTarGz, "clang_coverage");
             Set<String> rawProfileFiles = FileUtil.findFiles(untarDir, ".*\\.profraw");
 
             if (rawProfileFiles.isEmpty()) {
@@ -195,9 +203,11 @@ public final class ClangCodeCoverageCollector extends BaseDeviceMetricCollector
                 testLog(runName + "_clang_runtime_coverage", LogDataType.CLANG_COVERAGE, source);
             }
         } finally {
+            // Delete coverage files on the device.
+            device.executeShellCommand(DELETE_COVERAGE_FILES_COMMAND);
             FileUtil.deleteFile(coverageTarGz);
             FileUtil.recursiveDelete(untarDir);
-            FileUtil.recursiveDelete(profileTool);
+            FileUtil.recursiveDelete(mLlvmProfileTool);
             FileUtil.deleteFile(indexedProfileFile);
         }
     }
@@ -245,7 +255,8 @@ public final class ClangCodeCoverageCollector extends BaseDeviceMetricCollector
                     verifyNotNull(
                             buildInfo.getFile("llvm-profdata.zip"),
                             "Could not get llvm-profdata.zip from the build.");
-            return ZipUtil.extractZipToTemp(profileToolZip, "llvm-profdata");
+            mLlvmProfileTool = ZipUtil.extractZipToTemp(profileToolZip, "llvm-profdata");
+            return mLlvmProfileTool;
         } catch (BuildRetrievalError e) {
             throw new RuntimeException(e);
         } finally {

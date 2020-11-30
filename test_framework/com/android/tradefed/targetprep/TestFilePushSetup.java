@@ -23,7 +23,9 @@ import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.FileUtil;
 
@@ -95,7 +97,8 @@ public class TestFilePushSetup extends BaseTargetPreparer {
         if (dirs.isEmpty()) {
             throw new TargetSetupError(
                     "Provided buildInfo does not contain a valid tests directory.",
-                    device.getDeviceDescriptor());
+                    device.getDeviceDescriptor(),
+                    InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
         }
 
         for (File dir : dirs) {
@@ -107,12 +110,12 @@ public class TestFilePushSetup extends BaseTargetPreparer {
         return null;
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
-    public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
-            BuildError, DeviceNotAvailableException {
+    public void setUp(TestInformation testInfo)
+            throws TargetSetupError, BuildError, DeviceNotAvailableException {
+        ITestDevice device = testInfo.getDevice();
+        IBuildInfo buildInfo = testInfo.getBuildInfo();
         if (!(buildInfo instanceof IDeviceBuildInfo)) {
             throw new IllegalArgumentException(String.format("Provided buildInfo is not a %s",
                     IDeviceBuildInfo.class.getCanonicalName()));
@@ -126,9 +129,12 @@ public class TestFilePushSetup extends BaseTargetPreparer {
             File localFile = getLocalPathForFilename(buildInfo, fileName, device);
             if (localFile == null) {
                 if (mThrowIfNoFile) {
-                    throw new TargetSetupError(String.format(
-                            "Could not find test file %s directory in extracted tests.zip",
-                            fileName), device.getDeviceDescriptor());
+                    throw new TargetSetupError(
+                            String.format(
+                                    "Could not find test file %s directory in extracted tests.zip",
+                                    fileName),
+                            device.getDeviceDescriptor(),
+                            InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
                 } else {
                     CLog.w(
                             "Could not find test file %s directory in extracted tests.zip, but will"

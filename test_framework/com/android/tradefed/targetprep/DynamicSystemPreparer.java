@@ -21,6 +21,7 @@ import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.CommandResult;
@@ -29,9 +30,11 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.SparseImageUtil;
 import com.android.tradefed.util.ZipUtil;
 import com.android.tradefed.util.ZipUtil2;
+
+import org.apache.commons.compress.archivers.zip.ZipFile;
+
 import java.io.File;
 import java.io.IOException;
-import org.apache.commons.compress.archivers.zip.ZipFile;
 
 /**
  * An {@link ITargetPreparer} that sets up a system image on top of a device build with the Dynamic
@@ -44,9 +47,8 @@ public class DynamicSystemPreparer extends BaseTargetPreparer {
     private static final String DEST_PATH = "/sdcard/system.raw.gz";
 
     @Option(
-        name = "system-image-zip-name",
-        description = "The name of the zip file containing system.img."
-    )
+            name = "system-image-zip-name",
+            description = "The name of the zip file containing system.img.")
     private String mSystemImageZipName = "system-img.zip";
 
     @Option(
@@ -61,8 +63,10 @@ public class DynamicSystemPreparer extends BaseTargetPreparer {
     }
 
     @Override
-    public void setUp(ITestDevice device, IBuildInfo buildInfo)
+    public void setUp(TestInformation testInfo)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
+        ITestDevice device = testInfo.getDevice();
+        IBuildInfo buildInfo = testInfo.getBuildInfo();
         File systemImageZipFile = buildInfo.getFile(mSystemImageZipName);
         if (systemImageZipFile == null) {
             throw new BuildError(
@@ -112,13 +116,21 @@ public class DynamicSystemPreparer extends BaseTargetPreparer {
                             + " --ez KEY_ENABLE_WHEN_COMPLETED true";
             device.executeShellCommand(command);
             // Check if device shows as unavailable (as expected after the activity finished).
-            device.waitForDeviceNotAvailable(DSU_MAX_WAIT_SEC * 1000);
-            device.waitForDeviceOnline();
-            // the waitForDeviceOnline may block and we need to correct the 'i'
-            // which is used to measure timeout accordingly
-            if (!isDSURunning(device)) {
+            if (!device.waitForDeviceNotAvailable(DSU_MAX_WAIT_SEC * 1000)) {
                 throw new TargetSetupError(
-                        "Timeout to boot into DSU", device.getDeviceDescriptor());
+                        "Timed out waiting for DSU installation to complete and reboot",
+                        device.getDeviceDescriptor());
+            }
+            try {
+                // waitForDeviceOnline() throws DeviceNotAvailableException if device does not
+                // become online within timeout.
+                device.waitForDeviceOnline();
+            } catch (DeviceNotAvailableException e) {
+                throw new TargetSetupError(
+                        "Timed out booting into DSU", e, device.getDeviceDescriptor());
+            }
+            if (!isDSURunning(device)) {
+                throw new TargetSetupError("Failed to boot into DSU", device.getDeviceDescriptor());
             }
             CommandResult result = device.executeShellV2Command("gsi_tool enable");
             if (CommandStatus.SUCCESS.equals(result.getStatus())) {
@@ -140,12 +152,12 @@ public class DynamicSystemPreparer extends BaseTargetPreparer {
     }
 
     @Override
-    public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
-            throws DeviceNotAvailableException {
+    public void tearDown(TestInformation testInfo, Throwable e) throws DeviceNotAvailableException {
         if (e instanceof DeviceNotAvailableException) {
             CLog.e("skip tearDown on DeviceNotAvailableException");
             return;
         }
+        ITestDevice device = testInfo.getDevice();
         // Disable the DynamicSystemUpdate installation
         device.executeShellCommand("gsi_tool disable");
         // Enable the one-shot mode when DynamicSystemUpdate is disabled

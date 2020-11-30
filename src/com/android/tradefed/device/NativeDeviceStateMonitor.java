@@ -26,12 +26,15 @@ import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunInterruptedException;
 import com.android.tradefed.util.RunUtil;
 
+import com.google.common.base.Strings;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
 
 /**
  * Helper class for monitoring the state of a {@link IDevice} with no framework support.
@@ -55,9 +58,13 @@ public class NativeDeviceStateMonitor implements IDeviceStateMonitor {
     /** The  time in ms to wait for a device to available. */
     private long mDefaultAvailableTimeout = 6 * 60 * 1000;
 
+    /** The fastboot mode serial number */
+    private String mFastbootSerialNumber = null;
+
     private List<DeviceStateListener> mStateListeners;
     private IDeviceManager mMgr;
     private final boolean mFastbootEnabled;
+    private boolean mMountFileSystemCheckEnabled = false;
 
     protected static final String PERM_DENIED_ERROR_PATTERN = "Permission denied";
 
@@ -68,6 +75,7 @@ public class NativeDeviceStateMonitor implements IDeviceStateMonitor {
         mStateListeners = new ArrayList<DeviceStateListener>();
         mDeviceState = TestDeviceState.getStateByDdms(device.getState());
         mFastbootEnabled = fastbootEnabled;
+        mMountFileSystemCheckEnabled = mMgr.isFileSystemMountCheckEnabled();
     }
 
     /**
@@ -93,6 +101,17 @@ public class NativeDeviceStateMonitor implements IDeviceStateMonitor {
     @Override
     public void setDefaultAvailableTimeout(long timeoutMs) {
         mDefaultAvailableTimeout = timeoutMs;
+    }
+
+    /** Set the fastboot mode serial number. */
+    @Override
+    public void setFastbootSerialNumber(String serial) {
+        mFastbootSerialNumber = serial;
+
+        if (mFastbootSerialNumber != null && !mFastbootSerialNumber.equals(getSerialNumber())) {
+            // Add to IDeviceManager to monitor it
+            mMgr.addMonitoringTcpFastbootDevice(getSerialNumber(), mFastbootSerialNumber);
+        }
     }
 
     /**
@@ -129,6 +148,15 @@ public class NativeDeviceStateMonitor implements IDeviceStateMonitor {
     @Override
     public String getSerialNumber() {
         return getIDevice().getSerialNumber();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public String getFastbootSerialNumber() {
+        if (mFastbootSerialNumber == null) {
+            mFastbootSerialNumber = getSerialNumber();
+        }
+        return mFastbootSerialNumber;
     }
 
     /**
@@ -292,57 +320,79 @@ public class NativeDeviceStateMonitor implements IDeviceStateMonitor {
     protected boolean waitForStoreMount(final long waitTime) {
         CLog.i("Waiting %d ms for device %s external store", waitTime, getSerialNumber());
         long startTime = System.currentTimeMillis();
-        int counter = 1;
+        int counter = 0;
         // TODO(b/151119210): Remove this 'retryOnPermissionDenied' workaround when we figure out
         // what causes "Permission denied" to be returned incorrectly.
         int retryOnPermissionDenied = 1;
         while (System.currentTimeMillis() - startTime < waitTime) {
+            if (counter > 0) {
+                getRunUtil().sleep(Math.min(getCheckPollTime() * counter, MAX_CHECK_POLL_TIME));
+            }
+            counter++;
             final CollectingOutputReceiver receiver = createOutputReceiver();
             final CollectingOutputReceiver bitBucket = new CollectingOutputReceiver();
             final long number = getCurrentTime();
             final String externalStore = getMountPoint(IDevice.MNT_EXTERNAL_STORAGE);
+            if (externalStore == null) {
+                CLog.w("Failed to get external store mount point for %s", getSerialNumber());
+                continue;
+            }
 
+            if (mMountFileSystemCheckEnabled) {
+                String fileSystem = getFileSystem(externalStore);
+                if (Strings.isNullOrEmpty(fileSystem)) {
+                    CLog.w("Failed to get the fileSystem of '%s'", externalStore);
+                    continue;
+                }
+                if (fileSystem.contains("tmpfs")) {
+                    CLog.w(
+                            "External storage fileSystem is '%s', waiting for it to be mounted.",
+                            fileSystem);
+                    continue;
+                }
+            }
             final String testFile = String.format("'%s/%d'", externalStore, number);
             final String testString = String.format("number %d one", number);
             final String writeCmd = String.format("echo '%s' > %s", testString, testFile);
             final String checkCmd = String.format("cat %s", testFile);
             final String cleanupCmd = String.format("rm %s", testFile);
             String cmd = null;
-            if (externalStore != null) {
-                try {
-                    cmd = writeCmd;
-                    getIDevice().executeShellCommand(writeCmd, bitBucket,
-                            MAX_OP_TIME, TimeUnit.MILLISECONDS);
-                    cmd = checkCmd;
-                    getIDevice().executeShellCommand(checkCmd, receiver,
-                            MAX_OP_TIME, TimeUnit.MILLISECONDS);
-                    cmd = cleanupCmd;
-                    getIDevice().executeShellCommand(cleanupCmd, bitBucket,
-                            MAX_OP_TIME, TimeUnit.MILLISECONDS);
 
-                    String output = receiver.getOutput();
-                    CLog.v("%s returned %s", checkCmd, output);
-                    if (output.contains(testString)) {
-                        return true;
-                    } else if (output.contains(PERM_DENIED_ERROR_PATTERN)
-                            && --retryOnPermissionDenied < 0) {
-                        CLog.w("Device %s mount check returned Permision Denied, "
-                                + "issue with mounting.", getSerialNumber());
-                        return false;
-                    }
-                } catch (IOException | AdbCommandRejectedException |
-                        ShellCommandUnresponsiveException e) {
-                    CLog.i("%s on device %s failed:", cmd, getSerialNumber());
-                    CLog.e(e);
-                } catch (TimeoutException e) {
-                    CLog.i("%s on device %s failed: timeout", cmd, getSerialNumber());
-                    CLog.e(e);
+            try {
+                cmd = writeCmd;
+                getIDevice()
+                        .executeShellCommand(
+                                writeCmd, bitBucket, MAX_OP_TIME, TimeUnit.MILLISECONDS);
+                cmd = checkCmd;
+                getIDevice()
+                        .executeShellCommand(
+                                checkCmd, receiver, MAX_OP_TIME, TimeUnit.MILLISECONDS);
+                cmd = cleanupCmd;
+                getIDevice()
+                        .executeShellCommand(
+                                cleanupCmd, bitBucket, MAX_OP_TIME, TimeUnit.MILLISECONDS);
+
+                String output = receiver.getOutput();
+                CLog.v("%s returned %s", checkCmd, output);
+                if (output.contains(testString)) {
+                    return true;
+                } else if (output.contains(PERM_DENIED_ERROR_PATTERN)
+                        && --retryOnPermissionDenied < 0) {
+                    CLog.w(
+                            "Device %s mount check returned Permision Denied, "
+                                    + "issue with mounting.",
+                            getSerialNumber());
+                    return false;
                 }
-            } else {
-                CLog.w("Failed to get external store mount point for %s", getSerialNumber());
+            } catch (IOException
+                    | AdbCommandRejectedException
+                    | ShellCommandUnresponsiveException e) {
+                CLog.i("%s on device %s failed:", cmd, getSerialNumber());
+                CLog.e(e);
+            } catch (TimeoutException e) {
+                CLog.i("%s on device %s failed: timeout", cmd, getSerialNumber());
+                CLog.e(e);
             }
-            getRunUtil().sleep(Math.min(getCheckPollTime() * counter, MAX_CHECK_POLL_TIME));
-            counter++;
         }
         CLog.w("Device %s external storage is not mounted after %d ms",
                 getSerialNumber(), waitTime);
@@ -576,5 +626,31 @@ public class NativeDeviceStateMonitor implements IDeviceStateMonitor {
      */
     protected long getCurrentTime() {
         return System.currentTimeMillis();
+    }
+
+    private String getFileSystem(String externalStorePath) {
+        final CollectingOutputReceiver receiver = new CollectingOutputReceiver();
+        try {
+            getIDevice()
+                    .executeShellCommand(
+                            String.format("df %s", externalStorePath),
+                            receiver,
+                            10000,
+                            TimeUnit.MILLISECONDS);
+        } catch (TimeoutException
+                | AdbCommandRejectedException
+                | ShellCommandUnresponsiveException
+                | IOException e) {
+            CLog.e("Exception while attempting to read filesystem of '%s'", externalStorePath);
+            CLog.e(e);
+            return null;
+        }
+        String output = receiver.getOutput();
+        Matcher matcher = NativeDevice.DF_PATTERN.matcher(output);
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+        CLog.e("No match for filesystem in df output:\n%s", output);
+        return null;
     }
 }
