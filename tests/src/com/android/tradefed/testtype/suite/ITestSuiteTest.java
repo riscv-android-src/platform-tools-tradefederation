@@ -46,6 +46,7 @@ import com.android.tradefed.device.TcpDevice;
 import com.android.tradefed.device.metric.BaseDeviceMetricCollector;
 import com.android.tradefed.device.metric.DeviceMetricData;
 import com.android.tradefed.device.metric.IMetricCollector;
+import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.guice.InvocationScope;
 import com.android.tradefed.guice.InvocationScopeModule;
 import com.android.tradefed.invoker.IInvocationContext;
@@ -1693,7 +1694,7 @@ public class ITestSuiteTest {
         try {
             mTestSuite.getAbis(mMockDevice);
             fail("Should have thrown an exception.");
-        } catch (IllegalArgumentException expected) {
+        } catch (HarnessRuntimeException expected) {
             // Expected
             assertEquals(
                     "Couldn't determinate the abi of the device 'SERIAL'.", expected.getMessage());
@@ -1859,8 +1860,8 @@ public class ITestSuiteTest {
                 EasyMock.eq("in-progress"), EasyMock.eq(0), EasyMock.eq(0), EasyMock.anyLong());
         FailureDescription error =
                 FailureDescription.create(
-                                "Module in-progress was interrupted after starting. Results might not be "
-                                        + "accurate or complete.")
+                                "Module in-progress was interrupted after starting. Results might"
+                                        + " not be accurate or complete.")
                         .setFailureStatus(FailureStatus.NOT_EXECUTED);
         mMockListener.testRunFailed(error);
         mMockListener.testRunEnded(

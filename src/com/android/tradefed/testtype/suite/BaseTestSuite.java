@@ -68,8 +68,8 @@ public class BaseTestSuite extends ITestSuite {
             name = INCLUDE_FILTER_OPTION,
             description =
                     "the include module filters to apply. Format: '[abi] <module-name> [test]'."
-                            + " See documentation:"
-                            + "https://source.android.com/devices/tech/test_infra/tradefed/testing/through-suite/option-passing",
+                        + " See documentation:"
+                        + "https://source.android.com/devices/tech/test_infra/tradefed/testing/through-suite/option-passing",
             importance = Importance.ALWAYS)
     private Set<String> mIncludeFilters = new HashSet<>();
 
@@ -77,8 +77,8 @@ public class BaseTestSuite extends ITestSuite {
             name = EXCLUDE_FILTER_OPTION,
             description =
                     "the exclude module filters to apply. Format: '[abi] <module-name> [test]'."
-                            + " See documentation:"
-                            + "https://source.android.com/devices/tech/test_infra/tradefed/testing/through-suite/option-passing",
+                        + " See documentation:"
+                        + "https://source.android.com/devices/tech/test_infra/tradefed/testing/through-suite/option-passing",
             importance = Importance.ALWAYS)
     private Set<String> mExcludeFilters = new HashSet<>();
 
@@ -335,8 +335,11 @@ public class BaseTestSuite extends ITestSuite {
                         InfraErrorIdentifier.OPTION_CONFIGURATION_ERROR);
             }
             return loadedTests;
-        } catch (DeviceNotAvailableException | FileNotFoundException e) {
-            throw new RuntimeException(e);
+        } catch (DeviceNotAvailableException e) {
+            throw new HarnessRuntimeException(e.getMessage(), e);
+        } catch (FileNotFoundException fnfe) {
+            throw new HarnessRuntimeException(
+                    fnfe.getMessage(), fnfe, InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
         }
     }
 
