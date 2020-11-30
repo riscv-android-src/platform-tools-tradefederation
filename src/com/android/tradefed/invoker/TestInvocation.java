@@ -381,7 +381,7 @@ public class TestInvocation implements ITestInvocation {
                 }
             }
             Map<ITestDevice, FreeDeviceState> devicesStates =
-                    handleAndLogReleaseState(context, exception);
+                    handleAndLogReleaseState(context, exception, tearDownException);
             if (config.getCommandOptions().earlyDeviceRelease()) {
                 context.markReleasedEarly();
                 for (IScheduledInvocationListener scheduleListener : mSchedulerListeners) {
@@ -1135,7 +1135,13 @@ public class TestInvocation implements ITestInvocation {
     }
 
     private Map<ITestDevice, FreeDeviceState> handleAndLogReleaseState(
-            IInvocationContext context, Throwable exception) {
+            IInvocationContext context, Throwable exception, Throwable tearDownException) {
+        if (exception == null && tearDownException != null) {
+            exception = tearDownException;
+        } else if (tearDownException instanceof DeviceNotAvailableException) {
+            // Use what we consider a later & higher priority error
+            exception = tearDownException;
+        }
         // Capture the FreeDeviceState of the primary device
         Map<ITestDevice, FreeDeviceState> devicesStates =
                 CommandScheduler.createReleaseMap(context, exception);
