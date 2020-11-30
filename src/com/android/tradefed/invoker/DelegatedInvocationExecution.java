@@ -105,7 +105,7 @@ public class DelegatedInvocationExecution extends InvocationExecution {
         try (PrintWriter pw = new PrintWriter(dumpConfig)) {
             config.dumpXml(pw);
         }
-        logAndCleanFile(dumpConfig, LogDataType.XML, listener);
+        logAndCleanFile(dumpConfig, LogDataType.HARNESS_CONFIG, listener);
 
         if (config.getConfigurationObject(TradefedDelegator.DELEGATE_OBJECT) == null) {
             throw new ConfigurationException(
