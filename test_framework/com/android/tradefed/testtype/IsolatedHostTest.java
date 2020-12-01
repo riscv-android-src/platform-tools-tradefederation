@@ -24,7 +24,6 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
-import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.isolation.FilterSpec;
 import com.android.tradefed.isolation.JUnitEvent;
@@ -55,13 +54,14 @@ import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -160,16 +160,18 @@ public class IsolatedHostTest
                             + " 'android-all-R-robolectric-r0.jar'")
     private String mAndroidAllName = "android-all-S-robolectric-r0.jar";
 
+    @Option(
+            name = TestTimeoutEnforcer.TEST_CASE_TIMEOUT_OPTION,
+            description = TestTimeoutEnforcer.TEST_CASE_TIMEOUT_DESCRIPTION)
+    private Duration mTestCaseTimeout = Duration.ofSeconds(0L);
+
     private IConfiguration mConfig;
-    private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
     private Set<String> mIncludeFilters = new HashSet<>();
     private Set<String> mExcludeFilters = new HashSet<>();
     private boolean mCollectTestsOnly = false;
 
     private static final String ROOT_DIR = "ROOT_DIR";
-    private static final List<String> ISOLATION_JARS =
-            new ArrayList<>(Arrays.asList("tradefed-isolation.jar"));
     private ServerSocket mServer = null;
 
     /** {@inheritDoc} */
@@ -220,7 +222,7 @@ public class IsolatedHostTest
                                 .addAllIncludeAnnotations(mIncludeAnnotations)
                                 .addAllExcludeAnnotations(mExcludeAnnotations));
             }
-            this.executeTests(socket, listener, paramsBuilder.build());
+            executeTests(socket, listener, paramsBuilder.build());
 
             RunnerMessage.newBuilder()
                     .setCommand(RunnerOp.RUNNER_OP_STOP)
@@ -407,6 +409,8 @@ public class IsolatedHostTest
     private void executeTests(
             Socket socket, ITestInvocationListener listener, TestParameters params)
             throws IOException {
+        // If needed apply the wrapping listeners like timeout enforcer.
+        listener = wrapListener(listener);
         RunnerMessage.newBuilder()
                 .setCommand(RunnerOp.RUNNER_OP_RUN_TEST)
                 .setParams(params)
@@ -703,5 +707,14 @@ public class IsolatedHostTest
     @VisibleForTesting
     protected void setServer(ServerSocket server) {
         mServer = server;
+    }
+
+    private ITestInvocationListener wrapListener(ITestInvocationListener listener) {
+        if (mTestCaseTimeout.toMillis() > 0L) {
+            listener =
+                    new TestTimeoutEnforcer(
+                            mTestCaseTimeout.toMillis(), TimeUnit.MILLISECONDS, listener);
+        }
+        return listener;
     }
 }
