@@ -33,10 +33,12 @@ import com.android.tradefed.isolation.RunnerOp;
 import com.android.tradefed.isolation.RunnerReply;
 import com.android.tradefed.isolation.TestParameters;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.RunUtil;
+import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.SystemUtil;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -225,14 +227,12 @@ public class IsolatedHostTest
                     .build()
                     .writeDelimitedTo(socket.getOutputStream());
         } catch (IOException e) {
-            listener.testRunFailed(e.getMessage());
-        } catch (ClassNotFoundException e) {
-            listener.testRunFailed(e.getMessage());
+            listener.testRunFailed(StreamUtil.getStackTrace(e));
         }
     }
 
     /** Assembles the command arguments to execute the subprocess runner. */
-    public List<String> compileCommandArgs(String classpath) throws ClassNotFoundException {
+    public List<String> compileCommandArgs(String classpath) {
         List<String> cmdArgs = new ArrayList<>();
 
         if (mJdkFolder == null) {
@@ -312,7 +312,7 @@ public class IsolatedHostTest
      *
      * @return a string specifying the colon separated classpath.
      */
-    private String compileClassPath() throws ClassNotFoundException {
+    private String compileClassPath() {
         List<String> paths = new ArrayList<>();
         File testDir = findTestDirectory();
 
@@ -439,7 +439,10 @@ public class IsolatedHostTest
                                             new TestDescription(
                                                     event.getClassName(), event.getMethodName());
                                     listener.testFailed(desc, event.getMessage());
-                                    listener.testEnded(desc, new HashMap<String, String>());
+                                    listener.testEnded(
+                                            desc,
+                                            event.getEndTime(),
+                                            new HashMap<String, Metric>());
                                     break;
                                 case TOPIC_ASSUMPTION_FAILURE:
                                     desc =
@@ -451,13 +454,16 @@ public class IsolatedHostTest
                                     desc =
                                             new TestDescription(
                                                     event.getClassName(), event.getMethodName());
-                                    listener.testStarted(desc);
+                                    listener.testStarted(desc, event.getStartTime());
                                     break;
                                 case TOPIC_FINISHED:
                                     desc =
                                             new TestDescription(
                                                     event.getClassName(), event.getMethodName());
-                                    listener.testEnded(desc, new HashMap<String, String>());
+                                    listener.testEnded(
+                                            desc,
+                                            event.getEndTime(),
+                                            new HashMap<String, Metric>());
                                     break;
                                 case TOPIC_IGNORED:
                                     desc =
@@ -471,15 +477,14 @@ public class IsolatedHostTest
                                     break;
                                 case TOPIC_RUN_FINISHED:
                                     listener.testRunEnded(
-                                            event.getElapsedTime(), new HashMap<String, String>());
+                                            event.getElapsedTime(), new HashMap<String, Metric>());
                                     break;
                                 default:
                             }
-                        } else {
                         }
                 }
             } catch (SocketTimeoutException e) {
-                listener.testRunFailed(e.getMessage());
+                listener.testRunFailed(StreamUtil.getStackTrace(e));
             }
         }
     }
