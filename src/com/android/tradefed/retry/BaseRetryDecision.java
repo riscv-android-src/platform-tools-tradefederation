@@ -34,6 +34,7 @@ import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFilterReceiver;
 import com.android.tradefed.testtype.retry.IAutoRetriableTest;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
+import com.android.tradefed.testtype.suite.SuiteTestFilter;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -88,6 +89,13 @@ public class BaseRetryDecision implements IRetryDecision {
                 "Whether or not to enable the new auto-retry. This is a feature flag for testing."
     )
     private boolean mEnableAutoRetry = true;
+
+    @Option(
+            name = "skip-retrying-list",
+            description =
+                    "If a test in the list, skip retrying it. The format is the same as the "
+                            + "SuiteTestFilter.")
+    private Set<String> mSkipRetryingList = new HashSet<>();
 
     private IInvocationContext mContext;
 
@@ -159,6 +167,13 @@ public class BaseRetryDecision implements IRetryDecision {
                 break;
         }
 
+        // TODO(b/179206516): Skip known failure list in class/method Level.
+        // Currently, only support skip list in module level.
+        if (isInSkipList(module)) {
+            CLog.d("Skip retrying known failure test of %s", module.getId());
+            return false;
+        }
+
         mStatistics.addResultsFromRun(previousResults);
         if (test instanceof ITestFilterReceiver) {
             // TODO(b/77548917): Right now we only support ITestFilterReceiver. We should expect to
@@ -228,6 +243,31 @@ public class BaseRetryDecision implements IRetryDecision {
             }
         }
         return previousPassed;
+    }
+
+    private boolean isInSkipList(ModuleDefinition module) {
+        if (module != null) {
+            String moduleId = module.getId();
+            if (moduleId != null) {
+                SuiteTestFilter moduleIdFilter = SuiteTestFilter.createFrom(moduleId);
+                String abi = moduleIdFilter.getAbi();
+                String name = moduleIdFilter.getName();
+                for (String skipTest : mSkipRetryingList) {
+                    SuiteTestFilter skipRetryingFilter = SuiteTestFilter.createFrom(skipTest);
+                    String skipAbi = skipRetryingFilter.getAbi();
+                    String skipName = skipRetryingFilter.getName();
+                    if (abi != null
+                            && skipAbi != null
+                            && name != null
+                            && skipName != null
+                            && abi.equals(skipAbi)
+                            && name.equals(skipName)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     /** Returns the list of failure from the previous results. */
