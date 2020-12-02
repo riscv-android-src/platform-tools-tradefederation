@@ -27,7 +27,6 @@ public final class UserInfo {
     public static final int FLAG_PRIMARY = 0x00000001;
     public static final int FLAG_GUEST = 0x00000004;
     public static final int FLAG_RESTRICTED = 0x00000008;
-    public static final int FLAG_EPHEMERAL = 0x00000100;
     public static final int FLAG_MANAGED_PROFILE = 0x00000020;
     public static final int USER_SYSTEM = 0;
 
@@ -122,10 +121,6 @@ public final class UserInfo {
 
     public boolean isManagedProfile() {
         return (mFlag & FLAG_MANAGED_PROFILE) == FLAG_MANAGED_PROFILE;
-    }
-
-    public boolean isEphemeral() {
-        return (mFlag & FLAG_EPHEMERAL) == FLAG_EPHEMERAL;
     }
 
     /** Return whether this instance is of the specified type. */

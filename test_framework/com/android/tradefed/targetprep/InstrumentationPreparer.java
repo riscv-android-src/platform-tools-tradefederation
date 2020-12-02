@@ -28,7 +28,6 @@ import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
-import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.testtype.InstrumentationTest;
 import com.android.tradefed.util.RunUtil;
 
@@ -138,10 +137,7 @@ public class InstrumentationPreparer extends BaseTargetPreparer {
             String msg = String.format("Failed to run instrumentation %s on %s. failed tests = %s",
                     mPackageName, device.getSerialNumber(), getFailedTestNames(listener));
             CLog.w(msg);
-            throw new BuildError(
-                    msg,
-                    device.getDeviceDescriptor(),
-                    DeviceErrorIdentifier.DEVICE_UNEXPECTED_RESPONSE);
+            throw new BuildError(msg, device.getDeviceDescriptor());
         }
     }
 

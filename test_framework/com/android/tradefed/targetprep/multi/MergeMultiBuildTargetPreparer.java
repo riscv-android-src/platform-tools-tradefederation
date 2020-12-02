@@ -21,7 +21,6 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.invoker.IInvocationContext;
-import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.TargetSetupError;
@@ -59,9 +58,8 @@ public final class MergeMultiBuildTargetPreparer extends BaseMultiTargetPreparer
     private Set<String> mKeysToMove = new HashSet<>();
 
     @Override
-    public void setUp(TestInformation testInfo)
+    public void setUp(IInvocationContext context)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
-        IInvocationContext context = testInfo.getContext();
         // First assert that the two device are found
         IBuildInfo providerInfo = context.getBuildInfo(mProvider);
         if (providerInfo == null) {

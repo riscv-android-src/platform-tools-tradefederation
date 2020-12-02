@@ -93,6 +93,11 @@ public class LocalAndroidVirtualDeviceTest {
             currentRunUtil = null;
             return returnValue;
         }
+
+        @Override
+        File getTmpDir() {
+            return mTmpDir;
+        }
     }
 
     private static final String STUB_SERIAL_NUMBER = "local-virtual-device-0";
@@ -138,6 +143,7 @@ public class LocalAndroidVirtualDeviceTest {
     private File mAcloud;
     private File mImageZip;
     private File mHostPackageTarGzip;
+    private File mTmpDir;
 
     // Mock object.
     private IBuildInfo mMockBuildInfo;
@@ -151,6 +157,7 @@ public class LocalAndroidVirtualDeviceTest {
         mImageZip = ZipUtil.createZip(new ArrayList<File>());
         mHostPackageTarGzip = FileUtil.createTempFile("cvd-host_package", ".tar.gz");
         createHostPackage(mHostPackageTarGzip);
+        mTmpDir = FileUtil.createTempDir("LocalAvdTmp");
 
         mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
         EasyMock.expect(mMockBuildInfo.getFile(EasyMock.eq(BuildInfoFileKey.DEVICE_IMAGE)))
@@ -185,9 +192,11 @@ public class LocalAndroidVirtualDeviceTest {
         FileUtil.deleteFile(mAcloud);
         FileUtil.deleteFile(mImageZip);
         FileUtil.deleteFile(mHostPackageTarGzip);
+        FileUtil.recursiveDelete(mTmpDir);
         mAcloud = null;
         mImageZip = null;
         mHostPackageTarGzip = null;
+        mTmpDir = null;
     }
 
     private static void createHostPackage(File hostPackageTarGzip) throws IOException {
@@ -212,10 +221,9 @@ public class LocalAndroidVirtualDeviceTest {
             String reportString,
             Capture<String> reportFile,
             Capture<String> hostPackageDir,
-            Capture<String> imageDir,
-            Capture<String> instanceDir) {
+            Capture<String> imageDir) {
         IRunUtil runUtil = EasyMock.createMock(IRunUtil.class);
-        runUtil.setEnvVariable(EasyMock.eq("TMPDIR"), EasyMock.anyObject());
+        runUtil.setEnvVariable(EasyMock.eq("TMPDIR"), EasyMock.eq(mTmpDir.getAbsolutePath()));
 
         IAnswer<CommandResult> writeToReportFile =
                 new IAnswer() {
@@ -245,8 +253,6 @@ public class LocalAndroidVirtualDeviceTest {
                                 EasyMock.eq("--local-instance"),
                                 EasyMock.eq("--local-image"),
                                 EasyMock.capture(imageDir),
-                                EasyMock.eq("--local-instance-dir"),
-                                EasyMock.capture(instanceDir),
                                 EasyMock.eq("--local-tool"),
                                 EasyMock.capture(hostPackageDir),
                                 EasyMock.eq("--report_file"),
@@ -263,7 +269,7 @@ public class LocalAndroidVirtualDeviceTest {
 
     private IRunUtil mockAcloudDelete(CommandStatus status) {
         IRunUtil runUtil = EasyMock.createMock(IRunUtil.class);
-        runUtil.setEnvVariable(EasyMock.eq("TMPDIR"), EasyMock.anyObject());
+        runUtil.setEnvVariable(EasyMock.eq("TMPDIR"), EasyMock.eq(mTmpDir.getAbsolutePath()));
 
         CommandResult result = new CommandResult(status);
         result.setStderr("acloud delete");
@@ -323,15 +329,13 @@ public class LocalAndroidVirtualDeviceTest {
         Capture<String> reportFile = new Capture<String>();
         Capture<String> hostPackageDir = new Capture<String>();
         Capture<String> imageDir = new Capture<String>();
-        Capture<String> instanceDir = new Capture<String>();
         IRunUtil acloudCreateRunUtil =
                 mockAcloudCreate(
                         CommandStatus.SUCCESS,
                         SUCCESS_REPORT_STRING,
                         reportFile,
                         hostPackageDir,
-                        imageDir,
-                        instanceDir);
+                        imageDir);
 
         IRunUtil acloudDeleteRunUtil = mockAcloudDelete(CommandStatus.SUCCESS);
 
@@ -352,15 +356,15 @@ public class LocalAndroidVirtualDeviceTest {
 
         File capturedHostPackageDir = new File(hostPackageDir.getValue());
         File capturedImageDir = new File(imageDir.getValue());
-        File capturedInstanceDir = new File(instanceDir.getValue());
         Assert.assertTrue(capturedHostPackageDir.isDirectory());
         Assert.assertTrue(capturedImageDir.isDirectory());
-        Assert.assertTrue(capturedInstanceDir.isDirectory());
 
         // Set the device to be online.
         mLocalAvd.setIDevice(mockOnlineDevice);
         // Create the logs and configuration that the local AVD object expects.
-        File runtimeDir = new File(capturedInstanceDir, "cuttlefish_runtime");
+        File runtimeDir =
+                FileUtil.getFileForPath(
+                        mTmpDir, "acloud_cvd_temp", INSTANCE_NAME, "cuttlefish_runtime");
         Assert.assertTrue(runtimeDir.mkdirs());
         createEmptyFiles(
                 runtimeDir, "kernel.log", "logcat", "launcher.log", "cuttlefish_config.json");
@@ -375,7 +379,6 @@ public class LocalAndroidVirtualDeviceTest {
         Assert.assertFalse(new File(reportFile.getValue()).exists());
         Assert.assertFalse(capturedHostPackageDir.exists());
         Assert.assertFalse(capturedImageDir.exists());
-        Assert.assertFalse(capturedInstanceDir.exists());
     }
 
     /** Test that the acloud command reports failure. */
@@ -384,15 +387,13 @@ public class LocalAndroidVirtualDeviceTest {
         Capture<String> reportFile = new Capture<String>();
         Capture<String> hostPackageDir = new Capture<String>();
         Capture<String> imageDir = new Capture<String>();
-        Capture<String> instanceDir = new Capture<String>();
         IRunUtil acloudCreateRunUtil =
                 mockAcloudCreate(
                         CommandStatus.SUCCESS,
                         FAILURE_REPORT_STRING,
                         reportFile,
                         hostPackageDir,
-                        imageDir,
-                        instanceDir);
+                        imageDir);
 
         IRunUtil acloudDeleteRunUtil = mockAcloudDelete(CommandStatus.FAILED);
 
@@ -415,10 +416,8 @@ public class LocalAndroidVirtualDeviceTest {
 
         File capturedHostPackageDir = new File(hostPackageDir.getValue());
         File capturedImageDir = new File(imageDir.getValue());
-        File capturedInstanceDir = new File(instanceDir.getValue());
         Assert.assertTrue(capturedHostPackageDir.isDirectory());
         Assert.assertTrue(capturedImageDir.isDirectory());
-        Assert.assertTrue(capturedInstanceDir.isDirectory());
 
         // Test tearDown.
         mLocalAvd.currentRunUtil = acloudDeleteRunUtil;
@@ -429,7 +428,6 @@ public class LocalAndroidVirtualDeviceTest {
         Assert.assertFalse(new File(reportFile.getValue()).exists());
         Assert.assertFalse(capturedHostPackageDir.exists());
         Assert.assertFalse(capturedImageDir.exists());
-        Assert.assertFalse(capturedInstanceDir.exists());
     }
 
     /** Test that the acloud command fails, and the report is empty. */
@@ -438,15 +436,8 @@ public class LocalAndroidVirtualDeviceTest {
         Capture<String> reportFile = new Capture<String>();
         Capture<String> hostPackageDir = new Capture<String>();
         Capture<String> imageDir = new Capture<String>();
-        Capture<String> instanceDir = new Capture<String>();
         IRunUtil acloudCreateRunUtil =
-                mockAcloudCreate(
-                        CommandStatus.FAILED,
-                        "",
-                        reportFile,
-                        hostPackageDir,
-                        imageDir,
-                        instanceDir);
+                mockAcloudCreate(CommandStatus.FAILED, "", reportFile, hostPackageDir, imageDir);
 
         ITestLogger testLogger = EasyMock.createMock(ITestLogger.class);
 
@@ -467,10 +458,8 @@ public class LocalAndroidVirtualDeviceTest {
 
         File capturedHostPackageDir = new File(hostPackageDir.getValue());
         File capturedImageDir = new File(imageDir.getValue());
-        File capturedInstanceDir = new File(instanceDir.getValue());
         Assert.assertTrue(capturedHostPackageDir.isDirectory());
         Assert.assertTrue(capturedImageDir.isDirectory());
-        Assert.assertTrue(capturedInstanceDir.isDirectory());
 
         // Test tearDown.
         mLocalAvd.currentRunUtil = null;
@@ -481,6 +470,5 @@ public class LocalAndroidVirtualDeviceTest {
         Assert.assertFalse(new File(reportFile.getValue()).exists());
         Assert.assertFalse(capturedHostPackageDir.exists());
         Assert.assertFalse(capturedImageDir.exists());
-        Assert.assertFalse(capturedInstanceDir.exists());
     }
 }

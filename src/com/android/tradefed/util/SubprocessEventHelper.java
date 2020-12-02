@@ -38,8 +38,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
-import javax.annotation.Nonnull;
-
 /**
  * Helper to serialize/deserialize the events to be passed to the log.
  */
@@ -184,9 +182,8 @@ public class SubprocessEventHelper {
                             }
 
                             @Override
-                            public @Nonnull FailureStatus status() {
-                                FailureStatus status = mFailure.getFailureStatus();
-                                return (status == null ? FailureStatus.UNSET : status);
+                            public FailureStatus status() {
+                                return mFailure.getFailureStatus();
                             }
                         };
                 mFailure.setErrorIdentifier(errorId);
@@ -205,7 +202,6 @@ public class SubprocessEventHelper {
                     if (mFailure.getErrorIdentifier() != null) {
                         tags.putOpt(ERROR_NAME_KEY, mFailure.getErrorIdentifier().name());
                         tags.putOpt(ERROR_CODE_KEY, mFailure.getErrorIdentifier().code());
-                        tags.putOpt(FAILURE_STATUS_KEY, mFailure.getErrorIdentifier().status());
                     }
                 }
                 if (mReason != null) {
@@ -328,9 +324,8 @@ public class SubprocessEventHelper {
                                 }
 
                                 @Override
-                                public @Nonnull FailureStatus status() {
-                                    FailureStatus status = mFailure.getFailureStatus();
-                                    return (status == null ? FailureStatus.UNSET : status);
+                                public FailureStatus status() {
+                                    return mFailure.getFailureStatus();
                                 }
                             };
                     mFailure.setErrorIdentifier(errorId);
@@ -344,14 +339,12 @@ public class SubprocessEventHelper {
             try {
                 if (mFailure != null) {
                     tags.put(REASON_KEY, mFailure.getErrorMessage());
+                    tags.putOpt(FAILURE_STATUS_KEY, mFailure.getFailureStatus());
                     tags.putOpt(ACTION_IN_PROGRESS_KEY, mFailure.getActionInProgress());
                     tags.putOpt(ERROR_ORIGIN_KEY, mFailure.getOrigin());
                     if (mFailure.getErrorIdentifier() != null) {
                         tags.putOpt(ERROR_NAME_KEY, mFailure.getErrorIdentifier().name());
                         tags.putOpt(ERROR_CODE_KEY, mFailure.getErrorIdentifier().code());
-                        tags.putOpt(FAILURE_STATUS_KEY, mFailure.getErrorIdentifier().status());
-                    } else {
-                        tags.putOpt(FAILURE_STATUS_KEY, mFailure.getFailureStatus());
                     }
                 }
                 if (mCause != null) {
@@ -541,12 +534,7 @@ public class SubprocessEventHelper {
         public TestLogEventInfo(JSONObject jsonObject) throws JSONException {
             mDataName = jsonObject.getString(DATA_NAME_KEY);
             jsonObject.remove(DATA_NAME_KEY);
-            try {
-                mLogType = LogDataType.valueOf(jsonObject.getString(DATA_TYPE_KEY));
-            } catch (IllegalArgumentException e) {
-                CLog.e("Failed to parse type: %s", jsonObject.getString(DATA_TYPE_KEY));
-                mLogType = LogDataType.TEXT;
-            }
+            mLogType = LogDataType.valueOf(jsonObject.getString(DATA_TYPE_KEY));
             jsonObject.remove(DATA_TYPE_KEY);
             mDataFile = new File(jsonObject.getString(DATA_FILE_KEY));
         }

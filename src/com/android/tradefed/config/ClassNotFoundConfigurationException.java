@@ -15,7 +15,7 @@
  */
 package com.android.tradefed.config;
 
-import com.android.tradefed.result.error.ErrorIdentifier;
+import com.android.tradefed.sandbox.SandboxConfigurationException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -27,39 +27,39 @@ public class ClassNotFoundConfigurationException extends ConfigurationException 
     private Map<String, String> mRejectedObjects;
 
     /**
-     * Creates a {@link ClassNotFoundConfigurationException}.
+     * Creates a {@link SandboxConfigurationException}.
+     *
+     * @param msg a meaningful error message
+     */
+    public ClassNotFoundConfigurationException(String msg) {
+        super(msg);
+    }
+
+    /**
+     * Creates a {@link SandboxConfigurationException}.
      *
      * @param msg a meaningful error message
      * @param cause the {@link Throwable} that represents the original cause of the error
-     * @param error The {@link ErrorIdentifier} associated with the exception
      * @param className the class of the object that was not found
      * @param objectType the Tradefed object type of the object that was not found
      */
     public ClassNotFoundConfigurationException(
-            String msg,
-            Throwable cause,
-            ErrorIdentifier error,
-            String className,
-            String objectType) {
-        super(msg, cause, error);
+            String msg, Throwable cause, String className, String objectType) {
+        super(msg, cause);
         mRejectedObjects = new HashMap<>();
         mRejectedObjects.put(className, objectType);
     }
 
     /**
-     * Creates a {@link ClassNotFoundConfigurationException}.
+     * Creates a {@link SandboxConfigurationException}.
      *
      * @param msg a meaningful error message
      * @param cause the {@link Throwable} that represents the original cause of the error
-     * @param error The {@link ErrorIdentifier} associated with the exception
      * @param rejectedObjects The map of objects that failed loading.
      */
     public ClassNotFoundConfigurationException(
-            String msg,
-            Throwable cause,
-            ErrorIdentifier error,
-            Map<String, String> rejectedObjects) {
-        super(msg, cause, error);
+            String msg, Throwable cause, Map<String, String> rejectedObjects) {
+        super(msg, cause);
         mRejectedObjects = rejectedObjects;
     }
 

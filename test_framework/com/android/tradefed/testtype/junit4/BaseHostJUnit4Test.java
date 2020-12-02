@@ -479,8 +479,6 @@ public abstract class BaseHostJUnit4Test implements IAbiReceiver, ITestInformati
                 options.isHiddenApiCheckDisabled(),
                 options.isTestApiCheckDisabled(),
                 options.isIsolatedStorageDisabled(),
-                options.isWindowAnimationDisabled(),
-                options.isRestartDisabled(),
                 options.getInstrumentationArgs(),
                 options.getExtraListeners());
     }
@@ -627,65 +625,6 @@ public abstract class BaseHostJUnit4Test implements IAbiReceiver, ITestInformati
             Map<String, String> instrumentationArgs,
             List<ITestLifeCycleReceiver> extraListeners)
             throws DeviceNotAvailableException {
-        return runDeviceTests(
-                device,
-                runner,
-                pkgName,
-                testClassName,
-                testMethodName,
-                userId,
-                testTimeoutMs,
-                maxTimeToOutputMs,
-                maxInstrumentationTimeoutMs,
-                checkResults,
-                isHiddenApiCheckDisabled,
-                isTestApiCheckDisabled,
-                isIsolatedStorageDisabled,
-                isWindowAnimationDisabled,
-                false, // leave restart enabled
-                instrumentationArgs,
-                extraListeners);
-    }
-
-    /**
-     * Method to run an installed instrumentation package. Use {@link #getLastDeviceRunResults()}
-     * right after to get the details of results.
-     *
-     * @param device the device agaisnt which to run the instrumentation.
-     * @param pkgName the name of the package to run.
-     * @param testClassName the name of the test class to run.
-     * @param testMethodName the name of the test method in the class to be run.
-     * @param userId the id of the user to run the test against. can be null.
-     * @param testTimeoutMs the timeout in millisecond to be applied to each test case.
-     * @param maxTimeToOutputMs the max timeout the test has to start outputting something.
-     * @param maxInstrumentationTimeoutMs the max timeout the full instrumentation has to complete.
-     * @param checkResults whether or not the results are checked for crashes.
-     * @param isHiddenApiCheckDisabled whether or not we should disable the hidden api check.
-     * @param isTestApiCheckDisabled whether or not we should disable the test api check.
-     * @param isIsolatedStorageDisabled whether or not we should disable isolated storage.
-     * @param isWindowAnimationDisabled whether or not we should disable window animation.
-     * @param instrumentationArgs arguments to pass to the instrumentation.
-     * @return True if it succeeded without failure. False otherwise.
-     */
-    public final boolean runDeviceTests(
-            ITestDevice device,
-            String runner,
-            String pkgName,
-            String testClassName,
-            String testMethodName,
-            Integer userId,
-            Long testTimeoutMs,
-            Long maxTimeToOutputMs,
-            Long maxInstrumentationTimeoutMs,
-            boolean checkResults,
-            boolean isHiddenApiCheckDisabled,
-            boolean isTestApiCheckDisabled,
-            boolean isIsolatedStorageDisabled,
-            boolean isWindowAnimationDisabled,
-            boolean isRestartDisabled,
-            Map<String, String> instrumentationArgs,
-            List<ITestLifeCycleReceiver> extraListeners)
-            throws DeviceNotAvailableException {
         TestRunResult runResult =
                 doRunTests(
                         device,
@@ -701,7 +640,6 @@ public abstract class BaseHostJUnit4Test implements IAbiReceiver, ITestInformati
                         isTestApiCheckDisabled,
                         isIsolatedStorageDisabled,
                         isWindowAnimationDisabled,
-                        isRestartDisabled,
                         instrumentationArgs,
                         extraListeners);
         mLatestInstruRes = runResult;
@@ -767,7 +705,6 @@ public abstract class BaseHostJUnit4Test implements IAbiReceiver, ITestInformati
             boolean isTestApiCheckDisabled,
             boolean isIsolatedStorageDisabled,
             boolean isWindowAnimationDisabled,
-            boolean isRestartDisabled,
             Map<String, String> instrumentationArgs,
             List<ITestLifeCycleReceiver> extraListeners)
             throws DeviceNotAvailableException {
@@ -792,10 +729,6 @@ public abstract class BaseHostJUnit4Test implements IAbiReceiver, ITestInformati
         // window-animation flag only exists in ICS and after
         if (isWindowAnimationDisabled && apiLevel >= 14) {
             runOptions += "--no-window-animation ";
-        }
-        // restart flag only exists in S and after.
-        if (isRestartDisabled && device.checkApiLevelAgainstNextRelease(31)) {
-            runOptions += "--no-restart ";
         }
 
         if (getAbi() != null) {

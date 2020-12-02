@@ -106,14 +106,6 @@ public class StubDevice implements IDevice, Serializable {
      * {@inheritDoc}
      */
     @Override
-    public String getAvdPath() {
-        return null;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public Client getClient(String applicationName) {
         return null;
     }

@@ -202,10 +202,6 @@ java_library_host {
 // feed to metalava when generating the stubs.
 tradefed_docs_only_args = " -hide 101 -hide 111 -hide 113 -hide 125 -hide 126 -hide 127 -hide 128 "
 
-tradefed_doc_stubs_args = " -hide UnresolvedLink -hide HiddenSuperclass " +
-  "-hide DeprecationMismatch -hide RequiresPermission " +
-  "-hide BroadcastBehavior -hide SdkConstant -hide Todo "
-
 droidstubs_host {
     name: "tradefed-doc-stubs",
     srcs: [
@@ -215,7 +211,7 @@ droidstubs_host {
         "loganalysis",
         "tradefed",
     ],
-    args: tradefed_doc_stubs_args + "--package",
+    args: tradefed_docs_only_args + "--package",
     create_doc_stubs: true,
 }
 

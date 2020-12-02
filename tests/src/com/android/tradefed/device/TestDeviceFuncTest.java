@@ -857,25 +857,6 @@ public class TestDeviceFuncTest implements IDeviceTest {
         }
     }
 
-    /** Test that {@link TestDevice#pullFileContents} works correctly. */
-    @Test
-    public void testPullFileContents() throws Exception {
-        final String path = "/data/misc_ce/0/apexrollback/foo/test_file.txt";
-        final String content = "The quick brown fox jumps over the lazy dog";
-        try {
-            // need root to access files under /data/misc_ce
-            mTestDevice.enableAdbRoot();
-            assertTrue(mTestDevice.pushString(content, path));
-            // check the content is the same as what we just pushed
-            assertEquals(content, mTestDevice.pullFileContents(path));
-            mTestDevice.reboot();
-            // check the content remains the same after reboot
-            assertEquals(content, mTestDevice.pullFileContents(path));
-        } finally {
-            mTestDevice.disableAdbRoot();
-        }
-    }
-
     /**
      * Run the test app UI tests and return true if they all pass.
      */

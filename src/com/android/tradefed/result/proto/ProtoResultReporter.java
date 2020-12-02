@@ -327,8 +327,6 @@ public abstract class ProtoResultReporter
         if (failure.getErrorIdentifier() != null) {
             debugContext.setErrorName(failure.getErrorIdentifier().name());
             debugContext.setErrorCode(failure.getErrorIdentifier().code());
-            // Error Identifier dictates the status if it exists
-            debugBuilder.setFailureStatus(failure.getErrorIdentifier().status());
         }
         debugBuilder.setDebugInfoContext(debugContext.build());
 

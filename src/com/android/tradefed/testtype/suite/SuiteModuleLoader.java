@@ -80,7 +80,6 @@ public class SuiteModuleLoader {
     private boolean mAllowParameterizedModules = false;
     private boolean mAllowMainlineParameterizedModules = false;
     private boolean mOptimizeMainlineTest = false;
-    private boolean mIgnoreNonPreloadedMainlineModule = false;
     private boolean mAllowOptionalParameterizedModules = false;
     private ModuleParameters mForcedModuleParameter = null;
     private Set<ModuleParameters> mExcludedModuleParameters = new HashSet<>();
@@ -126,11 +125,6 @@ public class SuiteModuleLoader {
     /** Sets whether or not to optimize mainline test. */
     public final void setOptimizeMainlineTest(boolean allowed) {
         mOptimizeMainlineTest = allowed;
-    }
-
-    /** Sets whether or not to ignore installing the module if it is not preloaded. */
-    public final void setIgnoreNonPreloadedMainlineModule(boolean ignore) {
-        mIgnoreNonPreloadedMainlineModule = ignore;
     }
 
     /** Sets whether or not to allow optional parameterized modules. */
@@ -391,8 +385,7 @@ public class SuiteModuleLoader {
                                         param,
                                         abi,
                                         mContext,
-                                        mOptimizeMainlineTest,
-                                        mIgnoreNonPreloadedMainlineModule
+                                        mOptimizeMainlineTest
                                 );
                         skipCreatingBaseConfig = true;
                         IConfiguration paramConfig =

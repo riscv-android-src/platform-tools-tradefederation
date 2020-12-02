@@ -16,13 +16,10 @@
 package com.android.tradefed.testtype;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
-import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
-import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 
@@ -54,7 +51,6 @@ public class GoogleBenchmarkResultParserTest {
     private static final String GBENCH_OUTPUT_FILE_5 = "gbench_output5.json";
     private static final String GBENCH_OUTPUT_FILE_6 = "gbench_output6.json";
     private static final String GBENCH_OUTPUT_FILE_7 = "gbench_output7.json";
-    private static final String GBENCH_OUTPUT_FILE_8 = "gbench_output8.json";
 
     private static final String TEST_RUN = "test_run";
 
@@ -72,10 +68,8 @@ public class GoogleBenchmarkResultParserTest {
                     TEST_TYPE_DIR + File.separator + filename);
             BufferedReader reader = new BufferedReader(new InputStreamReader(gtestResultStream1));
             String line = null;
-            byte[] lineReturn = "\n".getBytes();
             while ((line = reader.readLine()) != null) {
                 output.addOutput(line.getBytes(), 0, line.length());
-                output.addOutput(lineReturn, 0, 1); // '\n' is not included in line.
             }
         }
         catch (NullPointerException e) {
@@ -184,7 +178,7 @@ public class GoogleBenchmarkResultParserTest {
     public void testParse_contextError() throws Exception {
         ITestInvocationListener mMockInvocationListener =
                 EasyMock.createMock(ITestInvocationListener.class);
-        mMockInvocationListener.testRunFailed((FailureDescription) EasyMock.anyObject());
+        mMockInvocationListener.testRunFailed((String)EasyMock.anyObject());
         EasyMock.replay(mMockInvocationListener);
         CollectingOutputReceiver contents =  readInFile(GBENCH_OUTPUT_FILE_3);
         GoogleBenchmarkResultParser resultParser =
@@ -301,27 +295,5 @@ public class GoogleBenchmarkResultParserTest {
         assertEquals("BM_addInts", results.get("name").getMeasurements().getSingleString());
         assertEquals("0", results.get("iterations").getMeasurements().getSingleString());
         assertEquals("ns", results.get("time_unit").getMeasurements().getSingleString());
-    }
-
-    /** Test proper failure is reported when test is aborted. */
-    @Test
-    public void testParse_aborted() throws Exception {
-        // The error reported with GBENCH_OUTPUT_FILE_8.
-        String errorMessage =
-                "Test aborted with the error: 'FontFamily must contain at least one font.'";
-
-        ITestInvocationListener mMockInvocationListener =
-                EasyMock.createMock(ITestInvocationListener.class);
-        Capture<FailureDescription> capture = new Capture<>();
-        mMockInvocationListener.testRunFailed(EasyMock.capture(capture));
-        EasyMock.replay(mMockInvocationListener);
-        CollectingOutputReceiver contents = readInFile(GBENCH_OUTPUT_FILE_8);
-        GoogleBenchmarkResultParser resultParser =
-                new GoogleBenchmarkResultParser(TEST_RUN, mMockInvocationListener);
-        resultParser.parse(contents);
-        EasyMock.verify(mMockInvocationListener);
-        FailureDescription failure = capture.getValue();
-        assertTrue(FailureStatus.TEST_FAILURE.equals(failure.getFailureStatus()));
-        assertEquals(failure.getErrorMessage(), errorMessage);
     }
 }

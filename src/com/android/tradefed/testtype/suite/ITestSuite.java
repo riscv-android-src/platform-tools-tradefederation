@@ -46,11 +46,9 @@ import com.android.tradefed.invoker.shard.token.TokenProperty;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
-import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLoggerReceiver;
 import com.android.tradefed.result.ResultForwarder;
-import com.android.tradefed.result.error.TestErrorIdentifier;
 import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.retry.RetryStrategy;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
@@ -957,11 +955,7 @@ public abstract class ITestSuite
         // Avoid messing with the final test count by making them empty runs.
         listener.testRunStarted(identifier + "_" + moduleName, 0, 0, System.currentTimeMillis());
         if (!failures.isEmpty()) {
-            FailureDescription description =
-                    FailureDescription.create(
-                                    String.format("%s failed '%s' checkers", moduleName, failures))
-                            .setErrorIdentifier(TestErrorIdentifier.MODULE_CHANGED_SYSTEM_STATUS);
-            listener.testRunFailed(description);
+            listener.testRunFailed(String.format("%s failed '%s' checkers", moduleName, failures));
         }
         listener.testRunEnded(
                 System.currentTimeMillis() - startTime, new HashMap<String, Metric>());

@@ -16,12 +16,12 @@
 
 package com.android.tradefed.targetprep;
 
+import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.UserInfo;
-import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 
 import java.util.Map;
@@ -43,9 +43,8 @@ public class SwitchUserTargetPreparer extends BaseTargetPreparer {
     private int mPreExecutionCurrentUser;
 
     @Override
-    public void setUp(TestInformation testInformation)
+    public void setUp(ITestDevice device, IBuildInfo buildInfo)
             throws TargetSetupError, DeviceNotAvailableException {
-        ITestDevice device = testInformation.getDevice();
 
         mPreExecutionCurrentUser = device.getCurrentUser();
         Map<Integer, UserInfo> userInfos = device.getUserInfos();
@@ -81,10 +80,10 @@ public class SwitchUserTargetPreparer extends BaseTargetPreparer {
     }
 
     @Override
-    public void tearDown(TestInformation testInformation, Throwable e)
+    public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
             throws DeviceNotAvailableException {
         // Restore the previous user as the foreground.
-        if (testInformation.getDevice().switchUser(mPreExecutionCurrentUser)) {
+        if (device.switchUser(mPreExecutionCurrentUser)) {
             CLog.d("Successfully switched back to user id: %d", mPreExecutionCurrentUser);
         } else {
             CLog.w("Could not switch back to the user id: %d", mPreExecutionCurrentUser);

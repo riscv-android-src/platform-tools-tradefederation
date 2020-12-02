@@ -15,11 +15,11 @@
  */
 package com.android.tradefed.targetprep;
 
+import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 
 import java.io.File;
@@ -45,14 +45,14 @@ public class PerfettoPreparer extends BaseTargetPreparer {
             description = "Full path to the binary version of perfetto config file.")
     private File mBinaryPerfettoConfigFile = null;
 
+
     @Override
-    public void setUp(TestInformation testInfo)
+    public void setUp(ITestDevice device, IBuildInfo buildInfo)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
 
         // If the encoded version is passed, push it to the device directly
         // under /data/misc/perfetto-traces/ and use it.
         if (mBinaryPerfettoConfigFile != null) {
-            ITestDevice device = testInfo.getDevice();
             if (!mBinaryPerfettoConfigFile.exists()) {
                 fail("Failed to find the local binary perfetto file", null, device);
             } else if (!device.pushFile(mBinaryPerfettoConfigFile, DEVICE_CONFIG_PATH)) {
@@ -80,7 +80,8 @@ public class PerfettoPreparer extends BaseTargetPreparer {
     }
 
     @Override
-    public void tearDown(TestInformation testInfo, Throwable e) throws DeviceNotAvailableException {
-        testInfo.getDevice().executeShellCommand("rm " + DEVICE_CONFIG_PATH);
+    public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
+            throws DeviceNotAvailableException {
+        device.executeShellCommand("rm " + DEVICE_CONFIG_PATH);
     }
 }

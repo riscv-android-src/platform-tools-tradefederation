@@ -17,11 +17,12 @@ package com.android.tradefed.testtype.mobly;
 
 import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.invoker.TestInformation;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FailureDescription;
@@ -30,10 +31,11 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
+import com.android.tradefed.targetprep.adb.AdbStopServerPreparer;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
+import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
-import com.android.tradefed.util.AdbUtils;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -60,26 +62,27 @@ import org.yaml.snakeyaml.Yaml;
 
 /** Host test meant to run a mobly python binary file from the Android Build system (Soong) */
 @OptionClass(alias = "mobly-host")
-public class MoblyBinaryHostTest implements IRemoteTest, IDeviceTest, IBuildReceiver {
+public class MoblyBinaryHostTest
+        implements IRemoteTest, IDeviceTest, IBuildReceiver, IInvocationContextReceiver {
 
     private static final String ANDROID_SERIAL_VAR = "ANDROID_SERIAL";
+    private static final String PATH_VAR = "PATH";
+    private static final long PATH_TIMEOUT_MS = 60000L;
     private static final String MOBLY_TEST_SUMMARY = "test_summary.yaml";
     private static final String MOBLY_TEST_SUMMARY_XML = "converted_test_summary.xml";
 
     // TODO(b/159366744): merge this and next options.
-    @Option(
-            name = "mobly-par-file-name",
-            description = "The binary names inside the build info to run.")
+    @Option(name = "par-file-name", description = "The binary names inside the build info to run.")
     private Set<String> mBinaryNames = new HashSet<>();
 
     @Option(
-            name = "mobly-binaries",
+            name = "python-binaries",
             description = "The full path to a runnable python binary. Can be repeated.")
     private Set<File> mBinaries = new HashSet<>();
 
     @Option(
-            name = "mobly-test-timeout",
-            description = "The timeout limit of a single Mobly test binary.",
+            name = "test-timeout",
+            description = "Timeout for a single par file to terminate.",
             isTimeVal = true)
     private long mTestTimeout = 20 * 1000L;
 
@@ -89,7 +92,7 @@ public class MoblyBinaryHostTest implements IRemoteTest, IDeviceTest, IBuildRece
     private boolean mInjectAndroidSerialVar = true;
 
     @Option(
-            name = "mobly-options",
+            name = "python-options",
             description = "Option string to be passed to the binary when running")
     private List<String> mTestOptions = new ArrayList<>();
 
@@ -111,8 +114,9 @@ public class MoblyBinaryHostTest implements IRemoteTest, IDeviceTest, IBuildRece
 
     private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
+    private IInvocationContext mContext;
     private File mLogDir;
-    private TestInformation mTestInfo;
+
     private IRunUtil mRunUtil;
 
     @Override
@@ -131,10 +135,12 @@ public class MoblyBinaryHostTest implements IRemoteTest, IDeviceTest, IBuildRece
     }
 
     @Override
-    public final void run(TestInformation testInfo, ITestInvocationListener listener) {
-        mTestInfo = testInfo;
-        mBuildInfo = mTestInfo.getBuildInfo();
-        mDevice = mTestInfo.getDevice();
+    public void setInvocationContext(IInvocationContext invocationContext) {
+        mContext = invocationContext;
+    }
+
+    @Override
+    public final void run(ITestInvocationListener listener) {
         List<File> parFilesList = findParFiles(listener);
         File venvDir = mBuildInfo.getFile("VIRTUAL_ENV");
         if (venvDir != null) {
@@ -163,18 +169,25 @@ public class MoblyBinaryHostTest implements IRemoteTest, IDeviceTest, IBuildRece
     }
 
     private List<File> findParFiles(ITestInvocationListener listener) {
+        File testsDir = null;
+        if (mBuildInfo instanceof IDeviceBuildInfo) {
+            testsDir = ((IDeviceBuildInfo) mBuildInfo).getTestsDir();
+        }
         // TODO(b/159369297): make naming and log message more "mobly".
         List<File> files = new ArrayList<>();
         for (String binaryName : mBinaryNames) {
             File res = null;
             // search tests dir
-            try {
-                res = mTestInfo.getDependencyFile(binaryName, /* targetFirst */ false);
-                files.add(res);
-            } catch (FileNotFoundException e) {
+            if (testsDir != null) {
+                res = FileUtil.findFile(testsDir, binaryName);
+            }
+            if (res == null) {
                 reportFailure(
                         listener, binaryName, "Couldn't find Mobly test binary " + binaryName);
+                throw new RuntimeException(
+                        String.format("Couldn't find a par file %s", binaryName));
             }
+            files.add(res);
         }
         files.addAll(mBinaries);
         return files;
@@ -184,7 +197,7 @@ public class MoblyBinaryHostTest implements IRemoteTest, IDeviceTest, IBuildRece
         if (mInjectAndroidSerialVar) {
             getRunUtil().setEnvVariable(ANDROID_SERIAL_VAR, getDevice().getSerialNumber());
         }
-        AdbUtils.updateAdb(mTestInfo, getRunUtil(), getAdbPath());
+        updateAdb();
         if (mConfigFile != null) {
             updateConfigFile();
         }
@@ -195,6 +208,47 @@ public class MoblyBinaryHostTest implements IRemoteTest, IDeviceTest, IBuildRece
                     "Something went wrong when running the python binary:\nstdout: "
                             + "%s\nstderr:%s\nStatus:%s",
                     result.getStdout(), result.getStderr(), result.getStatus());
+        }
+    }
+
+    private void updateAdb() {
+        File updatedAdb = mBuildInfo.getFile(AdbStopServerPreparer.ADB_BINARY_KEY);
+        if (updatedAdb == null) {
+            String adbPath = getAdbPath();
+            // Don't check if it's the adb on the $PATH
+            if (!adbPath.equals("adb")) {
+                updatedAdb = new File(adbPath);
+                if (!updatedAdb.exists()) {
+                    updatedAdb = null;
+                }
+            }
+        }
+        if (updatedAdb != null) {
+            CLog.d("Testing with adb binary at: %s", updatedAdb);
+            // If a special adb version is used, pass it to the PATH
+            CommandResult pathResult =
+                    getRunUtil()
+                            .runTimedCmd(PATH_TIMEOUT_MS, "/bin/bash", "-c", "echo $" + PATH_VAR);
+            if (!CommandStatus.SUCCESS.equals(pathResult.getStatus())) {
+                throw new RuntimeException(
+                        String.format(
+                                "Failed to get the $PATH. status: %s, stdout: %s, stderr: %s",
+                                pathResult.getStatus(),
+                                pathResult.getStdout(),
+                                pathResult.getStderr()));
+            }
+            // Include the directory of the adb on the PATH to be used.
+            String path =
+                    String.format(
+                            "%s:%s",
+                            updatedAdb.getParentFile().getAbsolutePath(),
+                            pathResult.getStdout().trim());
+            CLog.d("Using $PATH with updated adb: %s", path);
+            getRunUtil().setEnvVariable(PATH_VAR, path);
+            // Log the version of adb seen
+            CommandResult versionRes = getRunUtil().runTimedCmd(PATH_TIMEOUT_MS, "adb", "version");
+            CLog.d("%s", versionRes.getStdout());
+            CLog.d("%s", versionRes.getStderr());
         }
     }
 

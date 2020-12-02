@@ -22,11 +22,9 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
-import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.suite.params.IModuleParameter;
@@ -201,12 +199,6 @@ public class BaseTestSuite extends ITestSuite {
                             + " an empty result.")
     private boolean mFailOnEverythingFiltered = false;
 
-    @Option(
-            name = "ignore-non-preloaded-mainline-module",
-            description = "Skip installing the module(s) when the module(s) that are not"
-                            + "preloaded on device. Otherwise an exception will be thrown.")
-    private boolean mIgnoreNonPreloadedMainlineModule = false;
-
     private SuiteModuleLoader mModuleRepo;
     private Map<String, List<SuiteTestFilter>> mIncludeFiltersParsed = new HashMap<>();
     private Map<String, List<SuiteTestFilter>> mExcludeFiltersParsed = new HashMap<>();
@@ -294,7 +286,6 @@ public class BaseTestSuite extends ITestSuite {
                 mModuleRepo.setInvocationContext(getInvocationContext());
                 mModuleRepo.setOptimizeMainlineTest(
                         getConfiguration().getCommandOptions().getOptimizeMainlineTest());
-                mModuleRepo.setIgnoreNonPreloadedMainlineModule(mIgnoreNonPreloadedMainlineModule);
             }
 
             mModuleRepo.setParameterizedModules(mEnableParameter);
@@ -327,12 +318,11 @@ public class BaseTestSuite extends ITestSuite {
             if (mFailOnEverythingFiltered
                     && loadedTests.isEmpty()
                     && !mIncludeFiltersParsed.isEmpty()) {
-                throw new HarnessRuntimeException(
+                throw new IllegalStateException(
                         String.format(
                                 "Include filter '%s' was specified"
                                         + " but resulted in an empty test set.",
-                                includeFilter),
-                        InfraErrorIdentifier.OPTION_CONFIGURATION_ERROR);
+                                includeFilter));
             }
             return loadedTests;
         } catch (DeviceNotAvailableException | FileNotFoundException e) {
@@ -490,16 +480,14 @@ public class BaseTestSuite extends ITestSuite {
             }
         }
         if (modules.size() == 0) {
-            throw new HarnessRuntimeException(
-                    String.format("No modules found matching %s", mModuleName),
-                    InfraErrorIdentifier.OPTION_CONFIGURATION_ERROR);
+            throw new IllegalArgumentException(
+                    String.format("No modules found matching %s", mModuleName));
         } else if (modules.size() > 1) {
-            throw new HarnessRuntimeException(
+            throw new IllegalArgumentException(
                     String.format(
                             "Multiple modules found matching %s:\n%s\nWhich one did you "
                                     + "mean?\n",
-                            mModuleName, ArrayUtil.join("\n", modules)),
-                    InfraErrorIdentifier.OPTION_CONFIGURATION_ERROR);
+                            mModuleName, ArrayUtil.join("\n", modules)));
         } else {
             File mod = modules.iterator().next();
             String moduleName = mod.getName().replace(".config", "");

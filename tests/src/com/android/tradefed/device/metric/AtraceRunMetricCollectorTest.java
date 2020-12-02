@@ -15,12 +15,8 @@
  */
 
 package com.android.tradefed.device.metric;
-
-import static org.mockito.Mockito.doReturn;
-
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -87,7 +83,6 @@ public class AtraceRunMetricCollectorTest {
         OptionSetter setter = new OptionSetter(mAtraceRunMetricCollector);
         setter.setOptionValue("directory-keys", "sdcard/srcdirectory");
 
-        doReturn(TestDeviceState.ONLINE).when(mMockDevice).getDeviceState();
         Mockito.when(mMockDevice.pullDir(Mockito.eq("sdcard/srcdirectory"),
                 Mockito.any(File.class))).thenReturn(true);
 

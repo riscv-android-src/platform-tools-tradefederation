@@ -611,14 +611,6 @@ public interface ITestDevice extends INativeDevice {
     public Set<ApexInfo> getActiveApexes() throws DeviceNotAvailableException;
 
     /**
-     * Get the information about the mainline modules installed on the device.
-     *
-     * @return {@link Set} of {@link String} mainline modules currently installed on the device.
-     * @throws DeviceNotAvailableException
-     */
-    public Set<String> getMainlineModuleInfo() throws DeviceNotAvailableException;
-
-    /**
      * Fetch the application package names that can be uninstalled. This is presently defined as
      * non-system packages, and updated system packages.
      *

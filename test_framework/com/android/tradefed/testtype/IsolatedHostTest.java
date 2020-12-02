@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 The Android Open Source Project
+ * Copyright (C) 2019 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,13 +18,10 @@ package com.android.tradefed.testtype;
 import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
-import com.android.tradefed.config.IConfiguration;
-import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
-import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.isolation.FilterSpec;
 import com.android.tradefed.isolation.JUnitEvent;
@@ -38,8 +35,6 @@ import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.SystemUtil;
-
-import com.google.common.annotations.VisibleForTesting;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -65,17 +60,11 @@ import java.util.stream.Collectors;
 /**
  * Implements a TradeFed runner that uses a subprocess to execute the tests in a low-dependency
  * environment instead of executing them on the main process.
- *
- * <p>This runner assumes that all of the jars configured are in the same test directory and
- * launches the subprocess in that directory. Since it must choose a working directory for the
- * subprocess, and many tests benefit from that directory being the test directory, this was the
- * best compromise available.
  */
 @OptionClass(alias = "isolated-host-test")
 public class IsolatedHostTest
         implements IRemoteTest,
                 IBuildReceiver,
-                IConfigurationReceiver,
                 ITestAnnotationFilterReceiver,
                 ITestFilterReceiver,
                 ITestCollector {
@@ -128,31 +117,10 @@ public class IsolatedHostTest
     private List<String> mJavaFlags = new ArrayList<>();
 
     @Option(
-            name = "use-robolectric-resources",
-            description =
-                    "Option to put the Robolectric specific resources directory option on "
-                            + "the Java command line.")
-    private boolean mRobolectricResources = false;
-
-    @Option(
             name = "exclude-paths",
             description = "The (prefix) paths to exclude from searching in the jars.")
     private Set<String> mExcludePaths = new HashSet<>();
 
-    @Option(
-            name = "java-folder",
-            description = "The JDK to be used. If unset, the JDK on $PATH will be used.")
-    private File mJdkFolder = null;
-
-    @Option(
-            name = "classpath-override",
-            description =
-                    "[Local Debug Only] Force a classpath (isolation runner dependencies are still"
-                            + " added to this classpath)")
-    private String mClasspathOverride = null;
-
-    private IConfiguration mConfig;
-    private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
     private Set<String> mIncludeFilters = new HashSet<>();
     private Set<String> mExcludeFilters = new HashSet<>();
@@ -171,19 +139,26 @@ public class IsolatedHostTest
             mServer = new ServerSocket(0);
             mServer.setSoTimeout(mSocketTimeout);
 
-            String classpath = this.compileClassPath();
-            List<String> cmdArgs = this.compileCommandArgs(classpath);
+            ArrayList<String> cmdArgs =
+                    new ArrayList<>(
+                            List.of(
+                                    SystemUtil.getRunningJavaBinaryPath().getAbsolutePath(),
+                                    "-cp",
+                                    this.compileClassPath()));
+            cmdArgs.addAll(mJavaFlags);
+            cmdArgs.addAll(
+                    List.of(
+                            "com.android.tradefed.isolation.IsolationRunner",
+                            "-",
+                            "--port",
+                            Integer.toString(mServer.getLocalPort()),
+                            "--address",
+                            mServer.getInetAddress().getHostAddress(),
+                            "--timeout",
+                            Integer.toString(mSocketTimeout)));
+
             CLog.v(String.join(" ", cmdArgs));
             RunUtil runner = new RunUtil();
-
-            // Note the below chooses a working directory based on the jar that happens to
-            // be first in the list of configured jars.  The baked-in assumption is that
-            // all configured jars are in the same parent directory, otherwise the behavior
-            // here is non-deterministic.
-            File workDir = this.findJarDirectory();
-            runner.setWorkingDir(workDir);
-            CLog.v("Using PWD: %s", workDir.getAbsolutePath());
-
             Process isolationRunner = runner.runCmdInBackground(Redirect.INHERIT, cmdArgs);
             CLog.v("Started subprocess.");
 
@@ -224,80 +199,6 @@ public class IsolatedHostTest
         }
     }
 
-    /** Assembles the command arguments to execute the subprocess runner. */
-    public List<String> compileCommandArgs(String classpath) throws ClassNotFoundException {
-        List<String> cmdArgs = new ArrayList<>();
-
-        if (mJdkFolder == null) {
-            cmdArgs.add(SystemUtil.getRunningJavaBinaryPath().getAbsolutePath());
-            CLog.v("Using host java version.");
-        } else {
-            File javaExec = FileUtil.findFile(mJdkFolder, "java");
-            if (javaExec == null) {
-                throw new IllegalArgumentException(
-                        String.format(
-                                "Couldn't find java executable in given JDK folder: %s",
-                                mJdkFolder.getAbsolutePath()));
-            }
-            String javaPath = javaExec.getAbsolutePath();
-            cmdArgs.add(javaPath);
-            CLog.v("Using java executable at %s", javaPath);
-        }
-
-        cmdArgs.add("-cp");
-        cmdArgs.add(classpath);
-
-        cmdArgs.addAll(mJavaFlags);
-
-        if (mRobolectricResources) {
-            cmdArgs.addAll(compileRobolectricOptions());
-        }
-
-        cmdArgs.addAll(
-                List.of(
-                        "com.android.tradefed.isolation.IsolationRunner",
-                        "-",
-                        "--port",
-                        Integer.toString(mServer.getLocalPort()),
-                        "--address",
-                        mServer.getInetAddress().getHostAddress(),
-                        "--timeout",
-                        Integer.toString(mSocketTimeout)));
-        return cmdArgs;
-    }
-
-    /**
-     * Finds the directory where the first configured jar is located.
-     *
-     * <p>This is used to determine the correct folder to use for a working directory for the
-     * subprocess runner.
-     */
-    private File findJarDirectory() {
-        File testDir = findTestDirectory();
-        for (String jar : mJars) {
-            File f = FileUtil.findFile(testDir, jar);
-            if (f != null && f.exists()) {
-                return f.getParentFile();
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Retrieves the file registered in the build info as the test directory
-     *
-     * @return a {@link File} object representing the test directory
-     */
-    private File findTestDirectory() {
-        File testDir = mBuildInfo.getFile(BuildInfoFileKey.HOST_LINKED_DIR);
-
-        if (testDir == null || !testDir.exists()) {
-            throw new IllegalArgumentException("Test directory not found, cannot proceed");
-        }
-
-        return testDir;
-    }
-
     /**
      * Creates a classpath for the subprocess that includes the needed jars to run the tests
      *
@@ -305,7 +206,11 @@ public class IsolatedHostTest
      */
     private String compileClassPath() throws ClassNotFoundException {
         List<String> paths = new ArrayList<>();
-        File testDir = findTestDirectory();
+        File testDir = mBuildInfo.getFile(BuildInfoFileKey.TESTDIR_IMAGE);
+
+        if (!testDir.exists()) {
+            throw new IllegalArgumentException("Test directory not found, cannot proceed");
+        }
 
         // This is a relatively hacky way to get around the fact that we don't have a consistent
         // way to locate tradefed related jars in all environments, so instead we dyn link to that
@@ -329,53 +234,17 @@ public class IsolatedHostTest
             throw new RuntimeException(e);
         }
 
-        if (mClasspathOverride != null) {
-            paths.add(mClasspathOverride);
-        } else {
-            if (mRobolectricResources) {
-                // This is contingent on the current android-all version.
-                File androidAllJar = FileUtil.findFile(testDir, "android-all-R-robolectric-r0.jar");
-                if (androidAllJar == null) {
-                    throw new RuntimeException(
-                            "Could not find android-all jar needed for test execution.");
-                }
-                paths.add(androidAllJar.getAbsolutePath());
-            }
-
-            for (String jar : mJars) {
-                File f = FileUtil.findFile(testDir, jar);
-                if (f != null && f.exists()) {
-                    paths.add(f.getAbsolutePath());
-                    String parentPath = f.getParentFile().getAbsolutePath() + "/*";
-                    if (!paths.contains(parentPath)) {
-                        paths.add(parentPath);
-                    }
-                }
+        for (String jar : mJars) {
+            File f = FileUtil.findFile(testDir, jar);
+            if (f != null && f.exists()) {
+                paths.add(f.getAbsolutePath());
+                paths.add(f.getParentFile().getAbsolutePath() + "/*");
             }
         }
 
         String jarClasspath = String.join(java.io.File.pathSeparator, paths);
 
         return jarClasspath;
-    }
-
-    private List<String> compileRobolectricOptions() {
-        List<String> options = new ArrayList<>();
-        File testDir = findTestDirectory();
-        String dependencyDir =
-                "-Drobolectric.dependency.dir=" + testDir.getAbsolutePath() + "/android-all/";
-
-        options.add(dependencyDir);
-        options.add("-Drobolectric.offline=true");
-        options.add("-Drobolectric.logging=stdout");
-        options.add("-Drobolectric.resourcesMode=binary");
-
-        // TODO(murj) hide these options behind a debug option
-        // options.add("-Drobolectric.logging.enabled=true");
-        // options.add("-Xdebug");
-        // options.add("-Xrunjdwp:transport=dt_socket,address=8600,server=y,suspend=y");
-
-        return options;
     }
 
     /**
@@ -657,28 +526,5 @@ public class IsolatedHostTest
     @Override
     public void clearExcludeAnnotations() {
         mExcludeAnnotations.clear();
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public void setConfiguration(IConfiguration configuration) {
-        mConfig = configuration;
-    }
-
-    /**
-     * Copied over from HostTest to mimic its unit test harnessing.
-     *
-     * <p>Inspect several location where the artifact are usually located for different use cases to
-     * find our jar.
-     */
-    @VisibleForTesting
-    protected File getJarFile(String jarName, TestInformation testInfo)
-            throws FileNotFoundException {
-        return testInfo.getDependencyFile(jarName, /* target first*/ false);
-    }
-
-    @VisibleForTesting
-    protected void setServer(ServerSocket server) {
-        mServer = server;
     }
 }

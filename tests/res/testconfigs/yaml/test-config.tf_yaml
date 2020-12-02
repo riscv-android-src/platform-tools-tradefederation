@@ -2,10 +2,12 @@ description: "Human friendly description of the test"
 
 # pre_setup_action will run before the dependencies installation
 pre_setup_action:
-   - com.android.tradefed.targetprep.RunCommandTargetPreparer:
+   - action:
+        name: "com.android.tradefed.targetprep.RunCommandTargetPreparer"
         options:
           - run-command: "dumpsys value"
-   - com.android.tradefed.targetprep.RunCommandTargetPreparer:
+   - action:
+        name: "com.android.tradefed.targetprep.RunCommandTargetPreparer"
         options:
           - run-command: "another one"
 
@@ -16,12 +18,14 @@ dependencies:
    - device_files: {"tobepushed.txt": "/sdcard", "tobepushed2.txt": "/sdcard/"}
 
 # post_setup_action will run after the dependencies installation
-target_preparers:
-   - com.android.tradefed.targetprep.RunCommandTargetPreparer:
+post_setup_action:
+   - action:
+        name: "com.android.tradefed.targetprep.RunCommandTargetPreparer"
         options:
           - run-command: "dumpsys value2"
 
 tests:
-   - com.android.tradefed.testtype.AndroidJUnitTest:
-        options:
-          - package: "android.package"
+   - test:
+       name: "com.android.tradefed.testtype.AndroidJUnitTest"
+       options:
+         - package: "android.package"

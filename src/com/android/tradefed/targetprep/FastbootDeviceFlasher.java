@@ -677,21 +677,12 @@ public class FastbootDeviceFlasher implements IDeviceFlasher {
                 deviceBuild.getDeviceImageFile().getAbsolutePath());
         // give extra time to the update cmd
         try {
-            try {
-                executeLongFastbootCmd(
-                        device,
-                        buildFastbootCommand(
-                                "update",
-                                mShouldFlashRamdisk,
-                                deviceBuild.getDeviceImageFile().getAbsolutePath()));
-            } catch (DeviceNotAvailableException e) {
-                // We wrap the exception from recovery if it fails to provide a clear message
-                throw new DeviceNotAvailableException(
-                        "Device became unavailable during fastboot 'update'. Please verify that "
-                                + "the image you are flashing can boot properly.",
-                        e,
-                        device.getSerialNumber());
-            }
+            executeLongFastbootCmd(
+                    device,
+                    buildFastbootCommand(
+                            "update",
+                            mShouldFlashRamdisk,
+                            deviceBuild.getDeviceImageFile().getAbsolutePath()));
             flashRamdiskIfNeeded(device, deviceBuild);
             // only transfer last fastboot command status over to system flash status after having
             // flashing the system partitions

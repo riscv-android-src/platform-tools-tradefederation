@@ -169,21 +169,11 @@ public class GTestXmlResultParser {
             skipped = SKIPPED_VALUE.equals(testcase.getAttribute(RESULT_ATTRIBUTE));
         }
         ParsedTestInfo parsedResults = new ParsedTestInfo(testname, classname, runtime);
-        long runtimeMs = 0L;
-        if (parsedResults.mTestRunTime != null) {
-            try {
-                Double parsedRuntime = Double.valueOf(parsedResults.mTestRunTime);
-                runtimeMs = (long) (parsedRuntime * 1000L);
-            } catch (NumberFormatException e) {
-                CLog.e("Test run time value is invalid, received: %s", parsedResults.mTestRunTime);
-            }
-        }
         TestDescription testId =
                 new TestDescription(parsedResults.mTestClassName, parsedResults.mTestName);
         mNumTestsRun++;
-        long startTimeMs = System.currentTimeMillis();
         for (ITestInvocationListener listener : mTestListeners) {
-            listener.testStarted(testId, startTimeMs);
+            listener.testStarted(testId);
         }
 
         if (skipped) {
@@ -206,10 +196,9 @@ public class GTestXmlResultParser {
         }
 
         Map<String, String> map = new HashMap<>();
-        map.put("runtime", Long.toString(runtimeMs));
-        long endTimeMs = startTimeMs + runtimeMs;
+        map.put("runtime", parsedResults.mTestRunTime);
         for (ITestInvocationListener listener : mTestListeners) {
-            listener.testEnded(testId, endTimeMs, TfMetricProtoUtil.upgradeConvert(map));
+            listener.testEnded(testId, TfMetricProtoUtil.upgradeConvert(map));
         }
     }
 

@@ -17,8 +17,6 @@ package com.android.tradefed.result.error;
 
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 
-import javax.annotation.Nonnull;
-
 /**
  * This interface describes a specific error and its properties.
  *
@@ -36,5 +34,5 @@ public interface ErrorIdentifier {
      * The failure status associated with the identifier, this status is expected to align with the
      * FailureDescription one.
      */
-    public @Nonnull FailureStatus status();
+    public FailureStatus status();
 }

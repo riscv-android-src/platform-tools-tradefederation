@@ -33,13 +33,11 @@ import com.google.common.annotations.VisibleForTesting;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
 /** The base class of gTest */
 public abstract class GTestBase
@@ -169,11 +167,6 @@ public abstract class GTestBase
             name = "disable-duplicate-test-check",
             description = "If set to true, it will not check that a method is only run once.")
     private boolean mDisableDuplicateCheck = false;
-
-    @Option(
-            name = TestTimeoutEnforcer.TEST_CASE_TIMEOUT_OPTION,
-            description = TestTimeoutEnforcer.TEST_CASE_TIMEOUT_DESCRIPTION)
-    private Duration mTestCaseTimeout = Duration.ofSeconds(0L);
 
     // GTest flags...
     protected static final String GTEST_FLAG_PRINT_TIME = "--gtest_print_time";
@@ -574,6 +567,10 @@ public abstract class GTestBase
             gTestCmdLine.append(String.format("LD_LIBRARY_PATH=%s ", mLdLibraryPath));
         }
 
+        if (getConfiguration().getCoverageOptions().isCoverageEnabled()) {
+            gTestCmdLine.append("GCOV_PREFIX=/data/misc/trace/testcoverage ");
+        }
+
         // su to requested user
         if (mRunTestAs != null) {
             gTestCmdLine.append(String.format("su %s ", mRunTestAs));
@@ -688,11 +685,6 @@ public abstract class GTestBase
      * listener.
      */
     protected ITestInvocationListener getGTestListener(ITestInvocationListener listener) {
-        if (mTestCaseTimeout.toMillis() > 0L) {
-            listener =
-                    new TestTimeoutEnforcer(
-                            mTestCaseTimeout.toMillis(), TimeUnit.MILLISECONDS, listener);
-        }
         if (mDisableDuplicateCheck) {
             return listener;
         }

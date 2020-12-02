@@ -69,14 +69,14 @@ public class GTestListenerTest {
         mMockListener.testEnded(
                 EasyMock.eq(testId1),
                 EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
+                (HashMap<String, Metric>) EasyMock.anyObject());
         mMockListener.testStarted(EasyMock.eq(testId2), EasyMock.anyLong());
         mMockListener.testEnded(
                 EasyMock.eq(testId2),
                 EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
+                (HashMap<String, Metric>) EasyMock.anyObject());
         mMockListener.testRunEnded(
-                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
+                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
         replayMocks();
 
         HashMap<String, Metric> emptyMap = new HashMap<>();
@@ -104,16 +104,16 @@ public class GTestListenerTest {
         mMockListener.testEnded(
                 EasyMock.eq(testId1),
                 EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
+                (HashMap<String, Metric>) EasyMock.anyObject());
         mMockListener.testStarted(EasyMock.eq(testId1), EasyMock.anyLong());
         mMockListener.testEnded(
                 EasyMock.eq(testId1),
                 EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
+                (HashMap<String, Metric>) EasyMock.anyObject());
         Capture<FailureDescription> capturedFailureDescription = new Capture<>();
         mMockListener.testRunFailed(EasyMock.capture(capturedFailureDescription));
         mMockListener.testRunEnded(
-                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
+                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
         replayMocks();
 
         HashMap<String, Metric> emptyMap = new HashMap<>();

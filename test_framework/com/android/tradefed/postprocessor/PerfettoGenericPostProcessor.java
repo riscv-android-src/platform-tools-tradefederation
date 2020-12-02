@@ -28,10 +28,6 @@ import com.android.tradefed.util.ZipUtil;
 import com.android.tradefed.util.ZipUtil2;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonSyntaxException;
 import com.google.protobuf.Descriptors.FieldDescriptor;
 import com.google.protobuf.Message;
 import com.google.protobuf.TextFormat;
@@ -55,7 +51,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import perfetto.protos.PerfettoMergedMetrics.TraceMetrics;
 
@@ -84,11 +79,6 @@ public class PerfettoGenericPostProcessor extends BasePostProcessor {
         text,
         binary,
         json,
-    }
-
-    public enum AlternativeParseFormat {
-        json,
-        none,
     }
 
     @Option(
@@ -150,13 +140,6 @@ public class PerfettoGenericPostProcessor extends BasePostProcessor {
             description = "Prefix to be used with the metrics collected from perfetto."
                     + "This will be applied before any other prefixes to metrics.")
     private String mAllMetricPrefix = "perfetto";
-
-    @Option(
-            name = "perfetto-alternative-parse-format",
-            description =
-                    "Parse the metrics as key/value pair or JSON when corresponding proto "
-                            + "definition is not found. One of [json|none]")
-    private AlternativeParseFormat mAlternativeParseFormat = AlternativeParseFormat.none;
 
     // Matches 1.73, 1.73E+2
     private Pattern mNumberWithExponentPattern =
@@ -236,37 +219,35 @@ public class PerfettoGenericPostProcessor extends BasePostProcessor {
             }
 
             // Parse the perfetto proto file.
-            try (BufferedReader bufferedReader =
-                    new BufferedReader(new FileReader(perfettoMetricFile))) {
+            try (BufferedReader bufferedReader = new BufferedReader(
+                    new FileReader(perfettoMetricFile))) {
                 switch (mTraceProcessorOutputFormat) {
                     case text:
                         TraceMetrics.Builder builder = TraceMetrics.newBuilder();
                         TextFormat.merge(bufferedReader, builder);
                         parsedMetrics.putAll(
-                                handlePrefixForProcessedMetrics(
-                                        convertPerfettoProtoMessage(builder.build())));
+                                filterMetrics(convertPerfettoProtoMessage(builder.build())));
+                        replacePrefix(parsedMetrics);
+                        // Generic prefix string is applied to all the metrics parsed from
+                        // perfetto trace file.
+                        replaceAllMetricPrefix(parsedMetrics);
                         break;
                     case binary:
                         TraceMetrics metricProto = null;
-                        metricProto =
-                                TraceMetrics.parseFrom(new FileInputStream(perfettoMetricFile));
-                        parsedMetrics.putAll(
-                                handlePrefixForProcessedMetrics(
-                                        convertPerfettoProtoMessage(metricProto)));
+                        metricProto = TraceMetrics
+                                .parseFrom(new FileInputStream(perfettoMetricFile));
+                        parsedMetrics
+                                .putAll(filterMetrics(convertPerfettoProtoMessage(metricProto)));
+                        replacePrefix(parsedMetrics);
+                        // Generic prefix string is applied to all the metrics parsed from
+                        // perfetto trace file.
+                        replaceAllMetricPrefix(parsedMetrics);
                         break;
                     case json:
                         CLog.w("JSON perfetto metric file processing not supported.");
                 }
             } catch (ParseException e) {
-                if (AlternativeParseFormat.none == mAlternativeParseFormat) {
-                    CLog.e("Failed to merge the perfetto metric file. " + e.getMessage());
-                } else {
-                    CLog.w("Failed to merge the perfetto metric file, trying alternative");
-                    parsedMetrics.putAll(
-                            handlePrefixForProcessedMetrics(
-                                    processPerfettoMetricsWithAlternativeMethods(
-                                            perfettoMetricFile)));
-                }
+                CLog.e("Failed to merge the perfetto metric file. " + e.getMessage());
             } catch (IOException ioe) {
                 CLog.e(
                         "IOException happened when reading the perfetto metric file. "
@@ -278,76 +259,6 @@ public class PerfettoGenericPostProcessor extends BasePostProcessor {
         }
 
         return parsedMetrics;
-    }
-
-    /**
-     * Process perfetto metric files that does not have proto defined in TraceMetrics into key,
-     * value pairs.
-     *
-     * @param perfettoMetricFiles perfetto metric files to be processed.
-     * @return key, value pairs processed from the metrics.
-     */
-    private Map<String, Metric.Builder> processPerfettoMetricsWithAlternativeMethods(
-            File perfettoMetricFile) {
-        CLog.w("Entering processPerfettoMetricsWithAlternativeMethods");
-        Map<String, Metric.Builder> result = new HashMap<>();
-        try (BufferedReader bufferedReader =
-                new BufferedReader(new FileReader(perfettoMetricFile))) {
-            if (AlternativeParseFormat.json == mAlternativeParseFormat) {
-                JsonObject node = new Gson().fromJson(bufferedReader, JsonObject.class);
-                node.entrySet().forEach(nested -> flattenJson(result, nested, new ArrayList<>()));
-                return result;
-            }
-        } catch (JsonSyntaxException jse) {
-            CLog.e(
-                    "JsonSyntaxException happened when parsing perfetto metric file. "
-                            + jse.getMessage());
-        } catch (IOException ioe) {
-            CLog.e(
-                    "IOException happened when reading the perfetto metric file. "
-                            + ioe.getMessage());
-        }
-
-        return result;
-    }
-
-    /**
-     * Flatten a json into key, value pairs where key is the concatenation of keys in each level of
-     * json, and the value is the value of the leaf node.
-     *
-     * @param result the map to store the result
-     * @param node the node to process from
-     * @names the list of the names that has been added so far above the current node.
-     * @return key, value pairs of the flattened json.
-     */
-    private Map<String, Metric.Builder> flattenJson(
-            Map<String, Metric.Builder> result,
-            Entry<String, JsonElement> node,
-            List<String> names) {
-        names.add(node.getKey());
-        if (node.getValue().isJsonObject()) {
-            node.getValue()
-                    .getAsJsonObject()
-                    .entrySet()
-                    .forEach(nested -> flattenJson(result, nested, new ArrayList<>(names)));
-        } else {
-            String name = names.stream().collect(Collectors.joining(METRIC_SEP));
-            result.put(
-                    name,
-                    TfMetricProtoUtil.stringToMetric(node.getValue().getAsString()).toBuilder());
-        }
-
-        return result;
-    }
-
-    private Map<String, Metric.Builder> handlePrefixForProcessedMetrics(
-            Map<String, Metric.Builder> processedMetrics) {
-        Map<String, Metric.Builder> result = new HashMap<>();
-        result.putAll(filterMetrics(processedMetrics));
-        replacePrefix(result);
-        // Generic prefix string is applied to all the metrics parsed from perfetto trace file.
-        replaceAllMetricPrefix(result);
-        return result;
     }
 
     /**

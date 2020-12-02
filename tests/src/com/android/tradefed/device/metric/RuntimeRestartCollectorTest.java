@@ -15,7 +15,6 @@
  */
 package com.android.tradefed.device.metric;
 
-import org.mockito.ArgumentMatchers;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyLong;
 import static org.mockito.Mockito.argThat;
@@ -122,7 +121,7 @@ public class RuntimeRestartCollectorTest {
         doReturn(Arrays.asList(testDevice)).when(mContext).getDevices();
         doReturn(CONFIG_ID_1)
                 .when(mCollector)
-                .pushStatsConfig(any(ITestDevice.class), ArgumentMatchers.<List<Integer>>any());
+                .pushStatsConfig(any(ITestDevice.class), any(List.class));
         doReturn(new ArrayList<EventMetricData>())
                 .when(mCollector)
                 .getEventMetricData(any(ITestDevice.class), anyLong());
@@ -157,12 +156,8 @@ public class RuntimeRestartCollectorTest {
         ITestDevice testDevice1 = mockTestDevice(DEVICE_SERIAL_1);
         ITestDevice testDevice2 = mockTestDevice(DEVICE_SERIAL_2);
         doReturn(Arrays.asList(testDevice1, testDevice2)).when(mContext).getDevices();
-        doReturn(CONFIG_ID_1)
-                .when(mCollector)
-                .pushStatsConfig(eq(testDevice1), ArgumentMatchers.<List<Integer>>any());
-        doReturn(CONFIG_ID_2)
-                .when(mCollector)
-                .pushStatsConfig(eq(testDevice2), ArgumentMatchers.<List<Integer>>any());
+        doReturn(CONFIG_ID_1).when(mCollector).pushStatsConfig(eq(testDevice1), any(List.class));
+        doReturn(CONFIG_ID_2).when(mCollector).pushStatsConfig(eq(testDevice2), any(List.class));
         doReturn(new ArrayList<EventMetricData>())
                 .when(mCollector)
                 .getEventMetricData(any(ITestDevice.class), anyLong());
@@ -203,7 +198,7 @@ public class RuntimeRestartCollectorTest {
         doReturn(Arrays.asList(testDevice)).when(mContext).getDevices();
         doReturn(CONFIG_ID_1)
                 .when(mCollector)
-                .pushStatsConfig(any(ITestDevice.class), ArgumentMatchers.<List<Integer>>any());
+                .pushStatsConfig(any(ITestDevice.class), any(List.class));
         doReturn(new ArrayList<EventMetricData>())
                 .when(mCollector)
                 .getEventMetricData(any(ITestDevice.class), anyLong());
@@ -240,7 +235,7 @@ public class RuntimeRestartCollectorTest {
         doReturn(Arrays.asList(testDevice)).when(mContext).getDevices();
         doReturn(CONFIG_ID_1)
                 .when(mCollector)
-                .pushStatsConfig(any(ITestDevice.class), ArgumentMatchers.<List<Integer>>any());
+                .pushStatsConfig(any(ITestDevice.class), any(List.class));
         doReturn(new ArrayList<EventMetricData>())
                 .when(mCollector)
                 .getEventMetricData(any(ITestDevice.class), anyLong());
@@ -283,7 +278,7 @@ public class RuntimeRestartCollectorTest {
         doReturn(Arrays.asList(testDevice)).when(mContext).getDevices();
         doReturn(CONFIG_ID_1)
                 .when(mCollector)
-                .pushStatsConfig(any(ITestDevice.class), ArgumentMatchers.<List<Integer>>any());
+                .pushStatsConfig(any(ITestDevice.class), any(List.class));
         doReturn(Arrays.asList(RUNTIME_RESTART_DATA_1, RUNTIME_RESTART_DATA_2))
                 .when(mCollector)
                 .getEventMetricData(any(ITestDevice.class), anyLong());
@@ -341,7 +336,7 @@ public class RuntimeRestartCollectorTest {
         doReturn(Arrays.asList(testDevice)).when(mContext).getDevices();
         doReturn(CONFIG_ID_1)
                 .when(mCollector)
-                .pushStatsConfig(any(ITestDevice.class), ArgumentMatchers.<List<Integer>>any());
+                .pushStatsConfig(any(ITestDevice.class), any(List.class));
         doReturn(Arrays.asList(RUNTIME_RESTART_DATA_1, RUNTIME_RESTART_DATA_2))
                 .when(mCollector)
                 .getEventMetricData(any(ITestDevice.class), anyLong());
@@ -402,7 +397,7 @@ public class RuntimeRestartCollectorTest {
         doReturn(Arrays.asList(testDevice)).when(mContext).getDevices();
         doReturn(CONFIG_ID_1)
                 .when(mCollector)
-                .pushStatsConfig(any(ITestDevice.class), ArgumentMatchers.<List<Integer>>any());
+                .pushStatsConfig(any(ITestDevice.class), any(List.class));
         doReturn(
                         Arrays.asList(
                                 RUNTIME_RESTART_DATA_1,
@@ -454,7 +449,7 @@ public class RuntimeRestartCollectorTest {
         // Two data points from the AppCrashOccurred data.
         doReturn(CONFIG_ID_1)
                 .when(mCollector)
-                .pushStatsConfig(any(ITestDevice.class), ArgumentMatchers.<List<Integer>>any());
+                .pushStatsConfig(any(ITestDevice.class), any(List.class));
         doReturn(Arrays.asList(RUNTIME_RESTART_DATA_1, RUNTIME_RESTART_DATA_2))
                 .when(mCollector)
                 .getEventMetricData(any(ITestDevice.class), anyLong());
@@ -489,12 +484,8 @@ public class RuntimeRestartCollectorTest {
         ITestDevice testDevice1 = mockTestDevice(DEVICE_SERIAL_1);
         ITestDevice testDevice2 = mockTestDevice(DEVICE_SERIAL_2);
         doReturn(Arrays.asList(testDevice1, testDevice2)).when(mContext).getDevices();
-        doReturn(CONFIG_ID_1)
-                .when(mCollector)
-                .pushStatsConfig(eq(testDevice1), ArgumentMatchers.<List<Integer>>any());
-        doReturn(CONFIG_ID_2)
-                .when(mCollector)
-                .pushStatsConfig(eq(testDevice2), ArgumentMatchers.<List<Integer>>any());
+        doReturn(CONFIG_ID_1).when(mCollector).pushStatsConfig(eq(testDevice1), any(List.class));
+        doReturn(CONFIG_ID_2).when(mCollector).pushStatsConfig(eq(testDevice2), any(List.class));
         doReturn(new ArrayList<EventMetricData>())
                 .when(mCollector)
                 .getEventMetricData(any(ITestDevice.class), anyLong());

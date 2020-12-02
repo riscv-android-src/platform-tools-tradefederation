@@ -18,7 +18,6 @@ package com.android.tradefed.config;
 
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.log.LogUtil.CLog;
-import com.android.tradefed.result.error.InfraErrorIdentifier;
 
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
@@ -359,7 +358,6 @@ public class ConfigurationDef {
                             "Failed to load some objects in the configuration '%s': %s",
                             getName(), rejectedObjects),
                     cause,
-                    InfraErrorIdentifier.CLASS_NOT_FOUND,
                     rejectedObjects);
         }
     }
@@ -482,7 +480,6 @@ public class ConfigurationDef {
                                     "Could not find class %s for config object type %s",
                                     className, objectTypeName),
                             e,
-                            InfraErrorIdentifier.CLASS_NOT_FOUND,
                             className,
                             objectTypeName);
             throw exception;

@@ -45,6 +45,7 @@ import com.android.tradefed.result.LogSaverResultForwarder;
 import com.android.tradefed.targetprep.BaseTargetPreparer;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.IHostCleaner;
+import com.android.tradefed.targetprep.ITargetCleaner;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
@@ -171,8 +172,7 @@ public class InvocationExecutionTest {
         }
 
         @Override
-        public void run(TestInformation testInfo, ITestInvocationListener listener)
-                throws DeviceNotAvailableException {
+        public void run(ITestInvocationListener listener) throws DeviceNotAvailableException {
             for (IMetricCollector collector : mCollectors) {
                 collector.init(new InvocationContext(), new ITestInvocationListener() {});
                 sTotalInit++;
@@ -318,7 +318,7 @@ public class InvocationExecutionTest {
         mConfig.setMultiPreTargetPreparers(Arrays.asList(stub1, stub2));
         mConfig.setMultiTargetPreparers(Arrays.asList(stub3, stub4));
 
-        ITargetPreparer cleaner = mock(ITargetPreparer.class);
+        ITargetCleaner cleaner = mock(ITargetCleaner.class);
         IDeviceConfiguration holder = new DeviceConfigurationHolder("default");
         holder.addSpecificConfig(cleaner);
         mConfig.setDeviceConfig(holder);
@@ -366,7 +366,7 @@ public class InvocationExecutionTest {
         mConfig.setMultiPreTargetPreparers(Arrays.asList(stub1, stub2));
         mConfig.setMultiTargetPreparers(Arrays.asList(stub3, stub4));
 
-        ITargetPreparer cleaner = mock(ITargetPreparer.class);
+        ITargetCleaner cleaner = mock(ITargetCleaner.class);
         IDeviceConfiguration holder = new DeviceConfigurationHolder("default");
         holder.addSpecificConfig(cleaner);
         mConfig.setDeviceConfig(holder);
@@ -462,7 +462,7 @@ public class InvocationExecutionTest {
         mConfig.setMultiPreTargetPreparers(Arrays.asList(stub1, stub2));
         mConfig.setMultiTargetPreparers(Arrays.asList(stub3, stub4));
 
-        ITargetPreparer cleaner = mock(ITargetPreparer.class);
+        ITargetCleaner cleaner = mock(ITargetCleaner.class);
         IDeviceConfiguration holder = new DeviceConfigurationHolder("default");
         holder.addSpecificConfig(cleaner);
         mConfig.setDeviceConfig(holder);
@@ -511,7 +511,7 @@ public class InvocationExecutionTest {
         mConfig.setMultiPreTargetPreparers(Arrays.asList(stub1, stub2));
         mConfig.setMultiTargetPreparers(Arrays.asList(stub3, stub4));
 
-        ITargetPreparer cleaner = mock(ITargetPreparer.class);
+        ITargetCleaner cleaner = mock(ITargetCleaner.class);
         IDeviceConfiguration holder = new DeviceConfigurationHolder("default");
         holder.addSpecificConfig(cleaner);
         mConfig.setDeviceConfig(holder);

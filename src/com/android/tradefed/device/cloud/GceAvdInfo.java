@@ -19,7 +19,6 @@ import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.LogUtil.CLog;
-import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.FileUtil;
 
@@ -215,15 +214,9 @@ public class GceAvdInfo {
         }
         // If errors are found throw an exception with the acloud message.
         if (errors.isEmpty()) {
-            throw new TargetSetupError(
-                    String.format("acloud errors: %s", data),
-                    descriptor,
-                    InfraErrorIdentifier.ACLOUD_UNDETERMINED);
+            throw new TargetSetupError(String.format("acloud errors: %s", data), descriptor);
         } else {
-            throw new TargetSetupError(
-                    String.format("acloud errors: %s", errors),
-                    descriptor,
-                    InfraErrorIdentifier.ACLOUD_UNDETERMINED);
+            throw new TargetSetupError(String.format("acloud errors: %s", errors), descriptor);
         }
     }
 

@@ -15,6 +15,8 @@
  */
 package com.android.tradefed.config.yaml;
 
+import com.android.tradefed.config.ConfigurationException;
+
 import com.google.common.collect.LinkedListMultimap;
 import com.google.common.collect.Multimap;
 
@@ -26,6 +28,7 @@ import java.util.Map.Entry;
 /** Helper to parse test runner information from the YAML Tradefed Configuration. */
 public class YamlClassOptionsParser {
 
+    private static final String CLASS_NAME_KEY = "name";
     private static final String OPTIONS_KEY = "options";
 
     class ClassAndOptions {
@@ -35,40 +38,31 @@ public class YamlClassOptionsParser {
 
     private List<ClassAndOptions> mListClassAndOptions = new ArrayList<>();
 
-    public YamlClassOptionsParser(List<Object> objList) {
-        for (Object obj : objList) {
-            if (obj instanceof String) {
+    public YamlClassOptionsParser(String mainkey, String category, List<Map<String, Object>> tests)
+            throws ConfigurationException {
+        for (Map<String, Object> runnerEntry : tests) {
+            if (runnerEntry.containsKey(mainkey)) {
                 ClassAndOptions classOptions = new ClassAndOptions();
                 mListClassAndOptions.add(classOptions);
-                classOptions.mClass = (String) obj;
-            } else if (obj instanceof Map) {
-                @SuppressWarnings("unchecked")
-                Map<String, Object> objEntry = (Map<String, Object>) obj;
-                for (String classString : objEntry.keySet()) {
-                    ClassAndOptions classOptions = new ClassAndOptions();
-                    mListClassAndOptions.add(classOptions);
-                    classOptions.mClass = classString;
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> map = (Map<String, Object>) objEntry.get(classString);
-                    // If there are no option the map is null
-                    if (map == null) {
-                        continue;
+                for (Entry<String, Object> entry :
+                        ((Map<String, Object>) runnerEntry.get(mainkey)).entrySet()) {
+                    if (CLASS_NAME_KEY.equals(entry.getKey())) {
+                        classOptions.mClass = (String) entry.getValue();
                     }
-                    for (Entry<String, Object> entry : map.entrySet()) {
-                        if (OPTIONS_KEY.equals(entry.getKey())) {
-                            @SuppressWarnings("unchecked")
-                            List<Map<String, Object>> optionMapList =
-                                    (List<Map<String, Object>>) entry.getValue();
-                            for (Map<String, Object> optionMap : optionMapList) {
-                                for (Entry<String, Object> optionVal : optionMap.entrySet()) {
-                                    // TODO: Support map option
-                                    classOptions.mOptions.put(
-                                            optionVal.getKey(), optionVal.getValue().toString());
-                                }
+                    if (OPTIONS_KEY.equals(entry.getKey())) {
+                        for (Map<String, Object> optionMap :
+                                (List<Map<String, Object>>) entry.getValue()) {
+                            for (Entry<String, Object> optionVal : optionMap.entrySet()) {
+                                // TODO: Support map option
+                                classOptions.mOptions.put(
+                                        optionVal.getKey(), optionVal.getValue().toString());
                             }
                         }
                     }
                 }
+            } else {
+                throw new ConfigurationException(
+                        String.format("'%s' key is mandatory in '%s'", mainkey, category));
             }
         }
     }

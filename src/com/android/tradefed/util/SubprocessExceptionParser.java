@@ -37,8 +37,8 @@ public class SubprocessExceptionParser {
             throws DeviceNotAvailableException {
         int exitCode = result.getExitCode();
         String stderr = result.getStderr();
-        String patternString = String.format(".*%s.*", TradefedSandboxRunner.EXCEPTION_KEY);
-        Pattern pattern = Pattern.compile(patternString);
+        Pattern pattern =
+                Pattern.compile(String.format(".*%s.*", TradefedSandboxRunner.EXCEPTION_KEY));
         String message =
                 String.format(
                         "Subprocess finished with error exit code: %s.\nStderr: %s",
@@ -65,8 +65,6 @@ public class SubprocessExceptionParser {
                             "Could not parse the stderr as a particular exception. "
                                     + "Using RuntimeException instead.");
                 }
-            } else {
-                CLog.w("'%s' doesn't match pattern '%s'", line, patternString);
             }
         }
         throw new HarnessRuntimeException(message, InfraErrorIdentifier.UNDETERMINED);

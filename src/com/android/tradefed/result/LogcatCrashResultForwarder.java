@@ -24,13 +24,12 @@ import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetr
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.error.DeviceErrorIdentifier;
-import com.android.tradefed.result.error.TestErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
+import com.android.tradefed.util.StreamUtil;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -81,15 +80,16 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
     public void testFailed(TestDescription test, FailureDescription failure) {
         // If the test case was detected as crashing the instrumentation, we add the crash to it.
         String trace = extractCrashAndAddToMessage(failure.getErrorMessage(), mStartTime);
-        if (isCrash(failure.getErrorMessage())) {
-            failure.setErrorIdentifier(DeviceErrorIdentifier.INSTRUMENTATION_CRASH);
+        if (trace.compareTo(failure.getErrorMessage()) != 0) {
+            // Crash stack trace found, consider this a test failure.
+            failure.setFailureStatus(FailureStatus.TEST_FAILURE);
         } else if (isTimeout(failure.getErrorMessage())) {
-            failure.setErrorIdentifier(TestErrorIdentifier.INSTRUMENTATION_TIMED_OUT);
+            failure.setFailureStatus(FailureStatus.TIMED_OUT);
         }
         failure.setErrorMessage(trace);
         // Add metrics for assessing uncaught IntrumentationTest crash failures (test level).
         InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.TEST_CRASH_FAILURES, 1);
-        if (failure.getFailureStatus() == null) {
+        if (FailureStatus.UNSET.equals(failure.getFailureStatus())) {
             InvocationMetricLogger.addInvocationMetrics(
                     InvocationMetricKey.UNCAUGHT_TEST_CRASH_FAILURES, 1);
         }
@@ -126,7 +126,7 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
         }
         // Add metrics for assessing uncaught IntrumentationTest crash failures.
         InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.CRASH_FAILURES, 1);
-        if (error.getFailureStatus() == null) {
+        if (FailureStatus.UNSET.equals(error.getFailureStatus())) {
             InvocationMetricLogger.addInvocationMetrics(
                     InvocationMetricKey.UNCAUGHT_CRASH_FAILURES, 1);
         }
@@ -172,13 +172,10 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
             if (logSource.size() == 0L) {
                 return null;
             }
+            String message = StreamUtil.getStringFromStream(logSource.createInputStream());
             LogcatParser parser = new LogcatParser();
-            LogcatItem result = null;
-            try (BufferedReader reader =
-                    new BufferedReader(new InputStreamReader(logSource.createInputStream()))) {
-                result = parser.parse(reader);
-            }
-            return result;
+            List<String> lines = Arrays.asList(message.split("\n"));
+            return parser.parse(lines);
         } catch (IOException e) {
             CLog.e(e);
         }

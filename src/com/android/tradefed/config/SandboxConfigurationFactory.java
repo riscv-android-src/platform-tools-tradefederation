@@ -110,35 +110,14 @@ public class SandboxConfigurationFactory extends ConfigurationFactory {
     public IConfiguration createConfigurationFromArgs(
             String[] args, IKeyStoreClient keyStoreClient, ISandbox sandbox, IRunUtil runUtil)
             throws ConfigurationException {
-        return createConfigurationFromArgs(args, keyStoreClient, sandbox, runUtil, null);
-    }
-
-    /**
-     * Create a {@link IConfiguration} based on the command line and sandbox provided.
-     *
-     * @param args the command line for the run.
-     * @param keyStoreClient the {@link IKeyStoreClient} where to load the key from.
-     * @param sandbox the {@link ISandbox} used for the run.
-     * @param runUtil the {@link IRunUtil} to run commands.
-     * @return a {@link IConfiguration} valid for the sandbox.
-     * @throws ConfigurationException
-     */
-    public IConfiguration createConfigurationFromArgs(
-            String[] args,
-            IKeyStoreClient keyStoreClient,
-            ISandbox sandbox,
-            IRunUtil runUtil,
-            File globalConfig)
-            throws ConfigurationException {
         IConfiguration config = null;
         File xmlConfig = null;
+        File globalConfig = null;
         try {
             runUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
             // Dump the NON_VERSIONED part of the configuration against the current TF and not the
             // sandboxed environment.
-            if (globalConfig == null) {
-                globalConfig = SandboxConfigUtil.dumpFilteredGlobalConfig(new HashSet<>());
-            }
+            globalConfig = SandboxConfigUtil.dumpFilteredGlobalConfig(new HashSet<>());
             xmlConfig =
                     SandboxConfigUtil.dumpConfigForVersion(
                             createClasspath(),

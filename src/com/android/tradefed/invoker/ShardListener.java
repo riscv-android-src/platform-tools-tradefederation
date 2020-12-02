@@ -260,7 +260,7 @@ public class ShardListener extends CollectingTestListener implements ISupportGra
                     break;
                 case ASSUMPTION_FAILURE:
                     mMainListener.testAssumptionFailure(
-                            testEntry.getKey(), testEntry.getValue().getFailure());
+                            testEntry.getKey(), testEntry.getValue().getStackTrace());
                     break;
                 case IGNORED:
                     mMainListener.testIgnored(testEntry.getKey());

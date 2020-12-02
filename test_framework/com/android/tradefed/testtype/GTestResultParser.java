@@ -22,8 +22,6 @@ import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
-import com.android.tradefed.result.error.ErrorIdentifier;
-import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 
 import java.util.ArrayList;
@@ -143,7 +141,7 @@ public class GTestResultParser extends MultiLineReceiver {
         private String mTestName = null;
         private String mTestClass = null;
         private StringBuilder mStackTrace = null;
-        private long mStartTimeMs;
+        @SuppressWarnings("unused")
         private Long mRunTime = null;
 
         /** Returns whether expected values have been parsed
@@ -575,7 +573,6 @@ public class GTestResultParser extends MultiLineReceiver {
         TestResult testResult = getCurrentTestResult();
         testResult.mTestClass = parsedResults.mTestClassName;
         testResult.mTestName = parsedResults.mTestName;
-        testResult.mStartTimeMs = System.currentTimeMillis();
         TestDescription testId = null;
         if (getTestClass(testResult) !=null && testResult.mTestName !=null) {
             testId = new TestDescription(getTestClass(testResult), testResult.mTestName);
@@ -586,7 +583,7 @@ public class GTestResultParser extends MultiLineReceiver {
         }
 
         for (ITestInvocationListener listener : mTestListeners) {
-            listener.testStarted(testId, testResult.mStartTimeMs);
+            listener.testStarted(testId);
         }
         setTestStarted();
     }
@@ -623,9 +620,6 @@ public class GTestResultParser extends MultiLineReceiver {
             } catch (NumberFormatException e) {
                 CLog.e("Test run time value is invalid, received: %s", parsedResults.mTestRunTime);
             }
-        } else {
-            CLog.d("No runtime for %s, defaulting to 0ms.", testId);
-            testResult.mRunTime = 0L;
         }
 
         // Check that the test result is for the same test/class we're expecting it to be for
@@ -668,9 +662,9 @@ public class GTestResultParser extends MultiLineReceiver {
 
         // For all cases (pass or fail), we ultimately need to report test has ended
         HashMap<String, Metric> emptyMap = new HashMap<>();
-        long endTimeMs = testResult.mStartTimeMs + testResult.mRunTime;
         for (ITestInvocationListener listener : mTestListeners) {
-            listener.testEnded(testId, endTimeMs, emptyMap);
+            // @TODO: Add reporting of test run time to ITestInvocationListener
+            listener.testEnded(testId, emptyMap);
         }
 
         setTestEnded();
@@ -729,7 +723,7 @@ public class GTestResultParser extends MultiLineReceiver {
      *
      * @param errorMsg The message to output about the nature of the error
      */
-    private void handleTestRunFailed(String errorMsg, ErrorIdentifier errorId) {
+    private void handleTestRunFailed(String errorMsg) {
         errorMsg = (errorMsg == null ? "Unknown error" : errorMsg);
         CLog.i("Test run failed: %s", errorMsg);
         String testRunStackTrace = "";
@@ -756,11 +750,8 @@ public class GTestResultParser extends MultiLineReceiver {
             clearCurrentTestResult();
         }
         // Report the test run failed
-        FailureDescription error =
-                FailureDescription.create(errorMsg).setFailureStatus(FailureStatus.TEST_FAILURE);
-        if (errorId != null) {
-            error.setErrorIdentifier(errorId);
-        }
+        FailureDescription error = FailureDescription.create(errorMsg);
+        error.setFailureStatus(FailureStatus.TEST_FAILURE);
         for (ITestInvocationListener listener : mTestListeners) {
             listener.testRunFailed(error);
             listener.testRunEnded(mTotalRunTime, getRunMetrics());
@@ -775,16 +766,13 @@ public class GTestResultParser extends MultiLineReceiver {
         super.done();
         // To make sure the test fail run will only be reported for this run.
         if (mTestRunStartReported && (mNumTestsExpected > mNumTestsRun)) {
-            handleTestRunFailed(
-                    String.format(
-                            "Test run incomplete. Expected %d tests, received %d",
-                            mNumTestsExpected, mNumTestsRun),
-                    InfraErrorIdentifier.EXPECTED_TESTS_MISMATCH);
+            handleTestRunFailed(String.format("Test run incomplete. Expected %d tests, received %d",
+                    mNumTestsExpected, mNumTestsRun));
             // Reset TestRunStart flag to prevent report twice in the same run.
             mTestRunStartReported = false;
             mTestRunInProgress = false;
         } else if (mTestRunInProgress) {
-            handleTestRunFailed("No test results", InfraErrorIdentifier.UNDETERMINED);
+            handleTestRunFailed("No test results");
             mTestRunInProgress = false;
         } else if (!mSeenOneTestRunStart) {
             for (ITestInvocationListener listener : mTestListeners) {

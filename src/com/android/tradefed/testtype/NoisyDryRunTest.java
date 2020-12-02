@@ -190,7 +190,7 @@ public class NoisyDryRunTest implements IRemoteTest {
         IConfiguration config =
                 SandboxConfigurationFactory.getInstance()
                         .createConfigurationFromArgs(
-                                args, new DryRunKeyStore(), createSandbox(), createRunUtil(), null);
+                                args, new DryRunKeyStore(), createSandbox(), createRunUtil());
         // Do not resolve dynamic files
         config.validateOptions();
     }

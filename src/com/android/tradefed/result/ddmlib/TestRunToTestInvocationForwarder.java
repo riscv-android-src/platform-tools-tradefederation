@@ -21,7 +21,6 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestLifeCycleReceiver;
 import com.android.tradefed.result.TestDescription;
-import com.android.tradefed.result.error.TestErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
@@ -145,8 +144,7 @@ public class TestRunToTestInvocationForwarder implements ITestRunListener {
                 message = String.format("%s Stack:%s", message, mNullStack);
             }
             FailureDescription failure =
-                    FailureDescription.create(message, FailureStatus.TEST_FAILURE)
-                            .setErrorIdentifier(TestErrorIdentifier.INSTRUMENTATION_NULL_METHOD);
+                    FailureDescription.create(message, FailureStatus.TEST_FAILURE);
             for (ITestLifeCycleReceiver listener : mListeners) {
                 listener.testRunFailed(failure);
             }

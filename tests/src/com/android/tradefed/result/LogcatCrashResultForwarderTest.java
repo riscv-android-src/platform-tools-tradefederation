@@ -19,7 +19,6 @@ import static org.junit.Assert.assertTrue;
 
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
-import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 
 import org.easymock.Capture;
@@ -56,8 +55,7 @@ public class LogcatCrashResultForwarderTest {
                 .andReturn(new ByteArrayInputStreamSource("".getBytes()));
         mMockListener.testFailed(
                 test,
-                FailureDescription.create("instrumentation failed. reason: 'Process crashed.'")
-                        .setErrorIdentifier(DeviceErrorIdentifier.INSTRUMENTATION_CRASH));
+                FailureDescription.create("instrumentation failed. reason: 'Process crashed.'"));
         mMockListener.testEnded(test, 5L, new HashMap<String, Metric>());
 
         EasyMock.replay(mMockListener, mMockDevice);
@@ -114,9 +112,7 @@ public class LogcatCrashResultForwarderTest {
                         .contains(
                                 "instrumentation failed. reason: 'Process crashed.'"
                                         + "\nCrash Message:Runtime"));
-        assertTrue(
-                FailureStatus.SYSTEM_UNDER_TEST_CRASHED.equals(
-                        captured_1.getValue().getFailureStatus()));
+        assertTrue(FailureStatus.TEST_FAILURE.equals(captured_1.getValue().getFailureStatus()));
         assertTrue(
                 captured_2
                         .getValue()

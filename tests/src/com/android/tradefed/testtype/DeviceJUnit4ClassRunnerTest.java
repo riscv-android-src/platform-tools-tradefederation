@@ -22,14 +22,12 @@ import static org.mockito.Mockito.doReturn;
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.config.ConfigurationDef;
-import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.config.DynamicRemoteFileResolver.FileResolverLoader;
+import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.config.remote.GcsRemoteFileResolver;
 import com.android.tradefed.config.remote.IRemoteFileResolver;
-import com.android.tradefed.config.remote.IRemoteFileResolver.RemoteFileResolverArgs;
-import com.android.tradefed.config.remote.IRemoteFileResolver.ResolvedFile;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
@@ -70,9 +68,9 @@ public class DeviceJUnit4ClassRunnerTest {
         protected DynamicRemoteFileResolver createResolver() {
             IRemoteFileResolver mockResolver = Mockito.mock(IRemoteFileResolver.class);
             try {
-                doReturn(new ResolvedFile(new File("/downloaded/somewhere")))
+                doReturn(new File("/downloaded/somewhere"))
                         .when(mockResolver)
-                        .resolveRemoteFile((RemoteFileResolverArgs) Mockito.any());
+                        .resolveRemoteFiles(Mockito.eq(FAKE_REMOTE_FILE_PATH), Mockito.any());
             } catch (BuildRetrievalError e) {
                 CLog.e(e);
             }

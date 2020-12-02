@@ -28,13 +28,13 @@ public class LocalFileResolver implements IRemoteFileResolver {
     public static final String PROTOCOL = "file";
 
     @Override
-    public ResolvedFile resolveRemoteFile(RemoteFileResolverArgs args) throws BuildRetrievalError {
+    public File resolveRemoteFiles(File consideredFile) throws BuildRetrievalError {
         // Don't use absolute path as it would not start with gs:
-        String path = args.getConsideredFile().getPath();
+        String path = consideredFile.getPath();
         String pathWithoutProtocol = path.replaceFirst(PROTOCOL + ":", "");
         File localFile = new File(pathWithoutProtocol);
         if (localFile.exists()) {
-            return new ResolvedFile(localFile).cleanUp(false);
+            return localFile;
         }
         throw new BuildRetrievalError(
                 String.format("Failed to find local file %s.", localFile),

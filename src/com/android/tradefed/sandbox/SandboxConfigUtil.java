@@ -18,9 +18,7 @@ package com.android.tradefed.sandbox;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
-import com.android.tradefed.config.proxy.AutomatedReporters;
 import com.android.tradefed.log.LogUtil.CLog;
-import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.sandbox.SandboxConfigDump.DumpCmd;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
@@ -60,12 +58,10 @@ public class SandboxConfigUtil {
             throws SandboxConfigurationException, IOException {
         if (Strings.isNullOrEmpty(classpath)) {
             throw new SandboxConfigurationException(
-                    "Something went wrong with the sandbox setup, classpath was empty.",
-                    InfraErrorIdentifier.INTERNAL_CONFIG_ERROR);
+                    "Something went wrong with the sandbox setup, classpath was empty.");
         }
         runUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
         runUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
-        runUtil.unsetEnvVariable(AutomatedReporters.PROTO_REPORTING_PORT);
         File destination = null;
         try {
             destination = FileUtil.createTempFile("config-container", ".xml");
@@ -79,26 +75,19 @@ public class SandboxConfigUtil {
             FileUtil.deleteFile(destination);
             throw e;
         }
-        File tmpDir = FileUtil.createTempDir("config-dump-temp-dir");
-        CommandResult result = null;
-        try {
-            List<String> mCmdArgs = new ArrayList<>();
-            mCmdArgs.add(SystemUtil.getRunningJavaBinaryPath().getAbsolutePath());
-            mCmdArgs.add(String.format("-Djava.io.tmpdir=%s", tmpDir.getAbsolutePath()));
-            mCmdArgs.add("-cp");
-            mCmdArgs.add(classpath);
-            mCmdArgs.add(SandboxConfigDump.class.getCanonicalName());
-            mCmdArgs.add(dump.toString());
-            mCmdArgs.add(destination.getAbsolutePath());
-            for (String arg : args) {
-                mCmdArgs.add(arg);
-            }
-            result = runUtil.runTimedCmd(DUMP_TIMEOUT, mCmdArgs.toArray(new String[0]));
-            if (CommandStatus.SUCCESS.equals(result.getStatus())) {
-                return destination;
-            }
-        } finally {
-            FileUtil.recursiveDelete(tmpDir);
+        List<String> mCmdArgs = new ArrayList<>();
+        mCmdArgs.add(SystemUtil.getRunningJavaBinaryPath().getAbsolutePath());
+        mCmdArgs.add("-cp");
+        mCmdArgs.add(classpath);
+        mCmdArgs.add(SandboxConfigDump.class.getCanonicalName());
+        mCmdArgs.add(dump.toString());
+        mCmdArgs.add(destination.getAbsolutePath());
+        for (String arg : args) {
+            mCmdArgs.add(arg);
+        }
+        CommandResult result = runUtil.runTimedCmd(DUMP_TIMEOUT, mCmdArgs.toArray(new String[0]));
+        if (CommandStatus.SUCCESS.equals(result.getStatus())) {
+            return destination;
         }
 
         if (result.getStderr() != null && !result.getStderr().isEmpty()) {
@@ -113,8 +102,7 @@ public class SandboxConfigUtil {
                     String.format(" Timed out after %s.", TimeUtil.formatElapsedTime(DUMP_TIMEOUT));
         }
         errorMessage += String.format(" stderr: %s", result.getStderr());
-        throw new SandboxConfigurationException(
-                errorMessage, InfraErrorIdentifier.INTERNAL_CONFIG_ERROR);
+        throw new SandboxConfigurationException(errorMessage);
     }
 
     /**

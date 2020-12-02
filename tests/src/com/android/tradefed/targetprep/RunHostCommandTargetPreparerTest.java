@@ -25,8 +25,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import com.android.tradefed.build.BuildInfo;
-import com.android.tradefed.util.FileUtil;
 
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.IDeviceManager;
@@ -47,7 +45,6 @@ import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
 import java.io.OutputStream;
-import java.io.File;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -58,7 +55,6 @@ public final class RunHostCommandTargetPreparerTest {
 
     private static final String DEVICE_SERIAL = "123456";
     private static final String FULL_COMMAND = "command    \t\t\t  \t  argument $SERIAL";
-    private static final String FULL_COMMAND_EXTRA_FILE = "command argument $EXTRA_FILE(test1) $EXTRA_FILE(test2)";
 
     @Rule public final MockitoRule mockito = MockitoJUnit.rule();
 
@@ -218,57 +214,5 @@ public final class RunHostCommandTargetPreparerTest {
         verify(mRunUtil)
                 .runCmdInBackground(
                         eq(Arrays.asList("command", "argument", DEVICE_SERIAL)), eq(os));
-    }
-
-    @Test
-    public void testSetUp_extraFile() throws Exception {
-        BuildInfo stubBuild = new BuildInfo("stub", "stub");
-        File tmpDir = FileUtil.createTempDir("tmp");
-        File file1 = new File(tmpDir, "test1");
-        File file2 = new File(tmpDir, "test2");
-        FileUtil.writeToFile("ddd", file1);
-        FileUtil.writeToFile("ddd", file2);
-        stubBuild.setFile("test1", file1, "0");
-        stubBuild.setFile("test2", file2, "0");
-
-        OptionSetter optionSetter = new OptionSetter(mPreparer);
-        optionSetter.setOptionValue("host-setup-command", FULL_COMMAND_EXTRA_FILE);
-        optionSetter.setOptionValue("host-cmd-timeout", "10");
-
-        CommandResult result = new CommandResult(CommandStatus.SUCCESS);
-        when(mRunUtil.runTimedCmd(anyLong(), any())).thenReturn(result);
-        when(mTestInfo.getBuildInfo()).thenReturn(stubBuild);
-
-        // Verify timeout and command (split, removed whitespace, and device serial)
-        mPreparer.setUp(mTestInfo);
-        verify(mRunUtil).runTimedCmd(eq(10L), eq("command"), eq("argument"),
-                eq(file1.getAbsolutePath()), eq(file2.getAbsolutePath()));
-
-        // No flashing permit taken/returned by default
-        verify(mDeviceManager, never()).takeFlashingPermit();
-        verify(mDeviceManager, never()).returnFlashingPermit();
-
-        FileUtil.recursiveDelete(tmpDir);
-    }
-    @Test
-    public void testSetUp_extraFileNotExist() throws Exception {
-        BuildInfo stubBuild = new BuildInfo("stub", "stub");
-
-        OptionSetter optionSetter = new OptionSetter(mPreparer);
-        optionSetter.setOptionValue("host-setup-command", FULL_COMMAND_EXTRA_FILE);
-        optionSetter.setOptionValue("host-cmd-timeout", "10");
-
-        CommandResult result = new CommandResult(CommandStatus.SUCCESS);
-        when(mRunUtil.runTimedCmd(anyLong(), any())).thenReturn(result);
-        when(mTestInfo.getBuildInfo()).thenReturn(stubBuild);
-
-        // Verify timeout and command (split, removed whitespace, and device serial)
-        mPreparer.setUp(mTestInfo);
-        verify(mRunUtil).runTimedCmd(eq(10L), eq("command"), eq("argument"),
-                eq("$EXTRA_FILE(test1)"), eq("$EXTRA_FILE(test2)"));
-
-        // No flashing permit taken/returned by default
-        verify(mDeviceManager, never()).takeFlashingPermit();
-        verify(mDeviceManager, never()).returnFlashingPermit();
     }
 }

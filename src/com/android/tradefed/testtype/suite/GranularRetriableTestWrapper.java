@@ -297,10 +297,6 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
                     if (collector.isDisabled()) {
                         CLog.d("%s has been disabled. Skipping.", collector);
                     } else {
-                        if (collector instanceof IConfigurationReceiver) {
-                            ((IConfigurationReceiver) collector)
-                                    .setConfiguration(mModuleConfiguration);
-                        }
                         runListener = collector.init(mModuleInvocationContext, runListener);
                     }
                 }

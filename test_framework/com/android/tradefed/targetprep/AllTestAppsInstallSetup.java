@@ -23,7 +23,6 @@ import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
@@ -72,12 +71,12 @@ public class AllTestAppsInstallSetup extends BaseTargetPreparer implements IAbiR
 
     private List<String> mPackagesInstalled = new ArrayList<>();
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public void setUp(TestInformation testInfo)
-            throws TargetSetupError, BuildError, DeviceNotAvailableException {
-        ITestDevice device = testInfo.getDevice();
-        IBuildInfo buildInfo = testInfo.getBuildInfo();
+    public void setUp(ITestDevice device, IBuildInfo buildInfo) throws TargetSetupError,
+            DeviceNotAvailableException {
         if (!(buildInfo instanceof IDeviceBuildInfo)) {
             throw new TargetSetupError(
                     "Invalid buildInfo, expecting an IDeviceBuildInfo",
@@ -199,11 +198,13 @@ public class AllTestAppsInstallSetup extends BaseTargetPreparer implements IAbiR
         return mAbi;
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public void tearDown(TestInformation testInfo, Throwable e) throws DeviceNotAvailableException {
+    public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
+            throws DeviceNotAvailableException {
         if (mCleanup && !(e instanceof DeviceNotAvailableException)) {
-            ITestDevice device = testInfo.getDevice();
             for (String packageName : mPackagesInstalled) {
                 String msg = device.uninstallPackage(packageName);
                 if (msg != null) {

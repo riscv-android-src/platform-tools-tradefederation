@@ -177,20 +177,25 @@ public class RunHostScriptTargetPreparer extends BaseTargetPreparer {
     private void executeScript(File scriptFile, ITestDevice device) throws TargetSetupError {
         CommandResult result =
                 getRunUtil().runTimedCmd(mTimeout.toMillis(), scriptFile.getAbsolutePath());
-        CLog.i(
-                "Finished executing script '%s' (status=%s)",
-                scriptFile.getPath(), result.getStatus());
-        CLog.i("Stdout: %s", result.getStdout());
-        CLog.i("Stderr: %s", result.getStderr());
         switch (result.getStatus()) {
+            case SUCCESS:
+                CLog.i("Script executed successfully, stdout = [%s].", result.getStdout());
+                break;
             case FAILED:
-                throw new TargetSetupError("Script execution failed", device.getDeviceDescriptor());
+                throw new TargetSetupError(
+                        String.format(
+                                "Script execution failed, stdout = [%s], stderr = [%s].",
+                                result.getStdout(), result.getStderr()),
+                        device.getDeviceDescriptor());
             case TIMED_OUT:
                 throw new TargetSetupError(
-                        "Script execution timed out", device.getDeviceDescriptor());
+                        "Script execution timed out.", device.getDeviceDescriptor());
             case EXCEPTION:
                 throw new TargetSetupError(
-                        "Exception during script execution", device.getDeviceDescriptor());
+                        String.format(
+                                "Exception during script execution, stdout = [%s], stderr = [%s].",
+                                result.getStdout(), result.getStderr()),
+                        device.getDeviceDescriptor());
         }
     }
 }

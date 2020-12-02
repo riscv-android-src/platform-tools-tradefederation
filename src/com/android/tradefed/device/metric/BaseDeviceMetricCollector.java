@@ -80,6 +80,7 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
     private Map<String, File> mTestArtifactFilePathMap = new HashMap<>();
     private DeviceMetricData mRunData;
     private DeviceMetricData mTestData;
+    private String mTag;
     private String mRunName;
 
     /**
@@ -394,6 +395,25 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
     @Override
     public final void setDisable(boolean isDisabled) {
         mDisable = isDisabled;
+    }
+
+    /**
+     * Sets the {@code mTag} of the collector. It can be used to specify the interval of the
+     * collector.
+     *
+     * @param tag the unique identifier of the collector.
+     */
+    public void setTag(String tag) {
+        mTag = tag;
+    }
+
+    /**
+     * Returns the identifier {@code mTag} of the collector.
+     *
+     * @return mTag, the unique identifier of the collector.
+     */
+    public String getTag() {
+        return mTag;
     }
 
     /**

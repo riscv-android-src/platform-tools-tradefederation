@@ -16,7 +16,6 @@
 package com.android.tradefed.config;
 
 import static org.easymock.EasyMock.anyObject;
-import static org.easymock.EasyMock.contains;
 import static org.easymock.EasyMock.endsWith;
 import static org.easymock.EasyMock.eq;
 import static org.junit.Assert.assertEquals;
@@ -24,7 +23,6 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
 import com.android.tradefed.build.StubBuildProvider;
-import com.android.tradefed.config.proxy.AutomatedReporters;
 import com.android.tradefed.sandbox.ISandbox;
 import com.android.tradefed.sandbox.SandboxConfigDump;
 import com.android.tradefed.sandbox.SandboxConfigDump.DumpCmd;
@@ -80,7 +78,6 @@ public class SandboxConfigurationFactoryTest {
                         mMockRunUtil.runTimedCmd(
                                 EasyMock.anyLong(),
                                 endsWith("/java"),
-                                contains("-Djava.io.tmpdir="),
                                 eq("-cp"),
                                 anyObject(),
                                 eq(SandboxConfigDump.class.getCanonicalName()),
@@ -91,7 +88,7 @@ public class SandboxConfigurationFactoryTest {
                         new IAnswer<CommandResult>() {
                             @Override
                             public CommandResult answer() throws Throwable {
-                                String resFile = (String) EasyMock.getCurrentArguments()[7];
+                                String resFile = (String) EasyMock.getCurrentArguments()[6];
                                 FileUtil.writeToFile(
                                         "<configuration><test class=\"com.android.tradefed.test"
                                                 + "type.StubTest\" /></configuration>",
@@ -110,7 +107,6 @@ public class SandboxConfigurationFactoryTest {
         mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
         EasyMock.expectLastCall().times(2);
         mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
-        mMockRunUtil.unsetEnvVariable(AutomatedReporters.PROTO_REPORTING_PORT);
         mMockRunUtil.setEnvVariable(
                 EasyMock.eq(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE), EasyMock.anyObject());
         mMockRunUtil.setEnvVariablePriority(EnvPriority.SET);
@@ -133,7 +129,6 @@ public class SandboxConfigurationFactoryTest {
         mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
         EasyMock.expectLastCall().times(2);
         mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
-        mMockRunUtil.unsetEnvVariable(AutomatedReporters.PROTO_REPORTING_PORT);
         mMockRunUtil.setEnvVariable(
                 EasyMock.eq(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE), EasyMock.anyObject());
         mMockRunUtil.setEnvVariablePriority(EnvPriority.SET);

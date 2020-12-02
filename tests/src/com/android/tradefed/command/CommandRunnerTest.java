@@ -250,8 +250,7 @@ public class CommandRunnerTest {
         assertTrue(
                 String.format("%s does not contains the expected output", mStackTraceOutput),
                 mStackTraceOutput.contains(
-                        "com.android.tradefed.device.NoDeviceException"
-                                + "[RUNNER_ALLOCATION_ERROR|500009|INFRA_FAILURE]: "
-                                + "No device was allocated for the command."));
+                        "com.android.tradefed.device.NoDeviceException: No device was allocated "
+                                + "for the command."));
     }
 }

@@ -371,8 +371,8 @@ public class PerfettoPullerMetricCollector extends FilePullerDeviceMetricCollect
                         + " %s - Status - %s ", perfettoRawTraceFile.getName(),
                         errStream.toString(), conversionResult.getStatus());
                 isConversionSuccess = false;
-            } else if (mTraceProcessorOutputFormat.equals(METRIC_FILE_FORMAT.text) ||
-                    mTraceProcessorOutputFormat.equals(METRIC_FILE_FORMAT.json)) {
+            } else if (mTraceProcessorOutputFormat.equals(METRIC_FILE_FORMAT.text)) {
+                CLog.i("Compressing the perfetto metric text proto.");
                 File compressedFile = getCompressedFile(metricOutputFile);
                 metricOutputFile.delete();
                 return compressedFile;

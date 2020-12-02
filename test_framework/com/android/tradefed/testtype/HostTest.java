@@ -28,7 +28,6 @@ import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -36,7 +35,6 @@ import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.result.TestDescription;
-import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.testtype.host.PrettyTestEventLogger;
 import com.android.tradefed.testtype.junit4.CarryDnaeError;
@@ -74,7 +72,6 @@ import java.lang.reflect.Modifier;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.time.Duration;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -86,7 +83,6 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.regex.Pattern;
@@ -175,11 +171,6 @@ public class HostTest
                         + "device side."
     )
     private boolean mEnableHostDeviceLogs = true;
-
-    @Option(
-            name = TestTimeoutEnforcer.TEST_CASE_TIMEOUT_OPTION,
-            description = TestTimeoutEnforcer.TEST_CASE_TIMEOUT_DESCRIPTION)
-    private Duration mTestCaseTimeout = Duration.ofSeconds(0L);
 
     private IConfiguration mConfig;
     private ITestDevice mDevice;
@@ -540,8 +531,7 @@ public class HostTest
                 failureDescription.setFailureStatus(FailureStatus.TEST_FAILURE);
                 listener.testRunFailed(failureDescription);
                 listener.testRunEnded(0L, new HashMap<String, Metric>());
-                throw new HarnessRuntimeException(
-                        e.getMessage(), e, InfraErrorIdentifier.OPTION_CONFIGURATION_ERROR);
+                throw e;
             }
 
             // Add a pretty logger to the events to mark clearly start/end of test cases.
@@ -691,11 +681,6 @@ public class HostTest
                 return false;
             }
         } else {
-            if (mTestCaseTimeout.toMillis() > 0L) {
-                listener =
-                        new TestTimeoutEnforcer(
-                                mTestCaseTimeout.toMillis(), TimeUnit.MILLISECONDS, listener);
-            }
             return JUnitRunUtil.runTest(listener, junitTest, className);
         }
     }
@@ -704,11 +689,6 @@ public class HostTest
             ITestInvocationListener listener, Runner checkRunner, String className)
             throws DeviceNotAvailableException {
         JUnitCore runnerCore = new JUnitCore();
-        if (mTestCaseTimeout.toMillis() > 0L) {
-            listener =
-                    new TestTimeoutEnforcer(
-                            mTestCaseTimeout.toMillis(), TimeUnit.MILLISECONDS, listener);
-        }
         JUnit4ResultForwarder list = new JUnit4ResultForwarder(listener);
         runnerCore.addListener(list);
 

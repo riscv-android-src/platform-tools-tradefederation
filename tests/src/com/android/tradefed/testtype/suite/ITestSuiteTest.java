@@ -60,7 +60,6 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.MultiFailureDescription;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.error.DeviceErrorIdentifier;
-import com.android.tradefed.result.error.TestErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.retry.BaseRetryDecision;
 import com.android.tradefed.retry.IRetryDecision;
@@ -571,17 +570,13 @@ public class ITestSuiteTest {
                 EasyMock.eq(0),
                 EasyMock.eq(0),
                 EasyMock.anyLong());
-        Capture<FailureDescription> capture = new Capture<>();
-        mMockListener.testRunFailed(EasyMock.capture(capture));
+        mMockListener.testRunFailed(EasyMock.contains("some failures."));
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
         replayMocks();
         mTestSuite.run(mTestInfo, mMockListener);
         verifyMocks();
-        FailureDescription failure = capture.getValue();
-        assertEquals(
-                TestErrorIdentifier.MODULE_CHANGED_SYSTEM_STATUS, failure.getErrorIdentifier());
     }
 
     @Test
@@ -620,17 +615,13 @@ public class ITestSuiteTest {
                 EasyMock.eq(0),
                 EasyMock.eq(0),
                 EasyMock.anyLong());
-        Capture<FailureDescription> capture = new Capture<>();
-        mMockListener.testRunFailed(EasyMock.capture(capture));
+        mMockListener.testRunFailed(EasyMock.contains("some failures."));
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
         replayMocks();
         mTestSuite.run(mTestInfo, mMockListener);
         verifyMocks();
-        FailureDescription failure = capture.getValue();
-        assertEquals(
-                TestErrorIdentifier.MODULE_CHANGED_SYSTEM_STATUS, failure.getErrorIdentifier());
     }
 
     /**

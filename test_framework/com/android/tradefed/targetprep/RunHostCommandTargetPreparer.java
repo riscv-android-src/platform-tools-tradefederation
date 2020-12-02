@@ -33,7 +33,6 @@ import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
-import com.android.tradefed.build.IBuildInfo;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -45,8 +44,6 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.regex.Pattern;
-import java.util.regex.Matcher;
 
 /** Target preparer to run arbitrary host commands before and after running the test. */
 @OptionClass(alias = "run-host-command")
@@ -55,8 +52,6 @@ public class RunHostCommandTargetPreparer extends BaseTargetPreparer
 
     /** Placeholder to be replaced with real device serial number in commands */
     private static final String DEVICE_SERIAL_PLACEHOLDER = "$SERIAL";
-
-    private static final String EXTRA_FILE_PATTERSTRING = "\\$EXTRA_FILE\\(([^()]+)\\)";
 
     private static final String BG_COMMAND_LOG_PREFIX = "bg_command_log_";
 
@@ -158,10 +153,7 @@ public class RunHostCommandTargetPreparer extends BaseTargetPreparer
             getRunUtil().setWorkingDir(mWorkDir);
         }
         ITestDevice device = testInfo.getDevice();
-        IBuildInfo buildInfo = testInfo.getBuildInfo();
-
         replaceSerialNumber(mSetUpCommands, device);
-        replaceExtraFile(mSetUpCommands, buildInfo);
         try {
             if (mUseFlashingPermit) {
                 getDeviceManager().takeFlashingPermit();
@@ -176,7 +168,6 @@ public class RunHostCommandTargetPreparer extends BaseTargetPreparer
         try {
             mBgCommandLogs = createBgCommandLogs();
             replaceSerialNumber(mBgCommands, device);
-            replaceExtraFile(mSetUpCommands, buildInfo);
             runBgCommandList(mBgCommands, mBgCommandLogs);
         } catch (IOException e) {
             throw new TargetSetupError(e.toString(), device.getDeviceDescriptor());
@@ -188,7 +179,6 @@ public class RunHostCommandTargetPreparer extends BaseTargetPreparer
     public void tearDown(TestInformation testInfo, Throwable e) throws DeviceNotAvailableException {
         ITestDevice device = testInfo.getDevice();
         replaceSerialNumber(mTearDownCommands, device);
-        replaceExtraFile(mTearDownCommands, testInfo.getBuildInfo());
         try {
             if (mUseFlashingPermit) {
                 getDeviceManager().takeFlashingPermit();
@@ -233,8 +223,8 @@ public class RunHostCommandTargetPreparer extends BaseTargetPreparer
             switch (result.getStatus()) {
                 case SUCCESS:
                     CLog.i(
-                            "Command %s finished successfully, stdout = [%s], stderr = [%s].",
-                            command, result.getStdout(), result.getStderr());
+                            "Command %s finished successfully, stdout = [%s].",
+                            command, result.getStdout());
                     break;
                 case FAILED:
                     throw new TargetSetupError(
@@ -244,15 +234,11 @@ public class RunHostCommandTargetPreparer extends BaseTargetPreparer
                             device.getDeviceDescriptor());
                 case TIMED_OUT:
                     throw new TargetSetupError(
-                            String.format(
-                                    "Command %s timed out, stdout = [%s], stderr = [%s].",
-                                    command, result.getStdout(), result.getStderr()),
+                            String.format("Command %s timed out.", command),
                             device.getDeviceDescriptor());
                 case EXCEPTION:
                     throw new TargetSetupError(
-                            String.format(
-                                    "Exception occurred when running command %s, stdout = [%s], stderr = [%s].",
-                                    command, result.getStdout(), result.getStderr()),
+                            String.format("Exception occurred when running command %s.", command),
                             device.getDeviceDescriptor());
             }
         }
@@ -294,33 +280,6 @@ public class RunHostCommandTargetPreparer extends BaseTargetPreparer
             String command =
                     commands.get(i).replace(DEVICE_SERIAL_PLACEHOLDER, device.getSerialNumber());
             commands.set(i, command);
-        }
-    }
-
-    /**
-     * For each command in the list, replace placeholder (if any) with the file name indicated in
-     * the build information
-     *
-     * @param commands list of host commands
-     * @param buildInfo build artifact information
-     */
-    private void replaceExtraFile(final List<String> commands, IBuildInfo buildInfo) {
-        Pattern pattern = Pattern.compile(EXTRA_FILE_PATTERSTRING);
-        for (int i = 0; i < commands.size(); i++) {
-            Matcher matcher = pattern.matcher(commands.get(i));
-            StringBuffer command = new StringBuffer();
-
-            while (matcher.find()) {
-                String fileName = matcher.group(1);
-                File file = buildInfo.getFile(fileName);
-                if (file == null || !file.exists()) {
-                    continue;
-                }
-                matcher.appendReplacement(command, file.getPath());
-            }
-            matcher.appendTail(command);
-
-            commands.set(i, command.toString());
         }
     }
 

@@ -38,6 +38,7 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceAllocationState;
+import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.FreeDeviceState;
 import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.ITestDevice;
@@ -53,7 +54,9 @@ import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestSummary;
+import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.ITargetPreparer;
+import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner.TestLogData;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.FileUtil;
@@ -122,10 +125,7 @@ public class ClusterCommandSchedulerTest {
     private IRestApiHelper mMockApiHelper;
     private IClusterClient mMockClusterClient;
     private ClusterOptions mMockClusterOptions;
-
-    @SuppressWarnings("unchecked")
     private IClusterEventUploader<ClusterCommandEvent> mMockEventUploader;
-
     private ClusterCommandScheduler mScheduler;
     private IClusterEventUploader<ClusterHostEvent> mMockHostUploader;
     // Test variable to store the args of last execCommand called by CommandScheduler.
@@ -1141,18 +1141,17 @@ public class ClusterCommandSchedulerTest {
         for (int i = 0; i < cmd.getTargetDeviceSerials().size(); i++) {
             String serial =
                     ClusterHostUtil.getLocalDeviceSerial(cmd.getTargetDeviceSerials().get(i));
-            IDeviceConfiguration deviceConfig = deviceConfigs.get(i);
-            Collection<String> serials = deviceConfig.getDeviceRequirements().getSerials(null);
+            Collection<String> serials =
+                    deviceConfigs.get(i).getDeviceRequirements().getSerials(null);
             assertTrue(serials.size() == 1 && serials.contains(serial));
-
-            ClusterBuildProvider buildProvider =
-                    (ClusterBuildProvider) deviceConfig.getBuildProvider();
-            assertEquals(testResources.size(), buildProvider.getTestResources().size());
-            for (TestResource r : testResources) {
-                assertEquals(r.getUrl(), buildProvider.getTestResources().get(r.getName()));
-            }
         }
 
+        ClusterBuildProvider buildProvider =
+                (ClusterBuildProvider) deviceConfigs.get(0).getBuildProvider();
+        assertEquals(testResources.size(), buildProvider.getTestResources().size());
+        for (TestResource r : testResources) {
+            assertEquals(r.getUrl(), buildProvider.getTestResources().get(r.getName()));
+        }
         ClusterCommandLauncher test = (ClusterCommandLauncher) config.getTests().get(0);
         assertEquals(cmd.getCommandLine(), test.getCommandLine());
 
@@ -1389,6 +1388,12 @@ public class ClusterCommandSchedulerTest {
 
         @Option(name = "map", description = "A map of key/value pairs")
         private Map<String, String> mMap = new TreeMap<>();
+
+        @Override
+        public void setUp(ITestDevice device, IBuildInfo buildInfo)
+                throws TargetSetupError, BuildError, DeviceNotAvailableException {
+            // Do nothing
+        }
 
         public int getInt() {
             return mInt;
@@ -1644,11 +1649,6 @@ public class ClusterCommandSchedulerTest {
         ClusterHostEvent hostEvent = capture.getValue();
         assertEquals(CLUSTER_ID, hostEvent.getClusterId());
         assertEquals(CommandScheduler.HostState.RUNNING, hostEvent.getHostState());
-        stopScheduler(scheduler);
-    }
-
-    @SuppressWarnings("deprecation")
-    private void stopScheduler(TestableClusterCommandScheduler scheduler) {
-        scheduler.stop(); // stop is deprecated.
+        scheduler.stop();
     }
 }

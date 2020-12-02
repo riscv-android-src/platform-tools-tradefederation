@@ -16,161 +16,34 @@
 
 package com.android.tradefed.monitoring;
 
-import com.android.tradefed.cluster.ClusterHostUtil;
-import com.android.tradefed.cluster.ClusterOptions;
-import com.android.tradefed.command.remote.DeviceDescriptor;
-import com.android.tradefed.device.DeviceAllocationState;
-import com.android.tradefed.device.IDeviceMonitor;
-
-import com.google.dualhomelab.monitoringagent.resourcemonitoring.Attribute;
-import com.google.dualhomelab.monitoringagent.resourcemonitoring.LabResource;
-import com.google.dualhomelab.monitoringagent.resourcemonitoring.LabResourceRequest;
-import com.google.dualhomelab.monitoringagent.resourcemonitoring.MonitoredEntity;
-
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
-import org.mockito.Mock;
-import static org.mockito.Mockito.*;
-import org.mockito.junit.MockitoJUnit;
-import org.mockito.junit.MockitoRule;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
-
-import io.grpc.testing.StreamRecorder;
-
-@RunWith(JUnit4.class)
 public class LabResourceDeviceMonitorTest {
-    @Mock private ClusterOptions mClusterOptions;
 
-    @Rule public MockitoRule rule = MockitoJUnit.rule();
-
-    private static final DeviceDescriptor DEVICE_DESCRIPTOR =
-            new DeviceDescriptor(
-                    "fake-serial",
-                    false,
-                    DeviceAllocationState.Available,
-                    "product",
-                    "productVariant",
-                    "sdkVersion",
-                    "buildId",
-                    "batteryLevel");
-
-    private LabResourceDeviceMonitor mMonitor;
+    private LabResourceDeviceMonitor mLabResourceDeviceMonitor;
 
     @Before
     public void setUp() {
-        mMonitor = new LabResourceDeviceMonitor(3, mClusterOptions);
-        mMonitor.setDeviceLister(
-                new IDeviceMonitor.DeviceLister() {
-                    @Override
-                    public List<DeviceDescriptor> listDevices() {
-                        return List.of(DEVICE_DESCRIPTOR);
-                    }
-
-                    @Override
-                    public DeviceDescriptor getDeviceDescriptor(String serial) {
-                        return null;
-                    }
-                });
+        mLabResourceDeviceMonitor = new LabResourceDeviceMonitor();
     }
 
     @Test
     public void testServerStartAndShutdown() {
         Assert.assertFalse(
-                "server should be empty before monitor run", mMonitor.getServer().isPresent());
-        mMonitor.run();
+                "server should be empty before monitor run",
+                mLabResourceDeviceMonitor.getServer().isPresent());
+        mLabResourceDeviceMonitor.run();
         Assert.assertTrue(
-                "server should present after monitor run", mMonitor.getServer().isPresent());
+                "server should present after monitor run",
+                mLabResourceDeviceMonitor.getServer().isPresent());
         Assert.assertEquals(
-                LabResourceDeviceMonitor.DEFAULT_PORT, mMonitor.getServer().get().getPort());
-        mMonitor.stop();
+                LabResourceDeviceMonitor.DEFAULT_PORT,
+                mLabResourceDeviceMonitor.getServer().get().getPort());
+        mLabResourceDeviceMonitor.stop();
         Assert.assertTrue(
                 "server should be shutdown after monitor stop",
-                mMonitor.getServer().get().isShutdown());
-    }
-
-    @Test
-    public void testGetMonitoredHost() {
-        when(mClusterOptions.getLabName()).thenReturn("foo-lab");
-        when(mClusterOptions.getClusterId()).thenReturn("zoo");
-        Assert.assertEquals(
-                MonitoredEntity.newBuilder()
-                        .putIdentifier(
-                                LabResourceDeviceMonitor.HOST_NAME_KEY,
-                                ClusterHostUtil.getHostName())
-                        .putIdentifier(LabResourceDeviceMonitor.LAB_NAME_KEY, "foo-lab")
-                        .putIdentifier(
-                                LabResourceDeviceMonitor.TEST_HARNESS_KEY,
-                                LabResourceDeviceMonitor.TEST_HARNESS)
-                        .addAttribute(
-                                Attribute.newBuilder()
-                                        .setName(LabResourceDeviceMonitor.HOST_GROUP_KEY)
-                                        .setValue("zoo"))
-                        .build(),
-                mMonitor.buildMonitoredHost());
-    }
-
-    @Test
-    public void testGetMonitoredDeviceIdentifier() {
-        when(mClusterOptions.getRunTargetFormat()).thenReturn(null);
-        when(mClusterOptions.getDeviceTag()).thenReturn(null);
-        when(mClusterOptions.getNextClusterIds()).thenReturn(Arrays.asList("foo", "bar"));
-        MonitoredEntity device = mMonitor.buildMonitoredDevice(DEVICE_DESCRIPTOR);
-        Assert.assertEquals("fake-serial", device.getIdentifierOrThrow("device_serial"));
-    }
-
-    @Test
-    public void testGetDeviceAttributes() {
-        when(mClusterOptions.getRunTargetFormat()).thenReturn(null);
-        when(mClusterOptions.getDeviceTag()).thenReturn(null);
-        when(mClusterOptions.getNextClusterIds()).thenReturn(Arrays.asList("foo", "bar"));
-        Assert.assertEquals(
-                Arrays.asList(
-                        Attribute.newBuilder()
-                                .setName("run_target")
-                                .setValue("product:productVariant")
-                                .build(),
-                        Attribute.newBuilder().setName("pool").setValue("foo").build(),
-                        Attribute.newBuilder().setName("pool").setValue("bar").build()),
-                mMonitor.getDeviceAttributes(DEVICE_DESCRIPTOR));
-    }
-
-    @Test
-    public void testGetStatus() {
-        Assert.assertEquals(
-                "Available", mMonitor.getStatus(DEVICE_DESCRIPTOR).getMetric(0).getTag());
-    }
-
-    @Test
-    public void testCachedResponseValid() throws InterruptedException {
-        CachedLabResource resource = new CachedLabResource(LabResource.newBuilder().build());
-        Assert.assertTrue(resource.isValid(3));
-        Thread.sleep(3001);
-        Assert.assertFalse(resource.isValid(3));
-    }
-
-    @Test
-    public void testCachedResponseLogic() throws Exception {
-        when(mClusterOptions.getLabName()).thenReturn("foo-lab");
-        when(mClusterOptions.getClusterId()).thenReturn("zoo");
-        Assert.assertFalse(mMonitor.getCachedLabResource().isPresent());
-        StreamRecorder<LabResource> responseObserver = StreamRecorder.create();
-        mMonitor.getLabResource(LabResourceRequest.newBuilder().build(), responseObserver);
-        Assert.assertTrue(responseObserver.awaitCompletion(1, TimeUnit.SECONDS));
-        Assert.assertNull(responseObserver.getError());
-        CachedLabResource cachedResource = mMonitor.getCachedLabResource().get();
-        mMonitor.getLabResource(LabResourceRequest.newBuilder().build(), responseObserver);
-        Assert.assertEquals(
-                mMonitor.getCachedLabResource().get().mInstant, cachedResource.mInstant);
-        Thread.sleep(3001);
-        mMonitor.getLabResource(LabResourceRequest.newBuilder().build(), responseObserver);
-        Assert.assertTrue(
-                mMonitor.getCachedLabResource().get().mInstant.isAfter(cachedResource.mInstant));
+                mLabResourceDeviceMonitor.getServer().get().isShutdown());
     }
 }

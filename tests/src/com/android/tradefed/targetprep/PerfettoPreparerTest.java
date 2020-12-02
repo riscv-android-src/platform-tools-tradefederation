@@ -19,9 +19,6 @@ import static org.junit.Assert.fail;
 
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.invoker.IInvocationContext;
-import com.android.tradefed.invoker.InvocationContext;
-import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.util.FileUtil;
 
 import org.easymock.EasyMock;
@@ -42,7 +39,6 @@ public class PerfettoPreparerTest {
     private PerfettoPreparer mPreparer = null;
     private ITestDevice mMockDevice = null;
     private OptionSetter mOptionSetter = null;
-    private TestInformation mTestInfo;
 
     @Before
     public void setUp() throws Exception {
@@ -51,16 +47,13 @@ public class PerfettoPreparerTest {
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("SERIAL");
         mPreparer = new PerfettoPreparer();
         mOptionSetter = new OptionSetter(mPreparer);
-        IInvocationContext context = new InvocationContext();
-        context.addAllocatedDevice("device", mMockDevice);
-        mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
     }
 
     /** When there's nothing to be done, expect no exception to be thrown */
     @Test
     public void testNoop() throws Exception {
         EasyMock.replay(mMockDevice);
-        mPreparer.setUp(mTestInfo);
+        mPreparer.setUp(mMockDevice, null);
         EasyMock.verify(mMockDevice);
     }
 
@@ -70,7 +63,7 @@ public class PerfettoPreparerTest {
         mOptionSetter.setOptionValue("binary-perfetto-config", "dummy.txt");
         EasyMock.replay(mMockDevice);
         try {
-            mPreparer.setUp(mTestInfo);
+            mPreparer.setUp(mMockDevice, null);
             fail("TargetSetupError not thrown");
         } catch (TargetSetupError e) {
             // expected
@@ -91,7 +84,7 @@ public class PerfettoPreparerTest {
         EasyMock.replay(mMockDevice);
         try {
             // Should not throw any exception.
-            mPreparer.setUp(mTestInfo);
+            mPreparer.setUp(mMockDevice, null);
         } finally {
             perfettoTextFile.delete();
         }

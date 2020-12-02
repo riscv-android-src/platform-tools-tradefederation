@@ -42,7 +42,7 @@ public final class ConfigurationYamlParser {
 
     private static final String DESCRIPTION_KEY = "description";
     public static final String PRE_SETUP_ACTION_KEY = "pre_setup_action";
-    public static final String TARGET_PREPARERS_KEY = "target_preparers";
+    public static final String POST_SETUP_ACTION_KEY = "post_setup_action";
     public static final String DEPENDENCIES_KEY = "dependencies";
     public static final String TESTS_KEY = "tests";
 
@@ -76,7 +76,6 @@ public final class ConfigurationYamlParser {
                     source,
                     source,
                     Configuration.CMD_OPTIONS_TYPE_NAME);
-            @SuppressWarnings("unchecked")
             Map<String, Object> yamlObjects = (Map<String, Object>) yaml.load(yamlInput);
             translateYamlInTradefed(configDef, yamlObjects);
         } catch (YAMLException e) {
@@ -94,40 +93,40 @@ public final class ConfigurationYamlParser {
         }
         Set<String> dependencyFiles = new LinkedHashSet<>();
         if (yamlObjects.containsKey(PRE_SETUP_ACTION_KEY)) {
-            @SuppressWarnings("unchecked")
-            List<Object> objList = (List<Object>) yamlObjects.get(PRE_SETUP_ACTION_KEY);
-            YamlClassOptionsParser classAndOptions = new YamlClassOptionsParser(objList);
+            YamlClassOptionsParser classAndOptions =
+                    new YamlClassOptionsParser(
+                            "action",
+                            PRE_SETUP_ACTION_KEY,
+                            (List<Map<String, Object>>) yamlObjects.get(PRE_SETUP_ACTION_KEY));
             mSeenKeys.add(PRE_SETUP_ACTION_KEY);
             convertClassAndOptionsToObjects(
-                    configDef,
-                    classAndOptions.getClassesAndOptions(),
-                    Configuration.TARGET_PREPARER_TYPE_NAME);
+                    configDef, classAndOptions, Configuration.TARGET_PREPARER_TYPE_NAME);
         }
         if (yamlObjects.containsKey(DEPENDENCIES_KEY)) {
-            @SuppressWarnings("unchecked")
-            List<Map<String, Object>> objList =
-                    (List<Map<String, Object>>) yamlObjects.get(DEPENDENCIES_KEY);
-            YamlTestDependencies testDeps = new YamlTestDependencies(objList);
+            YamlTestDependencies testDeps =
+                    new YamlTestDependencies(
+                            (List<Map<String, Object>>) yamlObjects.get(DEPENDENCIES_KEY));
             dependencyFiles = convertDependenciesToObjects(configDef, testDeps);
             mSeenKeys.add(DEPENDENCIES_KEY);
         }
         if (yamlObjects.containsKey(TESTS_KEY)) {
-            @SuppressWarnings("unchecked")
-            List<Object> objList = (List<Object>) yamlObjects.get(TESTS_KEY);
-            YamlClassOptionsParser runnerInfo = new YamlClassOptionsParser(objList);
+            YamlClassOptionsParser runnerInfo =
+                    new YamlClassOptionsParser(
+                            "test",
+                            TESTS_KEY,
+                            (List<Map<String, Object>>) yamlObjects.get(TESTS_KEY));
             mSeenKeys.add(TESTS_KEY);
-            convertClassAndOptionsToObjects(
-                    configDef, runnerInfo.getClassesAndOptions(), Configuration.TEST_TYPE_NAME);
+            convertClassAndOptionsToObjects(configDef, runnerInfo, Configuration.TEST_TYPE_NAME);
         }
-        if (yamlObjects.containsKey(TARGET_PREPARERS_KEY)) {
-            @SuppressWarnings("unchecked")
-            List<Object> objList = (List<Object>) yamlObjects.get(TARGET_PREPARERS_KEY);
-            YamlClassOptionsParser runnerInfo = new YamlClassOptionsParser(objList);
-            mSeenKeys.add(TARGET_PREPARERS_KEY);
+        if (yamlObjects.containsKey(POST_SETUP_ACTION_KEY)) {
+            YamlClassOptionsParser runnerInfo =
+                    new YamlClassOptionsParser(
+                            "action",
+                            POST_SETUP_ACTION_KEY,
+                            (List<Map<String, Object>>) yamlObjects.get(POST_SETUP_ACTION_KEY));
+            mSeenKeys.add(POST_SETUP_ACTION_KEY);
             convertClassAndOptionsToObjects(
-                    configDef,
-                    runnerInfo.getClassesAndOptions(),
-                    Configuration.TARGET_PREPARER_TYPE_NAME);
+                    configDef, runnerInfo, Configuration.TARGET_PREPARER_TYPE_NAME);
         }
         if (!mSeenKeys.containsAll(REQUIRED_KEYS)) {
             Set<String> missingKeys = new HashSet<>(REQUIRED_KEYS);
@@ -212,11 +211,11 @@ public final class ConfigurationYamlParser {
     }
 
     private void convertClassAndOptionsToObjects(
-            ConfigurationDef def, List<ClassAndOptions> classAndOptionsList, String configObjType) {
-        if (classAndOptionsList.isEmpty()) {
+            ConfigurationDef def, YamlClassOptionsParser tests, String configObjType) {
+        if (tests.getClassesAndOptions().isEmpty()) {
             return;
         }
-        for (ClassAndOptions classOptions : classAndOptionsList) {
+        for (ClassAndOptions classOptions : tests.getClassesAndOptions()) {
             String className = classOptions.mClass;
             int classCount = def.addConfigObjectDef(configObjType, className);
             for (Entry<String, String> options : classOptions.mOptions.entries()) {

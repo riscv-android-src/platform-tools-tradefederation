@@ -23,7 +23,6 @@ import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
-import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -97,7 +96,6 @@ public class FilePullerLogCollectorTest {
      */
     @Test
     public void testPullAndLog() throws Exception {
-        EasyMock.expect(mMockDevice.getDeviceState()).andReturn(TestDeviceState.ONLINE);
         ITestInvocationListener listener = mCollector.init(mContext, mMockListener);
         TestDescription test = new TestDescription("class", "test");
         Map<String, String> metrics = new HashMap<>();
@@ -159,7 +157,6 @@ public class FilePullerLogCollectorTest {
     /** Test that the post processor is called on any pulled files. */
     @Test
     public void testPostProcessFiles() throws Exception {
-        EasyMock.expect(mMockDevice.getDeviceState()).andReturn(TestDeviceState.ONLINE);
         PostProcessingFilePullerLogCollector collector = new PostProcessingFilePullerLogCollector();
         OptionSetter setter = new OptionSetter(collector);
         setter.setOptionValue("pull-pattern-keys", "log.*");

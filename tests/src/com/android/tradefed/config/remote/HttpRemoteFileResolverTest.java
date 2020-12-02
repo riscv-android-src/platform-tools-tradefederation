@@ -19,8 +19,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 import com.android.tradefed.build.BuildRetrievalError;
-import com.android.tradefed.config.remote.IRemoteFileResolver.RemoteFileResolverArgs;
-import com.android.tradefed.config.remote.IRemoteFileResolver.ResolvedFile;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.net.IHttpHelper;
 
@@ -32,6 +30,7 @@ import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashMap;
 
 /** Unit tests for {@link HttpRemoteFileResolver}. */
 @RunWith(JUnit4.class)
@@ -53,10 +52,11 @@ public class HttpRemoteFileResolverTest {
 
     @Test
     public void testResolve() throws Exception {
-        RemoteFileResolverArgs args = new RemoteFileResolverArgs();
-        args.setConsideredFile(new File("http:/fake/HttpRemoteFileResolverTest"));
-        ResolvedFile res = mResolver.resolveRemoteFile(args);
-        FileUtil.deleteFile(res.getResolvedFile());
+        File res =
+                mResolver.resolveRemoteFiles(
+                        new File("http:/fake/HttpRemoteFileResolverTest"),
+                        new HashMap<>());
+        FileUtil.deleteFile(res);
 
         Mockito.verify(mHttpDownloader)
                 .doGet(Mockito.eq("http://fake/HttpRemoteFileResolverTest"), Mockito.any());
@@ -69,9 +69,9 @@ public class HttpRemoteFileResolverTest {
                 .doGet(Mockito.eq("http://fake/HttpRemoteFileResolverTest"), Mockito.any());
 
         try {
-            RemoteFileResolverArgs args = new RemoteFileResolverArgs();
-            args.setConsideredFile(new File("http:/fake/HttpRemoteFileResolverTest"));
-            mResolver.resolveRemoteFile(args);
+            mResolver.resolveRemoteFiles(
+                    new File("http:/fake/HttpRemoteFileResolverTest"),
+                    new HashMap<>());
             fail("Should have thrown an exception.");
         } catch (BuildRetrievalError expected) {
             assertEquals(

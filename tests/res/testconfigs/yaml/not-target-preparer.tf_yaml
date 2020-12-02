@@ -1,14 +1,16 @@
 description: "Human friendly description of the test"
 
+# pre_setup_action will run before the dependencies installation
+pre_setup_action:
+   - action:
+        name: "com.android.tradefed.testtype.AndroidJUnitTest"
+        options:
+          - package: "android.package"
+
 dependencies:
 
-target_preparers:
-   - com.android.tradefed.testtype.AndroidJUnitTest:
-        options:
-          - package: "android.package"
-
 tests:
-   - com.android.tradefed.testtype.AndroidJUnitTest:
-        options:
-          - package: "android.package"
-
+   - test:
+       name: "com.android.tradefed.testtype.AndroidJUnitTest"
+       options:
+         - package: "android.package"

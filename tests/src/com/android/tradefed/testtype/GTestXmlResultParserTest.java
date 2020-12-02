@@ -83,18 +83,14 @@ public class GTestXmlResultParserTest {
             ITestInvocationListener mockRunListener =
                     EasyMock.createMock(ITestInvocationListener.class);
             mockRunListener.testRunStarted(TEST_MODULE_NAME, 6);
-            mockRunListener.testStarted(EasyMock.eq(firstInFile), EasyMock.anyLong());
+            mockRunListener.testStarted(firstInFile);
             mockRunListener.testEnded(
-                    EasyMock.eq(firstInFile),
-                    EasyMock.anyLong(),
-                    (HashMap<String, Metric>) EasyMock.anyObject());
+                    EasyMock.eq(firstInFile), (HashMap<String, Metric>) EasyMock.anyObject());
             // 5 more passing test cases in this run
             for (int i = 0; i < 5; ++i) {
-                mockRunListener.testStarted(
-                        (TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
+                mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
                 mockRunListener.testEnded(
                         (TestDescription) EasyMock.anyObject(),
-                        EasyMock.anyLong(),
                         (HashMap<String, Metric>) EasyMock.anyObject());
             }
             mockRunListener.testRunEnded(
@@ -120,11 +116,9 @@ public class GTestXmlResultParserTest {
             mockRunListener.testRunStarted(TEST_MODULE_NAME, 84);
             // 84 passing test cases in this run
             for (int i=0; i<84; ++i) {
-                mockRunListener.testStarted(
-                        (TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
+                mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
                 mockRunListener.testEnded(
                         (TestDescription) EasyMock.anyObject(),
-                        EasyMock.anyLong(),
                         (HashMap<String, Metric>) EasyMock.anyObject());
             }
             mockRunListener.testRunEnded(
@@ -152,20 +146,17 @@ public class GTestXmlResultParserTest {
             mockRunListener.testRunStarted(TEST_MODULE_NAME, 7);
             // 6 passing test cases in this run
             for (int i=0; i<6; ++i) {
-                mockRunListener.testStarted(
-                        (TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
+                mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
                 mockRunListener.testEnded(
                         (TestDescription) EasyMock.anyObject(),
-                        EasyMock.anyLong(),
                         (HashMap<String, Metric>) EasyMock.anyObject());
             }
             // 1 failed test
-            mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
+            mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
             mockRunListener.testFailed(
                     (TestDescription) EasyMock.anyObject(), EasyMock.eq(expectedMessage));
             mockRunListener.testEnded(
                     (TestDescription) EasyMock.anyObject(),
-                    EasyMock.anyLong(),
                     (HashMap<String, Metric>) EasyMock.anyObject());
             mockRunListener.testRunEnded(
                     EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
@@ -215,11 +206,9 @@ public class GTestXmlResultParserTest {
             mockRunListener.testRunStarted(TEST_MODULE_NAME, 7);
             // 6 passing test cases in this run
             for (int i=0; i<6; ++i) {
-                mockRunListener.testStarted(
-                        (TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
+                mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
                 mockRunListener.testEnded(
                         (TestDescription) EasyMock.anyObject(),
-                        EasyMock.anyLong(),
                         (HashMap<String, Metric>) EasyMock.anyObject());
             }
             mockRunListener.testRunFailed(expected);
@@ -250,11 +239,9 @@ public class GTestXmlResultParserTest {
             mockRunListener.testRunStarted(TEST_MODULE_NAME, 6);
             // 6 passing test cases in this run
             for (int i=0; i<3; ++i) {
-                mockRunListener.testStarted(
-                        (TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
+                mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
                 mockRunListener.testEnded(
                         (TestDescription) EasyMock.anyObject(),
-                        EasyMock.anyLong(),
                         (HashMap<String, Metric>) EasyMock.anyObject());
             }
             mockRunListener.testRunFailed(expected);
@@ -312,21 +299,17 @@ public class GTestXmlResultParserTest {
             ITestInvocationListener mockRunListener =
                     EasyMock.createMock(ITestInvocationListener.class);
             mockRunListener.testRunStarted(TEST_MODULE_NAME, 6);
-            mockRunListener.testStarted(EasyMock.eq(firstInFile), EasyMock.anyLong());
+            mockRunListener.testStarted(firstInFile);
             mockRunListener.testEnded(
-                    EasyMock.eq(firstInFile),
-                    EasyMock.anyLong(),
-                    (HashMap<String, Metric>) EasyMock.anyObject());
+                    EasyMock.eq(firstInFile), (HashMap<String, Metric>) EasyMock.anyObject());
             // 5 more passing test cases in this run
             for (int i = 0; i < 5; ++i) {
-                mockRunListener.testStarted(
-                        (TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
+                mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
                 if (i == 1) {
                     mockRunListener.testIgnored((TestDescription) EasyMock.anyObject());
                 }
                 mockRunListener.testEnded(
                         (TestDescription) EasyMock.anyObject(),
-                        EasyMock.anyLong(),
                         (HashMap<String, Metric>) EasyMock.anyObject());
             }
             mockRunListener.testRunEnded(

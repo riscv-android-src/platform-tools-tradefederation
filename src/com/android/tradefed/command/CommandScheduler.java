@@ -814,8 +814,8 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             } else {
                 TestDeviceState deviceState = device.getDeviceState();
                 CLog.d(
-                        "TestDeviceState for releasing '%s(%s)' is '%s'",
-                        device.getSerialNumber(), device.getClass(), deviceState);
+                        "TestDeviceState for releasing '%s' is '%s'",
+                        device.getSerialNumber(), deviceState);
                 if (!TestDeviceState.ONLINE.equals(deviceState)) {
                     // If the device is offline at the end of the test
                     deviceStates.put(device, FreeDeviceState.UNAVAILABLE);

@@ -28,7 +28,6 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
-import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestRunResult;
@@ -123,84 +122,6 @@ public class InstalledInstrumentationsTestTest {
         assertEquals(ABI, mockInstrumentationTest.getForceAbi());
         assertEquals(1, mockInstrumentationTest.getIncludeFilters().size());
         assertTrue(mockInstrumentationTest.getIncludeFilters().contains(testDesc.toString()));
-        EasyMock.verify(mMockListener, mMockTestDevice);
-    }
-
-    @Test
-    public void testRun_retry_runFailure() throws Exception {
-        injectShellResponse(
-                String.format(INSTR_OUTPUT_FORMAT, TEST_PKG, TEST_RUNNER, TEST_COVERAGE_TARGET), 1);
-
-        ArgsOptionParser p = new ArgsOptionParser(mInstalledInstrTest);
-        p.parse("--size", "small", "--force-abi", ABI);
-        List<TestRunResult> previousResults = new ArrayList<>();
-        TestRunResult result = new TestRunResult();
-        result.testRunStarted(TEST_PKG, 1);
-        TestDescription testDesc = new TestDescription("com.example.tests.class", "testMethod");
-        result.testStarted(testDesc);
-        result.testFailed(testDesc, "failed");
-        result.testEnded(testDesc, new HashMap<String, Metric>());
-        result.testRunFailed(FailureDescription.create("instru crash"));
-        result.testRunEnded(5L, new HashMap<String, Metric>());
-        previousResults.add(result);
-        EasyMock.replay(mMockTestDevice, mMockListener);
-        assertTrue(mInstalledInstrTest.shouldRetry(0, previousResults));
-        mInstalledInstrTest.run(mTestInfo, mMockListener);
-        assertEquals(1, mMockInstrumentationTests.size());
-        MockInstrumentationTest mockInstrumentationTest = mMockInstrumentationTests.get(0);
-        assertEquals(mMockListener, mockInstrumentationTest.getListener());
-        assertEquals(TEST_PKG, mockInstrumentationTest.getPackageName());
-        assertEquals(TEST_RUNNER, mockInstrumentationTest.getRunnerName());
-        assertEquals("small", mockInstrumentationTest.getTestSize());
-        assertEquals(ABI, mockInstrumentationTest.getForceAbi());
-        // No filter will be set, we retry everything
-        assertEquals(0, mockInstrumentationTest.getIncludeFilters().size());
-        EasyMock.verify(mMockListener, mMockTestDevice);
-    }
-
-    @Test
-    public void testRun_retry_notExecuted() throws Exception {
-        String shellResponse =
-                String.format(INSTR_OUTPUT_FORMAT, TEST_PKG, TEST_RUNNER, TEST_COVERAGE_TARGET)
-                        + String.format(
-                                INSTR_OUTPUT_FORMAT,
-                                "com.example2.tests",
-                                TEST_RUNNER,
-                                "com.example2");
-        injectShellResponse(shellResponse, 1);
-
-        ArgsOptionParser p = new ArgsOptionParser(mInstalledInstrTest);
-        p.parse("--size", "small", "--force-abi", ABI);
-        List<TestRunResult> previousResults = new ArrayList<>();
-        TestRunResult result = new TestRunResult();
-        result.testRunStarted(TEST_PKG, 1);
-        TestDescription testDesc = new TestDescription("com.example.tests.class", "testMethod");
-        result.testStarted(testDesc);
-        result.testFailed(testDesc, "failed");
-        result.testEnded(testDesc, new HashMap<String, Metric>());
-        result.testRunEnded(5L, new HashMap<String, Metric>());
-        previousResults.add(result);
-        EasyMock.replay(mMockTestDevice, mMockListener);
-        assertTrue(mInstalledInstrTest.shouldRetry(0, previousResults));
-        mInstalledInstrTest.run(mTestInfo, mMockListener);
-        assertEquals(2, mMockInstrumentationTests.size());
-        MockInstrumentationTest mockInstrumentationTest = mMockInstrumentationTests.get(0);
-        assertEquals(mMockListener, mockInstrumentationTest.getListener());
-        assertEquals(TEST_PKG, mockInstrumentationTest.getPackageName());
-        assertEquals(TEST_RUNNER, mockInstrumentationTest.getRunnerName());
-        assertEquals("small", mockInstrumentationTest.getTestSize());
-        assertEquals(ABI, mockInstrumentationTest.getForceAbi());
-        assertEquals(1, mockInstrumentationTest.getIncludeFilters().size());
-        assertTrue(mockInstrumentationTest.getIncludeFilters().contains(testDesc.toString()));
-
-        MockInstrumentationTest mockInstrumentationTest2 = mMockInstrumentationTests.get(1);
-        assertEquals(mMockListener, mockInstrumentationTest2.getListener());
-        assertEquals("com.example2.tests", mockInstrumentationTest2.getPackageName());
-        assertEquals(TEST_RUNNER, mockInstrumentationTest2.getRunnerName());
-        assertEquals("small", mockInstrumentationTest2.getTestSize());
-        assertEquals(ABI, mockInstrumentationTest2.getForceAbi());
-        assertEquals(0, mockInstrumentationTest2.getIncludeFilters().size());
-
         EasyMock.verify(mMockListener, mMockTestDevice);
     }
 

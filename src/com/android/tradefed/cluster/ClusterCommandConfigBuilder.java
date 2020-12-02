@@ -201,9 +201,9 @@ public class ClusterCommandConfigBuilder {
             for (TradefedConfigObject configObjDef : deviceConfigObjDefs) {
                 device.addSpecificConfig(createConfigObject(configObjDef, envVars));
             }
-            device.addSpecificConfig(new ClusterBuildProvider());
             deviceConfigs.add(device);
         }
+        deviceConfigs.get(0).addSpecificConfig(new ClusterBuildProvider());
         config.setDeviceConfigList(deviceConfigs);
         // Perform target preparation in parallel with an unlimited timeout
         // TODO(b/166455187): Consider making parallel setup options configurable

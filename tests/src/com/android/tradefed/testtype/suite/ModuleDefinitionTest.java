@@ -1110,10 +1110,7 @@ public class ModuleDefinitionTest {
                         return RunStrategy.FULL_MODULE_BYPASS;
                     }
                 };
-        List<BaseModuleController> listController = new ArrayList<>();
-        listController.add(moduleConfig);
-        listController.add(moduleConfig);
-        config.setConfigurationObjectList(ModuleDefinition.MODULE_CONTROLLER, listController);
+        config.setConfigurationObject(ModuleDefinition.MODULE_CONTROLLER, moduleConfig);
         List<IRemoteTest> testList = new ArrayList<>();
         testList.add(
                 new IRemoteTest() {
