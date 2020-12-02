@@ -18,6 +18,7 @@ package com.android.tradefed.targetprep;
 import com.android.ddmlib.FileListingService;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
+import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
@@ -50,7 +51,8 @@ public class TestFilePushSetup extends BaseTargetPreparer {
     @Option(
             name = "test-file-name",
             description =
-                    "the relative path of a test zip file/directory to install on device. Can be repeated.",
+                    "the relative path of a test zip file/directory to install on device. Can be "
+                            + "repeated.",
             importance = Importance.IF_UNSET)
     private List<File> mTestPaths = new ArrayList<>();
 
@@ -88,15 +90,13 @@ public class TestFilePushSetup extends BaseTargetPreparer {
     protected File getLocalPathForFilename(IBuildInfo buildInfo, String fileName,
             ITestDevice device) throws TargetSetupError {
         List<File> dirs = new ArrayList<>();
-        if (buildInfo instanceof IDeviceBuildInfo) {
-            File testsDir = ((IDeviceBuildInfo)buildInfo).getTestsDir();
-            if (testsDir != null && testsDir.exists()) {
-                dirs.add(FileUtil.getFileForPath(testsDir, "DATA"));
-            }
-        }
-        if (dirs.isEmpty()) {
+        File testsDir = buildInfo.getFile(BuildInfoFileKey.TESTDIR_IMAGE);
+        if (testsDir != null && testsDir.exists()) {
+            dirs.add(FileUtil.getFileForPath(testsDir, "DATA"));
+        } else {
             throw new TargetSetupError(
-                    "Provided buildInfo does not contain a valid tests directory.",
+                    "Provided buildInfo does not contain a valid tests directory key. "
+                            + "Please check that a tests zip was found in build_provider.",
                     device.getDeviceDescriptor(),
                     InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
         }
