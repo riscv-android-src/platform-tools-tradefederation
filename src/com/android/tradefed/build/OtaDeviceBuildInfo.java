@@ -39,6 +39,7 @@ import java.util.Set;
 public class OtaDeviceBuildInfo implements IDeviceBuildInfo {
 
     private static final long serialVersionUID = BuildSerializedVersion.VERSION;
+    private static final String OTA_TOOLS_DIR_KEY_NAME = "otatools-dir";
     protected IDeviceBuildInfo mOtaBuild;
     protected IDeviceBuildInfo mBaselineBuild;
     protected boolean mReportTargetBuild = false;
@@ -474,6 +475,14 @@ public class OtaDeviceBuildInfo implements IDeviceBuildInfo {
 
     public void setReportTargetBuild(boolean downgrade) {
         mReportTargetBuild = downgrade;
+    }
+
+    public void setOtaTools(File otaTools, String version) {
+        setFile(OTA_TOOLS_DIR_KEY_NAME, otaTools, version);
+    }
+
+    public File getOtaTools() {
+        return getFile(OTA_TOOLS_DIR_KEY_NAME);
     }
 
     protected IDeviceBuildInfo getReportedBuild() {
