@@ -43,7 +43,7 @@ public class MetricUtil {
     @VisibleForTesting
     static final String DUMP_REPORT_INCLUDE_CURRENT_BUCKET = "--include_current_bucket";
 
-    // The command is documented in frameworks/base/cmds/statsd/src/StatsService.cpp.
+    // The command is documented in packages/modules/StatsD/bin/src/StatsService.cpp.
     @VisibleForTesting
     static final String DUMP_STATSD_METADATA_CMD = "dumpsys stats --metadata --proto";
 
