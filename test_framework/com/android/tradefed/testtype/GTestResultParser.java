@@ -749,9 +749,11 @@ public class GTestResultParser extends MultiLineReceiver {
             if (mCurrentTestResult.hasStackTrace()) {
                 testRunStackTrace = mCurrentTestResult.getTrace();
             }
+            FailureDescription testFailure =
+                    FailureDescription.create("No test results.\r\n" + testRunStackTrace)
+                            .setFailureStatus(FailureStatus.TEST_FAILURE);
             for (ITestInvocationListener listener : mTestListeners) {
-                listener.testFailed(testId,
-                        "No test results.\r\n" + testRunStackTrace);
+                listener.testFailed(testId, testFailure);
                 listener.testEnded(testId, emptyMap);
             }
             clearCurrentTestResult();
