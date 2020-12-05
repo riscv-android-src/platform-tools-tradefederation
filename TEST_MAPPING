@@ -48,10 +48,5 @@
     {
       "name": "HelloWorldTests"
     }
-  ],
-  "presubmit-large": [
-    {
-      "name": "HelloWorldTests"
-    }
   ]
 }
