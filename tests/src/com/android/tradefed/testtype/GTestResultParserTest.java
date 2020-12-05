@@ -384,7 +384,8 @@ public class GTestResultParserTest extends GTestParserTestBase {
                 captured.getValue()
                         .getErrorMessage()
                         .contains(
-                                "module did not report any run:\nfailed to read section .testzipdata"));
+                                "module did not report any run:\n"
+                                        + "failed to read section .testzipdata"));
     }
 
     /** Tests the parser for a simple test run output with 11 tests where some are skipped. */
@@ -424,7 +425,7 @@ public class GTestResultParserTest extends GTestParserTestBase {
         mockRunListener.testRunStarted(TEST_MODULE_NAME, 11);
         mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
         mockRunListener.testFailed(
-                (TestDescription) EasyMock.anyObject(), (String) EasyMock.anyObject());
+                (TestDescription) EasyMock.anyObject(), (FailureDescription) EasyMock.anyObject());
         mockRunListener.testEnded(
                 (TestDescription) EasyMock.anyObject(),
                 EasyMock.<HashMap<String, Metric>>anyObject());

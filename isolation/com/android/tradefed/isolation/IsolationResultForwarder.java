@@ -55,6 +55,7 @@ final class IsolationResultForwarder extends RunListener {
                                 .setMessage(failure.getMessage())
                                 .setMethodName(desc.getMethodName())
                                 .setClassName(desc.getClassName())
+                                .setEndTime(System.currentTimeMillis())
                                 .build())
                 .build()
                 .writeDelimitedTo(mOutput);
@@ -72,6 +73,7 @@ final class IsolationResultForwarder extends RunListener {
                                     .setMessage(failure.getMessage())
                                     .setMethodName(desc.getMethodName())
                                     .setClassName(desc.getClassName())
+                                    .setEndTime(System.currentTimeMillis())
                                     .build())
                     .build()
                     .writeDelimitedTo(mOutput);
@@ -90,6 +92,7 @@ final class IsolationResultForwarder extends RunListener {
                                 .setMessage("")
                                 .setMethodName(description.getMethodName())
                                 .setClassName(description.getClassName())
+                                .setStartTime(System.currentTimeMillis())
                                 .build())
                 .build()
                 .writeDelimitedTo(mOutput);
@@ -105,6 +108,7 @@ final class IsolationResultForwarder extends RunListener {
                                 .setMessage("")
                                 .setMethodName(description.getMethodName())
                                 .setClassName(description.getClassName())
+                                .setEndTime(System.currentTimeMillis())
                                 .build())
                 .build()
                 .writeDelimitedTo(mOutput);
@@ -120,6 +124,7 @@ final class IsolationResultForwarder extends RunListener {
                                 .setMessage("")
                                 .setMethodName(description.getMethodName())
                                 .setClassName(description.getClassName())
+                                .setEndTime(System.currentTimeMillis())
                                 .build())
                 .build()
                 .writeDelimitedTo(mOutput);

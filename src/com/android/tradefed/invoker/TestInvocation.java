@@ -377,7 +377,8 @@ public class TestInvocation implements ITestInvocation {
             if (exception == null) {
                 exception = mUnavailableMonitor.getUnavailableException();
                 if (exception != null) {
-                    CLog.e("Found a test level only device unavailable exception.");
+                    CLog.e("Found a test level only device unavailable exception:");
+                    CLog.e(exception);
                 }
             }
             Map<ITestDevice, FreeDeviceState> devicesStates =
