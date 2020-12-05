@@ -338,6 +338,7 @@ public abstract class ITestSuite
     private IInvocationContext mContext;
     private List<IMetricCollector> mMetricCollectors;
     private IConfiguration mMainConfiguration;
+    private Set<IAbi> mAbis = new LinkedHashSet<>();
 
     // Sharding attributes
     private boolean mIsSharded = false;
@@ -1237,6 +1238,9 @@ public abstract class ITestSuite
      * @throws DeviceNotAvailableException
      */
     public Set<IAbi> getAbis(ITestDevice device) throws DeviceNotAvailableException {
+        if (!mAbis.isEmpty()) {
+            return mAbis;
+        }
         Set<IAbi> abis = new LinkedHashSet<>();
         Set<String> archAbis = getAbisForBuildTargetArch();
         // Handle null-device: use abi in common with host and suite build
@@ -1324,6 +1328,11 @@ public abstract class ITestSuite
     /** Return the abis supported by the Host build target architecture. Exposed for testing. */
     @VisibleForTesting
     protected Set<String> getAbisForBuildTargetArch() {
+        return getAbisForBuildTargetArchFromSuite();
+    }
+
+    /** Returns the possible abis from the TestSuiteInfo. */
+    public static Set<String> getAbisForBuildTargetArchFromSuite() {
         // If TestSuiteInfo does not exists, the stub arch will be replaced by all possible abis.
         Set<String> abis = new LinkedHashSet<>();
         for (String arch : TestSuiteInfo.getInstance().getTargetArchs()) {
@@ -1467,5 +1476,9 @@ public abstract class ITestSuite
     @VisibleForTesting
     void setModuleInProgress(ModuleDefinition moduleInProgress) {
         mModuleInProgress = moduleInProgress;
+    }
+
+    public final void setAbis(Set<IAbi> abis) {
+        mAbis.addAll(abis);
     }
 }

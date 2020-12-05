@@ -79,6 +79,10 @@ message JUnitEvent {
   string suite_name = 5;
   int32 test_count = 6;
   int64 elapsed_time = 7;
+  // The start time of the event if applicable in millisecond since epoch
+  int64 start_time = 8;
+  // The end time of the event if applicable in millisecond since epoch
+  int64 end_time = 9;
 }
 
 message RunnerMessage {

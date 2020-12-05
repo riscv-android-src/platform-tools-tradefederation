@@ -630,13 +630,9 @@ public class NativeDeviceStateMonitor implements IDeviceStateMonitor {
 
     private String getFileSystem(String externalStorePath) {
         final CollectingOutputReceiver receiver = new CollectingOutputReceiver();
+        String dfCommand = String.format("df %s", externalStorePath);
         try {
-            getIDevice()
-                    .executeShellCommand(
-                            String.format("df %s", externalStorePath),
-                            receiver,
-                            10000,
-                            TimeUnit.MILLISECONDS);
+            getIDevice().executeShellCommand(dfCommand, receiver, 10000, TimeUnit.MILLISECONDS);
         } catch (TimeoutException
                 | AdbCommandRejectedException
                 | ShellCommandUnresponsiveException
@@ -646,6 +642,7 @@ public class NativeDeviceStateMonitor implements IDeviceStateMonitor {
             return null;
         }
         String output = receiver.getOutput();
+        CLog.v("'%s' returned %s", dfCommand, output);
         Matcher matcher = NativeDevice.DF_PATTERN.matcher(output);
         if (matcher.find()) {
             return matcher.group(1);
