@@ -20,8 +20,8 @@ import java.lang.reflect.InvocationTargetException;
 /** Enumeration describing which collector can automatically be handled by the harness. */
 public enum AutoLogCollector {
     BUGREPORTZ_ON_FAILURE(BugreportzOnFailureCollector.class),
-    GCOV_COVERAGE(GcovCodeCoverageCollector.class),
     CLANG_COVERAGE(ClangCodeCoverageCollector.class),
+    GCOV_COVERAGE(GcovCodeCoverageCollector.class),
     HOSTLOG_ON_FAILURE(DebugHostLogOnFailureCollector.class),
     JAVA_COVERAGE(JavaCodeCoverageCollector.class),
     LOGCAT_ON_FAILURE(LogcatOnFailureCollector.class),

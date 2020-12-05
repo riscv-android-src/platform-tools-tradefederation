@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
 	<classpathentry kind="src" path="src"/>
+	<classpathentry excluding="Android.bp" kind="src" path="isolation"/>
 	<classpathentry excluding="Android.bp" kind="src" path="lite"/>
 	<classpathentry excluding="Android.bp" kind="src" path="test_framework"/>
 	<classpathentry excluding="Android.bp" kind="src" path="invocation_interfaces"/>
@@ -44,5 +45,7 @@
 	<classpathentry kind="var" path="TRADEFED_ROOT/out/soong/.intermediates/tools/tradefederation/core/isolation/tradefed-isolation-protos/linux_glibc_common/combined/tradefed-isolation-protos.jar"/>
 	<classpathentry kind="var" path="TRADEFED_ROOT/out/soong/.intermediates/external/perfetto/perfetto_metrics-full/linux_glibc_common/combined/perfetto_metrics-full.jar"/>
 	<classpathentry kind="var" path="TRADEFED_ROOT/out/soong/.intermediates/external/snakeyaml/snakeyaml/linux_glibc_common/javac/snakeyaml.jar"/>
+	<classpathentry kind="var" path="TRADEFED_ROOT/out/soong/.intermediates/prebuilts/tools/common/m2/diffutils-prebuilt-jar/linux_glibc_common/combined/diffutils-prebuilt-jar.jar"/>
+	<classpathentry kind="var" path="TRADEFED_ROOT/out/soong/.intermediates/prebuilts/misc/common/commons-cli/commons-cli-1.2/linux_glibc_common/combined/commons-cli-1.2.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

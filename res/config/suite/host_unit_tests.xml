@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright 2020 Google Inc. All Rights Reserved. -->
+<configuration description="Test suite config for Host Unit Tests.">
+    <option name="null-device" value="true" />
+    <include name="suite/base-suite" />
+
+    <!-- Force GTest to report binary name in results -->
+    <option name="test-arg" value="com.android.tradefed.testtype.HostGTest:prepend-filename:true" />
+
+    <!-- Force a timeout on every unit test cases -->
+    <option name="test-arg" value="com.android.tradefed.testtype.HostGTest:test-case-timeout:1m" />
+    <option name="test-arg" value="com.android.tradefed.testtype.HostTest:test-case-timeout:1m" />
+    <option name="test-arg" value="com.android.tradefed.testtype.IsolatedHostTest:test-case-timeout:1m" />
+</configuration>

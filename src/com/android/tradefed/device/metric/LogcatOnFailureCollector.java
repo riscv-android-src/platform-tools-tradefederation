@@ -60,11 +60,13 @@ public class LogcatOnFailureCollector extends BaseDeviceMetricCollector {
             // In case of multiple runs for the same test runner, re-init the receiver.
             initReceiver(device);
             // Get the current offset of the buffer to be able to query later
-            int offset = (int) mLogcatReceivers.get(device).getLogcatData().size();
-            if (offset > OFFSET_CORRECTION) {
-                offset -= OFFSET_CORRECTION;
+            try (InputStreamSource data = mLogcatReceivers.get(device).getLogcatData()) {
+                int offset = (int) data.size();
+                if (offset > OFFSET_CORRECTION) {
+                    offset -= OFFSET_CORRECTION;
+                }
+                mOffset.put(device, offset);
             }
-            mOffset.put(device, offset);
         }
     }
 

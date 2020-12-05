@@ -291,6 +291,32 @@ public class RustBinaryTestTest {
         callReplayRunVerify();
     }
 
+    /** Tests that GCOV_PREFIX is set when running with the GCOV coverage toolchain. */
+    @Test
+    public void testGcovCoverage_GcovPrefixSet() throws Exception {
+        mCoverageOptionsSetter.setOptionValue("coverage", "true");
+        mCoverageOptionsSetter.setOptionValue("coverage-toolchain", "GCOV");
+
+        final String testPath = RustBinaryTest.DEFAULT_TEST_PATH;
+        final String test1 = "test1";
+        final String testPath1 = String.format("%s/%s", testPath, test1);
+        final String[] files = new String[] {test1};
+
+        // Find files
+        MockFileUtil.setMockDirContents(mMockITestDevice, testPath, test1);
+        EasyMock.expect(mMockITestDevice.doesFileExist(testPath)).andReturn(true);
+        EasyMock.expect(mMockITestDevice.isDirectory(testPath)).andReturn(true);
+        EasyMock.expect(mMockITestDevice.getChildren(testPath)).andReturn(files);
+        EasyMock.expect(mMockITestDevice.isDirectory(testPath1)).andReturn(false);
+        EasyMock.expect(mMockITestDevice.isExecutable(testPath1)).andReturn(true);
+
+        mockCountTests(testPath1, runListOutput(3));
+        mockTestRunStarted("test1", 3);
+        mockShellCommand("GCOV_PREFIX=/data/misc/trace");
+        mockTestRunEnded();
+        callReplayRunVerify();
+    }
+
     /**
      * Helper function to do the actual filtering test.
      *

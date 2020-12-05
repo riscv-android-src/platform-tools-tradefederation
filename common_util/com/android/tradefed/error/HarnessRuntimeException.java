@@ -48,7 +48,7 @@ public class HarnessRuntimeException extends RuntimeException implements IHarnes
      * @param cause The {@link IHarnessException} that caused the exception.
      */
     public HarnessRuntimeException(String message, IHarnessException cause) {
-        super(message);
+        super(message, (cause instanceof Throwable) ? (Throwable) cause : null);
         mErrorId = cause.getErrorId();
         mOrigin = cause.getOrigin();
     }
@@ -83,5 +83,15 @@ public class HarnessRuntimeException extends RuntimeException implements IHarnes
         if (clazz != null) {
             mOrigin = clazz.getCanonicalName();
         }
+    }
+
+    @Override
+    public String toString() {
+        String s = getClass().getName();
+        if (mErrorId != null) {
+            s += "[" + mErrorId.name() + "|" + mErrorId.code() + "|" + mErrorId.status() + "]";
+        }
+        String message = getLocalizedMessage();
+        return (message != null) ? (s + ": " + message) : s;
     }
 }

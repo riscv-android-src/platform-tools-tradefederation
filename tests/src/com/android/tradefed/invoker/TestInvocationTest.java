@@ -453,12 +453,13 @@ public class TestInvocationTest {
         mMockLogRegistry.unregisterLogger();
         mMockLogRegistry.dumpToGlobalLog(mMockLogger);
         mMockLogger.closeLog();
+        mStubConfiguration.setCommandLine(new String[] {"empty", "--build-id", "5"});
         replayMocks(mockRescheduler);
         mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
         verifyMocks();
 
         IBuildInfo stubBuild = captured.getValue();
-        assertEquals(BuildInfo.UNKNOWN_BUILD_ID, stubBuild.getBuildId());
+        assertEquals("5", stubBuild.getBuildId());
         stubBuild.cleanUp();
     }
 
@@ -648,8 +649,7 @@ public class TestInvocationTest {
 
     @Test
     public void testInvoke_setupError() throws Throwable {
-        // Use the deprecated constructor on purpose to simulate missing DeviceDescriptor.
-        TargetSetupError tse = new TargetSetupError("reason");
+        TargetSetupError tse = createTargetSetupError("reason");
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
         mMockDevice.setRecoveryMode(RecoveryMode.NONE);
         EasyMock.expectLastCall();
@@ -672,6 +672,12 @@ public class TestInvocationTest {
         mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
         verifyMocks(test, mockRescheduler);
         verifySummaryListener();
+    }
+
+    @SuppressWarnings("deprecation")
+    private TargetSetupError createTargetSetupError(String reason) {
+        // Use the deprecated constructor on purpose to simulate missing DeviceDescriptor.
+        return new TargetSetupError(reason);
     }
 
     /**
@@ -772,7 +778,7 @@ public class TestInvocationTest {
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
         test.run(EasyMock.anyObject(), EasyMock.anyObject());
         EasyMock.expectLastCall().andThrow(exception);
-        ITargetCleaner mockCleaner = EasyMock.createMock(ITargetCleaner.class);
+        ITargetPreparer mockCleaner = EasyMock.createMock(ITargetPreparer.class);
         EasyMock.expect(mockCleaner.isDisabled()).andReturn(false).times(2);
         EasyMock.expect(mockCleaner.isTearDownDisabled()).andReturn(false);
         mockCleaner.setUp(EasyMock.anyObject());

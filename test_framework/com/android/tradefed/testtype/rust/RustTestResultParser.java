@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.regex.Matcher;
@@ -56,6 +57,15 @@ public class RustTestResultParser extends MultiLineReceiver {
     // General state
     private Collection<ITestInvocationListener> mListeners = new ArrayList<>();
     private Map<TestDescription, String> mTestResultCache;
+
+    /** True if we have seen at least one test start. */
+    private boolean mSeenOneTestRunStart = false;
+    /**
+     * Track all the log lines before the test is started, as it is helpful on an early failure to
+     * report those logs.
+     */
+    private List<String> mTrackLogsBeforeRunStart = new ArrayList<>();
+
     // Use a special entry to mark skipped test in mTestResultCache
     static final String SKIPPED_ENTRY = "Skipped";
     // Failed but without stacktrace tests in mTestResultCache
@@ -65,6 +75,8 @@ public class RustTestResultParser extends MultiLineReceiver {
             Pattern.compile("test result: (.*) (\\d+) passed; (\\d+) failed; (\\d+) ignored;.*");
 
     static final Pattern RUST_ONE_LINE_RESULT = Pattern.compile("test (\\S*) \\.\\.\\. (\\S*)");
+
+    static final Pattern RUNNING_PATTERN = Pattern.compile("running .* test[s]?");
 
     /**
      * Create a new {@link RustTestResultParser} that reports to the given {@link
@@ -93,11 +105,18 @@ public class RustTestResultParser extends MultiLineReceiver {
     /** Process Rust unittest output. */
     @Override
     public void processNewLines(String[] lines) {
+        if (!mSeenOneTestRunStart) {
+            mTrackLogsBeforeRunStart.addAll(Arrays.asList(lines));
+        }
+
         for (String line : lines) {
             if (lineMatchesPattern(line, RUST_ONE_LINE_RESULT)) {
                 mCurrentTestName = mCurrentMatcher.group(1);
                 mCurrentTestStatus = mCurrentMatcher.group(2);
                 reportTestResult();
+            } else if (lineMatchesPattern(line, RUNNING_PATTERN)) {
+                mSeenOneTestRunStart = true;
+                mTrackLogsBeforeRunStart.clear();
             }
         }
     }
@@ -140,6 +159,15 @@ public class RustTestResultParser extends MultiLineReceiver {
                     listener.testFailed(test.getKey(), test.getValue());
                 }
                 listener.testEnded(test.getKey(), new HashMap<String, Metric>());
+            }
+            // If we have not seen any tests start, report a failure.
+            // If this happens, there are presumably no test results,
+            // so this must be outside the previous loop.
+            if (!mSeenOneTestRunStart) {
+                listener.testRunFailed(
+                        String.format(
+                                "test did not report any run:\n%s",
+                                String.join("\n", mTrackLogsBeforeRunStart)));
             }
         }
     }

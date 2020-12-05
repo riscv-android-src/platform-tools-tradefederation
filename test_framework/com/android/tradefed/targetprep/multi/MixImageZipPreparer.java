@@ -52,6 +52,7 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Predicate;
@@ -87,13 +88,19 @@ public class MixImageZipPreparer extends BaseMultiTargetPreparer {
     private Set<String> mExtraBuildResourceFiles = new TreeSet<>();
 
     @Option(
-        name = "system-build-file-name",
-        description =
-                "the name of the image file copied from system build to device build. "
-                        + "Can be repeated.",
-        mandatory = true
-    )
+            name = "system-build-file-name",
+            description =
+                    "the name of the image file copied from system build to device build. "
+                            + "Can be repeated.")
     private Set<String> mSystemFileNames = new TreeSet<>();
+
+    @Option(
+            name = "system-build-file-name-map",
+            description =
+                    "the file name in the device image zip to be replaced with the file with name "
+                            + "in the system build image zip. For example boot.img=boot-5.4.img. "
+                            + "Can be repeated.")
+    private Map<String, String> mSystemFileNameMaps = new HashMap<>();
 
     @Option(
             name = "stub-file-name",
@@ -209,11 +216,29 @@ public class MixImageZipPreparer extends BaseMultiTargetPreparer {
             Map<String, InputStreamFactory> filesNotInDeviceBuild =
                     new HashMap<String, InputStreamFactory>();
 
-            // Get specified files from system build and replace those in device build.
+            // Map system build file names to contents by file name.
             systemImageZip = new ZipFile(systemBuildInfo.getDeviceImageFile());
             Map<String, InputStreamFactory> systemFiles =
                     getInputStreamFactoriesFromImageZip(
                             systemImageZip, file -> mSystemFileNames.contains(file));
+
+            // Map system build file names to contents by file name map values
+            Map<String, InputStreamFactory> extraSystemFiles =
+                    getInputStreamFactoriesFromImageZip(
+                            systemImageZip, file -> mSystemFileNameMaps.containsValue(file));
+            // Map device build file names to contents.
+            for (Entry<String, String> entry : mSystemFileNameMaps.entrySet()) {
+                InputStreamFactory value = extraSystemFiles.get(entry.getValue());
+                if (value == null) {
+                    throw new BuildError(
+                            "Cannot find " + entry.getValue() + " in system build image zip.",
+                            device.getDeviceDescriptor(),
+                            InfraErrorIdentifier.OPTION_CONFIGURATION_ERROR);
+                }
+                systemFiles.put(entry.getKey(), value);
+            }
+
+            // Replace files in device build.
             systemFiles = replaceExistingEntries(systemFiles, files);
             filesNotInDeviceBuild.putAll(systemFiles);
 
@@ -589,6 +614,11 @@ public class MixImageZipPreparer extends BaseMultiTargetPreparer {
     @VisibleForTesting
     void addSystemFileName(String fileName) {
         mSystemFileNames.add(fileName);
+    }
+
+    @VisibleForTesting
+    void addSystemFileNameMap(String fileNameInDeviceZip, String fileNameInSystemZip) {
+        mSystemFileNameMaps.put(fileNameInDeviceZip, fileNameInSystemZip);
     }
 
     @VisibleForTesting

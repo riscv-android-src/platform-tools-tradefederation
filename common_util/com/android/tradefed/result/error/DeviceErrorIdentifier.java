@@ -17,6 +17,8 @@ package com.android.tradefed.result.error;
 
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 
+import javax.annotation.Nonnull;
+
 /** Error Identifiers from Device errors and device reported errors. */
 public enum DeviceErrorIdentifier implements ErrorIdentifier {
 
@@ -29,10 +31,10 @@ public enum DeviceErrorIdentifier implements ErrorIdentifier {
     AAPT_PARSER_FAILED(520_050, FailureStatus.DEPENDENCY_ISSUE),
 
     SHELL_COMMAND_ERROR(520_100, FailureStatus.DEPENDENCY_ISSUE),
-    DEVICE_UNEXPECTED_RESPONSE(30_101, FailureStatus.DEPENDENCY_ISSUE),
-    FAIL_PUSH_FILE(30_102, FailureStatus.DEPENDENCY_ISSUE),
-    FAIL_PULL_FILE(30_103, FailureStatus.DEPENDENCY_ISSUE),
-    DEVICE_FAILED_TO_RESET(30_104, FailureStatus.DEPENDENCY_ISSUE),
+    DEVICE_UNEXPECTED_RESPONSE(520_101, FailureStatus.DEPENDENCY_ISSUE),
+    FAIL_PUSH_FILE(520_102, FailureStatus.DEPENDENCY_ISSUE),
+    FAIL_PULL_FILE(520_103, FailureStatus.DEPENDENCY_ISSUE),
+    DEVICE_FAILED_TO_RESET(520_104, FailureStatus.DEPENDENCY_ISSUE),
 
     INSTRUMENTATION_CRASH(520_200, FailureStatus.SYSTEM_UNDER_TEST_CRASHED),
 
@@ -44,11 +46,11 @@ public enum DeviceErrorIdentifier implements ErrorIdentifier {
     DEVICE_UNRESPONSIVE(520_751, FailureStatus.LOST_SYSTEM_UNDER_TEST);
 
     private final long code;
-    private final FailureStatus status;
+    private final @Nonnull FailureStatus status;
 
     DeviceErrorIdentifier(int code, FailureStatus status) {
         this.code = code;
-        this.status = status;
+        this.status = (status == null ? FailureStatus.UNSET : status);
     }
 
     @Override
@@ -57,7 +59,7 @@ public enum DeviceErrorIdentifier implements ErrorIdentifier {
     }
 
     @Override
-    public FailureStatus status() {
+    public @Nonnull FailureStatus status() {
         return status;
     }
 }
