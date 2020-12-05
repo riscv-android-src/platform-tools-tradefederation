@@ -22,6 +22,7 @@ import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
+import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
@@ -329,10 +330,10 @@ public class DeviceSetup extends BaseTargetPreparer {
     protected Map<String, String> mSetProps = new HashMap<>();
 
     @Option(
-        name = "restore-properties",
-        description =
-                "Restore previous /data/local.prop on tear down, restoring any properties DeviceSetup changed by modifying /data/local.prop."
-    )
+            name = "restore-properties",
+            description =
+                    "Restore previous /data/local.prop on tear down, restoring any properties"
+                            + " DeviceSetup changed by modifying /data/local.prop.")
     protected boolean mRestoreProperties = false;
 
     protected File mPreviousProperties;
@@ -476,6 +477,10 @@ public class DeviceSetup extends BaseTargetPreparer {
 
         if (e instanceof DeviceFailedToBootError) {
             CLog.d("boot failure: skipping teardown");
+            return;
+        }
+        if (!TestDeviceState.ONLINE.equals(device.getDeviceState())) {
+            CLog.d("device offline: skipping teardown");
             return;
         }
 

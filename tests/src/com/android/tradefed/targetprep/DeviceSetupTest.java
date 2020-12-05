@@ -25,6 +25,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.TcpDevice;
 import com.android.tradefed.device.TestDeviceOptions;
+import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
@@ -64,6 +65,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.expect(mMockDevice.getSerialNumber()).andReturn("foo").anyTimes();
         EasyMock.expect(mMockDevice.getDeviceDescriptor()).andStubReturn(null);
         EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(mMockIDevice);
+        EasyMock.expect(mMockDevice.getDeviceState()).andStubReturn(TestDeviceState.ONLINE);
         mMockBuildInfo = new DeviceBuildInfo("0", "");
         mDeviceSetup = new DeviceSetup();
         mTmpDir = FileUtil.createTempDir("tmp");
