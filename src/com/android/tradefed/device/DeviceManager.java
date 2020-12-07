@@ -193,7 +193,7 @@ public class DeviceManager implements IDeviceManager {
             description =
                     "Whether or not to check the file system type as part of device storage "
                             + "readiness")
-    private boolean mMountFileSystemCheckEnabled = false;
+    private boolean mMountFileSystemCheckEnabled = true;
 
     private File mUnpackedFastbootDir = null;
     private File mUnpackedFastboot = null;
