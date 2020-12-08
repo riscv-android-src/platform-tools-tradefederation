@@ -328,11 +328,13 @@ public class RustBinaryTestTest {
         EasyMock.expect(mMockITestDevice.isExecutable(testPath2)).andReturn(true);
         EasyMock.expect(
                         mMockITestDevice.executeShellCommand(
-                                "find /data/misc/trace -name '*.gcda' | tar -cvf /data/misc/trace/coverage.tar -T -"))
+                                "find /data/misc/trace -name '*.gcda' | tar -cvf"
+                                        + " /data/misc/trace/coverage.tar -T -"))
                 .andReturn("");
         EasyMock.expect(
                         mMockITestDevice.executeShellCommand(
-                                "find /data/misc/trace -name '*.gcda' | tar -cvf /data/misc/trace/coverage.tar -T -"))
+                                "find /data/misc/trace -name '*.gcda' | tar -cvf"
+                                        + " /data/misc/trace/coverage.tar -T -"))
                 .andReturn("");
         File tmpFile1 = FileUtil.createTempFile("coverage", ".tar");
         EasyMock.expect(mMockITestDevice.pullFile(coverageTarPath)).andReturn(tmpFile1);
@@ -431,11 +433,13 @@ public class RustBinaryTestTest {
         EasyMock.expect(mMockITestDevice.isExecutable(testPath2)).andReturn(true);
         EasyMock.expect(
                         mMockITestDevice.executeShellCommand(
-                                "find /data/misc/trace -name '*.gcda' | tar -cvf /data/misc/trace/coverage.tar -T -"))
+                                "find /data/misc/trace -name '*.gcda' | tar -cvf"
+                                        + " /data/misc/trace/coverage.tar -T -"))
                 .andReturn("");
         EasyMock.expect(
                         mMockITestDevice.executeShellCommand(
-                                "find /data/misc/trace -name '*.gcda' | tar -cvf /data/misc/trace/coverage.tar -T -"))
+                                "find /data/misc/trace -name '*.gcda' | tar -cvf"
+                                        + " /data/misc/trace/coverage.tar -T -"))
                 .andReturn("");
         File tmpFile1 = FileUtil.createTempFile("coverage", ".tar");
         EasyMock.expect(mMockITestDevice.pullFile(coverageTarPath)).andReturn(tmpFile1);
@@ -478,5 +482,54 @@ public class RustBinaryTestTest {
         mockShellCommand(test2);
         mockTestRunEnded();
         callReplayRunVerify();
+    }
+
+    /**
+     * Helper function to do the actual filtering test.
+     *
+     * @param filterString The string to search for in the Mock, to verify filtering was called
+     * @throws DeviceNotAvailableException
+     */
+    private void doTestFilter(String filterString) throws DeviceNotAvailableException {
+        final String testPath = RustBinaryTest.DEFAULT_TEST_PATH;
+        final String test1 = "test1";
+        final String testPath1 = String.format("%s/%s", testPath, test1);
+        final String[] files = new String[] {test1};
+
+        // Find files
+        MockFileUtil.setMockDirContents(mMockITestDevice, testPath, test1);
+        EasyMock.expect(mMockITestDevice.doesFileExist(testPath)).andReturn(true);
+        EasyMock.expect(mMockITestDevice.isDirectory(testPath)).andReturn(true);
+        EasyMock.expect(mMockITestDevice.getChildren(testPath)).andReturn(files);
+        EasyMock.expect(mMockITestDevice.isDirectory(testPath1)).andReturn(false);
+        EasyMock.expect(mMockITestDevice.isExecutable(testPath1)).andReturn(true);
+
+        mockCountTests(testPath1 + filterString, "test1\n3 tests, 0 benchmarks\n");
+        mockTestRunStarted("test1", 3);
+        mockShellCommand(test1 + filterString);
+        mockTestRunEnded();
+        callReplayRunVerify();
+    }
+
+    /** Test the exclude-filter option. */
+    @Test
+    public void testExcludeFilter() throws Exception {
+        OptionSetter setter = new OptionSetter(mRustBinaryTest);
+        setter.setOptionValue("exclude-filter", "NotMe");
+        setter.setOptionValue("exclude-filter", "Long");
+        doTestFilter(" --skip NotMe --skip Long");
+    }
+
+    /** Test both include- and exclude-filter options. */
+    @Test
+    public void testIncludeExcludeFilter() throws Exception {
+        OptionSetter setter = new OptionSetter(mRustBinaryTest);
+        setter.setOptionValue("exclude-filter", "NotMe2");
+        setter.setOptionValue("include-filter", "OnlyMe");
+        setter.setOptionValue("exclude-filter", "other");
+        setter.setOptionValue("include-filter", "Me2");
+        // Include filters are passed before exclude filters.
+        // Multiple include filters are accepted, but all except the 1st are ignored.
+        doTestFilter(" OnlyMe Me2 --skip NotMe2 --skip other");
     }
 }

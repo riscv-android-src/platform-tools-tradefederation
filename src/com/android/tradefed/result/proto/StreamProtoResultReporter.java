@@ -38,6 +38,14 @@ public final class StreamProtoResultReporter extends ProtoResultReporter {
     private Socket mReportSocket = null;
     private boolean mPrintedMessage = false;
 
+    public void setProtoReportPort(Integer portValue) {
+        mReportPort = portValue;
+    }
+
+    public Integer getProtoReportPort() {
+        return mReportPort;
+    }
+
     @Override
     public void processStartInvocation(
             TestRecord invocationStartRecord, IInvocationContext context) {

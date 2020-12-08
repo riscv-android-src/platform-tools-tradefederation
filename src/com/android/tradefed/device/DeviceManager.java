@@ -34,6 +34,7 @@ import com.android.tradefed.host.IHostOptions;
 import com.android.tradefed.log.ILogRegistry.EventType;
 import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
@@ -193,6 +194,8 @@ public class DeviceManager implements IDeviceManager {
 
     /** Flag to remember if adb bridge has been disconnected and needs to be reset * */
     private boolean mAdbBridgeNeedRestart = false;
+
+    private Map<String, String> mMonitoringTcpFastbootDevices = new HashMap<>();
 
     /**
      * The DeviceManager should be retrieved from the {@link GlobalConfiguration}
@@ -1016,8 +1019,10 @@ public class DeviceManager implements IDeviceManager {
         @Override
         public void recoverDevice(IDeviceStateMonitor monitor, boolean recoverUntilOnline)
                 throws DeviceNotAvailableException {
-            throw new DeviceNotAvailableException("aborted test session",
-                    monitor.getSerialNumber());
+            throw new DeviceNotAvailableException(
+                    "aborted test session",
+                    monitor.getSerialNumber(),
+                    InfraErrorIdentifier.INVOCATION_CANCELLED);
         }
 
         /**
@@ -1026,8 +1031,10 @@ public class DeviceManager implements IDeviceManager {
         @Override
         public void recoverDeviceBootloader(IDeviceStateMonitor monitor)
                 throws DeviceNotAvailableException {
-            throw new DeviceNotAvailableException("aborted test session",
-                    monitor.getSerialNumber());
+            throw new DeviceNotAvailableException(
+                    "aborted test session",
+                    monitor.getSerialNumber(),
+                    InfraErrorIdentifier.INVOCATION_CANCELLED);
         }
 
         /**
@@ -1036,8 +1043,10 @@ public class DeviceManager implements IDeviceManager {
         @Override
         public void recoverDeviceRecovery(IDeviceStateMonitor monitor)
                 throws DeviceNotAvailableException {
-            throw new DeviceNotAvailableException("aborted test session",
-                    monitor.getSerialNumber());
+            throw new DeviceNotAvailableException(
+                    "aborted test session",
+                    monitor.getSerialNumber(),
+                    InfraErrorIdentifier.INVOCATION_CANCELLED);
         }
 
         /** {@inheritDoc} */
@@ -1045,7 +1054,9 @@ public class DeviceManager implements IDeviceManager {
         public void recoverDeviceFastbootd(IDeviceStateMonitor monitor)
                 throws DeviceNotAvailableException {
             throw new DeviceNotAvailableException(
-                    "aborted test session", monitor.getSerialNumber());
+                    "aborted test session",
+                    monitor.getSerialNumber(),
+                    InfraErrorIdentifier.INVOCATION_CANCELLED);
         }
     }
 
@@ -1343,6 +1354,11 @@ public class DeviceManager implements IDeviceManager {
             final FastbootHelper fastboot = new FastbootHelper(getRunUtil(), getFastbootPath());
             while (!mQuit) {
                 Map<String, Boolean> serialAndMode = fastboot.getBootloaderAndFastbootdDevices();
+
+                serialAndMode.putAll(
+                        fastboot.getBootloaderAndFastbootdTcpDevices(
+                                mMonitoringTcpFastbootDevices));
+
                 if (serialAndMode != null) {
                     // Update known bootloader devices state
                     Set<String> bootloader = new HashSet<>();
@@ -1581,5 +1597,11 @@ public class DeviceManager implements IDeviceManager {
     @Override
     public String getAdbVersion() {
         return mAdbBridge.getAdbVersion(mAdbPath);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void addMonitoringTcpFastbootDevice(String serial, String fastboot_serial) {
+        mMonitoringTcpFastbootDevices.put(serial, fastboot_serial);
     }
 }

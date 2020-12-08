@@ -24,6 +24,7 @@ import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 
@@ -46,7 +47,8 @@ public class UsbResetTest implements IRemoteTest {
                 if (usbDevice == null) {
                     throw new DeviceNotAvailableException(
                             String.format("Device '%s' not found during USB reset.", serial),
-                            serial);
+                            serial,
+                            DeviceErrorIdentifier.DEVICE_UNAVAILABLE);
                 } else {
                     CLog.d("Resetting USB port for device '%s'", serial);
                     usbDevice.reset();

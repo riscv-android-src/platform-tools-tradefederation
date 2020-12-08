@@ -122,6 +122,7 @@ public final class PythonBinaryHostTestTest {
 
             CommandResult res = new CommandResult();
             res.setStatus(CommandStatus.SUCCESS);
+            res.setStdout("python binary stdout.");
             res.setStderr("TEST_RUN_STARTED {\"testCount\": 5, \"runName\": \"TestSuite\"}");
             EasyMock.expect(
                             mMockRunUtil.runTimedCmd(
@@ -132,6 +133,10 @@ public final class PythonBinaryHostTestTest {
                     EasyMock.eq(5),
                     EasyMock.eq(0),
                     EasyMock.anyLong());
+            mMockListener.testLog(
+                    EasyMock.eq(binary.getName() + "-stdout"),
+                    EasyMock.eq(LogDataType.TEXT),
+                    EasyMock.anyObject());
             mMockListener.testLog(
                     EasyMock.eq(binary.getName() + "-stderr"),
                     EasyMock.eq(LogDataType.TEXT),
