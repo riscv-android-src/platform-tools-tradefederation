@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -65,6 +66,7 @@ public class ConfigurationDef {
     }
 
     private boolean mMultiDeviceMode = false;
+    private boolean mFilteredObjects = false;
     private Map<String, Boolean> mExpectedDevices = new LinkedHashMap<>();
     private static final Pattern MULTI_PATTERN = Pattern.compile("(.*)(:)(.*)");
     public static final String DEFAULT_DEVICE_NAME = "DEFAULT_DEVICE";
@@ -183,6 +185,20 @@ public class ConfigurationDef {
      * @throws ConfigurationException if configuration could not be created
      */
     public IConfiguration createConfiguration() throws ConfigurationException {
+        return createConfiguration(null);
+    }
+
+    /**
+     * Creates a configuration from the info stored in this definition, and populates its fields
+     * with the provided option values.
+     *
+     * @param allowedObjects the set of TF objects that we will create out of the full configuration
+     * @return the created {@link IConfiguration}
+     * @throws ConfigurationException if configuration could not be created
+     */
+    public IConfiguration createConfiguration(Set<String> allowedObjects)
+            throws ConfigurationException {
+        mFilteredObjects = false;
         IConfiguration config = new Configuration(getName(), getDescription());
         List<IDeviceConfiguration> deviceObjectList = new ArrayList<IDeviceConfiguration>();
         IDeviceConfiguration defaultDeviceConfig =
@@ -246,6 +262,11 @@ public class ConfigurationDef {
             boolean shouldAddToFlatConfig = true;
 
             for (ConfigObjectDef configDef : objClassEntry.getValue()) {
+                if (allowedObjects != null && !allowedObjects.contains(objClassEntry.getKey())) {
+                    CLog.d("Skipping creation of %s", objClassEntry.getKey());
+                    mFilteredObjects = true;
+                    continue;
+                }
                 Object configObject = null;
                 try {
                     configObject = createObject(objClassEntry.getKey(), configDef.mClassName);
@@ -343,7 +364,13 @@ public class ConfigurationDef {
 
     protected void injectOptions(IConfiguration config, List<OptionDef> optionList)
             throws ConfigurationException {
-        config.injectOptionValues(optionList);
+        if (mFilteredObjects) {
+            // If we filtered out some objects, some options might not be injectable anymore, so
+            // we switch to safe inject to avoid errors due to the filtering.
+            config.safeInjectOptionValues(optionList);
+        } else {
+            config.injectOptionValues(optionList);
+        }
     }
 
     /**

@@ -20,6 +20,7 @@ import com.android.tradefed.util.keystore.IKeyStoreClient;
 
 import java.io.PrintStream;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Factory for creating {@link IConfiguration}s
@@ -74,6 +75,20 @@ public interface IConfigurationFactory {
      */
     public IConfiguration createConfigurationFromArgs(String[] args, List<String> unconsumedArgs,
             IKeyStoreClient keyStoreClient) throws ConfigurationException;
+
+    /**
+     * Create a configuration that only contains a set of selected objects.
+     *
+     * @param arrayArgs The command line arguments
+     * @param keyStoreClient A {@link IKeyStoreClient} which is used to obtain sensitive info in the
+     *     args.
+     * @param allowedObjects The set of allowed objects to be created
+     * @return The loaded {@link IConfiguration}.
+     * @throws ConfigurationException if configuration could not be loaded
+     */
+    public IConfiguration createPartialConfigurationFromArgs(
+            String[] arrayArgs, IKeyStoreClient keyStoreClient, Set<String> allowedObjects)
+            throws ConfigurationException;
 
     /**
      * Create a {@link IGlobalConfiguration} from command line arguments.

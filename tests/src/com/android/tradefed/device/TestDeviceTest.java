@@ -129,6 +129,11 @@ public class TestDeviceTest extends TestCase {
             // Avoid issue with GlobalConfiguration
             return new HostOptions();
         }
+
+        @Override
+        public boolean isAdbTcp() {
+            return false;
+        }
     }
 
     /**

@@ -17,7 +17,12 @@
       ]
     },
     {
-      "name": "test[mod1.apk+mod2.apk]"
+      "name": "test[mod1.apk+mod2.apk]",
+      "options": [
+        {
+          "exclude-annotation": "test-annotation"
+        }
+      ]
     }
   ]
 }

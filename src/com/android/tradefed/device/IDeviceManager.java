@@ -286,4 +286,13 @@ public interface IDeviceManager {
 
     /** Get the adb version currently in use by the device manager. */
     public String getAdbVersion();
+
+    /**
+     * Add a device to fastboot monitor. The fastboot monitor will use 'fastboot_serial' to
+     * communicate with the device.
+     *
+     * @param serial the device's serial number.
+     * @param fastboot_serial the device's fastboot mode serial number.
+     */
+    public void addMonitoringTcpFastbootDevice(String serial, String fastboot_serial);
 }

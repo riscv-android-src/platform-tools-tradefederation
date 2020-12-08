@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.testtype.binary;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -30,6 +31,8 @@ import com.android.tradefed.testtype.IRuntimeHintProvider;
 import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.testtype.ITestCollector;
 import com.android.tradefed.testtype.ITestFilterReceiver;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.util.StreamUtil;
 
 import java.io.File;
@@ -86,6 +89,16 @@ public abstract class ExecutableBaseTest
     private TestInformation mTestInfo;
     private Set<String> mIncludeFilters = new LinkedHashSet<>();
     private Set<String> mExcludeFilters = new LinkedHashSet<>();
+
+    /**
+     * Get test commands.
+     *
+     * @return the test commands.
+     */
+    @VisibleForTesting
+    Map<String, String> getTestCommands() {
+        return mTestCommands;
+    }
 
     /** @return the timeout applied to each binary for their execution. */
     protected long getTimeoutPerBinaryMs() {
@@ -152,7 +165,12 @@ public abstract class ExecutableBaseTest
             if (shouldSkipCurrentTest(description)) continue;
             if (path == null) {
                 listener.testRunStarted(testName, 0);
-                listener.testRunFailed(String.format(NO_BINARY_ERROR, cmd));
+                FailureDescription failure =
+                        FailureDescription.create(
+                                        String.format(NO_BINARY_ERROR, cmd),
+                                        FailureStatus.TEST_FAILURE)
+                                .setErrorIdentifier(InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
+                listener.testRunFailed(failure);
                 listener.testRunEnded(0L, new HashMap<String, Metric>());
             } else {
                 listener.testRunStarted(testName, 1);
@@ -247,26 +265,47 @@ public abstract class ExecutableBaseTest
     /** {@inheritDoc} */
     @Override
     public final Collection<IRemoteTest> split() {
-        if (mBinaryPaths.size() <= 2) {
+        int testCount = mBinaryPaths.size() + mTestCommands.size();
+        if (testCount <= 2) {
             return null;
         }
         Collection<IRemoteTest> tests = new ArrayList<>();
         for (String path : mBinaryPaths) {
-            tests.add(getTestShard(path));
+            tests.add(getTestShard(path, null, null));
+        }
+        Map<String, String> testCommands = new LinkedHashMap<>(mTestCommands);
+        for (String testName : testCommands.keySet()) {
+            String cmd = testCommands.get(testName);
+            tests.add(getTestShard(null, testName, cmd));
         }
         return tests;
     }
 
-    private IRemoteTest getTestShard(String path) {
+    /**
+     * Get a testShard of ExecutableBaseTest.
+     *
+     * @param binaryPath the binary path for ExecutableHostTest.
+     * @param testName the test name for ExecutableTargetTest.
+     * @param cmd the test command for ExecutableTargetTest.
+     * @return a shard{@link IRemoteTest} of ExecutableBaseTest{@link ExecutableBaseTest}
+     */
+    private IRemoteTest getTestShard(String binaryPath, String testName, String cmd) {
         ExecutableBaseTest shard = null;
         try {
             shard = this.getClass().getDeclaredConstructor().newInstance();
             OptionCopier.copyOptionsNoThrow(this, shard);
-            // We approximate the runtime of each shard to be equal since we can't know.
-            shard.mRuntimeHintMs = mRuntimeHintMs / shard.mBinaryPaths.size();
-            // Set one binary per shard
             shard.mBinaryPaths.clear();
-            shard.mBinaryPaths.add(path);
+            shard.mTestCommands.clear();
+            if (binaryPath != null) {
+                // Set one binary per shard
+                shard.mBinaryPaths.add(binaryPath);
+            } else if (testName != null && cmd != null) {
+                // Set one test command per shard
+                shard.mTestCommands.put(testName, cmd);
+            }
+            // Copy the filters to each shard
+            shard.mExcludeFilters.addAll(mExcludeFilters);
+            shard.mIncludeFilters.addAll(mIncludeFilters);
         } catch (InstantiationException
                 | IllegalAccessException
                 | InvocationTargetException

@@ -18,8 +18,10 @@ package com.android.tradefed.testtype.binary;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
@@ -84,7 +86,10 @@ public class ExecutableTargetTest extends ExecutableBaseTest implements IDeviceT
                     String.format(
                             "binary returned non-zero. Exit code: %d, stderr: %s, stdout: %s",
                             result.getExitCode(), result.getStderr(), result.getStdout());
-            listener.testFailed(description, error_message);
+            listener.testFailed(
+                    description,
+                    FailureDescription.create(error_message)
+                            .setFailureStatus(FailureStatus.TEST_FAILURE));
         }
     }
 }

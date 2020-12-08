@@ -18,6 +18,7 @@ package com.android.tradefed.testtype.rust;
 import com.android.ddmlib.IShellOutputReceiver;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFilterReceiver;
@@ -50,7 +51,12 @@ public abstract class RustTestBase implements IRemoteTest, ITestFilterReceiver {
             isTimeVal = true)
     protected long mTestTimeout = 20 * 1000L; // milliseconds
 
+    @Option(
+            name = "include-filter",
+            description = "A substr filter of the test names to run; only the first one is used.")
     private Set<String> mIncludeFilters = new LinkedHashSet<>();
+
+    @Option(name = "exclude-filter", description = "A substr filter of the test names to skip.")
     private Set<String> mExcludeFilters = new LinkedHashSet<>();
 
     // A wrapper that can be redefined in unit tests to create a (mocked) result parser.
@@ -87,10 +93,6 @@ public abstract class RustTestBase implements IRemoteTest, ITestFilterReceiver {
         }
         return testCount;
     }
-
-    // TODO(b/145607401): make rust test runners accept filters
-    // Now the following are just dummy methods,
-    // to shut off run-time warning about not implementing ITestFilterReceiver.
 
     /** {@inheritDoc} */
     @Override
@@ -138,5 +140,33 @@ public abstract class RustTestBase implements IRemoteTest, ITestFilterReceiver {
     @Override
     public Set<String> getExcludeFilters() {
         return mExcludeFilters;
+    }
+
+    private void checkMultipleIncludeFilters() {
+        if (mIncludeFilters.size() > 1) {
+            CLog.e("Found multiple include filters; all except the 1st are ignored.");
+        }
+    }
+
+    protected void addFiltersToArgs(List<String> args) {
+        checkMultipleIncludeFilters();
+        for (String s : mIncludeFilters) {
+            args.add(s);
+        }
+        for (String s : mExcludeFilters) {
+            args.add("--skip");
+            args.add(s);
+        }
+    }
+
+    protected String addFiltersToCommand(String cmd) {
+        if (!mIncludeFilters.isEmpty()) {
+            checkMultipleIncludeFilters();
+            cmd += " " + String.join(" ", mIncludeFilters);
+        }
+        if (!mExcludeFilters.isEmpty()) {
+            cmd += " --skip " + String.join(" --skip ", mExcludeFilters);
+        }
+        return cmd;
     }
 }

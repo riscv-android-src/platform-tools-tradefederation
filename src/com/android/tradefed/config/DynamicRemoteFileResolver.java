@@ -22,6 +22,7 @@ import com.android.tradefed.config.remote.IRemoteFileResolver;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.logger.CurrentInvocation;
 import com.android.tradefed.invoker.logger.CurrentInvocation.InvocationInfo;
+import com.android.tradefed.invoker.logger.InvocationLocal;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.FileUtil;
@@ -30,6 +31,7 @@ import com.android.tradefed.util.ZipUtil;
 import com.android.tradefed.util.ZipUtil2;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
 
 import java.io.File;
 import java.io.IOException;
@@ -67,8 +69,26 @@ public class DynamicRemoteFileResolver {
     // Query key for requesting a download to be optional, so if it fails we don't replace it.
     public static final String OPTIONAL_KEY = "optional";
 
+    /**
+     * Loads file resolvers using a dedicated {@link ServiceFileResolverLoader} that is scoped to
+     * each invocation.
+     */
+    // TODO(hzalek): Store a DynamicRemoteFileResolver instance per invocation to avoid locals.
     private static final FileResolverLoader DEFAULT_FILE_RESOLVER_LOADER =
-            new ServiceFileResolverLoader();
+            new FileResolverLoader() {
+                private final InvocationLocal<FileResolverLoader> mInvocationLoader =
+                        new InvocationLocal<FileResolverLoader>() {
+                            @Override
+                            protected FileResolverLoader initialValue() {
+                                return new ServiceFileResolverLoader();
+                            }
+                        };
+
+                @Override
+                public IRemoteFileResolver load(String scheme, Map<String, String> config) {
+                    return mInvocationLoader.get().load(scheme, config);
+                }
+            };
 
     private final FileResolverLoader mFileResolverLoader;
 
@@ -286,8 +306,6 @@ public class DynamicRemoteFileResolver {
                             "Failed to parse the remote zip file path: %s", remoteZipFilePath),
                     e);
         }
-        IRemoteFileResolver resolver = getResolver(protocol);
-
         queryArgs.put("partial_download_dir", destDir.getAbsolutePath());
         if (includeFilters != null) {
             queryArgs.put("include_filters", String.join(";", includeFilters));
@@ -297,6 +315,7 @@ public class DynamicRemoteFileResolver {
         }
         // Downloaded individual files should be saved to destDir, return value is not needed.
         try {
+            IRemoteFileResolver resolver = getResolver(protocol);
             resolver.setPrimaryDevice(mDevice);
             resolver.resolveRemoteFiles(new File(remoteZipFilePath), queryArgs);
         } catch (BuildRetrievalError e) {
@@ -304,14 +323,20 @@ public class DynamicRemoteFileResolver {
                 CLog.d(
                         "Failed to partially download '%s' but marked optional so skipping: %s",
                         remoteZipFilePath, e.getMessage());
-            } else {
-                throw e;
+                return;
             }
+
+            throw e;
         }
     }
 
-    protected IRemoteFileResolver getResolver(String protocol) {
+    private IRemoteFileResolver getResolver(String protocol) throws BuildRetrievalError {
+        try {
         return mFileResolverLoader.load(protocol, mExtraArgs);
+        } catch (ResolverLoadingException e) {
+            throw new BuildRetrievalError(
+                    String.format("Could not load resolver for protocol %s", protocol), e);
+        }
     }
 
     @VisibleForTesting
@@ -357,28 +382,26 @@ public class DynamicRemoteFileResolver {
             CLog.e(e);
             return null;
         }
-        IRemoteFileResolver resolver = getResolver(protocol);
-        if (resolver != null) {
-            try {
-                CLog.d(
-                        "Considering option '%s' with path: '%s' for download.",
-                        option.name(), path);
-                // Overrides query args
-                query.putAll(mExtraArgs);
-                resolver.setPrimaryDevice(mDevice);
-                return resolver.resolveRemoteFiles(fileToResolve, query);
-            } catch (BuildRetrievalError e) {
-                if (isOptional(query)) {
-                    CLog.d(
-                            "Failed to resolve '%s' but marked optional so skipping: %s",
-                            fileToResolve, e.getMessage());
-                } else {
-                    throw e;
-                }
+
+        try {
+            IRemoteFileResolver resolver = getResolver(protocol);
+            if (resolver == null) {
+                return null;
             }
+
+            CLog.d("Considering option '%s' with path: '%s' for download.", option.name(), path);
+            resolver.setPrimaryDevice(mDevice);
+            return resolver.resolveRemoteFiles(fileToResolve, query);
+        } catch (BuildRetrievalError e) {
+            if (isOptional(query)) {
+                CLog.d(
+                        "Failed to resolve '%s' but marked optional so skipping: %s",
+                        fileToResolve, e.getMessage());
+                return null;
+            }
+
+            throw e;
         }
-        // Not a remote file
-        return null;
     }
 
     /**
@@ -415,8 +438,27 @@ public class DynamicRemoteFileResolver {
          * @param scheme the URI scheme that the loaded resolver is expected to handle.
          * @param config a map of all dynamic resolver configuration key-value pairs specified by
          *     the 'dynamic-resolver-args' TF command-line flag.
+         * @throws ResolverLoadingException if the resolver that handles the specified scheme cannot
+         *     be loaded and/or initialized.
          */
+        @Nullable
         IRemoteFileResolver load(String scheme, Map<String, String> config);
+    }
+
+    /** Exception thrown if a resolver cannot be loaded or initialized. */
+    @VisibleForTesting
+    static final class ResolverLoadingException extends RuntimeException {
+        public ResolverLoadingException(@Nullable String message) {
+            super(message);
+        }
+
+        public ResolverLoadingException(@Nullable Throwable cause) {
+            super(cause);
+        }
+
+        public ResolverLoadingException(@Nullable String message, @Nullable Throwable cause) {
+            super(message, cause);
+        }
     }
 
     /**
@@ -425,8 +467,17 @@ public class DynamicRemoteFileResolver {
      * <p>This implementation uses the service loading facility to find and cache available
      * resolvers on the first call to {@code load}.
      *
+     * <p>Any {@link Option}-annotated fields defined in loaded resolvers are initialized from the
+     * provided key-value pairs using the standard TF option-setting mechanism. Resolvers can define
+     * options that themselves require resolution as long as it causes no cycles during
+     * initialization.
+     *
+     * <p>Resolvers are loaded eagerly using ServiceLoader but have their options initialized only
+     * when first used. This avoids exceptions due to missing options in resolvers that are
+     * available on the class path but never used to load any files.
+     *
      * <p>This implementation is thread-safe and ensures that any loaded resolvers are loaded at
-     * most once per instance unless an exception is thrown.
+     * most once per instance.
      */
     @ThreadSafe
     @VisibleForTesting
@@ -436,7 +487,7 @@ public class DynamicRemoteFileResolver {
         private final Supplier<ClassLoader> mClassLoaderSupplier;
 
         @GuardedBy("this")
-        private @Nullable ImmutableMap<String, IRemoteFileResolver> mResolvers;
+        private @Nullable LoaderState mLoaderState;
 
         ServiceFileResolverLoader() {
             mClassLoaderSupplier = () -> Thread.currentThread().getContextClassLoader();
@@ -448,12 +499,14 @@ public class DynamicRemoteFileResolver {
 
         @Override
         public synchronized IRemoteFileResolver load(String scheme, Map<String, String> config) {
-            if (mResolvers != null) {
-                return mResolvers.get(scheme);
+            if (mLoaderState != null) {
+                return mLoaderState.getAndInit(scheme);
             }
 
             // We use an intermediate map because the ImmutableMap builder throws if we add multiple
-            // entries with the same key.
+            // entries with the same key. Note that we don't worry about setting any state that
+            // prevents this code from re-executing since failures loading service providers throws
+            // an Error which bubbles all the way to the top.
             Map<String, IRemoteFileResolver> resolvers = new HashMap<>();
             ServiceLoader<IRemoteFileResolver> serviceLoader =
                     ServiceLoader.load(IRemoteFileResolver.class, mClassLoaderSupplier.get());
@@ -462,8 +515,134 @@ public class DynamicRemoteFileResolver {
                 resolvers.putIfAbsent(resolver.getSupportedProtocol(), resolver);
             }
 
-            mResolvers = ImmutableMap.copyOf(resolvers);
-            return resolvers.get(scheme);
+            mLoaderState = new LoaderState(resolvers, config);
+            return mLoaderState.getAndInit(scheme);
+        }
+
+        /** Stores the state of loaded file resolvers. */
+        private static final class LoaderState {
+            private final ImmutableMap<String, String> mConfig;
+            private final ImmutableMap<String, ResolverState> mState;
+
+            LoaderState(Map<String, IRemoteFileResolver> resolvers, Map<String, String> config) {
+                this.mState =
+                        ImmutableMap.copyOf(
+                                Maps.transformValues(resolvers, r -> new ResolverState(r)));
+                this.mConfig = ImmutableMap.copyOf(config);
+            }
+
+            /** Returns an initialized resolver instance for the specified scheme. */
+            @Nullable
+            IRemoteFileResolver getAndInit(String scheme) {
+                ResolverState state = mState.get(scheme);
+                if (state == null) {
+                    return null;
+                }
+
+                return state.getAndInit(this);
+            }
+
+            void resolve(IRemoteFileResolver resolver)
+                    throws ConfigurationException, BuildRetrievalError {
+                // The device isn't set when resolving dynamic options because we don't want to load
+                // device-specific configuration when initializing pseudo-static resolvers that
+                // could out-live a particular device.
+                OptionSetter setter = new OptionSetter(resolver);
+
+                for (Map.Entry<String, String> e : mConfig.entrySet()) {
+                    String name = e.getKey();
+
+                    // Note that we don't throw for options that don't exist.
+                    if (setter.fieldsForArgNoThrow(name) == null) {
+                        // TODO(hzalek): Consider throwing when the option doesn't exist and is
+                        // qualified using one of the option source's aliases.
+                        // option name uses one of
+                        // the option source's aliases
+                        continue;
+                    }
+
+                    if (setter.isMapOption(name)) {
+                        throw new ConfigurationException("Map options are not supported: " + name);
+                    }
+
+                    setter.setOptionValue(name, e.getValue());
+                }
+
+                Collection<String> missingOptions = setter.getUnsetMandatoryOptions();
+                if (!missingOptions.isEmpty()) {
+                    throw new ConfigurationException(
+                            String.format(
+                                    "Found missing mandatory options %s for resolver %s",
+                                    missingOptions, resolver.toString()));
+                }
+
+                DynamicRemoteFileResolver dynamicResolver =
+                        new DynamicRemoteFileResolver((scheme, unused) -> getAndInit(scheme));
+                dynamicResolver.addExtraArgs(mConfig);
+                setter.validateRemoteFilePath(dynamicResolver);
+            }
+
+            /** Stores the resolver and its initialization state. */
+            static final class ResolverState {
+                final IRemoteFileResolver mResolver;
+
+                /**
+                 * The initialization state where {@code null} means never initialized, {@code
+                 * false} means started, and {@code true} means done.
+                 */
+                @Nullable Boolean mDone;
+
+                /**
+                 * The exception thrown when initializing the resolver to ensure that we only do it
+                 * once.
+                 */
+                @Nullable ResolverLoadingException mException;
+
+                ResolverState(IRemoteFileResolver resolver) {
+                    this.mResolver = resolver;
+                }
+
+                IRemoteFileResolver getAndInit(LoaderState context) {
+                    if (Boolean.TRUE.equals(mDone)) {
+                        return getOrThrow();
+                    }
+
+                    if (Boolean.FALSE.equals(mDone)) {
+                        // No need to catch or store the exception since it gets thrown in the
+                        // recursive
+                        // call to the dynamic resolver as a BuildRetrievalError which we already
+                        // catch.
+                        throw new ResolverLoadingException(
+                                "Cycle detected while initializing resolver options: "
+                                        + mResolver.toString());
+                    }
+
+                    CLog.i("Initializing file resolver options: %s", mResolver);
+                    mDone = Boolean.FALSE;
+
+                    try {
+                        context.resolve(mResolver);
+                    } catch (BuildRetrievalError | ConfigurationException e) {
+                        mException =
+                                new ResolverLoadingException(
+                                        "Could not initialize resolver options: "
+                                                + mResolver.toString(),
+                                        e);
+                        throw mException;
+                    } finally {
+                        mDone = Boolean.TRUE;
+                    }
+
+                    return mResolver;
+                }
+
+                private IRemoteFileResolver getOrThrow() {
+                    if (mException != null) {
+                        throw mException;
+                    }
+                    return mResolver;
+                }
+            }
         }
     }
 }

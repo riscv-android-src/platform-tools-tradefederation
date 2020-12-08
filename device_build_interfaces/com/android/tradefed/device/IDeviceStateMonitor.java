@@ -196,4 +196,9 @@ public interface IDeviceStateMonitor {
      */
     public void setDefaultAvailableTimeout(long timeoutMs);
 
+    /** Sets the fastboot mode serial number. */
+    public void setFastbootSerialNumber(String serial);
+
+    /** Gets the fastboot mode serial number. */
+    public String getFastbootSerialNumber();
 }

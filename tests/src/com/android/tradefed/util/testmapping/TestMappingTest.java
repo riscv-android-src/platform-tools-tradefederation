@@ -166,6 +166,8 @@ public class TestMappingTest {
 
             EasyMock.replay(mockBuildInfo);
 
+            // Ensure the static variable doesn't have any relative path configured.
+            TestMapping.setTestMappingPaths(new ArrayList<String>());
             Set<TestInfo> tests = TestMapping.getTests(mockBuildInfo, "presubmit", false, null);
             assertEquals(0, tests.size());
 

@@ -36,6 +36,8 @@ import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
@@ -97,8 +99,12 @@ public class ExecutableHostTestTest {
         mExecutableTest.run(mTestInfo, mMockListener);
 
         verify(mMockListener, Mockito.times(1)).testRunStarted(eq("test"), eq(0));
-        verify(mMockListener, Mockito.times(1))
-                .testRunFailed(String.format(ExecutableBaseTest.NO_BINARY_ERROR, path));
+        FailureDescription failure =
+                FailureDescription.create(
+                                String.format(ExecutableBaseTest.NO_BINARY_ERROR, path),
+                                FailureStatus.TEST_FAILURE)
+                        .setErrorIdentifier(InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
+        verify(mMockListener, Mockito.times(1)).testRunFailed(failure);
         verify(mMockListener, Mockito.times(1))
                 .testRunEnded(eq(0L), Mockito.<HashMap<String, Metric>>any());
     }
@@ -184,20 +190,25 @@ public class ExecutableHostTestTest {
             doThrow(new DeviceNotAvailableException("test", "serial"))
                     .when(mMockDevice)
                     .waitForDeviceAvailable();
+            DeviceNotAvailableException dnae = null;
             try {
                 mExecutableTest.run(mTestInfo, mMockListener);
                 fail("Should have thrown an exception.");
             } catch (DeviceNotAvailableException expected) {
                 // Expected
+                dnae = expected;
             }
 
             verify(mMockListener, Mockito.times(1)).testRunStarted(eq(tmpBinary.getName()), eq(1));
-            verify(mMockListener, Mockito.times(1))
-                    .testRunFailed(
-                            eq(
+            FailureDescription failure =
+                    FailureDescription.create(
                                     String.format(
                                             "Device became unavailable after %s.",
-                                            tmpBinary.getAbsolutePath())));
+                                            tmpBinary.getAbsolutePath()),
+                                    FailureStatus.LOST_SYSTEM_UNDER_TEST)
+                            .setErrorIdentifier(DeviceErrorIdentifier.DEVICE_UNAVAILABLE)
+                            .setCause(dnae);
+            verify(mMockListener, Mockito.times(1)).testRunFailed(eq(failure));
             verify(mMockListener, Mockito.times(0)).testFailed(any(), (String) any());
             verify(mMockListener, Mockito.times(1))
                     .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
@@ -259,12 +270,14 @@ public class ExecutableHostTestTest {
             mExecutableTest.run(mTestInfo, mMockListener);
 
             verify(mMockListener, Mockito.times(1)).testRunStarted(eq(tmpBinary.getName()), eq(0));
-            verify(mMockListener, Mockito.times(1))
-                    .testRunFailed(
-                            eq(
+            FailureDescription failure =
+                    FailureDescription.create(
                                     String.format(
                                             ExecutableBaseTest.NO_BINARY_ERROR,
-                                            tmpBinary.getName())));
+                                            tmpBinary.getName()),
+                                    FailureStatus.TEST_FAILURE)
+                            .setErrorIdentifier(InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
+            verify(mMockListener, Mockito.times(1)).testRunFailed(eq(failure));
             verify(mMockListener, Mockito.times(1))
                     .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
         } finally {

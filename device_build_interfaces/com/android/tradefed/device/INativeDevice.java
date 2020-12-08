@@ -82,6 +82,9 @@ public interface INativeDevice {
      */
     public String getSerialNumber();
 
+    /** Returns the fastboot mode serial number. */
+    public String getFastbootSerialNumber();
+
     /**
      * Retrieve the given property value from the device.
      *
