@@ -30,6 +30,7 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TextResultReporter;
 import com.android.tradefed.result.suite.SuiteResultReporter;
+import com.android.tradefed.targetprep.DeviceFlashPreparer;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.PushFilePreparer;
 import com.android.tradefed.targetprep.RunCommandTargetPreparer;
@@ -93,19 +94,21 @@ public class ConfigurationYamlParserTest {
 
             // Dependencies
             // apk dependencies
-            assertEquals(5, config.getTargetPreparers().size());
-            ITargetPreparer preCommandRunner = config.getTargetPreparers().get(0);
+            // Preparer count: the last are 5 from config, extra ones are default objects.
+            assertEquals(6, config.getTargetPreparers().size());
+            ITargetPreparer flashPreparer = config.getTargetPreparers().get(0);
+            assertTrue(flashPreparer instanceof DeviceFlashPreparer);
+            ITargetPreparer preCommandRunner = config.getTargetPreparers().get(1);
             assertTrue(preCommandRunner instanceof RunCommandTargetPreparer);
-            ITargetPreparer preCommandRunner2 = config.getTargetPreparers().get(1);
+            ITargetPreparer preCommandRunner2 = config.getTargetPreparers().get(2);
             assertTrue(preCommandRunner2 instanceof RunCommandTargetPreparer);
-
-            ITargetPreparer installApk = config.getTargetPreparers().get(2);
+            ITargetPreparer installApk = config.getTargetPreparers().get(3);
             assertTrue(installApk instanceof SuiteApkInstaller);
             assertThat(((SuiteApkInstaller) installApk).getTestsFileName())
                     .containsExactly(
                             new File("test.apk"), new File("test2.apk"), new File("test1.apk"));
             // device file dependencies
-            ITargetPreparer pushFile = config.getTargetPreparers().get(3);
+            ITargetPreparer pushFile = config.getTargetPreparers().get(4);
             assertTrue(pushFile instanceof PushFilePreparer);
             assertThat(((PushFilePreparer) pushFile).getPushSpecs(null))
                     .containsExactly(
@@ -113,7 +116,7 @@ public class ConfigurationYamlParserTest {
                             new File("tobepushed2.txt"),
                             "/sdcard",
                             new File("tobepushed.txt"));
-            ITargetPreparer postCommandRunner = config.getTargetPreparers().get(4);
+            ITargetPreparer postCommandRunner = config.getTargetPreparers().get(5);
             assertTrue(postCommandRunner instanceof RunCommandTargetPreparer);
             // Result reporters
             List<ITestInvocationListener> listeners = config.getTestInvocationListeners();
