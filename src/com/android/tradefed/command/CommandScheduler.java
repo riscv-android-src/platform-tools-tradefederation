@@ -828,17 +828,24 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             device.setRecoveryMode(RecoveryMode.AVAILABLE);
         }
 
+        DeviceNotAvailableException dnae = null;
+        FreeDeviceState unavailable = null;
         if (e instanceof DeviceUnresponsiveException) {
-            ITestDevice badDevice =
-                    context.getDeviceBySerial(((DeviceUnresponsiveException) e).getSerial());
-            if (badDevice != null && !(badDevice.getIDevice() instanceof StubDevice)) {
-                deviceStates.put(badDevice, FreeDeviceState.UNRESPONSIVE);
-            }
+            dnae = (DeviceUnresponsiveException) e;
+            unavailable = FreeDeviceState.UNRESPONSIVE;
         } else if (e instanceof DeviceNotAvailableException) {
-            ITestDevice badDevice =
-                    context.getDeviceBySerial(((DeviceNotAvailableException) e).getSerial());
-            if (badDevice != null && !(badDevice.getIDevice() instanceof StubDevice)) {
-                deviceStates.put(badDevice, FreeDeviceState.UNAVAILABLE);
+            dnae = (DeviceNotAvailableException) e;
+            unavailable = FreeDeviceState.UNAVAILABLE;
+        }
+        if (dnae != null) {
+            // If we are carrying an INVOCATION_CANCELLED it has priority
+            if (!InfraErrorIdentifier.INVOCATION_CANCELLED.equals(dnae.getErrorId())) {
+                ITestDevice badDevice = context.getDeviceBySerial(dnae.getSerial());
+                if (badDevice != null && !(badDevice.getIDevice() instanceof StubDevice)) {
+                    deviceStates.put(badDevice, unavailable);
+                }
+            } else {
+                CLog.d("Invocation cancelled detected.");
             }
         }
         CLog.d("Release map of the devices: %s", deviceStates);
