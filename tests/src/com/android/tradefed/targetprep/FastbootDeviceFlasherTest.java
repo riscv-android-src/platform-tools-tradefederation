@@ -604,6 +604,7 @@ public class FastbootDeviceFlasherTest {
     public void testFlashingSystemWithRamdisk() throws Exception {
         final String buildId = "systemBuildId";
         mFlasher.setShouldFlashRamdisk(true);
+        mFlasher.setRamdiskPartition("boot");
         IDeviceBuildInfo mockBuild = EasyMock.createMock(IDeviceBuildInfo.class);
         EasyMock.expect(mockBuild.getDeviceBuildId()).andReturn(buildId);
         File deviceImage = FileUtil.createTempFile("fakeDeviceImage", "");
@@ -650,6 +651,7 @@ public class FastbootDeviceFlasherTest {
         final String buildId = "systemBuildId";
         final String buildFlavor = "systemBuildFlavor";
         mFlasher.setShouldFlashRamdisk(true);
+        mFlasher.setRamdiskPartition("vendor_boot");
         IDeviceBuildInfo mockBuild = EasyMock.createMock(IDeviceBuildInfo.class);
         File ramdisk = FileUtil.createTempFile("fakeRamdisk", "");
         EasyMock.expect(mockBuild.getRamdiskFile()).andReturn(ramdisk);
@@ -663,7 +665,7 @@ public class FastbootDeviceFlasherTest {
             EasyMock.expect(
                             mMockDevice.executeLongFastbootCommand(
                                     EasyMock.eq("flash"),
-                                    EasyMock.eq("boot"),
+                                    EasyMock.eq("vendor_boot"),
                                     EasyMock.eq(ramdisk.getAbsolutePath())))
                     .andReturn(res);
             mMockDevice.reboot();
