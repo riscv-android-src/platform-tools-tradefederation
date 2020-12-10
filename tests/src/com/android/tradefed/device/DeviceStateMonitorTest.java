@@ -740,19 +740,17 @@ public class DeviceStateMonitorTest {
         EasyMock.expect(mMockDevice.getMountPoint((String) EasyMock.anyObject()))
                 .andStubReturn("/sdcard");
         mMockDevice.executeShellCommand(
-                EasyMock.eq("df /sdcard"),
+                EasyMock.eq("stat -f -c \"%t\" /sdcard"),
                 EasyMock.anyObject(),
                 EasyMock.anyLong(),
                 EasyMock.eq(TimeUnit.MILLISECONDS));
         EasyMock.expectLastCall()
                 .andAnswer(
                         () -> {
-                            CollectingOutputReceiver df =
+                            CollectingOutputReceiver stat =
                                     (CollectingOutputReceiver) EasyMock.getCurrentArguments()[1];
-                            String dfOutput =
-                                    "Filesystem     1K-blocks    Used Available Use% Mounted on\n"
-                                            + "/dev/fuse       54089708 7177216  46912492  14% /storage/emulated\n";
-                            df.addOutput(dfOutput.getBytes(), 0, dfOutput.length());
+                            String statOutput = "65735546\n"; // Fuse magic number
+                            stat.addOutput(statOutput.getBytes(), 0, statOutput.length());
                             return null;
                         });
         String[] input = new String[1];
