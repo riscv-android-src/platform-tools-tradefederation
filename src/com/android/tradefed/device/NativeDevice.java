@@ -138,7 +138,7 @@ public class NativeDevice implements IManagedTestDevice {
     /** regex to match build signing key type */
     private static final Pattern KEYS_PATTERN = Pattern.compile("^.*-keys$");
 
-    public static final Pattern DF_PATTERN =
+    private static final Pattern DF_PATTERN =
             Pattern.compile(
                     // Fs 1K-blks Used    Available Use%      Mounted on
                     "^/(\\S+)\\s+\\d+\\s+\\d+\\s+(\\d+)\\s+\\d+%\\s+/\\S*$", Pattern.MULTILINE);
