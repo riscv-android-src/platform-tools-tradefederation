@@ -493,6 +493,10 @@ public class ClusterCommandScheduler extends CommandScheduler {
             CLog.d("No commands available for testing.");
             return;
         }
+        if (isShuttingDown()) {
+            CLog.d("Tradefed shutting down, ignoring commands.");
+            return;
+        }
         execCommands(commands);
     }
 
@@ -613,6 +617,10 @@ public class ClusterCommandScheduler extends CommandScheduler {
      */
     void execCommands(final List<ClusterCommand> commands) {
         for (final ClusterCommand commandTask : commands) {
+            if (isShuttingDown()) {
+                CLog.d("Tradefed shutting down, ignoring remaining commands.");
+                return;
+            }
             try {
                 final InvocationEventHandler handler = new InvocationEventHandler(commandTask);
                 switch (commandTask.getRequestType()) {
