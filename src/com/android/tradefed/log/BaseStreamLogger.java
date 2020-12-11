@@ -56,7 +56,7 @@ public abstract class BaseStreamLogger<OS extends OutputStream> extends BaseLeve
     }
 
     /** @return current minimum {@link LogLevel} to display on stdout. */
-    LogLevel getLogLevelDisplay() {
+    public LogLevel getLogLevelDisplay() {
         return mLogLevelDisplay;
     }
 
