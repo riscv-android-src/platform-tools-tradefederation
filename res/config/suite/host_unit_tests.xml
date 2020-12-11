@@ -8,7 +8,7 @@
     <option name="test-arg" value="com.android.tradefed.testtype.HostGTest:prepend-filename:true" />
 
     <!-- Force a timeout on every unit test cases -->
-    <option name="test-arg" value="com.android.tradefed.testtype.HostGTest:test-case-timeout:1m" />
-    <option name="test-arg" value="com.android.tradefed.testtype.HostTest:test-case-timeout:1m" />
-    <option name="test-arg" value="com.android.tradefed.testtype.IsolatedHostTest:test-case-timeout:1m" />
+    <option name="test-arg" value="com.android.tradefed.testtype.HostGTest:test-case-timeout:45s" />
+    <option name="test-arg" value="com.android.tradefed.testtype.HostTest:test-case-timeout:45s" />
+    <option name="test-arg" value="com.android.tradefed.testtype.IsolatedHostTest:test-case-timeout:45s" />
 </configuration>
