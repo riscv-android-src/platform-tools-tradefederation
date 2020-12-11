@@ -417,10 +417,23 @@ public class IsolatedHostTest
                 .build()
                 .writeDelimitedTo(socket.getOutputStream());
 
+        TestDescription currentTest = null;
+
         mainLoop:
         while (true) {
             try {
                 RunnerReply reply = RunnerReply.parseDelimitedFrom(socket.getInputStream());
+                if (reply == null) {
+                    if (currentTest != null) {
+                        listener.testFailed(currentTest, "Subprocess died unexpectedly.");
+                        listener.testEnded(
+                                currentTest,
+                                System.currentTimeMillis(),
+                                new HashMap<String, Metric>());
+                    }
+                    listener.testRunFailed("The subprocess died unexpectedly.");
+                    break mainLoop;
+                }
                 switch (reply.getRunnerStatus()) {
                     case RUNNER_STATUS_FINISHED_OK:
                         CLog.v("Received message that runner finished successfully");
@@ -459,6 +472,7 @@ public class IsolatedHostTest
                                             new TestDescription(
                                                     event.getClassName(), event.getMethodName());
                                     listener.testStarted(desc, event.getStartTime());
+                                    currentTest = desc;
                                     break;
                                 case TOPIC_FINISHED:
                                     desc =
@@ -468,6 +482,7 @@ public class IsolatedHostTest
                                             desc,
                                             event.getEndTime(),
                                             new HashMap<String, Metric>());
+                                    currentTest = null;
                                     break;
                                 case TOPIC_IGNORED:
                                     desc =
