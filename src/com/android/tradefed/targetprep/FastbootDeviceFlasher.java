@@ -76,6 +76,8 @@ public class FastbootDeviceFlasher implements IDeviceFlasher {
 
     private boolean mShouldFlashRamdisk = false;
 
+    private String mRamdiskPartition = "root";
+
     /**
      * {@inheritDoc}
      */
@@ -902,6 +904,12 @@ public class FastbootDeviceFlasher implements IDeviceFlasher {
 
     /** {@inheritDoc} */
     @Override
+    public void setRamdiskPartition(String ramdiskPartition) {
+        mRamdiskPartition = ramdiskPartition;
+    }
+
+    /** {@inheritDoc} */
+    @Override
     public boolean shouldFlashRamdisk() {
         return mShouldFlashRamdisk;
     }
@@ -910,7 +918,10 @@ public class FastbootDeviceFlasher implements IDeviceFlasher {
             throws TargetSetupError, DeviceNotAvailableException {
         if (mShouldFlashRamdisk) {
             executeLongFastbootCmd(
-                    device, "flash", "boot", deviceBuild.getRamdiskFile().getAbsolutePath());
+                    device,
+                    "flash",
+                    mRamdiskPartition,
+                    deviceBuild.getRamdiskFile().getAbsolutePath());
             device.reboot();
         }
     }
