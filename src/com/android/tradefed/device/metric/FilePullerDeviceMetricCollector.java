@@ -23,6 +23,7 @@ import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.ZipUtil;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import java.io.File;
@@ -52,6 +53,10 @@ public abstract class FilePullerDeviceMetricCollector extends BaseDeviceMetricCo
             name = "directory-keys",
             description = "Path to the directory on the device that contains the metrics.")
     protected Set<String> mDirectoryKeys = new HashSet<>();
+
+    @Option(name = "compress-directories",
+            description = "Compress multiple files in the matching directory into zip file")
+    private boolean mCompressDirectory = false;
 
     @Option(
         name = "clean-up",
@@ -134,12 +139,32 @@ public abstract class FilePullerDeviceMetricCollector extends BaseDeviceMetricCo
         for (String key : mDirectoryKeys) {
             Entry<String, File> pulledMetrics = pullMetricDirectory(key);
             if (pulledMetrics != null) {
+                if (mCompressDirectory) {
+                    File pulledDirectory = pulledMetrics.getValue();
+                    if (pulledDirectory.isDirectory()) {
+                        try {
+                            File compressedFile = ZipUtil.createZip(pulledDirectory,
+                                    getFileName(key));
+                            processMetricFile(key, compressedFile, data);
+                        } catch (IOException e) {
+                            CLog.e("Unable to compress the directory.");
+                        }
+                        FileUtil.recursiveDelete(pulledDirectory);
+                    }
+                    continue;
+                }
                 processMetricDirectory(pulledMetrics.getKey(), pulledMetrics.getValue(), data);
             }
         }
-
     }
 
+    /**
+     * Return the last folder name from the path the in the device where the
+     * directory is pulled.
+     */
+    private String getFileName(String key) {
+        return key.substring(key.lastIndexOf("/")+1);
+    }
 
     private Map<String, File> pullMetricFile(
             String pattern, final Map<String, String> currentMetrics) {

@@ -48,22 +48,25 @@ public class FilePullerLogCollector extends FilePullerDeviceMetricCollector {
                     type = LogDataType.MP4;
                 } else if (".hprof".equals(ext)) {
                     type = LogDataType.HPROF;
+                } else if (".zip".equals(ext)) {
+                    type = LogDataType.ZIP;
                 }
-                testLog(metricFile.getName(), type, source);
+                testLog(FileUtil.getBaseName(metricFile.getName()), type, source);
             }
         }
     }
 
     @Override
-    public final void processMetricDirectory(
+    public void processMetricDirectory(
             String key, File metricDirectory, DeviceMetricData runData) {
-        for (File f : metricDirectory.listFiles()) {
-            if (f.isDirectory()) {
-                processMetricDirectory(key, f, runData);
+        for (File file : metricDirectory.listFiles()) {
+            if (file.isDirectory()) {
+                processMetricDirectory(key, file, runData);
             } else {
-                processMetricFile(key, f, runData);
+                processMetricFile(key, file, runData);
             }
         }
+        FileUtil.recursiveDelete(metricDirectory);
     }
 
     /**
