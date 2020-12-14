@@ -66,12 +66,8 @@ import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.StringEscapeUtils;
 import com.android.tradefed.util.ZipUtil;
 import com.android.tradefed.util.ZipUtil2;
-
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
-
-import org.apache.commons.compress.archivers.zip.ZipFile;
-
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
@@ -98,9 +94,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.GuardedBy;
+import org.apache.commons.compress.archivers.zip.ZipFile;
 
 /**
  * Default implementation of a {@link ITestDevice}
@@ -142,7 +138,7 @@ public class NativeDevice implements IManagedTestDevice {
     /** regex to match build signing key type */
     private static final Pattern KEYS_PATTERN = Pattern.compile("^.*-keys$");
 
-    public static final Pattern DF_PATTERN =
+    private static final Pattern DF_PATTERN =
             Pattern.compile(
                     // Fs 1K-blks Used    Available Use%      Mounted on
                     "^/(\\S+)\\s+\\d+\\s+\\d+\\s+(\\d+)\\s+\\d+%\\s+/\\S*$", Pattern.MULTILINE);
@@ -482,13 +478,25 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public String getProperty(final String name) throws DeviceNotAvailableException {
+        return getPropertyWithRecovery(name, false);
+    }
+
+    /** Version of getProperty that allows to check device status and trigger recovery if needed. */
+    private String getPropertyWithRecovery(final String name, boolean recovery)
+            throws DeviceNotAvailableException {
         if (getIDevice() instanceof StubDevice) {
             return null;
         }
         if (!TestDeviceState.ONLINE.equals(getDeviceState())) {
-            // Only query property for online device
-            CLog.d("Device %s is not online cannot get property %s.", getSerialNumber(), name);
-            return null;
+            if (recovery) {
+                // Only query property for online device so trigger recovery before getting
+                // property.
+                recoverDevice();
+            } else {
+                // Only query property for online device
+                CLog.d("Device %s is not online cannot get property %s.", getSerialNumber(), name);
+                return null;
+            }
         }
         String cmd = String.format("getprop %s", name);
         CommandResult result = executeShellV2Command(cmd);
@@ -496,24 +504,16 @@ public class NativeDevice implements IManagedTestDevice {
             CLog.e(
                     "Failed to run '%s' returning null. stdout: %s\nstderr: %s\nexit code: %s",
                     cmd, result.getStdout(), result.getStderr(), result.getExitCode());
+            if (recovery && result.getStderr().contains("device offline")) {
+                recoverDevice();
+                // TODO: Should we retry ?
+            }
             return null;
         }
         if (result.getStdout() == null || result.getStdout().trim().isEmpty()) {
             return null;
         }
         return result.getStdout().trim();
-    }
-
-    /** Version of getProperty that allows to check device status and trigger recovery if needed. */
-    private String getPropertyWithRecovery(final String name) throws DeviceNotAvailableException {
-        if (getIDevice() instanceof StubDevice) {
-            return null;
-        }
-        if (!TestDeviceState.ONLINE.equals(getDeviceState())) {
-            // Only query property for online device so trigger recovery before getting property.
-            recoverDevice();
-        }
-        return getProperty(name);
     }
 
     /** {@inheritDoc} */
@@ -4103,7 +4103,7 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public boolean checkApiLevelAgainstNextRelease(int strictMinLevel)
             throws DeviceNotAvailableException {
-        String codeName = getPropertyWithRecovery(DeviceProperties.BUILD_CODENAME);
+        String codeName = getPropertyWithRecovery(DeviceProperties.BUILD_CODENAME, true);
         if (codeName == null) {
             throw new DeviceRuntimeException(
                     String.format(
@@ -4614,7 +4614,8 @@ public class NativeDevice implements IManagedTestDevice {
             }
             if (exception instanceof DeviceNotAvailableException) {
                 CLog.e(
-                        "Skip Tradefed Content Provider teardown due to DeviceNotAvailableException.");
+                        "Skip Tradefed Content Provider teardown due to"
+                                + " DeviceNotAvailableException.");
                 return;
             }
             if (TestDeviceState.ONLINE.equals(getDeviceState())) {
