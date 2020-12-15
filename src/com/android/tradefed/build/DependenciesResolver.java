@@ -30,8 +30,9 @@ import com.android.tradefed.util.FileUtil;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.LinkedHashSet;
-import java.util.Set;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Map.Entry;
 
 /** A new type of provider that allows to get all the dependencies for a test. */
 public class DependenciesResolver
@@ -50,7 +51,7 @@ public class DependenciesResolver
     private String mBuildOs = "linux";
 
     @Option(name = "dependency", description = "The set of dependency to provide for the test")
-    private Set<File> mDependencies = new LinkedHashSet<>();
+    private Map<String, File> mDependencies = new LinkedHashMap<>();
 
     // TODO(b/157936948): Remove those three options when they are no longer injected
     @Option(name = "hostname")
@@ -73,14 +74,13 @@ public class DependenciesResolver
                         mBuildId, String.format("%s-%s-%s", mBranch, mBuildOs, mBuildFlavor));
         build.setBuildBranch(mBranch);
         build.setBuildFlavor(mBuildFlavor);
-        for (File dependency : mDependencies) {
+        for (Entry<String, File> dependency : mDependencies.entrySet()) {
             File f =
                     TestDependencyResolver.resolveDependencyFromContext(
-                            dependency, build, mInvocationContext);
+                            dependency.getValue(), build, mInvocationContext);
             if (f != null) {
-                // TODO: Have way to make named-dependencies
-                getInvocationFiles().put(f.getName(), f);
-                build.setFile(f.getName(), f, "1");
+                getInvocationFiles().put(dependency.getKey(), f);
+                build.setFile(dependency.getKey(), f, "1");
             }
         }
         // Create a tests dir if there are none
@@ -115,7 +115,7 @@ public class DependenciesResolver
     }
 
     @VisibleForTesting
-    public final Set<File> getDependencies() {
+    public final Map<String, File> getDependencies() {
         return mDependencies;
     }
 
