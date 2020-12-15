@@ -43,9 +43,9 @@ import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
-import com.android.tradefed.util.SubprocessTestResultsParser;
 
 import com.google.common.base.Joiner;
+import com.google.common.base.Strings;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -272,11 +272,29 @@ public class PythonBinaryHostTest implements IRemoteTest, ITestFilterReceiver {
         AdbUtils.updateAdb(testInfo, getRunUtil(), getAdbPath());
         // Add all the other options
         commandLine.addAll(mTestOptions);
-        CommandResult result =
-                getRunUtil().runTimedCmd(mTestTimeout, commandLine.toArray(new String[0]));
+
+        // Prepare the parser if needed
         String runName = pyFile.getName();
         PythonForwarder forwarder = new PythonForwarder(listener, runName);
-        if (result.getStdout() != null) {
+        ITestInvocationListener receiver = forwarder;
+        if (mTestCaseTimeout.toMillis() > 0L) {
+            receiver =
+                    new TestTimeoutEnforcer(
+                            mTestCaseTimeout.toMillis(), TimeUnit.MILLISECONDS, receiver);
+        }
+        PythonUnitTestResultParser pythonParser =
+                new PythonUnitTestResultParser(
+                        Arrays.asList(receiver), "python-run", mIncludeFilters, mExcludeFilters);
+
+        CommandResult result = null;
+        if (mUseTestOutputFile) {
+            result = getRunUtil().runTimedCmd(mTestTimeout, commandLine.toArray(new String[0]));
+        } else {
+            // TODO: Receive and parse directly the results
+            result = getRunUtil().runTimedCmd(mTestTimeout, commandLine.toArray(new String[0]));
+        }
+
+        if (!Strings.isNullOrEmpty(result.getStdout())) {
             CLog.logAndDisplay(Log.LogLevel.INFO, "\nstdout:\n%s", result.getStdout());
             try (InputStreamSource data =
                     new ByteArrayInputStreamSource(result.getStdout().getBytes())) {
@@ -284,7 +302,7 @@ public class PythonBinaryHostTest implements IRemoteTest, ITestFilterReceiver {
                         String.format(PYTHON_LOG_STDOUT_FORMAT, runName), LogDataType.TEXT, data);
             }
         }
-        if (result.getStderr() != null) {
+        if (!Strings.isNullOrEmpty(result.getStderr())) {
             CLog.logAndDisplay(Log.LogLevel.INFO, "\nstderr:\n%s", result.getStderr());
         }
         File stderrFile = null;
@@ -297,7 +315,6 @@ public class PythonBinaryHostTest implements IRemoteTest, ITestFilterReceiver {
 
             File testOutputFile = stderrFile;
             String testOutput = result.getStderr();
-
             if (mUseTestOutputFile) {
                 testOutputFile = tempTestOutputFile;
                 // This assumes that the output file is encoded using the same charset as the
@@ -308,35 +325,7 @@ public class PythonBinaryHostTest implements IRemoteTest, ITestFilterReceiver {
                         String.format(PYTHON_LOG_TEST_OUTPUT_FORMAT, runName),
                         testOutputFile);
             }
-
-            // If it doesn't have the std output TEST_RUN_STARTED, use regular parser.
-            if (!testOutput.contains("TEST_RUN_STARTED")) {
-                ITestInvocationListener receiver = forwarder;
-                if (mTestCaseTimeout.toMillis() > 0L) {
-                    receiver =
-                            new TestTimeoutEnforcer(
-                                    mTestCaseTimeout.toMillis(), TimeUnit.MILLISECONDS, receiver);
-                }
-                // Attempt to parse the pure python output
-                PythonUnitTestResultParser pythonParser =
-                        new PythonUnitTestResultParser(
-                                Arrays.asList(receiver),
-                                "python-run",
-                                mIncludeFilters,
-                                mExcludeFilters);
-                pythonParser.processNewLines(testOutput.split("\n"));
-            } else {
-                if (!mIncludeFilters.isEmpty() || !mExcludeFilters.isEmpty()) {
-                    throw new RuntimeException(
-                            "Non-unittest python test does not support using filters in "
-                                    + "PythonBinaryHostTest. Please use test runner "
-                                    + "ExecutableHostTest instead.");
-                }
-                try (SubprocessTestResultsParser parser =
-                        new SubprocessTestResultsParser(forwarder, mTestInfo.getContext())) {
-                    parser.parseFile(testOutputFile);
-                }
-            }
+            pythonParser.processNewLines(testOutput.split("\n"));
         } catch (RuntimeException e) {
             StringBuilder message = new StringBuilder();
             message.append(
