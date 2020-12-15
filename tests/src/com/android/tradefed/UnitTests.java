@@ -318,6 +318,7 @@ import com.android.tradefed.testtype.suite.ModuleDefinitionTest;
 import com.android.tradefed.testtype.suite.ModuleListenerTest;
 import com.android.tradefed.testtype.suite.ModuleMergerTest;
 import com.android.tradefed.testtype.suite.ModuleSplitterTest;
+import com.android.tradefed.testtype.suite.RemoteTestTimeOutEnforcerTest;
 import com.android.tradefed.testtype.suite.SuiteModuleLoaderTest;
 import com.android.tradefed.testtype.suite.TestFailureListenerTest;
 import com.android.tradefed.testtype.suite.TestMappingSuiteRunnerTest;
@@ -821,6 +822,7 @@ import org.junit.runners.Suite.SuiteClasses;
     ModuleListenerTest.class,
     ModuleMergerTest.class,
     ModuleSplitterTest.class,
+    RemoteTestTimeOutEnforcerTest.class,
     SuiteModuleLoaderTest.class,
     TestFailureListenerTest.class,
     TestMappingSuiteRunnerTest.class,
