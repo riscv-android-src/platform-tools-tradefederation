@@ -15,6 +15,17 @@
  */
 package com.android.tradefed.testtype.python;
 
+import static com.android.tradefed.testtype.python.PythonBinaryHostTest.TEST_OUTPUT_FILE_FLAG;
+import static com.android.tradefed.testtype.python.PythonBinaryHostTest.USE_TEST_OUTPUT_FILE_OPTION;
+
+import static com.google.common.truth.Truth.assertThat;
+
+import static org.easymock.EasyMock.anyLong;
+import static org.easymock.EasyMock.anyObject;
+import static org.easymock.EasyMock.capture;
+import static org.easymock.EasyMock.eq;
+import static org.easymock.EasyMock.expect;
+
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
@@ -28,8 +39,8 @@ import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -47,15 +58,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-import static com.android.tradefed.testtype.python.PythonBinaryHostTest.TEST_OUTPUT_FILE_FLAG;
-import static com.android.tradefed.testtype.python.PythonBinaryHostTest.USE_TEST_OUTPUT_FILE_OPTION;
-import static com.google.common.truth.Truth.assertThat;
-import static org.easymock.EasyMock.anyLong;
-import static org.easymock.EasyMock.anyObject;
-import static org.easymock.EasyMock.capture;
-import static org.easymock.EasyMock.eq;
-import static org.easymock.EasyMock.expect;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -65,6 +67,9 @@ import java.util.HashMap;
 /** Unit tests for {@link PythonBinaryHostTest}. */
 @RunWith(JUnit4.class)
 public final class PythonBinaryHostTestTest {
+
+    private static final String PYTHON_OUTPUT_FILE_1 = "python_output1.txt";
+
     private PythonBinaryHostTest mTest;
     private IRunUtil mMockRunUtil;
     private IBuildInfo mMockBuildInfo;
@@ -73,13 +78,14 @@ public final class PythonBinaryHostTestTest {
     private ITestInvocationListener mMockListener;
     private File mFakeAdb;
     private File mPythonBinary;
+    private File mOutputFile;
 
     @Before
     public void setUp() throws Exception {
         mFakeAdb = FileUtil.createTempFile("adb-python-tests", "");
         mMockRunUtil = EasyMock.createMock(IRunUtil.class);
         mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
-        mMockListener = EasyMock.createNiceMock(ITestInvocationListener.class);
+        mMockListener = EasyMock.createMock(ITestInvocationListener.class);
         mMockDevice = EasyMock.createMock(ITestDevice.class);
         mTest =
                 new PythonBinaryHostTest() {
@@ -108,37 +114,40 @@ public final class PythonBinaryHostTestTest {
     public void tearDown() throws Exception {
         FileUtil.deleteFile(mFakeAdb);
         FileUtil.deleteFile(mPythonBinary);
+        FileUtil.deleteFile(mOutputFile);
     }
 
     /** Test that when running a python binary the output is parsed to obtain results. */
     @Test
     public void testRun() throws Exception {
-        File binary = FileUtil.createTempFile("python-dir", "");
+        mMockListener = EasyMock.createNiceMock(ITestInvocationListener.class);
+        mOutputFile = readInFile(PYTHON_OUTPUT_FILE_1);
         try {
             OptionSetter setter = new OptionSetter(mTest);
-            setter.setOptionValue("python-binaries", binary.getAbsolutePath());
+            setter.setOptionValue("python-binaries", mPythonBinary.getAbsolutePath());
 
             expectedAdbPath(mFakeAdb);
 
             CommandResult res = new CommandResult();
             res.setStatus(CommandStatus.SUCCESS);
             res.setStdout("python binary stdout.");
-            res.setStderr("TEST_RUN_STARTED {\"testCount\": 5, \"runName\": \"TestSuite\"}");
+            res.setStderr(FileUtil.readStringFromFile(mOutputFile));
             EasyMock.expect(
                             mMockRunUtil.runTimedCmd(
-                                    EasyMock.anyLong(), EasyMock.eq(binary.getAbsolutePath())))
+                                    EasyMock.anyLong(),
+                                    EasyMock.eq(mPythonBinary.getAbsolutePath())))
                     .andReturn(res);
             mMockListener.testRunStarted(
-                    EasyMock.eq(binary.getName()),
-                    EasyMock.eq(5),
+                    EasyMock.eq(mPythonBinary.getName()),
+                    EasyMock.eq(11),
                     EasyMock.eq(0),
                     EasyMock.anyLong());
             mMockListener.testLog(
-                    EasyMock.eq(binary.getName() + "-stdout"),
+                    EasyMock.eq(mPythonBinary.getName() + "-stdout"),
                     EasyMock.eq(LogDataType.TEXT),
                     EasyMock.anyObject());
             mMockListener.testLog(
-                    EasyMock.eq(binary.getName() + "-stderr"),
+                    EasyMock.eq(mPythonBinary.getName() + "-stderr"),
                     EasyMock.eq(LogDataType.TEXT),
                     EasyMock.anyObject());
             EasyMock.expect(mMockDevice.getIDevice()).andReturn(new StubDevice("serial"));
@@ -147,17 +156,16 @@ public final class PythonBinaryHostTestTest {
             mTest.run(mTestInfo, mMockListener);
             EasyMock.verify(mMockRunUtil, mMockBuildInfo, mMockListener, mMockDevice);
         } finally {
-            FileUtil.deleteFile(binary);
+            FileUtil.deleteFile(mPythonBinary);
         }
     }
 
     /** Test that when running a non-unittest python binary with any filter, the test shall fail. */
     @Test
     public void testRun_failWithIncludeFilters() throws Exception {
-        File binary = FileUtil.createTempFile("python-dir", "");
         try {
             OptionSetter setter = new OptionSetter(mTest);
-            setter.setOptionValue("python-binaries", binary.getAbsolutePath());
+            setter.setOptionValue("python-binaries", mPythonBinary.getAbsolutePath());
             mTest.addIncludeFilter("test1");
 
             expectedAdbPath(mFakeAdb);
@@ -167,14 +175,15 @@ public final class PythonBinaryHostTestTest {
             res.setStderr("TEST_RUN_STARTED {\"testCount\": 5, \"runName\": \"TestSuite\"}");
             EasyMock.expect(
                             mMockRunUtil.runTimedCmd(
-                                    EasyMock.anyLong(), EasyMock.eq(binary.getAbsolutePath())))
+                                    EasyMock.anyLong(),
+                                    EasyMock.eq(mPythonBinary.getAbsolutePath())))
                     .andReturn(res);
-            mMockListener.testRunStarted(EasyMock.eq(binary.getName()), EasyMock.eq(0));
+            mMockListener.testRunStarted(EasyMock.eq(mPythonBinary.getName()), EasyMock.eq(0));
             mMockListener.testRunFailed((FailureDescription) EasyMock.anyObject());
             mMockListener.testRunEnded(
                     EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
             mMockListener.testLog(
-                    EasyMock.eq(binary.getName() + "-stderr"),
+                    EasyMock.eq(mPythonBinary.getName() + "-stderr"),
                     EasyMock.eq(LogDataType.TEXT),
                     EasyMock.anyObject());
             EasyMock.expect(mMockDevice.getIDevice()).andReturn(new StubDevice("serial"));
@@ -183,7 +192,7 @@ public final class PythonBinaryHostTestTest {
             mTest.run(mTestInfo, mMockListener);
             EasyMock.verify(mMockRunUtil, mMockBuildInfo, mMockListener, mMockDevice);
         } finally {
-            FileUtil.deleteFile(binary);
+            FileUtil.deleteFile(mPythonBinary);
         }
     }
 
@@ -193,10 +202,9 @@ public final class PythonBinaryHostTestTest {
      */
     @Test
     public void testRun_withIncludeFilters() throws Exception {
-        File binary = FileUtil.createTempFile("python-dir", "");
         try {
             OptionSetter setter = new OptionSetter(mTest);
-            setter.setOptionValue("python-binaries", binary.getAbsolutePath());
+            setter.setOptionValue("python-binaries", mPythonBinary.getAbsolutePath());
             mTest.addIncludeFilter("__main__.Class1#test_1");
 
             expectedAdbPath(mFakeAdb);
@@ -205,16 +213,17 @@ public final class PythonBinaryHostTestTest {
             res.setStatus(CommandStatus.SUCCESS);
             res.setStderr(
                     "test_1 (__main__.Class1)\n"
-                            + "run first test. ... ok\n"
-                            + "test_2 (__main__.Class1)\n"
-                            + "run second test. ... ok\n"
-                            + "test_3 (__main__.Class1)\n"
-                            + "run third test. ... ok\n"
-                            + "----------------------------------------------------------------------\n"
-                            + "Ran 3 tests in 1s");
+                        + "run first test. ... ok\n"
+                        + "test_2 (__main__.Class1)\n"
+                        + "run second test. ... ok\n"
+                        + "test_3 (__main__.Class1)\n"
+                        + "run third test. ... ok\n"
+                        + "----------------------------------------------------------------------\n"
+                        + "Ran 3 tests in 1s");
             EasyMock.expect(
                             mMockRunUtil.runTimedCmd(
-                                    EasyMock.anyLong(), EasyMock.eq(binary.getAbsolutePath())))
+                                    EasyMock.anyLong(),
+                                    EasyMock.eq(mPythonBinary.getAbsolutePath())))
                     .andReturn(res);
             // 3 tests are started and ended.
             for (int i = 0; i < 3; i++) {
@@ -229,14 +238,14 @@ public final class PythonBinaryHostTestTest {
             mMockListener.testIgnored(EasyMock.<TestDescription>anyObject());
             mMockListener.testIgnored(EasyMock.<TestDescription>anyObject());
             mMockListener.testRunStarted(
-                    EasyMock.eq(binary.getName()),
+                    EasyMock.eq(mPythonBinary.getName()),
                     EasyMock.eq(3),
                     EasyMock.eq(0),
                     EasyMock.anyLong());
             mMockListener.testRunEnded(
                     EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
             mMockListener.testLog(
-                    EasyMock.eq(binary.getName() + "-stderr"),
+                    EasyMock.eq(mPythonBinary.getName() + "-stderr"),
                     EasyMock.eq(LogDataType.TEXT),
                     EasyMock.anyObject());
             EasyMock.expect(mMockDevice.getIDevice()).andReturn(new StubDevice("serial"));
@@ -245,7 +254,7 @@ public final class PythonBinaryHostTestTest {
             mTest.run(mTestInfo, mMockListener);
             EasyMock.verify(mMockRunUtil, mMockBuildInfo, mMockListener, mMockDevice);
         } finally {
-            FileUtil.deleteFile(binary);
+            FileUtil.deleteFile(mPythonBinary);
         }
     }
 
@@ -255,10 +264,9 @@ public final class PythonBinaryHostTestTest {
      */
     @Test
     public void testRun_withExcludeFilters() throws Exception {
-        File binary = FileUtil.createTempFile("python-dir", "");
         try {
             OptionSetter setter = new OptionSetter(mTest);
-            setter.setOptionValue("python-binaries", binary.getAbsolutePath());
+            setter.setOptionValue("python-binaries", mPythonBinary.getAbsolutePath());
             mTest.addExcludeFilter("__main__.Class1#test_1");
 
             expectedAdbPath(mFakeAdb);
@@ -267,16 +275,17 @@ public final class PythonBinaryHostTestTest {
             res.setStatus(CommandStatus.SUCCESS);
             res.setStderr(
                     "test_1 (__main__.Class1)\n"
-                            + "run first test. ... ok\n"
-                            + "test_2 (__main__.Class1)\n"
-                            + "run second test. ... ok\n"
-                            + "test_3 (__main__.Class1)\n"
-                            + "run third test. ... ok\n"
-                            + "----------------------------------------------------------------------\n"
-                            + "Ran 3 tests in 1s");
+                        + "run first test. ... ok\n"
+                        + "test_2 (__main__.Class1)\n"
+                        + "run second test. ... ok\n"
+                        + "test_3 (__main__.Class1)\n"
+                        + "run third test. ... ok\n"
+                        + "----------------------------------------------------------------------\n"
+                        + "Ran 3 tests in 1s");
             EasyMock.expect(
                             mMockRunUtil.runTimedCmd(
-                                    EasyMock.anyLong(), EasyMock.eq(binary.getAbsolutePath())))
+                                    EasyMock.anyLong(),
+                                    EasyMock.eq(mPythonBinary.getAbsolutePath())))
                     .andReturn(res);
             // 3 tests are started and ended.
             for (int i = 0; i < 3; i++) {
@@ -290,14 +299,14 @@ public final class PythonBinaryHostTestTest {
             // 1 test is ignored.
             mMockListener.testIgnored(EasyMock.<TestDescription>anyObject());
             mMockListener.testRunStarted(
-                    EasyMock.eq(binary.getName()),
+                    EasyMock.eq(mPythonBinary.getName()),
                     EasyMock.eq(3),
                     EasyMock.eq(0),
                     EasyMock.anyLong());
             mMockListener.testRunEnded(
                     EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
             mMockListener.testLog(
-                    EasyMock.eq(binary.getName() + "-stderr"),
+                    EasyMock.eq(mPythonBinary.getName() + "-stderr"),
                     EasyMock.eq(LogDataType.TEXT),
                     EasyMock.anyObject());
             EasyMock.expect(mMockDevice.getIDevice()).andReturn(new StubDevice("serial"));
@@ -306,7 +315,7 @@ public final class PythonBinaryHostTestTest {
             mTest.run(mTestInfo, mMockListener);
             EasyMock.verify(mMockRunUtil, mMockBuildInfo, mMockListener, mMockDevice);
         } finally {
-            FileUtil.deleteFile(binary);
+            FileUtil.deleteFile(mPythonBinary);
         }
     }
 
@@ -316,29 +325,31 @@ public final class PythonBinaryHostTestTest {
      */
     @Test
     public void testRun_withAdbPath() throws Exception {
+        mMockListener = EasyMock.createNiceMock(ITestInvocationListener.class);
+        mOutputFile = readInFile(PYTHON_OUTPUT_FILE_1);
         mTestInfo.executionFiles().put(FilesKey.ADB_BINARY, new File("/test/adb"));
-        File binary = FileUtil.createTempFile("python-dir", "");
 
         try {
             OptionSetter setter = new OptionSetter(mTest);
-            setter.setOptionValue("python-binaries", binary.getAbsolutePath());
+            setter.setOptionValue("python-binaries", mPythonBinary.getAbsolutePath());
 
             expectedAdbPath(new File("/test/adb"));
 
             CommandResult res = new CommandResult();
             res.setStatus(CommandStatus.SUCCESS);
-            res.setStderr("TEST_RUN_STARTED {\"testCount\": 5, \"runName\": \"TestSuite\"}");
+            res.setStderr(FileUtil.readStringFromFile(mOutputFile));
             EasyMock.expect(
                             mMockRunUtil.runTimedCmd(
-                                    EasyMock.anyLong(), EasyMock.eq(binary.getAbsolutePath())))
+                                    EasyMock.anyLong(),
+                                    EasyMock.eq(mPythonBinary.getAbsolutePath())))
                     .andReturn(res);
             mMockListener.testRunStarted(
-                    EasyMock.eq(binary.getName()),
-                    EasyMock.eq(5),
+                    EasyMock.eq(mPythonBinary.getName()),
+                    EasyMock.eq(11),
                     EasyMock.eq(0),
                     EasyMock.anyLong());
             mMockListener.testLog(
-                    EasyMock.eq(binary.getName() + "-stderr"),
+                    EasyMock.eq(mPythonBinary.getName() + "-stderr"),
                     EasyMock.eq(LogDataType.TEXT),
                     EasyMock.anyObject());
             EasyMock.expect(mMockDevice.getIDevice()).andReturn(new StubDevice("serial"));
@@ -347,13 +358,15 @@ public final class PythonBinaryHostTestTest {
             mTest.run(mTestInfo, mMockListener);
             EasyMock.verify(mMockRunUtil, mMockBuildInfo, mMockListener, mMockDevice);
         } finally {
-            FileUtil.deleteFile(binary);
+            FileUtil.deleteFile(mPythonBinary);
         }
     }
 
     /** Test running the python tests when shared lib is available in HOST_TESTS_DIRECTORY. */
     @Test
     public void testRun_withSharedLibInHostTestsDir() throws Exception {
+        mMockListener = EasyMock.createNiceMock(ITestInvocationListener.class);
+        mOutputFile = readInFile(PYTHON_OUTPUT_FILE_1);
         File hostTestsDir = FileUtil.createTempDir("host-test-cases");
         mTestInfo.executionFiles().put(FilesKey.HOST_TESTS_DIRECTORY, hostTestsDir);
         File binary = FileUtil.createTempFile("python-dir", "", hostTestsDir);
@@ -372,14 +385,14 @@ public final class PythonBinaryHostTestTest {
 
             CommandResult res = new CommandResult();
             res.setStatus(CommandStatus.SUCCESS);
-            res.setStderr("TEST_RUN_STARTED {\"testCount\": 5, \"runName\": \"TestSuite\"}");
+            res.setStderr(FileUtil.readStringFromFile(mOutputFile));
             EasyMock.expect(
                             mMockRunUtil.runTimedCmd(
                                     EasyMock.anyLong(), EasyMock.eq(binary.getAbsolutePath())))
                     .andReturn(res);
             mMockListener.testRunStarted(
                     EasyMock.eq(binary.getName()),
-                    EasyMock.eq(5),
+                    EasyMock.eq(11),
                     EasyMock.eq(0),
                     EasyMock.anyLong());
             mMockListener.testLog(
@@ -399,6 +412,8 @@ public final class PythonBinaryHostTestTest {
     /** Test running the python tests when shared lib is available in TESTS_DIRECTORY. */
     @Test
     public void testRun_withSharedLib() throws Exception {
+        mMockListener = EasyMock.createNiceMock(ITestInvocationListener.class);
+        mOutputFile = readInFile(PYTHON_OUTPUT_FILE_1);
         File testsDir = FileUtil.createTempDir("host-test-cases");
         mTestInfo.executionFiles().put(FilesKey.TESTS_DIRECTORY, testsDir);
         File binary = FileUtil.createTempFile("python-dir", "", testsDir);
@@ -417,14 +432,14 @@ public final class PythonBinaryHostTestTest {
 
             CommandResult res = new CommandResult();
             res.setStatus(CommandStatus.SUCCESS);
-            res.setStderr("TEST_RUN_STARTED {\"testCount\": 5, \"runName\": \"TestSuite\"}");
+            res.setStderr(FileUtil.readStringFromFile(mOutputFile));
             EasyMock.expect(
                             mMockRunUtil.runTimedCmd(
                                     EasyMock.anyLong(), EasyMock.eq(binary.getAbsolutePath())))
                     .andReturn(res);
             mMockListener.testRunStarted(
                     EasyMock.eq(binary.getName()),
-                    EasyMock.eq(5),
+                    EasyMock.eq(11),
                     EasyMock.eq(0),
                     EasyMock.anyLong());
             mMockListener.testLog(
@@ -447,10 +462,9 @@ public final class PythonBinaryHostTestTest {
      */
     @Test
     public void testRunFail_exception() throws Exception {
-        File binary = FileUtil.createTempFile("python-dir", "");
         try {
             OptionSetter setter = new OptionSetter(mTest);
-            setter.setOptionValue("python-binaries", binary.getAbsolutePath());
+            setter.setOptionValue("python-binaries", mPythonBinary.getAbsolutePath());
 
             expectedAdbPath(mFakeAdb);
 
@@ -459,16 +473,17 @@ public final class PythonBinaryHostTestTest {
             res.setStderr("Could not execute.");
             EasyMock.expect(
                             mMockRunUtil.runTimedCmd(
-                                    EasyMock.anyLong(), EasyMock.eq(binary.getAbsolutePath())))
+                                    EasyMock.anyLong(),
+                                    EasyMock.eq(mPythonBinary.getAbsolutePath())))
                     .andReturn(res);
             EasyMock.expect(mMockDevice.getIDevice()).andReturn(new StubDevice("serial"));
 
             mMockListener.testLog(
-                    EasyMock.eq(binary.getName() + "-stderr"),
+                    EasyMock.eq(mPythonBinary.getName() + "-stderr"),
                     EasyMock.eq(LogDataType.TEXT),
                     EasyMock.anyObject());
             // Report a failure if we cannot parse the logs
-            mMockListener.testRunStarted(binary.getName(), 0);
+            mMockListener.testRunStarted(mPythonBinary.getName(), 0);
             FailureDescription failure =
                     FailureDescription.create(
                             "Failed to parse the python logs: Parser finished in unexpected "
@@ -483,7 +498,7 @@ public final class PythonBinaryHostTestTest {
             mTest.run(mTestInfo, mMockListener);
             EasyMock.verify(mMockRunUtil, mMockBuildInfo, mMockListener, mMockDevice);
         } finally {
-            FileUtil.deleteFile(binary);
+            FileUtil.deleteFile(mPythonBinary);
         }
     }
 
@@ -493,27 +508,29 @@ public final class PythonBinaryHostTestTest {
      */
     @Test
     public void testRunFail_failureOnly() throws Exception {
-        File binary = FileUtil.createTempFile("python-dir", "");
+        mMockListener = EasyMock.createNiceMock(ITestInvocationListener.class);
+        mOutputFile = readInFile(PYTHON_OUTPUT_FILE_1);
         try {
             OptionSetter setter = new OptionSetter(mTest);
-            setter.setOptionValue("python-binaries", binary.getAbsolutePath());
+            setter.setOptionValue("python-binaries", mPythonBinary.getAbsolutePath());
 
             expectedAdbPath(mFakeAdb);
 
             CommandResult res = new CommandResult();
             res.setStatus(CommandStatus.FAILED);
-            res.setStderr("TEST_RUN_STARTED {\"testCount\": 5, \"runName\": \"TestSuite\"}");
+            res.setStderr(FileUtil.readStringFromFile(mOutputFile));
             EasyMock.expect(
                             mMockRunUtil.runTimedCmd(
-                                    EasyMock.anyLong(), EasyMock.eq(binary.getAbsolutePath())))
+                                    EasyMock.anyLong(),
+                                    EasyMock.eq(mPythonBinary.getAbsolutePath())))
                     .andReturn(res);
             mMockListener.testRunStarted(
-                    EasyMock.eq(binary.getName()),
-                    EasyMock.eq(5),
+                    EasyMock.eq(mPythonBinary.getName()),
+                    EasyMock.eq(11),
                     EasyMock.eq(0),
                     EasyMock.anyLong());
             mMockListener.testLog(
-                    EasyMock.eq(binary.getName() + "-stderr"),
+                    EasyMock.eq(mPythonBinary.getName() + "-stderr"),
                     EasyMock.eq(LogDataType.TEXT),
                     EasyMock.anyObject());
             EasyMock.expect(mMockDevice.getIDevice()).andReturn(new StubDevice("serial"));
@@ -521,17 +538,19 @@ public final class PythonBinaryHostTestTest {
             mTest.run(mTestInfo, mMockListener);
             EasyMock.verify(mMockRunUtil, mMockBuildInfo, mMockListener, mMockDevice);
         } finally {
-            FileUtil.deleteFile(binary);
+            FileUtil.deleteFile(mPythonBinary);
         }
     }
 
     @Test
     public void testRun_useTestOutputFileOptionSet_parsesSubprocessOutputFile() throws Exception {
+        mMockListener = EasyMock.createNiceMock(ITestInvocationListener.class);
+        mOutputFile = readInFile(PYTHON_OUTPUT_FILE_1);
         newDefaultOptionSetter(mTest).setOptionValue(USE_TEST_OUTPUT_FILE_OPTION, "true");
         expectRunThatWritesTestOutputFile(
                 newCommandResult(CommandStatus.SUCCESS, "NOT TEST OUTPUT"),
-                "TEST_RUN_STARTED {\"testCount\": 5, \"runName\": \"TestSuite\"}");
-        mMockListener.testRunStarted(anyObject(), eq(5), eq(0), anyLong());
+                FileUtil.readStringFromFile(mOutputFile));
+        mMockListener.testRunStarted(anyObject(), eq(11), eq(0), anyLong());
         replayAllMocks();
 
         mTest.run(mTestInfo, mMockListener);
@@ -541,6 +560,7 @@ public final class PythonBinaryHostTestTest {
 
     @Test
     public void testRun_useTestOutputFileOptionSet_parsesUnitTestOutputFile() throws Exception {
+        mMockListener = EasyMock.createNiceMock(ITestInvocationListener.class);
         newDefaultOptionSetter(mTest).setOptionValue(USE_TEST_OUTPUT_FILE_OPTION, "true");
         expectRunThatWritesTestOutputFile(
                 newCommandResult(CommandStatus.SUCCESS, "NOT TEST OUTPUT"),
@@ -560,6 +580,7 @@ public final class PythonBinaryHostTestTest {
 
     @Test
     public void testRun_useTestOutputFileOptionSet_logsErrorOutput() throws Exception {
+        mMockListener = EasyMock.createNiceMock(ITestInvocationListener.class);
         String errorOutput = "NOT TEST OUTPUT";
         newDefaultOptionSetter(mTest).setOptionValue(USE_TEST_OUTPUT_FILE_OPTION, "true");
         expectRunThatWritesTestOutputFile(
@@ -576,10 +597,15 @@ public final class PythonBinaryHostTestTest {
 
     @Test
     public void testRun_useTestOutputFileOptionSet_logsTestOutput() throws Exception {
+        mMockListener = EasyMock.createNiceMock(ITestInvocationListener.class);
         String testOutput = "TEST_RUN_STARTED {\"testCount\": 5, \"runName\": \"TestSuite\"}";
         newDefaultOptionSetter(mTest).setOptionValue(USE_TEST_OUTPUT_FILE_OPTION, "true");
         expectRunThatWritesTestOutputFile(
                 newCommandResult(CommandStatus.SUCCESS, "NOT TEST OUTPUT"), testOutput);
+        mMockListener.testLog(
+                EasyMock.eq(mPythonBinary.getName() + "-stderr"),
+                EasyMock.eq(LogDataType.TEXT),
+                EasyMock.anyObject());
         mMockListener.testLog(
                 anyObject(), eq(LogDataType.TEXT), inputStreamSourceContainsText(testOutput));
         replayAllMocks();
@@ -591,6 +617,7 @@ public final class PythonBinaryHostTestTest {
 
     @Test
     public void testRun_useTestOutputFileOptionSet_failureMessageContainsHints() throws Exception {
+        mMockListener = EasyMock.createNiceMock(ITestInvocationListener.class);
         newDefaultOptionSetter(mTest).setOptionValue(USE_TEST_OUTPUT_FILE_OPTION, "true");
         expectRunThatWritesTestOutputFile(
                 newCommandResult(CommandStatus.SUCCESS, "NOT TEST OUTPUT"), "BAD OUTPUT FORMAT");
@@ -703,5 +730,15 @@ public final class PythonBinaryHostTestTest {
                     }
                 });
         return null;
+    }
+
+    private File readInFile(String filename) throws IOException {
+        File output = FileUtil.createTempFile("python-host-test", ".txt");
+        InputStream stream =
+                getClass()
+                        .getResourceAsStream(
+                                File.separator + "testtype" + File.separator + filename);
+        FileUtil.writeToFile(stream, output);
+        return output;
     }
 }
