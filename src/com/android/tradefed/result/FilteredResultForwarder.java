@@ -92,10 +92,34 @@ public class FilteredResultForwarder extends ResultForwarder {
     }
 
     @Override
+    public void testAssumptionFailure(TestDescription test, FailureDescription failure) {
+        if (!mAllowedTests.contains(test)) {
+            return;
+        }
+        super.testAssumptionFailure(test, failure);
+    }
+
+    @Override
     public void testIgnored(TestDescription test) {
         if (!mAllowedTests.contains(test)) {
             return;
         }
         super.testIgnored(test);
+    }
+
+    @Override
+    public void testFailed(TestDescription test, FailureDescription failure) {
+        if (!mAllowedTests.contains(test)) {
+            return;
+        }
+        super.testFailed(test, failure);
+    }
+
+    @Override
+    public void testFailed(TestDescription test, String trace) {
+        if (!mAllowedTests.contains(test)) {
+            return;
+        }
+        super.testFailed(test, trace);
     }
 }

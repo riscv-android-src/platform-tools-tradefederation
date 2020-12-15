@@ -18,10 +18,12 @@ package com.android.tradefed.device.metric;
 
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
 
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -52,8 +54,6 @@ import java.util.List;
 @RunWith(JUnit4.class)
 public class PerfettoPullerMetricCollectorTest {
 
-
-
     private PerfettoPullerMetricCollector mPerfettoMetricCollector;
     @Mock
     private ITestInvocationListener mMockListener;
@@ -64,6 +64,7 @@ public class PerfettoPullerMetricCollectorTest {
     @Before
     public void setUp() {
         MockitoAnnotations.initMocks(this);
+        doReturn(TestDeviceState.ONLINE).when(mMockDevice).getDeviceState();
         mContext = new InvocationContext();
         mContext.addAllocatedDevice("default", mMockDevice);
         mPerfettoMetricCollector = Mockito.spy(new PerfettoPullerMetricCollector());

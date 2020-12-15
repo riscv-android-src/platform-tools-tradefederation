@@ -101,6 +101,11 @@ public class GsiDeviceFlashPreparer extends BaseTargetPreparer {
             description = "Whether to erase product partion before flashing GSI.")
     private boolean mShouldEraseProductPartition = true;
 
+    @Option(
+            name = "post-reboot-device-into-user-space",
+            description = "whether to boot the device in user space after flash.")
+    private boolean mPostRebootDeviceIntoUserSpace = true;
+
     private File mSystemImg = null;
     private File mVbmetaImg = null;
     private File mBootImg = null;
@@ -122,6 +127,11 @@ public class GsiDeviceFlashPreparer extends BaseTargetPreparer {
         } finally {
             FileUtil.recursiveDelete(tmpDir);
         }
+
+        if (!mPostRebootDeviceIntoUserSpace) {
+            return;
+        }
+
         // Wait some time after flashing the image.
         getRunUtil().sleep(STATE_STABLIZATION_WAIT_TIME_MLLISECS);
         device.rebootUntilOnline();

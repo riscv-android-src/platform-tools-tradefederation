@@ -26,6 +26,7 @@ import com.android.tradefed.build.FileDownloadCacheTest;
 import com.android.tradefed.build.LocalDeviceBuildProviderTest;
 import com.android.tradefed.build.OtaZipfileBuildProviderTest;
 import com.android.tradefed.clearcut.ClearcutClientTest;
+import com.android.tradefed.cluster.ClusterBuildProviderTest;
 import com.android.tradefed.cluster.ClusterCommandConfigBuilderTest;
 import com.android.tradefed.cluster.ClusterCommandEventTest;
 import com.android.tradefed.cluster.ClusterCommandLauncherTest;
@@ -98,6 +99,7 @@ import com.android.tradefed.device.metric.AtraceRunMetricCollectorTest;
 import com.android.tradefed.device.metric.AutoLogCollectorTest;
 import com.android.tradefed.device.metric.BaseDeviceMetricCollectorTest;
 import com.android.tradefed.device.metric.BugreportzOnFailureCollectorTest;
+import com.android.tradefed.device.metric.ClangCodeCoverageCollectorTest;
 import com.android.tradefed.device.metric.DebugHostLogOnFailureCollectorTest;
 import com.android.tradefed.device.metric.DeviceMetricDataTest;
 import com.android.tradefed.device.metric.FilePullerDeviceMetricCollectorTest;
@@ -147,10 +149,14 @@ import com.android.tradefed.log.LogRegistryTest;
 import com.android.tradefed.log.SimpleFileLoggerTest;
 import com.android.tradefed.log.TerribleFailureEmailHandlerTest;
 import com.android.tradefed.monitoring.LabResourceDeviceMonitorTest;
+import com.android.tradefed.monitoring.collector.DeviceBatteryResourceMetricCollectorTest;
+import com.android.tradefed.monitoring.collector.DeviceStorageAgeResourceMetricCollectorTest;
+import com.android.tradefed.monitoring.collector.ResourceMetricUtilTest;
 import com.android.tradefed.postprocessor.AggregatePostProcessorTest;
 import com.android.tradefed.postprocessor.AveragePostProcessorTest;
 import com.android.tradefed.postprocessor.BasePostProcessorTest;
 import com.android.tradefed.postprocessor.PerfettoGenericPostProcessorTest;
+import com.android.tradefed.postprocessor.StatsdBeforeAfterGaugeMetricPostProcessorTest;
 import com.android.tradefed.postprocessor.StatsdEventMetricPostProcessorTest;
 import com.android.tradefed.postprocessor.StatsdGenericPostProcessorTest;
 import com.android.tradefed.result.ATestFileSystemLogSaverTest;
@@ -235,10 +241,10 @@ import com.android.tradefed.targetprep.RebootTargetPreparerTest;
 import com.android.tradefed.targetprep.RestartSystemServerTargetPreparerTest;
 import com.android.tradefed.targetprep.RootTargetPreparerTest;
 import com.android.tradefed.targetprep.RunCommandTargetPreparerTest;
-import com.android.tradefed.targetprep.RunOnSecondaryUserTargetPreparerTest;
-import com.android.tradefed.targetprep.RunOnWorkProfileTargetPreparerTest;
 import com.android.tradefed.targetprep.RunHostCommandTargetPreparerTest;
 import com.android.tradefed.targetprep.RunHostScriptTargetPreparerTest;
+import com.android.tradefed.targetprep.RunOnSecondaryUserTargetPreparerTest;
+import com.android.tradefed.targetprep.RunOnWorkProfileTargetPreparerTest;
 import com.android.tradefed.targetprep.StopServicesSetupTest;
 import com.android.tradefed.targetprep.SwitchUserTargetPreparerTest;
 import com.android.tradefed.targetprep.SystemUpdaterDeviceFlasherTest;
@@ -250,11 +256,11 @@ import com.android.tradefed.targetprep.adb.AdbStopServerPreparerTest;
 import com.android.tradefed.targetprep.app.NoApkTestSkipperTest;
 import com.android.tradefed.targetprep.multi.MergeMultiBuildTargetPreparerTest;
 import com.android.tradefed.targetprep.multi.MixImageZipPreparerTest;
+import com.android.tradefed.targetprep.multi.PairingMultiTargetPreparerTest;
 import com.android.tradefed.targetprep.suite.SuiteApkInstallerTest;
 import com.android.tradefed.testtype.AndroidJUnitTestTest;
 import com.android.tradefed.testtype.ArtGTestTest;
 import com.android.tradefed.testtype.ArtRunTestTest;
-import com.android.tradefed.testtype.ClangCodeCoverageListenerTest;
 import com.android.tradefed.testtype.DeviceBatteryLevelCheckerTest;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunnerTest;
 import com.android.tradefed.testtype.DeviceSuiteTest;
@@ -274,6 +280,7 @@ import com.android.tradefed.testtype.InstalledInstrumentationsTestTest;
 import com.android.tradefed.testtype.InstrumentationFileTestTest;
 import com.android.tradefed.testtype.InstrumentationSerialTestTest;
 import com.android.tradefed.testtype.InstrumentationTestTest;
+import com.android.tradefed.testtype.IsolatedHostTestTest;
 import com.android.tradefed.testtype.JarHostTestTest;
 import com.android.tradefed.testtype.NativeBenchmarkTestParserTest;
 import com.android.tradefed.testtype.NativeBenchmarkTestTest;
@@ -282,6 +289,7 @@ import com.android.tradefed.testtype.NativeStressTestTest;
 import com.android.tradefed.testtype.NoisyDryRunTestTest;
 import com.android.tradefed.testtype.PythonUnitTestResultParserTest;
 import com.android.tradefed.testtype.PythonUnitTestRunnerTest;
+import com.android.tradefed.testtype.TestTimeoutEnforcerTest;
 import com.android.tradefed.testtype.TfTestLauncherTest;
 import com.android.tradefed.testtype.UsbResetTestTest;
 import com.android.tradefed.testtype.binary.ExecutableHostTestTest;
@@ -314,6 +322,7 @@ import com.android.tradefed.testtype.suite.TestMappingSuiteRunnerTest;
 import com.android.tradefed.testtype.suite.TestSuiteInfoTest;
 import com.android.tradefed.testtype.suite.TfSuiteRunnerTest;
 import com.android.tradefed.testtype.suite.ValidateSuiteConfigHelperTest;
+import com.android.tradefed.testtype.suite.module.ArchModuleControllerTest;
 import com.android.tradefed.testtype.suite.module.BaseModuleControllerTest;
 import com.android.tradefed.testtype.suite.module.CarModuleControllerTest;
 import com.android.tradefed.testtype.suite.module.DeviceFeatureModuleControllerTest;
@@ -433,6 +442,7 @@ import org.junit.runners.Suite.SuiteClasses;
     ClearcutClientTest.class,
 
     // cluster
+    ClusterBuildProviderTest.class,
     ClusterCommandConfigBuilderTest.class,
     ClusterCommandEventTest.class,
     ClusterCommandLauncherTest.class,
@@ -530,6 +540,7 @@ import org.junit.runners.Suite.SuiteClasses;
     AutoLogCollectorTest.class,
     BaseDeviceMetricCollectorTest.class,
     BugreportzOnFailureCollectorTest.class,
+    ClangCodeCoverageCollectorTest.class,
     DebugHostLogOnFailureCollectorTest.class,
     DeviceMetricDataTest.class,
     FilePullerDeviceMetricCollectorTest.class,
@@ -607,6 +618,7 @@ import org.junit.runners.Suite.SuiteClasses;
     AveragePostProcessorTest.class,
     BasePostProcessorTest.class,
     PerfettoGenericPostProcessorTest.class,
+    StatsdBeforeAfterGaugeMetricPostProcessorTest.class,
     StatsdEventMetricPostProcessorTest.class,
     StatsdGenericPostProcessorTest.class,
 
@@ -711,6 +723,7 @@ import org.junit.runners.Suite.SuiteClasses;
     // targetprep.multi
     MergeMultiBuildTargetPreparerTest.class,
     MixImageZipPreparerTest.class,
+    PairingMultiTargetPreparerTest.class,
 
     // targetprep.suite
     SuiteApkInstallerTest.class,
@@ -739,7 +752,6 @@ import org.junit.runners.Suite.SuiteClasses;
     AndroidJUnitTestTest.class,
     ArtGTestTest.class,
     ArtRunTestTest.class,
-    ClangCodeCoverageListenerTest.class,
     CoverageMeasurementForwarderTest.class,
     DeviceBatteryLevelCheckerTest.class,
     DeviceJUnit4ClassRunnerTest.class,
@@ -760,6 +772,7 @@ import org.junit.runners.Suite.SuiteClasses;
     InstrumentationSerialTestTest.class,
     InstrumentationFileTestTest.class,
     InstrumentationTestTest.class,
+    IsolatedHostTestTest.class,
     JarHostTestTest.class,
     NativeBenchmarkTestParserTest.class,
     NativeBenchmarkTestTest.class,
@@ -768,6 +781,7 @@ import org.junit.runners.Suite.SuiteClasses;
     NoisyDryRunTestTest.class,
     PythonUnitTestResultParserTest.class,
     PythonUnitTestRunnerTest.class,
+    TestTimeoutEnforcerTest.class,
     TfTestLauncherTest.class,
     UsbResetTestTest.class,
 
@@ -813,6 +827,7 @@ import org.junit.runners.Suite.SuiteClasses;
     ValidateSuiteConfigHelperTest.class,
 
     // testtype/suite/module
+    ArchModuleControllerTest.class,
     BaseModuleControllerTest.class,
     CarModuleControllerTest.class,
     DeviceFeatureModuleControllerTest.class,
@@ -927,6 +942,10 @@ import org.junit.runners.Suite.SuiteClasses;
 
     // monitoring
     LabResourceDeviceMonitorTest.class,
+    // monitoring/collector
+    DeviceBatteryResourceMetricCollectorTest.class,
+    DeviceStorageAgeResourceMetricCollectorTest.class,
+    ResourceMetricUtilTest.class
 })
 public class UnitTests {
     // empty of purpose
