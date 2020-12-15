@@ -11,4 +11,5 @@
     <option name="test-arg" value="com.android.tradefed.testtype.HostGTest:test-case-timeout:45s" />
     <option name="test-arg" value="com.android.tradefed.testtype.HostTest:test-case-timeout:45s" />
     <option name="test-arg" value="com.android.tradefed.testtype.IsolatedHostTest:test-case-timeout:45s" />
+    <option name="test-arg" value="com.android.tradefed.testtype.python.PythonBinaryHostTest:test-case-timeout:45s" />
 </configuration>
