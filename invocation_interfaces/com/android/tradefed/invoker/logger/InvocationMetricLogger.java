@@ -54,7 +54,8 @@ public class InvocationMetricLogger {
         UNCAUGHT_TEST_CRASH_FAILURES("uncaught_test_crash_failures", true),
         DEVICE_RESET_COUNT("device_reset_count", true),
         DEVICE_RESET_MODULES("device_reset_modules", true),
-        NONPERSISTENT_DEVICE_PROPERTIES("nonpersistent_device_properties", true);
+        NONPERSISTENT_DEVICE_PROPERTIES("nonpersistent_device_properties", true),
+        PERSISTENT_DEVICE_PROPERTIES("persistent_device_properties", true);
 
         private final String mKeyName;
         // Whether or not to add the value when the key is added again.
