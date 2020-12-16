@@ -6,6 +6,8 @@
 
     <!-- Force GTest to report binary name in results -->
     <option name="test-arg" value="com.android.tradefed.testtype.HostGTest:prepend-filename:true" />
+    <!-- We set the timeout on the method level below so no need to limit the binary -->
+    <option name="test-arg" value="com.android.tradefed.testtype.HostGTest:native-test-timeout:0" />
 
     <!-- Force a timeout on every unit test cases -->
     <option name="test-arg" value="com.android.tradefed.testtype.HostGTest:test-case-timeout:45s" />
