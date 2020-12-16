@@ -16,11 +16,13 @@
 
 package com.android.tradefed.monitoring;
 
-import com.android.loganalysis.util.config.OptionClass;
+
 import com.android.tradefed.cluster.ClusterHostUtil;
 import com.android.tradefed.cluster.IClusterOptions;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.GlobalConfiguration;
+import com.android.tradefed.config.Option;
+import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceAllocationState;
 import com.android.tradefed.device.IDeviceMonitor;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -79,32 +81,44 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
     public static final String SERVER_HOSTNAME = "localhost";
     public static final int DEFAULT_PORT = 8887;
     public static final int DEFAULT_THREAD_COUNT = 1;
-    public static final long DEFAULT_METRICIZE_CYCLE_SEC = 300;
     public static final String POOL_ATTRIBUTE_NAME = "pool";
     public static final String RUN_TARGET_ATTRIBUTE_NAME = "run_target";
     public static final String STATUS_RESOURCE_NAME = "status";
     public static final float FIXED_METRIC_VALUE = 1.0f;
-    public static final long METRICIZE_TIMEOUT_MS = 1000;
     private Optional<Server> mServer = Optional.empty();
-    private final IClusterOptions mClusterOptions;
+    private IClusterOptions mClusterOptions;
     private DeviceLister mDeviceLister;
     private final Collection<IResourceMetricCollector> mMetricCollectors = new ArrayList<>();
-    private final long mMetricizeCycleSec;
     private final ReadWriteLock mLabResourceLock = new ReentrantReadWriteLock();
     private LabResource mLabResource = LabResource.newBuilder().build();
     private ScheduledExecutorService mMetricizeExecutor;
     private ExecutorService mSharedCollectorExecutor;
 
-    LabResourceDeviceMonitor() {
+    @Option(
+            name = "metricize-op-timeout",
+            description =
+                    "The maximum wait time in milliseconds for every resource metric collector to"
+                            + " get metrics.")
+    private long mMetricizeTimeoutMs = 1000;
+
+    @Option(
+            name = "metricize-cycle-sec",
+            description = "The time in seconds between for each metricize cycle.")
+    private long mMetricizeCycleSec = 300;
+
+    public LabResourceDeviceMonitor() {
         super();
-        mMetricizeCycleSec = DEFAULT_METRICIZE_CYCLE_SEC;
-        mClusterOptions = ClusterHostUtil.getClusterOptions();
     }
 
+    @VisibleForTesting
     LabResourceDeviceMonitor(long metricizeCycleSec, IClusterOptions clusterOptions) {
         super();
         mMetricizeCycleSec = metricizeCycleSec;
         mClusterOptions = clusterOptions;
+    }
+
+    private IClusterOptions getClusterOptions() {
+        return mClusterOptions == null ? ClusterHostUtil.getClusterOptions() : mClusterOptions;
     }
 
     private void loadMetricCollectors() {
@@ -134,7 +148,6 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
             try {
                 mServer.get().start();
                 loadMetricCollectors();
-                Executors.newSingleThreadScheduledExecutor();
                 mMetricizeExecutor =
                         MoreExecutors.getExitingScheduledExecutorService(
                                 new ScheduledThreadPoolExecutor(1));
@@ -174,7 +187,8 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
     private void scheduleMetricizeTask() {
         if (mMetricizeExecutor == null || mSharedCollectorExecutor == null) {
             CLog.d(
-                    "schedule metricize task before the mMetricizeExecutor or mSharedCollectorExecutor initialized.");
+                    "schedule metricize task before the mMetricizeExecutor or"
+                            + " mSharedCollectorExecutor initialized.");
             return;
         }
         mMetricizeExecutor.scheduleAtFixedRate(
@@ -225,7 +239,6 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
     @Override
     public void getLabResource(
             LabResourceRequest request, StreamObserver<LabResource> responseObserver) {
-        super.getLabResource(request, responseObserver);
         responseObserver.onNext(getCachedLabResource());
         responseObserver.onCompleted();
     }
@@ -233,7 +246,7 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
     private Collection<Resource> enqueueCollectorTask(Callable<Collection<Resource>> task) {
         Future<Collection<Resource>> future = mSharedCollectorExecutor.submit(task);
         try {
-            return future.get(METRICIZE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+            return future.get(mMetricizeTimeoutMs, TimeUnit.MILLISECONDS);
         } catch (InterruptedException | ExecutionException | TimeoutException e) {
             CLog.e(e);
             future.cancel(true);
@@ -247,12 +260,12 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
         MonitoredEntity.Builder builder =
                 MonitoredEntity.newBuilder()
                         .putIdentifier(HOST_NAME_KEY, ClusterHostUtil.getHostName())
-                        .putIdentifier(LAB_NAME_KEY, mClusterOptions.getLabName())
+                        .putIdentifier(LAB_NAME_KEY, getClusterOptions().getLabName())
                         .putIdentifier(TEST_HARNESS_KEY, TEST_HARNESS)
                         .addAttribute(
                                 Attribute.newBuilder()
                                         .setName(HOST_GROUP_KEY)
-                                        .setValue(mClusterOptions.getClusterId()));
+                                        .setValue(getClusterOptions().getClusterId()));
         for (IResourceMetricCollector collector : collectors) {
             builder.addAllResource(enqueueCollectorTask(collector::getHostResourceMetrics));
         }
@@ -288,13 +301,11 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
                         .setValue(
                                 ClusterHostUtil.getRunTarget(
                                         descriptor,
-                                        mClusterOptions.getRunTargetFormat(),
-                                        mClusterOptions.getDeviceTag()))
+                                        getClusterOptions().getRunTargetFormat(),
+                                        getClusterOptions().getDeviceTag()))
                         .build());
         attributes.addAll(
-                mClusterOptions
-                        .getNextClusterIds()
-                        .stream()
+                getClusterOptions().getNextClusterIds().stream()
                         .map(
                                 pool ->
                                         Attribute.newBuilder()
