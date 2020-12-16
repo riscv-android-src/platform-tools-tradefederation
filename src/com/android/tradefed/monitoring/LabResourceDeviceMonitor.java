@@ -76,6 +76,7 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
     public static final String HOST_NAME_KEY = "hostname";
     public static final String LAB_NAME_KEY = "lab_name";
     public static final String TEST_HARNESS_KEY = "test_harness";
+    public static final String HARNESS_VERSION_KEY = "harness_version";
     public static final String TEST_HARNESS = "tradefed";
     public static final String HOST_GROUP_KEY = "host_group";
     public static final String SERVER_HOSTNAME = "localhost";
@@ -265,7 +266,20 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
                         .addAttribute(
                                 Attribute.newBuilder()
                                         .setName(HOST_GROUP_KEY)
-                                        .setValue(getClusterOptions().getClusterId()));
+                                        .setValue(getClusterOptions().getClusterId()))
+                        .addAttribute(
+                                Attribute.newBuilder()
+                                        .setName(HARNESS_VERSION_KEY)
+                                        .setValue(ClusterHostUtil.getTfVersion()))
+                        .addAllAttribute(
+                                getClusterOptions().getNextClusterIds().stream()
+                                        .map(
+                                                pool ->
+                                                        Attribute.newBuilder()
+                                                                .setName(POOL_ATTRIBUTE_NAME)
+                                                                .setValue(pool)
+                                                                .build())
+                                        .collect(Collectors.toList()));
         for (IResourceMetricCollector collector : collectors) {
             builder.addAllResource(enqueueCollectorTask(collector::getHostResourceMetrics));
         }
@@ -276,10 +290,30 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
     @VisibleForTesting
     MonitoredEntity buildMonitoredDevice(
             DeviceDescriptor descriptor, Collection<IResourceMetricCollector> collectors) {
-        MonitoredEntity.Builder builder = MonitoredEntity.newBuilder();
-        builder.putIdentifier(DEVICE_SERIAL_KEY, descriptor.getSerial());
-        builder.addAllAttribute(getDeviceAttributes(descriptor));
-        builder.addResource(getStatus(descriptor));
+        MonitoredEntity.Builder builder =
+                MonitoredEntity.newBuilder()
+                        .putIdentifier(DEVICE_SERIAL_KEY, descriptor.getSerial())
+                        .addAttribute(
+                                Attribute.newBuilder()
+                                        .setName(HOST_NAME_KEY)
+                                        .setValue(ClusterHostUtil.getHostName()))
+                        .addAttribute(
+                                Attribute.newBuilder()
+                                        .setName(RUN_TARGET_ATTRIBUTE_NAME)
+                                        .setValue(
+                                                ClusterHostUtil.getRunTarget(
+                                                        descriptor,
+                                                        getClusterOptions().getRunTargetFormat(),
+                                                        getClusterOptions().getDeviceTag())))
+                        .addResource(
+                                Resource.newBuilder()
+                                        .setResourceName(STATUS_RESOURCE_NAME)
+                                        .setTimestamp(
+                                                Timestamps.fromMillis(Instant.now().toEpochMilli()))
+                                        .addMetric(
+                                                Metric.newBuilder()
+                                                        .setTag(descriptor.getState().name())
+                                                        .setValue(FIXED_METRIC_VALUE)));
         for (IResourceMetricCollector collector : collectors) {
             builder.addAllResource(
                     enqueueCollectorTask(
@@ -289,43 +323,5 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
                                             GlobalConfiguration.getDeviceManagerInstance())));
         }
         return builder.build();
-    }
-
-    /** Gets device attributes. */
-    @VisibleForTesting
-    List<Attribute> getDeviceAttributes(DeviceDescriptor descriptor) {
-        final List<Attribute> attributes = new ArrayList<>();
-        attributes.add(
-                Attribute.newBuilder()
-                        .setName(RUN_TARGET_ATTRIBUTE_NAME)
-                        .setValue(
-                                ClusterHostUtil.getRunTarget(
-                                        descriptor,
-                                        getClusterOptions().getRunTargetFormat(),
-                                        getClusterOptions().getDeviceTag()))
-                        .build());
-        attributes.addAll(
-                getClusterOptions().getNextClusterIds().stream()
-                        .map(
-                                pool ->
-                                        Attribute.newBuilder()
-                                                .setName(POOL_ATTRIBUTE_NAME)
-                                                .setValue(pool)
-                                                .build())
-                        .collect(Collectors.toList()));
-        return attributes;
-    }
-
-    /** Gets device status. */
-    @VisibleForTesting
-    Resource getStatus(DeviceDescriptor descriptor) {
-        return Resource.newBuilder()
-                .setResourceName(STATUS_RESOURCE_NAME)
-                .setTimestamp(Timestamps.fromMillis(Instant.now().toEpochMilli()))
-                .addMetric(
-                        Metric.newBuilder()
-                                .setTag(descriptor.getState().name())
-                                .setValue(FIXED_METRIC_VALUE))
-                .build();
     }
 }

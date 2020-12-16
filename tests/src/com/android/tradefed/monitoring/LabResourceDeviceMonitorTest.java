@@ -39,7 +39,6 @@ import static org.mockito.Mockito.*;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -106,6 +105,7 @@ public class LabResourceDeviceMonitorTest {
     public void testBuildMonitoredHost() {
         when(mClusterOptions.getLabName()).thenReturn("foo-lab");
         when(mClusterOptions.getClusterId()).thenReturn("zoo");
+        when(mClusterOptions.getNextClusterIds()).thenReturn(List.of("poolA", "poolB"));
         Assert.assertEquals(
                 MonitoredEntity.newBuilder()
                         .putIdentifier(
@@ -119,42 +119,34 @@ public class LabResourceDeviceMonitorTest {
                                 Attribute.newBuilder()
                                         .setName(LabResourceDeviceMonitor.HOST_GROUP_KEY)
                                         .setValue("zoo"))
+                        .addAttribute(
+                                Attribute.newBuilder()
+                                        .setName(LabResourceDeviceMonitor.HARNESS_VERSION_KEY)
+                                        .setValue(ClusterHostUtil.getTfVersion()))
+                        .addAttribute(
+                                Attribute.newBuilder()
+                                        .setName(LabResourceDeviceMonitor.POOL_ATTRIBUTE_NAME)
+                                        .setValue("poolA"))
+                        .addAttribute(
+                                Attribute.newBuilder()
+                                        .setName(LabResourceDeviceMonitor.POOL_ATTRIBUTE_NAME)
+                                        .setValue("poolB"))
                         .build(),
                 mMonitor.buildMonitoredHost(List.of()));
     }
 
     /** Tests building device entity. */
     @Test
-    public void testBuildMonitoredDeviceIdentifier() {
+    public void testBuildMonitoredDeviceEntity() {
         when(mClusterOptions.getRunTargetFormat()).thenReturn(null);
         when(mClusterOptions.getDeviceTag()).thenReturn(null);
-        when(mClusterOptions.getNextClusterIds()).thenReturn(Arrays.asList("foo", "bar"));
         MonitoredEntity device = mMonitor.buildMonitoredDevice(DEVICE_DESCRIPTOR, List.of());
-        Assert.assertEquals("fake-serial", device.getIdentifierOrThrow("device_serial"));
-    }
-
-    /** Tests composing device attributes. */
-    @Test
-    public void testGetDeviceAttributes() {
-        when(mClusterOptions.getRunTargetFormat()).thenReturn(null);
-        when(mClusterOptions.getDeviceTag()).thenReturn(null);
-        when(mClusterOptions.getNextClusterIds()).thenReturn(Arrays.asList("foo", "bar"));
+        Assert.assertEquals(ClusterHostUtil.getHostName(), device.getAttribute(0).getValue());
+        Assert.assertEquals("product:productVariant", device.getAttribute(1).getValue());
+        Assert.assertEquals("status", device.getResource(0).getResourceName());
         Assert.assertEquals(
-                Arrays.asList(
-                        Attribute.newBuilder()
-                                .setName("run_target")
-                                .setValue("product:productVariant")
-                                .build(),
-                        Attribute.newBuilder().setName("pool").setValue("foo").build(),
-                        Attribute.newBuilder().setName("pool").setValue("bar").build()),
-                mMonitor.getDeviceAttributes(DEVICE_DESCRIPTOR));
-    }
-
-    /** Tests composing device status. */
-    @Test
-    public void testGetStatus() {
-        Assert.assertEquals(
-                "Available", mMonitor.getStatus(DEVICE_DESCRIPTOR).getMetric(0).getTag());
+                DEVICE_DESCRIPTOR.getState().toString(),
+                device.getResource(0).getMetric(0).getTag());
     }
 
     class MockCollector implements IResourceMetricCollector {
