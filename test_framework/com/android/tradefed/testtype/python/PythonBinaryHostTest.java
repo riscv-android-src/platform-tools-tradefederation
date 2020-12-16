@@ -49,6 +49,7 @@ import com.google.common.base.Strings;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -287,31 +288,45 @@ public class PythonBinaryHostTest implements IRemoteTest, ITestFilterReceiver {
                         Arrays.asList(receiver), "python-run", mIncludeFilters, mExcludeFilters);
 
         CommandResult result = null;
-        if (mUseTestOutputFile) {
-            result = getRunUtil().runTimedCmd(mTestTimeout, commandLine.toArray(new String[0]));
-        } else {
-            // TODO: Receive and parse directly the results
-            result = getRunUtil().runTimedCmd(mTestTimeout, commandLine.toArray(new String[0]));
-        }
-
-        if (!Strings.isNullOrEmpty(result.getStdout())) {
-            CLog.logAndDisplay(Log.LogLevel.INFO, "\nstdout:\n%s", result.getStdout());
-            try (InputStreamSource data =
-                    new ByteArrayInputStreamSource(result.getStdout().getBytes())) {
-                listener.testLog(
-                        String.format(PYTHON_LOG_STDOUT_FORMAT, runName), LogDataType.TEXT, data);
-            }
-        }
-        if (!Strings.isNullOrEmpty(result.getStderr())) {
-            CLog.logAndDisplay(Log.LogLevel.INFO, "\nstderr:\n%s", result.getStderr());
-        }
         File stderrFile = null;
         try {
-            // Note that we still log stderr when parsing results from a test-written output file
-            // since it most likely contains useful debugging information.
             stderrFile = FileUtil.createTempFile("python-res", ".txt");
-            FileUtil.writeToFile(result.getStderr(), stderrFile);
-            testLogFile(listener, String.format(PYTHON_LOG_STDERR_FORMAT, runName), stderrFile);
+            if (mUseTestOutputFile) {
+                result = getRunUtil().runTimedCmd(mTestTimeout, commandLine.toArray(new String[0]));
+            } else {
+                pythonParser.setFinalizeWhenParsing(false);
+                FileOutputStream fileOutputParser =
+                        new FileOutputStream(stderrFile) {
+                            @Override
+                            public void write(byte[] b, int off, int len) throws IOException {
+                                super.write(b, off, len);
+                                pythonParser.addOutput(b, off, len);
+                            }
+                        };
+                result =
+                        getRunUtil()
+                                .runTimedCmd(
+                                        mTestTimeout,
+                                        null,
+                                        fileOutputParser,
+                                        commandLine.toArray(new String[0]));
+                fileOutputParser.flush();
+                pythonParser.finalizeParser();
+            }
+
+            if (!Strings.isNullOrEmpty(result.getStdout())) {
+                CLog.logAndDisplay(Log.LogLevel.INFO, "\nstdout:\n%s", result.getStdout());
+                try (InputStreamSource data =
+                        new ByteArrayInputStreamSource(result.getStdout().getBytes())) {
+                    listener.testLog(
+                            String.format(PYTHON_LOG_STDOUT_FORMAT, runName),
+                            LogDataType.TEXT,
+                            data);
+                }
+            }
+            if (!Strings.isNullOrEmpty(result.getStderr())) {
+                CLog.logAndDisplay(Log.LogLevel.INFO, "\nstderr:\n%s", result.getStderr());
+            }
 
             File testOutputFile = stderrFile;
             String testOutput = result.getStderr();
@@ -349,6 +364,19 @@ public class PythonBinaryHostTest implements IRemoteTest, ITestFilterReceiver {
         } catch (IOException e) {
             throw new RuntimeException(e);
         } finally {
+            if (stderrFile != null) {
+                // Note that we still log stderr when parsing results from a test-written output
+                // file since it most likely contains useful debugging information.
+                try {
+                    if (mUseTestOutputFile) {
+                        FileUtil.writeToFile(result.getStderr(), stderrFile);
+                    }
+                    testLogFile(
+                            listener, String.format(PYTHON_LOG_STDERR_FORMAT, runName), stderrFile);
+                } catch (IOException e) {
+                    CLog.e(e);
+                }
+            }
             FileUtil.deleteFile(stderrFile);
             FileUtil.deleteFile(tempTestOutputFile);
         }
