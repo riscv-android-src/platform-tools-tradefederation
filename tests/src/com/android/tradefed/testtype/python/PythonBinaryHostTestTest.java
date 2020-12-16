@@ -25,6 +25,7 @@ import static org.easymock.EasyMock.anyObject;
 import static org.easymock.EasyMock.capture;
 import static org.easymock.EasyMock.eq;
 import static org.easymock.EasyMock.expect;
+import static org.easymock.EasyMock.getCurrentArguments;
 
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.OptionSetter;
@@ -45,6 +46,7 @@ import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.StreamUtil;
 
 import com.google.common.io.CharStreams;
 
@@ -58,10 +60,12 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.util.HashMap;
 
 /** Unit tests for {@link PythonBinaryHostTest}. */
@@ -135,8 +139,18 @@ public final class PythonBinaryHostTestTest {
             EasyMock.expect(
                             mMockRunUtil.runTimedCmd(
                                     EasyMock.anyLong(),
+                                    EasyMock.isNull(),
+                                    (OutputStream) EasyMock.anyObject(),
                                     EasyMock.eq(mPythonBinary.getAbsolutePath())))
-                    .andReturn(res);
+                    .andAnswer(
+                            new IAnswer<CommandResult>() {
+                                @Override
+                                public CommandResult answer() throws Throwable {
+                                    OutputStream stream = (OutputStream) getCurrentArguments()[2];
+                                    StreamUtil.copyFileToStream(mOutputFile, stream);
+                                    return res;
+                                }
+                            });
             mMockListener.testRunStarted(
                     EasyMock.eq(mPythonBinary.getName()),
                     EasyMock.eq(11),
@@ -163,6 +177,8 @@ public final class PythonBinaryHostTestTest {
     /** Test that when running a non-unittest python binary with any filter, the test shall fail. */
     @Test
     public void testRun_failWithIncludeFilters() throws Exception {
+        mOutputFile = readInFile(PYTHON_OUTPUT_FILE_1);
+        mMockListener = EasyMock.createNiceMock(ITestInvocationListener.class);
         try {
             OptionSetter setter = new OptionSetter(mTest);
             setter.setOptionValue("python-binaries", mPythonBinary.getAbsolutePath());
@@ -172,12 +188,20 @@ public final class PythonBinaryHostTestTest {
 
             CommandResult res = new CommandResult();
             res.setStatus(CommandStatus.SUCCESS);
-            res.setStderr("TEST_RUN_STARTED {\"testCount\": 5, \"runName\": \"TestSuite\"}");
+            res.setStderr(FileUtil.readStringFromFile(mOutputFile));
             EasyMock.expect(
                             mMockRunUtil.runTimedCmd(
                                     EasyMock.anyLong(),
+                                    EasyMock.isNull(),
+                                    (OutputStream) EasyMock.anyObject(),
                                     EasyMock.eq(mPythonBinary.getAbsolutePath())))
-                    .andReturn(res);
+                    .andAnswer(
+                            new IAnswer<CommandResult>() {
+                                @Override
+                                public CommandResult answer() throws Throwable {
+                                    throw new RuntimeException("Parser error");
+                                }
+                            });
             mMockListener.testRunStarted(EasyMock.eq(mPythonBinary.getName()), EasyMock.eq(0));
             mMockListener.testRunFailed((FailureDescription) EasyMock.anyObject());
             mMockListener.testRunEnded(
@@ -211,7 +235,7 @@ public final class PythonBinaryHostTestTest {
 
             CommandResult res = new CommandResult();
             res.setStatus(CommandStatus.SUCCESS);
-            res.setStderr(
+            String output =
                     "test_1 (__main__.Class1)\n"
                         + "run first test. ... ok\n"
                         + "test_2 (__main__.Class1)\n"
@@ -219,12 +243,24 @@ public final class PythonBinaryHostTestTest {
                         + "test_3 (__main__.Class1)\n"
                         + "run third test. ... ok\n"
                         + "----------------------------------------------------------------------\n"
-                        + "Ran 3 tests in 1s");
+                        + "Ran 3 tests in 1s\n";
+            res.setStderr(output);
             EasyMock.expect(
                             mMockRunUtil.runTimedCmd(
                                     EasyMock.anyLong(),
+                                    EasyMock.isNull(),
+                                    (OutputStream) EasyMock.anyObject(),
                                     EasyMock.eq(mPythonBinary.getAbsolutePath())))
-                    .andReturn(res);
+                    .andAnswer(
+                            new IAnswer<CommandResult>() {
+                                @Override
+                                public CommandResult answer() throws Throwable {
+                                    OutputStream stream = (OutputStream) getCurrentArguments()[2];
+                                    StreamUtil.copyStreams(
+                                            new ByteArrayInputStream(output.getBytes()), stream);
+                                    return res;
+                                }
+                            });
             // 3 tests are started and ended.
             for (int i = 0; i < 3; i++) {
                 mMockListener.testStarted(
@@ -273,7 +309,7 @@ public final class PythonBinaryHostTestTest {
 
             CommandResult res = new CommandResult();
             res.setStatus(CommandStatus.SUCCESS);
-            res.setStderr(
+            String output =
                     "test_1 (__main__.Class1)\n"
                         + "run first test. ... ok\n"
                         + "test_2 (__main__.Class1)\n"
@@ -281,12 +317,24 @@ public final class PythonBinaryHostTestTest {
                         + "test_3 (__main__.Class1)\n"
                         + "run third test. ... ok\n"
                         + "----------------------------------------------------------------------\n"
-                        + "Ran 3 tests in 1s");
+                        + "Ran 3 tests in 1s\n";
+            res.setStderr(output);
             EasyMock.expect(
                             mMockRunUtil.runTimedCmd(
                                     EasyMock.anyLong(),
+                                    EasyMock.isNull(),
+                                    (OutputStream) EasyMock.anyObject(),
                                     EasyMock.eq(mPythonBinary.getAbsolutePath())))
-                    .andReturn(res);
+                    .andAnswer(
+                            new IAnswer<CommandResult>() {
+                                @Override
+                                public CommandResult answer() throws Throwable {
+                                    OutputStream stream = (OutputStream) getCurrentArguments()[2];
+                                    StreamUtil.copyStreams(
+                                            new ByteArrayInputStream(output.getBytes()), stream);
+                                    return res;
+                                }
+                            });
             // 3 tests are started and ended.
             for (int i = 0; i < 3; i++) {
                 mMockListener.testStarted(
@@ -341,8 +389,18 @@ public final class PythonBinaryHostTestTest {
             EasyMock.expect(
                             mMockRunUtil.runTimedCmd(
                                     EasyMock.anyLong(),
+                                    EasyMock.isNull(),
+                                    (OutputStream) EasyMock.anyObject(),
                                     EasyMock.eq(mPythonBinary.getAbsolutePath())))
-                    .andReturn(res);
+                    .andAnswer(
+                            new IAnswer<CommandResult>() {
+                                @Override
+                                public CommandResult answer() throws Throwable {
+                                    OutputStream stream = (OutputStream) getCurrentArguments()[2];
+                                    StreamUtil.copyFileToStream(mOutputFile, stream);
+                                    return res;
+                                }
+                            });
             mMockListener.testRunStarted(
                     EasyMock.eq(mPythonBinary.getName()),
                     EasyMock.eq(11),
@@ -388,8 +446,19 @@ public final class PythonBinaryHostTestTest {
             res.setStderr(FileUtil.readStringFromFile(mOutputFile));
             EasyMock.expect(
                             mMockRunUtil.runTimedCmd(
-                                    EasyMock.anyLong(), EasyMock.eq(binary.getAbsolutePath())))
-                    .andReturn(res);
+                                    EasyMock.anyLong(),
+                                    EasyMock.isNull(),
+                                    (OutputStream) EasyMock.anyObject(),
+                                    EasyMock.eq(binary.getAbsolutePath())))
+                    .andAnswer(
+                            new IAnswer<CommandResult>() {
+                                @Override
+                                public CommandResult answer() throws Throwable {
+                                    OutputStream stream = (OutputStream) getCurrentArguments()[2];
+                                    StreamUtil.copyFileToStream(mOutputFile, stream);
+                                    return res;
+                                }
+                            });
             mMockListener.testRunStarted(
                     EasyMock.eq(binary.getName()),
                     EasyMock.eq(11),
@@ -435,8 +504,19 @@ public final class PythonBinaryHostTestTest {
             res.setStderr(FileUtil.readStringFromFile(mOutputFile));
             EasyMock.expect(
                             mMockRunUtil.runTimedCmd(
-                                    EasyMock.anyLong(), EasyMock.eq(binary.getAbsolutePath())))
-                    .andReturn(res);
+                                    EasyMock.anyLong(),
+                                    EasyMock.isNull(),
+                                    (OutputStream) EasyMock.anyObject(),
+                                    EasyMock.eq(binary.getAbsolutePath())))
+                    .andAnswer(
+                            new IAnswer<CommandResult>() {
+                                @Override
+                                public CommandResult answer() throws Throwable {
+                                    OutputStream stream = (OutputStream) getCurrentArguments()[2];
+                                    StreamUtil.copyFileToStream(mOutputFile, stream);
+                                    return res;
+                                }
+                            });
             mMockListener.testRunStarted(
                     EasyMock.eq(binary.getName()),
                     EasyMock.eq(11),
@@ -471,11 +551,24 @@ public final class PythonBinaryHostTestTest {
             CommandResult res = new CommandResult();
             res.setStatus(CommandStatus.EXCEPTION);
             res.setStderr("Could not execute.");
+            String output = "Could not execute.";
+            res.setStderr(output);
             EasyMock.expect(
                             mMockRunUtil.runTimedCmd(
                                     EasyMock.anyLong(),
+                                    EasyMock.isNull(),
+                                    (OutputStream) EasyMock.anyObject(),
                                     EasyMock.eq(mPythonBinary.getAbsolutePath())))
-                    .andReturn(res);
+                    .andAnswer(
+                            new IAnswer<CommandResult>() {
+                                @Override
+                                public CommandResult answer() throws Throwable {
+                                    OutputStream stream = (OutputStream) getCurrentArguments()[2];
+                                    StreamUtil.copyStreams(
+                                            new ByteArrayInputStream(output.getBytes()), stream);
+                                    return res;
+                                }
+                            });
             EasyMock.expect(mMockDevice.getIDevice()).andReturn(new StubDevice("serial"));
 
             mMockListener.testLog(
@@ -522,8 +615,18 @@ public final class PythonBinaryHostTestTest {
             EasyMock.expect(
                             mMockRunUtil.runTimedCmd(
                                     EasyMock.anyLong(),
+                                    EasyMock.isNull(),
+                                    (OutputStream) EasyMock.anyObject(),
                                     EasyMock.eq(mPythonBinary.getAbsolutePath())))
-                    .andReturn(res);
+                    .andAnswer(
+                            new IAnswer<CommandResult>() {
+                                @Override
+                                public CommandResult answer() throws Throwable {
+                                    OutputStream stream = (OutputStream) getCurrentArguments()[2];
+                                    StreamUtil.copyFileToStream(mOutputFile, stream);
+                                    return res;
+                                }
+                            });
             mMockListener.testRunStarted(
                     EasyMock.eq(mPythonBinary.getName()),
                     EasyMock.eq(11),
