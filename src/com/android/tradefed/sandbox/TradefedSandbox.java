@@ -57,7 +57,6 @@ import com.android.tradefed.util.keystore.IKeyStoreClient;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -77,8 +76,6 @@ public class TradefedSandbox implements ISandbox {
 
     private File mStdoutFile = null;
     private File mStderrFile = null;
-    private OutputStream mStdout = null;
-    private FileOutputStream mStderr = null;
     private File mHeapDump = null;
 
     private File mSandboxTmpFolder = null;
@@ -91,7 +88,6 @@ public class TradefedSandbox implements ISandbox {
     private StreamProtoReceiver mProtoReceiver = null;
 
     private IRunUtil mRunUtil;
-    private boolean mCollectStdout = true;
 
     @Override
     public CommandResult run(IConfiguration config, ITestLogger logger) throws Throwable {
@@ -132,8 +128,12 @@ public class TradefedSandbox implements ISandbox {
         RuntimeException interruptedException = null;
         try {
             result =
-                    mRunUtil.runTimedCmd(
-                            timeout, mStdout, mStderr, mCmdArgs.toArray(new String[0]));
+                    mRunUtil.runTimedCmdWithInput(
+                            timeout, /*input*/
+                            null,
+                            mStdoutFile,
+                            mStderrFile,
+                            mCmdArgs.toArray(new String[0]));
         } catch (RuntimeException interrupted) {
             CLog.e("Sandbox runtimedCmd threw an exception");
             CLog.e(interrupted);
@@ -225,31 +225,10 @@ public class TradefedSandbox implements ISandbox {
     @Override
     public Exception prepareEnvironment(
             IInvocationContext context, IConfiguration config, ITestInvocationListener listener) {
-        // Check for local sharding, avoid redirecting several stdout (from each shards) to the
-        // sandbox stdout as it creates a lot of I/O to the same output.
-        if (config.getCommandOptions().getShardCount() != null
-                && config.getCommandOptions().getShardIndex() == null) {
-            mCollectStdout = false;
-        }
         // Create our temp directories.
         try {
-            if (mCollectStdout) {
-                mStdoutFile =
-                        FileUtil.createTempFile("stdout_subprocess_", ".log", getWorkFolder());
-                mStdout = new FileOutputStream(mStdoutFile);
-            } else {
-                mStdout =
-                        new OutputStream() {
-                            @Override
-                            public void write(int b) throws IOException {
-                                // Ignore stdout
-                            }
-                        };
-            }
-
+            mStdoutFile = FileUtil.createTempFile("stdout_subprocess_", ".log", getWorkFolder());
             mStderrFile = FileUtil.createTempFile("stderr_subprocess_", ".log", getWorkFolder());
-            mStderr = new FileOutputStream(mStderrFile);
-
             mSandboxTmpFolder = FileUtil.createTempDir("tradefed-container", getWorkFolder());
         } catch (IOException e) {
             return e;
@@ -300,8 +279,6 @@ public class TradefedSandbox implements ISandbox {
     public void tearDown() {
         StreamUtil.close(mEventParser);
         StreamUtil.close(mProtoReceiver);
-        StreamUtil.close(mStdout);
-        StreamUtil.close(mStderr);
         FileUtil.deleteFile(mStdoutFile);
         FileUtil.deleteFile(mStderrFile);
         FileUtil.recursiveDelete(mSandboxTmpFolder);
@@ -400,7 +377,8 @@ public class TradefedSandbox implements ISandbox {
                                         String.format(
                                                 "Could not find configuration '%s'", args[0]))) {
                     CLog.w(
-                            "Child version doesn't contains '%s'. Attempting to backfill missing parent configuration.",
+                            "Child version doesn't contains '%s'. Attempting to backfill missing"
+                                    + " parent configuration.",
                             args[0]);
                     File parentConfig = handleChildMissingConfig(args);
                     if (parentConfig != null) {
