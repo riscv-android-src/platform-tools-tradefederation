@@ -44,7 +44,6 @@ import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -135,10 +134,11 @@ public class ClusterCommandLauncherTest {
                         mTfPath.getAbsolutePath(),
                         mTfLibDir.getAbsolutePath());
         final CommandResult mockCommandResult = new CommandResult(CommandStatus.SUCCESS);
-        when(mMockRunUtil.runTimedCmd(
+        when(mMockRunUtil.runTimedCmdWithInput(
                         Mockito.anyLong(),
-                        Mockito.<OutputStream>any(),
-                        Mockito.<OutputStream>any(),
+                        Mockito.isNull(),
+                        Mockito.<File>any(),
+                        Mockito.<File>any(),
                         Mockito.<String[]>any()))
                 .thenReturn(mockCommandResult);
         Mockito.when(mLauncher.getRunUtil()).thenReturn(mMockRunUtil);
@@ -150,10 +150,11 @@ public class ClusterCommandLauncherTest {
         Mockito.verify(mMockRunUtil).setEnvVariable("TF_WORK_DIR", mRootDir.getAbsolutePath());
         Mockito.verify(mMockRunUtil).setEnvVariable("TF_PATH", expandedTfPathValue);
         Mockito.verify(mMockRunUtil)
-                .runTimedCmd(
+                .runTimedCmdWithInput(
                         Mockito.eq(10000L),
-                        Mockito.<OutputStream>any(),
-                        Mockito.<OutputStream>any(),
+                        Mockito.isNull(),
+                        Mockito.<File>any(),
+                        Mockito.<File>any(),
                         asMatchers(
                                 new String[] {
                                     SystemUtil.getRunningJavaBinaryPath().getAbsolutePath(),
@@ -181,10 +182,11 @@ public class ClusterCommandLauncherTest {
         mOptionSetter.setOptionValue("cluster:setup-script", "${FOO} ${BAR} ${ZZZ}");
         mOptionSetter.setOptionValue("cluster:command-line", COMMAND);
         final CommandResult mockCommandResult = new CommandResult(CommandStatus.SUCCESS);
-        when(mMockRunUtil.runTimedCmd(
+        when(mMockRunUtil.runTimedCmdWithInput(
                         Mockito.anyLong(),
-                        Mockito.<OutputStream>any(),
-                        Mockito.<OutputStream>any(),
+                        Mockito.isNull(),
+                        Mockito.<File>any(),
+                        Mockito.<File>any(),
                         Mockito.<String[]>any()))
                 .thenReturn(mockCommandResult);
         Mockito.when(mLauncher.getRunUtil()).thenReturn(mMockRunUtil);
@@ -199,16 +201,18 @@ public class ClusterCommandLauncherTest {
         Mockito.verify(mMockRunUtil).setEnvVariable("FOO", "foo");
         Mockito.verify(mMockRunUtil).setEnvVariable("ZZZ", "zzz");
         Mockito.verify(mMockRunUtil, Mockito.times(2))
-                .runTimedCmd(
+                .runTimedCmdWithInput(
                         Mockito.anyLong(),
-                        Mockito.<OutputStream>any(),
-                        Mockito.<OutputStream>any(),
+                        Mockito.isNull(),
+                        Mockito.<File>any(),
+                        Mockito.<File>any(),
                         asMatchers(new String[] {"foo", "bar", "zzz"}));
         Mockito.verify(mMockRunUtil)
-                .runTimedCmd(
+                .runTimedCmdWithInput(
                         Mockito.eq(10000L),
-                        Mockito.<OutputStream>any(),
-                        Mockito.<OutputStream>any(),
+                        Mockito.isNull(),
+                        Mockito.<File>any(),
+                        Mockito.<File>any(),
                         asMatchers(
                                 new String[] {
                                     SystemUtil.getRunningJavaBinaryPath().getAbsolutePath(),
@@ -249,10 +253,11 @@ public class ClusterCommandLauncherTest {
                                 Mockito.any(), Mockito.anyBoolean(), Mockito.any()))
                 .thenReturn(mMockSubprocessTestResultsParser);
         final CommandResult mockCommandResult = new CommandResult(CommandStatus.SUCCESS);
-        when(mMockRunUtil.runTimedCmd(
+        when(mMockRunUtil.runTimedCmdWithInput(
                         Mockito.anyLong(),
-                        Mockito.<OutputStream>any(),
-                        Mockito.<OutputStream>any(),
+                        Mockito.isNull(),
+                        Mockito.<File>any(),
+                        Mockito.<File>any(),
                         Mockito.<String[]>any()))
                 .thenReturn(mockCommandResult);
         Mockito.when(mLauncher.getRunUtil()).thenReturn(mMockRunUtil);
@@ -267,10 +272,11 @@ public class ClusterCommandLauncherTest {
         Mockito.verify(mMockRunUtil).setEnvVariable("TF_PATH", tfPath.getAbsolutePath());
         Mockito.verify(mMockRunUtil).unsetEnvVariable("TF_GLOBAL_CONFIG");
         Mockito.verify(mMockRunUtil)
-                .runTimedCmd(
+                .runTimedCmdWithInput(
                         Mockito.eq(10000L),
-                        Mockito.<OutputStream>any(),
-                        Mockito.<OutputStream>any(),
+                        Mockito.isNull(),
+                        Mockito.<File>any(),
+                        Mockito.<File>any(),
                         asMatchers(
                                 new String[] {
                                     SystemUtil.getRunningJavaBinaryPath().getAbsolutePath(),
