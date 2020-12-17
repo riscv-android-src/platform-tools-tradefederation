@@ -23,6 +23,7 @@ import static org.junit.Assert.fail;
 
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.targetprep.TargetSetupError;
 
 import org.junit.Test;
@@ -340,5 +341,115 @@ public class GceAvdInfoTest {
         assertEquals("63220", metrics.get(InvocationMetricKey.CF_FETCH_ARTIFACT_TIME.toString()));
         assertEquals("23500", metrics.get(InvocationMetricKey.CF_GCE_CREATE_TIME.toString()));
         assertEquals("226500", metrics.get(InvocationMetricKey.CF_LAUNCH_CVD_TIME.toString()));
+    }
+
+    /** Test parsing valid json with error_type field defined. */
+    @Test
+    public void testValidGceJsonParsing_acloud_error_type() throws Exception {
+        String acloudError =
+                " {\n"
+                    + "    \"data\": {\n"
+                    + "      \"devices_failing_boot\": [\n"
+                    + "        {\n"
+                    + "          \"ip\": \"10.2.0.205\",\n"
+                    + "          \"branch\": \"git_main\",\n"
+                    + "          \"build_id\": \"P17712100\",\n"
+                    + "          \"build_target\": \"cf_x86_phone-userdebug\",\n"
+                    + "          \"instance_name\":"
+                    + " \"ins-ae428ce9-p17712100-cf-x86-phone-userdebug\",\n"
+                    + "          \"fetch_artifact_time\": \"89.86\",\n"
+                    + "          \"gce_create_time\": \"22.31\",\n"
+                    + "          \"launch_cvd_time\": \"540.01\"\n"
+                    + "        }\n"
+                    + "      ],\n"
+                    + "      \"launch_cvd_command\": \"./bin/launch_cvd -daemon -x_res=720"
+                    + " -y_res=1280 -dpi=320 -memory_mb=4096 -cpus 4"
+                    + " -undefok=report_anonymous_usage_stats -report_anonymous_usage_stats=y\",\n"
+                    + "      \"version\": \"2020-10-19_6914176\",\n"
+                    + "      \"zone\": \"us-west1-b\"\n"
+                    + "    },\n"
+                    + "    \"error_type\": \"ACLOUD_INIT_ERROR\",\n"
+                    + "    \"errors\": [\n"
+                    + "\"Device ins-ae428ce9-p17712100-cf-x86-phone-userdebug did not finish on"
+                    + " boot within timeout (540 secs)\"\n"
+                    + "],\n"
+                    + "    \"command\": \"create_cf\",\n"
+                    + "    \"status\": \"BOOT_FAIL\"\n"
+                    + "  }";
+
+        GceAvdInfo avd = GceAvdInfo.parseGceInfoFromString(acloudError, null, 5555);
+        assertNotNull(avd);
+        assertEquals(avd.hostAndPort().getHost(), "10.2.0.205");
+        assertEquals(avd.instanceName(), "ins-ae428ce9-p17712100-cf-x86-phone-userdebug");
+        assertEquals(avd.getBuildVars().get("branch"), "git_main");
+        assertEquals(avd.getBuildVars().get("build_id"), "P17712100");
+        assertEquals(avd.getBuildVars().get("build_target"), "cf_x86_phone-userdebug");
+        assertEquals(avd.getErrorType(), InfraErrorIdentifier.ACLOUD_INIT_ERROR);
+    }
+
+    /** Test parsing invalid json with error_type field defined and devices arbitrarily removed. */
+    @Test
+    public void testInvalidGceJsonParsing_acloud_errors_and_missing_devices() throws Exception {
+        String acloudErrorAndMissingDevices =
+                " {\n"
+                        + "    \"data\": {\n"
+                        /*
+                        + "      \"devices_failing_boot\": [\n"
+                        + "        {\n"
+                        + "          \"ip\": \"10.2.0.205\",\n"
+                        + "          \"branch\": \"git_main\",\n"
+                        + "          \"build_id\": \"P17712100\",\n"
+                        + "          \"build_target\": \"cf_x86_phone-userdebug\",\n"
+                        + "          \"instance_name\": \"ins-ae428ce9-p17712100-cf-x86-phone-userdebug\",\n"
+                        + "          \"fetch_artifact_time\": \"89.86\",\n"
+                        + "          \"gce_create_time\": \"22.31\",\n"
+                        + "          \"launch_cvd_time\": \"540.01\"\n"
+                        + "        }\n"
+                        + "      ],\n"
+                        */
+                        + "      \"launch_cvd_command\": \"./bin/launch_cvd -daemon -x_res=720"
+                        + " -y_res=1280 -dpi=320 -memory_mb=4096 -cpus 4"
+                        + " -undefok=report_anonymous_usage_stats"
+                        + " -report_anonymous_usage_stats=y\",\n"
+                        + "      \"version\": \"2020-10-19_6914176\",\n"
+                        + "      \"zone\": \"us-west1-b\"\n"
+                        + "    },\n"
+                        + "    \"error_type\": \"ACLOUD_INIT_ERROR\",\n"
+                        + "    \"errors\": [\n"
+                        + "\"Device ins-ae428ce9-p17712100-cf-x86-phone-userdebug did not finish"
+                        + " on boot within timeout (540 secs)\"\n"
+                        + "],\n"
+                        + "    \"command\": \"create_cf\",\n"
+                        + "    \"status\": \"BOOT_FAIL\"\n"
+                        + "  }";
+
+        try {
+            GceAvdInfo.parseGceInfoFromString(acloudErrorAndMissingDevices, null, 5555);
+            fail("A TargetSetupError should have been thrown.");
+        } catch (TargetSetupError e) {
+            assertEquals(e.getErrorId(), InfraErrorIdentifier.ACLOUD_INIT_ERROR);
+        }
+    }
+
+    @Test
+    public void testDetermineAcloudErrorType() {
+        assertEquals(
+                GceAvdInfo.determineAcloudErrorType(null),
+                InfraErrorIdentifier.ACLOUD_UNDETERMINED);
+        assertEquals(
+                GceAvdInfo.determineAcloudErrorType("invalid error type"),
+                InfraErrorIdentifier.ACLOUD_UNRECOGNIZED_ERROR_TYPE);
+        assertEquals(
+                GceAvdInfo.determineAcloudErrorType("ACLOUD_INIT_ERROR"),
+                InfraErrorIdentifier.ACLOUD_INIT_ERROR);
+        assertEquals(
+                GceAvdInfo.determineAcloudErrorType("ACLOUD_CREATE_GCE_ERROR"),
+                InfraErrorIdentifier.ACLOUD_CREATE_GCE_ERROR);
+        assertEquals(
+                GceAvdInfo.determineAcloudErrorType("ACLOUD_DOWNLOAD_ARTIFACT_ERROR"),
+                InfraErrorIdentifier.ACLOUD_DOWNLOAD_ARTIFACT_ERROR);
+        assertEquals(
+                GceAvdInfo.determineAcloudErrorType("ACLOUD_BOOT_UP_ERROR"),
+                InfraErrorIdentifier.ACLOUD_BOOT_UP_ERROR);
     }
 }
