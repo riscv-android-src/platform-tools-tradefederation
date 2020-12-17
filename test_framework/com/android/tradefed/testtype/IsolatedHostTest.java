@@ -17,7 +17,6 @@ package com.android.tradefed.testtype;
 
 import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.IBuildInfo;
-import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.Option;
@@ -463,10 +462,6 @@ public class IsolatedHostTest
                                                         event.getClassName(),
                                                         event.getMethodName());
                                         listener.testFailed(desc, event.getMessage());
-                                        listener.testEnded(
-                                                desc,
-                                                event.getEndTime(),
-                                                new HashMap<String, Metric>());
                                         break;
                                     case TOPIC_ASSUMPTION_FAILURE:
                                         desc =
@@ -514,7 +509,7 @@ public class IsolatedHostTest
                 } catch (SocketTimeoutException e) {
                     listener.testRunFailed(StreamUtil.getStackTrace(e));
                 }
-                }
+            }
         } finally {
             try (FileInputStreamSource source = new FileInputStreamSource(mSubprocessLog, true)) {
                 listener.testLog("isolated-java-logs", LogDataType.TEXT, source);
@@ -549,11 +544,8 @@ public class IsolatedHostTest
         File jarFile = null;
 
         // Check tests dir
-        if (buildInfo instanceof IDeviceBuildInfo) {
-            IDeviceBuildInfo deviceBuildInfo = (IDeviceBuildInfo) buildInfo;
-            File testDir = deviceBuildInfo.getTestsDir();
-            jarFile = searchJarFile(testDir, jarName);
-        }
+        File testDir = buildInfo.getFile(BuildInfoFileKey.TESTDIR_IMAGE);
+        jarFile = searchJarFile(testDir, jarName);
         if (jarFile != null) {
             return jarFile;
         }
