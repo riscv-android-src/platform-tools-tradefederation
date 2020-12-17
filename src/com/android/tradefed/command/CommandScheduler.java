@@ -67,6 +67,7 @@ import com.android.tradefed.invoker.shard.ParentShardReplicate;
 import com.android.tradefed.log.ILogRegistry.EventType;
 import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
@@ -1317,14 +1318,23 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         List<ITestInvocationListener> delegateReporters = new ArrayList<>();
         // For debugging in the console, add a printer
         delegateReporters.add(new SuiteResultReporter());
-        for (ITestInvocationListener listener : config.getTestInvocationListeners()) {
-            // Add infra reporter if configured.
-            if ("com.google.android.tradefed.result.teststorage.ResultReporter"
-                    .equals(listener.getClass().getCanonicalName())) {
-                delegateReporters.add(listener);
-            }
+        try {
+            Class<?> objectClass =
+                    Class.forName("com.google.android.tradefed.result.teststorage.ResultReporter");
+            Object infraReporter = objectClass.getDeclaredConstructor().newInstance();
+            delegateReporters.add((ITestInvocationListener) infraReporter);
+        } catch (Exception e) {
+            CLog.e(e);
         }
         config.setTestInvocationListeners(delegateReporters);
+        try {
+            Class<?> objectClass =
+                    Class.forName("com.google.android.tradefed.result.AndroidBuildApiLogSaver");
+            Object infraLogger = objectClass.getDeclaredConstructor().newInstance();
+            config.setLogSaver((ILogSaver) infraLogger);
+        } catch (Exception e) {
+            CLog.e(e);
+        }
     }
 
     private boolean internalAddCommand(String[] args, String cmdFilePath)
