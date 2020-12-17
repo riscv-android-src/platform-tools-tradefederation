@@ -200,7 +200,8 @@ public class GceManager {
                 if (instanceName != null) {
                     // If we managed to parse the instance name, report the boot failure so it
                     // can be shutdown.
-                    mGceAvdInfo = new GceAvdInfo(instanceName, null, errors, GceStatus.BOOT_FAIL);
+                    mGceAvdInfo =
+                            new GceAvdInfo(instanceName, null, null, errors, GceStatus.BOOT_FAIL);
                     return mGceAvdInfo;
                 }
                 throw new TargetSetupError(
