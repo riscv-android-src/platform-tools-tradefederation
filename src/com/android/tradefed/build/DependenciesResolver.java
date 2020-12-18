@@ -17,6 +17,7 @@ package com.android.tradefed.build;
 
 import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.config.remote.ExtendedFile;
 import com.android.tradefed.dependency.TestDependencyResolver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
@@ -80,7 +81,11 @@ public class DependenciesResolver
                             dependency.getValue(), build, mInvocationContext);
             if (f != null) {
                 getInvocationFiles().put(dependency.getKey(), f);
-                build.setFile(dependency.getKey(), f, "1");
+                String version = "1";
+                if (f instanceof ExtendedFile) {
+                    version = ((ExtendedFile) f).getBuildId();
+                }
+                build.setFile(dependency.getKey(), f, version);
             }
         }
         // Create a tests dir if there are none
