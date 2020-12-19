@@ -212,13 +212,15 @@ public class ClusterCommandConfigBuilderTest {
 
     @Test
     public void testBuild_testResources() throws IOException, ConfigurationException {
-        mTestResources.add(new TestResource("N1", "U1"));
-        mTestContext.addTestResource(new TestResource("N2", "U2"));
+        mTestResources.add(new TestResource("N1", "U1", true, "D1"));
+        mTestContext.addTestResource(new TestResource("N2", "U2", false, null));
 
         builder.build();
         // test resources from both sources were injected
         verify(mConfig, times(1)).injectOptionValue("cluster:test-resource", "N1", "U1");
+        verify(mConfig, times(1)).injectOptionValue("cluster:decompress-test-resource", "N1", "D1");
         verify(mConfig, times(1)).injectOptionValue("cluster:test-resource", "N2", "U2");
+        verify(mConfig, times(0)).injectOptionValue("cluster:decompress-test-resource", "N2", "");
     }
 
     @Test
