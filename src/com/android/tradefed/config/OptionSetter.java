@@ -18,6 +18,7 @@ package com.android.tradefed.config;
 
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.TimeVal;
@@ -400,9 +401,11 @@ public class OptionSetter {
                     Type valueType = pType.getActualTypeArguments()[1];
                     type = ((Class<?>)valueType).getSimpleName().toLowerCase();
                 }
-                throw new ConfigurationException(String.format(
-                        "Couldn't convert value '%s' to a %s for option '%s'", valueText, type,
-                        optionName));
+                throw new ConfigurationException(
+                        String.format(
+                                "Couldn't convert value '%s' to a %s for option '%s'",
+                                valueText, type, optionName),
+                        InfraErrorIdentifier.OPTION_CONFIGURATION_ERROR);
             }
 
             // For maps, also translate the key value
@@ -413,9 +416,11 @@ public class OptionSetter {
                     ParameterizedType pType = (ParameterizedType) field.getGenericType();
                     Type keyType = pType.getActualTypeArguments()[0];
                     String type = ((Class<?>)keyType).getSimpleName().toLowerCase();
-                    throw new ConfigurationException(String.format(
-                            "Couldn't convert key '%s' to a %s for option '%s'", keyText, type,
-                            optionName));
+                    throw new ConfigurationException(
+                            String.format(
+                                    "Couldn't convert key '%s' to a %s for option '%s'",
+                                    keyText, type, optionName),
+                            InfraErrorIdentifier.OPTION_CONFIGURATION_ERROR);
                 }
             }
 
