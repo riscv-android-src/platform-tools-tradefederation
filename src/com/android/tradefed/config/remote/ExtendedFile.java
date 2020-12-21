@@ -27,7 +27,7 @@ public class ExtendedFile extends File {
         super(path);
     }
 
-    ExtendedFile(File file, String buildId, String buildTarget) {
+    public ExtendedFile(File file, String buildId, String buildTarget) {
         super(file.getAbsolutePath());
         mBuildId = buildId;
         mBuildTarget = buildTarget;
