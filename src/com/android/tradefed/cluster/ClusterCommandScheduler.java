@@ -305,11 +305,11 @@ public class ClusterCommandScheduler extends CommandScheduler {
                     File f = FileUtil.createTempFile("test-filesystem", ".txt");
                     FileUtil.deleteFile(f);
                 } catch (IOException e) {
+                    errorId = InfraErrorIdentifier.LAB_HOST_FILESYSTEM_ERROR;
                     mError =
                             String.format(
-                                    "Filesystem error on %s. Please notify lab admin.",
-                                    ClusterHostUtil.getHostName());
-                    errorId = InfraErrorIdentifier.LAB_HOST_FILESYSTEM_ERROR;
+                                    "[%s] Filesystem error on %s. Please notify lab admin.",
+                                    errorId.name(), ClusterHostUtil.getHostName());
                 }
             }
 
