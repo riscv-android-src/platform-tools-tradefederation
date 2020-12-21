@@ -40,6 +40,7 @@ public final class SandboxOptions {
     private static final String SANDBOX_JAVA_OPTIONS = "sandbox-java-options";
     private static final String SANDBOX_ENV_VARIABLE_OPTIONS = "sandbox-env-variable";
     private static final String SANDBOX_TESTS_ZIPS_OPTIONS = "sandbox-tests-zips";
+    private static final String ENABLE_DEFAULT_TESTS_ZIPS_OPTIONS = "sandbox-default-zips";
 
     @Option(
         name = TF_LOCATION,
@@ -104,6 +105,13 @@ public final class SandboxOptions {
             description = "The set of tests zips to stage during sandboxing.")
     private Set<String> mSandboxTestsZips = new LinkedHashSet<>();
 
+    @Option(
+            name = ENABLE_DEFAULT_TESTS_ZIPS_OPTIONS,
+            description =
+                    "Whether or not to download the default tests zip when no sandbox-tests-zips "
+                            + "has been specified")
+    private boolean mEnableDefaultZips = true;
+
     /**
      * Returns the provided directories containing the Trade Federation version to use for
      * sandboxing the run.
@@ -160,5 +168,10 @@ public final class SandboxOptions {
     /** Returns the set of tests zips to stage for the sandbox. */
     public Set<String> getTestsZips() {
         return mSandboxTestsZips;
+    }
+
+    /** Returns whether or not to download the default tests zips. */
+    public boolean downloadDefaultZips() {
+        return mEnableDefaultZips;
     }
 }
