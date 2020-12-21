@@ -28,6 +28,7 @@ import com.android.tradefed.invoker.logger.CurrentInvocation.InvocationInfo;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.FlashingResourceUtil;
 
 import java.io.File;
 import java.io.IOException;
@@ -75,7 +76,11 @@ public class DependenciesResolver
                         mBuildId, String.format("%s-%s-%s", mBranch, mBuildOs, mBuildFlavor));
         build.setBuildBranch(mBranch);
         build.setBuildFlavor(mBuildFlavor);
-        for (Entry<String, File> dependency : mDependencies.entrySet()) {
+        Map<String, File> mCopiedDependencies = new LinkedHashMap<>(mDependencies);
+        // Handle the flashing files
+        FlashingResourceUtil.setUpFlashingResources(build, mCopiedDependencies);
+        // Handle the remaining files
+        for (Entry<String, File> dependency : mCopiedDependencies.entrySet()) {
             File f =
                     TestDependencyResolver.resolveDependencyFromContext(
                             dependency.getValue(), build, mInvocationContext);
