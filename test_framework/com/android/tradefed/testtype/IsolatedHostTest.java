@@ -33,7 +33,9 @@ import com.android.tradefed.isolation.RunnerReply;
 import com.android.tradefed.isolation.TestParameters;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.RunUtil;
@@ -55,6 +57,7 @@ import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -170,6 +173,7 @@ public class IsolatedHostTest
     private Set<String> mIncludeFilters = new HashSet<>();
     private Set<String> mExcludeFilters = new HashSet<>();
     private boolean mCollectTestsOnly = false;
+    private File mSubprocessLog;
 
     private static final String ROOT_DIR = "ROOT_DIR";
     private ServerSocket mServer = null;
@@ -195,7 +199,10 @@ public class IsolatedHostTest
             runner.setWorkingDir(workDir);
             CLog.v("Using PWD: %s", workDir.getAbsolutePath());
 
-            Process isolationRunner = runner.runCmdInBackground(Redirect.INHERIT, cmdArgs);
+            mSubprocessLog = FileUtil.createTempFile("subprocess-logs", "");
+
+            Process isolationRunner =
+                    runner.runCmdInBackground(Redirect.to(mSubprocessLog), cmdArgs);
             CLog.v("Started subprocess.");
 
             Socket socket = mServer.accept();
@@ -418,6 +425,7 @@ public class IsolatedHostTest
                 .writeDelimitedTo(socket.getOutputStream());
 
         TestDescription currentTest = null;
+        Instant start = Instant.now();
 
         mainLoop:
         while (true) {
@@ -495,8 +503,6 @@ public class IsolatedHostTest
                                             event.getClassName(), event.getTestCount());
                                     break;
                                 case TOPIC_RUN_FINISHED:
-                                    listener.testRunEnded(
-                                            event.getElapsedTime(), new HashMap<String, Metric>());
                                     break;
                                 default:
                             }
@@ -504,6 +510,14 @@ public class IsolatedHostTest
                 }
             } catch (SocketTimeoutException e) {
                 listener.testRunFailed(StreamUtil.getStackTrace(e));
+            } finally {
+                try (FileInputStreamSource source =
+                        new FileInputStreamSource(mSubprocessLog, true)) {
+                    listener.testLog("isolated-java-logs", LogDataType.TEXT, source);
+                }
+                listener.testRunEnded(
+                        Duration.between(Instant.now(), start).toMillis(),
+                        new HashMap<String, Metric>());
             }
         }
     }
