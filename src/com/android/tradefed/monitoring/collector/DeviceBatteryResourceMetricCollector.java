@@ -18,7 +18,6 @@ package com.android.tradefed.monitoring.collector;
 
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.device.IDeviceManager;
-import com.android.tradefed.log.LogUtil.CLog;
 
 import com.google.dualhomelab.monitoringagent.resourcemonitoring.Metric;
 import com.google.dualhomelab.monitoringagent.resourcemonitoring.Resource;
@@ -73,16 +72,15 @@ public class DeviceBatteryResourceMetricCollector implements IResourceMetricColl
         if (!response.isPresent()) {
             return List.of();
         }
+        final Matcher matcher = BATTERY_PATTERN.matcher(response.get());
+        if (!matcher.find()) {
+            return List.of();
+        }
         final Resource.Builder builder =
                 Resource.newBuilder()
                         .setResourceName(BATTERY_RESOURCE_NAME)
                         .setTimestamp(ResourceMetricUtil.GetCurrentTimestamp());
-        final Matcher matcher = BATTERY_PATTERN.matcher(response.get());
-        while (matcher.find()) {
-            if (matcher.group(FIELD_GROUP) == null || matcher.group(VALUE_GROUP) == null) {
-                CLog.d("Failed to get matcher groups for input: " + matcher.group());
-                continue;
-            }
+        do {
             Metric.Builder metricBuilder = Metric.newBuilder();
             metricBuilder.setTag(matcher.group(FIELD_GROUP));
             if (Objects.equals(matcher.group(FIELD_GROUP), TEMPERATURE)) {
@@ -94,7 +92,7 @@ public class DeviceBatteryResourceMetricCollector implements IResourceMetricColl
                         ResourceMetricUtil.RoundedMetricValue(matcher.group(VALUE_GROUP)));
             }
             builder.addMetric(metricBuilder);
-        }
+        } while (matcher.find());
         return List.of(builder.build());
     }
 }
