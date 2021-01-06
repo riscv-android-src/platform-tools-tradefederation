@@ -68,23 +68,22 @@ public class DeviceStorageAgeResourceMetricCollector implements IResourceMetricC
             return List.of();
         }
         final Matcher matcher = STORAGE_AGE_PATTERN.matcher(response.get());
+        if (!matcher.find()) {
+            return List.of();
+        }
         Resource.Builder builder =
                 Resource.newBuilder()
                         .setResourceName(STORAGE_AGE_RESOURCE_NAME)
-                        .setTimestamp(ResourceMetricUtil.GetCurrentTimestamp());
-        if (matcher.find()
-                && matcher.group(LIFE_A_TAG) != null
-                && matcher.group(LIFE_B_TAG) != null) {
-            builder.addMetric(
-                    Metric.newBuilder()
-                            .setTag(AGE_TAG)
-                            .setValue(
-                                    Math.max(
-                                            ResourceMetricUtil.RoundedMetricValue(
-                                                    matcher.group(LIFE_A_TAG)),
-                                            ResourceMetricUtil.RoundedMetricValue(
-                                                    matcher.group(LIFE_B_TAG)))));
-        }
+                        .setTimestamp(ResourceMetricUtil.GetCurrentTimestamp())
+                        .addMetric(
+                                Metric.newBuilder()
+                                        .setTag(AGE_TAG)
+                                        .setValue(
+                                                Math.max(
+                                                        ResourceMetricUtil.RoundedMetricValue(
+                                                                matcher.group(LIFE_A_TAG)),
+                                                        ResourceMetricUtil.RoundedMetricValue(
+                                                                matcher.group(LIFE_B_TAG)))));
         return List.of(builder.build());
     }
 
