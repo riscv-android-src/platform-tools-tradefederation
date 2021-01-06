@@ -54,6 +54,7 @@ public class ClusterHostUtil {
     static final String EMULATOR_SERIAL_PREFIX = "emulator-";
     static final String NULL_DEVICE_SERIAL_PLACEHOLDER = "(no device serial)";
     static final String UNKNOWN = "UNKNOWN";
+    static final String TRADEFED = "TRADEFED";
 
     private static long sTfStartTime = getCurrentTimeMillis();
 
@@ -322,5 +323,9 @@ public class ClusterHostUtil {
         }
 
         return ClusterClient;
+    }
+
+    public static String getTestHarness() {
+        return TRADEFED;
     }
 }
