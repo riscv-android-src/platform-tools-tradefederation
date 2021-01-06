@@ -56,6 +56,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -139,7 +140,7 @@ public class IsolatedHostTest
     @Option(
             name = "exclude-paths",
             description = "The (prefix) paths to exclude from searching in the jars.")
-    private Set<String> mExcludePaths = new HashSet<>();
+    private Set<String> mExcludePaths = new HashSet<>(Arrays.asList("org/junit"));
 
     @Option(
             name = "java-folder",
