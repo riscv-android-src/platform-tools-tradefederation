@@ -86,7 +86,6 @@ public class ResultAggregator extends CollectingTestListener {
     private EventsLoggerListener mDetailedEventsLogger;
 
     public ResultAggregator(List<ITestInvocationListener> listeners, RetryStrategy strategy) {
-        mAllForwarder = new ResultAndLogForwarder(listeners);
 
         List<ITestInvocationListener> supportDetails =
                 listeners
@@ -114,6 +113,10 @@ public class ResultAggregator extends CollectingTestListener {
 
         mAggregatedForwarder = new ResultAndLogForwarder(noSupportDetails);
         mDetailedForwarder = new ResultAndLogForwarder(supportDetails);
+        List<ITestInvocationListener> allListeners = new ArrayList<>(listeners);
+        allListeners.add(mDetailedEventsLogger);
+        allListeners.add(mAggregatedEventsLogger);
+        mAllForwarder = new ResultAndLogForwarder(allListeners);
 
         mRetryStrategy = strategy;
         MergeStrategy mergeStrategy = MergeStrategy.getMergeStrategy(mRetryStrategy);
@@ -530,5 +533,14 @@ public class ResultAggregator extends CollectingTestListener {
                 CLog.e(e);
             }
         }
+        FileUtil.deleteFile(eventsLog);
+    }
+
+    @VisibleForTesting
+    protected File[] getEventsLogs() {
+        File[] logs = new File[2];
+        logs[0] = mAggregatedEventsLogger.getLoggedEvents();
+        logs[1] = mDetailedEventsLogger.getLoggedEvents();
+        return logs;
     }
 }
