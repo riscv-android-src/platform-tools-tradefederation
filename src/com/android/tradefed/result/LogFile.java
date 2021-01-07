@@ -15,10 +15,14 @@
  */
 package com.android.tradefed.result;
 
-/**
- * Class to hold the metadata for a saved log file.
- */
-public class LogFile {
+import com.android.tradefed.build.BuildSerializedVersion;
+
+import java.io.Serializable;
+
+/** Class to hold the metadata for a saved log file. */
+public class LogFile implements Serializable {
+    private static final long serialVersionUID = BuildSerializedVersion.VERSION;
+
     private final String mPath;
     private final String mUrl;
     private final boolean mIsText;
