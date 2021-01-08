@@ -16,6 +16,9 @@
 package com.android.tradefed.build;
 
 import com.android.annotations.VisibleForTesting;
+import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
+import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.remote.ExtendedFile;
 import com.android.tradefed.dependency.TestDependencyResolver;
@@ -26,6 +29,8 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.logger.CurrentInvocation;
 import com.android.tradefed.invoker.logger.CurrentInvocation.InvocationInfo;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
+import com.android.tradefed.targetprep.DeviceFlashPreparer;
+import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.FlashingResourceUtil;
@@ -33,12 +38,16 @@ import com.android.tradefed.util.FlashingResourceUtil;
 import java.io.File;
 import java.io.IOException;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
 /** A new type of provider that allows to get all the dependencies for a test. */
 public class DependenciesResolver
-        implements IBuildProvider, IDeviceBuildProvider, IInvocationContextReceiver {
+        implements IBuildProvider,
+                IDeviceBuildProvider,
+                IInvocationContextReceiver,
+                IConfigurationReceiver {
 
     @Option(name = "build-id", description = "build id to supply.")
     private String mBuildId = "0";
@@ -55,18 +64,9 @@ public class DependenciesResolver
     @Option(name = "dependency", description = "The set of dependency to provide for the test")
     private Map<String, File> mDependencies = new LinkedHashMap<>();
 
-    // TODO(b/157936948): Remove those three options when they are no longer injected
-    @Option(name = "hostname")
-    private String mHostName = null;
-
-    @Option(name = "protocol")
-    private String mProtocol = null;
-
-    @Option(name = "use-build-api")
-    private boolean mUseBuildApi = true;
-
     private File mTestsDir;
     private IInvocationContext mInvocationContext;
+    private IConfiguration mConfiguration;
 
     @Override
     public IBuildInfo getBuild(ITestDevice device)
@@ -77,6 +77,12 @@ public class DependenciesResolver
         build.setBuildBranch(mBranch);
         build.setBuildFlavor(mBuildFlavor);
         Map<String, File> mCopiedDependencies = new LinkedHashMap<>(mDependencies);
+        // Complete flashing dependencies
+        if (isFlasherEnabled(mConfiguration.getTargetPreparers())) {
+            completeFlashingDependencies(mCopiedDependencies);
+        }
+        // TODO: Resolve the extra files
+
         // Handle the flashing files
         FlashingResourceUtil.setUpFlashingResources(build, mCopiedDependencies);
         // Handle the remaining files
@@ -124,6 +130,11 @@ public class DependenciesResolver
         mInvocationContext = invocationContext;
     }
 
+    @Override
+    public void setConfiguration(IConfiguration configuration) {
+        mConfiguration = configuration;
+    }
+
     @VisibleForTesting
     public final Map<String, File> getDependencies() {
         return mDependencies;
@@ -132,5 +143,33 @@ public class DependenciesResolver
     @VisibleForTesting
     ExecutionFiles getInvocationFiles() {
         return CurrentInvocation.getInvocationFiles();
+    }
+
+    /** Returns true if a flasher is present and enabled for the run. */
+    private boolean isFlasherEnabled(List<ITargetPreparer> preparers) {
+        boolean flashing = false;
+        for (ITargetPreparer p : preparers) {
+            if (p instanceof DeviceFlashPreparer && !((DeviceFlashPreparer) p).isDisabled()) {
+                flashing = true;
+            }
+        }
+        return flashing;
+    }
+
+    private void completeFlashingDependencies(Map<String, File> dependencies) {
+        if (dependencies.containsKey(BuildInfoFileKey.DEVICE_IMAGE.getFileKey())) {
+            return;
+        }
+        // Complete the dependencies to flash the device
+        String baseLink = String.format("ab://%s/%s/%s/", mBranch, mBuildFlavor, mBuildId);
+        dependencies.put(
+                BuildInfoFileKey.DEVICE_IMAGE.getFileKey(), new File(baseLink + ".*-img-.*.zip"));
+        dependencies.put(
+                BuildInfoFileKey.BOOTLOADER_IMAGE.getFileKey(),
+                new File(baseLink + ".*bootloader.img"));
+        dependencies.put(
+                BuildInfoFileKey.BASEBAND_IMAGE.getFileKey(), new File(baseLink + ".*radio.img"));
+        dependencies.put(
+                BuildInfoFileKey.RAMDISK_IMAGE.getFileKey(), new File(baseLink + ".*ramdisk.img"));
     }
 }
