@@ -105,12 +105,7 @@ public class ClusterDeviceMonitor implements IDeviceMonitor {
             final ClusterHostEvent.Builder builder =
                     new ClusterHostEvent.Builder()
                             .setHostEventType(ClusterHostEvent.HostEventType.DeviceSnapshot)
-                            .setHostName(ClusterHostUtil.getHostName())
-                            .setTfVersion(ClusterHostUtil.getTfVersion())
                             .setData(getAdditionalHostInfo())
-                            .setData(
-                                    ClusterHostEvent.HOST_IP_KEY,
-                                    ClusterHostUtil.getHostIpAddress())
                             .setData(
                                     ClusterHostEvent.LABEL_KEY,
                                     String.join(",", getClusterOptions().getLabels()))
