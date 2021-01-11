@@ -36,6 +36,8 @@ import com.android.tradefed.device.cloud.GceAvdInfo;
 import com.android.tradefed.device.cloud.GceManager;
 import com.android.tradefed.device.cloud.ManagedRemoteDevice;
 import com.android.tradefed.device.cloud.RemoteFileUtil;
+import com.android.tradefed.error.IHarnessException;
+import com.android.tradefed.invoker.logger.CurrentInvocation;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.ITestLogger;
@@ -45,6 +47,7 @@ import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.error.ErrorIdentifier;
 import com.android.tradefed.result.proto.FileProtoResultReporter;
 import com.android.tradefed.result.proto.ProtoResultParser;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
@@ -56,6 +59,8 @@ import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
+import com.android.tradefed.util.SerializationUtil;
+import com.android.tradefed.util.SubprocessExceptionParser;
 import com.android.tradefed.util.SystemUtil;
 import com.android.tradefed.util.TimeUtil;
 import com.android.tradefed.util.proto.TestRecordProtoUtil;
@@ -381,7 +386,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
             }
         }
 
-        // If not result in progress are reported, parse the full results at the end.
+        // If no result in progress are reported, parse the full results at the end.
         if (!config.getCommandOptions().shouldReportModuleProgression()) {
             fetchAndProcessResults(
                     stillRunning,
@@ -390,17 +395,38 @@ public class RemoteInvocationExecution extends InvocationExecution {
                     options,
                     runUtil,
                     mRemoteTradefedDir);
-        } else {
-            if (!mProtoParser.invocationEndedReached()) {
-                String message =
-                        String.format(
-                                "Parsing of results protos might be incomplete: invocation ended "
-                                        + "of remote execution was not found. "
-                                        + TRADEFED_EARLY_TERMINATION,
-                                mRemoteConsoleStdErr);
-                currentInvocationListener.invocationFailed(
-                        createInvocationFailure(message, FailureStatus.INFRA_FAILURE));
+        } else if (!mProtoParser.invocationEndedReached()) {
+            String message =
+                    String.format(
+                            "Parsing of results protos might be incomplete: invocation ended "
+                                    + "of remote execution was not found. "
+                                    + TRADEFED_EARLY_TERMINATION,
+                            mRemoteConsoleStdErr);
+            String exceptionRemoteFilePath =
+                    SubprocessExceptionParser.getPathFromStderr(mRemoteConsoleStdErr);
+            FailureDescription failureDescription =
+                    createInvocationFailure(message, FailureStatus.INFRA_FAILURE);
+            if (exceptionRemoteFilePath != null) {
+                File remoteSerialized =
+                        RemoteFileUtil.fetchRemoteFile(
+                                info,
+                                options,
+                                runUtil,
+                                PULL_RESULT_TIMEOUT,
+                                exceptionRemoteFilePath);
+                if (remoteSerialized != null) {
+                    try {
+                        Throwable obj =
+                                (Throwable) SerializationUtil.deserialize(remoteSerialized, true);
+                        failureDescription =
+                                createInvocationFailure(obj, FailureStatus.INFRA_FAILURE);
+                    } catch (IOException e) {
+                        // Ignored
+                        CLog.w("Could not parse the stderr as a particular exception.");
+                    }
+                }
             }
+            currentInvocationListener.invocationFailed(failureDescription);
         }
     }
 
@@ -726,10 +752,22 @@ public class RemoteInvocationExecution extends InvocationExecution {
         return failure;
     }
 
-    private FailureDescription createInvocationFailure(Exception e, FailureStatus status) {
-        FailureDescription failure = FailureDescription.create(e.getMessage());
-        failure.setFailureStatus(status);
-        failure.setCause(e);
+    private FailureDescription createInvocationFailure(
+            Throwable exception, FailureStatus defaultStatus) {
+        ErrorIdentifier id = null;
+        if (exception instanceof IHarnessException) {
+            id = ((IHarnessException) exception).getErrorId();
+        }
+        String message = exception.getMessage();
+        if (message == null) {
+            message = "No error message";
+        }
+        FailureDescription failure =
+                CurrentInvocation.createFailure(message, id).setCause(exception);
+        if (id == null) {
+            // Use default status if none available
+            failure.setFailureStatus(defaultStatus);
+        }
         return failure;
     }
 }
