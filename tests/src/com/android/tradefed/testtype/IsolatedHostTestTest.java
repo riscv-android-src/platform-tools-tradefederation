@@ -158,21 +158,26 @@ public class IsolatedHostTestTest {
         setter.setOptionValue("use-robolectric-resources", "false");
     }
 
-    @Test
-    public void testSimpleFailingTestLifecycle() throws Exception {
+    private OptionSetter setUpSimpleMockJarTest(String jarName) throws Exception {
         OptionSetter setter = new OptionSetter(mHostTest);
-        getJarResource(
-                "/referenceTests/SimpleFailingTest.jar", mMockTestDir, "SimpleFailingTest.jar");
-        setter.setOptionValue("jar", "SimpleFailingTest.jar");
-        setter.setOptionValue("exclude-paths", "org/junit");
-        setter.setOptionValue("exclude-paths", "junit");
+        getJarResource("/referenceTests/" + jarName, mMockTestDir, jarName);
         doReturn(mMockTestDir).when(mMockBuildInfo).getFile(BuildInfoFileKey.HOST_LINKED_DIR);
         doReturn(mMockTestDir).when(mMockBuildInfo).getFile(BuildInfoFileKey.TESTDIR_IMAGE);
-        TestInformation testInfo = TestInformation.newBuilder().build();
-        TestDescription test =
-                new TestDescription(
-                        "com.android.tradefed.testtype.isolation.SimpleFailingTest", "test2Plus2");
+        setter.setOptionValue("jar", jarName);
+        setter.setOptionValue("exclude-paths", "org/junit");
+        setter.setOptionValue("exclude-paths", "junit");
+        return setter;
+    }
 
+    @Test
+    public void testSimpleFailingTestLifecycle() throws Exception {
+        final String jarName = "SimpleFailingTest.jar";
+        final String className = "com.android.tradefed.referencetests.SimpleFailingTest";
+        OptionSetter setter = setUpSimpleMockJarTest(jarName);
+        TestInformation testInfo = TestInformation.newBuilder().build();
+        TestDescription test = new TestDescription(className, "test2Plus2");
+
+        // One failing test flow
         mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
         mListener.testStarted(EasyMock.eq(test), EasyMock.anyInt());
         mListener.testFailed(EasyMock.eq(test), (String) EasyMock.anyObject());
@@ -191,21 +196,246 @@ public class IsolatedHostTestTest {
 
     @Test
     public void testSimplePassingTestLifecycle() throws Exception {
-        OptionSetter setter = new OptionSetter(mHostTest);
-        getJarResource(
-                "/referenceTests/SimplePassingTest.jar", mMockTestDir, "SimplePassingTest.jar");
-        setter.setOptionValue("jar", "SimplePassingTest.jar");
-        setter.setOptionValue("exclude-paths", "org/junit");
-        setter.setOptionValue("exclude-paths", "junit");
-        doReturn(mMockTestDir).when(mMockBuildInfo).getFile(BuildInfoFileKey.HOST_LINKED_DIR);
-        doReturn(mMockTestDir).when(mMockBuildInfo).getFile(BuildInfoFileKey.TESTDIR_IMAGE);
+        final String jarName = "SimplePassingTest.jar";
+        final String className = "com.android.tradefed.referencetests.SimplePassingTest";
+        OptionSetter setter = setUpSimpleMockJarTest(jarName);
         TestInformation testInfo = TestInformation.newBuilder().build();
-        TestDescription test =
-                new TestDescription(
-                        "com.android.tradefed.testtype.isolation.SimplePassingTest", "test2Plus2");
+        TestDescription test = new TestDescription(className, "test2Plus2");
 
+        // One passing test flow
         mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
         mListener.testStarted(EasyMock.eq(test), EasyMock.anyInt());
+        mListener.testEnded(
+                EasyMock.eq(test),
+                EasyMock.anyInt(),
+                (HashMap<String, Metric>) EasyMock.anyObject());
+        mListener.testLog(
+                (String) EasyMock.anyObject(), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+
+        EasyMock.replay(mListener);
+        mHostTest.run(testInfo, mListener);
+        EasyMock.verify(mListener);
+    }
+
+    @Test
+    public void testIncludeFilterByMethodLifecycle() throws Exception {
+        final String jarName = "OnePassingOneFailingTest.jar";
+        final String className = "com.android.tradefed.referencetests.OnePassingOneFailingTest";
+        OptionSetter setter = setUpSimpleMockJarTest(jarName);
+
+        mHostTest.addIncludeFilter(className + "#test1Passing");
+        TestInformation testInfo = TestInformation.newBuilder().build();
+        TestDescription test = new TestDescription(className, "test1Passing");
+
+        // One passing test flow
+        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
+        mListener.testStarted(EasyMock.eq(test), EasyMock.anyInt());
+        mListener.testEnded(
+                EasyMock.eq(test),
+                EasyMock.anyInt(),
+                (HashMap<String, Metric>) EasyMock.anyObject());
+        mListener.testLog(
+                (String) EasyMock.anyObject(), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+
+        EasyMock.replay(mListener);
+        mHostTest.run(testInfo, mListener);
+        EasyMock.verify(mListener);
+    }
+
+    @Test
+    public void testIncludeFilterByClassLifecycle() throws Exception {
+        final String jarName = "OnePassingOneFailingTest.jar";
+        final String className = "com.android.tradefed.referencetests.OnePassingOneFailingTest";
+        OptionSetter setter = setUpSimpleMockJarTest(jarName);
+
+        mHostTest.addIncludeFilter(className);
+        TestInformation testInfo = TestInformation.newBuilder().build();
+        TestDescription test1 = new TestDescription(className, "test1Passing");
+        TestDescription test2 = new TestDescription(className, "test2Failing");
+
+        // One passing test followed by one failing test flow
+        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(2));
+        mListener.testStarted(EasyMock.eq(test1), EasyMock.anyInt());
+        mListener.testEnded(
+                EasyMock.eq(test1),
+                EasyMock.anyInt(),
+                (HashMap<String, Metric>) EasyMock.anyObject());
+        mListener.testStarted(EasyMock.eq(test2), EasyMock.anyInt());
+        mListener.testFailed(EasyMock.eq(test2), (String) EasyMock.anyObject());
+        mListener.testEnded(
+                EasyMock.eq(test2),
+                EasyMock.anyInt(),
+                (HashMap<String, Metric>) EasyMock.anyObject());
+        mListener.testLog(
+                (String) EasyMock.anyObject(), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+
+        EasyMock.replay(mListener);
+        mHostTest.run(testInfo, mListener);
+        EasyMock.verify(mListener);
+    }
+
+    @Test
+    public void testIncludeFilterByModuleLifecycle() throws Exception {
+        final String jarName = "OnePassingOneFailingTest.jar";
+        final String className = "com.android.tradefed.referencetests.OnePassingOneFailingTest";
+        OptionSetter setter = setUpSimpleMockJarTest(jarName);
+
+        mHostTest.addIncludeFilter("com.android.tradefed.referencetests");
+        TestInformation testInfo = TestInformation.newBuilder().build();
+        TestDescription test1 = new TestDescription(className, "test1Passing");
+        TestDescription test2 = new TestDescription(className, "test2Failing");
+
+        // One passing test followed by one failing test flow
+        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(2));
+        mListener.testStarted(EasyMock.eq(test1), EasyMock.anyInt());
+        mListener.testEnded(
+                EasyMock.eq(test1),
+                EasyMock.anyInt(),
+                (HashMap<String, Metric>) EasyMock.anyObject());
+        mListener.testStarted(EasyMock.eq(test2), EasyMock.anyInt());
+        mListener.testFailed(EasyMock.eq(test2), (String) EasyMock.anyObject());
+        mListener.testEnded(
+                EasyMock.eq(test2),
+                EasyMock.anyInt(),
+                (HashMap<String, Metric>) EasyMock.anyObject());
+        mListener.testLog(
+                (String) EasyMock.anyObject(), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+
+        EasyMock.replay(mListener);
+        mHostTest.run(testInfo, mListener);
+        EasyMock.verify(mListener);
+    }
+
+    @Test
+    public void testExcludeFilterByMethodLifecycle() throws Exception {
+        final String jarName = "OnePassingOneFailingTest.jar";
+        final String className = "com.android.tradefed.referencetests.OnePassingOneFailingTest";
+        OptionSetter setter = setUpSimpleMockJarTest(jarName);
+
+        mHostTest.addExcludeFilter(className + "#test2Failing");
+        TestInformation testInfo = TestInformation.newBuilder().build();
+        TestDescription test = new TestDescription(className, "test1Passing");
+
+        // One passing test flow
+        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
+        mListener.testStarted(EasyMock.eq(test), EasyMock.anyInt());
+        mListener.testEnded(
+                EasyMock.eq(test),
+                EasyMock.anyInt(),
+                (HashMap<String, Metric>) EasyMock.anyObject());
+        mListener.testLog(
+                (String) EasyMock.anyObject(), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+
+        EasyMock.replay(mListener);
+        mHostTest.run(testInfo, mListener);
+        EasyMock.verify(mListener);
+    }
+
+    @Test
+    public void testExcludeFilterByClassLifecycle() throws Exception {
+        final String jarName = "OnePassingOneFailingTest.jar";
+        final String className = "com.android.tradefed.referencetests.OnePassingOneFailingTest";
+        OptionSetter setter = setUpSimpleMockJarTest(jarName);
+
+        mHostTest.addExcludeFilter(className);
+        TestInformation testInfo = TestInformation.newBuilder().build();
+        TestDescription test =
+                new TestDescription("org.junit.runner.manipulation.Filter", "initializationError");
+
+        // Typical no tests found flow
+        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
+        mListener.testStarted(EasyMock.eq(test), EasyMock.anyInt());
+        mListener.testFailed(EasyMock.eq(test), (String) EasyMock.anyObject());
+        mListener.testEnded(
+                EasyMock.eq(test),
+                EasyMock.anyInt(),
+                (HashMap<String, Metric>) EasyMock.anyObject());
+        mListener.testLog(
+                (String) EasyMock.anyObject(), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+
+        EasyMock.replay(mListener);
+        mHostTest.run(testInfo, mListener);
+        EasyMock.verify(mListener);
+    }
+
+    @Test
+    public void testExcludeFilterByModuleLifecycle() throws Exception {
+        final String jarName = "OnePassingOneFailingTest.jar";
+        final String className = "com.android.tradefed.referencetests.OnePassingOneFailingTest";
+        OptionSetter setter = setUpSimpleMockJarTest(jarName);
+
+        mHostTest.addExcludeFilter("com.android.tradefed.referencetests");
+        TestInformation testInfo = TestInformation.newBuilder().build();
+        TestDescription test =
+                new TestDescription("org.junit.runner.manipulation.Filter", "initializationError");
+
+        // Typical no tests found flow
+        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
+        mListener.testStarted(EasyMock.eq(test), EasyMock.anyInt());
+        mListener.testFailed(EasyMock.eq(test), (String) EasyMock.anyObject());
+        mListener.testEnded(
+                EasyMock.eq(test),
+                EasyMock.anyInt(),
+                (HashMap<String, Metric>) EasyMock.anyObject());
+        mListener.testLog(
+                (String) EasyMock.anyObject(), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+
+        EasyMock.replay(mListener);
+        mHostTest.run(testInfo, mListener);
+        EasyMock.verify(mListener);
+    }
+
+    @Test
+    public void testConflictingFilterLifecycle() throws Exception {
+        final String jarName = "OnePassingOneFailingTest.jar";
+        final String className = "com.android.tradefed.referencetests.OnePassingOneFailingTest";
+        OptionSetter setter = setUpSimpleMockJarTest(jarName);
+
+        mHostTest.addIncludeFilter(className + "#test1Passing");
+        mHostTest.addIncludeFilter(className + "#test2Failing");
+        mHostTest.addExcludeFilter(className + "#test2Failing");
+        TestInformation testInfo = TestInformation.newBuilder().build();
+        TestDescription test = new TestDescription(className, "test1Passing");
+
+        // One passing test flow
+        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
+        mListener.testStarted(EasyMock.eq(test), EasyMock.anyInt());
+        mListener.testEnded(
+                EasyMock.eq(test),
+                EasyMock.anyInt(),
+                (HashMap<String, Metric>) EasyMock.anyObject());
+        mListener.testLog(
+                (String) EasyMock.anyObject(), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+
+        EasyMock.replay(mListener);
+        mHostTest.run(testInfo, mListener);
+        EasyMock.verify(mListener);
+    }
+
+    @Test
+    public void testConflictingFilterNoTestsLeftLifecycle() throws Exception {
+        final String jarName = "OnePassingOneFailingTest.jar";
+        final String className = "com.android.tradefed.referencetests.OnePassingOneFailingTest";
+        OptionSetter setter = setUpSimpleMockJarTest(jarName);
+
+        mHostTest.addIncludeFilter(className + "#test2Failing");
+        mHostTest.addExcludeFilter(className + "#test2Failing");
+        TestInformation testInfo = TestInformation.newBuilder().build();
+        TestDescription test =
+                new TestDescription("org.junit.runner.manipulation.Filter", "initializationError");
+
+        // Typical no tests found flow
+        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
+        mListener.testStarted(EasyMock.eq(test), EasyMock.anyInt());
+        mListener.testFailed(EasyMock.eq(test), (String) EasyMock.anyObject());
         mListener.testEnded(
                 EasyMock.eq(test),
                 EasyMock.anyInt(),
