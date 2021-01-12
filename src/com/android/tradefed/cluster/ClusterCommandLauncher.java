@@ -237,6 +237,10 @@ public class ClusterCommandLauncher
             for (String script : mSetupScripts) {
                 script = StringUtil.expand(script, mEnvVars);
                 CLog.i("Running a setup script: %s", script);
+                File scriptFile = new File(QuotationAwareTokenizer.tokenizeLine(script)[0]);
+                if (scriptFile.isFile()) {
+                    scriptFile.setExecutable(true);
+                }
                 // FIXME: Refactor command execution into a helper function.
                 CommandResult result =
                         runUtil.runTimedCmdWithInput(
