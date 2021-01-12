@@ -931,6 +931,15 @@ public abstract class ITestSuite
                 // Catch RuntimeException to avoid leaking throws that go to the invocation.
                 result.setErrorMessage(e.getMessage());
                 result.setBugreportNeeded(true);
+            } catch (DeviceNotAvailableException dnae) {
+                // Wrap the DNAE to provide a better error message
+                String message =
+                        String.format(
+                                "Device became unavailable after %s due to: %s",
+                                moduleName, dnae.getMessage());
+                DeviceNotAvailableException wrapper =
+                        new DeviceNotAvailableException(message, dnae, dnae.getSerial());
+                throw wrapper;
             }
             if (!CheckStatus.SUCCESS.equals(result.getStatus())) {
                 String errorMessage =
