@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.cluster;
 
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
 
 import com.android.tradefed.config.Configuration;
@@ -176,13 +177,18 @@ public class ClusterCommandLauncherTest {
 
     @Test
     public void testRun_withSetupScripts()
-            throws DeviceNotAvailableException, ConfigurationException {
+            throws DeviceNotAvailableException, ConfigurationException, IOException {
         mInvocationContext.addAllocatedDevice("foo", mMockTestDevice);
+        File scriptFile = new File(mRootDir, "script.py");
+        scriptFile.createNewFile();
+        scriptFile.setExecutable(false);
         final String classpath = String.format("%s/:%s/*", mTfPath, mTfPath);
         mOptionSetter.setOptionValue("cluster:env-var", "TF_PATH", mTfPath.getAbsolutePath());
         mOptionSetter.setOptionValue("cluster:env-var", "FOO", "foo");
         mOptionSetter.setOptionValue("cluster:env-var", "BAR", "bar");
         mOptionSetter.setOptionValue("cluster:env-var", "ZZZ", "zzz");
+        mOptionSetter.setOptionValue(
+                "cluster:setup-script", scriptFile.getAbsolutePath() + " --args ${FOO}");
         mOptionSetter.setOptionValue("cluster:setup-script", "foo bar zzz");
         mOptionSetter.setOptionValue("cluster:setup-script", "${FOO} ${BAR} ${ZZZ}");
         mOptionSetter.setOptionValue("cluster:command-line", COMMAND);
@@ -205,6 +211,14 @@ public class ClusterCommandLauncherTest {
         Mockito.verify(mMockRunUtil).setEnvVariable("BAR", "bar");
         Mockito.verify(mMockRunUtil).setEnvVariable("FOO", "foo");
         Mockito.verify(mMockRunUtil).setEnvVariable("ZZZ", "zzz");
+        Mockito.verify(mMockRunUtil)
+                .runTimedCmdWithInput(
+                        Mockito.anyLong(),
+                        Mockito.isNull(),
+                        Mockito.<File>any(),
+                        Mockito.<File>any(),
+                        asMatchers(new String[] {scriptFile.getAbsolutePath(), "--args", "foo"}));
+        assertTrue(scriptFile.canExecute());
         Mockito.verify(mMockRunUtil, Mockito.times(2))
                 .runTimedCmdWithInput(
                         Mockito.anyLong(),
