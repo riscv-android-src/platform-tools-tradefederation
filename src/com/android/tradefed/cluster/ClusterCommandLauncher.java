@@ -69,6 +69,7 @@ public class ClusterCommandLauncher
     public static final String TF_JAR_DIR = "TF_JAR_DIR";
     public static final String TF_PATH = "TF_PATH";
     public static final String TEST_WORK_DIR = "TEST_WORK_DIR";
+    public static final String ANDROID_SERIALS = "ANDROID_SERIALS";
 
     private static final Duration MAX_EVENT_RECEIVER_WAIT_TIME = Duration.ofMinutes(10);
 
@@ -145,6 +146,8 @@ public class ClusterCommandLauncher
         for (final String key : mEnvVars.keySet()) {
             runUtil.setEnvVariable(key, getEnvVar(key));
         }
+        // Add device serials to env var.
+        runUtil.setEnvVariable(ANDROID_SERIALS, String.join(",", mInvocationContext.getSerials()));
 
         final File testWorkDir = new File(getEnvVar(TEST_WORK_DIR, mRootDir.getAbsolutePath()));
         final File logDir = new File(mRootDir, "logs");

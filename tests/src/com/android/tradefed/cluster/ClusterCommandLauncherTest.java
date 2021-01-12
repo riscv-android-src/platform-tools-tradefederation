@@ -109,6 +109,7 @@ public class ClusterCommandLauncherTest {
     @Test
     public void testRun() throws DeviceNotAvailableException, ConfigurationException, IOException {
         mInvocationContext.addAllocatedDevice("foo", mMockTestDevice);
+        mInvocationContext.addAllocatedDevice("bar", mMockTestDevice);
         final File tfJar = new File(mRootDir, "foo.jar");
         tfJar.createNewFile();
 
@@ -150,6 +151,8 @@ public class ClusterCommandLauncherTest {
         Mockito.verify(mMockRunUtil).setEnvVariable("TF_WORK_DIR", mRootDir.getAbsolutePath());
         Mockito.verify(mMockRunUtil).setEnvVariable("TF_PATH", expandedTfPathValue);
         Mockito.verify(mMockRunUtil)
+                .setEnvVariable("ANDROID_SERIALS", DEVICE_SERIAL + "," + DEVICE_SERIAL);
+        Mockito.verify(mMockRunUtil)
                 .runTimedCmdWithInput(
                         Mockito.eq(10000L),
                         Mockito.isNull(),
@@ -164,6 +167,8 @@ public class ClusterCommandLauncherTest {
                                     "-DFOO=" + mRootDir.getAbsolutePath() + "/foo",
                                     "com.android.tradefed.command.CommandRunner",
                                     COMMAND,
+                                    "--serial",
+                                    DEVICE_SERIAL,
                                     "--serial",
                                     DEVICE_SERIAL
                                 }));
