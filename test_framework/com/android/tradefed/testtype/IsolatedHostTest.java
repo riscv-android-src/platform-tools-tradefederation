@@ -197,6 +197,7 @@ public class IsolatedHostTest
             CLog.v("Using PWD: %s", workDir.getAbsolutePath());
 
             mSubprocessLog = FileUtil.createTempFile("subprocess-logs", "");
+            runner.setRedirectStderrToStdout(true);
 
             Process isolationRunner =
                     runner.runCmdInBackground(Redirect.to(mSubprocessLog), cmdArgs);
