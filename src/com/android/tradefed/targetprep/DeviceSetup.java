@@ -999,13 +999,16 @@ public class DeviceSetup extends BaseTargetPreparer {
         if (mMinExternalStorageKb <= 0) {
             return;
         }
-
+        // Wait for device available to ensure the mounting of sdcard
+        device.waitForDeviceAvailable();
         long freeSpace = device.getExternalStoreFreeSpace();
         if (freeSpace < mMinExternalStorageKb) {
-            throw new DeviceNotAvailableException(String.format(
-                    "External store free space %dK is less than required %dK for device %s",
-                    freeSpace , mMinExternalStorageKb, device.getSerialNumber()),
-                    device.getSerialNumber());
+            throw new DeviceNotAvailableException(
+                    String.format(
+                            "External store free space %dK is less than required %dK for device %s",
+                            freeSpace, mMinExternalStorageKb, device.getSerialNumber()),
+                    device.getSerialNumber(),
+                    DeviceErrorIdentifier.DEVICE_UNEXPECTED_RESPONSE);
         }
     }
 
