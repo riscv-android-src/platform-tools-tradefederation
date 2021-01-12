@@ -113,6 +113,9 @@ public final class IsolationRunner {
 
     private void runTests(OutputStream output, TestParameters params)
             throws ClassNotFoundException, IOException {
+        System.out.println("Filters: ");
+        System.out.println(params.getFilter());
+
         List<Class<?>> klasses = this.getClasses(params);
 
         for (Class<?> klass : klasses) {
