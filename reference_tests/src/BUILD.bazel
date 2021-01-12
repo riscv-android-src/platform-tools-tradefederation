@@ -1,0 +1,77 @@
+load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
+
+filegroup(
+    name = "ResourceTests",
+    srcs = [
+        "//:CopyOnePassingOneFailingTest",
+        "//:CopySimpleFailingTest",
+        "//:CopySimplePassingTest",
+    ],
+)
+
+# Roughshod build of JUnit so that we can link against it.
+# It shouldn't get used after that since at runtime the tests are loaded with
+# Tradefed's version of JUnit, etc.
+# buildifier: disable=bad-recursive-glob
+java_library(
+    name = "junit",
+    srcs = glob([
+        "junit/**/*.java",
+        "hamcrest/hamcrest-core/**/*.java",
+    ]),
+    visibility = ["//visibility:public"],
+)
+
+# Test with a single passing test method
+java_binary(
+    name = "SimplePassingTest",
+    srcs = [
+        "java/com/android/testtype/isolation/SimplePassingTest.java",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//:junit",
+    ],
+)
+
+copy_file(
+    name = "CopySimplePassingTest",
+    src = "//:SimplePassingTest.jar",
+    out = "clean-jars/SimplePassingTest.jar",
+)
+
+# Test with a single failing test method
+java_binary(
+    name = "SimpleFailingTest",
+    srcs = [
+        "java/com/android/testtype/isolation/SimpleFailingTest.java",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//:junit",
+    ],
+)
+
+copy_file(
+    name = "CopySimpleFailingTest",
+    src = "//:SimpleFailingTest.jar",
+    out = "clean-jars/SimpleFailingTest.jar",
+)
+
+# Test with one passing test and one failing test method
+java_binary(
+    name = "OnePassingOneFailingTest",
+    srcs = [
+        "java/com/android/testtype/isolation/OnePassingOneFailingTest.java",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//:junit",
+    ],
+)
+
+copy_file(
+    name = "CopyOnePassingOneFailingTest",
+    src = "//:OnePassingOneFailingTest.jar",
+    out = "clean-jars/OnePassingOneFailingTest.jar",
+)
