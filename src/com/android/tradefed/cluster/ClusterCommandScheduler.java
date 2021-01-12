@@ -37,6 +37,7 @@ import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestSummaryListener;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.result.TestSummary;
@@ -146,6 +147,7 @@ public class ClusterCommandScheduler extends CommandScheduler {
         private Set<String> mDeviceSerials = new HashSet<>();
         private String mSummary;
         private Set<String> processedSummaries = new HashSet<>();
+        private FailureDescription mFailureDescription;
         private String mError;
         private String mSubprocessCommandError;
         private File mWorkDir;
@@ -272,6 +274,18 @@ public class ClusterCommandScheduler extends CommandScheduler {
 
         /** {@inheritDoc} */
         @Override
+        public void invocationFailed(FailureDescription failure) {
+            super.invocationFailed(failure);
+
+            mFailureDescription = failure;
+            mError = failure.getErrorMessage();
+            if (failure.getCause() != null) {
+                mError = StreamUtil.getStackTrace(failure.getCause());
+            }
+        }
+
+        /** {@inheritDoc} */
+        @Override
         public void invocationEnded(long elapsedTime) {
             super.invocationEnded(elapsedTime);
 
@@ -311,6 +325,9 @@ public class ClusterCommandScheduler extends CommandScheduler {
                                     "[%s] Filesystem error on %s. Please notify lab admin.",
                                     errorId.name(), ClusterHostUtil.getHostName());
                 }
+            }
+            if (errorId == null && mFailureDescription != null) {
+                errorId = mFailureDescription.getErrorIdentifier();
             }
 
             String fetchBuildTimeMillis = "-1";
