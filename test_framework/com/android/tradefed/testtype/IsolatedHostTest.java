@@ -503,6 +503,9 @@ public class IsolatedHostTest
                                                 event.getClassName(), event.getTestCount());
                                         break;
                                     case TOPIC_RUN_FINISHED:
+                                        listener.testRunEnded(
+                                                event.getElapsedTime(),
+                                                new HashMap<String, Metric>());
                                         break;
                                     default:
                                 }
@@ -513,12 +516,10 @@ public class IsolatedHostTest
                 }
             }
         } finally {
+            // This will get associated with the module since it can contains several test runs
             try (FileInputStreamSource source = new FileInputStreamSource(mSubprocessLog, true)) {
                 listener.testLog("isolated-java-logs", LogDataType.TEXT, source);
             }
-            listener.testRunEnded(
-                    Duration.between(Instant.now(), start).toMillis(),
-                    new HashMap<String, Metric>());
         }
     }
 
