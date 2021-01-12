@@ -87,7 +87,7 @@ public final class IsolationRunner {
                 case RUNNER_OP_RUN_TEST:
                     try {
                         this.runTests(output, message.getParams());
-                    } catch (ClassNotFoundException e) {
+                    } catch (IOException e) {
                         RunnerReply.newBuilder()
                                 .setRunnerStatus(RunnerStatus.RUNNER_STATUS_FINISHED_ERROR)
                                 .setMessage(e.toString())
@@ -111,8 +111,7 @@ public final class IsolationRunner {
         }
     }
 
-    private void runTests(OutputStream output, TestParameters params)
-            throws ClassNotFoundException, IOException {
+    private void runTests(OutputStream output, TestParameters params) throws IOException {
         System.out.println("Filters: ");
         System.out.println(params.getFilter());
 
