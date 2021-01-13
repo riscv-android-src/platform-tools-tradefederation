@@ -176,12 +176,14 @@ public class MetricUtilTest {
                         any(CollectingByteOutputReceiver.class));
         List<EventMetricData> data = MetricUtil.getEventMetricData(mTestDevice, CONFIG_ID);
         // Resulting list should have two metrics.
-        assertThat(data.size()).comparesEqualTo(2);
+        assertThat(data.size()).isEquivalentAccordingToCompareTo(2);
         // The first metric should correspond to METRIC_2_* as its timestamp is earlier.
-        assertThat(data.get(0).getElapsedTimestampNanos()).comparesEqualTo(METRIC_2_NANOS);
+        assertThat(data.get(0).getElapsedTimestampNanos())
+                .isEquivalentAccordingToCompareTo(METRIC_2_NANOS);
         assertThat(data.get(0).getAtom().hasBleScanResultReceived()).isTrue();
         // The second metric should correspond to METRIC_1_*.
-        assertThat(data.get(1).getElapsedTimestampNanos()).comparesEqualTo(METRIC_1_NANOS);
+        assertThat(data.get(1).getElapsedTimestampNanos())
+                .isEquivalentAccordingToCompareTo(METRIC_1_NANOS);
         assertThat(data.get(1).getAtom().hasBleScanStateChanged()).isTrue();
     }
 
@@ -204,7 +206,7 @@ public class MetricUtilTest {
                         any(CollectingByteOutputReceiver.class));
         List<EventMetricData> data = MetricUtil.getEventMetricData(mTestDevice, CONFIG_ID);
         // Resulting list should be empty.
-        assertThat(data.size()).comparesEqualTo(0);
+        assertThat(data.size()).isEquivalentAccordingToCompareTo(0);
     }
 
     /**
@@ -230,12 +232,14 @@ public class MetricUtilTest {
                         any(CollectingByteOutputReceiver.class));
         List<EventMetricData> data = MetricUtil.getEventMetricData(mTestDevice, CONFIG_ID);
         // Resulting list should have two metrics.
-        assertThat(data.size()).comparesEqualTo(2);
+        assertThat(data.size()).isEquivalentAccordingToCompareTo(2);
         // The first metric should correspond to METRIC_2_* as its timestamp is earlier.
-        assertThat(data.get(0).getElapsedTimestampNanos()).comparesEqualTo(METRIC_2_NANOS);
+        assertThat(data.get(0).getElapsedTimestampNanos())
+                .isEquivalentAccordingToCompareTo(METRIC_2_NANOS);
         assertThat(data.get(0).getAtom().hasBleScanResultReceived()).isTrue();
         // The second metric should correspond to METRIC_1_*.
-        assertThat(data.get(1).getElapsedTimestampNanos()).comparesEqualTo(METRIC_1_NANOS);
+        assertThat(data.get(1).getElapsedTimestampNanos())
+                .isEquivalentAccordingToCompareTo(METRIC_1_NANOS);
         assertThat(data.get(1).getAtom().hasBleScanStateChanged()).isTrue();
     }
 
@@ -261,12 +265,14 @@ public class MetricUtilTest {
                         any(CollectingByteOutputReceiver.class));
         List<EventMetricData> data = MetricUtil.getEventMetricData(mTestDevice, CONFIG_ID);
         // Resulting list should have two metrics.
-        assertThat(data.size()).comparesEqualTo(2);
+        assertThat(data.size()).isEquivalentAccordingToCompareTo(2);
         // The first metric should correspond to METRIC_1_* as its timestamp is earlier.
-        assertThat(data.get(0).getElapsedTimestampNanos()).comparesEqualTo(METRIC_1_NANOS);
+        assertThat(data.get(0).getElapsedTimestampNanos())
+                .isEquivalentAccordingToCompareTo(METRIC_1_NANOS);
         assertThat(data.get(0).getAtom().hasBleScanStateChanged()).isTrue();
         // The second metric should correspond to METRIC_3_*.
-        assertThat(data.get(1).getElapsedTimestampNanos()).comparesEqualTo(METRIC_3_NANOS);
+        assertThat(data.get(1).getElapsedTimestampNanos())
+                .isEquivalentAccordingToCompareTo(METRIC_3_NANOS);
         assertThat(data.get(1).getAtom().hasBleScanStateChanged()).isTrue();
     }
 

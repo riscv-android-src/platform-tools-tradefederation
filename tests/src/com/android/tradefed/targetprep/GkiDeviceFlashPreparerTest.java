@@ -161,7 +161,7 @@ public class GkiDeviceFlashPreparerTest {
         File kernelImage = new File(mTmpDir, "Image.gz");
         mBuildInfo.setFile("Image.gz", kernelImage, "0");
         File ramdiskRecoveryImage = new File(mTmpDir, "ramdisk-recovery.img");
-        mBuildInfo.setFile("ramdisk-recovery.img", ramdiskRecoveryImage, "0");
+        mBuildInfo.setFile("ramdisk.img", ramdiskRecoveryImage, "0");
         EasyMock.replay(mMockDevice, mMockRunUtil);
         try {
             mPreparer.validateGkiBootImg(mMockDevice, mBuildInfo, mTmpDir);
@@ -178,7 +178,7 @@ public class GkiDeviceFlashPreparerTest {
         File kernelImage = new File(mTmpDir, "Image.gz");
         mBuildInfo.setFile("Image.gz", kernelImage, "0");
         File ramdiskRecoveryImage = new File(mTmpDir, "ramdisk-recovery.img");
-        mBuildInfo.setFile("ramdisk-recovery.img", ramdiskRecoveryImage, "0");
+        mBuildInfo.setFile("ramdisk.img", ramdiskRecoveryImage, "0");
         File otaDir = FileUtil.createTempDir("otatool_folder", mTmpDir);
         File tmpFile = new File(otaDir, "test");
         File otatoolsZip = FileUtil.createTempFile("otatools", ".zip", mTmpDir);
@@ -200,7 +200,7 @@ public class GkiDeviceFlashPreparerTest {
         File kernelImage = new File(mTmpDir, "Image.gz");
         mBuildInfo.setFile("Image.gz", kernelImage, "0");
         File ramdiskRecoveryImage = new File(mTmpDir, "ramdisk-recovery.img");
-        mBuildInfo.setFile("ramdisk-recovery.img", ramdiskRecoveryImage, "0");
+        mBuildInfo.setFile("ramdisk.img", ramdiskRecoveryImage, "0");
         File otaDir = FileUtil.createTempDir("otatool_folder", mTmpDir);
         File mkbootimgFile = new File(otaDir, "mkbootimg");
         File otatoolsZip = FileUtil.createTempFile("otatools", ".zip", mTmpDir);
@@ -278,7 +278,6 @@ public class GkiDeviceFlashPreparerTest {
         bootImg.renameTo(new File(mTmpDir, "boot.img"));
         FileUtil.writeToFile("ddd", bootImg);
         mBuildInfo.setFile("gki_boot.img", bootImg, "0");
-        mMockDevice.waitForDeviceOnline();
         mMockDevice.rebootIntoBootloader();
         mMockRunUtil.allowInterrupt(false);
         EasyMock.expect(
@@ -298,13 +297,18 @@ public class GkiDeviceFlashPreparerTest {
     /* Verifies that preparer can flash GKI boot image from a Zip file*/
     @Test
     public void testSetup_Success_FromZip() throws Exception {
-        File gkiDir = FileUtil.createTempDir("gki_folder", mTmpDir);
-        File bootImg = new File(gkiDir, "boot-5.4.img");
+        File imgDir = FileUtil.createTempDir("img_folder", mTmpDir);
+        File bootImg = new File(imgDir, "boot-5.4.img");
+        File vendorBootImg = new File(imgDir, "vendor_boot.img");
+        File dtboImg = new File(imgDir, "dtbo.img");
         FileUtil.writeToFile("ddd", bootImg);
-        File gkiZip = FileUtil.createTempFile("gki_image", ".zip", mTmpDir);
-        ZipUtil.createZip(List.of(bootImg), gkiZip);
-        mBuildInfo.setFile("gki_boot.img", gkiZip, "0");
-        mMockDevice.waitForDeviceOnline();
+        FileUtil.writeToFile("aaa", vendorBootImg);
+        FileUtil.writeToFile("bbb", dtboImg);
+        File imgZip = FileUtil.createTempFile("gki_image", ".zip", mTmpDir);
+        ZipUtil.createZip(List.of(bootImg, vendorBootImg, dtboImg), imgZip);
+        mBuildInfo.setFile("gki_boot.img", imgZip, "0");
+        mBuildInfo.setFile("vendor_boot.img", imgZip, "0");
+        mBuildInfo.setFile("dtbo.img", imgZip, "0");
         mMockDevice.rebootIntoBootloader();
         mMockRunUtil.allowInterrupt(false);
         EasyMock.expect(
@@ -312,6 +316,18 @@ public class GkiDeviceFlashPreparerTest {
                                 EasyMock.eq("flash"),
                                 EasyMock.eq("boot"),
                                 EasyMock.matches(".*boot-5.4.img")))
+                .andReturn(mSuccessResult);
+        EasyMock.expect(
+                        mMockDevice.executeLongFastbootCommand(
+                                EasyMock.eq("flash"),
+                                EasyMock.eq("vendor_boot"),
+                                EasyMock.matches(".*vendor_boot.img")))
+                .andReturn(mSuccessResult);
+        EasyMock.expect(
+                        mMockDevice.executeLongFastbootCommand(
+                                EasyMock.eq("flash"),
+                                EasyMock.eq("dtbo"),
+                                EasyMock.matches(".*dtbo.img")))
                 .andReturn(mSuccessResult);
         mMockRunUtil.allowInterrupt(true);
         doSetupExpectations();
@@ -331,7 +347,6 @@ public class GkiDeviceFlashPreparerTest {
         File deviceImg = FileUtil.createTempFile("device_image", ".zip", mTmpDir);
         FileUtil.writeToFile("not an empty file", deviceImg);
         mBuildInfo.setDeviceImageFile(deviceImg, "0");
-        mMockDevice.waitForDeviceOnline();
         mMockDevice.rebootIntoBootloader();
         mMockRunUtil.allowInterrupt(false);
         EasyMock.expect(
@@ -361,7 +376,6 @@ public class GkiDeviceFlashPreparerTest {
         File deviceImg = FileUtil.createTempFile("device_image", ".zip", mTmpDir);
         FileUtil.writeToFile("not an empty file", deviceImg);
         mBuildInfo.setDeviceImageFile(deviceImg, "0");
-        mMockDevice.waitForDeviceOnline();
         mMockDevice.rebootIntoBootloader();
         mMockRunUtil.allowInterrupt(false);
         EasyMock.expect(

@@ -224,6 +224,11 @@ public class StreamProtoReceiver implements Closeable {
         mParser.completeModuleEvents();
     }
 
+    /** Returns whether or not the invocation failed has been reported. */
+    public boolean hasInvocationFailed() {
+        return mParser.hasInvocationFailed();
+    }
+
     private void parse(TestRecord receivedRecord) {
         if (mStopParsing) {
             CLog.i(

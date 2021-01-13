@@ -17,6 +17,7 @@
 package com.android.tradefed.testtype;
 
 import com.android.ddmlib.IShellOutputReceiver;
+import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.Option;
@@ -24,7 +25,6 @@ import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
-import com.android.tradefed.testtype.coverage.CoverageOptions;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.FileUtil;
 
@@ -33,11 +33,13 @@ import com.google.common.annotations.VisibleForTesting;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 /** The base class of gTest */
 public abstract class GTestBase
@@ -167,6 +169,11 @@ public abstract class GTestBase
             name = "disable-duplicate-test-check",
             description = "If set to true, it will not check that a method is only run once.")
     private boolean mDisableDuplicateCheck = false;
+
+    @Option(
+            name = TestTimeoutEnforcer.TEST_CASE_TIMEOUT_OPTION,
+            description = TestTimeoutEnforcer.TEST_CASE_TIMEOUT_DESCRIPTION)
+    private Duration mTestCaseTimeout = Duration.ofSeconds(0L);
 
     // GTest flags...
     protected static final String GTEST_FLAG_PRINT_TIME = "--gtest_print_time";
@@ -547,6 +554,14 @@ public abstract class GTestBase
     }
 
     /**
+     * Helper which allows derived classes to wrap the gtest command under some other tool (chroot,
+     * strace, gdb, and similar).
+     */
+    protected String getGTestCmdLineWrapper(String fullPath, String flags) {
+        return String.format("%s %s", fullPath, flags);
+    }
+
+    /**
      * Helper method to build the gtest command to run.
      *
      * @param fullPath absolute file system path to gtest binary on device
@@ -559,16 +574,12 @@ public abstract class GTestBase
             gTestCmdLine.append(String.format("LD_LIBRARY_PATH=%s ", mLdLibraryPath));
         }
 
-        if (getCoverageOptions().isCoverageEnabled()) {
-            gTestCmdLine.append("GCOV_PREFIX=/data/misc/trace/testcoverage ");
-        }
-
         // su to requested user
         if (mRunTestAs != null) {
             gTestCmdLine.append(String.format("su %s ", mRunTestAs));
         }
 
-        gTestCmdLine.append(String.format("%s %s", fullPath, flags));
+        gTestCmdLine.append(getGTestCmdLineWrapper(fullPath, flags));
         return gTestCmdLine.toString();
     }
 
@@ -665,18 +676,10 @@ public abstract class GTestBase
      * @return an IConfiguration
      */
     protected IConfiguration getConfiguration() {
-        return mConfiguration;
-    }
-
-    /**
-     * Returns the {@link CoverageOptions} for this test, if it exists. Otherwise returns a default
-     * {@link CoverageOptions} object with all coverage disabled.
-     */
-    protected CoverageOptions getCoverageOptions() {
-        if (mConfiguration != null) {
-            return mConfiguration.getCoverageOptions();
+        if (mConfiguration == null) {
+            return new Configuration("", "");
         }
-        return new CoverageOptions();
+        return mConfiguration;
     }
 
     /**
@@ -685,6 +688,11 @@ public abstract class GTestBase
      * listener.
      */
     protected ITestInvocationListener getGTestListener(ITestInvocationListener listener) {
+        if (mTestCaseTimeout.toMillis() > 0L) {
+            listener =
+                    new TestTimeoutEnforcer(
+                            mTestCaseTimeout.toMillis(), TimeUnit.MILLISECONDS, listener);
+        }
         if (mDisableDuplicateCheck) {
             return listener;
         }

@@ -18,12 +18,14 @@ package com.android.tradefed.invoker;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.proxy.AutomatedReporters;
 import com.android.tradefed.config.proxy.TradefedDelegator;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.invoker.TestInvocation.Stage;
 import com.android.tradefed.log.ITestLogger;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
@@ -103,7 +105,7 @@ public class DelegatedInvocationExecution extends InvocationExecution {
         try (PrintWriter pw = new PrintWriter(dumpConfig)) {
             config.dumpXml(pw);
         }
-        logAndCleanFile(dumpConfig, LogDataType.XML, listener);
+        logAndCleanFile(dumpConfig, LogDataType.HARNESS_CONFIG, listener);
 
         if (config.getConfigurationObject(TradefedDelegator.DELEGATE_OBJECT) == null) {
             throw new ConfigurationException(
@@ -131,6 +133,7 @@ public class DelegatedInvocationExecution extends InvocationExecution {
             IRunUtil runUtil = createRunUtil(receiver.getSocketServerPort());
             CommandResult result = null;
             RuntimeException runtimeException = null;
+            CLog.d("Command line: %s", commandLine);
             try {
                 result =
                         runUtil.runTimedCmd(
@@ -159,14 +162,14 @@ public class DelegatedInvocationExecution extends InvocationExecution {
             }
             if (result.getStatus().equals(CommandStatus.TIMED_OUT)) {
                 throw new HarnessRuntimeException(
-                        "Delegated invocation timed out.", InfraErrorIdentifier.UNDETERMINED);
+                        "Delegated invocation timed out.", InfraErrorIdentifier.INVOCATION_TIMEOUT);
             }
         } finally {
             StreamUtil.close(mStderr);
             StreamUtil.close(mStdout);
-            logAndCleanFile(mStdoutFile, LogDataType.TEXT, listener);
-            logAndCleanFile(mStderrFile, LogDataType.TEXT, listener);
-            logAndCleanFile(mGlobalConfig, LogDataType.XML, listener);
+            logAndCleanFile(mStdoutFile, LogDataType.HARNESS_STD_LOG, listener);
+            logAndCleanFile(mStderrFile, LogDataType.HARNESS_STD_LOG, listener);
+            logAndCleanFile(mGlobalConfig, LogDataType.HARNESS_CONFIG, listener);
         }
     }
 
@@ -186,7 +189,7 @@ public class DelegatedInvocationExecution extends InvocationExecution {
         mGlobalConfig = createGlobalConfig();
         runUtil.setEnvVariable(
                 GlobalConfiguration.GLOBAL_CONFIG_VARIABLE, mGlobalConfig.getAbsolutePath());
-        runUtil.setEnvVariable("PROTO_REPORTING_PORT", Integer.toString(port));
+        runUtil.setEnvVariable(AutomatedReporters.PROTO_REPORTING_PORT, Integer.toString(port));
         return runUtil;
     }
 

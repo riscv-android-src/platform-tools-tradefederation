@@ -1,0 +1,4 @@
+com.android.tradefed.targetprep.CrashCollector
+com.android.tradefed.targetprep.DeviceCleaner
+com.android.tradefed.targetprep.RootTargetPreparer
+com.android.tradefed.targetprep.WifiPreparer

@@ -23,6 +23,7 @@ import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.util.StringEscapeUtils;
 
 import junit.framework.TestCase;
 
@@ -348,8 +349,7 @@ public class GoogleBenchmarkTestTest extends TestCase {
         String filterFlag = mGoogleBenchmarkTest.getFilterFlagForFilters(filters);
         assertEquals(
                 String.format(
-                        " %s=%s",
-                        GoogleBenchmarkTest.GBENCHMARK_FILTER_OPTION, "filter1\\|filter2"),
+                        " %s=%s", GoogleBenchmarkTest.GBENCHMARK_FILTER_OPTION, "filter1|filter2"),
                 filterFlag);
     }
 
@@ -366,8 +366,7 @@ public class GoogleBenchmarkTestTest extends TestCase {
         String filterFlag = mGoogleBenchmarkTest.getFilterFlagForTests(tests);
         assertEquals(
                 String.format(
-                        " %s=%s",
-                        GoogleBenchmarkTest.GBENCHMARK_FILTER_OPTION, "^test1$\\|^test2$"),
+                        " %s=%s", GoogleBenchmarkTest.GBENCHMARK_FILTER_OPTION, "^test1$|^test2$"),
                 filterFlag);
     }
 
@@ -407,7 +406,10 @@ public class GoogleBenchmarkTestTest extends TestCase {
             String incFilterFlag =
                     mGoogleBenchmarkTest.getFilterFlagForFilters(
                             mGoogleBenchmarkTest.getIncludeFilters());
-            EasyMock.expect(mMockITestDevice.executeShellCommand(EasyMock.contains(incFilterFlag)))
+            EasyMock.expect(
+                            mMockITestDevice.executeShellCommand(
+                                    EasyMock.contains(
+                                            StringEscapeUtils.escapeShell(incFilterFlag))))
                     .andReturn(incTests);
         } else {
             EasyMock.expect(
@@ -422,14 +424,17 @@ public class GoogleBenchmarkTestTest extends TestCase {
             String excFilterFlag =
                     mGoogleBenchmarkTest.getFilterFlagForFilters(
                             mGoogleBenchmarkTest.getExcludeFilters());
-            EasyMock.expect(mMockITestDevice.executeShellCommand(EasyMock.contains(excFilterFlag)))
+            EasyMock.expect(
+                            mMockITestDevice.executeShellCommand(
+                                    EasyMock.contains(
+                                            StringEscapeUtils.escapeShell(excFilterFlag))))
                     .andReturn(excTests);
         }
         if (filteredTests != null && filteredTests.size() > 0) {
             // Runningt filtered tests
             String testFilterFlag = mGoogleBenchmarkTest.getFilterFlagForTests(filteredTests);
             mMockITestDevice.executeShellCommand(
-                    EasyMock.contains(testFilterFlag),
+                    EasyMock.contains(StringEscapeUtils.escapeShell(testFilterFlag)),
                     EasyMock.same(mMockReceiver),
                     EasyMock.anyLong(),
                     (TimeUnit) EasyMock.anyObject(),

@@ -20,13 +20,14 @@ import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.device.cloud.AcloudConfigParser.AcloudKeys;
 import com.android.tradefed.device.cloud.GceAvdInfo.GceStatus;
+import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.result.error.DeviceErrorIdentifier;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.CommandResult;
@@ -202,7 +203,8 @@ public class GceManager {
                     mGceAvdInfo = new GceAvdInfo(instanceName, null, errors, GceStatus.BOOT_FAIL);
                     return mGceAvdInfo;
                 }
-                throw new TargetSetupError(errors, mDeviceDescriptor);
+                throw new TargetSetupError(
+                        errors, mDeviceDescriptor, InfraErrorIdentifier.ACLOUD_TIMED_OUT);
             } else if (!CommandStatus.SUCCESS.equals(cmd.getStatus())) {
                 CLog.w("Error when booting the Gce instance, reading output of gce driver");
                 mGceAvdInfo =
@@ -221,7 +223,7 @@ public class GceManager {
                     throw new TargetSetupError(
                             String.format("acloud errors: %s", errors),
                             mDeviceDescriptor,
-                            DeviceErrorIdentifier.FAILED_TO_LAUNCH_GCE);
+                            InfraErrorIdentifier.NO_ACLOUD_REPORT);
                 }
             }
             mGceAvdInfo =
@@ -229,7 +231,11 @@ public class GceManager {
                             reportFile, mDeviceDescriptor, mDeviceOptions.getRemoteAdbPort());
             return mGceAvdInfo;
         } catch (IOException e) {
-            throw new TargetSetupError("failed to create log file", e, mDeviceDescriptor);
+            throw new TargetSetupError(
+                    "failed to create log file",
+                    e,
+                    mDeviceDescriptor,
+                    InfraErrorIdentifier.FAIL_TO_CREATE_FILE);
         } finally {
             FileUtil.deleteFile(reportFile);
         }
@@ -256,10 +262,11 @@ public class GceManager {
     protected List<String> buildGceCmd(File reportFile, IBuildInfo b, String ipDevice) {
         File avdDriverFile = getTestDeviceOptions().getAvdDriverBinary();
         if (!avdDriverFile.exists()) {
-            throw new RuntimeException(
+            throw new HarnessRuntimeException(
                     String.format(
                             "Could not find the Acloud driver at %s",
-                            avdDriverFile.getAbsolutePath()));
+                            avdDriverFile.getAbsolutePath()),
+                    InfraErrorIdentifier.CONFIGURED_ARTIFACT_NOT_FOUND);
         }
         if (!avdDriverFile.canExecute()) {
             // Set the executable bit if needed
@@ -349,10 +356,11 @@ public class GceManager {
     public boolean shutdownGce() {
         if (!getTestDeviceOptions().getAvdDriverBinary().canExecute()) {
             mGceAvdInfo = null;
-            throw new RuntimeException(
+            throw new HarnessRuntimeException(
                     String.format(
                             "GCE launcher %s is invalid",
-                            getTestDeviceOptions().getAvdDriverBinary()));
+                            getTestDeviceOptions().getAvdDriverBinary()),
+                    InfraErrorIdentifier.CONFIGURED_ARTIFACT_NOT_FOUND);
         }
         String instanceName = null;
         boolean notFromGceAvd = false;
