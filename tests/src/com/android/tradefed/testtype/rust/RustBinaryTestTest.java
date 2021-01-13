@@ -28,9 +28,7 @@ import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
-import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.testtype.coverage.CoverageOptions;
-import com.android.tradefed.util.FileUtil;
 
 import org.easymock.EasyMock;
 import org.junit.Before;
@@ -38,10 +36,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-import java.io.File;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /** Unit tests for {@link RustBinaryTest}. */
@@ -296,190 +291,28 @@ public class RustBinaryTestTest {
         callReplayRunVerify();
     }
 
-    /** Test cross-process coverage dump for all native processes */
+    /** Tests that GCOV_PREFIX is set when running with the GCOV coverage toolchain. */
     @Test
-    public void testNativeCoverageAllProcesses() throws Exception {
+    public void testGcovCoverage_GcovPrefixSet() throws Exception {
         mCoverageOptionsSetter.setOptionValue("coverage", "true");
         mCoverageOptionsSetter.setOptionValue("coverage-toolchain", "GCOV");
-        mCoverageOptionsSetter.setOptionValue("coverage-flush", "true");
 
         final String testPath = RustBinaryTest.DEFAULT_TEST_PATH;
         final String test1 = "test1";
-        final String test2 = "test2";
         final String testPath1 = String.format("%s/%s", testPath, test1);
-        final String testPath2 = String.format("%s/%s", testPath, test2);
-        final String coverageTarPath = "/data/misc/trace/coverage.tar";
+        final String[] files = new String[] {test1};
 
-        MockFileUtil.setMockDirContents(mMockITestDevice, testPath, test1, test2);
-        EasyMock.expect(mMockITestDevice.enableAdbRoot()).andReturn(true);
-        EasyMock.expect(mMockITestDevice.enableAdbRoot()).andReturn(true);
-        EasyMock.expect(mMockITestDevice.executeShellCommand("mkdir /data/misc/trace/testcoverage"))
-                .andReturn("");
-        EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
-        EasyMock.expect(mMockITestDevice.executeShellCommand("kill -37 -1")).andReturn("");
-        EasyMock.expect(mMockITestDevice.executeShellCommand("kill -37 -1")).andReturn("");
-        EasyMock.expect(mMockITestDevice.executeShellCommand("kill -37 -1")).andReturn("");
-        // Wait up to 5 minutes for the device to be available after flushing coverage data.
-        mMockITestDevice.waitForDeviceAvailable(5 * 60 * 1000);
-        mMockITestDevice.waitForDeviceAvailable(5 * 60 * 1000);
-        mMockITestDevice.waitForDeviceAvailable(5 * 60 * 1000);
-        EasyMock.expect(mMockITestDevice.executeShellCommand("rm -rf /data/misc/trace/*"))
-                .andReturn("");
+        // Find files
+        MockFileUtil.setMockDirContents(mMockITestDevice, testPath, test1);
         EasyMock.expect(mMockITestDevice.doesFileExist(testPath)).andReturn(true);
         EasyMock.expect(mMockITestDevice.isDirectory(testPath)).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isDirectory(testPath1)).andReturn(false);
-        // report the file as executable
-        EasyMock.expect(mMockITestDevice.isExecutable(testPath1)).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isDirectory(testPath2)).andReturn(false);
-        // report the file as executable
-        EasyMock.expect(mMockITestDevice.isExecutable(testPath2)).andReturn(true);
-        EasyMock.expect(
-                        mMockITestDevice.executeShellCommand(
-                                "find /data/misc/trace -name '*.gcda' | tar -cvf"
-                                        + " /data/misc/trace/coverage.tar -T -"))
-                .andReturn("");
-        EasyMock.expect(
-                        mMockITestDevice.executeShellCommand(
-                                "find /data/misc/trace -name '*.gcda' | tar -cvf"
-                                        + " /data/misc/trace/coverage.tar -T -"))
-                .andReturn("");
-        File tmpFile1 = FileUtil.createTempFile("coverage", ".tar");
-        EasyMock.expect(mMockITestDevice.pullFile(coverageTarPath)).andReturn(tmpFile1);
-        File tmpFile2 = FileUtil.createTempFile("coverage", ".tar");
-        EasyMock.expect(mMockITestDevice.pullFile(coverageTarPath)).andReturn(tmpFile2);
-        mMockITestDevice.deleteFile(coverageTarPath);
-        mMockITestDevice.deleteFile(coverageTarPath);
-        mMockInvocationListener.testLog(
-                EasyMock.eq("null_native_runtime_coverage"),
-                EasyMock.eq(LogDataType.NATIVE_COVERAGE),
-                EasyMock.anyObject());
-        mMockInvocationListener.testLog(
-                EasyMock.eq("null_native_runtime_coverage"),
-                EasyMock.eq(LogDataType.NATIVE_COVERAGE),
-                EasyMock.anyObject());
-        EasyMock.expect(
-                        mMockITestDevice.executeShellCommand(
-                                "find /data/misc/trace -name '*.gcda' -delete"))
-                .andReturn("");
-        EasyMock.expect(
-                        mMockITestDevice.executeShellCommand(
-                                "find /data/misc/trace -name '*.gcda' -delete"))
-                .andReturn("");
-        EasyMock.expect(mMockITestDevice.enableAdbRoot()).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
-
-        String[] files = new String[] {"test1", "test2"};
         EasyMock.expect(mMockITestDevice.getChildren(testPath)).andReturn(files);
-
-        mockCountTests("GCOV_PREFIX=/data/misc/trace/testcoverage " + testPath1, runListOutput(1));
-        mockTestRunStarted("test1", 1);
-        mockShellCommand(test1);
-        mockTestRunEnded();
-        mockCountTests("GCOV_PREFIX=/data/misc/trace/testcoverage " + testPath2, runListOutput(1));
-        mockTestRunStarted("test2", 1);
-        mockShellCommand(test2);
-        mockTestRunEnded();
-        callReplayRunVerify();
-    }
-
-    /** Test cross-process coverage dump for specific processes */
-    @Test
-    public void testNativeCoverageSpecificProcesses() throws Exception {
-        final List<String> processNames = new ArrayList<>();
-        processNames.add("init");
-        processNames.add("surfaceflinger");
-
-        mCoverageOptionsSetter.setOptionValue("coverage", "true");
-        mCoverageOptionsSetter.setOptionValue("coverage-toolchain", "GCOV");
-        mCoverageOptionsSetter.setOptionValue("coverage-flush", "true");
-        for (String processName : processNames) {
-            mCoverageOptionsSetter.setOptionValue("coverage-processes", processName);
-        }
-
-        final String testPath = RustBinaryTest.DEFAULT_TEST_PATH;
-        final String test1 = "test1";
-        final String test2 = "test2";
-        final String testPath1 = String.format("%s/%s", testPath, test1);
-        final String testPath2 = String.format("%s/%s", testPath, test2);
-        final String coverageTarPath = "/data/misc/trace/coverage.tar";
-
-        MockFileUtil.setMockDirContents(mMockITestDevice, testPath, test1, test2);
-        EasyMock.expect(mMockITestDevice.enableAdbRoot()).andReturn(true);
-        EasyMock.expect(mMockITestDevice.enableAdbRoot()).andReturn(true);
-        EasyMock.expect(mMockITestDevice.executeShellCommand("mkdir /data/misc/trace/testcoverage"))
-                .andReturn("");
-        // Get the pids to flush coverage data.
-        EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
-        EasyMock.expect(mMockITestDevice.getProcessPid(processNames.get(0))).andReturn("1");
-        EasyMock.expect(mMockITestDevice.getProcessPid(processNames.get(0))).andReturn("1");
-        EasyMock.expect(mMockITestDevice.getProcessPid(processNames.get(0))).andReturn("1");
-        EasyMock.expect(mMockITestDevice.getProcessPid(processNames.get(1))).andReturn("1000");
-        EasyMock.expect(mMockITestDevice.getProcessPid(processNames.get(1))).andReturn("1000");
-        EasyMock.expect(mMockITestDevice.getProcessPid(processNames.get(1))).andReturn("1000");
-        EasyMock.expect(mMockITestDevice.executeShellCommand("kill -37 1 1000")).andReturn("");
-        EasyMock.expect(mMockITestDevice.executeShellCommand("kill -37 1 1000")).andReturn("");
-        EasyMock.expect(mMockITestDevice.executeShellCommand("kill -37 1 1000")).andReturn("");
-        // Wait up to 5 minutes for the device to be available after flushing coverage data.
-        mMockITestDevice.waitForDeviceAvailable(5 * 60 * 1000);
-        mMockITestDevice.waitForDeviceAvailable(5 * 60 * 1000);
-        mMockITestDevice.waitForDeviceAvailable(5 * 60 * 1000);
-        EasyMock.expect(mMockITestDevice.executeShellCommand("rm -rf /data/misc/trace/*"))
-                .andReturn("");
-        EasyMock.expect(mMockITestDevice.doesFileExist(testPath)).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isDirectory(testPath)).andReturn(true);
         EasyMock.expect(mMockITestDevice.isDirectory(testPath1)).andReturn(false);
-        // report the file as executable
         EasyMock.expect(mMockITestDevice.isExecutable(testPath1)).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isDirectory(testPath2)).andReturn(false);
-        // report the file as executable
-        EasyMock.expect(mMockITestDevice.isExecutable(testPath2)).andReturn(true);
-        EasyMock.expect(
-                        mMockITestDevice.executeShellCommand(
-                                "find /data/misc/trace -name '*.gcda' | tar -cvf"
-                                        + " /data/misc/trace/coverage.tar -T -"))
-                .andReturn("");
-        EasyMock.expect(
-                        mMockITestDevice.executeShellCommand(
-                                "find /data/misc/trace -name '*.gcda' | tar -cvf"
-                                        + " /data/misc/trace/coverage.tar -T -"))
-                .andReturn("");
-        File tmpFile1 = FileUtil.createTempFile("coverage", ".tar");
-        EasyMock.expect(mMockITestDevice.pullFile(coverageTarPath)).andReturn(tmpFile1);
-        File tmpFile2 = FileUtil.createTempFile("coverage", ".tar");
-        EasyMock.expect(mMockITestDevice.pullFile(coverageTarPath)).andReturn(tmpFile2);
-        mMockITestDevice.deleteFile(coverageTarPath);
-        mMockITestDevice.deleteFile(coverageTarPath);
-        mMockInvocationListener.testLog(
-                EasyMock.eq("null_native_runtime_coverage"),
-                EasyMock.eq(LogDataType.NATIVE_COVERAGE),
-                EasyMock.anyObject());
-        mMockInvocationListener.testLog(
-                EasyMock.eq("null_native_runtime_coverage"),
-                EasyMock.eq(LogDataType.NATIVE_COVERAGE),
-                EasyMock.anyObject());
-        EasyMock.expect(
-                        mMockITestDevice.executeShellCommand(
-                                "find /data/misc/trace -name '*.gcda' -delete"))
-                .andReturn("");
-        EasyMock.expect(
-                        mMockITestDevice.executeShellCommand(
-                                "find /data/misc/trace -name '*.gcda' -delete"))
-                .andReturn("");
-        EasyMock.expect(mMockITestDevice.enableAdbRoot()).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isAdbRoot()).andReturn(true);
 
-        String[] files = new String[] {"test1", "test2"};
-        EasyMock.expect(mMockITestDevice.getChildren(testPath)).andReturn(files);
-
-        mockCountTests("GCOV_PREFIX=/data/misc/trace/testcoverage " + testPath1, runListOutput(1));
-        mockTestRunStarted("test1", 1);
-        mockShellCommand(test1);
-        mockTestRunEnded();
-        mockCountTests("GCOV_PREFIX=/data/misc/trace/testcoverage " + testPath2, runListOutput(1));
-        mockTestRunStarted("test2", 1);
-        mockShellCommand(test2);
+        mockCountTests(testPath1, runListOutput(3));
+        mockTestRunStarted("test1", 3);
+        mockShellCommand("GCOV_PREFIX=/data/misc/trace");
         mockTestRunEnded();
         callReplayRunVerify();
     }

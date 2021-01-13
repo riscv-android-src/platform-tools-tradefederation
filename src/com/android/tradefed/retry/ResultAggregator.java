@@ -18,9 +18,12 @@ package com.android.tradefed.retry;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.CollectingTestListener;
+import com.android.tradefed.result.EventsLoggerListener;
 import com.android.tradefed.result.FailureDescription;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -33,9 +36,12 @@ import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.result.retry.ISupportGranularResults;
+import com.android.tradefed.util.FileUtil;
 
 import com.google.common.annotations.VisibleForTesting;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -75,6 +81,10 @@ public class ResultAggregator extends CollectingTestListener {
     // Stores the results from non-module test runs until they are ready to be replayed.
     private final Map<String, List<TestRunResult>> mPureRunResultForAgg = new LinkedHashMap<>();
 
+    private ILogSaver mLogSaver;
+    private EventsLoggerListener mAggregatedEventsLogger;
+    private EventsLoggerListener mDetailedEventsLogger;
+
     public ResultAggregator(List<ITestInvocationListener> listeners, RetryStrategy strategy) {
         mAllForwarder = new ResultAndLogForwarder(listeners);
 
@@ -96,6 +106,11 @@ public class ResultAggregator extends CollectingTestListener {
                                                 || !((ISupportGranularResults) i)
                                                         .supportGranularResults())
                         .collect(Collectors.toList());
+
+        mDetailedEventsLogger = new EventsLoggerListener("detailed-events");
+        supportDetails.add(mDetailedEventsLogger);
+        mAggregatedEventsLogger = new EventsLoggerListener("aggregated-events");
+        noSupportDetails.add(mAggregatedEventsLogger);
 
         mAggregatedForwarder = new ResultAndLogForwarder(noSupportDetails);
         mDetailedForwarder = new ResultAndLogForwarder(supportDetails);
@@ -144,6 +159,12 @@ public class ResultAggregator extends CollectingTestListener {
         super.invocationEnded(elapsedTime);
         // Make sure to forward the logs for the invocation.
         forwardAggregatedInvocationLogs();
+
+        // Log the aggregated events for debugging
+        saveEventsLog(mAggregatedEventsLogger.getLoggedEvents(), "aggregated-events");
+        // Log the detailed events for debugging
+        saveEventsLog(mDetailedEventsLogger.getLoggedEvents(), "detailed-events");
+
         mAllForwarder.invocationEnded(elapsedTime);
     }
 
@@ -152,8 +173,19 @@ public class ResultAggregator extends CollectingTestListener {
      * results.
      */
     public final void forwardAggregatedInvocationLogs() {
-        for (Entry<String, LogFile> invocLog : getNonAssociatedLogFiles().entrySet()) {
-            mAggregatedForwarder.logAssociation(invocLog.getKey(), invocLog.getValue());
+        for (String key : getNonAssociatedLogFiles().keySet()) {
+            for (LogFile log : getNonAssociatedLogFiles().get(key)) {
+                mAggregatedForwarder.logAssociation(key, log);
+            }
+        }
+    }
+
+    public void cleanEventsFiles() {
+        if (mAggregatedEventsLogger != null) {
+            FileUtil.deleteFile(mAggregatedEventsLogger.getLoggedEvents());
+        }
+        if (mDetailedEventsLogger != null) {
+            FileUtil.deleteFile(mDetailedEventsLogger.getLoggedEvents());
         }
     }
 
@@ -182,6 +214,7 @@ public class ResultAggregator extends CollectingTestListener {
     /** {@inheritDoc} */
     @Override
     public void setLogSaver(ILogSaver logSaver) {
+        mLogSaver = logSaver;
         super.setLogSaver(logSaver);
         mAllForwarder.setLogSaver(logSaver);
     }
@@ -254,6 +287,12 @@ public class ResultAggregator extends CollectingTestListener {
     public void testAssumptionFailure(TestDescription test, String trace) {
         super.testAssumptionFailure(test, trace);
         mDetailedForwarder.testAssumptionFailure(test, trace);
+    }
+
+    @Override
+    public void testAssumptionFailure(TestDescription test, FailureDescription failure) {
+        super.testAssumptionFailure(test, failure);
+        mDetailedForwarder.testAssumptionFailure(test, failure);
     }
 
     @Override
@@ -358,6 +397,12 @@ public class ResultAggregator extends CollectingTestListener {
         mAggregatedForwarder.testRunEnded(
                 getCurrentRunResults().getElapsedTime(),
                 getCurrentRunResults().getRunProtoMetrics());
+        // Log all the module only logs
+        for (String key : getModuleLogFiles().keySet()) {
+            for (LogFile log : getModuleLogFiles().get(key)) {
+                mAggregatedForwarder.logAssociation(key, log);
+            }
+        }
         mAggregatedForwarder.testModuleEnded();
         // Ensure we don't carry results from one module to another.
         for (String name : resultNames) {
@@ -466,6 +511,24 @@ public class ResultAggregator extends CollectingTestListener {
             mDetailedForwarder.testRunEnded(
                     mDetailedRunResults.getElapsedTime(), mDetailedRunResults.getRunProtoMetrics());
             mDetailedRunResults = null;
+        }
+    }
+
+    private void saveEventsLog(File eventsLog, String key) {
+        if (eventsLog != null && eventsLog.length() > 0 && mLogSaver != null) {
+            try (FileInputStreamSource source = new FileInputStreamSource(eventsLog, true)) {
+                LogFile logged =
+                        mLogSaver.saveLogData(
+                                eventsLog.getName(),
+                                LogDataType.TF_EVENTS,
+                                source.createInputStream());
+                if (logged != null) {
+                    mAggregatedForwarder.logAssociation(key, logged);
+                    mDetailedForwarder.logAssociation(key, logged);
+                }
+            } catch (IOException e) {
+                CLog.e(e);
+            }
         }
     }
 }

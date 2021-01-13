@@ -31,6 +31,7 @@ public abstract class RustParserTestBase {
     protected static final String RUST_OUTPUT_FILE_1 = "rust_output1.txt";
     protected static final String RUST_OUTPUT_FILE_2 = "rust_output2.txt";
     protected static final String RUST_OUTPUT_FILE_3 = "rust_output3.txt";
+    protected static final String RUST_OUTPUT_FILE_4 = "rust_output4.txt";
     protected static final String RUST_LIST_FILE_1 = "rust_list1.txt";
 
     /**

@@ -49,6 +49,7 @@ import com.android.tradefed.util.hostmetric.IHostMonitor;
 
 import com.google.common.annotations.VisibleForTesting;
 
+
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -91,6 +92,11 @@ public class DeviceManager implements IDeviceManager {
 
     /* the emulator output log name */
     private static final String EMULATOR_OUTPUT = "emulator_log";
+
+    /** the available device timeout to total command timeout ratio. */
+    private static final double AVAILABLE_DEV_TIMEOUT_RATIO = 0.9;
+    /** the max timeout for available device executing command. */
+    private static final long AVAILABLE_DEV_TIMEOUT_MAX_MS = 1000;
 
     /** a {@link DeviceSelectionOptions} that matches any device. Visible for testing. */
     static final IDeviceSelection ANY_DEVICE_OPTIONS = new DeviceSelectionOptions();
@@ -181,6 +187,13 @@ public class DeviceManager implements IDeviceManager {
         description = "path of the fastboot binary to use, default use the one in $PATH."
     )
     private File mFastbootFile = new File("fastboot");
+
+    @Option(
+            name = "enabled-filesystem-check",
+            description =
+                    "Whether or not to check the file system type as part of device storage "
+                            + "readiness")
+    private boolean mMountFileSystemCheckEnabled = false;
 
     private File mUnpackedFastbootDir = null;
     private File mUnpackedFastboot = null;
@@ -738,6 +751,43 @@ public class DeviceManager implements IDeviceManager {
                 return DeviceEvent.FREE_UNKNOWN;
         }
         throw new IllegalStateException("unknown FreeDeviceState");
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public synchronized CommandResult executeCmdOnAvailableDevice(
+            String serial, String command, long timeout, TimeUnit timeUnit) {
+        if (timeUnit.toMillis(timeout) > AVAILABLE_DEV_TIMEOUT_MAX_MS) {
+            // Fail when user tries to execute long run command.
+            CommandResult result = new CommandResult(CommandStatus.FAILED);
+            result.setStderr(
+                    "The maximum timeout value is "
+                            + AVAILABLE_DEV_TIMEOUT_MAX_MS
+                            + " ms, but got "
+                            + timeUnit.toMillis(timeout)
+                            + " ms.");
+            return result;
+        }
+        IManagedTestDevice device = mManagedDeviceList.find(serial);
+        if (device == null) {
+            CommandResult result = new CommandResult(CommandStatus.FAILED);
+            result.setStderr("Can not find the device with serial " + serial);
+            return result;
+        }
+        synchronized (device) {
+            if (!device.getAllocationState().equals(DeviceAllocationState.Available)) {
+                CommandResult result = new CommandResult(CommandStatus.FAILED);
+                result.setStderr("The device is not available to execute the command");
+                return result;
+            }
+            try {
+                return device.executeShellV2Command(command, timeout, timeUnit);
+            } catch (DeviceNotAvailableException e) {
+                CommandResult result = new CommandResult(CommandStatus.FAILED);
+                result.setStderr(e.getMessage());
+                return result;
+            }
+        }
     }
 
     /**
@@ -1603,5 +1653,11 @@ public class DeviceManager implements IDeviceManager {
     @Override
     public void addMonitoringTcpFastbootDevice(String serial, String fastboot_serial) {
         mMonitoringTcpFastbootDevices.put(serial, fastboot_serial);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean isFileSystemMountCheckEnabled() {
+        return mMountFileSystemCheckEnabled;
     }
 }

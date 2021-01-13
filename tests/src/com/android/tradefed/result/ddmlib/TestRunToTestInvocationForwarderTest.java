@@ -55,11 +55,11 @@ public class TestRunToTestInvocationForwarderTest {
         mMockListener.testRunStarted(RUN_NAME, 2);
 
         mMockListener.testStarted(td1);
-        mMockListener.testFailed(td1, "I failed");
+        mMockListener.testFailed(td1, FailureDescription.create("I failed"));
         mMockListener.testEnded(td1, new HashMap<String, Metric>());
 
         mMockListener.testStarted(td2);
-        mMockListener.testFailed(td2, "I failed");
+        mMockListener.testFailed(td2, FailureDescription.create("I failed"));
         mMockListener.testEnded(td2, new HashMap<String, Metric>());
 
         mMockListener.testRunEnded(
@@ -88,7 +88,7 @@ public class TestRunToTestInvocationForwarderTest {
         mMockListener.testRunStarted(RUN_NAME, 2);
 
         mMockListener.testStarted(td1);
-        mMockListener.testFailed(td1, "I failed");
+        mMockListener.testFailed(td1, FailureDescription.create("I failed"));
         mMockListener.testEnded(td1, new HashMap<String, Metric>());
         // Second bad method is not propagated, instead we fail the run
         FailureDescription expectedFailure =
@@ -127,7 +127,7 @@ public class TestRunToTestInvocationForwarderTest {
         mMockListener.testRunStarted(RUN_NAME, 2);
 
         mMockListener.testStarted(td1);
-        mMockListener.testFailed(td1, "I failed");
+        mMockListener.testFailed(td1, FailureDescription.create("I failed"));
         mMockListener.testEnded(td1, new HashMap<String, Metric>());
         // Second bad method is not propagated, instead we fail the run
         FailureDescription expectedFailure =
