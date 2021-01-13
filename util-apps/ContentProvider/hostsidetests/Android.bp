@@ -14,6 +14,7 @@
 
 java_test_host {
     name: "TradefedContentProviderHostTest",
+    visibility: ["//visibility:private"],
     defaults: ["tradefed_errorprone_defaults"],
 
     // Only compile source java files in this jar.

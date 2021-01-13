@@ -33,6 +33,7 @@ import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IAbiReceiver;
 import com.android.tradefed.util.AaptParser;
+import com.android.tradefed.util.AaptParser.AaptVersion;
 import com.android.tradefed.util.AbiFormatter;
 import com.android.tradefed.util.BuildTestsZipUtils;
 
@@ -129,6 +130,14 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
                             + "preparer does not verify if the apks are successfully removed.")
     private boolean mCleanup = true;
 
+    @VisibleForTesting static final String CHECK_MIN_SDK_OPTION = "check-min-sdk";
+
+    @Option(
+            name = CHECK_MIN_SDK_OPTION,
+            description =
+                    "check app's min sdk prior to install and skip if device api level is too low.")
+    private boolean mCheckMinSdk = false;
+
     /** @deprecated use test-file-name instead now that it is a File. */
     @Deprecated
     @Option(
@@ -152,6 +161,9 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
     @Option(name = "instant-mode", description = "Whether or not to install apk in instant mode.")
     private boolean mInstantMode = false;
 
+    @Option(name = "aapt-version", description = "The version of AAPT for APK parsing.")
+    private AaptVersion mAaptVersion = AaptVersion.AAPT;
+
     @Option(
         name = "force-install-mode",
         description =
@@ -163,7 +175,7 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
     private Integer mUserId = null;
     private Boolean mGrantPermission = null;
 
-    private Set<String> mPackagesInstalled = null;
+    private Set<String> mPackagesInstalled = new HashSet<>();
     private TestInformation mTestInfo;
 
     protected void setTestInformation(TestInformation testInfo) {
@@ -178,6 +190,12 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
     /** Adds a file name to the list of apks to installed. */
     public void addTestFileName(String fileName) {
         addTestFile(new File(fileName));
+    }
+
+    /** Helper to parse an apk file with aapt. */
+    @VisibleForTesting
+    AaptParser doAaptParse(File apkFile) {
+        return AaptParser.parse(apkFile);
     }
 
     @VisibleForTesting
@@ -219,6 +237,11 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
     /** If a userId is provided, grantPermission can be set for the apk installation. */
     public void setShouldGrantPermission(boolean shouldGrant) {
         mGrantPermission = shouldGrant;
+    }
+
+    /** Sets the version of AAPT for APK parsing. */
+    public void setAaptVersion(AaptVersion aaptVersion) {
+        mAaptVersion = aaptVersion;
     }
 
     /** Adds one apk installation arg to be used. */
@@ -277,10 +300,6 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
             CLog.i("No test apps to install, skipping");
             return;
         }
-        if (mCleanup) {
-            mPackagesInstalled = new HashSet<>();
-        }
-
         // resolve abi flags
         if (mAbi != null && mForceAbi != null) {
             throw new IllegalStateException("cannot specify both abi flags: --abi and --force-abi");
@@ -291,7 +310,6 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
         } else if (mForceAbi != null) {
             abiName = AbiFormatter.getDefaultAbi(getDevice(), mForceAbi);
         }
-
         // Set all the extra install args outside the loop to avoid adding them several times.
         if (abiName != null && testInfo.getDevice().getApiLevel() > 20) {
             mInstallArgs.add(String.format("--abi %s", abiName));
@@ -370,7 +388,7 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
     @Override
     public void tearDown(TestInformation testInfo, Throwable e) throws DeviceNotAvailableException {
         mTestInfo = testInfo;
-        if (mCleanup && mPackagesInstalled != null && !(e instanceof DeviceNotAvailableException)) {
+        if (mCleanup && !(e instanceof DeviceNotAvailableException)) {
             for (String packageName : mPackagesInstalled) {
                 try {
                     uninstallPackage(getDevice(), packageName);
@@ -454,8 +472,9 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
     }
 
     /** Helper to resolve some apk to their File and Package. */
+    @VisibleForTesting
     protected Map<File, String> resolveApkFiles(TestInformation testInfo, List<File> apkFiles)
-            throws TargetSetupError {
+            throws TargetSetupError, DeviceNotAvailableException {
         Map<File, String> appFiles = new LinkedHashMap<>();
         ITestDevice device = testInfo.getDevice();
         for (File apkFile : apkFiles) {
@@ -488,7 +507,32 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
                 }
             }
 
-            appFiles.put(testAppFile, parsePackageName(testAppFile, device.getDeviceDescriptor()));
+            if (mCheckMinSdk) {
+                AaptParser aaptParser = doAaptParse(testAppFile);
+                if (aaptParser == null) {
+                    throw new TargetSetupError(
+                            String.format(
+                                    "Failed to extract info from `%s` using aapt",
+                                    testAppFile.getAbsoluteFile().getName()),
+                            device.getDeviceDescriptor());
+                }
+                if (device.getApiLevel() < aaptParser.getSdkVersion()) {
+                    CLog.w(
+                            "Skipping installing apk %s on device %s because "
+                                    + "SDK level require is %d, but device SDK level is %d",
+                            apkFile.toString(),
+                            device.getSerialNumber(),
+                            aaptParser.getSdkVersion(),
+                            device.getApiLevel());
+                } else {
+                    appFiles.put(
+                            testAppFile,
+                            parsePackageName(testAppFile, device.getDeviceDescriptor()));
+                }
+            } else {
+                appFiles.put(
+                        testAppFile, parsePackageName(testAppFile, device.getDeviceDescriptor()));
+            }
         }
         return appFiles;
     }
@@ -517,14 +561,16 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
                     String.format(
                             "Could not list files of specified directory: %s", fileOrDirectory),
                     e,
-                    deviceDescriptor);
+                    deviceDescriptor,
+                    InfraErrorIdentifier.CONFIGURED_ARTIFACT_NOT_FOUND);
         }
 
         if (mThrowIfNoFile && apkFiles.isEmpty()) {
             throw new TargetSetupError(
                     String.format(
                             "Could not find any files in specified directory: %s", fileOrDirectory),
-                    deviceDescriptor);
+                    deviceDescriptor,
+                    InfraErrorIdentifier.CONFIGURED_ARTIFACT_NOT_FOUND);
         }
 
         return apkFiles;
@@ -588,7 +634,7 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
     /** Get the package name from the test app. */
     protected String parsePackageName(File testAppFile, DeviceDescriptor deviceDescriptor)
             throws TargetSetupError {
-        AaptParser parser = AaptParser.parse(testAppFile);
+        AaptParser parser = AaptParser.parse(testAppFile, mAaptVersion);
         if (parser == null) {
             throw new TargetSetupError(
                     "apk installed but AaptParser failed",
@@ -598,4 +644,3 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
         return parser.getPackageName();
     }
 }
-

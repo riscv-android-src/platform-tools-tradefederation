@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.result;
 
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.error.ErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto;
 
@@ -53,6 +54,11 @@ public class FailureDescription {
      */
     public FailureDescription setFailureStatus(TestRecordProto.FailureStatus status) {
         mFailureStatus = status;
+        if (mErrorId != null && mFailureStatus != mErrorId.status()) {
+            CLog.w(
+                    "Failure: %s, status set to %s, not aligned with errorId: %s (%s)",
+                    this, mFailureStatus, mErrorId, mErrorId.status());
+        }
         return this;
     }
 
@@ -111,6 +117,9 @@ public class FailureDescription {
     /** Sets the {@link ErrorIdentifier} representing the failure. */
     public FailureDescription setErrorIdentifier(ErrorIdentifier errorId) {
         mErrorId = errorId;
+        if (getFailureStatus() == null && errorId != null) {
+            mFailureStatus = errorId.status();
+        }
         return this;
     }
 
@@ -153,7 +162,7 @@ public class FailureDescription {
      * @return the created {@link FailureDescription}
      */
     public static FailureDescription create(String errorMessage) {
-        return create(errorMessage, null);
+        return create(errorMessage, TestRecordProto.FailureStatus.UNSET);
     }
 
     /**

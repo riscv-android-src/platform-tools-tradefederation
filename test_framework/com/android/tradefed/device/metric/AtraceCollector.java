@@ -27,6 +27,7 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
@@ -268,7 +269,9 @@ public class AtraceCollector extends BaseDeviceMetricCollector {
                     postProcess(trace);
                     trace.delete();
                 } else {
-                    throw new DeviceRuntimeException("failed to pull log: " + fullLogPath());
+                    throw new DeviceRuntimeException(
+                            String.format("failed to pull log: %s", fullLogPath()),
+                            DeviceErrorIdentifier.FAIL_PULL_FILE);
                 }
 
                 if (!mPreserveOndeviceLog) {

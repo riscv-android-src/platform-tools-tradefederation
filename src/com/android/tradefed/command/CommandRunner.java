@@ -21,6 +21,7 @@ import com.android.tradefed.clearcut.TerminateClearcutClient;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.device.NoDeviceException;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.SerializationUtil;
 
@@ -78,6 +79,7 @@ public class CommandRunner {
             JSONObject json = new JSONObject();
             json.put(EXCEPTION_KEY, serializedException.getAbsolutePath());
             System.err.println(json.toString());
+            System.err.flush();
         } catch (IOException | JSONException io) {
             io.printStackTrace();
             FileUtil.deleteFile(serializedException);
@@ -119,7 +121,10 @@ public class CommandRunner {
             // After 1 min we check if the command was executed.
             if (mScheduler.getReadyCommandCount() > 0
                     && mScheduler.getExecutingCommandCount() == 0) {
-                printStackTrace(new NoDeviceException("No device was allocated for the command."));
+                printStackTrace(
+                        new NoDeviceException(
+                                "No device was allocated for the command.",
+                                InfraErrorIdentifier.RUNNER_ALLOCATION_ERROR));
                 mErrorCode = ExitCode.NO_DEVICE_ALLOCATED;
                 mScheduler.removeAllCommands();
                 mScheduler.shutdown();

@@ -64,10 +64,14 @@ public class WifiPreparer extends BaseTargetPreparer {
         if (mVerifyOnly) {
             if (!device.isWifiEnabled()) {
                 throw new TargetSetupError(
-                        "The device does not have wifi enabled.", device.getDeviceDescriptor());
+                        "The device does not have wifi enabled.",
+                        device.getDeviceDescriptor(),
+                        InfraErrorIdentifier.NO_WIFI);
             } else if (!device.checkConnectivity()) {
                 throw new TargetSetupError(
-                        "The device has no wifi connection.", device.getDeviceDescriptor());
+                        "The device has no wifi connection.",
+                        device.getDeviceDescriptor(),
+                        InfraErrorIdentifier.NO_WIFI);
             }
             return;
         }
