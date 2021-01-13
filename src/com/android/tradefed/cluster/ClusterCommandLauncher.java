@@ -42,6 +42,7 @@ import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.StringEscapeUtils;
 import com.android.tradefed.util.StringUtil;
+import com.android.tradefed.util.SubprocessEventHelper.InvocationFailedEventInfo;
 import com.android.tradefed.util.SubprocessTestResultsParser;
 import com.android.tradefed.util.SystemUtil;
 
@@ -192,12 +193,26 @@ public class ClusterCommandLauncher
                             javaCommandArgs.toArray(new String[javaCommandArgs.size()]));
             if (!result.getStatus().equals(CommandStatus.SUCCESS)) {
                 String error = null;
+                Throwable cause = null;
                 if (result.getStatus().equals(CommandStatus.TIMED_OUT)) {
-                    error = "timeout";
+                    error =
+                            String.format(
+                                    "Command timed out after %sms",
+                                    mConfiguration.getCommandOptions().getInvocationTimeout());
                 } else {
-                    error = FileUtil.readStringFromFile(stderrFile);
+                    error =
+                            String.format(
+                                    "Command finished unsuccessfully: status=%s, exit_code=%s",
+                                    result.getStatus(), result.getExitCode());
+                    InvocationFailedEventInfo errorInfo =
+                            subprocessEventParser.getReportedInvocationFailedEventInfo();
+                    if (errorInfo != null) {
+                        cause = errorInfo.mCause;
+                    } else {
+                        cause = new Throwable(FileUtil.readStringFromFile(stderrFile));
+                    }
                 }
-                throw new RuntimeException(String.format("Command failed to run: %s", error));
+                throw new SubprocessCommandException(error, cause);
             }
             CLog.i("Successfully ran a command");
 

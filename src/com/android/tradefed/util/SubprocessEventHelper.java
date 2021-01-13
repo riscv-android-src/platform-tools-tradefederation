@@ -38,6 +38,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
+import javax.annotation.Nonnull;
+
 /**
  * Helper to serialize/deserialize the events to be passed to the log.
  */
@@ -142,52 +144,8 @@ public class SubprocessEventHelper {
 
         public TestRunFailedEventInfo(JSONObject jsonObject) throws JSONException {
             mReason = jsonObject.getString(REASON_KEY);
-            mFailure =
-                    FailureDescription.create(mReason)
-                            .setOrigin(jsonObject.optString(ERROR_ORIGIN_KEY));
-            // FailureStatus
-            FailureStatus status = FailureStatus.UNSET;
-            if (!Strings.isNullOrEmpty(jsonObject.optString(FAILURE_STATUS_KEY))) {
-                try {
-                    status = FailureStatus.valueOf(jsonObject.optString(FAILURE_STATUS_KEY));
-                } catch (NullPointerException | IllegalArgumentException e) {
-                    CLog.e(e);
-                }
-            }
-            mFailure.setFailureStatus(status);
-            // ActionInProgress
-            ActionInProgress action = ActionInProgress.UNSET;
-            if (!Strings.isNullOrEmpty(jsonObject.optString(ACTION_IN_PROGRESS_KEY))) {
-                try {
-                    action = ActionInProgress.valueOf(jsonObject.optString(ACTION_IN_PROGRESS_KEY));
-                } catch (NullPointerException | IllegalArgumentException e) {
-                    CLog.e(e);
-                }
-            }
-            mFailure.setActionInProgress(action);
-            // ErrorIdentifier
-            String errorName = jsonObject.optString(ERROR_NAME_KEY);
-            long errorCode = jsonObject.optLong(ERROR_CODE_KEY);
-            if (errorName != null) {
-                ErrorIdentifier errorId =
-                        new ErrorIdentifier() {
-                            @Override
-                            public String name() {
-                                return errorName;
-                            }
-
-                            @Override
-                            public long code() {
-                                return errorCode;
-                            }
-
-                            @Override
-                            public FailureStatus status() {
-                                return mFailure.getFailureStatus();
-                            }
-                        };
-                mFailure.setErrorIdentifier(errorId);
-            }
+            mFailure = FailureDescription.create(mReason);
+            updateFailureFromJsonObject(mFailure, jsonObject);
         }
 
         @Override
@@ -202,6 +160,7 @@ public class SubprocessEventHelper {
                     if (mFailure.getErrorIdentifier() != null) {
                         tags.putOpt(ERROR_NAME_KEY, mFailure.getErrorIdentifier().name());
                         tags.putOpt(ERROR_CODE_KEY, mFailure.getErrorIdentifier().code());
+                        tags.putOpt(FAILURE_STATUS_KEY, mFailure.getErrorIdentifier().status());
                     }
                 }
                 if (mReason != null) {
@@ -324,8 +283,9 @@ public class SubprocessEventHelper {
                                 }
 
                                 @Override
-                                public FailureStatus status() {
-                                    return mFailure.getFailureStatus();
+                                public @Nonnull FailureStatus status() {
+                                    FailureStatus status = mFailure.getFailureStatus();
+                                    return (status == null ? FailureStatus.UNSET : status);
                                 }
                             };
                     mFailure.setErrorIdentifier(errorId);
@@ -339,12 +299,14 @@ public class SubprocessEventHelper {
             try {
                 if (mFailure != null) {
                     tags.put(REASON_KEY, mFailure.getErrorMessage());
-                    tags.putOpt(FAILURE_STATUS_KEY, mFailure.getFailureStatus());
                     tags.putOpt(ACTION_IN_PROGRESS_KEY, mFailure.getActionInProgress());
                     tags.putOpt(ERROR_ORIGIN_KEY, mFailure.getOrigin());
                     if (mFailure.getErrorIdentifier() != null) {
                         tags.putOpt(ERROR_NAME_KEY, mFailure.getErrorIdentifier().name());
                         tags.putOpt(ERROR_CODE_KEY, mFailure.getErrorIdentifier().code());
+                        tags.putOpt(FAILURE_STATUS_KEY, mFailure.getErrorIdentifier().status());
+                    } else {
+                        tags.putOpt(FAILURE_STATUS_KEY, mFailure.getFailureStatus());
                     }
                 }
                 if (mCause != null) {
@@ -431,15 +393,23 @@ public class SubprocessEventHelper {
     /** Helper for testFailed information. */
     public static class FailedTestEventInfo extends BaseTestEventInfo {
         public String mTrace = null;
+        public FailureDescription mFailure = null;
 
         public FailedTestEventInfo(String className, String testName, String trace) {
             super(className, testName);
             mTrace = trace;
         }
 
+        public FailedTestEventInfo(String className, String testName, FailureDescription failure) {
+            super(className, testName);
+            mFailure = failure;
+        }
+
         public FailedTestEventInfo(JSONObject jsonObject) throws JSONException {
             super(jsonObject);
             mTrace = jsonObject.getString(TRACE_KEY);
+            mFailure = FailureDescription.create(mTrace);
+            updateFailureFromJsonObject(mFailure, jsonObject);
         }
 
         @Override
@@ -447,6 +417,17 @@ public class SubprocessEventHelper {
             JSONObject tags = null;
             try {
                 tags = new JSONObject(super.toString());
+                if (mFailure != null) {
+                    tags.put(TRACE_KEY, mFailure.getErrorMessage());
+                    tags.putOpt(FAILURE_STATUS_KEY, mFailure.getFailureStatus());
+                    tags.putOpt(ACTION_IN_PROGRESS_KEY, mFailure.getActionInProgress());
+                    tags.putOpt(ERROR_ORIGIN_KEY, mFailure.getOrigin());
+                    if (mFailure.getErrorIdentifier() != null) {
+                        tags.putOpt(ERROR_NAME_KEY, mFailure.getErrorIdentifier().name());
+                        tags.putOpt(ERROR_CODE_KEY, mFailure.getErrorIdentifier().code());
+                        tags.putOpt(FAILURE_STATUS_KEY, mFailure.getErrorIdentifier().status());
+                    }
+                }
                 if (mTrace != null) {
                     tags.put(TRACE_KEY, mTrace);
                 }
@@ -534,7 +515,12 @@ public class SubprocessEventHelper {
         public TestLogEventInfo(JSONObject jsonObject) throws JSONException {
             mDataName = jsonObject.getString(DATA_NAME_KEY);
             jsonObject.remove(DATA_NAME_KEY);
-            mLogType = LogDataType.valueOf(jsonObject.getString(DATA_TYPE_KEY));
+            try {
+                mLogType = LogDataType.valueOf(jsonObject.getString(DATA_TYPE_KEY));
+            } catch (IllegalArgumentException e) {
+                CLog.e("Failed to parse type: %s", jsonObject.getString(DATA_TYPE_KEY));
+                mLogType = LogDataType.TEXT;
+            }
             jsonObject.remove(DATA_TYPE_KEY);
             mDataFile = new File(jsonObject.getString(DATA_FILE_KEY));
         }
@@ -701,6 +687,60 @@ public class SubprocessEventHelper {
                 throw new RuntimeException(e);
             }
             return tags.toString();
+        }
+    }
+
+    /**
+     * Updates failure with origin, failureStatus, actionInProgress, errorIdentifier from
+     * jsonObejct.
+     */
+    private static void updateFailureFromJsonObject(
+            FailureDescription failure, JSONObject jsonObject) {
+        // Origin
+        failure.setOrigin(jsonObject.optString(ERROR_ORIGIN_KEY));
+        // FailureStatus
+        FailureStatus status = FailureStatus.UNSET;
+        if (!Strings.isNullOrEmpty(jsonObject.optString(FAILURE_STATUS_KEY))) {
+            try {
+                status = FailureStatus.valueOf(jsonObject.optString(FAILURE_STATUS_KEY));
+            } catch (NullPointerException | IllegalArgumentException e) {
+                CLog.e(e);
+            }
+        }
+        failure.setFailureStatus(status);
+        // ActionInProgress
+        ActionInProgress action = ActionInProgress.UNSET;
+        if (!Strings.isNullOrEmpty(jsonObject.optString(ACTION_IN_PROGRESS_KEY))) {
+            try {
+                action = ActionInProgress.valueOf(jsonObject.optString(ACTION_IN_PROGRESS_KEY));
+            } catch (NullPointerException | IllegalArgumentException e) {
+                CLog.e(e);
+            }
+        }
+        failure.setActionInProgress(action);
+        // ErrorIdentifier
+        String errorName = jsonObject.optString(ERROR_NAME_KEY);
+        long errorCode = jsonObject.optLong(ERROR_CODE_KEY);
+        if (errorName != null) {
+            ErrorIdentifier errorId =
+                    new ErrorIdentifier() {
+                        @Override
+                        public String name() {
+                            return errorName;
+                        }
+
+                        @Override
+                        public long code() {
+                            return errorCode;
+                        }
+
+                        @Override
+                        public @Nonnull FailureStatus status() {
+                            FailureStatus status = failure.getFailureStatus();
+                            return (status == null ? FailureStatus.UNSET : status);
+                        }
+                    };
+            failure.setErrorIdentifier(errorId);
         }
     }
 }

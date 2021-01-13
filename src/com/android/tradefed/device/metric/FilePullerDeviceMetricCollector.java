@@ -19,6 +19,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
+import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.util.FileUtil;
@@ -151,6 +152,9 @@ public abstract class FilePullerDeviceMetricCollector extends BaseDeviceMetricCo
                     if (device.getIDevice() instanceof StubDevice) {
                         continue;
                     }
+                    if (!shouldCollect(device)) {
+                        continue;
+                    }
                     try {
                         File attemptPull = retrieveFile(device, entry.getValue());
                         if (attemptPull != null) {
@@ -208,6 +212,9 @@ public abstract class FilePullerDeviceMetricCollector extends BaseDeviceMetricCo
                 if (device.getIDevice() instanceof StubDevice) {
                     continue;
                 }
+                if (!shouldCollect(device)) {
+                    continue;
+                }
                 try {
                     if (device.pullDir(keyDirectory, tmpDestDir)) {
                         if (mCleanUp) {
@@ -230,4 +237,12 @@ public abstract class FilePullerDeviceMetricCollector extends BaseDeviceMetricCo
         return null;
     }
 
+    private boolean shouldCollect(ITestDevice device) {
+        TestDeviceState state = device.getDeviceState();
+        if (!TestDeviceState.ONLINE.equals(state)) {
+            CLog.d("Skip %s device is in state '%s'", this, state);
+            return false;
+        }
+        return true;
+    }
 }

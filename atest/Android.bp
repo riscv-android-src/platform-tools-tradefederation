@@ -134,7 +134,6 @@ python_test_host {
         "atest_proto",
     ],
     test_config: "atest_unittests.xml",
-    test_suites: ["general-tests"],
     defaults: ["atest_py2_default"],
 }
 

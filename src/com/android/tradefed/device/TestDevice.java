@@ -27,6 +27,7 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.InputStreamSource;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.util.AaptParser;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
@@ -88,6 +89,11 @@ public class TestDevice extends NativeDevice {
     static final String LIST_APEXES_CMD = "pm list packages --apex-only --show-versioncode -f";
     private static final Pattern APEXES_WITH_PATH_REGEX =
             Pattern.compile("package:(.*)=(.*) versionCode:(.*)");
+
+    static final String GET_MODULEINFOS_CMD = "pm get-moduleinfo --all";
+    private static final Pattern MODULEINFO_REGEX =
+            Pattern.compile("ModuleInfo\\{(.*)\\} packageName: (.*)");
+
     /**
      * Regexp to match on old versions of platform (before R), where {@code -f} flag for the {@code
      * pm list packages apex-only} command wasn't supported.
@@ -203,7 +209,7 @@ public class TestDevice extends NativeDevice {
                 packageFile.getAbsolutePath(), extraArgs.toString(), getSerialNumber());
         performDeviceAction(String.format("install %s", packageFile.getAbsolutePath()),
                 installAction, MAX_RETRY_ATTEMPTS);
-        List<File> packageFiles = new ArrayList();
+        List<File> packageFiles = new ArrayList<>();
         packageFiles.add(packageFile);
         allowLegacyStorageForApps(packageFiles);
         return response[0];
@@ -344,7 +350,7 @@ public class TestDevice extends NativeDevice {
                 };
         performDeviceAction(String.format("install %s", packageFile.getAbsolutePath()),
                 installAction, MAX_RETRY_ATTEMPTS);
-        List<File> packageFiles = new ArrayList();
+        List<File> packageFiles = new ArrayList<>();
         packageFiles.add(packageFile);
         allowLegacyStorageForApps(packageFiles);
         return response[0];
@@ -1019,6 +1025,22 @@ public class TestDevice extends NativeDevice {
         return ret;
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public Set<String> getMainlineModuleInfo() throws DeviceNotAvailableException {
+        checkApiLevelAgainstNextRelease(GET_MODULEINFOS_CMD, 29);
+        Set<String> ret = new HashSet<>();
+        String output = executeShellCommand(GET_MODULEINFOS_CMD);
+        if (output != null) {
+            Matcher m = MODULEINFO_REGEX.matcher(output);
+            while (m.find()) {
+                String packageName = m.group(2);
+                ret.add(packageName);
+            }
+        }
+        return ret;
+    }
+
     private Set<ApexInfo> parseApexesFromOutput(final String output, boolean withPath) {
         Set<ApexInfo> ret = new HashSet<>();
         Matcher matcher =
@@ -1187,7 +1209,8 @@ public class TestDevice extends NativeDevice {
         String[] lines = commandOutput.split("\\r?\\n");
         if (!lines[0].equals("Users:")) {
             throw new DeviceRuntimeException(
-                    String.format("'%s' in not a valid output for 'pm list users'", commandOutput));
+                    String.format("'%s' in not a valid output for 'pm list users'", commandOutput),
+                    DeviceErrorIdentifier.DEVICE_UNEXPECTED_RESPONSE);
         }
         ArrayList<String[]> users = new ArrayList<String[]>(lines.length - 1);
         for (int i = 1; i < lines.length; i++) {
@@ -1199,7 +1222,8 @@ public class TestDevice extends NativeDevice {
                         String.format(
                                 "device output: '%s' \nline: '%s' was not in the expected "
                                         + "format for user info.",
-                                commandOutput, lines[i]));
+                                commandOutput, lines[i]),
+                        DeviceErrorIdentifier.DEVICE_UNEXPECTED_RESPONSE);
             }
             users.add(tokens);
         }

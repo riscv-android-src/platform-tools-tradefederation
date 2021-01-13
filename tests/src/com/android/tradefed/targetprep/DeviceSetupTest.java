@@ -25,6 +25,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.TcpDevice;
 import com.android.tradefed.device.TestDeviceOptions;
+import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
@@ -64,6 +65,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.expect(mMockDevice.getSerialNumber()).andReturn("foo").anyTimes();
         EasyMock.expect(mMockDevice.getDeviceDescriptor()).andStubReturn(null);
         EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(mMockIDevice);
+        EasyMock.expect(mMockDevice.getDeviceState()).andStubReturn(TestDeviceState.ONLINE);
         mMockBuildInfo = new DeviceBuildInfo("0", "");
         mDeviceSetup = new DeviceSetup();
         mTmpDir = FileUtil.createTempDir("tmp");
@@ -259,6 +261,22 @@ public class DeviceSetupTest extends TestCase {
 
         mDeviceSetup.setWifiNetwork("wifi_network");
         mDeviceSetup.setWifiPsk(""); // empty psk becomes null in connectToWifiNetwork
+
+        mDeviceSetup.setWifi(BinaryState.ON);
+        mDeviceSetup.setUp(mTestInfo);
+
+        EasyMock.verify(mMockDevice);
+    }
+
+    public void testSetup_wifi_network_empty() throws Exception {
+        doSetupExpectations();
+        doCheckExternalStoreSpaceExpectations();
+        doSettingExpectations("global", "wifi_on", "1");
+        doCommandsExpectations("svc wifi enable");
+        EasyMock.replay(mMockDevice);
+
+        mDeviceSetup.setWifiNetwork("");
+        mDeviceSetup.setWifiPsk("psk");
 
         mDeviceSetup.setWifi(BinaryState.ON);
         mDeviceSetup.setUp(mTestInfo);
@@ -861,6 +879,9 @@ public class DeviceSetupTest extends TestCase {
         doCheckExternalStoreSpaceExpectations();
         EasyMock.expect(mMockDevice.setProperty("persist.sys.timezone", "America/Los_Angeles"))
                 .andReturn(true);
+        EasyMock.expect(mMockDevice.getProperty("persist.sys.timezone"))
+                .andReturn("America/Los_Angeles")
+                .anyTimes();
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setTimezone("America/Los_Angeles");
@@ -963,6 +984,9 @@ public class DeviceSetupTest extends TestCase {
         Capture<String> setPropCapture = new Capture<>();
         doSetupExpectations(true, setPropCapture);
         doCheckExternalStoreSpaceExpectations();
+        EasyMock.expect(mMockDevice.getProperty("dalvik.vm.dexopt-flags"))
+                .andReturn("v=n")
+                .anyTimes();
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setDisableDalvikVerifier(true);
@@ -1031,6 +1055,7 @@ public class DeviceSetupTest extends TestCase {
         Capture<String> setPropCapture = new Capture<>();
         doSetupExpectations(true, setPropCapture);
         doCheckExternalStoreSpaceExpectations();
+        EasyMock.expect(mMockDevice.getProperty("key")).andReturn("value").anyTimes();
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setDeprecatedAudioSilent(false);
@@ -1104,6 +1129,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.expect(mMockDevice.pushFile(f, "/data/local.prop")).andReturn(true).once();
         mMockDevice.reboot();
         EasyMock.expectLastCall().once();
+        EasyMock.expect(mMockDevice.getProperty("key")).andReturn("value").anyTimes();
 
         EasyMock.replay(mMockDevice);
 
@@ -1122,6 +1148,7 @@ public class DeviceSetupTest extends TestCase {
         mMockDevice.deleteFile("/data/local.prop");
         mMockDevice.reboot();
         EasyMock.expectLastCall().once();
+        EasyMock.expect(mMockDevice.getProperty("key")).andReturn("value").anyTimes();
 
         EasyMock.replay(mMockDevice);
 
@@ -1342,7 +1369,16 @@ public class DeviceSetupTest extends TestCase {
         if (testHarness) {
             EasyMock.expect(mMockDevice.setProperty("persist.sys.test_harness", "1"))
                     .andReturn(true);
+            EasyMock.expect(mMockDevice.getProperty("persist.sys.test_harness"))
+                    .andReturn("1")
+                    .anyTimes();
         }
+        EasyMock.expect(mMockDevice.getProperty("ro.telephony.disable-call"))
+                .andReturn("true")
+                .anyTimes();
+        EasyMock.expect(mMockDevice.getProperty("ro.audio.silent")).andReturn("1").anyTimes();
+        EasyMock.expect(mMockDevice.getProperty("ro.test_harness")).andReturn("1").anyTimes();
+        EasyMock.expect(mMockDevice.getProperty("ro.monkey")).andReturn("1").anyTimes();
     }
 
     /**

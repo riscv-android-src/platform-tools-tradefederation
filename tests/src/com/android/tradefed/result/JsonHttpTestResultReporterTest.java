@@ -25,6 +25,7 @@ import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import org.json.JSONException;
@@ -65,14 +66,18 @@ public class JsonHttpTestResultReporterTest {
     @Test
     public void testSkipFailedRuns_notSet() throws JSONException {
         mReporter.invocationStarted(mContext);
-        injectTestRun(mReporter, "run1", "test", "metric1", 0, true);
-        injectTestRun(mReporter, "run2", "test", "metric2", 1, false);
+        injectTestRun(mReporter, "run1", "test", "123", 0, true);
+        injectTestRun(mReporter, "run2", "test", "456", 1, false);
         mReporter.invocationEnded(0);
         ArgumentCaptor<JSONObject> jsonCaptor = ArgumentCaptor.forClass(JSONObject.class);
         verify(mReporter).postResults(jsonCaptor.capture());
         // Both runs should be in the posted metrics.
         Assert.assertTrue(jsonCaptor.getValue().getJSONObject(JSON_METRIC_KEY).has("run1"));
+        Assert.assertTrue(jsonCaptor.getValue().getJSONObject(JSON_METRIC_KEY).getJSONObject("run1")
+                .has("run_metric"));
         Assert.assertTrue(jsonCaptor.getValue().getJSONObject(JSON_METRIC_KEY).has("run2"));
+        Assert.assertTrue(jsonCaptor.getValue().getJSONObject(JSON_METRIC_KEY).getJSONObject("run2")
+                .has("run_metric"));
     }
 
     /** Test that failed runs are skipped when skip-failed-runs is set. */
@@ -81,15 +86,58 @@ public class JsonHttpTestResultReporterTest {
         OptionSetter optionSetter = new OptionSetter(mReporter);
         optionSetter.setOptionValue(SKIP_FAILED_RUNS_OPTION, String.valueOf(true));
         mReporter.invocationStarted(mContext);
-        injectTestRun(mReporter, "run1", "test", "metric1", 0, true);
-        injectTestRun(mReporter, "run2", "test", "metric2", 1, false);
+        injectTestRun(mReporter, "run1", "test", "123", 0, true);
+        injectTestRun(mReporter, "run2", "test", "456", 1, false);
         mReporter.invocationEnded(0);
         ArgumentCaptor<JSONObject> jsonCaptor = ArgumentCaptor.forClass(JSONObject.class);
         verify(mReporter).postResults(jsonCaptor.capture());
         // Only the first run should be in the posted metrics.
         Assert.assertTrue(jsonCaptor.getValue().getJSONObject(JSON_METRIC_KEY).has("run1"));
+        Assert.assertTrue(jsonCaptor.getValue().getJSONObject(JSON_METRIC_KEY).getJSONObject("run1")
+                .has("run_metric"));
         Assert.assertFalse(jsonCaptor.getValue().getJSONObject(JSON_METRIC_KEY).has("run2"));
     }
+
+    /** Test non-numeric metrics are not posted in the final JSONObject. */
+    @Test
+    public void testInvalidMetricsNotSet() throws ConfigurationException, JSONException {
+        OptionSetter optionSetter = new OptionSetter(mReporter);
+        optionSetter.setOptionValue(SKIP_FAILED_RUNS_OPTION, String.valueOf(true));
+        mReporter.invocationStarted(mContext);
+        // Inject invalid metric "1.23invalid".
+        injectTestRun(mReporter, "run1", "test", "1.23invalid", 0, false);
+        mReporter.invocationEnded(0);
+        ArgumentCaptor<JSONObject> jsonCaptor = ArgumentCaptor.forClass(JSONObject.class);
+        verify(mReporter).postResults(jsonCaptor.capture());
+        // Only the first run should be in the posted metrics.
+        CLog.i(jsonCaptor.getValue().toString());
+        // Check the metric is not added in the JSONObject.
+        Assert.assertFalse(jsonCaptor.getValue().getJSONObject(JSON_METRIC_KEY)
+                .getJSONObject("run1").has("run_metric"));
+    }
+
+    /** Test valid and invalid metrics in JSONObject. */
+    @Test
+    public void testInvalidAndInvalidMetricsNotSet() throws ConfigurationException, JSONException {
+        OptionSetter optionSetter = new OptionSetter(mReporter);
+        optionSetter.setOptionValue(SKIP_FAILED_RUNS_OPTION, String.valueOf(true));
+        mReporter.invocationStarted(mContext);
+        // Inject invalid metric "1.23invalid".
+        injectTestRun(mReporter, "run1", "test1", "1.23invalid", 0, false);
+        // Inject valid metric "5.99".
+        injectTestRun(mReporter, "run2", "test1", "5.99", 0, false);
+        mReporter.invocationEnded(0);
+        ArgumentCaptor<JSONObject> jsonCaptor = ArgumentCaptor.forClass(JSONObject.class);
+        verify(mReporter).postResults(jsonCaptor.capture());
+        CLog.i(jsonCaptor.getValue().toString());
+        // Check the invalid metric is not added in the JSONObject.
+        Assert.assertFalse(jsonCaptor.getValue().getJSONObject(JSON_METRIC_KEY)
+                .getJSONObject("run1").has("run_metric"));
+        // Check the valid metric is added in the JSONObject.
+        Assert.assertTrue(jsonCaptor.getValue().getJSONObject(JSON_METRIC_KEY)
+                .getJSONObject("run2").has("run_metric"));
+    }
+
 
     /** Test for parsing additional device details when collect device details is enabled. */
     @Test

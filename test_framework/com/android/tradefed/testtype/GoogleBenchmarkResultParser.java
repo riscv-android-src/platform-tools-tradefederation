@@ -17,6 +17,8 @@ package com.android.tradefed.testtype;
 
 import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.TestErrorIdentifier;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
@@ -30,7 +32,8 @@ import org.json.JSONObject;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 /**
  * Parses the results of Google Benchmark that run from shell,
  * and return a map with all the results.
@@ -63,10 +66,27 @@ public class GoogleBenchmarkResultParser {
             JSONObject context = res.getJSONObject("context");
             results = parseJsonToMap(context);
         } catch (JSONException e) {
-            CLog.e("Failed to Parse context:");
-            CLog.e(e);
+            String testAbortedMessage = causeIfTestAborted(outputLogs);
+            boolean isTestAborted = (testAbortedMessage != null);
+            if (isTestAborted) {
+                String errorMessage =
+                        String.format("Test aborted with the error: '%s'", testAbortedMessage);
+                CLog.e(errorMessage);
+                FailureDescription failure =
+                        FailureDescription.create(errorMessage)
+                                .setErrorIdentifier(TestErrorIdentifier.TEST_ABORTED);
+                mTestListener.testRunFailed(failure);
+            } else {
+                String parserFailedMessage = "Failed to Parse context:";
+                CLog.e(parserFailedMessage);
+                CLog.e(e);
+                FailureDescription failure =
+                        FailureDescription.create(parserFailedMessage)
+                                .setCause(e)
+                                .setErrorIdentifier(TestErrorIdentifier.OUTPUT_PARSER_ERROR);
+                mTestListener.testRunFailed(failure);
+            }
             CLog.d("output was:\n%s\n", outputLogs);
-            mTestListener.testRunFailed(String.format("Failed to Parse context: %s", e));
             return results;
         }
         try {
@@ -118,6 +138,22 @@ public class GoogleBenchmarkResultParser {
             mTestListener.testRunFailed(String.format("Failed to parse benchmarks results: %s", e));
         }
         return results;
+    }
+
+    /**
+     * Check whether the test is aborted and returns the cause if so.
+     *
+     * @param outputLogs contains the test output
+     * @return the cause if the test is aborted, or null otherwize.
+     */
+    private String causeIfTestAborted(String outputLogs) {
+        String errorMessage = null;
+        Pattern pattern = Pattern.compile("\\n(.*)\\nAborted\\s+$");
+        Matcher matcher = pattern.matcher(outputLogs);
+        if (matcher.find()) {
+            errorMessage = matcher.group(1).trim();
+        }
+        return errorMessage;
     }
 
     /**

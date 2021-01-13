@@ -37,6 +37,8 @@ import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.targetprep.TargetSetupError;
+import com.android.tradefed.util.CommandResult;
+import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.StreamUtil;
 
@@ -63,6 +65,7 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
 
     private GceManager mGceHandler = null;
     private GceSshTunnelMonitor mGceSshMonitor;
+    private DeviceNotAvailableException mTunnelInitFailed = null;
 
     private static final long WAIT_FOR_TUNNEL_ONLINE = 2 * 60 * 1000;
     private static final long WAIT_AFTER_REBOOT = 60 * 1000;
@@ -91,6 +94,7 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
         try {
             mGceAvd = null;
             mGceSshMonitor = null;
+            mTunnelInitFailed = null;
             // We create a brand new GceManager each time to ensure clean state.
             mGceHandler = new GceManager(getDeviceDescriptor(), getOptions(), info);
             getGceHandler().logStableHostImageInfos(info);
@@ -269,7 +273,10 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
                         String.format(
                                 "Device failed to boot. Error from Acloud: %s",
                                 mGceAvd.getErrors());
-                throw new TargetSetupError(errorMsg, getDeviceDescriptor());
+                throw new TargetSetupError(
+                        errorMsg,
+                        getDeviceDescriptor(),
+                        DeviceErrorIdentifier.FAILED_TO_LAUNCH_GCE);
             }
         }
         createGceSshMonitor(this, buildInfo, mGceAvd.hostAndPort(), this.getOptions());
@@ -322,14 +329,20 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
             }
             getRunUtil().sleep(RETRY_INTERVAL_MS);
         }
-        throw new DeviceNotAvailableException(
-                String.format("Tunnel did not come back online after %sms", waitTime),
-                getSerialNumber(),
-                DeviceErrorIdentifier.FAILED_TO_CONNECT_TO_GCE);
+        mTunnelInitFailed =
+                new DeviceNotAvailableException(
+                        String.format("Tunnel did not come back online after %sms", waitTime),
+                        getSerialNumber(),
+                        DeviceErrorIdentifier.FAILED_TO_CONNECT_TO_GCE);
+        throw mTunnelInitFailed;
     }
 
     @Override
     public void recoverDevice() throws DeviceNotAvailableException {
+        if (getGceSshMonitor() == null && mTunnelInitFailed != null) {
+            // We threw before but was not reported, so throw the root cause here.
+            throw mTunnelInitFailed;
+        }
         // Re-init tunnel when attempting recovery
         CLog.i("Attempting recovery on GCE AVD %s", getSerialNumber());
         getGceSshMonitor().closeConnection();
@@ -446,5 +459,40 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
                             getInitialSerial() + "[" + descriptor.getSerial() + "]");
         }
         return descriptor;
+    }
+
+    /**
+     * Attempt to powerwash a GCE instance
+     *
+     * @return returns true if powerwash Gce success.
+     * @throws TargetSetupError
+     * @throws DeviceNotAvailableException
+     */
+    public boolean powerwashGce() throws TargetSetupError, DeviceNotAvailableException {
+        if (mGceAvd == null) {
+            String errorMsg = String.format("Can not get GCE AVD Info. launch GCE first?");
+            throw new TargetSetupError(
+                    errorMsg, getDeviceDescriptor(), DeviceErrorIdentifier.DEVICE_UNAVAILABLE);
+        }
+        String username = this.getOptions().getInstanceUser();
+        String powerwashCommand = String.format("/home/%s/bin/powerwash_cvd", username);
+        CommandResult powerwashRes =
+                GceManager.remoteSshCommandExecution(
+                        mGceAvd,
+                        this.getOptions(),
+                        getRunUtil(),
+                        Math.max(300000L, this.getOptions().getGceCmdTimeout()),
+                        powerwashCommand.split(" "));
+        if (!CommandStatus.SUCCESS.equals(powerwashRes.getStatus())) {
+            CLog.e("%s", powerwashRes.getStderr());
+            // Log 'adb devices' to confirm device is gone
+            CommandResult printAdbDevices = getRunUtil().runTimedCmd(60000L, "adb", "devices");
+            CLog.e("%s\n%s", printAdbDevices.getStdout(), printAdbDevices.getStderr());
+            // Proceed here, device could have been already gone.
+            return false;
+        }
+        getMonitor().waitForDeviceAvailable();
+        resetContentProviderSetup();
+        return true;
     }
 }

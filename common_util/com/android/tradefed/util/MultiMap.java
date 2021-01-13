@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -37,7 +38,7 @@ public class MultiMap<K, V> implements Serializable {
     private final Map<K, List<V>> mInternalMap;
 
     public MultiMap() {
-        mInternalMap = new HashMap<K, List<V>>();
+        mInternalMap = new LinkedHashMap<K, List<V>>();
     }
 
     public MultiMap(MultiMap<K, V> map) {

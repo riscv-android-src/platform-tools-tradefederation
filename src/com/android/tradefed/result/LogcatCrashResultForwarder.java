@@ -19,15 +19,18 @@ import com.android.loganalysis.item.JavaCrashItem;
 import com.android.loganalysis.item.LogcatItem;
 import com.android.loganalysis.parser.LogcatParser;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.error.DeviceErrorIdentifier;
+import com.android.tradefed.result.error.TestErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
-import com.android.tradefed.util.StreamUtil;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -41,6 +44,11 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
     /** Special error message from the instrumentation when something goes wrong on device side. */
     public static final String ERROR_MESSAGE = "Process crashed.";
     public static final String SYSTEM_CRASH_MESSAGE = "System has crashed.";
+    public static final String TIMEOUT_MESSAGES[] = {
+        "Failed to receive adb shell test output",
+        "TimeoutException when running tests",
+        "TestTimedOutException: test timed out after",
+    };
 
     public static final int MAX_NUMBER_CRASH = 3;
 
@@ -73,11 +81,18 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
     public void testFailed(TestDescription test, FailureDescription failure) {
         // If the test case was detected as crashing the instrumentation, we add the crash to it.
         String trace = extractCrashAndAddToMessage(failure.getErrorMessage(), mStartTime);
-        if (trace.compareTo(failure.getErrorMessage()) != 0) {
-            // Crash stack trace found, consider this a test failure.
-            failure.setFailureStatus(FailureStatus.TEST_FAILURE);
+        if (isCrash(failure.getErrorMessage())) {
+            failure.setErrorIdentifier(DeviceErrorIdentifier.INSTRUMENTATION_CRASH);
+        } else if (isTimeout(failure.getErrorMessage())) {
+            failure.setErrorIdentifier(TestErrorIdentifier.INSTRUMENTATION_TIMED_OUT);
         }
         failure.setErrorMessage(trace);
+        // Add metrics for assessing uncaught IntrumentationTest crash failures (test level).
+        InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.TEST_CRASH_FAILURES, 1);
+        if (failure.getFailureStatus() == null) {
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.UNCAUGHT_TEST_CRASH_FAILURES, 1);
+        }
         super.testFailed(test, failure);
     }
 
@@ -109,6 +124,12 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
         if (isCrash(errorMessage)) {
             error.setErrorIdentifier(DeviceErrorIdentifier.INSTRUMENTATION_CRASH);
         }
+        // Add metrics for assessing uncaught IntrumentationTest crash failures.
+        InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.CRASH_FAILURES, 1);
+        if (error.getFailureStatus() == null) {
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.UNCAUGHT_CRASH_FAILURES, 1);
+        }
         super.testRunFailed(error);
     }
 
@@ -131,6 +152,14 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
         return errorMessage.contains(ERROR_MESSAGE) || errorMessage.contains(SYSTEM_CRASH_MESSAGE);
     }
 
+    private boolean isTimeout(String errorMessage) {
+        for (String timeoutMessage : TIMEOUT_MESSAGES) {
+            if (errorMessage.contains(timeoutMessage)) {
+                return true;
+            }
+        }
+        return false;
+    }
     /**
      * Extract a formatted object from the logcat snippet.
      *
@@ -143,10 +172,13 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
             if (logSource.size() == 0L) {
                 return null;
             }
-            String message = StreamUtil.getStringFromStream(logSource.createInputStream());
             LogcatParser parser = new LogcatParser();
-            List<String> lines = Arrays.asList(message.split("\n"));
-            return parser.parse(lines);
+            LogcatItem result = null;
+            try (BufferedReader reader =
+                    new BufferedReader(new InputStreamReader(logSource.createInputStream()))) {
+                result = parser.parse(reader);
+            }
+            return result;
         } catch (IOException e) {
             CLog.e(e);
         }

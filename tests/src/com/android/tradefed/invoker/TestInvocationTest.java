@@ -412,11 +412,6 @@ public class TestInvocationTest {
 
         setupMockFailureListeners(exception);
         setupInvoke();
-        EasyMock.reset(mMockLogger, mMockLogRegistry);
-        mMockLogRegistry.registerLogger(mMockLogger);
-        mMockLogger.init();
-        mMockLogger.closeLog();
-        mMockLogRegistry.unregisterLogger();
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
         CommandOptions cmdOptions = new CommandOptions();
         final String expectedTestTag = "TEST_TAG";
@@ -449,13 +444,6 @@ public class TestInvocationTest {
         setupMockFailureListenersAny(
                 new BuildRetrievalError("fake", InfraErrorIdentifier.ARTIFACT_DOWNLOAD_ERROR),
                 true);
-
-        EasyMock.reset(mMockLogger, mMockLogRegistry);
-        mMockLogRegistry.registerLogger(mMockLogger);
-        mMockLogger.init();
-        mMockLogger.closeLog();
-        mMockLogRegistry.unregisterLogger();
-
         EasyMock.expect(mMockLogger.getLog()).andReturn(EMPTY_STREAM_SOURCE);
         EasyMock.expect(mMockDevice.getLogcat()).andReturn(EMPTY_STREAM_SOURCE).times(2);
         mMockDevice.clearLogcat();
@@ -465,12 +453,13 @@ public class TestInvocationTest {
         mMockLogRegistry.unregisterLogger();
         mMockLogRegistry.dumpToGlobalLog(mMockLogger);
         mMockLogger.closeLog();
+        mStubConfiguration.setCommandLine(new String[] {"empty", "--build-id", "5"});
         replayMocks(mockRescheduler);
         mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
         verifyMocks();
 
         IBuildInfo stubBuild = captured.getValue();
-        assertEquals(BuildInfo.UNKNOWN_BUILD_ID, stubBuild.getBuildId());
+        assertEquals("5", stubBuild.getBuildId());
         stubBuild.cleanUp();
     }
 
@@ -483,12 +472,6 @@ public class TestInvocationTest {
                 new BuildRetrievalError(
                         "No build found to test.", InfraErrorIdentifier.ARTIFACT_NOT_FOUND),
                 true);
-
-        EasyMock.reset(mMockLogger, mMockLogRegistry);
-        mMockLogRegistry.registerLogger(mMockLogger);
-        mMockLogger.init();
-        mMockLogger.closeLog();
-        mMockLogRegistry.unregisterLogger();
 
         EasyMock.expect(mMockLogger.getLog()).andReturn(EMPTY_STREAM_SOURCE);
         EasyMock.expect(mMockDevice.getLogcat()).andReturn(EMPTY_STREAM_SOURCE).times(2);
@@ -520,13 +503,6 @@ public class TestInvocationTest {
                         "No build found to test.", InfraErrorIdentifier.ARTIFACT_NOT_FOUND),
                 true, /* don't expect host log */
                 false);
-
-        EasyMock.reset(mMockLogger, mMockLogRegistry);
-        mMockLogRegistry.registerLogger(mMockLogger);
-        mMockLogger.init();
-        mMockLogger.closeLog();
-        EasyMock.expectLastCall().times(2);
-
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
         mStubConfiguration.setTest(test);
         // Host log fails to report
@@ -537,7 +513,7 @@ public class TestInvocationTest {
         Capture<IBuildInfo> captured = new Capture<>();
         mMockBuildProvider.cleanUp(EasyMock.capture(captured));
         mMockLogRegistry.unregisterLogger();
-        EasyMock.expectLastCall().times(2);
+        mMockLogger.closeLog();
         mMockLogRegistry.dumpToGlobalLog(mMockLogger);
         replayMocks(test, mockRescheduler);
         mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
@@ -673,8 +649,7 @@ public class TestInvocationTest {
 
     @Test
     public void testInvoke_setupError() throws Throwable {
-        // Use the deprecated constructor on purpose to simulate missing DeviceDescriptor.
-        TargetSetupError tse = new TargetSetupError("reason");
+        TargetSetupError tse = createTargetSetupError("reason");
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
         mMockDevice.setRecoveryMode(RecoveryMode.NONE);
         EasyMock.expectLastCall();
@@ -697,6 +672,12 @@ public class TestInvocationTest {
         mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
         verifyMocks(test, mockRescheduler);
         verifySummaryListener();
+    }
+
+    @SuppressWarnings("deprecation")
+    private TargetSetupError createTargetSetupError(String reason) {
+        // Use the deprecated constructor on purpose to simulate missing DeviceDescriptor.
+        return new TargetSetupError(reason);
     }
 
     /**
@@ -797,7 +778,7 @@ public class TestInvocationTest {
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
         test.run(EasyMock.anyObject(), EasyMock.anyObject());
         EasyMock.expectLastCall().andThrow(exception);
-        ITargetCleaner mockCleaner = EasyMock.createMock(ITargetCleaner.class);
+        ITargetPreparer mockCleaner = EasyMock.createMock(ITargetPreparer.class);
         EasyMock.expect(mockCleaner.isDisabled()).andReturn(false).times(2);
         EasyMock.expect(mockCleaner.isTearDownDisabled()).andReturn(false);
         mockCleaner.setUp(EasyMock.anyObject());
@@ -1149,9 +1130,12 @@ public class TestInvocationTest {
                 mMockTestListener.invocationFailed(EasyMock.<FailureDescription>anyObject());
                 mMockSummaryListener.invocationFailed(EasyMock.<FailureDescription>anyObject());
             } else {
+                FailureStatus failureStatus = FailureStatus.INFRA_FAILURE;
+                if (throwable instanceof BuildError) {
+                    failureStatus = FailureStatus.DEPENDENCY_ISSUE;
+                }
                 FailureDescription failure =
-                        FailureDescription.create(
-                                        throwable.getMessage(), FailureStatus.INFRA_FAILURE)
+                        FailureDescription.create(throwable.getMessage(), failureStatus)
                                 .setCause(throwable);
                 if (throwable instanceof BuildRetrievalError) {
                     failure.setActionInProgress(ActionInProgress.FETCHING_ARTIFACTS);

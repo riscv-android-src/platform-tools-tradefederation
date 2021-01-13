@@ -89,7 +89,7 @@ public final class InvocationLocalTest {
         Object value0 = invocation(() -> local.get());
         Object value1 = invocation(() -> local.get());
 
-        assertThat(value0).isNotSameAs(value1);
+        assertThat(value0).isNotSameInstanceAs(value1);
     }
 
     /**
