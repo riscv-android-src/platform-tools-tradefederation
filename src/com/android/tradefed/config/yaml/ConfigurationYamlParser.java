@@ -92,42 +92,36 @@ public final class ConfigurationYamlParser {
             configDef.setDescription((String) yamlObjects.get(DESCRIPTION_KEY));
             mSeenKeys.add(DESCRIPTION_KEY);
         }
-        Set<String> dependencyFiles = new LinkedHashSet<>();
+        YamlClassOptionsParser presetupClassAndOptions = null;
         if (yamlObjects.containsKey(PRE_SETUP_ACTION_KEY)) {
             @SuppressWarnings("unchecked")
             List<Object> objList = (List<Object>) yamlObjects.get(PRE_SETUP_ACTION_KEY);
-            YamlClassOptionsParser classAndOptions = new YamlClassOptionsParser(objList);
+            presetupClassAndOptions = new YamlClassOptionsParser(objList);
             mSeenKeys.add(PRE_SETUP_ACTION_KEY);
-            convertClassAndOptionsToObjects(
-                    configDef,
-                    classAndOptions.getClassesAndOptions(),
-                    Configuration.TARGET_PREPARER_TYPE_NAME);
         }
+        Set<String> dependencyFiles = new LinkedHashSet<>();
+        YamlTestDependencies testDeps = null;
         if (yamlObjects.containsKey(DEPENDENCIES_KEY)) {
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> objList =
                     (List<Map<String, Object>>) yamlObjects.get(DEPENDENCIES_KEY);
-            YamlTestDependencies testDeps = new YamlTestDependencies(objList);
-            dependencyFiles = convertDependenciesToObjects(configDef, testDeps);
+            testDeps = new YamlTestDependencies(objList);
+            dependencyFiles = collectDependencyFiles(testDeps);
             mSeenKeys.add(DEPENDENCIES_KEY);
         }
+        YamlClassOptionsParser runnerInfo = null;
         if (yamlObjects.containsKey(TESTS_KEY)) {
             @SuppressWarnings("unchecked")
             List<Object> objList = (List<Object>) yamlObjects.get(TESTS_KEY);
-            YamlClassOptionsParser runnerInfo = new YamlClassOptionsParser(objList);
+            runnerInfo = new YamlClassOptionsParser(objList);
             mSeenKeys.add(TESTS_KEY);
-            convertClassAndOptionsToObjects(
-                    configDef, runnerInfo.getClassesAndOptions(), Configuration.TEST_TYPE_NAME);
         }
+        YamlClassOptionsParser preparerInfo = null;
         if (yamlObjects.containsKey(TARGET_PREPARERS_KEY)) {
             @SuppressWarnings("unchecked")
             List<Object> objList = (List<Object>) yamlObjects.get(TARGET_PREPARERS_KEY);
-            YamlClassOptionsParser runnerInfo = new YamlClassOptionsParser(objList);
+            preparerInfo = new YamlClassOptionsParser(objList);
             mSeenKeys.add(TARGET_PREPARERS_KEY);
-            convertClassAndOptionsToObjects(
-                    configDef,
-                    runnerInfo.getClassesAndOptions(),
-                    Configuration.TARGET_PREPARER_TYPE_NAME);
         }
         if (!mSeenKeys.containsAll(REQUIRED_KEYS)) {
             Set<String> missingKeys = new HashSet<>(REQUIRED_KEYS);
@@ -136,7 +130,7 @@ public final class ConfigurationYamlParser {
                     String.format("'%s' keys are required and were not found.", missingKeys));
         }
 
-        // Add default configured objects
+        // Add default configured objects first.
         LoaderConfiguration loadConfiguration = new LoaderConfiguration();
         loadConfiguration
                 .setConfigurationDef(configDef)
@@ -147,18 +141,58 @@ public final class ConfigurationYamlParser {
         for (IDefaultObjectLoader loader : serviceLoader) {
             loader.addDefaultObjects(loadConfiguration);
         }
+
+        // Add objects.
+        if (presetupClassAndOptions != null) {
+            convertClassAndOptionsToObjects(
+                    configDef,
+                    presetupClassAndOptions.getClassesAndOptions(),
+                    Configuration.TARGET_PREPARER_TYPE_NAME);
+        }
+        if (testDeps != null) {
+            convertDependenciesToObjects(configDef, testDeps);
+        }
+        if (runnerInfo != null) {
+            convertClassAndOptionsToObjects(
+                    configDef, runnerInfo.getClassesAndOptions(), Configuration.TEST_TYPE_NAME);
+        }
+        if (preparerInfo != null) {
+            convertClassAndOptionsToObjects(
+                    configDef,
+                    preparerInfo.getClassesAndOptions(),
+                    Configuration.TARGET_PREPARER_TYPE_NAME);
+        }
+    }
+
+    /**
+     * Collect dependency files.
+     *
+     * @return returns a list of all the dependency files.
+     */
+    private Set<String> collectDependencyFiles(YamlTestDependencies testDeps) {
+        Set<String> dependencies = new LinkedHashSet<>();
+
+        // Add apks.
+        List<String> apks = testDeps.apks();
+        dependencies.addAll(apks);
+
+        // Add device files.
+        Map<String, String> deviceFiles = testDeps.deviceFiles();
+        for (Entry<String, String> toPush : deviceFiles.entrySet()) {
+            dependencies.add(toPush.getKey());
+        }
+
+        // Add the non-apk and non-device files.
+        dependencies.addAll(testDeps.files());
+        return dependencies;
     }
 
     /**
      * Converts the test dependencies into target_preparer objects.
      *
      * <p>TODO: Figure out a more robust way to map to target_preparers options.
-     *
-     * @return returns a list of all the dependency files.
      */
-    private Set<String> convertDependenciesToObjects(
-            ConfigurationDef def, YamlTestDependencies testDeps) {
-        Set<String> dependencies = new LinkedHashSet<>();
+    private void convertDependenciesToObjects(ConfigurationDef def, YamlTestDependencies testDeps) {
         List<String> apks = testDeps.apks();
         if (!apks.isEmpty()) {
             String className = "com.android.tradefed.targetprep.suite.SuiteApkInstaller";
@@ -180,7 +214,6 @@ public final class ConfigurationYamlParser {
                         def.getName(),
                         Configuration.TARGET_PREPARER_TYPE_NAME);
             }
-            dependencies.addAll(apks);
         }
 
         Map<String, String> deviceFiles = testDeps.deviceFiles();
@@ -203,12 +236,8 @@ public final class ConfigurationYamlParser {
                         toPush.getValue(),
                         def.getName(),
                         Configuration.TARGET_PREPARER_TYPE_NAME);
-                dependencies.add(toPush.getKey());
             }
         }
-        // Add the non-apk and non-device files
-        dependencies.addAll(testDeps.files());
-        return dependencies;
     }
 
     private void convertClassAndOptionsToObjects(
