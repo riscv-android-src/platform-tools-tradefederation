@@ -16,6 +16,7 @@
 
 package com.android.tradefed.targetprep;
 
+import static com.android.tradefed.targetprep.TestAppInstallSetup.CHECK_MIN_SDK_OPTION;
 import static com.android.tradefed.targetprep.TestAppInstallSetup.TEST_FILE_NAME_OPTION;
 import static com.android.tradefed.targetprep.TestAppInstallSetup.THROW_IF_NOT_FOUND_OPTION;
 
@@ -23,8 +24,13 @@ import static com.google.common.truth.Truth.assertThat;
 
 import static org.easymock.EasyMock.anyBoolean;
 import static org.easymock.EasyMock.anyObject;
+
+import static org.mockito.Mockito.doReturn;
+
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.times;
 
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.command.remote.DeviceDescriptor;
@@ -36,6 +42,7 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.testtype.Abi;
+import com.android.tradefed.util.AaptParser;
 import com.android.tradefed.util.FileUtil;
 
 import com.google.common.collect.ImmutableMap;
@@ -47,12 +54,14 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -68,6 +77,7 @@ public class TestAppInstallSetupTest {
     private File fakeApk;
     private File fakeApk2;
     private File mFakeBuildApk;
+    private AaptParser mMockAaptParser;
     private TestAppInstallSetup mPrep;
     private TestInformation mTestInfo;
     private IDeviceBuildInfo mMockBuildInfo;
@@ -125,6 +135,7 @@ public class TestAppInstallSetupTest {
         mTestSplitApkFiles.add(fakeApk2);
 
         mMockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
+        mMockAaptParser = Mockito.mock(AaptParser.class);
         mMockTestDevice = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(mMockTestDevice.getSerialNumber()).andStubReturn(SERIAL);
         EasyMock.expect(mMockTestDevice.getDeviceDescriptor()).andStubReturn(null);
@@ -570,6 +581,108 @@ public class TestAppInstallSetupTest {
         Set<Set<File>> installs = runSetUpAndCaptureInstalls(preparer);
 
         assertThat(installs).containsExactly(ImmutableSet.of(apkFile1, apkFile2));
+    }
+
+    /**
+     * Tests that we throw exception with check-min-sdk when file fails to parse
+     *
+     * @throws Exception the expected exception
+     */
+    @Test
+    public void testResolveApkFiles_checkMinSdk_failParsing() throws Exception {
+        mPrep =
+                new TestAppInstallSetup() {
+                    @Override
+                    AaptParser doAaptParse(File apkFile) {
+                        return null;
+                    }
+                };
+        List<File> files = new ArrayList<>();
+        files.add(fakeApk);
+        OptionSetter setter = new OptionSetter(mPrep);
+        setter.setOptionValue(CHECK_MIN_SDK_OPTION, "true");
+        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
+        try {
+            mPrep.resolveApkFiles(mTestInfo, files);
+            fail("Should have thrown an exception");
+        } catch (TargetSetupError expected) {
+            assertEquals(
+                    String.format("Failed to extract info from `%s` using aapt", fakeApk.getName()),
+                    expected.getMessage());
+        } finally {
+            EasyMock.verify(mMockBuildInfo, mMockTestDevice);
+        }
+    }
+
+    /** Tests that we don't include the file if api level too low */
+    @Test
+    public void testResolveApkFiles_checkMinSdk_apiLow() throws Exception {
+        mPrep =
+                new TestAppInstallSetup() {
+                    @Override
+                    AaptParser doAaptParse(File apkFile) {
+                        return mMockAaptParser;
+                    }
+
+                    @Override
+                    protected String parsePackageName(
+                            File testAppFile, DeviceDescriptor deviceDescriptor) {
+                        return "fakePackageName";
+                    }
+                };
+        List<File> files = new ArrayList<>();
+        files.add(fakeApk);
+        OptionSetter setter = new OptionSetter(mPrep);
+        setter.setOptionValue(CHECK_MIN_SDK_OPTION, "true");
+        EasyMock.expect(mMockTestDevice.getSerialNumber()).andStubReturn(SERIAL);
+        EasyMock.expect(mMockTestDevice.getApiLevel()).andReturn(21).times(2);
+        doReturn(22).when(mMockAaptParser).getSdkVersion();
+
+        Map<File, String> expected = new LinkedHashMap<>();
+
+        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
+
+        Map<File, String> result = mPrep.resolveApkFiles(mTestInfo, files);
+
+        EasyMock.verify(mMockBuildInfo, mMockTestDevice);
+        Mockito.verify(mMockAaptParser, times(2)).getSdkVersion();
+        assertEquals(expected, result);
+    }
+
+    /** Tests that we include the file if level is appropriate */
+    @Test
+    public void testResolveApkFiles_checkMinSdk_apiOk() throws Exception {
+        mPrep =
+                new TestAppInstallSetup() {
+                    @Override
+                    AaptParser doAaptParse(File apkFile) {
+                        return mMockAaptParser;
+                    }
+
+                    @Override
+                    protected String parsePackageName(
+                            File testAppFile, DeviceDescriptor deviceDescriptor) {
+                        return "fakePackageName";
+                    }
+                };
+        List<File> files = new ArrayList<>();
+        files.add(fakeApk);
+        OptionSetter setter = new OptionSetter(mPrep);
+        setter.setOptionValue(CHECK_MIN_SDK_OPTION, "true");
+        EasyMock.expect(mMockTestDevice.getSerialNumber()).andStubReturn(SERIAL);
+        EasyMock.expect(mMockTestDevice.getApiLevel()).andReturn(23);
+        doReturn(22).when(mMockAaptParser).getSdkVersion();
+
+        Map<File, String> expected = new LinkedHashMap<>();
+        expected.put(fakeApk, "fakePackageName");
+
+        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
+
+        Map<File, String> result = mPrep.resolveApkFiles(mTestInfo, files);
+
+        Mockito.verify(mMockAaptParser).getSdkVersion();
+        EasyMock.verify(mMockBuildInfo, mMockTestDevice);
+        assertEquals(result, expected);
     }
 
     private static Path createSubDirectory(Path parent, String name) throws IOException {

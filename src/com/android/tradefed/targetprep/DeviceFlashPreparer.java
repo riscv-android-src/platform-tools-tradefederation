@@ -113,8 +113,16 @@ public abstract class DeviceFlashPreparer extends BaseTargetPreparer {
     @Option(
             name = "flash-ramdisk",
             description =
-                    "flashes ramdisk (boot partition) in addition " + "to regular system image")
+                    "flashes ramdisk (usually on boot partition) in addition to "
+                            + "regular system image")
     private boolean mShouldFlashRamdisk = false;
+
+    @Option(
+            name = "ramdisk-partition",
+            description =
+                    "the partition (such as boot, vendor_boot) that ramdisk image "
+                            + "should be flashed to")
+    private String mRamdiskPartition = "boot";
 
     /**
      * Sets the device boot time
@@ -221,6 +229,9 @@ public abstract class DeviceFlashPreparer extends BaseTargetPreparer {
                 flasher.setForceSystemFlash(mForceSystemFlash);
                 flasher.setDataWipeSkipList(mDataWipeSkipList);
                 flasher.setShouldFlashRamdisk(mShouldFlashRamdisk);
+                if (mShouldFlashRamdisk) {
+                    flasher.setRamdiskPartition(mRamdiskPartition);
+                }
                 if (flasher instanceof FastbootDeviceFlasher) {
                     ((FastbootDeviceFlasher) flasher).setFlashOptions(mFastbootFlashOptions);
                 }

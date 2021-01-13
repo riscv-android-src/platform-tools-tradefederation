@@ -34,6 +34,7 @@ import com.android.tradefed.invoker.shard.IShardHelper;
 import com.android.tradefed.invoker.shard.StrictShardHelper;
 import com.android.tradefed.log.ITerribleFailureHandler;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.monitoring.collector.IResourceMetricCollector;
 import com.android.tradefed.sandbox.ISandboxFactory;
 import com.android.tradefed.sandbox.TradefedSandboxFactory;
 import com.android.tradefed.util.ArrayUtil;
@@ -79,6 +80,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     public static final String SHARDING_STRATEGY_TYPE_NAME = "sharding_strategy";
     public static final String GLOBAL_CONFIG_SERVER = "global_config_server";
     public static final String SANDBOX_FACTORY_TYPE_NAME = "sandbox_factory";
+    public static final String RESOURCE_METRIC_COLLECTOR_TYPE_NAME = "resource_metric_collector";
 
     public static final String GLOBAL_CONFIG_VARIABLE = "TF_GLOBAL_CONFIG";
     public static final String GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE =
@@ -305,6 +307,9 @@ public class GlobalConfiguration implements IGlobalConfiguration {
                     GLOBAL_CONFIG_SERVER, new ObjTypeInfo(IConfigurationServer.class, false));
             sObjTypeMap.put(
                     SANDBOX_FACTORY_TYPE_NAME, new ObjTypeInfo(ISandboxFactory.class, false));
+            sObjTypeMap.put(
+                    RESOURCE_METRIC_COLLECTOR_TYPE_NAME,
+                    new ObjTypeInfo(IResourceMetricCollector.class, true));
         }
         return sObjTypeMap;
     }
@@ -449,6 +454,14 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     public List<IMultiDeviceRecovery> getMultiDeviceRecoveryHandlers() {
         return (List<IMultiDeviceRecovery>)getConfigurationObjectList(
                 MULTI_DEVICE_RECOVERY_TYPE_NAME);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    @SuppressWarnings("unchecked")
+    public List<IResourceMetricCollector> getResourceMetricCollectors() {
+        return (List<IResourceMetricCollector>)
+                getConfigurationObjectList(RESOURCE_METRIC_COLLECTOR_TYPE_NAME);
     }
 
     /**
@@ -602,6 +615,12 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     @Override
     public void setSandboxFactory(ISandboxFactory factory) {
         setConfigurationObjectNoThrow(SANDBOX_FACTORY_TYPE_NAME, factory);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setResourceMetricCollector(IResourceMetricCollector collector) {
+        setConfigurationObjectNoThrow(RESOURCE_METRIC_COLLECTOR_TYPE_NAME, collector);
     }
 
     /** {@inheritDoc} */

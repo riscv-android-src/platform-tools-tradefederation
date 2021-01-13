@@ -76,6 +76,23 @@ public class SubprocessConfigBuilderTest {
         verifyWrapperXml(doc, reporterPort);
     }
 
+    @Test
+    public void testCreateWrapperConfig_forCommandWithSlashes() throws Exception {
+        String oriConfigName = "util/timewaster";
+        String reporterPort = "1024";
+        mConfigBuilder
+                .setClasspath(mClasspath)
+                .setWorkingDir(mWorkDir)
+                .setOriginalConfig(oriConfigName)
+                .setPort(reporterPort);
+        File config = mConfigBuilder.build();
+        assertNotNull(config);
+        DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+        DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+        Document doc = dBuilder.parse(config);
+        verifyWrapperXml(doc, reporterPort);
+    }
+
     private void verifyWrapperXml(Document doc, String reporterPort) {
         NodeList reporters = doc.getElementsByTagName("result_reporter");
         assertTrue(0 < reporters.getLength());
