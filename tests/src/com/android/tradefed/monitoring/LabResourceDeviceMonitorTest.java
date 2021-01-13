@@ -22,9 +22,11 @@ import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.device.DeviceAllocationState;
 import com.android.tradefed.device.IDeviceMonitor;
 import com.android.tradefed.monitoring.collector.IResourceMetricCollector;
-import com.android.tradefed.util.RunUtil;
 
 import com.google.dualhomelab.monitoringagent.resourcemonitoring.Attribute;
+import com.google.dualhomelab.monitoringagent.resourcemonitoring.LabResource;
+import com.google.dualhomelab.monitoringagent.resourcemonitoring.LabResourceRequest;
+import com.google.dualhomelab.monitoringagent.resourcemonitoring.LabResourceServiceGrpc;
 import com.google.dualhomelab.monitoringagent.resourcemonitoring.MonitoredEntity;
 import com.google.dualhomelab.monitoringagent.resourcemonitoring.Resource;
 
@@ -39,16 +41,22 @@ import static org.mockito.Mockito.*;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
+import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
+import io.grpc.ManagedChannel;
+import io.grpc.Server;
+import io.grpc.inprocess.InProcessChannelBuilder;
+import io.grpc.inprocess.InProcessServerBuilder;
+import io.grpc.testing.GrpcCleanupRule;
 
 @RunWith(JUnit4.class)
 public class LabResourceDeviceMonitorTest {
     @Mock private ClusterOptions mClusterOptions;
 
-    @Rule public MockitoRule rule = MockitoJUnit.rule();
+    @Rule public final MockitoRule rule = MockitoJUnit.rule();
+    @Rule public final GrpcCleanupRule grpcCleanup = new GrpcCleanupRule();
 
     private static final DeviceDescriptor DEVICE_DESCRIPTOR =
             new DeviceDescriptor(
@@ -80,24 +88,27 @@ public class LabResourceDeviceMonitorTest {
                 });
     }
 
-    /** Tests gRPC server and metricize thread bring up and shutdown. */
+    /** Tests receiving empty LabResource message from test server. */
     @Test
-    public void testServerStartAndShutdown() throws InterruptedException {
-        when(mClusterOptions.getLabName()).thenReturn("foo-lab");
-        when(mClusterOptions.getClusterId()).thenReturn("zoo");
-        Assert.assertFalse(
-                "server should be empty before monitor run", mMonitor.getServer().isPresent());
-        mMonitor.run();
-        Assert.assertTrue(
-                "server should present after monitor run", mMonitor.getServer().isPresent());
-        Assert.assertEquals(
-                LabResourceDeviceMonitor.DEFAULT_PORT, mMonitor.getServer().get().getPort());
+    public void testServerStartAndShutdown() throws InterruptedException, IOException {
+        Server server =
+                grpcCleanup.register(
+                        InProcessServerBuilder.forName("test")
+                                .directExecutor()
+                                .addService(mMonitor)
+                                .build());
+        ManagedChannel channel =
+                grpcCleanup.register(
+                        InProcessChannelBuilder.forName("test").directExecutor().build());
+        mMonitor.setServer(server);
+        server.start();
+        LabResourceServiceGrpc.LabResourceServiceBlockingStub stub =
+                LabResourceServiceGrpc.newBlockingStub(channel);
+        LabResource labResource = stub.getLabResource(LabResourceRequest.newBuilder().build());
+        Assert.assertEquals(LabResource.newBuilder().build(), labResource);
         mMonitor.stop();
-        Assert.assertTrue(
-                "server should be shutdown after monitor stop",
-                mMonitor.getServer().get().isShutdown());
-        mMonitor.getServer().get().awaitTermination();
-        Thread.sleep(2000); // Add extra time to wait for gRPC server to terminate threads.
+        Assert.assertTrue("server should be shutdown after monitor stop", server.isShutdown());
+        server.awaitTermination();
     }
 
     /** Tests building host entity. */
@@ -114,7 +125,7 @@ public class LabResourceDeviceMonitorTest {
                         .putIdentifier(LabResourceDeviceMonitor.LAB_NAME_KEY, "foo-lab")
                         .putIdentifier(
                                 LabResourceDeviceMonitor.TEST_HARNESS_KEY,
-                                LabResourceDeviceMonitor.TEST_HARNESS)
+                                ClusterHostUtil.getTestHarness())
                         .addAttribute(
                                 Attribute.newBuilder()
                                         .setName(LabResourceDeviceMonitor.HOST_GROUP_KEY)
@@ -164,20 +175,16 @@ public class LabResourceDeviceMonitorTest {
 
     /** Tests collector operation timeout and trigger next collector operation. */
     @Test
-    public void testCollectorTimeout() throws InterruptedException {
+    public void testCollectorTimeout() {
         when(mClusterOptions.getLabName()).thenReturn("foo-lab");
         when(mClusterOptions.getClusterId()).thenReturn("zoo");
         MockCollector collector1 = new MockCollector();
         MockCollector collector2 = new MockCollector();
-        mMonitor.run();
+        mMonitor.startMetricizeExecutor();
         mMonitor.buildMonitoredHost(List.of(collector1, collector2));
-        mMonitor.getSharedCollectorExecutor().shutdown();
-        mMonitor.getSharedCollectorExecutor().awaitTermination(3, TimeUnit.SECONDS);
-        mMonitor.stop();
+        mMonitor.stopMetricizeExecutor();
         Assert.assertTrue(collector1.isFinished);
         Assert.assertTrue(collector2.isFinished);
-        RunUtil.getDefault()
-                .sleep(2000); // Add extra time to wait for gRPC server to terminate threads.
     }
 
 }
