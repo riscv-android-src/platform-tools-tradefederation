@@ -37,6 +37,7 @@ import com.android.tradefed.device.cloud.NestedRemoteDevice;
 import com.android.tradefed.device.metric.CollectorHelper;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
+import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
@@ -46,9 +47,12 @@ import com.android.tradefed.invoker.shard.token.TokenProperty;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLoggerReceiver;
 import com.android.tradefed.result.ResultForwarder;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
+import com.android.tradefed.result.error.TestErrorIdentifier;
 import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.retry.RetryStrategy;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
@@ -69,13 +73,17 @@ import com.android.tradefed.testtype.ITestCollector;
 import com.android.tradefed.util.AbiFormatter;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.MultiMap;
+import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.TimeUtil;
 
+import com.google.common.collect.ImmutableSet;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -131,6 +139,9 @@ public abstract class ITestSuite
 
     private static final String PRODUCT_CPU_ABI_KEY = "ro.product.cpu.abi";
 
+    private static final Set<String> ALLOWED_PREPARERS_CONFIGS =
+            ImmutableSet.of("/suite/allowed-preparers.txt", "/suite/google-allowed-preparers.txt");
+
     // Options for test failure case
     @Option(
         name = "bugreport-on-failure",
@@ -149,11 +160,10 @@ public abstract class ITestSuite
 
     @Deprecated
     @Option(
-        name = "logcat-on-failure-size",
-        description =
-                "The max number of logcat data in bytes to capture when "
-                        + "--logcat-on-failure is on. Should be an amount that can comfortably fit in memory."
-    )
+            name = "logcat-on-failure-size",
+            description =
+                    "The max number of logcat data in bytes to capture when --logcat-on-failure is"
+                            + " on. Should be an amount that can comfortably fit in memory.")
     private int mMaxLogcatBytes = 500 * 1024; // 500K
 
     @Deprecated
@@ -328,6 +338,7 @@ public abstract class ITestSuite
     private IInvocationContext mContext;
     private List<IMetricCollector> mMetricCollectors;
     private IConfiguration mMainConfiguration;
+    private Set<IAbi> mAbis = new LinkedHashSet<>();
 
     // Sharding attributes
     private boolean mIsSharded = false;
@@ -509,6 +520,9 @@ public abstract class ITestSuite
             return runModules;
         }
 
+        Map<String, List<ITargetPreparer>> suitePreparersPerDevice =
+                getAllowedPreparerPerDevice(mMainConfiguration);
+
         for (Entry<String, IConfiguration> config : runConfig.entrySet()) {
             // Validate the configuration, it will throw if not valid.
             ValidateSuiteConfigHelper.validateConfig(config.getValue());
@@ -519,6 +533,7 @@ public abstract class ITestSuite
                             config.getKey(),
                             config.getValue().getTests(),
                             preparersPerDevice,
+                            suitePreparersPerDevice,
                             config.getValue().getMultiTargetPreparers(),
                             config.getValue());
             if (mDisableAutoRetryTimeReporting) {
@@ -581,6 +596,40 @@ public abstract class ITestSuite
             List<ITargetPreparer> preparers = new ArrayList<>();
             res.put(holder.getDeviceName(), preparers);
             preparers.addAll(holder.getTargetPreparers());
+        }
+        return res;
+    }
+
+    /** Create the mapping of device to its target_preparer that's allowed to rerun. */
+    private Map<String, List<ITargetPreparer>> getAllowedPreparerPerDevice(IConfiguration config) {
+        // For unittests, mMainConfiguration might not have been set.
+        if (config == null) {
+            return new LinkedHashMap<String, List<ITargetPreparer>>();
+        }
+        // Read the list of allowed suite level target preparers from resource files.
+        Set<String> allowedSuitePreparers = new HashSet<>();
+        for (String resource : ALLOWED_PREPARERS_CONFIGS) {
+            try (InputStream resStream = ITestSuite.class.getResourceAsStream(resource)) {
+                if (resStream == null) {
+                    CLog.d("Resource not found for allowed preparers: %s", resource);
+                    continue;
+                }
+                List<String> preparers =
+                        Arrays.asList(StreamUtil.getStringFromStream(resStream).split("\n"));
+                allowedSuitePreparers.addAll(preparers);
+            } catch (IOException e) {
+                CLog.e(e);
+            }
+        }
+
+        Map<String, List<ITargetPreparer>> res = new LinkedHashMap<>();
+        for (IDeviceConfiguration holder : config.getDeviceConfig()) {
+            List<ITargetPreparer> preparers = new ArrayList<>();
+            for (ITargetPreparer preparer : holder.getTargetPreparers()) {
+                if (allowedSuitePreparers.contains(preparer.getClass().getCanonicalName()))
+                    preparers.add(preparer);
+            }
+            res.put(holder.getDeviceName(), preparers);
         }
         return res;
     }
@@ -758,7 +807,7 @@ public abstract class ITestSuite
             }
         }
 
-        if (!mSkipAllSystemStatusCheck) {
+        if (!mSkipAllSystemStatusCheck && !mSystemStatusCheckers.isEmpty()) {
             runPreModuleCheck(module.getId(), mSystemStatusCheckers, mDevice, listener);
         }
         if (mCollectTestsOnly) {
@@ -792,7 +841,7 @@ public abstract class ITestSuite
                 failureListener,
                 getConfiguration().getRetryDecision().getMaxRetryCount());
 
-        if (!mSkipAllSystemStatusCheck) {
+        if (!mSkipAllSystemStatusCheck && !mSystemStatusCheckers.isEmpty()) {
             runPostModuleCheck(module.getId(), mSystemStatusCheckers, mDevice, listener);
         }
     }
@@ -910,7 +959,11 @@ public abstract class ITestSuite
         // Avoid messing with the final test count by making them empty runs.
         listener.testRunStarted(identifier + "_" + moduleName, 0, 0, System.currentTimeMillis());
         if (!failures.isEmpty()) {
-            listener.testRunFailed(String.format("%s failed '%s' checkers", moduleName, failures));
+            FailureDescription description =
+                    FailureDescription.create(
+                                    String.format("%s failed '%s' checkers", moduleName, failures))
+                            .setErrorIdentifier(TestErrorIdentifier.MODULE_CHANGED_SYSTEM_STATUS);
+            listener.testRunFailed(description);
         }
         listener.testRunEnded(
                 System.currentTimeMillis() - startTime, new HashMap<String, Metric>());
@@ -948,6 +1001,7 @@ public abstract class ITestSuite
                     ModuleSplitter.splitConfiguration(
                             testInfo,
                             runConfig,
+                            getAllowedPreparerPerDevice(mMainConfiguration),
                             shardCountHint,
                             mShouldMakeDynamicModule,
                             mIntraModuleSharding);
@@ -1184,6 +1238,9 @@ public abstract class ITestSuite
      * @throws DeviceNotAvailableException
      */
     public Set<IAbi> getAbis(ITestDevice device) throws DeviceNotAvailableException {
+        if (!mAbis.isEmpty()) {
+            return mAbis;
+        }
         Set<IAbi> abis = new LinkedHashSet<>();
         Set<String> archAbis = getAbisForBuildTargetArch();
         // Handle null-device: use abi in common with host and suite build
@@ -1214,10 +1271,11 @@ public abstract class ITestSuite
             // Run on all abi in common between the device and suite builds.
             List<String> deviceAbis = getDeviceAbis(device);
             if (deviceAbis.isEmpty()) {
-                throw new IllegalArgumentException(
+                throw new HarnessRuntimeException(
                         String.format(
                                 "Couldn't determinate the abi of the device '%s'.",
-                                device.getSerialNumber()));
+                                device.getSerialNumber()),
+                        DeviceErrorIdentifier.DEVICE_UNEXPECTED_RESPONSE);
             }
             for (String abi : deviceAbis) {
                 if ((mSkipHostArchCheck || archAbis.contains(abi))
@@ -1270,6 +1328,11 @@ public abstract class ITestSuite
     /** Return the abis supported by the Host build target architecture. Exposed for testing. */
     @VisibleForTesting
     protected Set<String> getAbisForBuildTargetArch() {
+        return getAbisForBuildTargetArchFromSuite();
+    }
+
+    /** Returns the possible abis from the TestSuiteInfo. */
+    public static Set<String> getAbisForBuildTargetArchFromSuite() {
         // If TestSuiteInfo does not exists, the stub arch will be replaced by all possible abis.
         Set<String> abis = new LinkedHashSet<>();
         for (String arch : TestSuiteInfo.getInstance().getTargetArchs()) {
@@ -1413,5 +1476,9 @@ public abstract class ITestSuite
     @VisibleForTesting
     void setModuleInProgress(ModuleDefinition moduleInProgress) {
         mModuleInProgress = moduleInProgress;
+    }
+
+    public final void setAbis(Set<IAbi> abis) {
+        mAbis.addAll(abis);
     }
 }

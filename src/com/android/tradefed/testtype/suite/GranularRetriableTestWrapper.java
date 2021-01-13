@@ -17,6 +17,7 @@
 package com.android.tradefed.testtype.suite;
 
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.metric.CollectorHelper;
@@ -72,6 +73,7 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
 
     private IRetryDecision mRetryDecision;
     private IRemoteTest mTest;
+    private ModuleDefinition mModule;
     private List<IMetricCollector> mRunMetricCollectors;
     private TestFailureListener mFailureListener;
     private IInvocationContext mModuleInvocationContext;
@@ -94,7 +96,18 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
             TestFailureListener failureListener,
             List<ITestInvocationListener> moduleLevelListeners,
             int maxRunLimit) {
+        this(test, null, mainListener, failureListener, moduleLevelListeners, maxRunLimit);
+    }
+
+    public GranularRetriableTestWrapper(
+            IRemoteTest test,
+            ModuleDefinition module,
+            ITestInvocationListener mainListener,
+            TestFailureListener failureListener,
+            List<ITestInvocationListener> moduleLevelListeners,
+            int maxRunLimit) {
         mTest = test;
+        mModule = module;
         mMainGranularRunListener = new ModuleListener(mainListener);
         mFailureListener = failureListener;
         mModuleLevelListeners = moduleLevelListeners;
@@ -194,6 +207,9 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
             if (collector.isDisabled()) {
                 CLog.d("%s has been disabled. Skipping.", collector);
             } else {
+                if (collector instanceof IConfigurationReceiver) {
+                    ((IConfigurationReceiver) collector).setConfiguration(mModuleConfiguration);
+                }
                 runListener = collector.init(mModuleInvocationContext, runListener);
             }
         }
@@ -226,7 +242,7 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
 
         // Bail out early if there is no need to retry at all.
         if (!mRetryDecision.shouldRetry(
-                mTest, 0, mMainGranularRunListener.getTestRunForAttempts(0))) {
+                mTest, mModule, 0, mMainGranularRunListener.getTestRunForAttempts(0))) {
             return;
         }
         // Avoid rechecking the shouldRetry below the first time as it could retrigger reboot.
@@ -241,6 +257,7 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
                     boolean retry =
                             mRetryDecision.shouldRetry(
                                     mTest,
+                                    mModule,
                                     attemptNumber - 1,
                                     mMainGranularRunListener.getTestRunForAttempts(
                                             attemptNumber - 1));
@@ -280,6 +297,10 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
                     if (collector.isDisabled()) {
                         CLog.d("%s has been disabled. Skipping.", collector);
                     } else {
+                        if (collector instanceof IConfigurationReceiver) {
+                            ((IConfigurationReceiver) collector)
+                                    .setConfiguration(mModuleConfiguration);
+                        }
                         runListener = collector.init(mModuleInvocationContext, runListener);
                     }
                 }

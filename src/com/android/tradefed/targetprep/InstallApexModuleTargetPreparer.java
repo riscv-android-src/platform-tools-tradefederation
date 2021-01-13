@@ -46,6 +46,8 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /*
  * A {@link TargetPreparer} that attempts to install mainline modules to device
@@ -63,16 +65,25 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
     private static final String TRAIN_WITH_APEX_INSTALL_OPTION = "install-multi-package";
     private static final String ACTIVATED_APEX_SOURCEDIR_PREFIX = "data";
     private static final int R_SDK_INT = 30;
+    // Pattern used to identify the package names from adb shell pm path.
+    private static final Pattern PACKAGE_REGEX = Pattern.compile("package:(.*)");
 
     private List<ApexInfo> mTestApexInfoList = new ArrayList<>();
+    private List<String> mApexModulesToUninstall = new ArrayList<>();
+    private List<String> mApkModulesToUninstall = new ArrayList<>();
+    private Set<String> mMainlineModuleInfos = new HashSet<>();
     private Set<String> mApkToInstall = new LinkedHashSet<>();
     private List<String> mApkInstalled = new ArrayList<>();
     private List<String> mSplitsInstallArgs = new ArrayList<>();
     private BundletoolUtil mBundletoolUtil;
     private String mDeviceSpecFilePath = "";
+    private boolean mOptimizeMainlineTest = false;
 
     @Option(name = "bundletool-file-name", description = "The file name of the bundletool jar.")
     private String mBundletoolFilename;
+
+    @Option(name = "train-path", description = "The absoulte path of the train folder.")
+    private File mTrainFolderPath;
 
     @Option(
         name = "apex-staging-wait-time",
@@ -88,18 +99,36 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
                             + "preloaded on device. Otherwise an exception will be thrown.")
     private boolean mIgnoreIfNotPreloaded = false;
 
+    @Option(
+            name = "skip-apex-teardown",
+            description = "Skip teardown if all files to be installed are apex files. "
+                    + "Currently, this option is only used for Test Mapping use case.")
+    private boolean mSkipApexTearDown = false;
+
     @Override
     public void setUp(TestInformation testInfo)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
         setTestInformation(testInfo);
         ITestDevice device = testInfo.getDevice();
 
-        if (getTestsFileName().isEmpty()) {
+        if (mTrainFolderPath != null) {
+            addApksToTestFiles();
+        }
+
+        List<File> moduleFileNames = getTestsFileName();
+        if (moduleFileNames.isEmpty()) {
             CLog.i("No apk/apex module file to install. Skipping.");
             return;
         }
 
-        cleanUpStagedAndActiveSession(device);
+        if (!mSkipApexTearDown) {
+            // Cleanup the device if skip-apex-teardown isn't set. It will always run with the
+            // target preparer.
+            cleanUpStagedAndActiveSession(device);
+        }
+        else {
+            mOptimizeMainlineTest = true;
+        }
 
         Set<ApexInfo> activatedApexes = device.getActiveApexes();
 
@@ -113,9 +142,27 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
             CLog.i("No modules are preloaded on the device, so no modules will be installed.");
             return;
         }
+
+        if (mOptimizeMainlineTest) {
+            CLog.i("Optimizing modules that are already activated in the previous test.");
+            testAppFiles = optimizeModuleInstallation(activatedApexes, testAppFiles, device);
+            if (testAppFiles.isEmpty()) {
+                if (!mApexModulesToUninstall.isEmpty() || !mApkModulesToUninstall.isEmpty()) {
+                    RunUtil.getDefault().sleep(mApexStagingWaitTime);
+                    device.reboot();
+                }
+                // If both the list of files to be installed and uninstalled are empty, that means
+                // the mainline modules are the same as the previous ones.
+                CLog.i("All required modules are installed");
+                return;
+            }
+        }
+
         if (containsApks(testAppFiles)) {
             installUsingBundleTool(testInfo, testAppFiles);
-            if (mTestApexInfoList.isEmpty()) {
+            if (mTestApexInfoList.isEmpty()
+                    && mApexModulesToUninstall.isEmpty()
+                    && mApkModulesToUninstall.isEmpty()) {
                 CLog.i("No Apex module in the train. Skipping reboot.");
                 return;
             } else {
@@ -126,7 +173,9 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
             Map<File, String> appFilesAndPackages = resolveApkFiles(testInfo, testAppFiles);
             installer(testInfo, appFilesAndPackages);
             if (containsApex(appFilesAndPackages.keySet())
-                    || containsPersistentApk(appFilesAndPackages.keySet(), testInfo)) {
+                    || containsPersistentApk(appFilesAndPackages.keySet(), testInfo)
+                    || !mApexModulesToUninstall.isEmpty()
+                    || !mApkModulesToUninstall.isEmpty()) {
                 RunUtil.getDefault().sleep(mApexStagingWaitTime);
                 device.reboot();
             }
@@ -164,8 +213,151 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
         CLog.i("Train activation succeed.");
     }
 
+    /**
+     * Optimization for modules to reuse those who are already activated in the previous test.
+     *
+     * @param activatedApex The set of the active apexes on device
+     * @param testFiles List<File> of the modules that will be installed on the device.
+     * @param device the {@link ITestDevice}
+     * @return A List<File> of the modules that will be installed on the device.
+     */
+    private List<File> optimizeModuleInstallation(Set<ApexInfo> activatedApex, List<File> testFiles,
+            ITestDevice device) throws DeviceNotAvailableException, TargetSetupError {
+        // Get apexes that got activated in the previous test invocation.
+        Set<String> apexInData = getApexInData(activatedApex);
+
+        // Get the apk files that are already installed on the device.
+        Set<String> apkModuleInData = getApkModuleInData(activatedApex, device);
+
+        // Get the apex files that are not used by the current test and will be uninstalled.
+        mApexModulesToUninstall.addAll(getModulesToUninstall(apexInData, testFiles, device));
+
+        // Get the apk files that are not used by the current test and will be uninstalled.
+        mApkModulesToUninstall.addAll(getModulesToUninstall(apkModuleInData, testFiles, device));
+
+        for (String m : mApexModulesToUninstall) {
+            CLog.i("Uninstalling apex module: %s", m);
+            uninstallPackage(device, m);
+        }
+
+        for (String packageName : mApkModulesToUninstall) {
+            CLog.i("Uninstalling apk module: %s", packageName);
+            uninstallPackage(device, packageName);
+        }
+
+        return testFiles;
+    }
+
+    /**
+     * Get a set of modules that will be uninstalled.
+     *
+     * @param modulesInData A Set<String> of modules that are installed on the /data directory.
+     * @param testFiles A List<File> of modules that will be installed on the device.
+     * @param device the {@link ITestDevice}
+     * @return A Set<String> of modules that will be uninstalled on the device.
+     */
+    Set<String> getModulesToUninstall(Set<String> modulesInData,
+        List<File> testFiles, ITestDevice device) throws TargetSetupError {
+        Set<String> unInstallModules = new HashSet<>(modulesInData);
+        List<File> filesToSkipInstall = new ArrayList<>();
+        for (File testFile : testFiles) {
+            String packageName = parsePackageName(testFile, device.getDeviceDescriptor());
+            for (String moduleInData : modulesInData) {
+                if (moduleInData.equals(packageName)) {
+                    unInstallModules.remove(moduleInData);
+                    filesToSkipInstall.add(testFile);
+                }
+            }
+        }
+        // Update the modules to be installed based on what will not be installed.
+        testFiles.removeAll(filesToSkipInstall);
+        return unInstallModules;
+    }
+
+    /**
+     * Return a set of apex files that are already installed on the /data directory.
+     */
+    Set<String> getApexInData(Set<ApexInfo> activatedApexes) {
+        Set<String> apexInData = new HashSet<>();
+        for (ApexInfo apex : activatedApexes) {
+            if (apex.sourceDir.startsWith(ACTIVATED_APEX_SOURCEDIR_PREFIX, 1)) {
+                apexInData.add(apex.name);
+            }
+        }
+        return apexInData;
+    }
+
+    /**
+     * Return a set of apk modules by excluding the apex modules from the given mainline modules.
+     */
+    Set<String> getApkModules(Set<String> moduleInfos, Set<ApexInfo> activatedApexes) {
+        Set<String> apexModules = new HashSet<>();
+        for (ApexInfo apex : activatedApexes) {
+            apexModules.add(apex.name);
+        }
+        moduleInfos.removeAll(apexModules);
+        return moduleInfos;
+    }
+
+    /**
+     * Return a set of apk modules that are already installed on the /data directory.
+     */
+    Set<String> getApkModuleInData(Set<ApexInfo> activatedApexes, ITestDevice device)
+        throws DeviceNotAvailableException {
+        Set<String> apkModuleInData = new HashSet<>();
+        try {
+            // Get all mainline modules based on the MODULE METADATA on the device.
+            mMainlineModuleInfos = device.getMainlineModuleInfo();
+        } catch (UnsupportedOperationException usoe) {
+            CLog.e("Failed to query modules based on the MODULE_METADATA on the device - "
+                    + "unsupported operation, returning an empty list of apk modules.");
+            return apkModuleInData;
+        }
+        // Get the apk modules based on mainline module info and the activated apex modules.
+        Set<String> apkModules = getApkModules(mMainlineModuleInfos, activatedApexes);
+        for (String apkModule : apkModules) {
+            String output = device.executeShellCommand(String.format("pm path %s", apkModule));
+            if (output != null) {
+                Matcher m = PACKAGE_REGEX.matcher(output);
+                while (m.find()) {
+                    String packageName = m.group(1);
+                    CLog.i("Activates apk module: %s, path: %s", apkModule, packageName);
+                    if (packageName.startsWith("/data/app/")) {
+                        apkModuleInData.add(apkModule);
+                    }
+                }
+            }
+        }
+        return apkModuleInData;
+    }
+
+    /**
+     * Check if the files to be installed contain .apk or .apks.
+     *
+     * @param testAppFiles List<File> of the modules that will be installed on the device.
+     * @return true if the files contain .apk or .apks, otherwise false.
+     */
+    private boolean hasApkFilesToInstall(List<File> testAppFiles) {
+        List<String> checkLists = Arrays.asList(".apk", ".apks");
+        for (File testAppFile : testAppFiles) {
+            if (checkLists.stream().anyMatch(entry -> testAppFile.getName().endsWith(entry))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     @Override
     public void tearDown(TestInformation testInfo, Throwable e) throws DeviceNotAvailableException {
+        if (mOptimizeMainlineTest) {
+            if (!mApkInstalled.isEmpty() && mMainlineModuleInfos.isEmpty()) {
+                CLog.d("Proceeding tearDown as no MODULE METADATA existing on the device.");
+            }
+            else {
+                CLog.d("Skipping tearDown as the installed modules may be used for the next test.");
+                return;
+            }
+        }
         ITestDevice device = testInfo.getDevice();
         if (e instanceof DeviceNotAvailableException) {
             CLog.e("Device %s is not available. Teardown() skipped.", device.getSerialNumber());
@@ -175,7 +367,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
                 super.tearDown(testInfo, e);
             } else {
                 for (String apkPkgName : getApkInstalled()) {
-                    super.uninstallPackage(device, apkPkgName);
+                    uninstallPackage(device, apkPkgName);
                 }
                 if (!mTestApexInfoList.isEmpty()) {
                     cleanUpStagedAndActiveSession(device);
@@ -194,7 +386,13 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
         if (mBundletoolUtil != null) {
             return;
         }
-        File bundletoolJar = getLocalPathForFilename(testInfo, getBundletoolFileName());
+        File bundletoolJar;
+        File f = new File(getBundletoolFileName());
+        if (!f.isAbsolute()) {
+            bundletoolJar = getLocalPathForFilename(testInfo, getBundletoolFileName());
+        } else {
+            bundletoolJar = f;
+        }
         if (bundletoolJar == null) {
             throw new TargetSetupError(
                     String.format("Failed to find bundletool jar %s.", getBundletoolFileName()),
@@ -474,7 +672,12 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
             throws TargetSetupError, DeviceNotAvailableException {
         ITestDevice device = testInfo.getDevice();
         for (File moduleFileName : testAppFileNames) {
-            File moduleFile = getLocalPathForFilename(testInfo, moduleFileName.getName());
+            File moduleFile;
+            if (!moduleFileName.isAbsolute()) {
+                moduleFile = getLocalPathForFilename(testInfo, moduleFileName.getName());
+            } else {
+                moduleFile = moduleFileName;
+            }
             if (moduleFileName.getName().endsWith(SPLIT_APKS_SUFFIX)) {
                 List<File> splits = getSplitsForApks(testInfo, moduleFile);
                 String splitsArgs = createInstallArgsForSplit(splits, device);
@@ -731,6 +934,16 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
         return failToActivateApex;
     }
 
+    private void addApksToTestFiles() {
+        File[] filesUnderTrainFolder = mTrainFolderPath.listFiles();
+        Arrays.sort(filesUnderTrainFolder, (a, b) -> a.getName().compareTo(b.getName()));
+        for (File f : filesUnderTrainFolder) {
+            if (f.getName().endsWith(".apks")) {
+                getTestsFileName().add(f);
+            }
+        }
+    }
+
     @VisibleForTesting
     protected String getBundletoolFileName() {
         return mBundletoolFilename;
@@ -744,5 +957,15 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
     @VisibleForTesting
     protected List<String> getApkInstalled() {
         return mApkInstalled;
+    }
+
+    @VisibleForTesting
+    public void setSkipApexTearDown(boolean skip) {
+        mSkipApexTearDown = skip;
+    }
+
+    @VisibleForTesting
+    public void setIgnoreIfNotPreloaded(boolean skip) {
+        mIgnoreIfNotPreloaded = skip;
     }
 }

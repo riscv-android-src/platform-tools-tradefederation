@@ -22,6 +22,7 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.retry.MergeStrategy;
+import com.android.tradefed.util.MultiMap;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -68,7 +69,8 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
     /** Track whether or not a test run is currently in progress */
     private boolean mRunInProgress = false;
 
-    private Map<String, LogFile> mNonAssociatedLogFiles = new LinkedHashMap<>();
+    private MultiMap<String, LogFile> mModuleLogFiles = new MultiMap<>();
+    private MultiMap<String, LogFile> mNonAssociatedLogFiles = new MultiMap<>();
 
     // Tracks if mStatusCounts are accurate, or if they need to be recalculated
     private AtomicBoolean mIsCountDirty = new AtomicBoolean(true);
@@ -311,6 +313,12 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
     }
 
     @Override
+    public void testAssumptionFailure(TestDescription test, FailureDescription failure) {
+        setCountDirty();
+        mCurrentTestRunResult.testAssumptionFailure(test, failure);
+    }
+
+    @Override
     public void testIgnored(TestDescription test) {
         setCountDirty();
         mCurrentTestRunResult.testIgnored(test);
@@ -321,6 +329,8 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
     public void logAssociation(String dataName, LogFile logFile) {
         if (mRunInProgress) {
             mCurrentTestRunResult.testLogSaved(dataName, logFile);
+        } else if (mCurrentModuleContext != null) {
+            mModuleLogFiles.put(dataName, logFile);
         } else {
             mNonAssociatedLogFiles.put(dataName, logFile);
         }
@@ -559,9 +569,17 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
         return mModuleContextMap.get(testRunName);
     }
 
-    /** Returns a copy of the map containing all the logged file not associated with a test run. */
-    public Map<String, LogFile> getNonAssociatedLogFiles() {
-        return new LinkedHashMap<>(mNonAssociatedLogFiles);
+    /** Returns a copy of the map containing all the logged file associated with the module */
+    public MultiMap<String, LogFile> getModuleLogFiles() {
+        return new MultiMap<>(mModuleLogFiles);
+    }
+
+    /**
+     * Returns a copy of the map containing all the logged file not associated with a test run or a
+     * module.
+     */
+    public MultiMap<String, LogFile> getNonAssociatedLogFiles() {
+        return new MultiMap<>(mNonAssociatedLogFiles);
     }
 
     /**

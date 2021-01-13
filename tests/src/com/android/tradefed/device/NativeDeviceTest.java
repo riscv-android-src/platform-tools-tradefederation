@@ -250,6 +250,17 @@ public class NativeDeviceTest {
         fail("getActiveApexes should have thrown an exception");
     }
 
+    /** Unit test for {@link NativeDevice#getMainlineModuleInfo()}. */
+    @Test
+    public void testGetMainlineModuleInfo_exception() throws Exception {
+        try {
+            mTestDevice.getMainlineModuleInfo();
+        } catch (UnsupportedOperationException onse) {
+            return;
+        }
+        fail("getMainlineModuleInfo should have thrown an exception");
+    }
+
     /** Unit test for {@link NativeDevice#getScreenshot()}. */
     @Test
     public void testGetScreenshot_exception() throws Exception {
@@ -2931,7 +2942,8 @@ public class NativeDeviceTest {
                 EasyMock.eq(String.format("logcat -v threadtime -t '%s'", dateFormatted)),
                 EasyMock.anyObject());
         EasyMock.replay(mMockIDevice);
-        mTestDevice.getLogcatSince(date);
+        InputStreamSource res = mTestDevice.getLogcatSince(date);
+        StreamUtil.close(res);
         EasyMock.verify(mMockIDevice);
     }
 

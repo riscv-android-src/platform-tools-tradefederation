@@ -119,8 +119,12 @@ public class SubprocessConfigBuilder {
                 in = loader.getResourceAsStream(String.format("config/%s", mOriginalConfig));
             }
             if (in == null) {
+                File f = new File(mOriginalConfig);
+                if (!f.isAbsolute()) {
+                    f = new File(mWorkDir, mOriginalConfig);
+                }
                 try {
-                    in = new FileInputStream(mOriginalConfig);
+                    in = new FileInputStream(f);
                 } catch (FileNotFoundException e) {
                     throw new RuntimeException(
                             String.format("Could not find configuration '%s'", mOriginalConfig));
@@ -143,7 +147,14 @@ public class SubprocessConfigBuilder {
             root.appendChild(reporter);
         }
 
-        File f = new File(mWorkDir, createConfigName(mOriginalConfig));
+        File f = new File(mWorkDir, mOriginalConfig);
+        if (!f.exists() || !f.isFile()) {
+            // If the original config is an existing file, we need to update it since some old TFs
+            // check the file system first before bundled configs when loading configs.
+            // If the original config is not an existing file, we can use any name since the
+            // original config name will be assigned when creating a injection jar.
+            f = File.createTempFile("subprocess_config_", ".xml", mWorkDir);
+        }
         TransformerFactory transformerFactory = TransformerFactory.newInstance();
         try {
             Transformer transformer = transformerFactory.newTransformer();

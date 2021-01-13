@@ -34,25 +34,19 @@ public class TestResourceDownloader {
     private static final long RETRY_INTERVAL_MS = 10 * 1000;
     private static final int MAX_RETRY_COUNT = 2;
 
-    private final File mRootDir;
     private IRunUtil mRunUtil = null;
 
-    public TestResourceDownloader(final File rootDir) {
-        mRootDir = rootDir;
-    }
-
-    public File download(TestResource resource) throws IOException {
+    public void download(TestResource resource, File dest) throws IOException {
         final URL url = new URL(resource.getUrl());
         final String protocol = url.getProtocol();
-        final File dest = new File(mRootDir, resource.getName());
         final File parent = dest.getParentFile();
         if (!parent.exists()) {
             parent.mkdirs();
         }
         if ("file".equals(protocol)) {
-            final File src = new File(resource.getUrl().substring(6));
+            final File src = new File(url.getPath());
             FileUtil.hardlinkFile(src, dest);
-            return dest;
+            return;
         }
 
         final List<String> cmdArgs = buildDownloadCommandArgs(url, dest);
@@ -72,7 +66,7 @@ public class TestResourceDownloader {
             CLog.d("stderr:\n'''\n%s'''\n", result.getStderr());
             throw new RuntimeException(msg);
         }
-        return dest;
+        return;
     }
 
     /** Build a list of command line arguments to download a file. */

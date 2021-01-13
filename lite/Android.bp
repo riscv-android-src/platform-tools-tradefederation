@@ -18,6 +18,11 @@
 // so we can share those without too much fear of dependency hell.
 java_library_host {
     name: "tradefed-lite",
+    // Restrict visibility to only those targets that need to access it.
+    visibility: [
+        "//tools/tradefederation/core",
+        "//tools/tradefederation/core/isolation",
+    ],
     defaults: ["tradefed_defaults"],
     srcs: [
         "./**/*.java",

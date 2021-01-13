@@ -179,7 +179,9 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
         IDevice device = monitor.waitForDeviceOnline(mOnlineWaitTime);
         if (device == null) {
             throw new DeviceNotAvailableException(
-                    "Device still not online after successful recovery", monitor.getSerialNumber());
+                    "Device still not online after successful recovery",
+                    monitor.getSerialNumber(),
+                    DeviceErrorIdentifier.DEVICE_UNAVAILABLE);
         }
         return device;
     }
@@ -210,8 +212,11 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
             }
             return;
         } catch (InterruptedException | ExecutionException e) {
-            throw new DeviceNotAvailableException("exception while reading battery level", e,
-                    device.getSerialNumber());
+            throw new DeviceNotAvailableException(
+                    "exception while reading battery level",
+                    e,
+                    device.getSerialNumber(),
+                    DeviceErrorIdentifier.DEVICE_UNEXPECTED_RESPONSE);
         }
     }
 
@@ -342,9 +347,11 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
         }
         rebootDevice(device, "bootloader");
         if (!monitor.waitForDeviceBootloader(mBootloaderWaitTime)) {
-            throw new DeviceNotAvailableException(String.format(
-                    "Device %s not in bootloader after reboot", monitor.getSerialNumber()),
-                    monitor.getSerialNumber());
+            throw new DeviceNotAvailableException(
+                    String.format(
+                            "Device %s not in bootloader after reboot", monitor.getSerialNumber()),
+                    monitor.getSerialNumber(),
+                    DeviceErrorIdentifier.DEVICE_UNAVAILABLE);
         }
     }
 
@@ -366,7 +373,8 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
             throw new DeviceNotAvailableException(
                     String.format(
                             "Device %s not in fastbootd after reboot", monitor.getSerialNumber()),
-                    monitor.getSerialNumber());
+                    monitor.getSerialNumber(),
+                    DeviceErrorIdentifier.DEVICE_UNAVAILABLE);
         }
     }
 
@@ -390,7 +398,8 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
             throw new DeviceNotAvailableException(
                     String.format(
                             "Device %s not in fastbootd after reboot", monitor.getSerialNumber()),
-                    monitor.getSerialNumber());
+                    monitor.getSerialNumber(),
+                    DeviceErrorIdentifier.DEVICE_UNAVAILABLE);
         }
         // running a meaningless command just to see whether the device is responsive.
         CommandResult result =
@@ -407,7 +416,8 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
                     String.format(
                             "Device %s is in fastbootd but unresponsive",
                             monitor.getSerialNumber()),
-                    monitor.getSerialNumber());
+                    monitor.getSerialNumber(),
+                    DeviceErrorIdentifier.DEVICE_UNRESPONSIVE);
         }
     }
 
@@ -425,17 +435,21 @@ public class WaitDeviceRecovery implements IDeviceRecovery {
         // wait for device to reboot
         monitor.waitForDeviceNotAvailable(20*1000);
         if (!monitor.waitForDeviceBootloader(mBootloaderWaitTime)) {
-            throw new DeviceNotAvailableException(String.format(
-                    "Device %s not in bootloader after reboot", monitor.getSerialNumber()),
-                    monitor.getSerialNumber());
+            throw new DeviceNotAvailableException(
+                    String.format(
+                            "Device %s not in bootloader after reboot", monitor.getSerialNumber()),
+                    monitor.getSerialNumber(),
+                    DeviceErrorIdentifier.DEVICE_UNAVAILABLE);
         }
         // running a meaningless command just to see whether the device is responsive.
         CommandResult result = getRunUtil().runTimedCmd(mFastbootWaitTime, mFastbootPath, "-s",
                 monitor.getSerialNumber(), "getvar", "product");
         if (result.getStatus().equals(CommandStatus.TIMED_OUT)) {
-            throw new DeviceNotAvailableException(String.format(
-                    "Device %s is in fastboot but unresponsive", monitor.getSerialNumber()),
-                    monitor.getSerialNumber());
+            throw new DeviceNotAvailableException(
+                    String.format(
+                            "Device %s is in fastboot but unresponsive", monitor.getSerialNumber()),
+                    monitor.getSerialNumber(),
+                    DeviceErrorIdentifier.DEVICE_UNRESPONSIVE);
         }
     }
 

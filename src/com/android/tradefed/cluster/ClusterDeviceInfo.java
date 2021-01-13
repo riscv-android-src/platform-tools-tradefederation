@@ -82,7 +82,7 @@ public class ClusterDeviceInfo {
      */
     public JSONObject toJSON() throws JSONException {
         final JSONObject json = new JSONObject();
-        json.put("device_serial", mDeviceDescriptor.getSerial());
+        json.put("device_serial", ClusterHostUtil.getUniqueDeviceSerial(mDeviceDescriptor));
         json.put("run_target", mRunTarget);
         json.put("build_id", mDeviceDescriptor.getBuildId());
         json.put("product", mDeviceDescriptor.getProduct());

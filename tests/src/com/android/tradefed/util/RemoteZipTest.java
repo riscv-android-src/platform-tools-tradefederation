@@ -103,7 +103,7 @@ public class RemoteZipTest {
 
             List<CentralDirectoryInfo> entries = remoteZip.getZipEntries();
 
-            assertEquals(7, entries.size());
+            assertEquals(8, entries.size());
             assertTrue(mExpectedEntries.containsAll(entries));
         } finally {
             FileUtil.recursiveDelete(destDir);
@@ -122,7 +122,7 @@ public class RemoteZipTest {
             destDir = FileUtil.createTempDir("test");
             RemoteZip remoteZip = new RemoteZip(REMOTE_FILE, mZipFileSize, mDownloader, true);
             List<CentralDirectoryInfo> entries = remoteZip.getZipEntries();
-            assertEquals(7, entries.size());
+            assertEquals(8, entries.size());
             assertTrue(mExpectedEntries.containsAll(entries));
         } finally {
             FileUtil.recursiveDelete(destDir);
@@ -151,7 +151,7 @@ public class RemoteZipTest {
             targetFile = Paths.get(destDir.getPath(), "executable", "executable_file").toFile();
             assertTrue(targetFile.exists());
             // File not in the list is not unzipped.
-            targetFile = Paths.get(destDir.getPath(), "empty_file").toFile();
+            targetFile = Paths.get(destDir.getPath(), "empty/empty_file").toFile();
             assertFalse(targetFile.exists());
         } finally {
             FileUtil.recursiveDelete(destDir);
