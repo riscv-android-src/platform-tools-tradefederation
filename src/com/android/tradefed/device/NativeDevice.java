@@ -2529,7 +2529,7 @@ public class NativeDevice implements IManagedTestDevice {
                 type = LogDataType.BUGREPORT;
             }
             // log what we managed to capture.
-            if (bugreport != null) {
+            if (bugreport != null && bugreport.size() > 0L) {
                 listener.testLog(dataName, type, bugreport);
                 return true;
             }
