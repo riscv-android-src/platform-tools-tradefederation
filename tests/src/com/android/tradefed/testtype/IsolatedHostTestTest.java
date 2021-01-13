@@ -348,16 +348,8 @@ public class IsolatedHostTestTest {
                 new TestDescription("org.junit.runner.manipulation.Filter", "initializationError");
 
         // Typical no tests found flow
-        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
-        mListener.testStarted(EasyMock.eq(test), EasyMock.anyInt());
-        mListener.testFailed(EasyMock.eq(test), (String) EasyMock.anyObject());
-        mListener.testEnded(
-                EasyMock.eq(test),
-                EasyMock.anyInt(),
-                (HashMap<String, Metric>) EasyMock.anyObject());
         mListener.testLog(
                 (String) EasyMock.anyObject(), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
 
         EasyMock.replay(mListener);
         mHostTest.run(testInfo, mListener);
@@ -376,16 +368,8 @@ public class IsolatedHostTestTest {
                 new TestDescription("org.junit.runner.manipulation.Filter", "initializationError");
 
         // Typical no tests found flow
-        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
-        mListener.testStarted(EasyMock.eq(test), EasyMock.anyInt());
-        mListener.testFailed(EasyMock.eq(test), (String) EasyMock.anyObject());
-        mListener.testEnded(
-                EasyMock.eq(test),
-                EasyMock.anyInt(),
-                (HashMap<String, Metric>) EasyMock.anyObject());
         mListener.testLog(
                 (String) EasyMock.anyObject(), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
 
         EasyMock.replay(mListener);
         mHostTest.run(testInfo, mListener);
@@ -433,16 +417,8 @@ public class IsolatedHostTestTest {
                 new TestDescription("org.junit.runner.manipulation.Filter", "initializationError");
 
         // Typical no tests found flow
-        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
-        mListener.testStarted(EasyMock.eq(test), EasyMock.anyInt());
-        mListener.testFailed(EasyMock.eq(test), (String) EasyMock.anyObject());
-        mListener.testEnded(
-                EasyMock.eq(test),
-                EasyMock.anyInt(),
-                (HashMap<String, Metric>) EasyMock.anyObject());
         mListener.testLog(
                 (String) EasyMock.anyObject(), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
 
         EasyMock.replay(mListener);
         mHostTest.run(testInfo, mListener);
