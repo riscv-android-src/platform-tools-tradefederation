@@ -27,6 +27,7 @@ import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.build.IDeviceBuildProvider;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
@@ -82,6 +83,7 @@ import com.google.common.base.Strings;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -173,7 +175,8 @@ public class InvocationExecution implements IInvocationExecution {
             throw e;
         } catch (RuntimeException re) {
             if (currentDeviceName != null) {
-                IBuildInfo errorBuild = new BuildInfo();
+                IBuildInfo errorBuild =
+                        TestInvocation.backFillBuildInfoForReporting(config.getCommandLine());
                 updateBuild(errorBuild, config);
                 testInfo.getContext().addDeviceBuildInfo(currentDeviceName, errorBuild);
             }
@@ -230,9 +233,10 @@ public class InvocationExecution implements IInvocationExecution {
 
             mTrackTargetPreparers = new ConcurrentHashMap<>();
             int index = 0;
-            if (config.getCommandOptions().shouldUseReplicateSetup()
+            if ((config.getCommandOptions().shouldUseParallelSetup()
+                            || config.getCommandOptions().shouldUseReplicateSetup())
                     && config.getDeviceConfig().size() > 1) {
-                CLog.d("Using parallel setup due to replicated setup enabled.");
+                CLog.d("Using parallel setup.");
                 ParallelDeviceExecutor<Boolean> executor =
                         new ParallelDeviceExecutor<>(testInfo.getContext().getDevices().size());
                 List<Callable<Boolean>> callableTasks = new ArrayList<>();
@@ -251,8 +255,8 @@ public class InvocationExecution implements IInvocationExecution {
                     callableTasks.add(callableTask);
                     index++;
                 }
-                // Run setup with 30 minutes right now.
-                executor.invokeAll(callableTasks, 30, TimeUnit.MINUTES);
+                Duration timeout = config.getCommandOptions().getParallelSetupTimeout();
+                executor.invokeAll(callableTasks, timeout.toMillis(), TimeUnit.MILLISECONDS);
                 if (executor.hasErrors()) {
                     List<Throwable> errors = executor.getErrors();
                     // TODO: Handle throwing multi-exceptions, right now throw the first one.
@@ -704,6 +708,11 @@ public class InvocationExecution implements IInvocationExecution {
      * @param config the {@link IConfiguration}
      */
     void updateBuild(IBuildInfo info, IConfiguration config) {
+        setTestTag(info, config);
+        if (config.getCommandOptions().getInvocationData().containsKey("subprocess")) {
+            // Avoid relogging the properties in a subprocess
+            return;
+        }
         if (config.getCommandLine() != null) {
             // TODO: obfuscate the password if any.
             info.addBuildAttribute(TestInvocation.COMMAND_ARGS_KEY, config.getCommandLine());
@@ -716,7 +725,6 @@ public class InvocationExecution implements IInvocationExecution {
             info.addBuildAttribute(
                     "shard_index", config.getCommandOptions().getShardIndex().toString());
         }
-        setTestTag(info, config);
     }
 
     private void runTest(
@@ -745,6 +753,9 @@ public class InvocationExecution implements IInvocationExecution {
                 if (collector.isDisabled()) {
                     CLog.d("%s has been disabled. Skipping.", collector);
                 } else {
+                    if (collector instanceof IConfigurationReceiver) {
+                        ((IConfigurationReceiver) collector).setConfiguration(config);
+                    }
                     listenerWithCollectors =
                             collector.init(info.getContext(), listenerWithCollectors);
                     TfObjectTracker.countWithParents(collector.getClass());
@@ -912,7 +923,7 @@ public class InvocationExecution implements IInvocationExecution {
         }
         try (InputStreamSource source =
                 new ByteArrayInputStreamSource(truncAdb.getStdout().getBytes())) {
-            logger.testLog("host_adb_log", LogDataType.TEXT, source);
+            logger.testLog("host_adb_log", LogDataType.ADB_HOST_LOG, source);
         }
     }
 

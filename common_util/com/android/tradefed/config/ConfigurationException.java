@@ -15,10 +15,13 @@
  */
 package com.android.tradefed.config;
 
-/**
- * Thrown if configuration could not be loaded.
- */
-public class ConfigurationException extends Exception {
+import com.android.tradefed.error.HarnessException;
+import com.android.tradefed.result.error.ErrorIdentifier;
+
+import java.lang.StackWalker.Option;
+
+/** Thrown if configuration could not be loaded. */
+public class ConfigurationException extends HarnessException {
     private static final long serialVersionUID = 7742154448569011969L;
 
     /**
@@ -27,7 +30,19 @@ public class ConfigurationException extends Exception {
      * @param msg a meaningful error message
      */
     public ConfigurationException(String msg) {
-        super(msg);
+        super(msg, null);
+        setCallerClass(StackWalker.getInstance(Option.RETAIN_CLASS_REFERENCE).getCallerClass());
+    }
+
+    /**
+     * Creates a {@link ConfigurationException}.
+     *
+     * @param msg a meaningful error message
+     * @param error The {@link ErrorIdentifier} associated with the exception
+     */
+    public ConfigurationException(String msg, ErrorIdentifier error) {
+        super(msg, error);
+        setCallerClass(StackWalker.getInstance(Option.RETAIN_CLASS_REFERENCE).getCallerClass());
     }
 
     /**
@@ -37,7 +52,20 @@ public class ConfigurationException extends Exception {
      * @param cause the {@link Throwable} that represents the original cause of the error
      */
     public ConfigurationException(String msg, Throwable cause) {
-        super(msg, cause);
+        super(msg, cause, null);
+        setCallerClass(StackWalker.getInstance(Option.RETAIN_CLASS_REFERENCE).getCallerClass());
+    }
+
+    /**
+     * Creates a {@link ConfigurationException}.
+     *
+     * @param msg a meaningful error message
+     * @param cause the {@link Throwable} that represents the original cause of the error
+     * @param error The {@link ErrorIdentifier} associated with the exception
+     */
+    public ConfigurationException(String msg, Throwable cause, ErrorIdentifier error) {
+        super(msg, cause, error);
+        setCallerClass(StackWalker.getInstance(Option.RETAIN_CLASS_REFERENCE).getCallerClass());
     }
 }
 

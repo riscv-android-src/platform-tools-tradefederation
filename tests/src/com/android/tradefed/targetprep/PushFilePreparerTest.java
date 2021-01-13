@@ -42,6 +42,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+import java.io.IOException;
 import java.io.File;
 import java.util.Set;
 
@@ -634,6 +635,53 @@ public class PushFilePreparerTest {
                                             new File(
                                                     tmpFolder,
                                                     "target/testcases/aaaaa/x86_64/file")),
+                                    EasyMock.eq("/data/local/tmp/file")))
+                    .andReturn(true);
+            mTestInfo.getContext().addDeviceBuildInfo("device", info);
+            EasyMock.replay(mMockDevice);
+            mPreparer.setUp(mTestInfo);
+            EasyMock.verify(mMockDevice);
+        } finally {
+            FileUtil.recursiveDelete(tmpFolder);
+        }
+    }
+
+    /**
+     * Test that if multiple files exists after delayed partial download, push the one with matching
+     * ABI.
+     */
+    @Test
+    public void testPush_moduleName_files_abi_delayedDownload() throws Exception {
+        mOptionSetter.setOptionValue("push", "file->/data/local/tmp/file");
+        mPreparer.setAbi(new Abi("x86", "32"));
+
+        mPreparer.setInvocationContext(createModuleWithName("aaaaa"));
+        File tmpFolder = FileUtil.createTempDir("push-file-tests-dir");
+        IDeviceBuildInfo info =
+                new DeviceBuildInfo() {
+                    @Override
+                    public File stageRemoteFile(String fileName, File workingDir) {
+                        try {
+                            File file_64 =
+                                    new File(tmpFolder, "target/testcases/aaaaa/x86_64/file");
+                            FileUtil.mkdirsRWX(file_64.getParentFile());
+                            file_64.createNewFile();
+                            File file_32 = new File(tmpFolder, "target/testcases/aaaaa/x86/file");
+                            FileUtil.mkdirsRWX(file_32.getParentFile());
+                            file_32.createNewFile();
+                            // Return the file with mismatched ABI.
+                            return file_64;
+                        } catch (IOException e) {
+                            return null;
+                        }
+                    }
+                };
+        try {
+            info.setFile(BuildInfoFileKey.TESTDIR_IMAGE, tmpFolder, "v1");
+            EasyMock.expect(
+                            mMockDevice.pushFile(
+                                    EasyMock.eq(
+                                            new File(tmpFolder, "target/testcases/aaaaa/x86/file")),
                                     EasyMock.eq("/data/local/tmp/file")))
                     .andReturn(true);
             mTestInfo.getContext().addDeviceBuildInfo("device", info);

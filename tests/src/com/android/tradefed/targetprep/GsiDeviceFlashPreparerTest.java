@@ -178,21 +178,36 @@ public class GsiDeviceFlashPreparerTest {
         EasyMock.verify(mMockDevice, mMockRunUtil);
     }
 
-    /* Verifies that setUp will throw exception when there is no vbmeta.img in the zip file*/
+    /* Verifies that setUp can pass when there is no vbmeta.img is provided*/
     @Test
-    public void testSetUp_NoVbmetaImageInGsiZip() throws Exception {
+    public void testSetUp_Success_NoVbmetaImage() throws Exception {
         File gsiDir = FileUtil.createTempDir("gsi_folder", mTmpDir);
         File systemImg = new File(gsiDir, "system.img");
-        File gsiZip = FileUtil.createTempFile("gsi_image", ".zip", mTmpDir);
-        ZipUtil.createZip(List.of(systemImg), gsiZip);
-        mBuildInfo.setFile("gsi_system.img", gsiZip, "0");
+        FileUtil.writeToFile("ddd", systemImg);
+        mBuildInfo.setFile("gsi_system.img", systemImg, "0");
+        mMockDevice.waitForDeviceOnline();
+        EasyMock.expect(mMockDevice.getApiLevel()).andReturn(29);
+        mMockDevice.rebootIntoBootloader();
+        mMockRunUtil.allowInterrupt(false);
+        mMockDevice.rebootIntoFastbootd();
+        doGetSlotExpectation();
+        EasyMock.expect(
+                        mMockDevice.executeLongFastbootCommand(
+                                "delete-logical-partition", "product_a"))
+                .andReturn(mSuccessResult);
+        EasyMock.expect(mMockDevice.executeLongFastbootCommand("erase", "system_a"))
+                .andReturn(mSuccessResult);
+        EasyMock.expect(
+                        mMockDevice.executeLongFastbootCommand(
+                                "flash",
+                                "system",
+                                mBuildInfo.getFile("gsi_system.img").getAbsolutePath()))
+                .andReturn(mSuccessResult);
+        EasyMock.expect(mMockDevice.executeLongFastbootCommand("-w")).andReturn(mSuccessResult);
+        mMockRunUtil.allowInterrupt(true);
+        doSetupExpectations();
         EasyMock.replay(mMockDevice, mMockRunUtil);
-        try {
-            mPreparer.setUp(mTestInfo);
-            fail("TargetSetupError is expected");
-        } catch (TargetSetupError e) {
-            // expected
-        }
+        mPreparer.setUp(mTestInfo);
         EasyMock.verify(mMockDevice, mMockRunUtil);
     }
 

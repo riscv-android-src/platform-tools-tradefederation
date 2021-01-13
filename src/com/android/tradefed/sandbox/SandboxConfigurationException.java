@@ -16,6 +16,7 @@
 package com.android.tradefed.sandbox;
 
 import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.result.error.ErrorIdentifier;
 
 /** Special Configuration Exception coming from the Sandbox setup. */
 public class SandboxConfigurationException extends ConfigurationException {
@@ -25,9 +26,10 @@ public class SandboxConfigurationException extends ConfigurationException {
      * Creates a {@link SandboxConfigurationException}.
      *
      * @param msg a meaningful error message
+     * @param error The {@link ErrorIdentifier} associated with the exception
      */
-    public SandboxConfigurationException(String msg) {
-        super(msg);
+    public SandboxConfigurationException(String msg, ErrorIdentifier error) {
+        super(msg, error);
     }
 
     /**
@@ -35,8 +37,9 @@ public class SandboxConfigurationException extends ConfigurationException {
      *
      * @param msg a meaningful error message
      * @param cause the {@link Throwable} that represents the original cause of the error
+     * @param error The {@link ErrorIdentifier} associated with the exception
      */
-    public SandboxConfigurationException(String msg, Throwable cause) {
-        super(msg, cause);
+    public SandboxConfigurationException(String msg, Throwable cause, ErrorIdentifier error) {
+        super(msg, cause, error);
     }
 }

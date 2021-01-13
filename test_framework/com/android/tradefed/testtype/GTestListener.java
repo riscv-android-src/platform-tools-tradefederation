@@ -27,7 +27,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Internal listener to Trade Federation for {@link GTest}. Detect and report if duplciated tests
+ * Internal listener to Trade Federation for {@link GTest}. Detect and report if duplicated tests
  * are run.
  */
 final class GTestListener extends ResultForwarder {

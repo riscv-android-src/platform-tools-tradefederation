@@ -35,7 +35,10 @@ import com.android.tradefed.util.TimeUtil;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /** Sharding strategy to create strict shards that do not report together, */
 public class StrictShardHelper extends ShardHelper {
@@ -49,6 +52,7 @@ public class StrictShardHelper extends ShardHelper {
             ITestLogger logger) {
         Integer shardCount = config.getCommandOptions().getShardCount();
         Integer shardIndex = config.getCommandOptions().getShardIndex();
+        boolean optimizeMainline = config.getCommandOptions().getOptimizeMainlineTest();
 
         if (shardIndex == null) {
             return super.shardConfig(config, testInfo, rescheduler, logger);
@@ -69,8 +73,47 @@ public class StrictShardHelper extends ShardHelper {
             splitList = splitTests(listAllTests, shardCount).get(shardIndex);
         }
         aggregateSuiteModules(splitList);
+        if (optimizeMainline) {
+            CLog.i("Reordering the test modules list for index: %s", shardIndex);
+            reorderTestModules(splitList);
+        }
         config.setTests(splitList);
         return false;
+    }
+
+    /**
+     * Helper to re order the list full list of {@link IRemoteTest} for mainline.
+     *
+     * @param tests the {@link IRemoteTest} containing all the tests that need to run.
+     */
+    private void reorderTestModules(List<IRemoteTest> tests) {
+        Collections.sort(tests, new Comparator<IRemoteTest>() {
+            @Override
+            public int compare(IRemoteTest o1, IRemoteTest o2) {
+                String moduleId1 = ((ITestSuite)o1).getDirectModule().getId();
+                String moduleId2 = ((ITestSuite)o2).getDirectModule().getId();
+                return getMainlineId(moduleId1).compareTo(getMainlineId(moduleId2));
+            }
+        });
+    }
+
+    /**
+     * Returns the parameterized mainline modules' name defined in the square brackets.
+     *
+     * @param id The module's name.
+     * @throws RuntimeException if the module name doesn't match the pattern for mainline modules.
+     */
+    private String getMainlineId(String id) {
+        // Pattern used to identify the parameterized mainline modules defined in the square
+        // brackets.
+        Pattern parameterizedMainlineRegex = Pattern.compile("\\[(.*(\\.apk|.apex|.apks))\\]$");
+        Matcher m = parameterizedMainlineRegex.matcher(id);
+        if (m.find()) {
+            return m.group(1);
+        }
+        throw new RuntimeException(
+                String.format("Module: %s doesn't match the pattern for mainline modules. The " +
+                        "pattern should end with apk/apex/apks.", id));
     }
 
     /**

@@ -25,7 +25,6 @@ import com.android.tradefed.util.net.IHttpHelper;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.Map;
 
 import javax.annotation.Nonnull;
 
@@ -35,8 +34,8 @@ public class HttpRemoteFileResolver implements IRemoteFileResolver {
     public static final String PROTOCOL_HTTP = "http";
 
     @Override
-    public File resolveRemoteFiles(File consideredFile, Map<String, String> queryArgs)
-            throws BuildRetrievalError {
+    public ResolvedFile resolveRemoteFile(RemoteFileResolverArgs args) throws BuildRetrievalError {
+        File consideredFile = args.getConsideredFile();
         // Don't use absolute path as it would not start with gs:
         String path = consideredFile.getPath();
         // Replace the very first / by // to be http:// again.
@@ -50,7 +49,8 @@ public class HttpRemoteFileResolver implements IRemoteFileResolver {
                             FileUtil.getBaseName(consideredFile.getName()),
                             FileUtil.getExtension(consideredFile.getName()));
             downloader.doGet(path, new FileOutputStream(downloadedFile));
-            return DynamicRemoteFileResolver.unzipIfRequired(downloadedFile, queryArgs);
+            return new ResolvedFile(
+                    DynamicRemoteFileResolver.unzipIfRequired(downloadedFile, args.getQueryArgs()));
         } catch (IOException | RuntimeException e) {
             FileUtil.deleteFile(downloadedFile);
             throw new BuildRetrievalError(

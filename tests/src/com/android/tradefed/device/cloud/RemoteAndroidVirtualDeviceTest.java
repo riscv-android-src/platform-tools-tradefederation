@@ -58,6 +58,7 @@ import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -323,6 +324,32 @@ public class RemoteAndroidVirtualDeviceTest {
     /** Test {@link RemoteAndroidVirtualDevice#postInvocationTearDown(Throwable)}. */
     @Test
     public void testPostInvocationTearDown() throws Exception {
+        mTestDevice =
+                new TestableRemoteAndroidVirtualDevice() {
+                    @Override
+                    protected IRunUtil getRunUtil() {
+                        return mMockRunUtil;
+                    }
+
+                    @Override
+                    void createGceSshMonitor(
+                            ITestDevice device,
+                            IBuildInfo buildInfo,
+                            HostAndPort hostAndPort,
+                            TestDeviceOptions deviceOptions) {
+                        // ignore
+                    }
+
+                    @Override
+                    GceManager getGceHandler() {
+                        return mGceHandler;
+                    }
+
+                    @Override
+                    public DeviceDescriptor getDeviceDescriptor() {
+                        return null;
+                    }
+                };
         mTestDevice.setTestLogger(mTestLogger);
         EasyMock.expect(mMockStateMonitor.waitForDeviceNotAvailable(EasyMock.anyLong()))
                 .andReturn(true);
@@ -802,5 +829,84 @@ public class RemoteAndroidVirtualDeviceTest {
             }
         }
         verifyMocks();
+    }
+
+    /**
+     * Run powerwash() but GceAvdInfo = null, RemoteAndroidVirtualDevice choose to throw exception.
+     */
+    @Test
+    public void testPowerwashNoAvdInfo() throws Exception {
+        final String expectedException = "Can not get GCE AVD Info. launch GCE first? [ : ]";
+        EasyMock.replay(mMockRunUtil, mMockIDevice);
+        try {
+            mTestDevice.powerwashGce();
+            fail("Should have thrown an exception");
+        } catch (TargetSetupError expected) {
+            assertEquals(expectedException, expected.getMessage());
+        }
+        EasyMock.verify(mMockRunUtil, mMockIDevice);
+    }
+
+    /** Test powerwash GCE command */
+    @Test
+    public void testPowerwashGce() throws Exception {
+        mTestDevice =
+                new TestableRemoteAndroidVirtualDevice() {
+                    @Override
+                    public IDevice getIDevice() {
+                        return mMockIDevice;
+                    }
+
+                    @Override
+                    GceManager getGceHandler() {
+                        return mGceHandler;
+                    }
+
+                    @Override
+                    void createGceSshMonitor(
+                            ITestDevice device,
+                            IBuildInfo buildInfo,
+                            HostAndPort hostAndPort,
+                            TestDeviceOptions deviceOptions) {
+                        // ignore
+                    }
+                };
+        String instanceUser = "user1";
+        IBuildInfo mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
+        OptionSetter setter = new OptionSetter(mTestDevice.getOptions());
+        setter.setOptionValue("instance-user", instanceUser);
+        String powerwashCommand = String.format("/home/%s/bin/powerwash_cvd", instanceUser);
+        String avdConnectHost = String.format("%s@127.0.0.1", instanceUser);
+        GceAvdInfo gceAvd =
+                new GceAvdInfo(
+                        instanceUser, HostAndPort.fromHost("127.0.0.1"), null, GceStatus.SUCCESS);
+        doReturn(gceAvd).when(mGceHandler).startGce(null);
+        OutputStream stdout = null;
+        OutputStream stderr = null;
+        CommandResult powerwashCmdResult = new CommandResult(CommandStatus.SUCCESS);
+        EasyMock.expect(
+                        mMockRunUtil.runTimedCmd(
+                                EasyMock.anyLong(),
+                                EasyMock.eq(stdout),
+                                EasyMock.eq(stderr),
+                                EasyMock.eq("ssh"),
+                                EasyMock.eq("-o"),
+                                EasyMock.eq("UserKnownHostsFile=/dev/null"),
+                                EasyMock.eq("-o"),
+                                EasyMock.eq("StrictHostKeyChecking=no"),
+                                EasyMock.eq("-o"),
+                                EasyMock.eq("ServerAliveInterval=10"),
+                                EasyMock.eq("-i"),
+                                EasyMock.anyObject(),
+                                EasyMock.eq(avdConnectHost),
+                                EasyMock.eq(powerwashCommand)))
+                .andReturn(powerwashCmdResult);
+        EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable(EasyMock.anyLong()))
+                .andReturn(mMockIDevice);
+        EasyMock.replay(mMockRunUtil, mMockIDevice);
+        // Launch GCE before powerwash.
+        mTestDevice.launchGce(mMockBuildInfo);
+        mTestDevice.powerwashGce();
+        EasyMock.verify(mMockRunUtil, mMockIDevice);
     }
 }

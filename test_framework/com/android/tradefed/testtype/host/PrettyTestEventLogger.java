@@ -52,7 +52,7 @@ public class PrettyTestEventLogger implements ITestInvocationListener {
                 String.format(
                         "==================== %s STARTED: %s ====================",
                         test.toString(), date.toString());
-        CLog.d("\n" + message);
+        CLog.logAndDisplay(LogLevel.DEBUG, "\n" + message);
         logOnAllDevices(message);
     }
 
@@ -68,7 +68,7 @@ public class PrettyTestEventLogger implements ITestInvocationListener {
                 String.format(
                         "==================== %s ENDED: %s ====================",
                         test.toString(), date.toString());
-        CLog.d("\n" + message);
+        CLog.logAndDisplay(LogLevel.DEBUG, "\n" + message);
         if (mTrace != null
                 && mTrace.contains(DeviceNotAvailableException.class.getCanonicalName())) {
             CLog.d("Skip logging device side, device was unavailable.");

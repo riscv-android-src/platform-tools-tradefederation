@@ -131,14 +131,17 @@ public class ValidateSuiteConfigHelper {
         }
 
         // Check that we validate the module_controller.
-        Object controller = config.getConfigurationObject(ModuleDefinition.MODULE_CONTROLLER);
-        if (controller != null) {
-            if (!(controller instanceof BaseModuleController)) {
-                throwRuntime(
-                        config,
-                        String.format(
-                                "%s object should be of type %s",
-                                ModuleDefinition.MODULE_CONTROLLER, BaseModuleController.class));
+        List<?> controllers = config.getConfigurationObjectList(ModuleDefinition.MODULE_CONTROLLER);
+        if (controllers != null) {
+            for (Object controller : controllers) {
+                if (!(controller instanceof BaseModuleController)) {
+                    throwRuntime(
+                            config,
+                            String.format(
+                                    "%s object should be of type %s",
+                                    ModuleDefinition.MODULE_CONTROLLER,
+                                    BaseModuleController.class));
+                }
             }
         }
     }
