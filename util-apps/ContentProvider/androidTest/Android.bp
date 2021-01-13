@@ -15,6 +15,7 @@
 // Android Unit Test target for the Content Provider
 android_test {
     name: "TradefedContentProviderTest",
+    visibility: ["//visibility:private"],
     defaults: ["tradefed_errorprone_defaults"],
 
     srcs: ["src/**/*.java"],

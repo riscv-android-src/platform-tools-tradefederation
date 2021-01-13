@@ -66,12 +66,8 @@ import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.StringEscapeUtils;
 import com.android.tradefed.util.ZipUtil;
 import com.android.tradefed.util.ZipUtil2;
-
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
-
-import org.apache.commons.compress.archivers.zip.ZipFile;
-
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
@@ -98,9 +94,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.GuardedBy;
+import org.apache.commons.compress.archivers.zip.ZipFile;
 
 /**
  * Default implementation of a {@link ITestDevice}
@@ -109,6 +105,7 @@ import javax.annotation.concurrent.GuardedBy;
 public class NativeDevice implements IManagedTestDevice {
 
     protected static final String SD_CARD = "/sdcard/";
+    protected static final String STORAGE_EMULATED = "/storage/emulated/";
     /**
      * Allow pauses of up to 2 minutes while receiving bugreport.
      * <p/>
@@ -140,9 +137,11 @@ public class NativeDevice implements IManagedTestDevice {
             Pattern.compile("DispatchEnabled:\\s?([01])");
     /** regex to match build signing key type */
     private static final Pattern KEYS_PATTERN = Pattern.compile("^.*-keys$");
-    private static final Pattern DF_PATTERN = Pattern.compile(
-            //Fs 1K-blks Used    Available Use%      Mounted on
-            "^/\\S+\\s+\\d+\\s+\\d+\\s+(\\d+)\\s+\\d+%\\s+/\\S*$", Pattern.MULTILINE);
+
+    private static final Pattern DF_PATTERN =
+            Pattern.compile(
+                    // Fs 1K-blks Used    Available Use%      Mounted on
+                    "^/(\\S+)\\s+\\d+\\s+\\d+\\s+(\\d+)\\s+\\d+%\\s+/\\S*$", Pattern.MULTILINE);
     private static final Pattern BUGREPORTZ_RESPONSE_PATTERN = Pattern.compile("(OK:)(.*)");
 
     protected static final long MAX_HOST_DEVICE_TIME_OFFSET = 5 * 1000;
@@ -479,13 +478,25 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public String getProperty(final String name) throws DeviceNotAvailableException {
+        return getPropertyWithRecovery(name, false);
+    }
+
+    /** Version of getProperty that allows to check device status and trigger recovery if needed. */
+    private String getPropertyWithRecovery(final String name, boolean recovery)
+            throws DeviceNotAvailableException {
         if (getIDevice() instanceof StubDevice) {
             return null;
         }
         if (!TestDeviceState.ONLINE.equals(getDeviceState())) {
-            // Only query property for online device
-            CLog.d("Device %s is not online cannot get property %s.", getSerialNumber(), name);
-            return null;
+            if (recovery) {
+                // Only query property for online device so trigger recovery before getting
+                // property.
+                recoverDevice();
+            } else {
+                // Only query property for online device
+                CLog.d("Device %s is not online cannot get property %s.", getSerialNumber(), name);
+                return null;
+            }
         }
         String cmd = String.format("getprop %s", name);
         CommandResult result = executeShellV2Command(cmd);
@@ -493,6 +504,10 @@ public class NativeDevice implements IManagedTestDevice {
             CLog.e(
                     "Failed to run '%s' returning null. stdout: %s\nstderr: %s\nexit code: %s",
                     cmd, result.getStdout(), result.getStderr(), result.getExitCode());
+            if (recovery && result.getStderr().contains("device offline")) {
+                recoverDevice();
+                // TODO: Should we retry ?
+            }
             return null;
         }
         if (result.getStdout() == null || result.getStdout().trim().isEmpty()) {
@@ -1101,7 +1116,7 @@ public class NativeDevice implements IManagedTestDevice {
     public boolean pullFile(final String remoteFilePath, final File localFile)
             throws DeviceNotAvailableException {
 
-        if (remoteFilePath.startsWith(SD_CARD)) {
+        if (isSdcardOrEmulated(remoteFilePath)) {
             ContentProviderHandler handler = getContentProvider();
             if (handler != null) {
                 return handler.pullFile(remoteFilePath, localFile);
@@ -1209,7 +1224,7 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public boolean pushFile(final File localFile, final String remoteFilePath)
             throws DeviceNotAvailableException {
-        if (remoteFilePath.startsWith(SD_CARD)) {
+        if (isSdcardOrEmulated(remoteFilePath)) {
             ContentProviderHandler handler = getContentProvider();
             if (handler != null) {
                 return handler.pushFile(localFile, remoteFilePath);
@@ -1284,6 +1299,15 @@ public class NativeDevice implements IManagedTestDevice {
     /** {@inheritDoc} */
     @Override
     public boolean doesFileExist(String deviceFilePath) throws DeviceNotAvailableException {
+        if (isSdcardOrEmulated(deviceFilePath)) {
+            ContentProviderHandler handler = getContentProvider();
+            if (handler != null) {
+                CLog.d("Delegating check to ContentProvider doesFileExist(%s)", deviceFilePath);
+
+                return handler.doesFileExist(deviceFilePath);
+            }
+        }
+        CLog.d("Using 'ls' to check doesFileExist(%s)", deviceFilePath);
         String lsGrep = executeShellCommand(String.format("ls \"%s\"", deviceFilePath));
         return !lsGrep.contains("No such file or directory");
     }
@@ -1291,7 +1315,7 @@ public class NativeDevice implements IManagedTestDevice {
     /** {@inheritDoc} */
     @Override
     public void deleteFile(String deviceFilePath) throws DeviceNotAvailableException {
-        if (deviceFilePath.startsWith(SD_CARD)) {
+        if (isSdcardOrEmulated(deviceFilePath)) {
             ContentProviderHandler handler = getContentProvider();
             if (handler != null) {
                 if (handler.deleteFile(deviceFilePath)) {
@@ -1440,7 +1464,7 @@ public class NativeDevice implements IManagedTestDevice {
         Matcher matcher = DF_PATTERN.matcher(dfOutput);
         if (matcher.find()) {
             try {
-                return Long.parseLong(matcher.group(1));
+                return Long.parseLong(matcher.group(2));
             } catch (NumberFormatException e) {
                 // fall through
             }
@@ -1624,7 +1648,7 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public boolean pullDir(String deviceFilePath, File localDir)
             throws DeviceNotAvailableException {
-        if (deviceFilePath.startsWith(SD_CARD)) {
+        if (isSdcardOrEmulated(deviceFilePath)) {
             ContentProviderHandler handler = getContentProvider();
             if (handler != null) {
                 return handler.pullDir(deviceFilePath, localDir);
@@ -1675,6 +1699,11 @@ public class NativeDevice implements IManagedTestDevice {
             }
         }
         return true;
+    }
+
+    /** Checks whether path is external storage path. */
+    private boolean isSdcardOrEmulated(String path) {
+        return path.startsWith(SD_CARD) || path.startsWith(STORAGE_EMULATED);
     }
 
     /**
@@ -2310,20 +2339,29 @@ public class NativeDevice implements IManagedTestDevice {
         SimpleDateFormat format = new SimpleDateFormat("MM-dd HH:mm:ss.mmm");
         String dateFormatted = format.format(new Date(date));
 
-        byte[] output = new byte[0];
+        LargeOutputReceiver largeReceiver = null;
         try {
             // use IDevice directly because we don't want callers to handle
             // DeviceNotAvailableException for this method
-            CollectingByteOutputReceiver receiver = new CollectingByteOutputReceiver();
+            largeReceiver =
+                    new LargeOutputReceiver(
+                            "getLogcatSince",
+                            getSerialNumber(),
+                            getOptions().getMaxLogcatDataSize());
             String command = String.format("%s -t '%s'", LogcatReceiver.LOGCAT_CMD, dateFormatted);
-            getIDevice().executeShellCommand(command, receiver);
-            output = receiver.getOutput();
+            getIDevice().executeShellCommand(command, largeReceiver);
+            return largeReceiver.getData();
         } catch (IOException|AdbCommandRejectedException|
                 ShellCommandUnresponsiveException|TimeoutException e) {
             CLog.w("Failed to get logcat dump from %s: %s", getSerialNumber(), e.getMessage());
             CLog.e(e);
+        } finally {
+            if (largeReceiver != null) {
+                largeReceiver.cancel();
+                largeReceiver.delete();
+            }
         }
-        return new ByteArrayInputStreamSource(output);
+        return new ByteArrayInputStreamSource(new byte[0]);
     }
 
     /**
@@ -2331,15 +2369,23 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public InputStreamSource getLogcatDump() {
-        byte[] output = new byte[0];
+        LargeOutputReceiver largeReceiver = null;
         try {
             // use IDevice directly because we don't want callers to handle
             // DeviceNotAvailableException for this method
-            CollectingByteOutputReceiver receiver = new CollectingByteOutputReceiver();
+            largeReceiver =
+                    new LargeOutputReceiver(
+                            "getLogcatDump",
+                            getSerialNumber(),
+                            getOptions().getMaxLogcatDataSize());
             // add -d parameter to make this a non blocking call
-            getIDevice().executeShellCommand(LogcatReceiver.LOGCAT_CMD + " -d", receiver,
-                    LOGCAT_DUMP_TIMEOUT, TimeUnit.MILLISECONDS);
-            output = receiver.getOutput();
+            getIDevice()
+                    .executeShellCommand(
+                            LogcatReceiver.LOGCAT_CMD + " -d",
+                            largeReceiver,
+                            LOGCAT_DUMP_TIMEOUT,
+                            TimeUnit.MILLISECONDS);
+            return largeReceiver.getData();
         } catch (IOException e) {
             CLog.w("Failed to get logcat dump from %s: ", getSerialNumber(), e.getMessage());
         } catch (TimeoutException e) {
@@ -2348,8 +2394,13 @@ public class NativeDevice implements IManagedTestDevice {
             CLog.w("Failed to get logcat dump from %s: ", getSerialNumber(), e.getMessage());
         } catch (ShellCommandUnresponsiveException e) {
             CLog.w("Failed to get logcat dump from %s: ", getSerialNumber(), e.getMessage());
+        } finally {
+            if (largeReceiver != null) {
+                largeReceiver.cancel();
+                largeReceiver.delete();
+            }
         }
-        return new ByteArrayInputStreamSource(output);
+        return new ByteArrayInputStreamSource(new byte[0]);
     }
 
     /**
@@ -3998,6 +4049,12 @@ public class NativeDevice implements IManagedTestDevice {
         throw new UnsupportedOperationException("No support for Package's feature");
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public Set<String> getMainlineModuleInfo() throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for Package's feature");
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -4046,12 +4103,13 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public boolean checkApiLevelAgainstNextRelease(int strictMinLevel)
             throws DeviceNotAvailableException {
-        String codeName = getProperty(DeviceProperties.BUILD_CODENAME);
+        String codeName = getPropertyWithRecovery(DeviceProperties.BUILD_CODENAME, true);
         if (codeName == null) {
             throw new DeviceRuntimeException(
                     String.format(
                             "Failed to query property '%s'. device returned null.",
-                            DeviceProperties.BUILD_CODENAME));
+                            DeviceProperties.BUILD_CODENAME),
+                    DeviceErrorIdentifier.DEVICE_UNEXPECTED_RESPONSE);
         }
         codeName = codeName.trim();
         int apiLevel = getApiLevel() + ("REL".equals(codeName) ? 0 : 1);
@@ -4556,7 +4614,8 @@ public class NativeDevice implements IManagedTestDevice {
             }
             if (exception instanceof DeviceNotAvailableException) {
                 CLog.e(
-                        "Skip Tradefed Content Provider teardown due to DeviceNotAvailableException.");
+                        "Skip Tradefed Content Provider teardown due to"
+                                + " DeviceNotAvailableException.");
                 return;
             }
             if (TestDeviceState.ONLINE.equals(getDeviceState())) {
@@ -5165,7 +5224,7 @@ public class NativeDevice implements IManagedTestDevice {
     }
 
     /** Reset the flag for content provider setup in order to trigger it again. */
-    void resetContentProviderSetup() {
+    protected void resetContentProviderSetup() {
         mShouldSkipContentProviderSetup = false;
     }
 

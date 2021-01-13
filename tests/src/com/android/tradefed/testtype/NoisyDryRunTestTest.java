@@ -17,6 +17,7 @@ package com.android.tradefed.testtype;
 
 import static org.easymock.EasyMock.anyLong;
 import static org.easymock.EasyMock.anyObject;
+import static org.easymock.EasyMock.contains;
 import static org.easymock.EasyMock.endsWith;
 import static org.easymock.EasyMock.eq;
 import static org.easymock.EasyMock.getCurrentArguments;
@@ -26,6 +27,7 @@ import static org.junit.Assert.fail;
 
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.OptionSetter;
+import com.android.tradefed.config.proxy.AutomatedReporters;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -257,6 +259,7 @@ public class NoisyDryRunTestTest {
         mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
         EasyMock.expectLastCall().times(2);
         mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
+        mMockRunUtil.unsetEnvVariable(AutomatedReporters.PROTO_REPORTING_PORT);
         mMockRunUtil.setEnvVariable(
                 EasyMock.eq(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE), anyObject());
         mMockRunUtil.setEnvVariablePriority(EnvPriority.SET);
@@ -265,6 +268,7 @@ public class NoisyDryRunTestTest {
                         mMockRunUtil.runTimedCmd(
                                 anyLong(),
                                 endsWith("/java"),
+                                contains("-Djava.io.tmpdir="),
                                 eq("-cp"),
                                 anyObject(),
                                 eq(SandboxConfigDump.class.getCanonicalName()),
@@ -277,7 +281,7 @@ public class NoisyDryRunTestTest {
                             @Override
                             public CommandResult answer() throws Throwable {
                                 // Fake the command dump to avoid possible timeouts
-                                String path = (String) getCurrentArguments()[6];
+                                String path = (String) getCurrentArguments()[7];
                                 FileUtil.writeToFile(
                                         "<configuration></configuration>", new File(path), false);
                                 return result;
@@ -318,6 +322,7 @@ public class NoisyDryRunTestTest {
         mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
         EasyMock.expectLastCall().times(2);
         mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
+        mMockRunUtil.unsetEnvVariable(AutomatedReporters.PROTO_REPORTING_PORT);
         mMockRunUtil.setEnvVariable(
                 EasyMock.eq(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE), anyObject());
         mMockRunUtil.setEnvVariablePriority(EnvPriority.SET);
@@ -326,6 +331,7 @@ public class NoisyDryRunTestTest {
                         mMockRunUtil.runTimedCmd(
                                 anyLong(),
                                 endsWith("/java"),
+                                contains("-Djava.io.tmpdir="),
                                 eq("-cp"),
                                 anyObject(),
                                 eq(SandboxConfigDump.class.getCanonicalName()),

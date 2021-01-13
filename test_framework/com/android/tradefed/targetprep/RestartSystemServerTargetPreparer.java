@@ -15,11 +15,11 @@
  */
 package com.android.tradefed.targetprep;
 
-import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.TestInformation;
 
 /** Target preparer that restarts the system server without rebooting the device. */
 @OptionClass(alias = "restart-system-server")
@@ -41,20 +41,20 @@ public class RestartSystemServerTargetPreparer extends BaseTargetPreparer {
     }
 
     @Override
-    public void setUp(ITestDevice device, IBuildInfo buildInfo)
+    public void setUp(TestInformation testInformation)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
         if (!mRestartBefore) {
             return;
         }
-        restartSystemServer(device);
+        restartSystemServer(testInformation.getDevice());
     }
 
     @Override
-    public void tearDown(ITestDevice device, IBuildInfo buildInfo, Throwable e)
+    public void tearDown(TestInformation testInformation, Throwable e)
             throws DeviceNotAvailableException {
         if (!mRestartAfter) {
             return;
         }
-        restartSystemServer(device);
+        restartSystemServer(testInformation.getDevice());
     }
 }

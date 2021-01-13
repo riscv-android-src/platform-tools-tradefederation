@@ -74,7 +74,13 @@ public class RustBinaryHostTestTest {
     }
 
     private String resultCount(int pass, int fail, int ignore) {
-        return "test result: ok. " + pass + " passed; " + fail + " failed; " + ignore + " ignored;";
+        return "running 2 tests\ntest result: ok. "
+                + pass
+                + " passed; "
+                + fail
+                + " failed; "
+                + ignore
+                + " ignored;";
     }
 
     private CommandResult successResult(String stderr, String stdout) throws Exception {
@@ -200,7 +206,9 @@ public class RustBinaryHostTestTest {
             mockCountTests(binary, 0);
             mockListenerStarted(binary, 0);
             mockListenerLog(binary);
-            CommandResult res = newCommandResult(CommandStatus.EXCEPTION, "Err.", "Exception.");
+            CommandResult res =
+                    newCommandResult(
+                            CommandStatus.EXCEPTION, "Err.", "running 2 tests\nException.");
             mockTestRunExpect(binary, res);
             mMockListener.testRunFailed((FailureDescription) EasyMock.anyObject());
             mockTestRunEnded();

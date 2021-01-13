@@ -38,11 +38,28 @@ public final class MainlineModuleHandler {
     private String mDynamicBaseLink = null;
     private IAbi mAbi = null;
     private String mName = null;
+    private boolean mOptimizeMainlineTest = false;
+    private boolean mIgnoreNonPreloadedMainlineModule = false;
 
-    public MainlineModuleHandler(String name, IAbi abi, IInvocationContext context) {
+    public MainlineModuleHandler(
+            String name,
+            IAbi abi,
+            IInvocationContext context,
+            boolean optimize) {
+        this(name, abi, context, optimize, false);
+    }
+
+    public MainlineModuleHandler(
+            String name,
+            IAbi abi,
+            IInvocationContext context,
+            boolean optimize,
+            boolean ignoreNonPreloadedMainlineModule) {
         mName = name;
         mAbi = abi;
         buildDynamicBaseLink(context.getBuildInfos().get(0));
+        mOptimizeMainlineTest = optimize;
+        mIgnoreNonPreloadedMainlineModule = ignoreNonPreloadedMainlineModule;
     }
 
     /** Builds the dynamic base link where the mainline modules would be downloaded. */
@@ -78,6 +95,8 @@ public final class MainlineModuleHandler {
     private InstallApexModuleTargetPreparer createMainlineModuleInstaller() {
         InstallApexModuleTargetPreparer mainlineModuleInstaller =
                 new InstallApexModuleTargetPreparer();
+        mainlineModuleInstaller.setSkipApexTearDown(mOptimizeMainlineTest);
+        mainlineModuleInstaller.setIgnoreIfNotPreloaded(mIgnoreNonPreloadedMainlineModule);
         // Inject the real dynamic link to the target preparer so that it will dynamically download
         // the mainline modules.
         String fullDynamicLink = mDynamicBaseLink;

@@ -97,6 +97,14 @@ public class SubprocessResultsReporter
 
     /** {@inheritDoc} */
     @Override
+    public void testAssumptionFailure(TestDescription testId, FailureDescription failure) {
+        FailedTestEventInfo info =
+                new FailedTestEventInfo(testId.getClassName(), testId.getTestName(), failure);
+        printEvent(SubprocessTestResultsParser.StatusKeys.TEST_ASSUMPTION_FAILURE, info);
+    }
+
+    /** {@inheritDoc} */
+    @Override
     public void testEnded(TestDescription testId, HashMap<String, Metric> metrics) {
         testEnded(testId, System.currentTimeMillis(), metrics);
     }
@@ -119,6 +127,14 @@ public class SubprocessResultsReporter
     public void testFailed(TestDescription testId, String reason) {
         FailedTestEventInfo info =
                 new FailedTestEventInfo(testId.getClassName(), testId.getTestName(), reason);
+        printEvent(SubprocessTestResultsParser.StatusKeys.TEST_FAILED, info);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void testFailed(TestDescription testId, FailureDescription failure) {
+        FailedTestEventInfo info =
+                new FailedTestEventInfo(testId.getClassName(), testId.getTestName(), failure);
         printEvent(SubprocessTestResultsParser.StatusKeys.TEST_FAILED, info);
     }
 

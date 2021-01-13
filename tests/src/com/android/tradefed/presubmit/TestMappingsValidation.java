@@ -75,6 +75,7 @@ public class TestMappingsValidation implements IBuildReceiver {
     private static final Pattern REGULAR_EXPRESSION = Pattern.compile("(\\?+)|(\\*+)");
     private static final String MODULE_INFO = "module-info.json";
     private static final String TEST_MAPPINGS_ZIP = "test_mappings.zip";
+    private static final String GENERAL_TESTS_ZIP = "general-tests.zip";
     private static final String INCLUDE_FILTER = "include-filter";
     private static final String EXCLUDE_FILTER = "exclude-filter";
     private static final String LOCAL_COMPATIBILITY_SUITES = "compatibility_suites";
@@ -83,6 +84,9 @@ public class TestMappingsValidation implements IBuildReceiver {
     // Only Check the tests with group in presubmit or postsubmit.
     private static final Set<String> TEST_GROUPS_TO_VALIDATE =
             new HashSet<>(Arrays.asList("presubmit", "postsubmit"));
+    private static final long GIGABYTE = 1024L * 1024L * 1024L;
+    // Limit the size of general-tests.zip at 5.5GB
+    private static final double SIZE_LIMITATION = 5.5;
 
     private static final Set<String> MAINLINE_TEST_GROUPS_TO_VALIDATE =
             new HashSet<>(Arrays.asList("mainline-presubmit", "mainline-postsubmit"));
@@ -128,6 +132,27 @@ public class TestMappingsValidation implements IBuildReceiver {
     @After
     public void tearDown() {
         FileUtil.recursiveDelete(testMappingsDir);
+    }
+
+    /** Test the size of general-tests.zip to ensure it doesn't exceed the size limitation. */
+    @Test
+    public void testGeneralTestsSize() {
+        File generalTestsZip = deviceBuildInfo.getFile(GENERAL_TESTS_ZIP);
+        String error = null;
+        if (generalTestsZip == null || !generalTestsZip.exists()) {
+            error = String.format("general-tests.zip is null or doesn't exist");
+        } else {
+            if ((double) generalTestsZip.length() / GIGABYTE >= SIZE_LIMITATION) {
+                error =
+                        String.format(
+                                "The size of general-tests.zip is: %s Bytes, which "
+                                        + "exceeds the limitation of %s GB",
+                                generalTestsZip.length(), SIZE_LIMITATION);
+            }
+        }
+        if (error != null) {
+            fail(String.format("Fail size check for general-tests.zip:\n%s", error));
+        }
     }
 
     /**

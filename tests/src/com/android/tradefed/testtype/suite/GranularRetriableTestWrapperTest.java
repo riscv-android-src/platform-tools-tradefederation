@@ -26,6 +26,7 @@ import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionSetter;
+import com.android.tradefed.device.cloud.RemoteAndroidVirtualDevice;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
@@ -263,13 +264,22 @@ public class GranularRetriableTestWrapperTest {
 
     private GranularRetriableTestWrapper createGranularTestWrapper(
             IRemoteTest test, int maxRunCount) throws Exception {
-        return createGranularTestWrapper(test, maxRunCount, new ArrayList<>());
+        return createGranularTestWrapper(test, maxRunCount, new ArrayList<>(), null);
     }
 
     private GranularRetriableTestWrapper createGranularTestWrapper(
             IRemoteTest test, int maxRunCount, List<IMetricCollector> collectors) throws Exception {
+        return createGranularTestWrapper(test, maxRunCount, collectors, null);
+    }
+
+    private GranularRetriableTestWrapper createGranularTestWrapper(
+            IRemoteTest test,
+            int maxRunCount,
+            List<IMetricCollector> collectors,
+            ModuleDefinition module)
+            throws Exception {
         GranularRetriableTestWrapper granularTestWrapper =
-                new GranularRetriableTestWrapper(test, null, null, null, maxRunCount);
+                new GranularRetriableTestWrapper(test, module, null, null, null, maxRunCount);
         granularTestWrapper.setModuleId("test module");
         granularTestWrapper.setMarkTestsSkipped(false);
         granularTestWrapper.setMetricCollectors(collectors);
@@ -902,6 +912,101 @@ public class GranularRetriableTestWrapperTest {
         EasyMock.replay(mMockDevice, mMockDevice2);
         granularTestWrapper.run(mModuleInfo, new CollectingTestListener());
         EasyMock.verify(mMockDevice, mMockDevice2);
+    }
+
+    /** Test to reset multi-devices at the last intra-module retry. */
+    @Test
+    public void testIntraModuleRun_resetMultiDevicesAtLastIntraModuleRetry() throws Exception {
+        IRetryDecision decision = new BaseRetryDecision();
+        OptionSetter setter = new OptionSetter(decision);
+        setter.setOptionValue("reset-at-last-retry", "true");
+        setter.setOptionValue("retry-strategy", "RETRY_ANY_FAILURE");
+        setter.setOptionValue("max-testcase-run-count", Integer.toString(3));
+        decision.setInvocationContext(mModuleInvocationContext);
+        FakeTest test = new FakeTest();
+        test.setRunFailure("I failed!");
+        ITestDevice noneAVDDevice = EasyMock.createMock(ITestDevice.class);
+
+        RemoteAndroidVirtualDevice avdDevice = Mockito.mock(RemoteAndroidVirtualDevice.class);
+        Mockito.when(avdDevice.powerwashGce()).thenReturn(true);
+
+        ModuleDefinition module = Mockito.mock(ModuleDefinition.class);
+        // Should call suite level preparers.
+        Mockito.when(module.runPreparation(true)).thenReturn(null);
+
+        mModuleInvocationContext.addAllocatedDevice("default-device1", noneAVDDevice);
+        mModuleInvocationContext.addAllocatedDevice("default-device2", avdDevice);
+        GranularRetriableTestWrapper granularTestWrapper =
+                createGranularTestWrapper(test, 3, new ArrayList<>(), module);
+        granularTestWrapper.setRetryDecision(decision);
+        EasyMock.expect(noneAVDDevice.getIDevice())
+                .andStubReturn(EasyMock.createMock(IDevice.class));
+        EasyMock.expect(noneAVDDevice.getSerialNumber()).andStubReturn("device-1");
+
+        EasyMock.replay(noneAVDDevice);
+        granularTestWrapper.run(mModuleInfo, new CollectingTestListener());
+        EasyMock.verify(noneAVDDevice);
+    }
+
+    /** Test to reset device at the last intra-module retry failed due to preparer failure. */
+    @Test
+    public void testIntraModuleRun_resetFailed_preparerFailure() throws Exception {
+        IRetryDecision decision = new BaseRetryDecision();
+        OptionSetter setter = new OptionSetter(decision);
+        setter.setOptionValue("reset-at-last-retry", "true");
+        setter.setOptionValue("retry-strategy", "RETRY_ANY_FAILURE");
+        setter.setOptionValue("max-testcase-run-count", Integer.toString(3));
+        decision.setInvocationContext(mModuleInvocationContext);
+        FakeTest test = new FakeTest();
+        test.setRunFailure("I failed!");
+
+        RemoteAndroidVirtualDevice avdDevice = Mockito.mock(RemoteAndroidVirtualDevice.class);
+        Mockito.when(avdDevice.powerwashGce()).thenReturn(true);
+
+        ModuleDefinition module = Mockito.mock(ModuleDefinition.class);
+        // Suite level preparers failed.
+        Mockito.when(module.runPreparation(true)).thenReturn(new RuntimeException());
+
+        mModuleInvocationContext.addAllocatedDevice("default-device2", avdDevice);
+        GranularRetriableTestWrapper granularTestWrapper =
+                createGranularTestWrapper(test, 3, new ArrayList<>(), module);
+        granularTestWrapper.setRetryDecision(decision);
+
+        try {
+            granularTestWrapper.run(mModuleInfo, new CollectingTestListener());
+            fail("Exception should be raised when reset is failed.");
+        } catch (DeviceNotAvailableException e) {
+            assertTrue(e.getMessage().startsWith("Failed to reset devices before retry: "));
+        }
+    }
+
+    /** Test to reset device at the last intra-module retry failed due to reset failure. */
+    @Test
+    public void testIntraModuleRun_resetFailed_powerwashFailure() throws Exception {
+        IRetryDecision decision = new BaseRetryDecision();
+        OptionSetter setter = new OptionSetter(decision);
+        setter.setOptionValue("reset-at-last-retry", "true");
+        setter.setOptionValue("retry-strategy", "RETRY_ANY_FAILURE");
+        setter.setOptionValue("max-testcase-run-count", Integer.toString(3));
+        decision.setInvocationContext(mModuleInvocationContext);
+        FakeTest test = new FakeTest();
+        test.setRunFailure("I failed!");
+
+        RemoteAndroidVirtualDevice device = Mockito.mock(RemoteAndroidVirtualDevice.class);
+        Mockito.when(device.powerwashGce()).thenReturn(false);
+        Mockito.when(device.getSerialNumber()).thenReturn("device1");
+
+        test.setDevice(device);
+        mModuleInvocationContext.addAllocatedDevice("default-device1", device);
+        GranularRetriableTestWrapper granularTestWrapper = createGranularTestWrapper(test, 3);
+        granularTestWrapper.setRetryDecision(decision);
+
+        try {
+            granularTestWrapper.run(mModuleInfo, new CollectingTestListener());
+            fail("Exception should be raised when reset is failed.");
+        } catch (DeviceNotAvailableException e) {
+            assertEquals("Failed to powerwash device: device1", e.getMessage());
+        }
     }
 
     /** Collector that track if it was called or not */

@@ -16,14 +16,18 @@
 
 package com.android.tradefed.util;
 
-import junit.framework.TestCase;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
 import java.util.Arrays;
 
-/**
- * Unit tests for {@link QuotationAwareTokenizer}
- */
-public class QuotationAwareTokenizerTest extends TestCase {
+/** Unit tests for {@link QuotationAwareTokenizer} */
+@RunWith(JUnit4.class)
+public class QuotationAwareTokenizerTest {
 
     private static void verify(String input, String[] expected, String delimiter)
             throws IllegalArgumentException {
@@ -48,66 +52,60 @@ public class QuotationAwareTokenizerTest extends TestCase {
         verify(input, expected, " ");
     }
 
-    /**
-     * Simple parse
-     */
+    /** Simple parse */
+    @Test
     public void testTokenizeLine_simple() throws IllegalArgumentException {
         String input = "  one  two three";
         String[] expected = new String[] {"one", "two", "three"};
         verify(input, expected);
     }
 
+    @Test
     public void testCombineTokens_simple() throws IllegalArgumentException {
         assertEquals("one two three", QuotationAwareTokenizer.combineTokens("one", "two", "three"));
     }
 
-    /**
-     * Whitespace inside of the quoted section should be preserved.
-     */
+    /** Whitespace inside of the quoted section should be preserved. */
+    @Test
     public void testTokenizeLine_whitespace() throws IllegalArgumentException {
         String input = "--foo \"this is a config\"";
         String[] expected = new String[] {"--foo", "this is a config"};
         verify(input, expected);
     }
 
-    /**
-     * Tokenize a line with comma as delimiter
-     */
+    /** Tokenize a line with comma as delimiter */
+    @Test
     public void testTokenizeLine_comma() throws IllegalArgumentException {
         String input = "--foo,bar";
         String[] expected = new String[] {"--foo", "bar"};
         verify(input, expected, ",");
     }
 
-    /**
-     * Delimiter (using comma) inside of the quoted section should be preserved.
-     */
+    /** Delimiter (using comma) inside of the quoted section should be preserved. */
+    @Test
     public void testTokenizeLine_commaAndQuote() throws IllegalArgumentException {
         String input = "--foo,\"a,config\"";
         String[] expected = new String[] {"--foo", "a,config"};
         verify(input, expected, ",");
     }
 
-    /**
-     * Tokenizing line with whitespace, using command as delimiter.
-     */
+    /** Tokenizing line with whitespace, using command as delimiter. */
+    @Test
     public void testTokenizeLine_commaAndWhitespace() throws IllegalArgumentException {
         String input = "--foo,this is a,config";
         String[] expected = new String[] {"--foo", "this is a", "config"};
         verify(input, expected, ",");
     }
 
-    /**
-     * Inverse of {@link #testTokenizeLine_whitespace}.
-     */
+    /** Inverse of {@link #testTokenizeLine_whitespace}. */
+    @Test
     public void testCombineTokens_whitespace() throws IllegalArgumentException {
         assertEquals("--foo \"this is a config\"", QuotationAwareTokenizer.combineTokens("--foo",
                 "this is a config"));
     }
 
-    /**
-     * Verify embedded escaped quotation marks are be ignored.
-     */
+    /** Verify embedded escaped quotation marks are be ignored. */
+    @Test
     public void testTokenizeLine_escapedQuotation() throws IllegalArgumentException {
         String input = "--bar \"escap\\\\ed \\\" quotation\"";
         String[] expected = new String[] {"--bar",
@@ -115,17 +113,15 @@ public class QuotationAwareTokenizerTest extends TestCase {
         verify(input, expected);
     }
 
-    /**
-     * Inverse of {@link #testTokenizeLine_escapedQuotation}.
-     */
+    /** Inverse of {@link #testTokenizeLine_escapedQuotation}. */
+    @Test
     public void testCombineTokens_escapedQuotation() throws IllegalArgumentException {
         assertEquals("--bar \"escap\\\\ed \\\" quotation\"", QuotationAwareTokenizer.combineTokens(
                 "--bar", "escap\\\\ed \\\" quotation"));
     }
 
-    /**
-     * Test the scenario where the input ends inside a quotation.
-     */
+    /** Test the scenario where the input ends inside a quotation. */
+    @Test
     public void testTokenizeLine_endOnQuote() {
         String input = "--foo \"this is truncated";
 
@@ -137,9 +133,8 @@ public class QuotationAwareTokenizerTest extends TestCase {
         }
     }
 
-    /**
-     * Test the scenario where the input ends in the middle of an escape character.
-     */
+    /** Test the scenario where the input ends in the middle of an escape character. */
+    @Test
     public void testTokenizeLine_endWithEscape() {
         String input = "--foo escape\\";
 
@@ -149,5 +144,19 @@ public class QuotationAwareTokenizerTest extends TestCase {
         } catch (IllegalArgumentException e) {
             // expected
         }
+    }
+
+    @Test
+    public void testTokenize_emptyString() {
+        String input = "--test '' --test2";
+        String[] expected = new String[] {"--test", "", "--test2"};
+        verify(input, expected, " ");
+    }
+
+    @Test
+    public void testTokenize_emptyStringEnd() {
+        String input = "--test ''";
+        String[] expected = new String[] {"--test", ""};
+        verify(input, expected, " ");
     }
 }

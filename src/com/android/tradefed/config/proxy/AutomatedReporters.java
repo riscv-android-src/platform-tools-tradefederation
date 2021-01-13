@@ -32,7 +32,7 @@ import java.util.List;
  */
 public class AutomatedReporters {
 
-    private static final String PROTO_REPORTING_PORT = "PROTO_REPORTING_PORT";
+    public static final String PROTO_REPORTING_PORT = "PROTO_REPORTING_PORT";
     private static final ImmutableSet<String> REPORTER_MAPPING =
             ImmutableSet.of(PROTO_REPORTING_PORT);
 

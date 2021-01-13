@@ -341,6 +341,20 @@ public class ResultForwarder implements ITestInvocationListener {
     }
 
     @Override
+    public void testAssumptionFailure(TestDescription test, FailureDescription failure) {
+        for (ITestInvocationListener listener : mListeners) {
+            try {
+                listener.testAssumptionFailure(test, failure);
+            } catch (RuntimeException e) {
+                CLog.e(
+                        "Exception while invoking %s#testAssumptionFailure",
+                        listener.getClass().getName());
+                CLog.e(e);
+            }
+        }
+    }
+
+    @Override
     public void testIgnored(TestDescription test) {
         for (ITestInvocationListener listener : mListeners) {
             try {

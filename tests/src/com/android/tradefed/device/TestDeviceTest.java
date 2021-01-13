@@ -53,9 +53,23 @@ import com.android.tradefed.util.KeyguardControllerState;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.ZipUtil2;
-
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import javax.annotation.Nullable;
 import junit.framework.TestCase;
-
 import org.easymock.Capture;
 import org.easymock.EasyMock;
 import org.easymock.IAnswer;
@@ -63,22 +77,6 @@ import org.easymock.IExpectationSetters;
 import org.junit.Assert;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
-
-import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
-
-import javax.annotation.Nullable;
 
 /**
  * Unit tests for {@link TestDevice}.
@@ -1461,7 +1459,8 @@ public class TestDeviceTest extends TestCase {
                 mTestDevice
                         .installPackage(new File(apkFile), true)
                         .contains(
-                                "InstallException during package installation. cause: com.android.ddmlib.InstallException"));
+                                "InstallException during package installation. cause:"
+                                        + " com.android.ddmlib.InstallException"));
         verifyMocks();
     }
 
@@ -2310,6 +2309,38 @@ public class TestDeviceTest extends TestCase {
         assertEquals(0, actual.size());
     }
 
+    /** Unit test for {@link TestDevice#getMainlineModuleInfo()}. */
+    public void testGetMainlineModuleInfo() throws Exception {
+        final String output =
+            "ModuleInfo{foo123456 Module NameFoo} packageName: com.android.foo\n"
+                    + "ModuleInfo{bar123456 Module NameBar} packageName: com.android.bar";
+        injectSystemProperty("ro.build.version.sdk", "29");
+        injectSystemProperty(DeviceProperties.BUILD_CODENAME, "REL");
+        injectShellResponse(TestDevice.GET_MODULEINFOS_CMD, output);
+        EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable()).andReturn(mMockIDevice);
+        replayMocks();
+        Set<String> actual = mTestDevice.getMainlineModuleInfo();
+        Set<String> expected = new HashSet<>(Arrays.asList("com.android.foo", "com.android.bar"));
+        assertEquals(2, actual.size());
+        assertEquals(expected, actual);
+    }
+
+    /**
+     * Unit test for {@link TestDevice#getMainlineModuleInfo()}.
+     *
+     * <p>Test bad output.
+     */
+    public void testGetMainlineModuleInfoForBadOutput() throws Exception {
+        final String output = "junk output";
+        injectSystemProperty("ro.build.version.sdk", "29");
+        injectSystemProperty(DeviceProperties.BUILD_CODENAME, "REL");
+        injectShellResponse(TestDevice.GET_MODULEINFOS_CMD, output);
+        EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable()).andReturn(mMockIDevice);
+        replayMocks();
+        Set<String> actual = mTestDevice.getMainlineModuleInfo();
+        assertEquals(0, actual.size());
+    }
+
     /**
      * Unit test to make sure that the simple convenience constructor for
      * {@link MountPointInfo#MountPointInfo(String, String, String, List)} works as expected.
@@ -2553,8 +2584,9 @@ public class TestDeviceTest extends TestCase {
             // expected
             assertEquals(
                     String.format(
-                            "device output: '%s' \nline: '\tUserInfo{0:Ownertooshort}' was not in the"
-                                    + " expected format for user info.",
+                            "device output: '%s' \n"
+                                    + "line: '\tUserInfo{0:Ownertooshort}' was not in the expected"
+                                    + " format for user info.",
                             output),
                     expected.getMessage());
         }
@@ -2841,6 +2873,14 @@ public class TestDeviceTest extends TestCase {
                     }
 
                     @Override
+                    public CommandResult executeShellV2Command(String command)
+                            throws DeviceNotAvailableException {
+                        CommandResult res = new CommandResult(CommandStatus.SUCCESS);
+                        res.setStdout("codename");
+                        return res;
+                    }
+
+                    @Override
                     public String getProperty(String name) throws DeviceNotAvailableException {
                         return "Q\n";
                     }
@@ -2858,6 +2898,14 @@ public class TestDeviceTest extends TestCase {
                     @Override
                     public int getApiLevel() throws DeviceNotAvailableException {
                         return 27;
+                    }
+
+                    @Override
+                    public CommandResult executeShellV2Command(String command)
+                            throws DeviceNotAvailableException {
+                        CommandResult res = new CommandResult(CommandStatus.SUCCESS);
+                        res.setStdout("codename");
+                        return res;
                     }
 
                     @Override
@@ -3035,20 +3083,32 @@ public class TestDeviceTest extends TestCase {
      * @throws Exception
      */
     public void testGetCurrentUser() throws Exception {
-        mTestDevice = new TestableTestDevice() {
-            @Override
-            public String executeShellCommand(String command) throws DeviceNotAvailableException {
-                return "3\n";
-            }
-            @Override
-            public int getApiLevel() throws DeviceNotAvailableException {
-                return MIN_API_LEVEL_GET_CURRENT_USER;
-            }
-            @Override
-            public String getProperty(String name) throws DeviceNotAvailableException {
-                return "N\n";
-            }
-        };
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        return "3\n";
+                    }
+
+                    @Override
+                    public CommandResult executeShellV2Command(String command)
+                            throws DeviceNotAvailableException {
+                        CommandResult res = new CommandResult(CommandStatus.SUCCESS);
+                        res.setStdout("codename");
+                        return res;
+                    }
+
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        return MIN_API_LEVEL_GET_CURRENT_USER;
+                    }
+
+                    @Override
+                    public String getProperty(String name) throws DeviceNotAvailableException {
+                        return "N\n";
+                    }
+                };
         int res = mTestDevice.getCurrentUser();
         assertEquals(3, res);
     }
@@ -3060,20 +3120,26 @@ public class TestDeviceTest extends TestCase {
      * @throws Exception
      */
     public void testGetCurrentUser_invalid() throws Exception {
-        mTestDevice = new TestableTestDevice() {
-            @Override
-            public String executeShellCommand(String command) throws DeviceNotAvailableException {
-                return "not found.";
-            }
-            @Override
-            public int getApiLevel() throws DeviceNotAvailableException {
-                return MIN_API_LEVEL_GET_CURRENT_USER;
-            }
-            @Override
-            public String getProperty(String name) throws DeviceNotAvailableException {
-                return "N\n";
-            }
-        };
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    public CommandResult executeShellV2Command(String command)
+                            throws DeviceNotAvailableException {
+                        CommandResult res = new CommandResult(CommandStatus.SUCCESS);
+                        res.setStdout("not found.");
+                        return res;
+                    }
+
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        return MIN_API_LEVEL_GET_CURRENT_USER;
+                    }
+
+                    @Override
+                    public String getProperty(String name) throws DeviceNotAvailableException {
+                        return "N\n";
+                    }
+                };
         int res = mTestDevice.getCurrentUser();
         assertEquals(NativeDevice.INVALID_USER_ID, res);
     }
@@ -3083,16 +3149,21 @@ public class TestDeviceTest extends TestCase {
      * @throws Exception
      */
     public void testGetCurrentUser_lowApi() throws Exception {
-        mTestDevice = new TestableTestDevice() {
-            @Override
-            public int getApiLevel() throws DeviceNotAvailableException {
-                return 15;
-            }
-            @Override
-            public String getProperty(String name) throws DeviceNotAvailableException {
-                return "REL\n";
-            }
-        };
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        return 15;
+                    }
+
+                    @Override
+                    public CommandResult executeShellV2Command(String command)
+                            throws DeviceNotAvailableException {
+                        CommandResult res = new CommandResult(CommandStatus.SUCCESS);
+                        res.setStdout("REL");
+                        return res;
+                    }
+                };
         try {
             mTestDevice.getCurrentUser();
         } catch (IllegalArgumentException e) {
@@ -3275,24 +3346,36 @@ public class TestDeviceTest extends TestCase {
      * user.
      */
     public void testSwitchUser_alreadySameUser() throws Exception {
-        mTestDevice = new TestableTestDevice() {
-            @Override
-            public int getCurrentUser() throws DeviceNotAvailableException {
-                return 0;
-            }
-            @Override
-            public void prePostBootSetup() {
-                // skip for this test
-            }
-            @Override
-            public int getApiLevel() throws DeviceNotAvailableException {
-                return MIN_API_LEVEL_GET_CURRENT_USER;
-            }
-            @Override
-            public String getProperty(String name) throws DeviceNotAvailableException {
-                return "N\n";
-            }
-        };
+        mTestDevice =
+                new TestableTestDevice() {
+                    @Override
+                    public int getCurrentUser() throws DeviceNotAvailableException {
+                        return 0;
+                    }
+
+                    @Override
+                    public void prePostBootSetup() {
+                        // skip for this test
+                    }
+
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        return MIN_API_LEVEL_GET_CURRENT_USER;
+                    }
+
+                    @Override
+                    public CommandResult executeShellV2Command(String command)
+                            throws DeviceNotAvailableException {
+                        CommandResult res = new CommandResult(CommandStatus.SUCCESS);
+                        res.setStdout("codename");
+                        return res;
+                    }
+
+                    @Override
+                    public String getProperty(String name) throws DeviceNotAvailableException {
+                        return "N\n";
+                    }
+                };
         assertTrue(mTestDevice.switchUser(0));
     }
 
@@ -3300,30 +3383,45 @@ public class TestDeviceTest extends TestCase {
      * Unit test for {@link TestDevice#switchUser(int)} when user switch instantly.
      */
     public void testSwitchUser() throws Exception {
-        mTestDevice = new TestableTestDevice() {
-            int ret = 0;
-            @Override
-            public int getCurrentUser() throws DeviceNotAvailableException {
-                return ret;
-            }
-            @Override
-            public String executeShellCommand(String command) throws DeviceNotAvailableException {
-                ret = 10;
-                return "";
-            }
-            @Override
-            public void prePostBootSetup() {
-                // skip for this test
-            }
-            @Override
-            public int getApiLevel() throws DeviceNotAvailableException {
-                return MIN_API_LEVEL_GET_CURRENT_USER;
-            }
-            @Override
-            public String getProperty(String name) throws DeviceNotAvailableException {
-                return "N\n";
-            }
-        };
+        mTestDevice =
+                new TestableTestDevice() {
+                    int ret = 0;
+
+                    @Override
+                    public int getCurrentUser() throws DeviceNotAvailableException {
+                        return ret;
+                    }
+
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        ret = 10;
+                        return "";
+                    }
+
+                    @Override
+                    public CommandResult executeShellV2Command(String command)
+                            throws DeviceNotAvailableException {
+                        CommandResult res = new CommandResult(CommandStatus.SUCCESS);
+                        res.setStdout("codename");
+                        return res;
+                    }
+
+                    @Override
+                    public void prePostBootSetup() {
+                        // skip for this test
+                    }
+
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        return MIN_API_LEVEL_GET_CURRENT_USER;
+                    }
+
+                    @Override
+                    public String getProperty(String name) throws DeviceNotAvailableException {
+                        return "N\n";
+                    }
+                };
         assertTrue(mTestDevice.switchUser(10));
     }
 
@@ -3350,6 +3448,14 @@ public class TestDeviceTest extends TestCase {
                             test.start();
                         }
                         return "";
+                    }
+
+                    @Override
+                    public CommandResult executeShellV2Command(String command)
+                            throws DeviceNotAvailableException {
+                        CommandResult res = new CommandResult(CommandStatus.SUCCESS);
+                        res.setStdout("codename");
+                        return res;
                     }
 
                     @Override
@@ -3390,34 +3496,50 @@ public class TestDeviceTest extends TestCase {
      * Unit test for {@link TestDevice#switchUser(int)} when user never change.
      */
     public void testSwitchUser_noChange() throws Exception {
-        mTestDevice = new TestableTestDevice() {
-            int ret = 0;
-            @Override
-            public int getCurrentUser() throws DeviceNotAvailableException {
-                return ret;
-            }
-            @Override
-            public String executeShellCommand(String command) throws DeviceNotAvailableException {
-                ret = 0;
-                return "";
-            }
-            @Override
-            public int getApiLevel() throws DeviceNotAvailableException {
-                return MIN_API_LEVEL_GET_CURRENT_USER;
-            }
-            @Override
-            public String getProperty(String name) throws DeviceNotAvailableException {
-                return "N\n";
-            }
-            @Override
-            protected long getCheckNewUserSleep() {
-                return 50;
-            }
-            @Override
-            public void prePostBootSetup() {
-                // skip for this test
-            }
-        };
+        mTestDevice =
+                new TestableTestDevice() {
+                    int ret = 0;
+
+                    @Override
+                    public int getCurrentUser() throws DeviceNotAvailableException {
+                        return ret;
+                    }
+
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        ret = 0;
+                        return "";
+                    }
+
+                    @Override
+                    public CommandResult executeShellV2Command(String command)
+                            throws DeviceNotAvailableException {
+                        CommandResult res = new CommandResult(CommandStatus.SUCCESS);
+                        res.setStdout("codename");
+                        return res;
+                    }
+
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        return MIN_API_LEVEL_GET_CURRENT_USER;
+                    }
+
+                    @Override
+                    public String getProperty(String name) throws DeviceNotAvailableException {
+                        return "N\n";
+                    }
+
+                    @Override
+                    protected long getCheckNewUserSleep() {
+                        return 50;
+                    }
+
+                    @Override
+                    public void prePostBootSetup() {
+                        // skip for this test
+                    }
+                };
         assertFalse(mTestDevice.switchUser(10, 100));
     }
 
@@ -3438,6 +3560,14 @@ public class TestDeviceTest extends TestCase {
                         RunUtil.getDefault().sleep(100);
                         ret = 10;
                         return "";
+                    }
+
+                    @Override
+                    public CommandResult executeShellV2Command(String command)
+                            throws DeviceNotAvailableException {
+                        CommandResult res = new CommandResult(CommandStatus.SUCCESS);
+                        res.setStdout("codename");
+                        return res;
                     }
 
                     @Override
@@ -3475,6 +3605,14 @@ public class TestDeviceTest extends TestCase {
                             test.start();
                         }
                         return "";
+                    }
+
+                    @Override
+                    public CommandResult executeShellV2Command(String command)
+                            throws DeviceNotAvailableException {
+                        CommandResult res = new CommandResult(CommandStatus.SUCCESS);
+                        res.setStdout("codename");
+                        return res;
                     }
 
                     @Override
@@ -3518,9 +3656,11 @@ public class TestDeviceTest extends TestCase {
                     }
 
                     @Override
-                    public String executeShellCommand(String command)
+                    public CommandResult executeShellV2Command(String command)
                             throws DeviceNotAvailableException {
-                        return "Error:";
+                        CommandResult res = new CommandResult(CommandStatus.SUCCESS);
+                        res.setStdout("Error:");
+                        return res;
                     }
 
                     @Override
@@ -3536,6 +3676,11 @@ public class TestDeviceTest extends TestCase {
                     @Override
                     protected long getCheckNewUserSleep() {
                         return 100;
+                    }
+
+                    @Override
+                    public String getSerialNumber() {
+                        return "serial";
                     }
                 };
         assertFalse(mTestDevice.switchUser(10, /* timeout= */ 300));
@@ -4747,64 +4892,43 @@ public class TestDeviceTest extends TestCase {
     }
 
     /**
-     * Test {@link TestDevice#doesFileExist(String)} when the file exists on an sdcard from another
-     * user.
+     * Test {@link TestDevice#doesFileExist(String)} using content provider when the file is in
+     * external storage path.
      */
     public void testDoesFileExists_sdcard() throws Exception {
-        mTestDevice =
-                new TestableTestDevice() {
-                    @Override
-                    public int getCurrentUser()
-                            throws DeviceNotAvailableException, DeviceRuntimeException {
-                        return 10;
-                    }
-                };
-        injectShellResponse("ls \"/storage/emulated/10/file\"", "file");
+        mTestDevice = createTestDevice();
+
+        TestableTestDevice spy = (TestableTestDevice) Mockito.spy(mTestDevice);
+        ContentProviderHandler cp = Mockito.mock(ContentProviderHandler.class);
+        doReturn(cp).when(spy).getContentProvider();
+
+        final String fakeFile = "/sdcard/file";
+        final String targetFilePath = "/storage/emulated/10/file";
+
+        doReturn("").when(spy).executeShellCommand(Mockito.contains("content query --user 10"));
+
         EasyMock.replay(mMockIDevice);
-        assertTrue(mTestDevice.doesFileExist("/sdcard/file"));
+        spy.doesFileExist(fakeFile);
         EasyMock.verify(mMockIDevice);
+
+        verify(spy, times(1)).getContentProvider();
+        verify(cp, times(1)).doesFileExist(targetFilePath);
     }
 
     /** Push a file using the content provider. */
     public void testPushFile_contentProvider() throws Exception {
-        mTestDevice =
-                new TestableTestDevice() {
-                    @Override
-                    public int getApiLevel() throws DeviceNotAvailableException {
-                        return 29;
-                    }
-
-                    @Override
-                    public int getCurrentUser()
-                            throws DeviceNotAvailableException, DeviceRuntimeException {
-                        return 10;
-                    }
-
-                    @Override
-                    public boolean isPackageInstalled(String packageName, String userId)
-                            throws DeviceNotAvailableException {
-                        return false;
-                    }
-                };
+        mTestDevice = createTestDevice();
         TestableTestDevice spy = (TestableTestDevice) Mockito.spy(mTestDevice);
+        setupContentProvider(spy);
+
         final String fakeRemotePath = "/sdcard/";
         File tmpFile = FileUtil.createTempFile("push", ".test");
-        doReturn(null)
-                .when(spy)
-                .installPackage(Mockito.any(), Mockito.anyBoolean(), Mockito.anyBoolean());
-        CommandResult setLegacy = new CommandResult(CommandStatus.SUCCESS);
-        doReturn(setLegacy).when(spy).executeShellV2Command(Mockito.contains("cmd appops set"));
-
-        CommandResult getLegacy = new CommandResult(CommandStatus.SUCCESS);
-        getLegacy.setStdout("LEGACY_STORAGE: allow");
-        doReturn(getLegacy).when(spy).executeShellV2Command(Mockito.contains("cmd appops get"));
 
         CommandResult writeContent = new CommandResult(CommandStatus.SUCCESS);
         writeContent.setStdout("");
         doReturn(writeContent)
                 .when(spy)
                 .executeShellV2Command(Mockito.contains("content write"), (File) Mockito.any());
-        doReturn(null).when(spy).uninstallPackage(Mockito.eq("android.tradefed.contentprovider"));
         EasyMock.replay(mMockIDevice);
         try {
             boolean res = spy.pushFile(tmpFile, fakeRemotePath);
@@ -4825,37 +4949,12 @@ public class TestDeviceTest extends TestCase {
 
     /** Push a file using the content provider. */
     public void testPushFile_contentProvider_notFound() throws Exception {
-        mTestDevice =
-                new TestableTestDevice() {
-                    @Override
-                    public int getApiLevel() throws DeviceNotAvailableException {
-                        return 29;
-                    }
-
-                    @Override
-                    public int getCurrentUser()
-                            throws DeviceNotAvailableException, DeviceRuntimeException {
-                        return 10;
-                    }
-
-                    @Override
-                    public boolean isPackageInstalled(String packageName, String userId)
-                            throws DeviceNotAvailableException {
-                        return false;
-                    }
-                };
+        mTestDevice = createTestDevice();
         TestableTestDevice spy = (TestableTestDevice) Mockito.spy(mTestDevice);
+        setupContentProvider(spy);
+
         final String fakeRemotePath = "/sdcard/";
         File tmpFile = FileUtil.createTempFile("push", ".test");
-        doReturn(null)
-                .when(spy)
-                .installPackage(Mockito.any(), Mockito.anyBoolean(), Mockito.anyBoolean());
-        CommandResult setLegacy = new CommandResult(CommandStatus.SUCCESS);
-        doReturn(setLegacy).when(spy).executeShellV2Command(Mockito.contains("cmd appops set"));
-
-        CommandResult getLegacy = new CommandResult(CommandStatus.SUCCESS);
-        getLegacy.setStdout("LEGACY_STORAGE: allow");
-        doReturn(getLegacy).when(spy).executeShellV2Command(Mockito.contains("cmd appops get"));
 
         CommandResult writeContent = new CommandResult(CommandStatus.SUCCESS);
         writeContent.setStdout("");
@@ -4900,5 +4999,39 @@ public class TestDeviceTest extends TestCase {
                                 EasyMock.eq("getprop"),
                                 EasyMock.eq(property)))
                 .andReturn(stubResult);
+    }
+
+    private void setupContentProvider(TestableTestDevice spy) throws Exception {
+        doReturn(null)
+                .when(spy)
+                .installPackage(Mockito.any(), Mockito.anyBoolean(), Mockito.anyBoolean());
+        CommandResult setLegacy = new CommandResult(CommandStatus.SUCCESS);
+        doReturn(setLegacy).when(spy).executeShellV2Command(Mockito.contains("cmd appops set"));
+
+        CommandResult getLegacy = new CommandResult(CommandStatus.SUCCESS);
+        getLegacy.setStdout("LEGACY_STORAGE: allow");
+        doReturn(getLegacy).when(spy).executeShellV2Command(Mockito.contains("cmd appops get"));
+
+        doReturn(null).when(spy).uninstallPackage(Mockito.eq("android.tradefed.contentprovider"));
+    }
+
+    private TestableTestDevice createTestDevice() {
+        return new TestableTestDevice() {
+            @Override
+            public int getApiLevel() throws DeviceNotAvailableException {
+                return 29;
+            }
+
+            @Override
+            public int getCurrentUser() throws DeviceNotAvailableException, DeviceRuntimeException {
+                return 10;
+            }
+
+            @Override
+            public boolean isPackageInstalled(String packageName, String userId)
+                    throws DeviceNotAvailableException {
+                return false;
+            }
+        };
     }
 }

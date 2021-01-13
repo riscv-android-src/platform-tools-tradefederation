@@ -63,6 +63,7 @@ public class ModuleSplitter {
      *
      * @param testInfo the current {@link TestInformation} to proceed with sharding.
      * @param runConfig {@link LinkedHashMap} loaded from {@link ITestSuite#loadTests()}.
+     * @param suitePreparersPerDevice map of suite level preparers per test device.
      * @param shardCount a shard count hint to help with sharding.
      * @param dynamicModule Whether or not module can be shared in pool or must be independent
      *     (strict sharding).
@@ -72,6 +73,7 @@ public class ModuleSplitter {
     public static List<ModuleDefinition> splitConfiguration(
             TestInformation testInfo,
             LinkedHashMap<String, IConfiguration> runConfig,
+            Map<String, List<ITargetPreparer>> suitePreparersPerDevice,
             int shardCount,
             boolean dynamicModule,
             boolean intraModuleSharding) {
@@ -93,7 +95,8 @@ public class ModuleSplitter {
                         configMap.getValue(),
                         shardCount,
                         dynamicModule,
-                        intraModuleSharding);
+                        intraModuleSharding,
+                        suitePreparersPerDevice);
             } catch (RuntimeException e) {
                 CLog.e("Exception while creating module for '%s'", configMap.getKey());
                 throw e;
@@ -109,7 +112,8 @@ public class ModuleSplitter {
             IConfiguration config,
             int shardCount,
             boolean dynamicModule,
-            boolean intraModuleSharding) {
+            boolean intraModuleSharding,
+            Map<String, List<ITargetPreparer>> suitePreparersPerDevice) {
         List<IRemoteTest> tests = config.getTests();
         // Get rid of the IRemoteTest reference on the shared configuration. It will not be used
         // to run.
@@ -127,11 +131,13 @@ public class ModuleSplitter {
                                     moduleName,
                                     tests,
                                     clonePreparersMap(config),
+                                    clonePreparersMap(suitePreparersPerDevice),
                                     clonePreparers(config.getMultiTargetPreparers()),
                                     config);
                     currentList.add(module);
                 } else {
-                    addModuleToListFromSingleTest(currentList, tests.get(i), moduleName, config);
+                    addModuleToListFromSingleTest(
+                            currentList, tests.get(i), moduleName, config, suitePreparersPerDevice);
                 }
             }
             clearPreparersFromConfig(config);
@@ -153,6 +159,7 @@ public class ModuleSplitter {
                                             moduleName,
                                             shardedTests,
                                             clonePreparersMap(config),
+                                            clonePreparersMap(suitePreparersPerDevice),
                                             clonePreparers(config.getMultiTargetPreparers()),
                                             config);
                             currentList.add(module);
@@ -161,14 +168,19 @@ public class ModuleSplitter {
                         // We create independent modules with each sharded test.
                         for (IRemoteTest moduleTest : shardedTests) {
                             addModuleToListFromSingleTest(
-                                    currentList, moduleTest, moduleName, config);
+                                    currentList,
+                                    moduleTest,
+                                    moduleName,
+                                    config,
+                                    suitePreparersPerDevice);
                         }
                     }
                     continue;
                 }
             }
             // test is not shardable or did not shard
-            addModuleToListFromSingleTest(currentList, test, moduleName, config);
+            addModuleToListFromSingleTest(
+                    currentList, test, moduleName, config, suitePreparersPerDevice);
         }
         clearPreparersFromConfig(config);
     }
@@ -181,7 +193,8 @@ public class ModuleSplitter {
             List<ModuleDefinition> currentList,
             IRemoteTest test,
             String moduleName,
-            IConfiguration config) {
+            IConfiguration config,
+            Map<String, List<ITargetPreparer>> suitePreparersPerDevice) {
         List<IRemoteTest> testList = new ArrayList<>();
         testList.add(test);
         ModuleDefinition module =
@@ -189,6 +202,7 @@ public class ModuleSplitter {
                         moduleName,
                         testList,
                         clonePreparersMap(config),
+                        clonePreparersMap(suitePreparersPerDevice),
                         clonePreparers(config.getMultiTargetPreparers()),
                         config);
         currentList.add(module);
@@ -230,6 +244,18 @@ public class ModuleSplitter {
             List<ITargetPreparer> preparers = new ArrayList<>();
             res.put(holder.getDeviceName(), preparers);
             preparers.addAll(clonePreparers(holder.getTargetPreparers()));
+        }
+        return res;
+    }
+
+    /** Deep cloning of potentially multi-device preparers. */
+    private static Map<String, List<ITargetPreparer>> clonePreparersMap(
+            Map<String, List<ITargetPreparer>> suitePreparersPerDevice) {
+        Map<String, List<ITargetPreparer>> res = new LinkedHashMap<>();
+        for (String device : suitePreparersPerDevice.keySet()) {
+            List<ITargetPreparer> preparers = new ArrayList<>();
+            res.put(device, preparers);
+            preparers.addAll(clonePreparers(suitePreparersPerDevice.get(device)));
         }
         return res;
     }
