@@ -18,15 +18,17 @@ package com.android.tradefed.config.proxy;
 import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.UniqueMultiMap;
 
 import com.google.common.base.Joiner;
 
 import java.io.File;
-import java.io.FileFilter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 /** Objects that helps delegating the invocation to another Tradefed binary. */
 public class TradefedDelegator {
@@ -60,16 +62,8 @@ public class TradefedDelegator {
     }
 
     /** Creates the classpath out of the jars in the directory. */
-    public String createClasspath() {
-        List<File> jars =
-                Arrays.asList(
-                        mDelegatedTfRootDir.listFiles(
-                                new FileFilter() {
-                                    @Override
-                                    public boolean accept(File pathname) {
-                                        return pathname.getName().endsWith(".jar");
-                                    }
-                                }));
+    public String createClasspath() throws IOException {
+        Set<File> jars = FileUtil.findFilesObject(mDelegatedTfRootDir, ".*\\.jar");
         return Joiner.on(":").join(jars);
     }
 
@@ -96,10 +90,17 @@ public class TradefedDelegator {
      */
     public static String[] clearCommandline(String[] originalCommand)
             throws ConfigurationException {
+        String[] commandLine = clearCommandlineFromOneArg(originalCommand, DELETEGATED_OPTION_NAME);
+        return commandLine;
+    }
+
+    /** Remove a given option from the command line. */
+    private static String[] clearCommandlineFromOneArg(String[] originalCommand, String optionName)
+            throws ConfigurationException {
         List<String> argsList = new ArrayList<>(Arrays.asList(originalCommand));
         try {
-            while (argsList.contains("--" + DELETEGATED_OPTION_NAME)) {
-                int index = argsList.indexOf("--" + DELETEGATED_OPTION_NAME);
+            while (argsList.contains("--" + optionName)) {
+                int index = argsList.indexOf("--" + optionName);
                 if (index != -1) {
                     argsList.remove(index + 1);
                     argsList.remove(index);

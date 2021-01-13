@@ -240,11 +240,14 @@ public class InstalledInstrumentationsTest
             if (run.isRunFailure()) {
                 retry = true;
                 // Retry the full run in case of run failure
-                mRunTestsFailureMap.put(run.getName(), null);
+                mRunTestsFailureMap.put(run.getName(), new ArrayList<TestDescription>());
             } else if (run.hasFailedTests()) {
                 retry = true;
                 mRunTestsFailureMap.put(
                         run.getName(), new ArrayList<TestDescription>(run.getFailedTests()));
+            } else {
+                // Set null if we should not rerun it
+                mRunTestsFailureMap.put(run.getName(), null);
             }
         }
 
@@ -366,8 +369,9 @@ public class InstalledInstrumentationsTest
                     t.setPackageName(targetPackageName);
                     if (mRunTestsFailureMap != null) {
                         // Don't retry if there was no failure in a particular instrumentation.
-                        if (!mRunTestsFailureMap.containsKey(targetPackageName)) {
-                            CLog.d("Skipping %s at retry.", targetPackageName);
+                        if (mRunTestsFailureMap.containsKey(targetPackageName)
+                                && mRunTestsFailureMap.get(targetPackageName) == null) {
+                            CLog.d("Skipping %s at retry, nothing to do.", targetPackageName);
                             continue;
                         }
                         // if possible reduce the scope of the retry to be more efficient.
@@ -376,14 +380,12 @@ public class InstalledInstrumentationsTest
                             if (mRunTestsFailureMap.containsKey(targetPackageName)) {
                                 List<TestDescription> tests =
                                         mRunTestsFailureMap.get(targetPackageName);
-                                if (tests != null) {
-                                    for (TestDescription test : tests) {
-                                        filterable.addIncludeFilter(
-                                                String.format(
-                                                        "%s#%s",
-                                                        test.getClassName(),
-                                                        test.getTestNameWithoutParams()));
-                                    }
+                                for (TestDescription test : tests) {
+                                    filterable.addIncludeFilter(
+                                            String.format(
+                                                    "%s#%s",
+                                                    test.getClassName(),
+                                                    test.getTestNameWithoutParams()));
                                 }
                             }
                         }

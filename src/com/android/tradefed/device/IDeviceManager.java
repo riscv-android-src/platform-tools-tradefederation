@@ -18,10 +18,12 @@ package com.android.tradefed.device;
 
 import com.android.ddmlib.AndroidDebugBridge;
 import com.android.tradefed.command.remote.DeviceDescriptor;
+import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.IRunUtil;
 
 import java.io.PrintWriter;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Interface for managing the set of available devices for testing.
@@ -96,6 +98,18 @@ public interface IDeviceManager {
      *        device is returned to available device pool.
      */
     public void freeDevice(ITestDevice device, FreeDeviceState state);
+
+    /**
+     * A helper method to execute shell command on available device.
+     *
+     * @param serial The device serial.
+     * @param command The shell command.
+     * @param timeout The amount of time for the command to complete.
+     * @param timeUnit The unit for the timeout.
+     * @return A {@link CommandResult}.
+     */
+    public CommandResult executeCmdOnAvailableDevice(
+            String serial, String command, long timeout, TimeUnit timeUnit);
 
     /**
      * Helper method to launch emulator.
@@ -295,4 +309,12 @@ public interface IDeviceManager {
      * @param fastboot_serial the device's fastboot mode serial number.
      */
     public void addMonitoringTcpFastbootDevice(String serial, String fastboot_serial);
+
+    /**
+     * Returns whether or not we should check in {@link NativeDeviceStateMonitor} the file system is
+     * mounted properly.
+     */
+    public default boolean isFileSystemMountCheckEnabled() {
+        return false;
+    }
 }

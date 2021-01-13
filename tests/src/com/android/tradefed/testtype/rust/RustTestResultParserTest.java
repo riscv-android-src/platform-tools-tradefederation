@@ -167,4 +167,16 @@ public class RustTestResultParserTest extends RustParserTestBase {
         mParser.done();
         verify(mMockListener);
     }
+
+    @Test
+    public void testParseLinkError() {
+        String[] contents = readInFile(RUST_OUTPUT_FILE_4);
+        mMockListener.testRunFailed(
+                EasyMock.eq(
+                        "test did not report any run:\nCANNOT LINK EXECUTABLE \"/data/local/tmp/keystore2_test/x86_64/keystore2_test\": library \"libkeystore2_crypto.so\" not found: needed by main executable"));
+        replay(mMockListener);
+        mParser.processNewLines(contents);
+        mParser.done();
+        verify(mMockListener);
+    }
 }

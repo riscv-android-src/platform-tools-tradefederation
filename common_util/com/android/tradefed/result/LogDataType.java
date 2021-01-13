@@ -21,6 +21,7 @@ package com.android.tradefed.result;
 public enum LogDataType {
 
     TEXT("txt", "text/plain", false, true),
+    UIX("uix", "text/xml", false, true),
     XML("xml", "text/xml", false, true),
     HTML("html", "text/html", true, true),
     PNG("png", "image/png", true, false),
@@ -32,7 +33,7 @@ public enum LogDataType {
     JPEG("jpeg", "image/jpeg", true, false),
     TAR_GZ("tar.gz", "application/gzip", true, false),
     GZIP("gz", "application/gzip", true, false),
-    HPROF("hprof", "text/plain", true, false),
+    HPROF("hprof", "application/octet-stream", true, false),
     COVERAGE("ec", "text/plain", false, false), // Emma coverage file
     NATIVE_COVERAGE("zip", "application/zip", true, false), // gcov coverage archive
     CLANG_COVERAGE("profdata", "text/plain", false, false), // LLVM indexed profile data
@@ -60,6 +61,11 @@ public enum LogDataType {
     ATRACE("atr", "text/plain", true, false), // atrace -z format
     KERNEL_TRACE("dat", "text/plain", false, false), // raw kernel ftrace buffer
     DIR("", "text/plain", false, false),
+    CFG("cfg", "application/octet-stream", false, true),
+    TF_EVENTS("txt", "text/plain", false, true),
+    HARNESS_STD_LOG("txt", "text/plain", false, true),
+    HARNESS_CONFIG("xml", "text/xml", false, true),
+    ADB_HOST_LOG("txt", "text/plain", false, true),
     /* Unknown file type */
     UNKNOWN("dat", "text/plain", false, false);
 
