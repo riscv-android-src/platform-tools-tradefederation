@@ -4683,24 +4683,29 @@ public class NativeDevice implements IManagedTestDevice {
             }
             // All the operations to create the descriptor need to be safe (should not trigger any
             // device side effects like recovery)
-            return new DeviceDescriptor(
-                    idevice.getSerialNumber(),
-                    null,
-                    idevice instanceof StubDevice,
-                    idevice.getState(),
-                    getAllocationState(),
-                    getDeviceState(),
-                    getDisplayString(selector.getDeviceProductType(idevice)),
-                    getDisplayString(selector.getDeviceProductVariant(idevice)),
-                    getDisplayString(idevice.getProperty(DeviceProperties.SDK_VERSION)),
-                    getDisplayString(idevice.getProperty(DeviceProperties.BUILD_ALIAS)),
-                    getDisplayString(getBattery()),
-                    getDeviceClass(),
-                    getDisplayString(getMacAddress()),
-                    getDisplayString(getSimState()),
-                    getDisplayString(getSimOperator()),
-                    isTemporary,
-                    idevice);
+            DeviceDescriptor descriptor =
+                    new DeviceDescriptor(
+                            idevice.getSerialNumber(),
+                            null,
+                            idevice instanceof StubDevice,
+                            idevice.getState(),
+                            getAllocationState(),
+                            getDeviceState(),
+                            getDisplayString(selector.getDeviceProductType(idevice)),
+                            getDisplayString(selector.getDeviceProductVariant(idevice)),
+                            getDisplayString(idevice.getProperty(DeviceProperties.SDK_VERSION)),
+                            getDisplayString(idevice.getProperty(DeviceProperties.BUILD_ALIAS)),
+                            getDisplayString(getBattery()),
+                            getDeviceClass(),
+                            getDisplayString(getMacAddress()),
+                            getDisplayString(getSimState()),
+                            getDisplayString(getSimOperator()),
+                            isTemporary,
+                            idevice);
+            // Regardless of device allocation state, if invocation explicitly call for a new
+            // descriptor, we refresh our cache to latest.
+            mCachedDeviceDescriptor = descriptor;
+            return descriptor;
         } catch (RuntimeException e) {
             CLog.e("Exception while building device '%s' description:", getSerialNumber());
             CLog.e(e);
