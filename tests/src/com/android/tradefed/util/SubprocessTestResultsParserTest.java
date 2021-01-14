@@ -108,7 +108,7 @@ public class SubprocessTestResultsParserTest {
         mockRunListener.testIgnored((TestDescription) EasyMock.anyObject());
         EasyMock.expectLastCall();
         mockRunListener.testFailed(
-                (TestDescription) EasyMock.anyObject(), (String) EasyMock.anyObject());
+                (TestDescription) EasyMock.anyObject(), (FailureDescription) EasyMock.anyObject());
         EasyMock.expectLastCall();
         mockRunListener.testAssumptionFailure(
                 (TestDescription) EasyMock.anyObject(), (String) EasyMock.anyObject());

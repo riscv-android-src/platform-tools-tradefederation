@@ -62,7 +62,7 @@ public final class MainlineModuleHandlerTest {
     public void testApplySetup() {
         EasyMock.expect(mMockBuildInfo.getBuildBranch()).andStubReturn("branch");
         EasyMock.replay(mMockBuildInfo);
-        mHandler = new MainlineModuleHandler("mod1.apk", mAbi, mContext);
+        mHandler = new MainlineModuleHandler("mod1.apk", mAbi, mContext, false);
         mHandler.applySetup(mConfig);
         assertTrue(mConfig.getTargetPreparers().get(0) instanceof InstallApexModuleTargetPreparer);
         InstallApexModuleTargetPreparer preparer =
@@ -77,7 +77,7 @@ public final class MainlineModuleHandlerTest {
     public void testApplySetup_MultipleMainlineModules() {
         EasyMock.expect(mMockBuildInfo.getBuildBranch()).andStubReturn("branch");
         EasyMock.replay(mMockBuildInfo);
-        mHandler = new MainlineModuleHandler("mod1.apk+mod2.apex", mAbi, mContext);
+        mHandler = new MainlineModuleHandler("mod1.apk+mod2.apex", mAbi, mContext, false);
         mHandler.applySetup(mConfig);
         assertTrue(mConfig.getTargetPreparers().get(0) instanceof InstallApexModuleTargetPreparer);
         InstallApexModuleTargetPreparer preparer =
@@ -97,7 +97,7 @@ public final class MainlineModuleHandlerTest {
         try {
             EasyMock.expect(mMockBuildInfo.getBuildBranch()).andStubReturn(null);
             EasyMock.replay(mMockBuildInfo);
-            mHandler = new MainlineModuleHandler("mod1.apk+mod2.apex", mAbi, mContext);
+            mHandler = new MainlineModuleHandler("mod1.apk+mod2.apex", mAbi, mContext, false);
             fail("Should have thrown an exception.");
         } catch (IllegalArgumentException expected) {
             // expected

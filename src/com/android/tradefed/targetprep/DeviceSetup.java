@@ -22,10 +22,12 @@ import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
+import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.BinaryState;
 import com.android.tradefed.util.MultiMap;
@@ -328,10 +330,10 @@ public class DeviceSetup extends BaseTargetPreparer {
     protected Map<String, String> mSetProps = new HashMap<>();
 
     @Option(
-        name = "restore-properties",
-        description =
-                "Restore previous /data/local.prop on tear down, restoring any properties DeviceSetup changed by modifying /data/local.prop."
-    )
+            name = "restore-properties",
+            description =
+                    "Restore previous /data/local.prop on tear down, restoring any properties"
+                            + " DeviceSetup changed by modifying /data/local.prop.")
     protected boolean mRestoreProperties = false;
 
     protected File mPreviousProperties;
@@ -431,8 +433,10 @@ public class DeviceSetup extends BaseTargetPreparer {
         CLog.i("Performing setup on %s", device.getSerialNumber());
 
         if (device.getOptions().isEnableAdbRoot() && !device.enableAdbRoot()) {
-            throw new TargetSetupError(String.format("Failed to enable adb root on %s",
-                    device.getSerialNumber()), device.getDeviceDescriptor());
+            throw new TargetSetupError(
+                    String.format("Failed to enable adb root on %s", device.getSerialNumber()),
+                    device.getDeviceDescriptor(),
+                    DeviceErrorIdentifier.DEVICE_UNEXPECTED_RESPONSE);
         }
 
         // Convert deprecated options into current options
@@ -473,6 +477,10 @@ public class DeviceSetup extends BaseTargetPreparer {
 
         if (e instanceof DeviceFailedToBootError) {
             CLog.d("boot failure: skipping teardown");
+            return;
+        }
+        if (!TestDeviceState.ONLINE.equals(device.getDeviceState())) {
+            CLog.d("device offline: skipping teardown");
             return;
         }
 
@@ -739,13 +747,28 @@ public class DeviceSetup extends BaseTargetPreparer {
         CLog.d("Pushing the following properties to /data/local.prop:\n%s", sb.toString());
         boolean result = device.pushString(sb.toString(), "/data/local.prop");
         if (!result) {
-            throw new TargetSetupError(String.format("Failed to push /data/local.prop to %s",
-                    device.getSerialNumber()), device.getDeviceDescriptor());
+            throw new TargetSetupError(
+                    String.format(
+                            "Failed to push /data/local.prop to %s", device.getSerialNumber()),
+                    device.getDeviceDescriptor(),
+                    DeviceErrorIdentifier.FAIL_PUSH_FILE);
         }
         // Set reasonable permissions for /data/local.prop
         device.executeShellCommand("chmod 644 /data/local.prop");
         CLog.i("Rebooting %s due to system property change", device.getSerialNumber());
         device.reboot();
+
+        // Log nonpersistent device properties (that change/lose values after reboot).
+        for (Map.Entry<String, String> prop : mSetProps.entrySet()) {
+            String expected = prop.getValue();
+            String actual = device.getProperty(prop.getKey());
+            if ((expected != null && !expected.equals(actual))
+                    || (expected == null && actual != null)) {
+                String entry = String.format("%s(%s:%s)", prop.getKey(), expected, actual);
+                InvocationMetricLogger.addInvocationMetrics(
+                        InvocationMetricKey.NONPERSISTENT_DEVICE_PROPERTIES, entry);
+            }
+        }
     }
 
     /**
@@ -894,7 +917,7 @@ public class DeviceSetup extends BaseTargetPreparer {
             CLog.d("Skipping connect wifi due to force-skip-run-commands");
             return;
         }
-        if (mWifiSsid == null && mWifiSsidToPsk.isEmpty()) {
+        if ((mWifiSsid == null || mWifiSsid.isEmpty()) && mWifiSsidToPsk.isEmpty()) {
             return;
         }
 

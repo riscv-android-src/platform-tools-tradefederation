@@ -88,7 +88,7 @@ public class DependenciesResolver
             try {
                 mTestsDir =
                         FileUtil.createTempDir(
-                                "bootstrap-test-dir",
+                                "bootstrap-dep-test-dir",
                                 CurrentInvocation.getInfo(InvocationInfo.WORK_FOLDER));
             } catch (IOException e) {
                 throw new BuildRetrievalError(

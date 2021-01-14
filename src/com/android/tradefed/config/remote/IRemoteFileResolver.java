@@ -20,6 +20,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
 
 import java.io.File;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import javax.annotation.Nonnull;
@@ -56,6 +57,19 @@ public interface IRemoteFileResolver {
         return resolveRemoteFiles(consideredFile);
     }
 
+    /**
+     * Resolve the remote file in a future-proof interface
+     *
+     * @param args {@link RemoteFileResolverArgs} describing the remote to download and how.
+     * @return The resolved local file representation.
+     * @throws BuildRetrievalError if something goes wrong.
+     */
+    public default @Nonnull ResolvedFile resolveRemoteFile(RemoteFileResolverArgs args)
+            throws BuildRetrievalError {
+        File file = resolveRemoteFiles(args.getConsideredFile(), args.getQueryArgs());
+        return new ResolvedFile(file);
+    }
+
     /** Returns the associated protocol supported for download. */
     public @Nonnull String getSupportedProtocol();
 
@@ -67,5 +81,95 @@ public interface IRemoteFileResolver {
      */
     public default void setPrimaryDevice(ITestDevice device) {
         // Do nothing by default
+    }
+
+    /** The args passed to the resolvers */
+    public class RemoteFileResolverArgs {
+
+        private File mConsideredFile;
+        private Map<String, String> mQueryArgs = new LinkedHashMap<>();
+        private File mDestinationDir;
+
+        public RemoteFileResolverArgs setConsideredFile(File consideredFile) {
+            mConsideredFile = consideredFile;
+            return this;
+        }
+
+        public RemoteFileResolverArgs addQueryArgs(Map<String, String> queryArgs) {
+            mQueryArgs.putAll(queryArgs);
+            return this;
+        }
+
+        public RemoteFileResolverArgs setDestinationDir(File destinationDir) {
+            mDestinationDir = destinationDir;
+            return this;
+        }
+
+        public File getConsideredFile() {
+            return mConsideredFile;
+        }
+
+        public Map<String, String> getQueryArgs() {
+            return mQueryArgs;
+        }
+
+        public File getDestinationDir() {
+            return mDestinationDir;
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + ((mConsideredFile == null) ? 0 : mConsideredFile.hashCode());
+            result = prime * result + ((mDestinationDir == null) ? 0 : mDestinationDir.hashCode());
+            result = prime * result + ((mQueryArgs == null) ? 0 : mQueryArgs.hashCode());
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) return true;
+            if (obj == null) return false;
+            if (getClass() != obj.getClass()) return false;
+            RemoteFileResolverArgs other = (RemoteFileResolverArgs) obj;
+            if (mConsideredFile == null) {
+                if (other.mConsideredFile != null) return false;
+            } else if (!mConsideredFile.equals(other.mConsideredFile)) return false;
+            if (mDestinationDir == null) {
+                if (other.mDestinationDir != null) return false;
+            } else if (!mDestinationDir.equals(other.mDestinationDir)) return false;
+            if (mQueryArgs == null) {
+                if (other.mQueryArgs != null) return false;
+            } else if (!mQueryArgs.equals(other.mQueryArgs)) return false;
+            return true;
+        }
+    }
+
+    /** Class holding information about the resolved file and some metadata. */
+    public class ResolvedFile {
+        private File mResolvedFile;
+        private boolean mShouldCleanUp = true;
+
+        public ResolvedFile(File resolvedFile) {
+            mResolvedFile = resolvedFile;
+        }
+
+        public File getResolvedFile() {
+            return mResolvedFile;
+        }
+
+        /**
+         * Whether the resolved file should be deleted at the end of the invocation or not. Set to
+         * false for a file that shouldn't be deleted. For example: a local file you own.
+         */
+        public ResolvedFile cleanUp(boolean cleanUp) {
+            mShouldCleanUp = cleanUp;
+            return this;
+        }
+
+        public boolean shouldCleanUp() {
+            return mShouldCleanUp;
+        }
     }
 }
