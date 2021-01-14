@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tradefed.testtype.isolation;
+package com.android.tradefed.referencetests;
 
 import static org.junit.Assert.assertEquals;
 
