@@ -1028,22 +1028,19 @@ public class TestInvocationTest {
         replayMocks(test);
     }
 
-    /**
-     * Set up expected calls that occur on every invoke, regardless of result
-     */
-    private void setupInvoke() {
+    /** Set up expected calls that occur on every invoke, regardless of result */
+    private void setupInvoke() throws DeviceNotAvailableException {
         mMockDevice.clearLastConnectedWifiNetwork();
         mMockDevice.setOptions((TestDeviceOptions)EasyMock.anyObject());
         mMockDevice.startLogcat();
         mMockDevice.clearLastConnectedWifiNetwork();
         mMockDevice.stopLogcat();
         EasyMock.expectLastCall().anyTimes();
+        mMockDevice.waitForDeviceOnline();
     }
 
-    /**
-     * Set up expected calls that occur on every invoke that gets a valid build
-     */
-    private void setupInvokeWithBuild() {
+    /** Set up expected calls that occur on every invoke that gets a valid build */
+    private void setupInvokeWithBuild() throws DeviceNotAvailableException {
         setupInvoke();
         EasyMock.expect(mMockDevice.getLogcat()).andReturn(EMPTY_STREAM_SOURCE).times(3);
         mMockDevice.clearLogcat();
