@@ -21,8 +21,10 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
+import com.android.tradefed.invoker.logger.InvocationLocal;
+import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.ZipUtil2;
-
 import org.apache.commons.compress.archivers.zip.ZipFile;
 import java.io.File;
 import java.io.IOException;
@@ -48,25 +50,55 @@ public class ClusterBuildProvider implements IBuildProvider {
     @Option(name = "build-target", description = "Build target name")
     private String mBuildTarget = "stub";
 
+    // The keys are the URLs; the values are the downloaded files shared among all build providers
+    // in the invocation.
+    // TODO(b/139876060): Use dynamic download when it supports caching HTTPS and GCS files.
+    @VisibleForTesting
+    static final InvocationLocal<Map<String, File>> sDownloadCache =
+            new InvocationLocal<Map<String, File>>() {
+                @Override
+                protected Map<String, File> initialValue() {
+                    return new TreeMap<String, File>();
+                }
+            };
+
     @Override
     public IBuildInfo getBuild() throws BuildRetrievalError {
-        try {
-            mRootDir.mkdirs();
-            final IBuildInfo buildInfo = new ClusterBuildInfo(mRootDir, mBuildId, mBuildTarget);
-            final TestResourceDownloader downloader = new TestResourceDownloader(mRootDir);
+        mRootDir.mkdirs();
+        final IBuildInfo buildInfo = new ClusterBuildInfo(mRootDir, mBuildId, mBuildTarget);
+        final TestResourceDownloader downloader = createTestResourceDownloader();
+        final Map<String, File> cache = sDownloadCache.get();
+
+        synchronized (cache) {
             for (final Entry<String, String> entry : mTestResources.entrySet()) {
                 final TestResource resource = new TestResource(entry.getKey(), entry.getValue());
-                final File file = downloader.download(resource);
-                buildInfo.setFile(resource.getName(), file, DEFAULT_FILE_VERSION);
-                if (file.getName().endsWith(".zip")) {
-                    // If a zip file is downloaded to a subfolder, unzip there.
-                    extractZip(file, file.getParentFile());
+                final File file = new File(mRootDir, resource.getName());
+                final File cachedFile = cache.get(resource.getUrl());
+                try {
+                    if (cachedFile == null) {
+                        downloader.download(resource, file);
+                        if (file.getName().endsWith(".zip")) {
+                            // If a zip file is downloaded to a subfolder, unzip there.
+                            extractZip(file, file.getParentFile());
+                        }
+                        cache.put(resource.getUrl(), file);
+                    } else {
+                        CLog.i("Skip %s which has been downloaded.", resource.getName());
+                        if (!file.equals(cachedFile)) {
+                            if (file.exists()) {
+                                file.delete();
+                            }
+                            file.getParentFile().mkdirs();
+                            FileUtil.hardlinkFile(cachedFile, file);
+                        }
+                    }
+                } catch (IOException e) {
+                    throw new BuildRetrievalError("failed to get test resources", e);
                 }
+                buildInfo.setFile(resource.getName(), file, DEFAULT_FILE_VERSION);
             }
-            return buildInfo;
-        } catch (IOException e) {
-            throw new BuildRetrievalError("failed to get test resources", e);
         }
+        return buildInfo;
     }
 
     /** Extracts the zip to a root dir. */
@@ -89,8 +121,13 @@ public class ClusterBuildProvider implements IBuildProvider {
     }
 
     @VisibleForTesting
-    File getRootDir() {
-        return mRootDir;
+    TestResourceDownloader createTestResourceDownloader() {
+        return new TestResourceDownloader();
+    }
+
+    @VisibleForTesting
+    void setRootDir(File rootDir) {
+        mRootDir = rootDir;
     }
 
     @VisibleForTesting

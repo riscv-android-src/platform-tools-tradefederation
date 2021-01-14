@@ -19,5 +19,6 @@
 
     <!-- Force GTest to report binary name in results -->
     <option name="test-arg" value="com.android.tradefed.testtype.GTest:prepend-filename:true" />
+    <option name="test-arg" value="com.android.tradefed.testtype.HostGTest:prepend-filename:true" />
 
 </configuration>

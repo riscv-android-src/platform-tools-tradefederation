@@ -129,6 +129,15 @@ public interface IDeviceFlasher {
     }
 
     /**
+     * Sets ramdisk partition
+     *
+     * @param ramdiskPartition
+     */
+    public default void setRamdiskPartition(String ramdiskPartition) {
+        // Ignore
+    }
+
+    /**
      * Checks if the flasher is set to have an additional ramdisk should be flashed after updating
      * device via image zip
      */

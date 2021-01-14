@@ -22,7 +22,9 @@ import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.config.proxy.AutomatedReporters;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -31,6 +33,7 @@ import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.result.proto.StreamProtoReceiver;
 import com.android.tradefed.result.proto.StreamProtoResultReporter;
 import com.android.tradefed.util.CommandResult;
@@ -270,6 +273,7 @@ public abstract class SubprocessTfLauncher
         mRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
         mRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
         mRunUtil.unsetEnvVariable(ANDROID_SERIAL_VAR);
+        mRunUtil.unsetEnvVariable(AutomatedReporters.PROTO_REPORTING_PORT);
 
         if (mGlobalConfig == null) {
             // If the global configuration is not set in option, create a filtered global
@@ -394,6 +398,7 @@ public abstract class SubprocessTfLauncher
                                     "Event receiver thread did not complete:" + "\n%s",
                                     FileUtil.readStringFromFile(stderrFile)));
                 }
+                protoReceiver.completeModuleEvents();
             }
             if (result.getStatus().equals(CommandStatus.SUCCESS)) {
                 CLog.d("Successfully ran TF tests for build %s", mBuildInfo.getBuildId());
@@ -409,11 +414,12 @@ public abstract class SubprocessTfLauncher
                 if (result.getStatus().equals(CommandStatus.TIMED_OUT)) {
                     errMessage = String.format("Timeout after %s",
                             TimeUtil.formatElapsedTime(mMaxTfRunTime));
-                    throw new RuntimeException(
+                    throw new HarnessRuntimeException(
                             String.format(
                                     "%s Tests subprocess failed due to:\n%s\n",
-                                    mConfigName, errMessage));
-                } else {
+                                    mConfigName, errMessage),
+                            InfraErrorIdentifier.INVOCATION_TIMEOUT);
+                } else if (eventParser != null && !eventParser.reportedInvocationFailed()) {
                     SubprocessExceptionParser.handleStderrException(result);
                 }
             }

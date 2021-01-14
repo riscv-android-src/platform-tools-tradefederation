@@ -21,6 +21,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -42,6 +43,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.mockito.Answers;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
@@ -117,6 +119,9 @@ public final class RunHostScriptTargetPreparerTest {
         verify(mRunUtil).runTimedCmd(10L, mScriptFile.getAbsolutePath());
         // Verify that script is executable
         assertTrue(mScriptFile.canExecute());
+        // No flashing permit taken/returned by default
+        verify(mDeviceManager, never()).takeFlashingPermit();
+        verify(mDeviceManager, never()).returnFlashingPermit();
     }
 
     @Test
@@ -168,5 +173,17 @@ public final class RunHostScriptTargetPreparerTest {
         String expectedPath = adbDir + separator + fastbootDir + separator + System.getenv("PATH");
         mPreparer.setUp(mTestInfo);
         verify(mRunUtil).setEnvVariable("PATH", expectedPath);
+    }
+
+    @Test
+    public void testSetUp_flashingPermit() throws Exception {
+        mOptionSetter.setOptionValue("script-file", mScriptFile.getAbsolutePath());
+        mOptionSetter.setOptionValue("use-flashing-permit", "true");
+        // Verify script executed with flashing permit
+        mPreparer.setUp(mTestInfo);
+        InOrder inOrder = inOrder(mRunUtil, mDeviceManager);
+        inOrder.verify(mDeviceManager).takeFlashingPermit();
+        inOrder.verify(mRunUtil).runTimedCmd(anyLong(), eq(mScriptFile.getAbsolutePath()));
+        inOrder.verify(mDeviceManager).returnFlashingPermit();
     }
 }

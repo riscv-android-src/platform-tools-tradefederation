@@ -18,22 +18,11 @@ package com.android.tradefed.sandbox;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.invoker.TestInformation;
-import com.android.tradefed.invoker.logger.InvocationMetricLogger;
-import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.PrettyPrintDelimiter;
-import com.android.tradefed.util.SerializationUtil;
-
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /** Run the tests associated with the invocation in the sandbox. */
 public class SandboxInvocationRunner {
@@ -62,48 +51,9 @@ public class SandboxInvocationRunner {
         PrettyPrintDelimiter.printStageDelimiter("Done with Sandbox Environment Setup");
         try {
             CommandResult result = sandbox.run(config, listener);
-            if (result.getExitCode() != null) {
-                // Log the exit code
-                InvocationMetricLogger.addInvocationMetrics(
-                        InvocationMetricKey.SANDBOX_EXIT_CODE, result.getExitCode());
-            }
-            if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
-                CLog.e(
-                        "Sandbox finished with status: %s and exit code: %s",
-                        result.getStatus(), result.getExitCode());
-                handleStderrException(result.getExitCode(), result.getStderr());
-                return false;
-            }
+            return CommandStatus.SUCCESS.equals(result.getStatus());
         } finally {
             sandbox.tearDown();
         }
-        return true;
-    }
-
-    /** Attempt to extract a proper exception from stderr, if not stick to RuntimeException. */
-    private static void handleStderrException(Integer exitCode, String stderr) throws Throwable {
-        Pattern pattern =
-                Pattern.compile(String.format(".*%s.*", TradefedSandboxRunner.EXCEPTION_KEY));
-        for (String line : stderr.split("\n")) {
-            Matcher m = pattern.matcher(line);
-            if (m.matches()) {
-                try {
-                    JSONObject json = new JSONObject(line);
-                    String filePath = json.getString(TradefedSandboxRunner.EXCEPTION_KEY);
-                    File exception = new File(filePath);
-                    Throwable obj = (Throwable) SerializationUtil.deserialize(exception, true);
-                    throw obj;
-                } catch (JSONException | IOException e) {
-                    // ignore
-                    CLog.w(
-                            "Could not parse the stderr as a particular exception. "
-                                    + "Using RuntimeException instead.");
-                }
-            }
-        }
-        stderr =
-                String.format(
-                        "Sandbox finished with error exit code: %s.\nStderr: %s", exitCode, stderr);
-        throw new RuntimeException(stderr);
     }
 }

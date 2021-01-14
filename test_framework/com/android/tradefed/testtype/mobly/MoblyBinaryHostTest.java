@@ -17,26 +17,28 @@ package com.android.tradefed.testtype.mobly;
 
 import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.build.IBuildInfo;
-import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.targetprep.adb.AdbStopServerPreparer;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IDeviceTest;
-import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.util.AdbUtils;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.PythonVirtualenvHelper;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 
@@ -48,6 +50,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.Writer;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -57,27 +60,26 @@ import org.yaml.snakeyaml.Yaml;
 
 /** Host test meant to run a mobly python binary file from the Android Build system (Soong) */
 @OptionClass(alias = "mobly-host")
-public class MoblyBinaryHostTest
-        implements IRemoteTest, IDeviceTest, IBuildReceiver, IInvocationContextReceiver {
+public class MoblyBinaryHostTest implements IRemoteTest, IDeviceTest, IBuildReceiver {
 
     private static final String ANDROID_SERIAL_VAR = "ANDROID_SERIAL";
-    private static final String PATH_VAR = "PATH";
-    private static final long PATH_TIMEOUT_MS = 60000L;
     private static final String MOBLY_TEST_SUMMARY = "test_summary.yaml";
     private static final String MOBLY_TEST_SUMMARY_XML = "converted_test_summary.xml";
 
     // TODO(b/159366744): merge this and next options.
-    @Option(name = "par-file-name", description = "The binary names inside the build info to run.")
+    @Option(
+            name = "mobly-par-file-name",
+            description = "The binary names inside the build info to run.")
     private Set<String> mBinaryNames = new HashSet<>();
 
     @Option(
-            name = "python-binaries",
+            name = "mobly-binaries",
             description = "The full path to a runnable python binary. Can be repeated.")
     private Set<File> mBinaries = new HashSet<>();
 
     @Option(
-            name = "test-timeout",
-            description = "Timeout for a single par file to terminate.",
+            name = "mobly-test-timeout",
+            description = "The timeout limit of a single Mobly test binary.",
             isTimeVal = true)
     private long mTestTimeout = 20 * 1000L;
 
@@ -87,7 +89,7 @@ public class MoblyBinaryHostTest
     private boolean mInjectAndroidSerialVar = true;
 
     @Option(
-            name = "python-options",
+            name = "mobly-options",
             description = "Option string to be passed to the binary when running")
     private List<String> mTestOptions = new ArrayList<>();
 
@@ -109,9 +111,8 @@ public class MoblyBinaryHostTest
 
     private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
-    private IInvocationContext mContext;
     private File mLogDir;
-
+    private TestInformation mTestInfo;
     private IRunUtil mRunUtil;
 
     @Override
@@ -130,13 +131,15 @@ public class MoblyBinaryHostTest
     }
 
     @Override
-    public void setInvocationContext(IInvocationContext invocationContext) {
-        mContext = invocationContext;
-    }
-
-    @Override
-    public final void run(ITestInvocationListener listener) {
-        List<File> parFilesList = findParFiles();
+    public final void run(TestInformation testInfo, ITestInvocationListener listener) {
+        mTestInfo = testInfo;
+        mBuildInfo = mTestInfo.getBuildInfo();
+        mDevice = mTestInfo.getDevice();
+        List<File> parFilesList = findParFiles(listener);
+        File venvDir = mBuildInfo.getFile("VIRTUAL_ENV");
+        if (venvDir != null) {
+            PythonVirtualenvHelper.activate(getRunUtil(), venvDir);
+        }
         for (File parFile : parFilesList) {
             // TODO(b/159365341): add a failure reporting for nonexistent binary.
             if (!parFile.exists()) {
@@ -153,26 +156,25 @@ public class MoblyBinaryHostTest
                 reportLogs(getLogDir(), listener);
             }
         }
+        if (venvDir != null
+                && venvDir.getAbsolutePath().startsWith(System.getProperty("java.io.tmpdir"))) {
+            FileUtil.recursiveDelete(venvDir);
+        }
     }
 
-    private List<File> findParFiles() {
-        File testsDir = null;
-        if (mBuildInfo instanceof IDeviceBuildInfo) {
-            testsDir = ((IDeviceBuildInfo) mBuildInfo).getTestsDir();
-        }
+    private List<File> findParFiles(ITestInvocationListener listener) {
         // TODO(b/159369297): make naming and log message more "mobly".
         List<File> files = new ArrayList<>();
         for (String binaryName : mBinaryNames) {
             File res = null;
             // search tests dir
-            if (testsDir != null) {
-                res = FileUtil.findFile(testsDir, binaryName);
+            try {
+                res = mTestInfo.getDependencyFile(binaryName, /* targetFirst */ false);
+                files.add(res);
+            } catch (FileNotFoundException e) {
+                reportFailure(
+                        listener, binaryName, "Couldn't find Mobly test binary " + binaryName);
             }
-            if (res == null) {
-                throw new RuntimeException(
-                        String.format("Couldn't find a par file %s", binaryName));
-            }
-            files.add(res);
         }
         files.addAll(mBinaries);
         return files;
@@ -182,7 +184,7 @@ public class MoblyBinaryHostTest
         if (mInjectAndroidSerialVar) {
             getRunUtil().setEnvVariable(ANDROID_SERIAL_VAR, getDevice().getSerialNumber());
         }
-        updateAdb();
+        AdbUtils.updateAdb(mTestInfo, getRunUtil(), getAdbPath());
         if (mConfigFile != null) {
             updateConfigFile();
         }
@@ -193,47 +195,6 @@ public class MoblyBinaryHostTest
                     "Something went wrong when running the python binary:\nstdout: "
                             + "%s\nstderr:%s\nStatus:%s",
                     result.getStdout(), result.getStderr(), result.getStatus());
-        }
-    }
-
-    private void updateAdb() {
-        File updatedAdb = mBuildInfo.getFile(AdbStopServerPreparer.ADB_BINARY_KEY);
-        if (updatedAdb == null) {
-            String adbPath = getAdbPath();
-            // Don't check if it's the adb on the $PATH
-            if (!adbPath.equals("adb")) {
-                updatedAdb = new File(adbPath);
-                if (!updatedAdb.exists()) {
-                    updatedAdb = null;
-                }
-            }
-        }
-        if (updatedAdb != null) {
-            CLog.d("Testing with adb binary at: %s", updatedAdb);
-            // If a special adb version is used, pass it to the PATH
-            CommandResult pathResult =
-                    getRunUtil()
-                            .runTimedCmd(PATH_TIMEOUT_MS, "/bin/bash", "-c", "echo $" + PATH_VAR);
-            if (!CommandStatus.SUCCESS.equals(pathResult.getStatus())) {
-                throw new RuntimeException(
-                        String.format(
-                                "Failed to get the $PATH. status: %s, stdout: %s, stderr: %s",
-                                pathResult.getStatus(),
-                                pathResult.getStdout(),
-                                pathResult.getStderr()));
-            }
-            // Include the directory of the adb on the PATH to be used.
-            String path =
-                    String.format(
-                            "%s:%s",
-                            updatedAdb.getParentFile().getAbsolutePath(),
-                            pathResult.getStdout().trim());
-            CLog.d("Using $PATH with updated adb: %s", path);
-            getRunUtil().setEnvVariable(PATH_VAR, path);
-            // Log the version of adb seen
-            CommandResult versionRes = getRunUtil().runTimedCmd(PATH_TIMEOUT_MS, "adb", "version");
-            CLog.d("%s", versionRes.getStdout());
-            CLog.d("%s", versionRes.getStderr());
         }
     }
 
@@ -251,31 +212,43 @@ public class MoblyBinaryHostTest
         InputStream inputStream = null;
         try {
             inputStream = new FileInputStream(yamlSummaryFile);
-            processYamlTestResults(inputStream, parser);
+            processYamlTestResults(inputStream, parser, listener, runName);
         } catch (FileNotFoundException ex) {
-            // TODO(b/159367088): report a test failure.
-            CLog.e("Fail processing test results: ", ex);
+            reportFailure(
+                    listener,
+                    runName,
+                    "Fail processing test results, result file not found.\n" + ex);
         } finally {
             StreamUtil.close(inputStream);
         }
     }
 
+    /**
+     * Parses Mobly test results and does result reporting.
+     *
+     * @param inputStream An InputStream object reading in Mobly test result file.
+     * @param parser An MoblyYamlResultParser object that processes Mobly test results.
+     * @param listener An ITestInvocationListener instance that does various reporting.
+     * @param runName str, the name of the Mobly test binary run.
+     */
     @VisibleForTesting
-    protected void processYamlTestResults(InputStream inputStream, MoblyYamlResultParser parser) {
+    protected void processYamlTestResults(
+            InputStream inputStream,
+            MoblyYamlResultParser parser,
+            ITestInvocationListener listener,
+            String runName) {
         try {
             parser.parse(inputStream);
         } catch (MoblyYamlResultHandlerFactory.InvalidResultTypeException
                 | IllegalAccessException
                 | InstantiationException ex) {
-            // TODO(b/159367088): report a test failure.
-            CLog.e("Failed to parse result file: %s", ex);
+            reportFailure(listener, runName, "Failed to parse the result file.\n" + ex);
         }
     }
 
     private void updateConfigFile() {
         InputStream inputStream = null;
         FileWriter fileWriter = null;
-        // TODO(b/159369745): clean up the tmp files created.
         File localConfigFile = new File(getLogDir(), "local_config.yaml");
         try {
             inputStream = new FileInputStream(mConfigFile);
@@ -334,6 +307,15 @@ public class MoblyBinaryHostTest
         return mLogDir;
     }
 
+    private void reportFailure(
+            ITestInvocationListener listener, String runName, String errorMessage) {
+        listener.testRunStarted(runName, 0);
+        FailureDescription description =
+                FailureDescription.create(errorMessage, FailureStatus.TEST_FAILURE);
+        listener.testRunFailed(description);
+        listener.testRunEnded(0L, new HashMap<String, Metric>());
+    }
+
     @VisibleForTesting
     String getLogDirAbsolutePath() {
         return getLogDir().getAbsolutePath();
@@ -348,6 +330,8 @@ public class MoblyBinaryHostTest
     protected String[] buildCommandLineArray(String filePath) {
         List<String> commandLine = new ArrayList<>();
         commandLine.add(filePath);
+        // TODO(b/166468397): some test binaries are actually a wrapper of Mobly runner and need --
+        //  to separate Python options.
         commandLine.add("--");
         if (getConfigPath() != null) {
             commandLine.add("--config=" + getConfigPath());

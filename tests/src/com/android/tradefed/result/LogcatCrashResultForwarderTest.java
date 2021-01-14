@@ -19,6 +19,7 @@ import static org.junit.Assert.assertTrue;
 
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 
 import org.easymock.Capture;
@@ -55,7 +56,8 @@ public class LogcatCrashResultForwarderTest {
                 .andReturn(new ByteArrayInputStreamSource("".getBytes()));
         mMockListener.testFailed(
                 test,
-                FailureDescription.create("instrumentation failed. reason: 'Process crashed.'"));
+                FailureDescription.create("instrumentation failed. reason: 'Process crashed.'")
+                        .setErrorIdentifier(DeviceErrorIdentifier.INSTRUMENTATION_CRASH));
         mMockListener.testEnded(test, 5L, new HashMap<String, Metric>());
 
         EasyMock.replay(mMockListener, mMockDevice);
@@ -112,7 +114,9 @@ public class LogcatCrashResultForwarderTest {
                         .contains(
                                 "instrumentation failed. reason: 'Process crashed.'"
                                         + "\nCrash Message:Runtime"));
-        assertTrue(FailureStatus.TEST_FAILURE.equals(captured_1.getValue().getFailureStatus()));
+        assertTrue(
+                FailureStatus.SYSTEM_UNDER_TEST_CRASHED.equals(
+                        captured_1.getValue().getFailureStatus()));
         assertTrue(
                 captured_2
                         .getValue()
@@ -215,5 +219,57 @@ public class LogcatCrashResultForwarderTest {
                                         + "\nCrash Message:test\njava.lang.Exception: test\n"
                                         + "\tat class.method1(Class.java:1)\n"
                                         + "\tat class.method2(Class.java:2)\n"));
+    }
+
+    /** Test that test-timeout tests have failure status TIMED_OUT. */
+    @Test
+    @SuppressWarnings("MustBeClosedChecker")
+    public void testTestTimedOutTests() {
+        String trace =
+                "org.junit.runners.model.TestTimedOutException: "
+                        + "test timed out after 1000 milliseconds";
+        mReporter = new LogcatCrashResultForwarder(mMockDevice, mMockListener);
+        TestDescription test = new TestDescription("com.class", "test");
+
+        mMockListener.testStarted(test, 0L);
+
+        Capture<FailureDescription> captured = new Capture<>();
+        mMockListener.testFailed(EasyMock.eq(test), EasyMock.capture(captured));
+        mMockListener.testEnded(test, 5L, new HashMap<String, Metric>());
+
+        EasyMock.replay(mMockListener, mMockDevice);
+        mReporter.testStarted(test, 0L);
+        mReporter.testFailed(test, trace);
+        mReporter.testEnded(test, 5L, new HashMap<String, Metric>());
+        EasyMock.verify(mMockListener, mMockDevice);
+        assertTrue(captured.getValue().getErrorMessage().contains(trace));
+        assertTrue(FailureStatus.TIMED_OUT.equals(captured.getValue().getFailureStatus()));
+    }
+
+    /** Test that shell-timeout tests have failure status TIMED_OUT. */
+    @Test
+    @SuppressWarnings("MustBeClosedChecker")
+    public void testShellTimedOutTests() {
+        String trace =
+                "Test failed to run to completion. "
+                        + " Reason: 'Failed to receive adb shell test output within 3000 ms. "
+                        + "Test may have timed out, or adb connection to device became "
+                        + "unresponsive'. Check device logcat for details";
+        mReporter = new LogcatCrashResultForwarder(mMockDevice, mMockListener);
+        TestDescription test = new TestDescription("com.class", "test");
+
+        mMockListener.testStarted(test, 0L);
+
+        Capture<FailureDescription> captured = new Capture<>();
+        mMockListener.testFailed(EasyMock.eq(test), EasyMock.capture(captured));
+        mMockListener.testEnded(test, 5L, new HashMap<String, Metric>());
+
+        EasyMock.replay(mMockListener, mMockDevice);
+        mReporter.testStarted(test, 0L);
+        mReporter.testFailed(test, trace);
+        mReporter.testEnded(test, 5L, new HashMap<String, Metric>());
+        EasyMock.verify(mMockListener, mMockDevice);
+        assertTrue(captured.getValue().getErrorMessage().contains(trace));
+        assertTrue(FailureStatus.TIMED_OUT.equals(captured.getValue().getFailureStatus()));
     }
 }

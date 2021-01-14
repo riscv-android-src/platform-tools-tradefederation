@@ -56,8 +56,9 @@ public final class NativeCodeCoverageFlusherTest {
         mFlusher = new NativeCodeCoverageFlusher(mMockDevice, ImmutableList.of());
         mFlusher.resetCoverage();
 
-        // Verify that the rm command was executed.
-        verify(mMockDevice).executeShellCommand("rm -rf /data/misc/trace/*");
+        // Verify that the coverage clear commands were executed.
+        verify(mMockDevice).executeShellCommand("find /data/misc/trace -name '*.profraw' -delete");
+        verify(mMockDevice).executeShellCommand("find /data/misc/trace -name '*.gcda' -delete");
     }
 
     @Test
