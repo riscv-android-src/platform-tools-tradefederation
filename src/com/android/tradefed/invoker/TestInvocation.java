@@ -346,6 +346,9 @@ public class TestInvocation implements ITestInvocation {
                         executor.invokeAll(callableTasks, 5, TimeUnit.MINUTES);
                     }
                 }
+                if (exception == null) {
+                    checkDevicesAvailable(context.getDevices(), listener);
+                }
             }
             // Save the device executeShellCommand logs
             logExecuteShellCommand(context.getDevices(), listener);
@@ -541,6 +544,10 @@ public class TestInvocation implements ITestInvocation {
             return;
         }
         if (device.getIDevice() instanceof StubDevice) {
+            return;
+        }
+        if (!TestDeviceState.ONLINE.equals(device.getDeviceState())) {
+            CLog.d("Skipping bugreportz on %s. Device is offline.");
             return;
         }
         // logBugreport will report a regular bugreport if bugreportz is not supported.
@@ -1214,6 +1221,32 @@ public class TestInvocation implements ITestInvocation {
             if (endHostLog != null) {
                 endHostLog.closeLog();
                 getLogRegistry().unregisterLogger();
+            }
+        }
+    }
+
+    /**
+     * If no previous exception occurred, report if the device is not available anymore after tests
+     * finish running.
+     */
+    private void checkDevicesAvailable(
+            List<ITestDevice> devices, ITestInvocationListener listener) {
+        for (ITestDevice device : devices) {
+            if (device == null) {
+                continue;
+            }
+            if (device.getIDevice() instanceof StubDevice) {
+                continue;
+            }
+            try {
+                device.waitForDeviceOnline();
+            } catch (DeviceNotAvailableException e) {
+                String msg =
+                        String.format("Device was left offline after tests: %s", e.getMessage());
+                DeviceNotAvailableException wrap =
+                        new DeviceNotAvailableException(msg, e, e.getSerial(), e.getErrorId());
+                reportFailure(
+                        createFailureFromException(wrap, FailureStatus.INFRA_FAILURE), listener);
             }
         }
     }
