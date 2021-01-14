@@ -26,7 +26,7 @@ java_library(
 java_binary(
     name = "SimplePassingTest",
     srcs = [
-        "java/com/android/testtype/isolation/SimplePassingTest.java",
+        "java/com/android/tradefed/referencetests/SimplePassingTest.java",
     ],
     visibility = ["//visibility:public"],
     deps = [
@@ -44,7 +44,7 @@ copy_file(
 java_binary(
     name = "SimpleFailingTest",
     srcs = [
-        "java/com/android/testtype/isolation/SimpleFailingTest.java",
+        "java/com/android/tradefed/referencetests/SimpleFailingTest.java",
     ],
     visibility = ["//visibility:public"],
     deps = [
@@ -62,7 +62,7 @@ copy_file(
 java_binary(
     name = "OnePassingOneFailingTest",
     srcs = [
-        "java/com/android/testtype/isolation/OnePassingOneFailingTest.java",
+        "java/com/android/tradefed/referencetests/OnePassingOneFailingTest.java",
     ],
     visibility = ["//visibility:public"],
     deps = [
