@@ -302,6 +302,12 @@ public class PythonBinaryHostTest implements IRemoteTest, ITestFilterReceiver {
                                 super.write(b, off, len);
                                 pythonParser.addOutput(b, off, len);
                             }
+
+                            @Override
+                            public void flush() throws IOException {
+                                super.flush();
+                                pythonParser.flush();
+                            }
                         };
                 result =
                         getRunUtil()
