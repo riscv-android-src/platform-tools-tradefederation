@@ -23,8 +23,11 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.invoker.TestInformation;
+import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -35,6 +38,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -70,13 +74,18 @@ public class HostGTest extends GTestBase implements IBuildReceiver {
     }
 
     /**
+     * @param gtestFile file pointing to the binary to be executed
      * @param cmd command that want to execute in host
      * @param timeoutMs timeout for command in milliseconds
      * @param receiver the result parser
      * @return the {@link CommandResult} of command
      */
-    public CommandResult executeHostGTestCommand(
-            String cmd, long timeoutMs, IShellOutputReceiver receiver) {
+    private CommandResult executeHostGTestCommand(
+            File gtestFile,
+            String cmd,
+            long timeoutMs,
+            IShellOutputReceiver receiver,
+            ITestLogger logger) {
         RunUtil runUtil = new RunUtil();
         String[] cmds = cmd.split("\\s+");
 
@@ -92,16 +101,37 @@ public class HostGTest extends GTestBase implements IBuildReceiver {
 
         // Set the RunUtil to combine stderr with stdout so that they are interleaved correctly.
         runUtil.setRedirectStderrToStdout(true);
+        // Set the working dir to the folder containing the binary to execute from the same path.
+        runUtil.setWorkingDir(gtestFile.getParentFile());
 
         // If there's a shell output receiver to pass results along to, then
         // ShellOutputReceiverStream will write that into the IShellOutputReceiver. If not, the
         // command output will just be ignored.
-        CommandResult result;
-        try (ShellOutputReceiverStream stream = new ShellOutputReceiverStream(receiver)) {
-            result = runUtil.runTimedCmd(timeoutMs, stream, null, cmds);
+        CommandResult result = null;
+        File stdout = null;
+        try {
+            stdout =
+                    FileUtil.createTempFile(
+                            String.format("%s-output", gtestFile.getName()), ".txt");
+            try (ShellOutputReceiverStream stream =
+                    new ShellOutputReceiverStream(receiver, new FileOutputStream(stdout))) {
+                result = runUtil.runTimedCmd(timeoutMs, stream, null, cmds);
+            } catch (IOException e) {
+                throw new RuntimeException(
+                        "Should never happen, ShellOutputReceiverStream.close is a no-op", e);
+            }
         } catch (IOException e) {
-            throw new RuntimeException(
-                    "Should never happen, ShellOutputReceiverStream.close is a no-op");
+            throw new RuntimeException(e);
+        } finally {
+            if (stdout != null && stdout.length() > 0L) {
+                try (FileInputStreamSource source = new FileInputStreamSource(stdout)) {
+                    logger.testLog(
+                            String.format("%s-output", gtestFile.getName()),
+                            LogDataType.TEXT,
+                            source);
+                }
+            }
+            FileUtil.deleteFile(stdout);
         }
         return result;
     }
@@ -137,11 +167,14 @@ public class HostGTest extends GTestBase implements IBuildReceiver {
      * Run the given gtest binary
      *
      * @param resultParser the test run output parser
-     * @param fullPath absolute file system path to gtest binary
+     * @param gtestFile file pointing to gtest binary
      * @param flags gtest execution flags
      */
     private void runTest(
-            final IShellOutputReceiver resultParser, final String fullPath, final String flags) {
+            final IShellOutputReceiver resultParser,
+            final File gtestFile,
+            final String flags,
+            ITestLogger logger) {
         try {
             for (String cmd : getBeforeTestCmd()) {
                 CommandResult result = executeHostCommand(cmd);
@@ -152,8 +185,9 @@ public class HostGTest extends GTestBase implements IBuildReceiver {
             }
 
             long maxTestTimeMs = getMaxTestTimeMs();
-            String cmd = getGTestCmdLine(fullPath, flags);
-            CommandResult testResult = executeHostGTestCommand(cmd, maxTestTimeMs, resultParser);
+            String cmd = getGTestCmdLine(gtestFile.getAbsolutePath(), flags);
+            CommandResult testResult =
+                    executeHostGTestCommand(gtestFile, cmd, maxTestTimeMs, resultParser, logger);
             // TODO: Switch throwing exceptions to use ITestInvocation.testRunFailed
             switch (testResult.getStatus()) {
                 case FAILED:
@@ -241,7 +275,6 @@ public class HostGTest extends GTestBase implements IBuildReceiver {
         IShellOutputReceiver resultParser = createResultParser(gTestFile.getName(), listener);
         String flags = getAllGTestFlags(gTestFile.getName());
         CLog.i("Running gtest %s %s", gTestFile.getName(), flags);
-        String filePath = gTestFile.getAbsolutePath();
-        runTest(resultParser, filePath, flags);
+        runTest(resultParser, gTestFile, flags, listener);
     }
 }
