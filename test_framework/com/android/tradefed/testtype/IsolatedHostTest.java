@@ -171,6 +171,7 @@ public class IsolatedHostTest
     private Set<String> mExcludeFilters = new HashSet<>();
     private boolean mCollectTestsOnly = false;
     private File mSubprocessLog;
+    private File mWorkDir;
 
     private static final String ROOT_DIR = "ROOT_DIR";
     private ServerSocket mServer = null;
@@ -192,9 +193,9 @@ public class IsolatedHostTest
             // be first in the list of configured jars.  The baked-in assumption is that
             // all configured jars are in the same parent directory, otherwise the behavior
             // here is non-deterministic.
-            File workDir = this.findJarDirectory();
-            runner.setWorkingDir(workDir);
-            CLog.v("Using PWD: %s", workDir.getAbsolutePath());
+            mWorkDir = this.findJarDirectory();
+            runner.setWorkingDir(mWorkDir);
+            CLog.v("Using PWD: %s", mWorkDir.getAbsolutePath());
 
             mSubprocessLog = FileUtil.createTempFile("subprocess-logs", "");
             runner.setRedirectStderrToStdout(true);
@@ -432,6 +433,23 @@ public class IsolatedHostTest
                     RunnerReply reply = RunnerReply.parseDelimitedFrom(socket.getInputStream());
                     if (reply == null) {
                         if (currentTest != null) {
+                            // Subprocess has hard crashed
+                            // Try collecting the hs_err logs that the JVM dumps when it segfaults.
+                            List<File> logFiles =
+                                    Arrays.stream(mWorkDir.listFiles())
+                                            .filter(
+                                                    f ->
+                                                            f.getName().startsWith("hs_err")
+                                                                    && f.getName().endsWith(".log"))
+                                            .collect(Collectors.toList());
+
+                            for (File f : logFiles) {
+                                try (FileInputStreamSource source =
+                                        new FileInputStreamSource(f, true)) {
+                                    listener.testLog("hs_err_log", LogDataType.TEXT, source);
+                                }
+                            }
+
                             listener.testFailed(currentTest, "Subprocess died unexpectedly.");
                             listener.testEnded(
                                     currentTest,
