@@ -48,6 +48,7 @@ import java.util.List;
  * result forwarders from #3.
  */
 public final class IsolationRunner {
+    private static final String EXCLUDE_NO_TEST_FAILURE = "org.junit.runner.manipulation.Filter";
     private Socket mSocket = null;
     private ServerSocket mServer = null;
 
@@ -130,12 +131,14 @@ public final class IsolationRunner {
             }
 
             if (req.getRunner() instanceof ErrorReportingRunner) {
-                // TODO(b/147610871): Handle ErrorReportingRunner errors in the IsolationRunner
-                // There needs to be an error of some sort here, but right now I
-                // don't have a way to report an error for a single test class.
-                System.err.println(
-                        String.format("Found ErrorRunner when trying to run class: %s", klass));
-                runnerCore.run(req.getRunner());
+                boolean isFilterError =
+                        EXCLUDE_NO_TEST_FAILURE.equals(
+                                req.getRunner().getDescription().getClassName());
+                if (!params.hasFilter() && isFilterError) {
+                    System.err.println(
+                            String.format("Found ErrorRunner when trying to run class: %s", klass));
+                    runnerCore.run(req.getRunner());
+                }
             } else if (req.getRunner() instanceof IgnoredClassRunner) {
                 // Do nothing since class was ignored
             } else {
