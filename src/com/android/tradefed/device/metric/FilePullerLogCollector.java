@@ -40,14 +40,16 @@ public class FilePullerLogCollector extends FilePullerDeviceMetricCollector {
                 // Try to infer the type. This will be improved eventually, see todo on the class.
                 LogDataType type = LogDataType.TEXT;
                 String ext = FileUtil.getExtension(metricFile.getName()).toLowerCase();
-                if (".png".equals(ext)) {
-                    type = LogDataType.PNG;
-                } else if (".pb".equals(ext)) {
-                    type = LogDataType.PB;
+                if (".hprof".equals(ext)) {
+                    type = LogDataType.HPROF;
                 } else if (".mp4".equals(ext)) {
                     type = LogDataType.MP4;
-                } else if (".hprof".equals(ext)) {
-                    type = LogDataType.HPROF;
+                } else if (".pb".equals(ext)) {
+                    type = LogDataType.PB;
+                } else if (".png".equals(ext)) {
+                    type = LogDataType.PNG;
+                } else if (".perfetto-trace".equals(ext)) {
+                    type = LogDataType.PERFETTO;
                 } else if (".zip".equals(ext)) {
                     type = LogDataType.ZIP;
                 }
