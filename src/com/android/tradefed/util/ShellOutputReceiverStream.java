@@ -17,7 +17,10 @@
 package com.android.tradefed.util;
 
 import com.android.ddmlib.IShellOutputReceiver;
+import com.android.tradefed.log.LogUtil.CLog;
 
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.OutputStream;
 
 import javax.annotation.Nullable;
@@ -25,16 +28,22 @@ import javax.annotation.Nullable;
 /** Utility subclass of OutputStream that writes into an IShellOutputReceiver. */
 public final class ShellOutputReceiverStream extends OutputStream {
     private IShellOutputReceiver mReceiver;
+    private FileOutputStream mFileOutput;
 
     /**
      * Create a new adapter for the given {@link IShellOutputReceiver}.
      *
      * <p>It is valid to provide a null receiver here to simplify code using the adapter, i.e. so
-     * that it can use this with try-with-resources without checking for a null receiver itself. If
-     * receiver is null, {@link #getOutputStream()} will also return null.
+     * that it can use this with try-with-resources without checking for a null receiver itself.
      */
     public ShellOutputReceiverStream(@Nullable IShellOutputReceiver receiver) {
         mReceiver = receiver;
+    }
+
+    public ShellOutputReceiverStream(
+            @Nullable IShellOutputReceiver receiver, @Nullable FileOutputStream fileOutput) {
+        this(receiver);
+        mFileOutput = fileOutput;
     }
 
     @Override
@@ -57,5 +66,18 @@ public final class ShellOutputReceiverStream extends OutputStream {
             return;
         }
         mReceiver.addOutput(b, off, len);
+        if (mFileOutput != null) {
+            try {
+                mFileOutput.write(b, off, len);
+            } catch (IOException e) {
+                CLog.e(e);
+            }
+        }
+    }
+
+    @Override
+    public void close() throws IOException {
+        super.close();
+        StreamUtil.close(mFileOutput);
     }
 }
