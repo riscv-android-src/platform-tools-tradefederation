@@ -39,7 +39,11 @@ public enum LogDataType {
     CLANG_COVERAGE("profdata", "text/plain", false, false), // LLVM indexed profile data
     PB("pb", "application/octet-stream", true, false), // Binary proto file
     TEXTPB("textproto", "text/plain", false, true), // Text proto file
-    PERFETTO("pb", "application/octet-stream", true, false), // binary proto perfetto trace file
+    PERFETTO(
+            "perfetto-trace",
+            "application/octet-stream",
+            true,
+            false), // binary proto perfetto trace file
     /* Specific text file types */
     BUGREPORT("txt", "text/plain", false, true),
     BUGREPORTZ("zip", "application/zip", true, false),
