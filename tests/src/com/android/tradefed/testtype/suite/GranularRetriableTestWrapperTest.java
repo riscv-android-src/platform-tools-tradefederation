@@ -23,6 +23,7 @@ import static org.junit.Assert.fail;
 
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
+import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionSetter;
@@ -50,6 +51,7 @@ import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFilterReceiver;
 
+import java.time.Duration;
 import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
@@ -72,6 +74,7 @@ public class GranularRetriableTestWrapperTest {
     private static final String RUN_NAME = "test run";
     private static final String RUN_NAME_2 = "test run 2";
     private InvocationContext mModuleInvocationContext;
+    private ConfigurationDescriptor mConfigurationDescriptor;
     private TestInformation mModuleInfo;
     private IRetryDecision mDecision;
 
@@ -146,7 +149,7 @@ public class GranularRetriableTestWrapperTest {
                     }
                 }
             }
-            listener.testRunEnded(0, new HashMap<String, Metric>());
+            listener.testRunEnded(100000, new HashMap<String, Metric>());
             mAttempts++;
         }
     }
@@ -301,6 +304,8 @@ public class GranularRetriableTestWrapperTest {
     @Before
     public void setUp() {
         mModuleInvocationContext = new InvocationContext();
+        mConfigurationDescriptor = new ConfigurationDescriptor();
+        mModuleInvocationContext.setConfigurationDescriptor(mConfigurationDescriptor);
         mModuleInfo =
                 TestInformation.newBuilder().setInvocationContext(mModuleInvocationContext).build();
     }
@@ -933,6 +938,7 @@ public class GranularRetriableTestWrapperTest {
         ModuleDefinition module = Mockito.mock(ModuleDefinition.class);
         // Should call suite level preparers.
         Mockito.when(module.runPreparation(true)).thenReturn(null);
+        Mockito.when(module.getModuleInvocationContext()).thenReturn(mModuleInvocationContext);
 
         mModuleInvocationContext.addAllocatedDevice("default-device1", noneAVDDevice);
         mModuleInvocationContext.addAllocatedDevice("default-device2", avdDevice);
@@ -966,6 +972,7 @@ public class GranularRetriableTestWrapperTest {
         ModuleDefinition module = Mockito.mock(ModuleDefinition.class);
         // Suite level preparers failed.
         Mockito.when(module.runPreparation(true)).thenReturn(new RuntimeException());
+        Mockito.when(module.getModuleInvocationContext()).thenReturn(mModuleInvocationContext);
 
         mModuleInvocationContext.addAllocatedDevice("default-device2", avdDevice);
         GranularRetriableTestWrapper granularTestWrapper =
@@ -1007,6 +1014,42 @@ public class GranularRetriableTestWrapperTest {
         } catch (DeviceNotAvailableException e) {
             assertEquals("Failed to powerwash device: device1", e.getMessage());
         }
+    }
+
+    /**
+     * Test to create GranularRetriableTestWrapper with RemoteTestTimeOutEnforcer when the
+     * remote-test-timeout is set.
+     */
+    @Test
+    public void testInitializeGranularRunListener_RemoteTestTimeOutIsSet() throws Exception {
+        ModuleDefinition module = Mockito.mock(ModuleDefinition.class);
+        Mockito.when(module.getModuleInvocationContext()).thenReturn(mModuleInvocationContext);
+        mConfigurationDescriptor.addMetadata(
+                RemoteTestTimeOutEnforcer.REMOTE_TEST_TIMEOUT_OPTION, "PT90S");
+        IRemoteTest mIRemoteTest = new FakeTest();
+        String mTestMappingPath = "a/b/c";
+        String mModuleName = "module";
+        Duration mTimeout = Duration.ofSeconds(90);
+        Mockito.when(module.getId()).thenReturn(mModuleName);
+        mConfigurationDescriptor.addMetadata(
+                Integer.toString(mIRemoteTest.hashCode()), mTestMappingPath);
+
+        GranularRetriableTestWrapper granularTestWrapper =
+                createGranularTestWrapper(mIRemoteTest, 3, new ArrayList<>(), module);
+        granularTestWrapper.run(mModuleInfo, new CollectingTestListener());
+        ModuleListener listener = granularTestWrapper.getResultListener();
+        String errorMsg = listener.getCurrentRunResults().getRunFailureDescription().
+                getErrorMessage();
+        assertTrue(
+                errorMsg.contains(
+                        String.format(
+                                "%s defined in [%s] took 100 seconds while timeout is %s seconds",
+                                mModuleName,
+                                mTestMappingPath,
+                                mTimeout.getSeconds())
+                )
+        );
+        assertFalse(listener.getCurrentRunResults().getRunFailureDescription().isRetriable());
     }
 
     /** Collector that track if it was called or not */
