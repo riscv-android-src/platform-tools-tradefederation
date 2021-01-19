@@ -46,7 +46,6 @@ java_genrule_host {
         "protoc-gen-grpc-java-plugin",
         "soong_zip",
      ],
-     arch: "common",
      cmd: "$(location aprotoc) -Iexternal/protobuf/src" +
         " -Itools/tradefederation/core/proto/monitoring/server" +
         " --plugin=protoc-gen-grpc=$(location protoc-gen-grpc-java-plugin) $(in)" +
