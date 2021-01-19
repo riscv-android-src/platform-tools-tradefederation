@@ -19,6 +19,7 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationGroupMetricKey;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.invoker.logger.TfObjectTracker;
 import com.android.tradefed.invoker.proto.InvocationContext.Context;
@@ -58,6 +59,7 @@ import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import javax.annotation.Nonnull;
 
@@ -632,6 +634,32 @@ public class ProtoResultParser {
         }
         // Copy invocation attributes
         MultiMap<String, String> attributes = endInvocationContext.getAttributes();
+        // Parse the invocation metric group first.
+        for (InvocationGroupMetricKey groupKey : InvocationGroupMetricKey.values()) {
+            Set<String> attKeys = attributes.keySet();
+            for (String attKey : attKeys) {
+                if (attKey.startsWith(groupKey.toString() + ":")) {
+                    List<String> values = attributes.get(attKey);
+                    attributes.remove(attKey);
+                    String group = attKey.split(":", 2)[1];
+                    for (String val : values) {
+                        if (groupKey.shouldAdd()) {
+                            try {
+                                InvocationMetricLogger.addInvocationMetrics(
+                                        groupKey, group, Long.parseLong(val));
+                            } catch (NumberFormatException e) {
+                                CLog.d(
+                                        "Key %s doesn't have a number value, was: %s.",
+                                        groupKey, val);
+                                InvocationMetricLogger.addInvocationMetrics(groupKey, group, val);
+                            }
+                        } else {
+                            InvocationMetricLogger.addInvocationMetrics(groupKey, group, val);
+                        }
+                    }
+                }
+            }
+        }
         for (InvocationMetricKey key : InvocationMetricKey.values()) {
             if (!attributes.containsKey(key.toString())) {
                 continue;
