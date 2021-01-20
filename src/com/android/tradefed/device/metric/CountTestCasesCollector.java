@@ -53,9 +53,7 @@ public class CountTestCasesCollector extends BaseDeviceMetricCollector {
             return;
         }
         InvocationMetricLogger.addInvocationMetrics(
-                InvocationGroupMetricKey.TEST_TYPE_COUNT,
-                mTestType.getClass().getSimpleName(),
-                mTestCount);
+                InvocationGroupMetricKey.TEST_TYPE_COUNT, mTestType, mTestCount);
         mTestCount = 0L;
     }
 }
