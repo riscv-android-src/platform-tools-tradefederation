@@ -28,6 +28,13 @@ public class CountTestCasesCollector extends BaseDeviceMetricCollector {
     private long mTestCount = 0L;
     private String mTestType = null;
 
+    public CountTestCasesCollector() {}
+
+    public CountTestCasesCollector(IRemoteTest test) {
+        this();
+        setTestType(test);
+    }
+
     public void setTestType(IRemoteTest test) {
         mTestType = test.getClass().getSimpleName();
     }
