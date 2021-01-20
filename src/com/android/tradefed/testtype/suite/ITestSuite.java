@@ -838,8 +838,7 @@ public abstract class ITestSuite
         module.setRetryDecision(decision);
 
         module.setEnableDynamicDownload(mEnableDynamicDownload);
-        module.addDynamicDownloadArgs(
-                mMainConfiguration.getCommandOptions().getDynamicDownloadArgs());
+        module.transferSuiteLevelOptions(mMainConfiguration);
         // Actually run the module
         module.run(
                 moduleInfo,
