@@ -22,6 +22,7 @@ import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.metric.CollectorHelper;
+import com.android.tradefed.device.metric.CountTestCasesCollector;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.error.IHarnessException;
@@ -320,6 +321,10 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
                 // If test can receive collectors then let it handle how to set them up
                 mTest.run(testInfo, runListener);
             } else {
+                if (mModuleConfiguration.getCommandOptions().reportTestCaseCount()) {
+                    CountTestCasesCollector counter = new CountTestCasesCollector(mTest);
+                    clonedCollectors.add(counter);
+                }
                 // Module only init the collectors here to avoid triggering the collectors when
                 // replaying the cached events at the end. This ensures metrics are capture at
                 // the proper time in the invocation.

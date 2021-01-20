@@ -132,8 +132,8 @@ public class CommandOptions implements ICommandOptions {
     @Option(
             name = INVOCATION_DATA,
             description =
-                    "A map of values that describe the invocation, these values will be added to the "
-                            + "invocation context.")
+                    "A map of values that describe the invocation, these values will be added to"
+                            + " the invocation context.")
     private UniqueMultiMap<String, String> mInvocationData = new UniqueMultiMap<>();
 
     public static final String USE_SANDBOX = "use-sandbox";
@@ -163,7 +163,8 @@ public class CommandOptions implements ICommandOptions {
     @Option(
             name = "parallel-remote-setup",
             description =
-                    "For remote sharded invocation, whether or not to attempt the setup in parallel.")
+                    "For remote sharded invocation, whether or not to attempt the setup in"
+                            + " parallel.")
     private boolean mUseParallelRemoteSetup = false;
 
     @Option(name = "parallel-setup", description = "Whether to attempt the setup in parallel.")
@@ -229,6 +230,11 @@ public class CommandOptions implements ICommandOptions {
                     "Extra args passed to the IRemoteFileResolver interface for dynamic download "
                             + "in the queryArgs.")
     private Map<String, String> mDynamicDownloadArgs = new LinkedHashMap<>();
+
+    @Option(
+            name = "report-counted-test-cases",
+            description = "Whether or not to report the number of test cases per test types.")
+    private boolean mCountTestCases = false;
 
     /**
      * Set the help mode for the config.
@@ -577,5 +583,17 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public Map<String, String> getDynamicDownloadArgs() {
         return mDynamicDownloadArgs;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean reportTestCaseCount() {
+        return mCountTestCases;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setReportTestCaseCount(boolean report) {
+        mCountTestCases = report;
     }
 }
