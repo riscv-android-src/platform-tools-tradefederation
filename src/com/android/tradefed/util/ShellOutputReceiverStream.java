@@ -76,6 +76,18 @@ public final class ShellOutputReceiverStream extends OutputStream {
     }
 
     @Override
+    public void flush() throws IOException {
+        super.flush();
+        if (mReceiver == null) {
+            return;
+        }
+        mReceiver.flush();
+        if (mFileOutput != null) {
+            mFileOutput.flush();
+        }
+    }
+
+    @Override
     public void close() throws IOException {
         super.close();
         StreamUtil.close(mFileOutput);
