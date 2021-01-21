@@ -31,6 +31,7 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.IRunUtil.EnvPriority;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.ShellOutputReceiverStream;
 
@@ -42,6 +43,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /** A Test that runs a native test package. */
 @OptionClass(alias = "hostgtest")
@@ -103,6 +105,15 @@ public class HostGTest extends GTestBase implements IBuildReceiver {
         runUtil.setRedirectStderrToStdout(true);
         // Set the working dir to the folder containing the binary to execute from the same path.
         runUtil.setWorkingDir(gtestFile.getParentFile());
+
+        String separator = System.getProperty("path.separator");
+        List<String> paths = new ArrayList<>();
+        paths.add(System.getenv("PATH"));
+        paths.add(gtestFile.getParentFile().getAbsolutePath());
+        String path = paths.stream().distinct().collect(Collectors.joining(separator));
+        CLog.d("Using updated $PATH: %s", path);
+        runUtil.setEnvVariablePriority(EnvPriority.SET);
+        runUtil.setEnvVariable("PATH", path);
 
         // If there's a shell output receiver to pass results along to, then
         // ShellOutputReceiverStream will write that into the IShellOutputReceiver. If not, the
