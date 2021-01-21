@@ -234,7 +234,7 @@ public class CommandOptions implements ICommandOptions {
     @Option(
             name = "report-counted-test-cases",
             description = "Whether or not to report the number of test cases per test types.")
-    private boolean mCountTestCases = false;
+    private boolean mCountTestCases = true;
 
     /**
      * Set the help mode for the config.
