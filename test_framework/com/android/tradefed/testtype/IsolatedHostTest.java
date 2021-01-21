@@ -434,27 +434,26 @@ public class IsolatedHostTest
                     if (reply == null) {
                         if (currentTest != null) {
                             // Subprocess has hard crashed
-                            // Try collecting the hs_err logs that the JVM dumps when it segfaults.
-                            List<File> logFiles =
-                                    Arrays.stream(mWorkDir.listFiles())
-                                            .filter(
-                                                    f ->
-                                                            f.getName().startsWith("hs_err")
-                                                                    && f.getName().endsWith(".log"))
-                                            .collect(Collectors.toList());
-
-                            for (File f : logFiles) {
-                                try (FileInputStreamSource source =
-                                        new FileInputStreamSource(f, true)) {
-                                    listener.testLog("hs_err_log", LogDataType.TEXT, source);
-                                }
-                            }
-
                             listener.testFailed(currentTest, "Subprocess died unexpectedly.");
                             listener.testEnded(
                                     currentTest,
                                     System.currentTimeMillis(),
                                     new HashMap<String, Metric>());
+                        }
+                        // Try collecting the hs_err logs that the JVM dumps when it segfaults.
+                        List<File> logFiles =
+                                Arrays.stream(mWorkDir.listFiles())
+                                        .filter(
+                                                f ->
+                                                        f.getName().startsWith("hs_err")
+                                                                && f.getName().endsWith(".log"))
+                                        .collect(Collectors.toList());
+
+                        for (File f : logFiles) {
+                            try (FileInputStreamSource source =
+                                    new FileInputStreamSource(f, true)) {
+                                listener.testLog("hs_err_log-VM-crash", LogDataType.TEXT, source);
+                            }
                         }
                         listener.testRunFailed("The subprocess died unexpectedly.");
                         break mainLoop;
