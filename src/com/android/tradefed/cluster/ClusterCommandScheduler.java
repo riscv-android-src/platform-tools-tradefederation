@@ -542,9 +542,9 @@ public class ClusterCommandScheduler extends CommandScheduler {
             if (availableOnly && device.getState() != DeviceAllocationState.Available) {
                 continue;
             }
-            if (ClusterHostUtil.isIpPort(device.getSerial())) {
-                // Note(b/28802876): Skipping IP:PORT serials from cluster scheduling because they
-                // behave differently from physical devices and are not fully supported by TF.
+            if (ClusterHostUtil.isLocalhostIpPort(device.getSerial())) {
+                // Skipping localhost IP:PORT serials from cluster scheduling to avoid scheduling
+                // tests on TCP devices created by Local/RemoteAndroidVirtualDevice.
                 continue;
             }
             String runTargetFormat = getClusterOptions().getRunTargetFormat();
