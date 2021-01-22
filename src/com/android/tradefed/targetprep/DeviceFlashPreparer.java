@@ -287,8 +287,6 @@ public abstract class DeviceFlashPreparer extends BaseTargetPreparer {
             // Allow interruption at the end no matter what.
             getRunUtil().allowInterrupt(true);
         }
-        // If everything went well, force a recreation of the device descriptor for latest info.
-        device.getDeviceDescriptor();
     }
 
     /**
