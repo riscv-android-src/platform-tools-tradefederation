@@ -20,13 +20,13 @@ import com.android.tradefed.util.MultiMap;
 
 /**
  * A simple class to accept settings for the ConfigurationXmlParser
- * <p />
- * To pass settings to this class, the alias is mandatory.  So something like
- * {@code --template:map name filename.xml} will work, but this would NOT work:
- * {@code --map name filename.xml}.
+ *
+ * <p>To pass settings to this class, the alias is mandatory. So something like {@code
+ * --template:map name filename.xml} will work, but this would NOT work: {@code --map name
+ * filename.xml}.
  */
 @OptionClass(alias = "template", global_namespace = false)
-class ConfigurationXmlParserSettings {
+public class ConfigurationXmlParserSettings {
     @Option(
         name = "map",
         description =
