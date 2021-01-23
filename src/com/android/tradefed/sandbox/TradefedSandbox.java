@@ -17,9 +17,11 @@ package com.android.tradefed.sandbox;
 
 import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.command.CommandOptions;
+import com.android.tradefed.config.ArgsOptionParser;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
+import com.android.tradefed.config.ConfigurationXmlParserSettings;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
@@ -61,8 +63,10 @@ import java.io.PrintWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
@@ -83,6 +87,7 @@ public class TradefedSandbox implements ISandbox {
     private File mGlobalConfig = null;
     private File mSerializedContext = null;
     private File mSerializedConfiguration = null;
+    private File mSerializedTestConfig = null;
 
     private SubprocessTestResultsParser mEventParser = null;
     private StreamProtoReceiver mProtoReceiver = null;
@@ -285,6 +290,7 @@ public class TradefedSandbox implements ISandbox {
         FileUtil.deleteFile(mSerializedContext);
         FileUtil.deleteFile(mSerializedConfiguration);
         FileUtil.deleteFile(mGlobalConfig);
+        FileUtil.deleteFile(mSerializedTestConfig);
     }
 
     @Override
@@ -341,7 +347,6 @@ public class TradefedSandbox implements ISandbox {
     protected Exception prepareConfiguration(
             IInvocationContext context, IConfiguration config, ITestInvocationListener listener) {
         try {
-            // TODO: switch reporting of parent and subprocess to proto
             String commandLine = config.getCommandLine();
             if (getSandboxOptions(config).shouldUseProtoReporter()) {
                 mProtoReceiver =
@@ -380,11 +385,18 @@ public class TradefedSandbox implements ISandbox {
                             "Child version doesn't contains '%s'. Attempting to backfill missing"
                                     + " parent configuration.",
                             args[0]);
-                    File parentConfig = handleChildMissingConfig(args);
+                    File parentConfig = handleChildMissingConfig(getSandboxOptions(config), args);
                     if (parentConfig != null) {
                         try (InputStreamSource source = new FileInputStreamSource(parentConfig)) {
                             listener.testLog(
                                     "sandbox-parent-config", LogDataType.HARNESS_CONFIG, source);
+                        }
+                        if (mSerializedTestConfig != null) {
+                            try (InputStreamSource source =
+                                    new FileInputStreamSource(mSerializedTestConfig)) {
+                                listener.testLog(
+                                        "sandbox-test-config", LogDataType.HARNESS_CONFIG, source);
+                            }
                         }
                         try {
                             mSerializedConfiguration =
@@ -483,11 +495,15 @@ public class TradefedSandbox implements ISandbox {
                 config.getConfigurationObject(Configuration.SANBOX_OPTIONS_TYPE_NAME);
     }
 
-    private File handleChildMissingConfig(String[] args) {
+    private File handleChildMissingConfig(SandboxOptions options, String[] args) {
         IConfiguration parentConfig = null;
         File tmpParentConfig = null;
         PrintWriter pw = null;
+
         try {
+            if (options.dumpTestTemplate()) {
+                args = extractTestTemplate(args);
+            }
             tmpParentConfig = FileUtil.createTempFile("parent-config", ".xml", mSandboxTmpFolder);
             pw = new PrintWriter(tmpParentConfig);
             parentConfig = ConfigurationFactory.getInstance().createConfigurationFromArgs(args);
@@ -503,6 +519,41 @@ public class TradefedSandbox implements ISandbox {
         } finally {
             StreamUtil.close(pw);
         }
+    }
+
+    private String[] extractTestTemplate(String[] args) throws ConfigurationException, IOException {
+        ConfigurationXmlParserSettings parserSettings = new ConfigurationXmlParserSettings();
+        final ArgsOptionParser templateArgParser = new ArgsOptionParser(parserSettings);
+        List<String> listArgs = new ArrayList<>(Arrays.asList(args));
+        String configArg = listArgs.remove(0);
+        List<String> leftOverCommandLine = new ArrayList<>();
+        leftOverCommandLine.addAll(templateArgParser.parseBestEffort(listArgs, true));
+        Map<String, String> uniqueTemplates = parserSettings.templateMap.getUniqueMap();
+        CLog.d("Templates: %s", uniqueTemplates);
+        // We look at the "test" template since it's the usual main part of the versioned object
+        // configs. This will be improved in the future.
+        if (!uniqueTemplates.containsKey("test")) {
+            return args;
+        }
+        for (Entry<String, String> template : uniqueTemplates.entrySet()) {
+            if (!"test".equals(template.getKey())) {
+                leftOverCommandLine.add("--template:map");
+                leftOverCommandLine.add(
+                        String.format("%s=%s", template.getKey(), template.getValue()));
+            }
+        }
+        mSerializedTestConfig =
+                SandboxConfigUtil.dumpConfigForVersion(
+                        createClasspath(mRootFolder),
+                        mRunUtil,
+                        new String[] {uniqueTemplates.get("test")},
+                        DumpCmd.STRICT_TEST,
+                        mGlobalConfig);
+        leftOverCommandLine.add("--template:map");
+        leftOverCommandLine.add("test=" + mSerializedTestConfig.getAbsolutePath());
+        leftOverCommandLine.add(0, configArg);
+        CLog.d("New Command line: %s", leftOverCommandLine);
+        return leftOverCommandLine.toArray(new String[0]);
     }
 
     private void logAndCleanHeapDump(File heapDumpDir, ITestLogger logger) {
