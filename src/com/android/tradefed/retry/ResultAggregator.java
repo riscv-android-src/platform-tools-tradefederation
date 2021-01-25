@@ -164,8 +164,10 @@ public class ResultAggregator extends CollectingTestListener {
         forwardAggregatedInvocationLogs();
 
         // Log the aggregated events for debugging
+        mAggregatedEventsLogger.invocationEnded(elapsedTime);
         saveEventsLog(mAggregatedEventsLogger.getLoggedEvents(), "aggregated-events");
         // Log the detailed events for debugging
+        mDetailedEventsLogger.invocationEnded(elapsedTime);
         saveEventsLog(mDetailedEventsLogger.getLoggedEvents(), "detailed-events");
 
         mAllForwarder.invocationEnded(elapsedTime);
