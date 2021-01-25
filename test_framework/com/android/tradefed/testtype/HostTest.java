@@ -1365,7 +1365,8 @@ public class HostTest
 
     private FailureDescription createFromException(Throwable exception) {
         FailureDescription failure =
-                CurrentInvocation.createFailure(exception.getMessage(), null).setCause(exception);
+                CurrentInvocation.createFailure(StreamUtil.getStackTrace(exception), null)
+                        .setCause(exception);
         if (exception instanceof IHarnessException) {
             ErrorIdentifier id = ((IHarnessException) exception).getErrorId();
             failure.setErrorIdentifier(id);
