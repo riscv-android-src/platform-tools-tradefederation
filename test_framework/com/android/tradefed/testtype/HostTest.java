@@ -29,15 +29,17 @@ import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.error.HarnessRuntimeException;
+import com.android.tradefed.error.IHarnessException;
 import com.android.tradefed.invoker.TestInformation;
+import com.android.tradefed.invoker.logger.CurrentInvocation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.error.ErrorIdentifier;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
-import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.testtype.host.PrettyTestEventLogger;
 import com.android.tradefed.testtype.junit4.CarryDnaeError;
 import com.android.tradefed.testtype.junit4.JUnit4ResultForwarder;
@@ -523,25 +525,24 @@ public class HostTest
                 List<Class<?>> classes = getClasses();
                 if (!mSkipTestClassCheck) {
                     if (classes.isEmpty()) {
-                        throw new IllegalArgumentException("No '--class' option was specified.");
+                        throw new HarnessRuntimeException(
+                                "No '--class' option was specified.",
+                                InfraErrorIdentifier.OPTION_CONFIGURATION_ERROR);
                     }
                 }
                 if (mMethodName != null && classes.size() > 1) {
-                    throw new IllegalArgumentException(
+                    throw new HarnessRuntimeException(
                             String.format(
                                     "'--method' only supports one '--class' name. Multiple were "
                                             + "given: '%s'",
-                                    classes));
+                                    classes),
+                            InfraErrorIdentifier.OPTION_CONFIGURATION_ERROR);
                 }
-            } catch (IllegalArgumentException e) {
+            } catch (RuntimeException e) {
                 listener.testRunStarted(this.getClass().getCanonicalName(), 0);
-                FailureDescription failureDescription =
-                        FailureDescription.create(StreamUtil.getStackTrace(e));
-                failureDescription.setFailureStatus(FailureStatus.TEST_FAILURE);
-                listener.testRunFailed(failureDescription);
+                listener.testRunFailed(createFromException(e));
                 listener.testRunEnded(0L, new HashMap<String, Metric>());
-                throw new HarnessRuntimeException(
-                        e.getMessage(), e, InfraErrorIdentifier.OPTION_CONFIGURATION_ERROR);
+                return;
             }
 
             // Add a pretty logger to the events to mark clearly start/end of test cases.
@@ -598,14 +599,11 @@ public class HostTest
                 try {
                     req = req.filterWith(new JUnit4TestFilter(mFilterHelper, mJUnit4JarFiles));
                     checkRunner = req.getRunner();
-                } catch (IllegalArgumentException e) {
+                } catch (RuntimeException e) {
                     listener.testRunStarted(classObj.getName(), 0);
-                    FailureDescription failureDescription =
-                            FailureDescription.create(StreamUtil.getStackTrace(e));
-                    failureDescription.setFailureStatus(FailureStatus.TEST_FAILURE);
-                    listener.testRunFailed(failureDescription);
+                    listener.testRunFailed(createFromException(e));
                     listener.testRunEnded(0L, new HashMap<String, Metric>());
-                    throw e;
+                    return;
                 }
                 runJUnit4Tests(listener, checkRunner, classObj.getName());
             } else {
@@ -633,12 +631,9 @@ public class HostTest
                 Runner checkRunner = req.filterWith(desc).getRunner();
                 try {
                     runJUnit4Tests(listener, checkRunner, desc.getClassName());
-                } catch (IllegalArgumentException e) {
+                } catch (RuntimeException e) {
                     listener.testRunStarted(desc.getClassName(), 0);
-                    FailureDescription failureDescription =
-                            FailureDescription.create(StreamUtil.getStackTrace(e));
-                    failureDescription.setFailureStatus(FailureStatus.TEST_FAILURE);
-                    listener.testRunFailed(failureDescription);
+                    listener.testRunFailed(createFromException(e));
                     listener.testRunEnded(0L, new HashMap<String, Metric>());
                     throw e;
                 }
@@ -959,8 +954,8 @@ public class HostTest
                             | ClassNotFoundException fallbackSearch) {
                         StreamUtil.close(cl);
                         CLog.e(
-                                "Fallback search for a jar containing '%s' didn't work."
-                                        + "Consider using --jar option directly instead of using --class",
+                                "Fallback search for a jar containing '%s' didn't work.Consider"
+                                        + " using --jar option directly instead of using --class",
                                 className);
                     }
                 }
@@ -1366,5 +1361,19 @@ public class HostTest
         } catch (BuildRetrievalError | ConfigurationException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private FailureDescription createFromException(Throwable exception) {
+        FailureDescription failure =
+                CurrentInvocation.createFailure(exception.getMessage(), null).setCause(exception);
+        if (exception instanceof IHarnessException) {
+            ErrorIdentifier id = ((IHarnessException) exception).getErrorId();
+            failure.setErrorIdentifier(id);
+            if (id != null) {
+                failure.setFailureStatus(id.status());
+            }
+            failure.setOrigin(((IHarnessException) exception).getOrigin());
+        }
+        return failure;
     }
 }
