@@ -22,6 +22,7 @@ import com.android.ddmlib.EmulatorConsole;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.IDevice.DeviceState;
 import com.android.ddmlib.Log.LogLevel;
+import com.android.ddmlib.PropertyFetcher;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IGlobalConfiguration;
@@ -48,7 +49,6 @@ import com.android.tradefed.util.ZipUtil2;
 import com.android.tradefed.util.hostmetric.IHostMonitor;
 
 import com.google.common.annotations.VisibleForTesting;
-
 
 import java.io.File;
 import java.io.IOException;
@@ -301,6 +301,9 @@ public class DeviceManager implements IDeviceManager {
 
         // don't start adding devices until fastboot support has been established
         startAdbBridgeAndDependentServices();
+        // We change the state of some mutable properties quite often so we can't keep this caching
+        // for our invocations.
+        PropertyFetcher.enableCachingMutableProps(false);
     }
 
     /** Initialize adb connection and services depending on adb connection. */
@@ -496,7 +499,8 @@ public class DeviceManager implements IDeviceManager {
      */
     private void addNullDevices() {
         for (int i = 0; i < mNumNullDevicesSupported; i++) {
-            addAvailableDevice(new NullDevice(String.format("%s-%d", NULL_DEVICE_SERIAL_PREFIX, i)));
+            addAvailableDevice(
+                    new NullDevice(String.format("%s-%d", NULL_DEVICE_SERIAL_PREFIX, i)));
         }
     }
 
