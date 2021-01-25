@@ -257,12 +257,23 @@ public class SuiteModuleLoader {
             boolean primaryAbi = true;
             boolean shouldCreateMultiAbi = true;
             // If a particular parameter was requested to be run, find it.
-            IModuleParameter mForcedParameter = null;
+            Set<IModuleParameter> mForcedParameters = null;
+            Set<Class<?>> mForcedParameterClasses = null;
             if (mForcedModuleParameter != null) {
-                mForcedParameter =
-                        ModuleParametersHelper.getParameterHandler(
-                                mForcedModuleParameter, /* optionalParams */
-                                mAllowOptionalParameterizedModules);
+                mForcedParameters = new HashSet<>();
+                Set<ModuleParameters> moduleParameters =
+                        ModuleParametersHelper.resolveParam(
+                                mForcedModuleParameter, mAllowOptionalParameterizedModules);
+
+                for (ModuleParameters moduleParam : moduleParameters) {
+                    mForcedParameters.add(
+                            ModuleParametersHelper.getParameterHandler(
+                                    moduleParam, mAllowOptionalParameterizedModules));
+                }
+                mForcedParameterClasses = new HashSet<>();
+                for (IModuleParameter parameter : mForcedParameters) {
+                    mForcedParameterClasses.add(parameter.getClass());
+                }
             }
 
             // Invokes parser to process the test module config file
@@ -320,8 +331,12 @@ public class SuiteModuleLoader {
                 if (mAllowParameterizedModules) {
 
                     if (params.isEmpty()
-                            && mForcedParameter != null
-                            && !(mForcedParameter instanceof NegativeHandler)) {
+                            && mForcedParameters != null
+                            // If we have multiple forced parameters, NegativeHandler isn't a valid
+                            // option
+                            && !(mForcedParameters.size() != 1
+                                    || (mForcedParameters.iterator().next()
+                                            instanceof NegativeHandler))) {
                         // If the AndroidTest.xml doesn't specify any parameter but we forced a
                         // parameter like 'instant' to execute. In this case we don't create the
                         // standard module.
@@ -333,15 +348,15 @@ public class SuiteModuleLoader {
                     // If we find any parameterized combination.
                     for (IModuleParameter param : params) {
                         if (param instanceof NegativeHandler) {
-                            if (mForcedParameter != null
-                                    && !param.getClass().equals(mForcedParameter.getClass())) {
+                            if (mForcedParameters != null
+                                    && !mForcedParameterClasses.contains(param.getClass())) {
                                 skipCreatingBaseConfig = true;
                             }
                             continue;
                         }
-                        if (mForcedParameter != null) {
+                        if (mForcedParameters != null) {
                             // When a particular parameter is forced, only create it not the others
-                            if (param.getClass().equals(mForcedParameter.getClass())) {
+                            if (mForcedParameterClasses.contains(param.getClass())) {
                                 skipCreatingBaseConfig = true;
                             } else {
                                 continue;
@@ -355,7 +370,8 @@ public class SuiteModuleLoader {
                                 String.format("%s[%s]", baseId, param.getParameterIdentifier());
                         String nameWithParam =
                                 String.format("%s[%s]", name, param.getParameterIdentifier());
-                        if (shouldRunParameterized(baseId, fullId, nameWithParam, mForcedParameter)) {
+                        if (shouldRunParameterized(
+                                baseId, fullId, nameWithParam, mForcedParameters)) {
                             IConfiguration paramConfig =
                                     mConfigFactory.createConfigurationFromArgs(pathArg);
                             // Mark the parameter in the metadata
@@ -498,7 +514,7 @@ public class SuiteModuleLoader {
             String baseModuleId,
             String parameterModuleId,
             String nameWithParam,
-            IModuleParameter forcedModuleParameter) {
+            Set<IModuleParameter> forcedModuleParameters) {
         // Explicitly excluded
         List<SuiteTestFilter> excluded = getFilterList(mExcludeFilters, parameterModuleId);
         List<SuiteTestFilter> excludedParam = getFilterList(mExcludeFilters, nameWithParam);
@@ -507,7 +523,7 @@ public class SuiteModuleLoader {
         }
 
         // Implicitly included due to forced parameter
-        if (forcedModuleParameter != null) {
+        if (forcedModuleParameters != null) {
             List<SuiteTestFilter> baseInclude = getFilterList(mIncludeFilters, baseModuleId);
             if (!baseInclude.isEmpty()) {
                 return true;
@@ -660,33 +676,47 @@ public class SuiteModuleLoader {
         if (parameters == null || parameters.isEmpty()) {
             return params;
         }
+
+        Set<ModuleParameters> expandedExcludedModuleParameters = new HashSet<>();
+        for (ModuleParameters moduleParameters : mExcludedModuleParameters) {
+            expandedExcludedModuleParameters.addAll(
+                    ModuleParametersHelper.resolveParam(
+                            moduleParameters, mAllowOptionalParameterizedModules));
+        }
+
         for (String p : parameters) {
             if (!processedParameterArgs.add(p)) {
                 // Avoid processing the same parameter twice
                 continue;
             }
-            ModuleParameters suiteParam = ModuleParameters.valueOf(p.toUpperCase());
-            String family = suiteParam.getFamily();
-            if (duplicateModule.containsKey(family)) {
-                // Duplicate family members are not accepted.
-                throw new ConfigurationException(
-                        String.format(
-                                "Module %s is declaring parameter: "
-                                        + "%s and %s when only one expected.",
-                                moduleName, suiteParam, duplicateModule.get(family)));
-            } else {
-                duplicateModule.put(suiteParam.getFamily(), suiteParam);
-            }
-            // Do not consider the excluded parameterization dimension
-            if (mExcludedModuleParameters.contains(suiteParam)) {
-                CLog.d("'%s' was excluded via exclude-module-parameters.", moduleName);
-                continue;
-            }
-            IModuleParameter handler =
-                    ModuleParametersHelper.getParameterHandler(
-                            suiteParam, /* optionalParams */ mAllowOptionalParameterizedModules);
-            if (handler != null) {
-                params.add(handler);
+            Set<ModuleParameters> suiteParams =
+                    ModuleParametersHelper.resolveParam(
+                            p.toUpperCase(), mAllowOptionalParameterizedModules);
+            for (ModuleParameters suiteParam : suiteParams) {
+                String family = suiteParam.getFamily();
+                if (duplicateModule.containsKey(family)) {
+                    // Duplicate family members are not accepted.
+                    throw new ConfigurationException(
+                            String.format(
+                                    "Module %s is declaring parameter: "
+                                            + "%s and %s when only one expected.",
+                                    moduleName, suiteParam, duplicateModule.get(family)));
+                } else {
+                    duplicateModule.put(suiteParam.getFamily(), suiteParam);
+                }
+                // Do not consider the excluded parameterization dimension
+
+                if (expandedExcludedModuleParameters.contains(suiteParam)) {
+                    continue;
+                }
+
+                IModuleParameter handler =
+                        ModuleParametersHelper.getParameterHandler(
+                                suiteParam, /* optionalParams */
+                                mAllowOptionalParameterizedModules);
+                if (handler != null) {
+                    params.add(handler);
+                }
             }
         }
         return params;
