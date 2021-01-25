@@ -368,10 +368,12 @@ public class BaseRetryDecision implements IRetryDecision {
         }
 
         if (module != null) {
-            InvocationMetricLogger.addInvocationMetrics(
-                    InvocationMetricKey.DEVICE_RESET_MODULES, module.getId());
-            InvocationMetricLogger.addInvocationMetrics(
-                    InvocationMetricKey.DEVICE_RESET_COUNT, deviceResetCount);
+            if (module.getId() != null) {
+                InvocationMetricLogger.addInvocationMetrics(
+                        InvocationMetricKey.DEVICE_RESET_MODULES, module.getId());
+                InvocationMetricLogger.addInvocationMetrics(
+                        InvocationMetricKey.DEVICE_RESET_COUNT, deviceResetCount);
+            }
 
             // Run all preparers including suite level ones.
             Throwable preparationException =
