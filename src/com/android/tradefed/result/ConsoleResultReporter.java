@@ -110,6 +110,11 @@ public class ConsoleResultReporter extends TestResultListener
     }
 
     @Override
+    public void testRunFailed(FailureDescription failure) {
+        print(String.format("%s: run failed: %s\n", mRunInProgress, failure));
+    }
+
+    @Override
     public void testRunEnded(long elapsedTimeMillis, Map<String, String> metrics) {
         super.testRunEnded(elapsedTimeMillis, metrics);
         if (metrics != null && !metrics.isEmpty()) {

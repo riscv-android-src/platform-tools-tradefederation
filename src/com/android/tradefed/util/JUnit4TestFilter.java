@@ -15,6 +15,8 @@
  */
 package com.android.tradefed.util;
 
+import com.android.tradefed.log.LogUtil.CLog;
+
 import org.junit.runner.Description;
 import org.junit.runner.manipulation.Filter;
 
@@ -46,6 +48,9 @@ public class JUnit4TestFilter extends Filter {
                     return true;
                 }
             }
+            // If no children can run, we don't run the suite
+            CLog.d("No child of '%s' could run. skipping it.", description);
+            return false;
         }
         return mFilterHelper.shouldRun(description, mJarFiles);
     }
