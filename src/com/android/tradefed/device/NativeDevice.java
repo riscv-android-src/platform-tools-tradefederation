@@ -66,8 +66,12 @@ import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.StringEscapeUtils;
 import com.android.tradefed.util.ZipUtil;
 import com.android.tradefed.util.ZipUtil2;
+
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
+
+import org.apache.commons.compress.archivers.zip.ZipFile;
+
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
@@ -94,9 +98,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.GuardedBy;
-import org.apache.commons.compress.archivers.zip.ZipFile;
 
 /**
  * Default implementation of a {@link ITestDevice}
@@ -504,9 +508,16 @@ public class NativeDevice implements IManagedTestDevice {
             CLog.e(
                     "Failed to run '%s' returning null. stdout: %s\nstderr: %s\nexit code: %s",
                     cmd, result.getStdout(), result.getStderr(), result.getExitCode());
-            if (recovery && result.getStderr().contains("device offline")) {
-                recoverDevice();
-                // TODO: Should we retry ?
+            if (result.getStderr().contains("device offline")) {
+                if (recovery) {
+                    recoverDevice();
+                    // TODO: Should we retry ?
+                } else {
+                    throw new DeviceNotAvailableException(
+                            String.format("Device went offline when querying property: %s", name),
+                            getSerialNumber(),
+                            DeviceErrorIdentifier.DEVICE_UNAVAILABLE);
+                }
             }
             return null;
         }
