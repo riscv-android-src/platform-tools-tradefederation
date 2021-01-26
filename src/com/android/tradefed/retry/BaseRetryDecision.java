@@ -38,6 +38,7 @@ import com.android.tradefed.testtype.suite.ModuleDefinition;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -215,6 +216,20 @@ public class BaseRetryDecision implements IRetryDecision {
         return failedTestCases;
     }
 
+    private static Set<TestDescription> getPassedTestCases(List<TestRunResult> previousResults) {
+        Set<TestDescription> previousPassed = new LinkedHashSet<>();
+        for (TestRunResult run : previousResults) {
+            if (run != null) {
+                for (Entry<TestDescription, TestResult> entry : run.getTestResults().entrySet()) {
+                    if (!TestStatus.FAILURE.equals(entry.getValue().getStatus())) {
+                        previousPassed.add(entry.getKey());
+                    }
+                }
+            }
+        }
+        return previousPassed;
+    }
+
     /** Returns the list of failure from the previous results. */
     private static List<TestRunResult> getRunFailures(List<TestRunResult> previousResults) {
         List<TestRunResult> runFailed = new ArrayList<>();
@@ -245,9 +260,16 @@ public class BaseRetryDecision implements IRetryDecision {
             return false;
         }
         if (!runFailures.isEmpty()) {
-            List<String> names =
-                    runFailures.stream().map(e -> e.getName()).collect(Collectors.toList());
-            CLog.d("Retry the full run since [%s] runs have failures.", names);
+            if (shouldFullRerun(runFailures)) {
+                List<String> names =
+                        runFailures.stream().map(e -> e.getName()).collect(Collectors.toList());
+                CLog.d("Retry the full run since [%s] runs have failures.", names);
+                return true;
+            }
+            // If we don't attempt full rerun add filters.
+            CLog.d("Full rerun not required, excluding previously passed tests.");
+            Set<TestDescription> previouslyPassedTests = getPassedTestCases(previousResults);
+            excludePassedTests(test, previouslyPassedTests);
             return true;
         }
 
@@ -285,6 +307,16 @@ public class BaseRetryDecision implements IRetryDecision {
         return false;
     }
 
+    /** If none of the run failures require a full rerun, trigger the partial rerun logic. */
+    private boolean shouldFullRerun(List<TestRunResult> runFailures) {
+        for (TestRunResult run : runFailures) {
+            if (run.getRunFailureDescription().rerunFull()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /** Set the filters on the test runner for the retry. */
     private void addRetriedTestsToFilters(
             ITestFilterReceiver test, Map<TestDescription, TestResult> tests) {
@@ -307,6 +339,14 @@ public class BaseRetryDecision implements IRetryDecision {
                 test.addExcludeFilter(filter);
             }
             mPreviouslyFailing.add(testCase);
+        }
+    }
+
+    private void excludePassedTests(ITestFilterReceiver test, Set<TestDescription> passedTests) {
+        // Exclude all passed tests for the retry.
+        for (TestDescription testCase : passedTests) {
+            String filter = String.format("%s#%s", testCase.getClassName(), testCase.getTestName());
+            test.addExcludeFilter(filter);
         }
     }
 
