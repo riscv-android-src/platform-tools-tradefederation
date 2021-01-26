@@ -245,6 +245,9 @@ public class BaseRetryDecision implements IRetryDecision {
             return false;
         }
         if (!runFailures.isEmpty()) {
+            List<String> names =
+                    runFailures.stream().map(e -> e.getName()).collect(Collectors.toList());
+            CLog.d("Retry the full run since [%s] runs have failures.", names);
             return true;
         }
 
