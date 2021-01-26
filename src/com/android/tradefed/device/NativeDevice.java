@@ -511,13 +511,12 @@ public class NativeDevice implements IManagedTestDevice {
             if (result.getStderr().contains("device offline")) {
                 if (recovery) {
                     recoverDevice();
-                    // TODO: Should we retry ?
-                } else {
-                    throw new DeviceNotAvailableException(
-                            String.format("Device went offline when querying property: %s", name),
-                            getSerialNumber(),
-                            DeviceErrorIdentifier.DEVICE_UNAVAILABLE);
+                    return getPropertyWithRecovery(name, false);
                 }
+                throw new DeviceNotAvailableException(
+                        String.format("Device went offline when querying property: %s", name),
+                        getSerialNumber(),
+                        DeviceErrorIdentifier.DEVICE_UNAVAILABLE);
             }
             return null;
         }
