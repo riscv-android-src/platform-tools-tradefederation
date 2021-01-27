@@ -32,10 +32,12 @@ import com.android.tradefed.isolation.RunnerReply;
 import com.android.tradefed.isolation.TestParameters;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
@@ -455,7 +457,12 @@ public class IsolatedHostTest
                                 listener.testLog("hs_err_log-VM-crash", LogDataType.TEXT, source);
                             }
                         }
-                        listener.testRunFailed("The subprocess died unexpectedly.");
+                        FailureDescription failure =
+                                FailureDescription.create(
+                                                "The subprocess died unexpectedly.",
+                                                FailureStatus.TEST_FAILURE)
+                                        .setFullRerun(false);
+                        listener.testRunFailed(failure);
                         break mainLoop;
                     }
                     switch (reply.getRunnerStatus()) {
