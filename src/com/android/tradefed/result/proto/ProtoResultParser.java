@@ -57,6 +57,7 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -636,7 +637,7 @@ public class ProtoResultParser {
         MultiMap<String, String> attributes = endInvocationContext.getAttributes();
         // Parse the invocation metric group first.
         for (InvocationGroupMetricKey groupKey : InvocationGroupMetricKey.values()) {
-            Set<String> attKeys = attributes.keySet();
+            Set<String> attKeys = new HashSet<>(attributes.keySet());
             for (String attKey : attKeys) {
                 if (attKey.startsWith(groupKey.toString() + ":")) {
                     List<String> values = attributes.get(attKey);
