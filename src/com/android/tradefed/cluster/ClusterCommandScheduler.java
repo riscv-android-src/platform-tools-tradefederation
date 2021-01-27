@@ -43,6 +43,7 @@ import com.android.tradefed.result.ITestSummaryListener;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.result.TestSummary;
 import com.android.tradefed.result.error.ErrorIdentifier;
+import com.android.tradefed.result.error.ErrorStorageUtil;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.MultiMap;
@@ -383,7 +384,9 @@ public class ClusterCommandScheduler extends CommandScheduler {
             if (errorId != null) {
                 eventBuilder.setData(ClusterCommandEvent.DATA_KEY_ERROR_ID_NAME, errorId.name());
                 eventBuilder.setData(ClusterCommandEvent.DATA_KEY_ERROR_ID_CODE, errorId.code());
-                eventBuilder.setData(ClusterCommandEvent.DATA_KEY_ERROR_STATUS, errorId.status());
+                eventBuilder.setData(
+                        ClusterCommandEvent.DATA_KEY_ERROR_STATUS,
+                        ErrorStorageUtil.mapStatus(errorId.status()));
             }
             if (lostDevice != null) {
                 eventBuilder.setData(ClusterCommandEvent.DATA_KEY_LOST_DEVICE_DETECTED, lostDevice);
@@ -671,7 +674,8 @@ public class ClusterCommandScheduler extends CommandScheduler {
                     eventBuilder.setData(
                             ClusterCommandEvent.DATA_KEY_ERROR_ID_CODE, e.getErrorId().code());
                     eventBuilder.setData(
-                            ClusterCommandEvent.DATA_KEY_ERROR_STATUS, e.getErrorId().status());
+                            ClusterCommandEvent.DATA_KEY_ERROR_STATUS,
+                            ErrorStorageUtil.mapStatus(e.getErrorId().status()));
                 }
                 eventUploader.postEvent(eventBuilder.build());
                 eventUploader.flush();
@@ -695,7 +699,8 @@ public class ClusterCommandScheduler extends CommandScheduler {
                     eventBuilder.setData(
                             ClusterCommandEvent.DATA_KEY_ERROR_ID_CODE, errorId.code());
                     eventBuilder.setData(
-                            ClusterCommandEvent.DATA_KEY_ERROR_STATUS, errorId.status());
+                            ClusterCommandEvent.DATA_KEY_ERROR_STATUS,
+                            ErrorStorageUtil.mapStatus(errorId.status()));
                 }
                 eventUploader.postEvent(eventBuilder.build());
                 eventUploader.flush();
