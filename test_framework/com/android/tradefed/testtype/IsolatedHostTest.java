@@ -17,8 +17,6 @@ package com.android.tradefed.testtype;
 
 import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.IBuildInfo;
-import com.android.tradefed.config.IConfiguration;
-import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
@@ -79,7 +77,6 @@ import java.util.stream.Collectors;
 public class IsolatedHostTest
         implements IRemoteTest,
                 IBuildReceiver,
-                IConfigurationReceiver,
                 ITestAnnotationFilterReceiver,
                 ITestFilterReceiver,
                 ITestCollector {
@@ -167,13 +164,13 @@ public class IsolatedHostTest
             description = TestTimeoutEnforcer.TEST_CASE_TIMEOUT_DESCRIPTION)
     private Duration mTestCaseTimeout = Duration.ofSeconds(0L);
 
-    private IConfiguration mConfig;
     private IBuildInfo mBuildInfo;
     private Set<String> mIncludeFilters = new HashSet<>();
     private Set<String> mExcludeFilters = new HashSet<>();
     private boolean mCollectTestsOnly = false;
     private File mSubprocessLog;
     private File mWorkDir;
+    private boolean mReportedFailure = false;
 
     private static final String ROOT_DIR = "ROOT_DIR";
     private ServerSocket mServer = null;
@@ -182,6 +179,7 @@ public class IsolatedHostTest
     @Override
     public void run(TestInformation testInfo, ITestInvocationListener listener)
             throws DeviceNotAvailableException {
+        mReportedFailure = false;
         try {
             mServer = new ServerSocket(0);
             mServer.setSoTimeout(mSocketTimeout);
@@ -237,7 +235,10 @@ public class IsolatedHostTest
                     .build()
                     .writeDelimitedTo(socket.getOutputStream());
         } catch (IOException e) {
-            listener.testRunFailed(StreamUtil.getStackTrace(e));
+            if (!mReportedFailure) {
+                // Avoid overriding the failure
+                listener.testRunFailed(StreamUtil.getStackTrace(e));
+            }
         }
     }
 
@@ -457,6 +458,7 @@ public class IsolatedHostTest
                                 listener.testLog("hs_err_log-VM-crash", LogDataType.TEXT, source);
                             }
                         }
+                        mReportedFailure = true;
                         FailureDescription failure =
                                 FailureDescription.create(
                                                 "The subprocess died unexpectedly.",
@@ -705,12 +707,6 @@ public class IsolatedHostTest
     @Override
     public void clearExcludeAnnotations() {
         mExcludeAnnotations.clear();
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public void setConfiguration(IConfiguration configuration) {
-        mConfig = configuration;
     }
 
     /**
