@@ -20,6 +20,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.TestDeviceState;
+import com.android.tradefed.invoker.logger.CurrentInvocation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.util.FileUtil;
@@ -222,16 +223,16 @@ public abstract class FilePullerDeviceMetricCollector extends BaseDeviceMetricCo
     }
 
     /**
-     * Pulls the directory and all its content from the device and save it in the
-     * host under the host_tmp folder.
+     * Pulls the directory and all its content from the device and save it in the host under the
+     * metric_tmp folder.
      *
      * @param keyDirectory path to the source directory in the device.
-     * @return Key,value pair of the directory name and path to the directory in the
-     * local host.
+     * @return Key,value pair of the directory name and path to the directory in the local host.
      */
     private Entry<String, File> pullMetricDirectory(String keyDirectory) {
         try {
-            File tmpDestDir = FileUtil.createTempDir("host_tmp");
+            File tmpDestDir =
+                    FileUtil.createTempDir("metric_tmp", CurrentInvocation.getWorkFolder());
             for (ITestDevice device : getDevices()) {
                 // Skip StubDevices
                 if (device.getIDevice() instanceof StubDevice) {
