@@ -451,5 +451,8 @@ public class GceAvdInfoTest {
         assertEquals(
                 GceAvdInfo.determineAcloudErrorType("ACLOUD_BOOT_UP_ERROR"),
                 InfraErrorIdentifier.ACLOUD_BOOT_UP_ERROR);
+        assertEquals(
+                GceAvdInfo.determineAcloudErrorType("GCE_QUOTA_ERROR"),
+                InfraErrorIdentifier.GCE_QUOTA_ERROR);
     }
 }
