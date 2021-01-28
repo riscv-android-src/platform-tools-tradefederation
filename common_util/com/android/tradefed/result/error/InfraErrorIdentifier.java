@@ -63,6 +63,7 @@ public enum InfraErrorIdentifier implements ErrorIdentifier {
     ACLOUD_CREATE_GCE_ERROR(505_005, FailureStatus.DEPENDENCY_ISSUE),
     ACLOUD_DOWNLOAD_ARTIFACT_ERROR(505_006, FailureStatus.DEPENDENCY_ISSUE),
     ACLOUD_BOOT_UP_ERROR(505_007, FailureStatus.LOST_SYSTEM_UNDER_TEST),
+    GCE_QUOTA_ERROR(505_008, FailureStatus.DEPENDENCY_ISSUE),
 
     // 505_251 - 505_300: Configuration errors
     INTERNAL_CONFIG_ERROR(505_251, FailureStatus.INFRA_FAILURE),
