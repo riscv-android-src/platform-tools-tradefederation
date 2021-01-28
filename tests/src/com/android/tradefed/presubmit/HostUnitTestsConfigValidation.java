@@ -26,6 +26,9 @@ import com.android.tradefed.testtype.DeviceJUnit4ClassRunner;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.suite.ValidateSuiteConfigHelper;
+import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.testmapping.TestInfo;
+import com.android.tradefed.util.testmapping.TestMapping;
 
 import com.google.common.base.Joiner;
 
@@ -36,8 +39,10 @@ import org.junit.runner.RunWith;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -119,6 +124,45 @@ public class HostUnitTestsConfigValidation implements IBuildReceiver {
                                         + "The supported ones are: %s",
                                 test.getClass().getCanonicalName(), name, SUPPORTED_TEST_RUNNERS));
             }
+        }
+    }
+
+    /**
+     * This test ensures that unit tests are not also running as part of test mapping to avoid
+     * double running them.
+     */
+    @Test
+    public void testNotInTestMapping() {
+        // We need the test mapping files for this test.
+        Assume.assumeNotNull(mBuild.getFile("test_mappings.zip"));
+
+        Set<TestInfo> testInfosToRun =
+                TestMapping.getTests(
+                        mBuild, /* group */ null, /* host */ true, /* keywords */ new HashSet<>());
+
+        List<String> errors = new ArrayList<>();
+        List<String> configs = new ArrayList<>();
+        IDeviceBuildInfo deviceBuildInfo = (IDeviceBuildInfo) mBuild;
+        File testsDir = deviceBuildInfo.getTestsDir();
+        List<File> extraTestCasesDirs = Arrays.asList(testsDir);
+        configs.addAll(ConfigurationUtil.getConfigNamesFromDirs(null, extraTestCasesDirs));
+
+        Map<String, Set<String>> infos = new HashMap<>();
+        testInfosToRun.stream().forEach(e -> infos.put(e.getName(), e.getSources()));
+        for (String configName : configs) {
+            String moduleName = FileUtil.getBaseName(new File(configName).getName());
+            if (infos.containsKey(moduleName)) {
+                errors.add(
+                        String.format(
+                                "test '%s' is present in unit_tests and test mapping: %s",
+                                moduleName, infos.get(moduleName)));
+            }
+        }
+        if (!errors.isEmpty()) {
+            String message =
+                    String.format("Fail configuration check:\n%s", Joiner.on("\n").join(errors));
+            // TODO: Turn this blocking
+            Assume.assumeTrue(message, errors.isEmpty());
         }
     }
 }
