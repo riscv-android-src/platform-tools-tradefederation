@@ -30,8 +30,11 @@ import com.google.common.base.Strings;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
@@ -51,7 +54,8 @@ public class NativeDeviceStateMonitor implements IDeviceStateMonitor {
     /** the maximum operation time in ms for a 'poll for responsiveness' command */
     protected static final int MAX_OP_TIME = 10 * 1000;
     /** Reference for TMPFS from 'man statfs' */
-    private static final String TMPFS_MAGIC = "01021994";
+    private static final Set<String> TMPFS_MAGIC =
+            new HashSet<>(Arrays.asList("1021994", "01021994"));
 
     /** The  time in ms to wait for a device to be online. */
     private long mDefaultOnlineTimeout = 1 * 60 * 1000;
@@ -345,7 +349,7 @@ public class NativeDeviceStateMonitor implements IDeviceStateMonitor {
                     CLog.w("Failed to get the fileSystem of '%s'", externalStore);
                     continue;
                 }
-                if (TMPFS_MAGIC.equals(fileSystem)) {
+                if (TMPFS_MAGIC.contains(fileSystem)) {
                     CLog.w(
                             "External storage fileSystem is '%s', waiting for it to be mounted.",
                             fileSystem);
