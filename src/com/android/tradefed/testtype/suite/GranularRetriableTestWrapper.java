@@ -17,6 +17,7 @@
 package com.android.tradefed.testtype.suite;
 
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.metric.CollectorHelper;
@@ -194,6 +195,9 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
             if (collector.isDisabled()) {
                 CLog.d("%s has been disabled. Skipping.", collector);
             } else {
+                if (collector instanceof IConfigurationReceiver) {
+                    ((IConfigurationReceiver) collector).setConfiguration(mModuleConfiguration);
+                }
                 runListener = collector.init(mModuleInvocationContext, runListener);
             }
         }
@@ -280,6 +284,10 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
                     if (collector.isDisabled()) {
                         CLog.d("%s has been disabled. Skipping.", collector);
                     } else {
+                        if (collector instanceof IConfigurationReceiver) {
+                            ((IConfigurationReceiver) collector)
+                                    .setConfiguration(mModuleConfiguration);
+                        }
                         runListener = collector.init(mModuleInvocationContext, runListener);
                     }
                 }

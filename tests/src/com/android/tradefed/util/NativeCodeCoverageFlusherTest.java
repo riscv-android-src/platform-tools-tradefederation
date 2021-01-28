@@ -18,9 +18,11 @@ package com.android.tradefed.util;
 
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
@@ -39,25 +41,38 @@ import java.util.List;
 @RunWith(JUnit4.class)
 public final class NativeCodeCoverageFlusherTest {
 
+    private static final String PS_OUTPUT =
+            "USER       PID   PPID  VSZ   RSS   WCHAN       PC  S NAME\n"
+                    + "shell       123  1366  123    456   SyS_epoll+   0  S adbd\n"
+                    + "root        234     1 7890   123   binder_io+   0  S logcat\n"
+                    + "root        456  1234  567   890   binder_io+   0  S media.swcodec\n";
     @Mock ITestDevice mMockDevice;
 
     // Object under test
     NativeCodeCoverageFlusher mFlusher;
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
+        doReturn(PS_OUTPUT).when(mMockDevice).executeShellCommand("ps -e");
     }
 
     @Test
     public void testClearCoverageMeasurements_rmCommandCalled() throws DeviceNotAvailableException {
         doReturn(true).when(mMockDevice).isAdbRoot();
 
+        CommandResult result = new CommandResult(CommandStatus.SUCCESS);
+        result.setStdout("ffffffffffff\n");
+        result.setExitCode(0);
+
+        when(mMockDevice.executeShellV2Command(anyString())).thenReturn(result);
+
         mFlusher = new NativeCodeCoverageFlusher(mMockDevice, ImmutableList.of());
         mFlusher.resetCoverage();
 
-        // Verify that the rm command was executed.
-        verify(mMockDevice).executeShellCommand("rm -rf /data/misc/trace/*");
+        // Verify that the coverage clear commands were executed.
+        verify(mMockDevice).executeShellCommand("find /data/misc/trace -name '*.profraw' -delete");
+        verify(mMockDevice).executeShellCommand("find /data/misc/trace -name '*.gcda' -delete");
     }
 
     @Test
@@ -81,27 +96,120 @@ public final class NativeCodeCoverageFlusherTest {
             throws DeviceNotAvailableException {
         doReturn(true).when(mMockDevice).isAdbRoot();
 
+        CommandResult result = new CommandResult(CommandStatus.SUCCESS);
+        result.setStdout("ffffffffffff\n");
+        result.setExitCode(0);
+
+        when(mMockDevice.executeShellV2Command(anyString())).thenReturn(result);
+
         mFlusher = new NativeCodeCoverageFlusher(mMockDevice, ImmutableList.of());
         mFlusher.forceCoverageFlush();
 
-        // Verify that the flush command for all processes was called.
-        verify(mMockDevice).executeShellCommand("kill -37 -1");
+        // Verify that the flush command for all individual processes was called.
+        verify(mMockDevice).executeShellCommand("kill -37 123 234 456");
     }
 
     @Test
     public void testFlushCoverageSpecificProcesses_flushSpecificCommandCalled()
             throws DeviceNotAvailableException {
-        List<String> processes = ImmutableList.of("mediaserver", "mediaextractor");
+        List<String> processes = ImmutableList.of("adbd", "logcat");
 
         doReturn(true).when(mMockDevice).isAdbRoot();
-        doReturn("12").when(mMockDevice).getProcessPid(processes.get(0));
-        doReturn("789").when(mMockDevice).getProcessPid(processes.get(1));
+
+        CommandResult result = new CommandResult(CommandStatus.SUCCESS);
+        result.setStdout("ffffffffffff\n");
+        result.setExitCode(0);
+
+        when(mMockDevice.executeShellV2Command(anyString())).thenReturn(result);
 
         mFlusher = new NativeCodeCoverageFlusher(mMockDevice, processes);
         mFlusher.forceCoverageFlush();
 
         // Verify that the flush command for the specific processes was called.
-        verify(mMockDevice).executeShellCommand("kill -37 12 789");
+        verify(mMockDevice).executeShellCommand("kill -37 123 234");
+    }
+
+    @Test
+    public void testFlushNotHandled_flushNotCalled() throws DeviceNotAvailableException {
+        List<String> processes = ImmutableList.of("adbd");
+
+        doReturn(true).when(mMockDevice).isAdbRoot();
+
+        CommandResult result = new CommandResult(CommandStatus.SUCCESS);
+        result.setStdout("0000000000\n");
+        result.setExitCode(0);
+
+        when(mMockDevice.executeShellV2Command(anyString())).thenReturn(result);
+
+        mFlusher = new NativeCodeCoverageFlusher(mMockDevice, processes);
+        mFlusher.forceCoverageFlush();
+
+        // Verify that the flush command was not called.
+        verify(mMockDevice, never()).executeShellCommand("kill -37 123");
+    }
+
+    @Test
+    public void testFlushStatusReadFailed_flushNotCalled() throws DeviceNotAvailableException {
+        List<String> processes = ImmutableList.of("adbd");
+
+        doReturn(true).when(mMockDevice).isAdbRoot();
+
+        CommandResult result = new CommandResult(CommandStatus.SUCCESS);
+        result.setExitCode(-1);
+
+        when(mMockDevice.executeShellV2Command(anyString())).thenReturn(result);
+
+        mFlusher = new NativeCodeCoverageFlusher(mMockDevice, processes);
+        mFlusher.forceCoverageFlush();
+
+        // Verify that the flush command was not called.
+        verify(mMockDevice, never()).executeShellCommand("kill -37 123");
+    }
+
+    @Test
+    public void testFlushStatusReadEmpty_flushNotCalled() throws DeviceNotAvailableException {
+        List<String> processes = ImmutableList.of("adbd");
+
+        doReturn(true).when(mMockDevice).isAdbRoot();
+
+        CommandResult result = new CommandResult(CommandStatus.SUCCESS);
+        result.setStdout("");
+        result.setExitCode(0);
+
+        when(mMockDevice.executeShellV2Command(anyString())).thenReturn(result);
+
+        mFlusher = new NativeCodeCoverageFlusher(mMockDevice, processes);
+        mFlusher.forceCoverageFlush();
+
+        // Verify that the flush command was not called.
+        verify(mMockDevice, never()).executeShellCommand("kill -37 123");
+    }
+
+    @Test
+    public void testFlushOnlySigCgt_flushSpecificProcesses() throws DeviceNotAvailableException {
+        doReturn(true).when(mMockDevice).isAdbRoot();
+
+        CommandResult resultNotHandled = new CommandResult(CommandStatus.SUCCESS);
+        resultNotHandled.setStdout("0000000000\n");
+        resultNotHandled.setExitCode(0);
+
+        CommandResult resultHandled = new CommandResult(CommandStatus.SUCCESS);
+        resultHandled.setStdout("ffffffffffff\n");
+        resultHandled.setExitCode(0);
+
+        CommandResult resultEmpty = new CommandResult(CommandStatus.SUCCESS);
+        resultEmpty.setStdout("\n");
+        resultEmpty.setExitCode(0);
+
+        when(mMockDevice.executeShellV2Command(contains("123"))).thenReturn(resultNotHandled);
+        when(mMockDevice.executeShellV2Command(contains("234"))).thenReturn(resultHandled);
+        when(mMockDevice.executeShellV2Command(contains("456"))).thenReturn(resultEmpty);
+
+        mFlusher = new NativeCodeCoverageFlusher(mMockDevice, ImmutableList.of());
+        mFlusher.forceCoverageFlush();
+
+        // Verify that the flush command was only called for pid 234.
+        verify(mMockDevice).executeShellCommand("kill -37 234");
     }
 
     @Test

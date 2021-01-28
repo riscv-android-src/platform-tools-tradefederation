@@ -16,6 +16,8 @@
 
 package com.android.tradefed.testtype;
 
+import static com.android.tradefed.testtype.InstrumentationTest.RUN_TESTS_AS_USER_KEY;
+
 import static com.google.common.truth.Truth.assertThat;
 
 import static org.junit.Assert.assertEquals;
@@ -23,11 +25,10 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyCollectionOf;
-import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
@@ -54,7 +55,6 @@ import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLifeCycleReceiver;
 import com.android.tradefed.result.InputStreamSource;
-import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.testtype.coverage.CoverageOptions;
@@ -106,6 +106,7 @@ public class InstrumentationTestTest {
     private TestInformation mTestInfo = null;
     private CoverageOptions mCoverageOptions = null;
     private OptionSetter mCoverageOptionsSetter = null;
+    private IInvocationContext mContext = null;
 
     // The mock objects.
     @Mock IDevice mMockIDevice;
@@ -114,6 +115,9 @@ public class InstrumentationTestTest {
     @Mock ListInstrumentationParser mMockListInstrumentationParser;
 
     @Captor private ArgumentCaptor<Collection<TestDescription>> testCaptor;
+    @Captor private ArgumentCaptor<HashMap<String, Metric>> testCapture1;
+    @Captor private ArgumentCaptor<HashMap<String, Metric>> testCapture2;
+    @Captor private ArgumentCaptor<HashMap<String, Metric>> runCapture;
 
     /**
      * Helper class for providing an {@link IAnswer} to a {@link
@@ -160,8 +164,9 @@ public class InstrumentationTestTest {
 
         mConfig.setCoverageOptions(mCoverageOptions);
         mInstrumentationTest.setConfiguration(mConfig);
-        IInvocationContext context = new InvocationContext();
-        mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
+        mContext = new InvocationContext();
+        mContext.addAllocatedDevice("main", mMockTestDevice);
+        mTestInfo = TestInformation.newBuilder().setInvocationContext(mContext).build();
     }
 
     /** Test normal run scenario. */
@@ -199,6 +204,27 @@ public class InstrumentationTestTest {
         inOrder.verify(mMockListener).testStarted(eq(TEST2), anyLong());
         inOrder.verify(mMockListener).testEnded(eq(TEST2), anyLong(), eq(EMPTY_STRING_MAP));
         inOrder.verify(mMockListener).testRunEnded(1, EMPTY_STRING_MAP);
+    }
+
+    @Test
+    public void testRun_nullTestInfo() throws Exception {
+        mInstrumentationTest.run(/* testInfo= */ null, mMockListener);
+
+        verify(mMockTestDevice, atLeastOnce())
+                .runInstrumentationTests(
+                        any(IRemoteAndroidTestRunner.class), any(ITestInvocationListener.class));
+    }
+
+    @Test
+    public void testRun_runTestsAsUser() throws DeviceNotAvailableException {
+        mTestInfo.properties().put(RUN_TESTS_AS_USER_KEY, "10");
+        mInstrumentationTest.run(mTestInfo, mMockListener);
+
+        verify(mMockTestDevice, atLeastOnce())
+                .runInstrumentationTestsAsUser(
+                        any(IRemoteAndroidTestRunner.class),
+                        eq(10),
+                        any(ITestInvocationListener.class));
     }
 
     @Test
@@ -260,6 +286,18 @@ public class InstrumentationTestTest {
                 (RemoteAndroidTestRunner)
                         mInstrumentationTest.createRemoteAndroidTestRunner("", "", mMockIDevice);
         assertThat(runner.getRunOptions()).contains("--no-window-animation");
+    }
+
+    /** Test normal run scenario with --no-restart specified */
+    @Test
+    public void testRun_noRestart() throws Exception {
+        doReturn(true).when(mMockTestDevice).checkApiLevelAgainstNextRelease(31);
+        OptionSetter setter = new OptionSetter(mInstrumentationTest);
+        setter.setOptionValue("restart", "false");
+        RemoteAndroidTestRunner runner =
+                (RemoteAndroidTestRunner)
+                        mInstrumentationTest.createRemoteAndroidTestRunner("", "", mMockIDevice);
+        assertThat(runner.getRunOptions()).contains("--no-restart");
     }
 
     /** Test normal run scenario with a test class specified. */
@@ -719,51 +757,6 @@ public class InstrumentationTestTest {
         inOrder.verifyNoMoreInteractions();
     }
 
-    /** Verify that all tests are re-run when there is a failure during a coverage run. */
-    @Test
-    public void testRun_mergedCoverage()
-            throws ConfigurationException, DeviceNotAvailableException {
-        mInstrumentationTest.setRerunMode(true);
-        mInstrumentationTest.setMergeCoverageMeasurements(true);
-        mCoverageOptionsSetter.setOptionValue("coverage", "true");
-        mCoverageOptionsSetter.setOptionValue("coverage-toolchain", "JACOCO");
-
-        // Mock collected tests
-        RunInstrumentationTestsAnswer runTests =
-                (runner, listener) -> {
-                    // perform call back on listener to show run of two tests
-                    listener.testRunStarted(TEST_PACKAGE_VALUE, 2);
-                    listener.testStarted(TEST1);
-                    listener.testEnded(TEST1, EMPTY_STRING_MAP);
-                    listener.testStarted(TEST2);
-                    listener.testEnded(TEST2, EMPTY_STRING_MAP);
-                    listener.testRunEnded(1, EMPTY_STRING_MAP);
-                    return true;
-                };
-
-        doAnswer(runTests)
-                .when(mMockTestDevice)
-                .runInstrumentationTests(
-                        any(IRemoteAndroidTestRunner.class), any(ITestLifeCycleReceiver.class));
-        doReturn(true).when(mMockTestDevice).enableAdbRoot();
-        doReturn("").when(mMockTestDevice).executeShellCommand(anyString());
-
-        mInstrumentationTest.run(mTestInfo, mMockListener);
-
-        InOrder inOrder = Mockito.inOrder(mMockListener);
-        inOrder.verify(mMockListener).testRunStarted(TEST_PACKAGE_VALUE, 2);
-        inOrder.verify(mMockListener).testStarted(eq(TEST1), anyLong());
-        inOrder.verify(mMockListener).testEnded(eq(TEST1), anyLong(), eq(EMPTY_STRING_MAP));
-        inOrder.verify(mMockListener).testStarted(eq(TEST2), anyLong());
-        inOrder.verify(mMockListener).testEnded(eq(TEST2), anyLong(), eq(EMPTY_STRING_MAP));
-        inOrder.verify(mMockListener).testRunEnded(1, EMPTY_STRING_MAP);
-        inOrder.verify(mMockListener).testRunStarted(eq("mergeCoverageMeasurements"), anyInt());
-        inOrder.verify(mMockListener)
-                .testLog(eq("merged_runtime_coverage"), eq(LogDataType.COVERAGE), any());
-        inOrder.verify(mMockListener).testRunEnded(anyLong(), eq(EMPTY_STRING_MAP));
-        inOrder.verifyNoMoreInteractions();
-    }
-
     /** Test the reboot before re-run option. */
     @Test
     public void testRun_rebootBeforeReRun() throws DeviceNotAvailableException {
@@ -979,7 +972,7 @@ public class InstrumentationTestTest {
     public void testCollectWorks_RunCrash() throws Exception {
         doReturn(mock(IRemoteTest.class))
                 .when(mInstrumentationTest)
-                .getTestReRunner(anyCollectionOf(TestDescription.class));
+                .getTestReRunner(anyCollection());
 
         // We collect successfully 5 tests
         RunInstrumentationTestsAnswer collected =
@@ -1027,7 +1020,7 @@ public class InstrumentationTestTest {
     public void testRun_noMoreTests() throws Exception {
         doReturn(mock(IRemoteTest.class))
                 .when(mInstrumentationTest)
-                .getTestReRunner(anyCollectionOf(TestDescription.class));
+                .getTestReRunner(anyCollection());
 
         // We collect successfully 1 tests
         RunInstrumentationTestsAnswer collected =
@@ -1085,32 +1078,6 @@ public class InstrumentationTestTest {
         inOrder.verify(mMockListener).testRunEnded(1, EMPTY_STRING_MAP);
     }
 
-    @Test
-    public void testAddCoverageListener_enabled() throws ConfigurationException {
-        mCoverageOptionsSetter.setOptionValue("coverage", "true");
-        mCoverageOptionsSetter.setOptionValue("coverage-toolchain", "GCOV");
-        mCoverageOptionsSetter.setOptionValue("coverage-toolchain", "JACOCO");
-
-        ITestInvocationListener listener =
-                mInstrumentationTest.addJavaCoverageListenerIfEnabled(mMockListener);
-        assertThat(listener).isInstanceOf(JavaCodeCoverageListener.class);
-
-        listener = mInstrumentationTest.addGcovCoverageListenerIfEnabled(mMockListener);
-        assertThat(listener).isInstanceOf(NativeCodeCoverageListener.class);
-    }
-
-    @Test
-    public void testAddCoverageListener_disabled() throws ConfigurationException {
-        mCoverageOptionsSetter.setOptionValue("coverage", "false");
-
-        ITestInvocationListener listener =
-                mInstrumentationTest.addJavaCoverageListenerIfEnabled(mMockListener);
-        assertThat(listener).isSameAs(mMockListener);
-
-        listener = mInstrumentationTest.addGcovCoverageListenerIfEnabled(mMockListener);
-        assertThat(listener).isSameAs(mMockListener);
-    }
-
     /** Test normal run scenario when {@link IMetricCollector} are specified. */
     @Test
     public void testRun_withCollectors() throws DeviceNotAvailableException {
@@ -1151,20 +1118,15 @@ public class InstrumentationTestTest {
         inOrder.verify(mMockListener)
                 .testRunStarted(eq(TEST_PACKAGE_VALUE), eq(2), eq(0), anyLong());
         inOrder.verify(mMockListener).testStarted(eq(TEST1), anyLong());
-        ArgumentCaptor<HashMap<String, Metric>> testCapture1 =
-                ArgumentCaptor.forClass(HashMap.class);
         inOrder.verify(mMockListener).testEnded(eq(TEST1), anyLong(), testCapture1.capture());
         HashMap<String, Metric> test1Metric = testCapture1.getValue();
         assertTrue(test1Metric.containsKey("called"));
         assertFalse(test1Metric.containsKey("not-called"));
         inOrder.verify(mMockListener).testStarted(eq(TEST2), anyLong());
-        ArgumentCaptor<HashMap<String, Metric>> testCapture2 =
-                ArgumentCaptor.forClass(HashMap.class);
         inOrder.verify(mMockListener).testEnded(eq(TEST2), anyLong(), testCapture2.capture());
         HashMap<String, Metric> test2Metric = testCapture2.getValue();
         assertTrue(test2Metric.containsKey("called"));
         assertFalse(test2Metric.containsKey("not-called"));
-        ArgumentCaptor<HashMap<String, Metric>> runCapture = ArgumentCaptor.forClass(HashMap.class);
         inOrder.verify(mMockListener).testRunEnded(anyLong(), runCapture.capture());
         HashMap<String, Metric> runMetric = runCapture.getValue();
         assertTrue(runMetric.containsKey("called"));
