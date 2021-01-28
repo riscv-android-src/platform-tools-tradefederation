@@ -40,7 +40,6 @@ import com.google.dualhomelab.monitoringagent.resourcemonitoring.Resource;
 import com.google.protobuf.util.Timestamps;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -59,7 +58,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
 import io.grpc.Server;
-import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder;
+import io.grpc.ServerBuilder;
 import io.grpc.stub.StreamObserver;
 
 /**
@@ -76,7 +75,6 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
     public static final String TEST_HARNESS_KEY = "test_harness";
     public static final String HARNESS_VERSION_KEY = "harness_version";
     public static final String HOST_GROUP_KEY = "host_group";
-    public static final String SERVER_HOSTNAME = "localhost";
     public static final int DEFAULT_PORT = 8887;
     public static final int DEFAULT_THREAD_COUNT = 1;
     public static final String POOL_ATTRIBUTE_NAME = "pool";
@@ -92,6 +90,7 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
     private LabResource mLabResource = LabResource.newBuilder().build();
     /** A single thread executor for all metricize operations. */
     private ScheduledExecutorService mMetricizeExecutor;
+
 
     @Option(
             name = "metricize-op-timeout",
@@ -138,8 +137,11 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
     public void run() {
         if (mServer == null) {
             mServer =
-                    NettyServerBuilder.forAddress(
-                                    new InetSocketAddress(SERVER_HOSTNAME, DEFAULT_PORT))
+                    // Because dockerized TF use bridge network driver now, so we remove the
+                    // hostname restriction for the grpc server.
+                    // The restriction should be established by setting docker port mapping.
+                    // For example: adding docker run argument "-p 127.0.0.1:8887:8887".
+                    ServerBuilder.forPort(DEFAULT_PORT)
                             .addService(this)
                             .executor(Executors.newFixedThreadPool(DEFAULT_THREAD_COUNT))
                             .build();
@@ -151,6 +153,7 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
             scheduleMetricizeTask();
         } catch (IOException | IllegalStateException e) {
             CLog.e(e);
+            stopMetricizeExecutor();
         }
     }
 
