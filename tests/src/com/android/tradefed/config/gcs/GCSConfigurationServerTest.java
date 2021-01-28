@@ -133,4 +133,20 @@ public class GCSConfigurationServerTest {
             Assert.assertEquals("There is no config for invalid_hostname.", e.getMessage());
         }
     }
+
+    @Test
+    public void testSameHostname() {
+        Assert.assertTrue(
+                mConfigServer.sameHost("hostname.mtv.google.com", "hostname.mtv.google.com"));
+    }
+
+    @Test
+    public void testSameHostname_shortHostname() {
+        Assert.assertTrue(mConfigServer.sameHost("hostname.mtv.google.com", "hostname"));
+    }
+
+    @Test
+    public void testSameHostname_differentShortHostname() {
+        Assert.assertFalse(mConfigServer.sameHost("hostname.mtv.google.com", "host"));
+    }
 }
