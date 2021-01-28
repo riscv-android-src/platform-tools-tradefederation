@@ -183,15 +183,19 @@ public class GceAvdInfo {
             CLog.w("No data provided");
             return null;
         }
-        String errorType = null;
+        InfraErrorIdentifier errorId = null;
         String errors = data;
         try {
             errors = parseErrorField(data);
             JSONObject res = new JSONObject(data);
-            errorType = res.has("error_type") ? res.getString("error_type") : null;
             String status = res.getString("status");
-            JSONArray devices = null;
             GceStatus gceStatus = GceStatus.valueOf(status);
+            String errorType = res.has("error_type") ? res.getString("error_type") : null;
+            errorId =
+                    GceStatus.SUCCESS.equals(gceStatus)
+                            ? null
+                            : determineAcloudErrorType(errorType);
+            JSONArray devices = null;
             if (GceStatus.FAIL.equals(gceStatus) || GceStatus.BOOT_FAIL.equals(gceStatus)) {
                 // In case of failure we still look for instance name to shutdown if needed.
                 if (res.getJSONObject("data").has("devices_failing_boot")) {
@@ -210,7 +214,7 @@ public class GceAvdInfo {
                             new GceAvdInfo(
                                     instanceName,
                                     HostAndPort.fromString(ip).withDefaultPort(remoteAdbPort),
-                                    determineAcloudErrorType(errorType),
+                                    errorId,
                                     errors,
                                     gceStatus);
                     for (String buildVar : BUILD_VARS) {
@@ -231,10 +235,13 @@ public class GceAvdInfo {
         }
 
         // If errors are found throw an exception with the acloud message.
+        if (errorId == null) {
+            errorId = InfraErrorIdentifier.ACLOUD_UNDETERMINED;
+        }
         throw new TargetSetupError(
                 String.format("acloud errors: %s", !errors.isEmpty() ? errors : data),
                 descriptor,
-                determineAcloudErrorType(errorType));
+                errorId);
     }
 
     private static String parseErrorField(String data) throws JSONException {
@@ -250,8 +257,8 @@ public class GceAvdInfo {
     @VisibleForTesting
     static InfraErrorIdentifier determineAcloudErrorType(String errorType) {
         InfraErrorIdentifier identifier;
-        if (errorType == null) {
-            return InfraErrorIdentifier.ACLOUD_UNDETERMINED;
+        if (errorType == null || errorType.isEmpty()) {
+            return null;
         }
         try {
             identifier = InfraErrorIdentifier.valueOf(errorType);
