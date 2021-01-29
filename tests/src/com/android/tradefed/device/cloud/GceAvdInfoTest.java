@@ -433,9 +433,8 @@ public class GceAvdInfoTest {
 
     @Test
     public void testDetermineAcloudErrorType() {
-        assertEquals(
-                GceAvdInfo.determineAcloudErrorType(null),
-                InfraErrorIdentifier.ACLOUD_UNDETERMINED);
+        assertEquals(GceAvdInfo.determineAcloudErrorType(null), null);
+        assertEquals(GceAvdInfo.determineAcloudErrorType(""), null);
         assertEquals(
                 GceAvdInfo.determineAcloudErrorType("invalid error type"),
                 InfraErrorIdentifier.ACLOUD_UNRECOGNIZED_ERROR_TYPE);
