@@ -35,6 +35,11 @@ public class InvocationMetricLogger {
         STAGE_TESTS_TIME("stage_tests_time_ms", true),
         STAGE_TESTS_BYTES("stage_tests_bytes", true),
         STAGE_TESTS_INDIVIDUAL_DOWNLOADS("stage_tests_individual_downloads", true),
+        // -- Disk memory usage --
+        // Approximate peak disk space usage of the invocation
+        // Represent files that would usually live for the full invocation (min usage)
+        TEAR_DOWN_DISK_USAGE("teardown_disk_usage", false),
+
         SHUTDOWN_HARD_LATENCY("shutdown_hard_latency_ms", false),
         DEVICE_DONE_TIMESTAMP("device_done_timestamp", false),
         DEVICE_RELEASE_STATE("device_release_state", false),
