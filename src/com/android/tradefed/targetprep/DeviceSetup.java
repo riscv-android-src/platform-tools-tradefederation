@@ -940,12 +940,12 @@ public class DeviceSetup extends BaseTargetPreparer {
             }
         }
 
-        // Error message does not acknowledge mWifiSsidToPsk for parity with existing monitoring.
         if (mWifiSsid != null || !mWifiSsidToPsk.isEmpty()) {
+            String network = (mWifiSsid == null) ? mWifiSsidToPsk.toString() : mWifiSsid;
             throw new TargetSetupError(
                     String.format(
                             "Failed to connect to wifi network %s on %s",
-                            mWifiSsid, device.getSerialNumber()),
+                            network, device.getSerialNumber()),
                     device.getDeviceDescriptor(),
                     InfraErrorIdentifier.WIFI_FAILED_CONNECT);
         }
