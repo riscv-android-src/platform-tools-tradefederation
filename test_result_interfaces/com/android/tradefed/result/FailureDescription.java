@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.result;
 
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.error.ErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto;
 
@@ -38,6 +39,8 @@ public class FailureDescription {
     private @Nullable Throwable mCause = null;
     // Whether or not the error is retriable by Tradefed auto-retry. By Default we retry it all.
     private boolean mRetriable = true;
+    // Test Feature: whether or not to rerun the full run in case of run failure.
+    private boolean mRunFailureReRunAll = true;
 
     // Error identifiers
     // Optional: The error identifier and its code
@@ -53,6 +56,11 @@ public class FailureDescription {
      */
     public FailureDescription setFailureStatus(TestRecordProto.FailureStatus status) {
         mFailureStatus = status;
+        if (mErrorId != null && mFailureStatus != mErrorId.status()) {
+            CLog.w(
+                    "Failure: %s, status set to %s, not aligned with errorId: %s (%s)",
+                    this, mFailureStatus, mErrorId, mErrorId.status());
+        }
         return this;
     }
 
@@ -108,9 +116,23 @@ public class FailureDescription {
         return mRetriable;
     }
 
+    /** Sets whether or not to rerun the full run when a run failure occurs. */
+    public FailureDescription setFullRerun(boolean fullRerun) {
+        mRunFailureReRunAll = fullRerun;
+        return this;
+    }
+
+    /** Returns whether or not we need to retry the full run or not. */
+    public boolean rerunFull() {
+        return mRunFailureReRunAll;
+    }
+
     /** Sets the {@link ErrorIdentifier} representing the failure. */
     public FailureDescription setErrorIdentifier(ErrorIdentifier errorId) {
         mErrorId = errorId;
+        if (getFailureStatus() == null && errorId != null) {
+            mFailureStatus = errorId.status();
+        }
         return this;
     }
 
@@ -153,7 +175,7 @@ public class FailureDescription {
      * @return the created {@link FailureDescription}
      */
     public static FailureDescription create(String errorMessage) {
-        return create(errorMessage, null);
+        return create(errorMessage, TestRecordProto.FailureStatus.UNSET);
     }
 
     /**

@@ -20,10 +20,12 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import com.android.ddmlib.IDevice;
 import com.android.tradefed.build.DeviceBuildInfo;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.command.remote.DeviceDescriptor;
+import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceAllocationState;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
@@ -62,6 +64,7 @@ public class DeviceFlashPreparerTest {
     private File mTmpDir;
     private boolean mFlashingMetricsReported;
     private TestInformation mTestInfo;
+    private OptionSetter mSetter;
 
     @Before
     public void setUp() throws Exception {
@@ -70,6 +73,7 @@ public class DeviceFlashPreparerTest {
         mMockDevice = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(mMockDevice.getSerialNumber()).andReturn("foo").anyTimes();
         EasyMock.expect(mMockDevice.getOptions()).andReturn(new TestDeviceOptions()).anyTimes();
+        EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(EasyMock.createMock(IDevice.class));
         mMockBuildInfo = new DeviceBuildInfo("0", "");
         mMockBuildInfo.setDeviceImageFile(new File("foo"), "0");
         mMockBuildInfo.setBuildFlavor("flavor");
@@ -103,8 +107,9 @@ public class DeviceFlashPreparerTest {
                 mFlashingMetricsReported = true;
             }
         };
+        mSetter = new OptionSetter(mDeviceFlashPreparer);
         // Reset default settings
-        mDeviceFlashPreparer.setDeviceBootTime(100);
+        mSetter.setOptionValue("device-boot-time", "100");
         // expect this call
         mMockFlasher.setUserDataFlashOption(UserDataFlashOption.FLASH);
         mTmpDir = FileUtil.createTempDir("tmp");
@@ -166,11 +171,13 @@ public class DeviceFlashPreparerTest {
             mTestInfo
                     .getContext()
                     .addDeviceBuildInfo("device", EasyMock.createMock(IBuildInfo.class));
+            EasyMock.replay(mMockDevice);
             mDeviceFlashPreparer.setUp(mTestInfo);
             fail("IllegalArgumentException not thrown");
         } catch (IllegalArgumentException e) {
             // expected
         }
+        EasyMock.verify(mMockDevice);
     }
 
     /**
@@ -179,13 +186,15 @@ public class DeviceFlashPreparerTest {
      */
     @Test
     public void testSetUp_noRamdisk() throws Exception {
+        mSetter.setOptionValue("flash-ramdisk", "true");
         try {
-            mDeviceFlashPreparer.setShouldFlashRamdisk(true);
+            EasyMock.replay(mMockDevice);
             mDeviceFlashPreparer.setUp(mTestInfo);
             fail("IllegalArgumentException not thrown");
         } catch (IllegalArgumentException e) {
             // expected
         }
+        EasyMock.verify(mMockDevice);
     }
 
     /** Test {@link DeviceFlashPreparer#setUp(TestInformation)} when build does not boot. */
@@ -281,7 +290,7 @@ public class DeviceFlashPreparerTest {
      */
     @Test
     public void testSetup_flashRamdisk() throws Exception {
-        mDeviceFlashPreparer.setShouldFlashRamdisk(true);
+        mSetter.setOptionValue("flash-ramdisk", "true");
         mMockBuildInfo.setRamdiskFile(new File("foo"), "0");
         doSetupExpectations();
         // report flashing success in normal case
@@ -289,6 +298,30 @@ public class DeviceFlashPreparerTest {
                 .andReturn(CommandStatus.SUCCESS)
                 .anyTimes();
         mMockFlasher.setShouldFlashRamdisk(true);
+        mMockFlasher.setRamdiskPartition("boot");
+        EasyMock.expectLastCall();
+        EasyMock.replay(mMockFlasher, mMockDevice);
+        mDeviceFlashPreparer.setUp(mTestInfo);
+        EasyMock.verify(mMockFlasher, mMockDevice);
+    }
+
+    /**
+     * Verifies that the ramdisk partition parameter is passed down to the device flasher
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testSetup_flashRamdiskWithRamdiskPartition() throws Exception {
+        mSetter.setOptionValue("flash-ramdisk", "true");
+        mSetter.setOptionValue("ramdisk-partition", "vendor_boot");
+        mMockBuildInfo.setRamdiskFile(new File("foo"), "0");
+        doSetupExpectations();
+        // report flashing success in normal case
+        EasyMock.expect(mMockFlasher.getSystemFlashingStatus())
+                .andReturn(CommandStatus.SUCCESS)
+                .anyTimes();
+        mMockFlasher.setShouldFlashRamdisk(true);
+        mMockFlasher.setRamdiskPartition("vendor_boot");
         EasyMock.expectLastCall();
         EasyMock.replay(mMockFlasher, mMockDevice);
         mDeviceFlashPreparer.setUp(mTestInfo);

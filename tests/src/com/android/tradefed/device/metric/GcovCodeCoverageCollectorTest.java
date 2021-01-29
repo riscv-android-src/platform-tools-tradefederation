@@ -34,6 +34,8 @@ import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.testtype.coverage.CoverageOptions;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
+import com.android.tradefed.util.CommandResult;
+import com.android.tradefed.util.CommandStatus;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -76,6 +78,10 @@ public class GcovCodeCoverageCollectorTest {
     private static final int TEST_COUNT = 5;
     private static final long ELAPSED_TIME = 1000;
 
+    private static final String PS_OUTPUT =
+            "USER       PID   PPID  VSZ   RSS   WCHAN       PC  S NAME\n"
+                    + "shell       123  1366  123    456   SyS_epoll+   0  S adbd\n";
+
     @Rule public TemporaryFolder folder = new TemporaryFolder();
 
     @Mock IConfiguration mMockConfiguration;
@@ -93,7 +99,7 @@ public class GcovCodeCoverageCollectorTest {
     GcovCodeCoverageCollector mCodeCoverageListener;
 
     @Before
-    public void setUp() throws ConfigurationException {
+    public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
 
         mCoverageOptions = new CoverageOptions();
@@ -101,6 +107,13 @@ public class GcovCodeCoverageCollectorTest {
 
         doReturn(mCoverageOptions).when(mMockConfiguration).getCoverageOptions();
         doReturn(ImmutableList.of(mMockDevice)).when(mMockContext).getDevices();
+
+        doReturn(PS_OUTPUT).when(mMockDevice).executeShellCommand("ps -e");
+
+        CommandResult result = new CommandResult(CommandStatus.SUCCESS);
+        result.setStdout("ffffffffffff\n");
+        result.setExitCode(0);
+        when(mMockDevice.executeShellV2Command(anyString())).thenReturn(result);
 
         mCodeCoverageListener = new GcovCodeCoverageCollector();
         mCodeCoverageListener.setConfiguration(mMockConfiguration);
@@ -185,9 +198,9 @@ public class GcovCodeCoverageCollectorTest {
         Map<String, String> metric = new HashMap<>();
         mCodeCoverageListener.testRunEnded(ELAPSED_TIME, TfMetricProtoUtil.upgradeConvert(metric));
 
-        // Verify the flush-all-coverage command was called twice - once on init(...) and once
+        // Verify the flush-coverage command was called twice - once on init(...) and once
         // on test run end.
-        verify(mMockDevice, times(2)).executeShellCommand("kill -37 -1");
+        verify(mMockDevice, times(2)).executeShellCommand("kill -37 123");
     }
 
     @Test
@@ -198,8 +211,6 @@ public class GcovCodeCoverageCollectorTest {
         mCoverageOptionsSetter.setOptionValue("coverage-processes", "adbd");
 
         doReturn(true).when(mMockDevice).isAdbRoot();
-        doReturn("123").when(mMockDevice).getProcessPid("mediaserver");
-        doReturn("56789").when(mMockDevice).getProcessPid("adbd");
         doReturn(createTar(ImmutableMap.of())).when(mMockDevice).pullFile(anyString());
 
         // Simulate a test run.
@@ -210,7 +221,7 @@ public class GcovCodeCoverageCollectorTest {
 
         // Verify the flush-coverage command was called with the specific pids twice - once on
         // init(...) and once on test run end.
-        verify(mMockDevice, times(2)).executeShellCommand("kill -37 123 56789");
+        verify(mMockDevice, times(2)).executeShellCommand("kill -37 123");
     }
 
     @Test
@@ -289,8 +300,8 @@ public class GcovCodeCoverageCollectorTest {
         InOrder inOrder = Mockito.inOrder(mMockDevice);
         inOrder.verify(mMockDevice).isAdbRoot();
         inOrder.verify(mMockDevice).enableAdbRoot();
-        inOrder.verify(mMockDevice).executeShellCommand("kill -37 -1");
-        inOrder.verify(mMockDevice).executeShellCommand(anyString());
+        inOrder.verify(mMockDevice).executeShellCommand("kill -37 123");
+        inOrder.verify(mMockDevice, times(2)).executeShellCommand(anyString());
         inOrder.verify(mMockDevice).disableAdbRoot();
     }
 

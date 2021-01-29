@@ -17,16 +17,23 @@ package com.android.tradefed.result.error;
 
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 
+import javax.annotation.Nonnull;
+
 /** Error identifier from tests and tests runners. */
 public enum TestErrorIdentifier implements ErrorIdentifier {
-    MODULE_DID_NOT_EXECUTE(530_001, FailureStatus.NOT_EXECUTED);
+    MODULE_DID_NOT_EXECUTE(530_001, FailureStatus.NOT_EXECUTED),
+    INSTRUMENTATION_NULL_METHOD(530_002, FailureStatus.TEST_FAILURE),
+    INSTRUMENTATION_TIMED_OUT(530_003, FailureStatus.TIMED_OUT),
+    MODULE_CHANGED_SYSTEM_STATUS(530_004, FailureStatus.TEST_FAILURE),
+    TEST_ABORTED(530_005, FailureStatus.TEST_FAILURE),
+    OUTPUT_PARSER_ERROR(530_006, FailureStatus.TEST_FAILURE);
 
     private final long code;
-    private final FailureStatus status;
+    private final @Nonnull FailureStatus status;
 
     TestErrorIdentifier(int code, FailureStatus status) {
         this.code = code;
-        this.status = status;
+        this.status = (status == null ? FailureStatus.UNSET : status);
     }
 
     @Override
@@ -35,7 +42,7 @@ public enum TestErrorIdentifier implements ErrorIdentifier {
     }
 
     @Override
-    public FailureStatus status() {
+    public @Nonnull FailureStatus status() {
         return status;
     }
 }

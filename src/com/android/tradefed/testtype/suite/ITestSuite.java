@@ -37,6 +37,8 @@ import com.android.tradefed.device.cloud.NestedRemoteDevice;
 import com.android.tradefed.device.metric.CollectorHelper;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
+import com.android.tradefed.error.HarnessRuntimeException;
+import com.android.tradefed.error.IHarnessException;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
@@ -46,9 +48,13 @@ import com.android.tradefed.invoker.shard.token.TokenProperty;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLoggerReceiver;
 import com.android.tradefed.result.ResultForwarder;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
+import com.android.tradefed.result.error.TestErrorIdentifier;
 import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.retry.RetryStrategy;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
@@ -156,11 +162,10 @@ public abstract class ITestSuite
 
     @Deprecated
     @Option(
-        name = "logcat-on-failure-size",
-        description =
-                "The max number of logcat data in bytes to capture when "
-                        + "--logcat-on-failure is on. Should be an amount that can comfortably fit in memory."
-    )
+            name = "logcat-on-failure-size",
+            description =
+                    "The max number of logcat data in bytes to capture when --logcat-on-failure is"
+                            + " on. Should be an amount that can comfortably fit in memory.")
     private int mMaxLogcatBytes = 500 * 1024; // 500K
 
     @Deprecated
@@ -335,6 +340,7 @@ public abstract class ITestSuite
     private IInvocationContext mContext;
     private List<IMetricCollector> mMetricCollectors;
     private IConfiguration mMainConfiguration;
+    private Set<IAbi> mAbis = new LinkedHashSet<>();
 
     // Sharding attributes
     private boolean mIsSharded = false;
@@ -482,12 +488,17 @@ public abstract class ITestSuite
                 mDynamicResolver.resolvePartialDownloadZip(
                         getTestsDir(), remoteFile.toString(), includeFilters, excludeFilters);
             } catch (BuildRetrievalError | FileNotFoundException e) {
-                CLog.e(
+                String message =
                         String.format(
                                 "Failed to download partial zip from %s for modules: %s",
-                                remoteFile, String.join(", ", modules)));
+                                remoteFile, String.join(", ", modules));
+                CLog.e(message);
                 CLog.e(e);
-                throw new RuntimeException(e);
+                if (e instanceof IHarnessException) {
+                    throw new HarnessRuntimeException(message, (IHarnessException) e);
+                }
+                throw new HarnessRuntimeException(
+                        message, e, InfraErrorIdentifier.ARTIFACT_DOWNLOAD_ERROR);
             }
         }
         long elapsedTime = System.currentTimeMillis() - startTime;
@@ -803,7 +814,7 @@ public abstract class ITestSuite
             }
         }
 
-        if (!mSkipAllSystemStatusCheck) {
+        if (!mSkipAllSystemStatusCheck && !mSystemStatusCheckers.isEmpty()) {
             runPreModuleCheck(module.getId(), mSystemStatusCheckers, mDevice, listener);
         }
         if (mCollectTestsOnly) {
@@ -827,8 +838,7 @@ public abstract class ITestSuite
         module.setRetryDecision(decision);
 
         module.setEnableDynamicDownload(mEnableDynamicDownload);
-        module.addDynamicDownloadArgs(
-                mMainConfiguration.getCommandOptions().getDynamicDownloadArgs());
+        module.transferSuiteLevelOptions(mMainConfiguration);
         // Actually run the module
         module.run(
                 moduleInfo,
@@ -837,7 +847,7 @@ public abstract class ITestSuite
                 failureListener,
                 getConfiguration().getRetryDecision().getMaxRetryCount());
 
-        if (!mSkipAllSystemStatusCheck) {
+        if (!mSkipAllSystemStatusCheck && !mSystemStatusCheckers.isEmpty()) {
             runPostModuleCheck(module.getId(), mSystemStatusCheckers, mDevice, listener);
         }
     }
@@ -920,6 +930,15 @@ public abstract class ITestSuite
                 // Catch RuntimeException to avoid leaking throws that go to the invocation.
                 result.setErrorMessage(e.getMessage());
                 result.setBugreportNeeded(true);
+            } catch (DeviceNotAvailableException dnae) {
+                // Wrap the DNAE to provide a better error message
+                String message =
+                        String.format(
+                                "Device became unavailable after %s due to: %s",
+                                moduleName, dnae.getMessage());
+                DeviceNotAvailableException wrapper =
+                        new DeviceNotAvailableException(message, dnae, dnae.getSerial());
+                throw wrapper;
             }
             if (!CheckStatus.SUCCESS.equals(result.getStatus())) {
                 String errorMessage =
@@ -955,7 +974,11 @@ public abstract class ITestSuite
         // Avoid messing with the final test count by making them empty runs.
         listener.testRunStarted(identifier + "_" + moduleName, 0, 0, System.currentTimeMillis());
         if (!failures.isEmpty()) {
-            listener.testRunFailed(String.format("%s failed '%s' checkers", moduleName, failures));
+            FailureDescription description =
+                    FailureDescription.create(
+                                    String.format("%s failed '%s' checkers", moduleName, failures))
+                            .setErrorIdentifier(TestErrorIdentifier.MODULE_CHANGED_SYSTEM_STATUS);
+            listener.testRunFailed(description);
         }
         listener.testRunEnded(
                 System.currentTimeMillis() - startTime, new HashMap<String, Metric>());
@@ -1230,6 +1253,9 @@ public abstract class ITestSuite
      * @throws DeviceNotAvailableException
      */
     public Set<IAbi> getAbis(ITestDevice device) throws DeviceNotAvailableException {
+        if (!mAbis.isEmpty()) {
+            return mAbis;
+        }
         Set<IAbi> abis = new LinkedHashSet<>();
         Set<String> archAbis = getAbisForBuildTargetArch();
         // Handle null-device: use abi in common with host and suite build
@@ -1260,10 +1286,11 @@ public abstract class ITestSuite
             // Run on all abi in common between the device and suite builds.
             List<String> deviceAbis = getDeviceAbis(device);
             if (deviceAbis.isEmpty()) {
-                throw new IllegalArgumentException(
+                throw new HarnessRuntimeException(
                         String.format(
                                 "Couldn't determinate the abi of the device '%s'.",
-                                device.getSerialNumber()));
+                                device.getSerialNumber()),
+                        DeviceErrorIdentifier.DEVICE_UNEXPECTED_RESPONSE);
             }
             for (String abi : deviceAbis) {
                 if ((mSkipHostArchCheck || archAbis.contains(abi))
@@ -1316,6 +1343,11 @@ public abstract class ITestSuite
     /** Return the abis supported by the Host build target architecture. Exposed for testing. */
     @VisibleForTesting
     protected Set<String> getAbisForBuildTargetArch() {
+        return getAbisForBuildTargetArchFromSuite();
+    }
+
+    /** Returns the possible abis from the TestSuiteInfo. */
+    public static Set<String> getAbisForBuildTargetArchFromSuite() {
         // If TestSuiteInfo does not exists, the stub arch will be replaced by all possible abis.
         Set<String> abis = new LinkedHashSet<>();
         for (String arch : TestSuiteInfo.getInstance().getTargetArchs()) {
@@ -1459,5 +1491,9 @@ public abstract class ITestSuite
     @VisibleForTesting
     void setModuleInProgress(ModuleDefinition moduleInProgress) {
         mModuleInProgress = moduleInProgress;
+    }
+
+    public final void setAbis(Set<IAbi> abis) {
+        mAbis.addAll(abis);
     }
 }

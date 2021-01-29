@@ -25,13 +25,11 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
-import com.android.tradefed.invoker.logger.CurrentInvocation;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
-import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.ITestInvocationListener;
-import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.testtype.coverage.CoverageOptions;
 import com.android.tradefed.util.AdbRootElevator;
 import com.android.tradefed.util.FileUtil;
@@ -137,23 +135,22 @@ public final class JavaCodeCoverageCollector extends BaseDeviceMetricCollector
                 throw new RuntimeException(e);
             }
         } else {
+            ImmutableList.Builder<String> devicePaths = ImmutableList.builder();
+
             // Get the path of the coverage measurement on the device.
             Metric devicePathMetric = runMetrics.get(COVERAGE_MEASUREMENT_KEY);
             if (devicePathMetric == null) {
-                super.testRunFailed(
-                        createCodeCoverageFailure("No Java code coverage measurement."));
-                return;
-            }
-            String testCoveragePath = devicePathMetric.getMeasurements().getSingleString();
-            if (testCoveragePath == null) {
-                super.testRunFailed(
-                        createCodeCoverageFailure("No Java code coverage measurement."));
-                return;
+                CLog.d("No Java code coverage measurement.");
+            } else {
+                String testCoveragePath = devicePathMetric.getMeasurements().getSingleString();
+                if (testCoveragePath == null) {
+                    CLog.d("No Java code coverage measurement.");
+                } else {
+                    devicePaths.add(testCoveragePath);
+                }
             }
 
             ITestDevice device = getRealDevices().get(0);
-            ImmutableList.Builder<String> devicePaths = ImmutableList.builder();
-            devicePaths.add(testCoveragePath);
 
             try (AdbRootElevator adbRoot = new AdbRootElevator(device)) {
                 if (mConfiguration.getCoverageOptions().isCoverageFlushEnabled()) {
@@ -228,10 +225,6 @@ public final class JavaCodeCoverageCollector extends BaseDeviceMetricCollector
             pids.add(process.getPid());
         }
         return pids;
-    }
-
-    private FailureDescription createCodeCoverageFailure(String message) {
-        return CurrentInvocation.createFailure(message, InfraErrorIdentifier.CODE_COVERAGE_ERROR);
     }
 
     private boolean isJavaCoverageEnabled() {

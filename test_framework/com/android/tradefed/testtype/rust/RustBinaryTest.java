@@ -16,6 +16,8 @@
 
 package com.android.tradefed.testtype.rust;
 
+import static com.android.tradefed.testtype.coverage.CoverageOptions.Toolchain.GCOV;
+
 import com.android.ddmlib.FileListingService;
 import com.android.ddmlib.IShellOutputReceiver;
 import com.android.tradefed.config.IConfiguration;
@@ -176,6 +178,12 @@ public class RustBinaryTest extends RustTestBase implements IDeviceTest, IConfig
         listener.testRunStarted(new File(fullPath).getName(), testCount, 0, startTimeMs);
         for (String filter : includeFilters) {
             String newCmd = addFiltersToCommand(cmd, filter);
+
+            if (mConfiguration != null
+                    && mConfiguration.getCoverageOptions().getCoverageToolchains().contains(GCOV)) {
+                newCmd = "GCOV_PREFIX=/data/misc/trace " + newCmd;
+            }
+
             try {
                 testDevice.executeShellCommand(
                         newCmd,

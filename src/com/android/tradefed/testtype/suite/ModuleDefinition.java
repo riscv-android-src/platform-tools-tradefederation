@@ -765,7 +765,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                     break;
                 case ASSUMPTION_FAILURE:
                     listener.testAssumptionFailure(
-                            testEntry.getKey(), testEntry.getValue().getStackTrace());
+                            testEntry.getKey(), testEntry.getValue().getFailure());
                     break;
                 case IGNORED:
                     listener.testIgnored(testEntry.getKey());
@@ -1075,33 +1075,55 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         mEnableDynamicDownload = enableDynamicDownload;
     }
 
-    public void addDynamicDownloadArgs(Map<String, String> extraArgs) {
-        mModuleConfiguration.getCommandOptions().getDynamicDownloadArgs().putAll(extraArgs);
+    /** Copy a few of the suite level configuration */
+    public void transferSuiteLevelOptions(IConfiguration mSuiteConfiguration) {
+        mModuleConfiguration
+                .getCommandOptions()
+                .getDynamicDownloadArgs()
+                .putAll(mSuiteConfiguration.getCommandOptions().getDynamicDownloadArgs());
+        mModuleConfiguration
+                .getCommandOptions()
+                .setReportTestCaseCount(
+                        mSuiteConfiguration.getCommandOptions().reportTestCaseCount());
     }
 
     /**
-     * Allow to load a module_controller object to tune how should a particular module run.
+     * Allow to load module_controller objects to tune how should a particular module run. They will
+     * be applied in order of appearance in the XML.
      *
      * @param failureListener The {@link TestFailureListener} taking actions on tests failures.
      * @return The strategy to use to run the tests.
      */
     private RunStrategy applyConfigurationControl(TestFailureListener failureListener) {
-        Object ctrlObject = mModuleConfiguration.getConfigurationObject(MODULE_CONTROLLER);
-        if (ctrlObject != null && ctrlObject instanceof BaseModuleController) {
-            BaseModuleController controller = (BaseModuleController) ctrlObject;
-            // module_controller can also control the log collection for the one module
-            if (failureListener != null) {
-                failureListener.applyModuleConfiguration(controller.shouldCaptureBugreport());
-            }
-            if (!controller.shouldCaptureLogcat()) {
-                mRunMetricCollectors.removeIf(c -> (c instanceof LogcatOnFailureCollector));
-            }
-            if (!controller.shouldCaptureScreenshot()) {
-                mRunMetricCollectors.removeIf(c -> (c instanceof ScreenshotOnFailureCollector));
-            }
-            return controller.shouldRunModule(mModuleInvocationContext);
+        List<?> ctrlObjectList = mModuleConfiguration.getConfigurationObjectList(MODULE_CONTROLLER);
+        if (ctrlObjectList == null) {
+            return RunStrategy.RUN;
         }
-        return RunStrategy.RUN;
+        // We keep the most stringent strategy across controllers.
+        RunStrategy current = RunStrategy.RUN;
+        for (Object ctrlObject : ctrlObjectList) {
+            if (ctrlObject instanceof BaseModuleController) {
+                BaseModuleController controller = (BaseModuleController) ctrlObject;
+                // module_controller can also control the log collection for the one module
+                if (failureListener != null) {
+                    failureListener.applyModuleConfiguration(controller.shouldCaptureBugreport());
+                }
+                if (!controller.shouldCaptureLogcat()) {
+                    mRunMetricCollectors.removeIf(c -> (c instanceof LogcatOnFailureCollector));
+                }
+                if (!controller.shouldCaptureScreenshot()) {
+                    mRunMetricCollectors.removeIf(c -> (c instanceof ScreenshotOnFailureCollector));
+                }
+                RunStrategy strategy = controller.shouldRunModule(mModuleInvocationContext);
+                if (RunStrategy.FULL_MODULE_BYPASS.equals(strategy)) {
+                    current = strategy;
+                } else if (RunStrategy.SKIP_MODULE_TESTCASES.equals(strategy)
+                        && RunStrategy.RUN.equals(current)) {
+                    current = strategy;
+                }
+            }
+        }
+        return current;
     }
 
     private void addRetryTime(long retryTimeMs) {

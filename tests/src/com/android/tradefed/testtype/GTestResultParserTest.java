@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.testtype;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -43,9 +44,10 @@ public class GTestResultParserTest extends GTestParserTestBase {
         mockRunListener.testRunStarted(TEST_MODULE_NAME, 11);
         // 11 passing test cases in this run
         for (int i=0; i<11; ++i) {
-            mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
+            mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
             mockRunListener.testEnded(
                     (TestDescription) EasyMock.anyObject(),
+                    EasyMock.anyLong(),
                     EasyMock.<HashMap<String, Metric>>anyObject());
         }
         // TODO: validate param values
@@ -67,9 +69,10 @@ public class GTestResultParserTest extends GTestParserTestBase {
         mockRunListener.testRunStarted(TEST_MODULE_NAME, 53);
         // 53 passing test cases in this run
         for (int i=0; i<53; ++i) {
-            mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
+            mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
             mockRunListener.testEnded(
                     (TestDescription) EasyMock.anyObject(),
+                    EasyMock.anyLong(),
                     EasyMock.<HashMap<String, Metric>>anyObject());
         }
         // TODO: validate param values
@@ -107,9 +110,10 @@ public class GTestResultParserTest extends GTestParserTestBase {
         mockRunListener.testRunStarted(TEST_MODULE_NAME, 268);
         // 268 passing test cases in this run
         for (int i=0; i<268; ++i) {
-            mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
+            mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
             mockRunListener.testEnded(
                     (TestDescription) EasyMock.anyObject(),
+                    EasyMock.anyLong(),
                     EasyMock.<HashMap<String, Metric>>anyObject());
         }
         // TODO: validate param values
@@ -132,44 +136,50 @@ public class GTestResultParserTest extends GTestParserTestBase {
                 EasyMock.createMock(ITestInvocationListener.class);
         // 13 test cases in this run
         mockRunListener.testRunStarted(TEST_MODULE_NAME, 13);
-        mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
+        mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
         mockRunListener.testEnded(
                 (TestDescription) EasyMock.anyObject(),
+                EasyMock.anyLong(),
                 EasyMock.<HashMap<String, Metric>>anyObject());
         // test failure
-        mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
+        mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
         mockRunListener.testFailed(
                 (TestDescription) EasyMock.anyObject(), (String) EasyMock.anyObject());
         mockRunListener.testEnded(
                 (TestDescription) EasyMock.anyObject(),
+                EasyMock.anyLong(),
                 EasyMock.<HashMap<String, Metric>>anyObject());
         // 4 passing tests
         for (int i=0; i<4; ++i) {
-            mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
+            mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
             mockRunListener.testEnded(
                     (TestDescription) EasyMock.anyObject(),
+                    EasyMock.anyLong(),
                     EasyMock.<HashMap<String, Metric>>anyObject());
         }
         // 2 consecutive test failures
-        mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
+        mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
         mockRunListener.testFailed(
                 (TestDescription) EasyMock.anyObject(), (String) EasyMock.anyObject());
         mockRunListener.testEnded(
                 (TestDescription) EasyMock.anyObject(),
+                EasyMock.anyLong(),
                 EasyMock.<HashMap<String, Metric>>anyObject());
 
-        mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
+        mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
         mockRunListener.testFailed(
                 (TestDescription) EasyMock.anyObject(), EasyMock.matches(MESSAGE_OUTPUT));
         mockRunListener.testEnded(
                 (TestDescription) EasyMock.anyObject(),
+                EasyMock.anyLong(),
                 EasyMock.<HashMap<String, Metric>>anyObject());
 
         // 5 passing tests
         for (int i=0; i<5; ++i) {
-            mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
+            mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
             mockRunListener.testEnded(
                     (TestDescription) EasyMock.anyObject(),
+                    EasyMock.anyLong(),
                     EasyMock.<HashMap<String, Metric>>anyObject());
         }
 
@@ -191,36 +201,41 @@ public class GTestResultParserTest extends GTestParserTestBase {
                 EasyMock.createMock(ITestInvocationListener.class);
         // 10 test cases in this run
         mockRunListener.testRunStarted(TEST_MODULE_NAME, 10);
-        mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
+        mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
         mockRunListener.testEnded(
                 (TestDescription) EasyMock.anyObject(),
+                EasyMock.anyLong(),
                 EasyMock.<HashMap<String, Metric>>anyObject());
         // test failure
-        mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
+        mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
         mockRunListener.testFailed(
                 (TestDescription) EasyMock.anyObject(), (String) EasyMock.anyObject());
         mockRunListener.testEnded(
                 (TestDescription) EasyMock.anyObject(),
+                EasyMock.anyLong(),
                 EasyMock.<HashMap<String, Metric>>anyObject());
         // 5 passing tests
         for (int i=0; i<5; ++i) {
-            mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
+            mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
             mockRunListener.testEnded(
                     (TestDescription) EasyMock.anyObject(),
+                    EasyMock.anyLong(),
                     EasyMock.<HashMap<String, Metric>>anyObject());
         }
         // another test error
-        mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
+        mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
         mockRunListener.testFailed(
                 (TestDescription) EasyMock.anyObject(), (String) EasyMock.anyObject());
         mockRunListener.testEnded(
                 (TestDescription) EasyMock.anyObject(),
+                EasyMock.anyLong(),
                 EasyMock.<HashMap<String, Metric>>anyObject());
         // 2 passing tests
         for (int i=0; i<2; ++i) {
-            mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
+            mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
             mockRunListener.testEnded(
                     (TestDescription) EasyMock.anyObject(),
+                    EasyMock.anyLong(),
                     EasyMock.<HashMap<String, Metric>>anyObject());
         }
 
@@ -243,9 +258,10 @@ public class GTestResultParserTest extends GTestParserTestBase {
         mockRunListener.testRunStarted(TEST_MODULE_NAME, 11);
         // 11 passing test cases in this run
         for (int i=0; i<11; ++i) {
-            mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
+            mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
             mockRunListener.testEnded(
                     (TestDescription) EasyMock.anyObject(),
+                    EasyMock.anyLong(),
                     EasyMock.<HashMap<String, Metric>>anyObject());
         }
         mockRunListener.testRunEnded(
@@ -269,41 +285,47 @@ public class GTestResultParserTest extends GTestParserTestBase {
         mockRunListener.testRunStarted(TEST_MODULE_NAME, 18);
         // 13 passing tests
         for (int i = 0; i < 13; ++i) {
-            mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
+            mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
             mockRunListener.testEnded(
                     (TestDescription) EasyMock.anyObject(),
+                    EasyMock.anyLong(),
                     EasyMock.<HashMap<String, Metric>>anyObject());
         }
         // 3 consecutive test failures
-        mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
+        mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
         mockRunListener.testFailed(
                 (TestDescription) EasyMock.anyObject(), (String) EasyMock.anyObject());
         mockRunListener.testEnded(
                 (TestDescription) EasyMock.anyObject(),
+                EasyMock.anyLong(),
                 EasyMock.<HashMap<String, Metric>>anyObject());
-        mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
+        mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
         mockRunListener.testFailed(
                 (TestDescription) EasyMock.anyObject(), (String) EasyMock.anyObject());
         mockRunListener.testEnded(
                 (TestDescription) EasyMock.anyObject(),
+                EasyMock.anyLong(),
                 EasyMock.<HashMap<String, Metric>>anyObject());
 
-        mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
+        mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
         mockRunListener.testFailed(
                 (TestDescription) EasyMock.anyObject(), (String) EasyMock.anyObject());
         mockRunListener.testEnded(
                 (TestDescription) EasyMock.anyObject(),
+                EasyMock.anyLong(),
                 EasyMock.<HashMap<String, Metric>>anyObject());
         // 1 passing test
-        mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
+        mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
         mockRunListener.testEnded(
                 (TestDescription) EasyMock.anyObject(),
+                EasyMock.anyLong(),
                 EasyMock.<HashMap<String, Metric>>anyObject());
         // 1 ignored test
-        mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
+        mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
         mockRunListener.testIgnored((TestDescription) EasyMock.anyObject());
         mockRunListener.testEnded(
                 (TestDescription) EasyMock.anyObject(),
+                EasyMock.anyLong(),
                 EasyMock.<HashMap<String, Metric>>anyObject());
 
         mockRunListener.testRunEnded(
@@ -363,7 +385,8 @@ public class GTestResultParserTest extends GTestParserTestBase {
                 captured.getValue()
                         .getErrorMessage()
                         .contains(
-                                "module did not report any run:\nfailed to read section .testzipdata"));
+                                "module did not report any run:\n"
+                                        + "failed to read section .testzipdata"));
     }
 
     /** Tests the parser for a simple test run output with 11 tests where some are skipped. */
@@ -375,12 +398,13 @@ public class GTestResultParserTest extends GTestParserTestBase {
         mockRunListener.testRunStarted(TEST_MODULE_NAME, 11);
         // 11 tests run, with the fifth and sixth tests being ignored
         for (int i = 0; i < 11; ++i) {
-            mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
+            mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
             if (i == 4 || i == 5) {
                 mockRunListener.testIgnored((TestDescription) EasyMock.anyObject());
             }
             mockRunListener.testEnded(
                     (TestDescription) EasyMock.anyObject(),
+                    EasyMock.anyLong(),
                     EasyMock.<HashMap<String, Metric>>anyObject());
         }
         // TODO: validate param values
@@ -400,9 +424,9 @@ public class GTestResultParserTest extends GTestParserTestBase {
         ITestInvocationListener mockRunListener =
                 EasyMock.createMock(ITestInvocationListener.class);
         mockRunListener.testRunStarted(TEST_MODULE_NAME, 11);
-        mockRunListener.testStarted((TestDescription) EasyMock.anyObject());
+        mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
         mockRunListener.testFailed(
-                (TestDescription) EasyMock.anyObject(), (String) EasyMock.anyObject());
+                (TestDescription) EasyMock.anyObject(), (FailureDescription) EasyMock.anyObject());
         mockRunListener.testEnded(
                 (TestDescription) EasyMock.anyObject(),
                 EasyMock.<HashMap<String, Metric>>anyObject());
@@ -415,5 +439,7 @@ public class GTestResultParserTest extends GTestParserTestBase {
         resultParser.processNewLines(contents);
         resultParser.flush();
         EasyMock.verify(mockRunListener);
+        FailureDescription cap = captured.getValue();
+        assertEquals("Test run incomplete. Expected 11 tests, received 0", cap.getErrorMessage());
     }
 }

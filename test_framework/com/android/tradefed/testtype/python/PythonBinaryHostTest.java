@@ -16,7 +16,7 @@
 package com.android.tradefed.testtype.python;
 
 import com.android.annotations.VisibleForTesting;
-import com.android.tradefed.build.IDeviceBuildInfo;
+import com.android.ddmlib.Log;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
@@ -37,25 +37,29 @@ import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFilterReceiver;
 import com.android.tradefed.testtype.PythonUnitTestResultParser;
+import com.android.tradefed.testtype.TestTimeoutEnforcer;
+import com.android.tradefed.util.AdbUtils;
 import com.android.tradefed.util.CommandResult;
-import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
-import com.android.tradefed.util.SubprocessTestResultsParser;
 
 import com.google.common.base.Joiner;
+import com.google.common.base.Strings;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Formatter;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Host test meant to run a python binary file from the Android Build system (Soong)
@@ -125,6 +129,11 @@ public class PythonBinaryHostTest implements IRemoteTest, ITestFilterReceiver {
                             + "test have the necessary logic to accept the flag and write results "
                             + "in the expected format.")
     private boolean mUseTestOutputFile = false;
+
+    @Option(
+            name = TestTimeoutEnforcer.TEST_CASE_TIMEOUT_OPTION,
+            description = TestTimeoutEnforcer.TEST_CASE_TIMEOUT_DESCRIPTION)
+    private Duration mTestCaseTimeout = Duration.ofSeconds(0L);
 
     private TestInformation mTestInfo;
     private IRunUtil mRunUtil;
@@ -214,24 +223,17 @@ public class PythonBinaryHostTest implements IRemoteTest, ITestFilterReceiver {
     }
 
     private List<File> findParFiles() {
-        File testsDir = null;
-        if (mTestInfo.getBuildInfo() instanceof IDeviceBuildInfo) {
-            testsDir = ((IDeviceBuildInfo) mTestInfo.getBuildInfo()).getTestsDir();
-        }
         List<File> files = new ArrayList<>();
         for (String parFileName : mBinaryNames) {
             File res = null;
             // search tests dir
-            if (testsDir != null) {
-                res = FileUtil.findFile(testsDir, parFileName);
-            }
-
-            // TODO: is there other places to search?
-            if (res == null) {
+            try {
+                res = mTestInfo.getDependencyFile(parFileName, /* targetFirst */ false);
+                files.add(res);
+            } catch (FileNotFoundException e) {
                 throw new RuntimeException(
                         String.format("Couldn't find a par file %s", parFileName));
             }
-            files.add(res);
         }
         files.addAll(mBinaries);
         return files;
@@ -268,75 +270,72 @@ public class PythonBinaryHostTest implements IRemoteTest, ITestFilterReceiver {
             commandLine.add(tempTestOutputFile.getAbsolutePath());
         }
 
-        File updatedAdb = testInfo.executionFiles().get(FilesKey.ADB_BINARY);
-        if (updatedAdb == null) {
-            String adbPath = getAdbPath();
-            // Don't check if it's the adb on the $PATH
-            if (!adbPath.equals("adb")) {
-                updatedAdb = new File(adbPath);
-                if (!updatedAdb.exists()) {
-                    updatedAdb = null;
-                }
-            }
-        }
-        if (updatedAdb != null) {
-            CLog.d("Testing with adb binary at: %s", updatedAdb);
-            // If a special adb version is used, pass it to the PATH
-            CommandResult pathResult =
-                    getRunUtil()
-                            .runTimedCmd(PATH_TIMEOUT_MS, "/bin/bash", "-c", "echo $" + PATH_VAR);
-            if (!CommandStatus.SUCCESS.equals(pathResult.getStatus())) {
-                throw new RuntimeException(
-                        String.format(
-                                "Failed to get the $PATH. status: %s, stdout: %s, stderr: %s",
-                                pathResult.getStatus(),
-                                pathResult.getStdout(),
-                                pathResult.getStderr()));
-            }
-            // Include the directory of the adb on the PATH to be used.
-            String path =
-                    String.format(
-                            "%s:%s",
-                            updatedAdb.getParentFile().getAbsolutePath(),
-                            pathResult.getStdout().trim());
-            CLog.d("Using $PATH with updated adb: %s", path);
-            getRunUtil().setEnvVariable(PATH_VAR, path);
-            // Log the version of adb seen
-            CommandResult versionRes = getRunUtil().runTimedCmd(PATH_TIMEOUT_MS, "adb", "version");
-            CLog.d("%s", versionRes.getStdout());
-            CLog.d("%s", versionRes.getStderr());
-        }
+        AdbUtils.updateAdb(testInfo, getRunUtil(), getAdbPath());
         // Add all the other options
         commandLine.addAll(mTestOptions);
 
-        CommandResult result =
-                getRunUtil().runTimedCmd(mTestTimeout, commandLine.toArray(new String[0]));
+        // Prepare the parser if needed
         String runName = pyFile.getName();
         PythonForwarder forwarder = new PythonForwarder(listener, runName);
-        if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
-            CLog.e(
-                    "Something went wrong when running the python binary:\nstdout: "
-                            + "%s\nstderr:%s",
-                    result.getStdout(), result.getStderr());
+        ITestInvocationListener receiver = forwarder;
+        if (mTestCaseTimeout.toMillis() > 0L) {
+            receiver =
+                    new TestTimeoutEnforcer(
+                            mTestCaseTimeout.toMillis(), TimeUnit.MILLISECONDS, receiver);
         }
-        if (result.getStdout() != null) {
-            try (InputStreamSource data =
-                    new ByteArrayInputStreamSource(result.getStdout().getBytes())) {
-                listener.testLog(
-                        String.format(PYTHON_LOG_STDOUT_FORMAT, runName), LogDataType.TEXT, data);
-            }
-        }
+        PythonUnitTestResultParser pythonParser =
+                new PythonUnitTestResultParser(
+                        Arrays.asList(receiver), "python-run", mIncludeFilters, mExcludeFilters);
+
+        CommandResult result = null;
         File stderrFile = null;
         try {
-            // Note that we still log stderr when parsing results from a test-written output file
-            // since it most likely contains useful debugging information.
             stderrFile = FileUtil.createTempFile("python-res", ".txt");
-            FileUtil.writeToFile(result.getStderr(), stderrFile);
-            testLogFile(listener, String.format(PYTHON_LOG_STDERR_FORMAT, runName), stderrFile);
+            if (mUseTestOutputFile) {
+                result = getRunUtil().runTimedCmd(mTestTimeout, commandLine.toArray(new String[0]));
+            } else {
+                pythonParser.setFinalizeWhenParsing(false);
+                FileOutputStream fileOutputParser =
+                        new FileOutputStream(stderrFile) {
+                            @Override
+                            public void write(byte[] b, int off, int len) throws IOException {
+                                super.write(b, off, len);
+                                pythonParser.addOutput(b, off, len);
+                            }
+
+                            @Override
+                            public void flush() throws IOException {
+                                super.flush();
+                                pythonParser.flush();
+                            }
+                        };
+                result =
+                        getRunUtil()
+                                .runTimedCmd(
+                                        mTestTimeout,
+                                        null,
+                                        fileOutputParser,
+                                        commandLine.toArray(new String[0]));
+                fileOutputParser.flush();
+                pythonParser.finalizeParser();
+            }
+
+            if (!Strings.isNullOrEmpty(result.getStdout())) {
+                CLog.logAndDisplay(Log.LogLevel.INFO, "\nstdout:\n%s", result.getStdout());
+                try (InputStreamSource data =
+                        new ByteArrayInputStreamSource(result.getStdout().getBytes())) {
+                    listener.testLog(
+                            String.format(PYTHON_LOG_STDOUT_FORMAT, runName),
+                            LogDataType.TEXT,
+                            data);
+                }
+            }
+            if (!Strings.isNullOrEmpty(result.getStderr())) {
+                CLog.logAndDisplay(Log.LogLevel.INFO, "\nstderr:\n%s", result.getStderr());
+            }
 
             File testOutputFile = stderrFile;
             String testOutput = result.getStderr();
-
             if (mUseTestOutputFile) {
                 testOutputFile = tempTestOutputFile;
                 // This assumes that the output file is encoded using the same charset as the
@@ -347,45 +346,23 @@ public class PythonBinaryHostTest implements IRemoteTest, ITestFilterReceiver {
                         String.format(PYTHON_LOG_TEST_OUTPUT_FORMAT, runName),
                         testOutputFile);
             }
-
-            // If it doesn't have the std output TEST_RUN_STARTED, use regular parser.
-            if (!testOutput.contains("TEST_RUN_STARTED")) {
-                // Attempt to parse the pure python output
-                PythonUnitTestResultParser pythonParser =
-                        new PythonUnitTestResultParser(
-                                Arrays.asList(forwarder),
-                                "python-run",
-                                mIncludeFilters,
-                                mExcludeFilters);
-                pythonParser.processNewLines(testOutput.split("\n"));
-            } else {
-                if (!mIncludeFilters.isEmpty() || !mExcludeFilters.isEmpty()) {
-                    throw new RuntimeException(
-                            "Non-unittest python test does not support using filters in "
-                                    + "PythonBinaryHostTest. Please use test runner "
-                                    + "ExecutableHostTest instead.");
-                }
-                try (SubprocessTestResultsParser parser =
-                        new SubprocessTestResultsParser(forwarder, mTestInfo.getContext())) {
-                    parser.parseFile(testOutputFile);
-                }
-            }
+            pythonParser.processNewLines(testOutput.split("\n"));
         } catch (RuntimeException e) {
             StringBuilder message = new StringBuilder();
-            Formatter formatter = new Formatter(message);
-
-            formatter.format(
-                    "Failed to parse the python logs: %s. Please ensure that verbosity of "
-                            + "output is high enough to be parsed.",
-                    e.getMessage());
+            message.append(
+                    String.format(
+                            "Failed to parse the python logs: %s. Please ensure that verbosity of "
+                                    + "output is high enough to be parsed.",
+                            e.getMessage()));
 
             if (mUseTestOutputFile) {
-                formatter.format(
-                        " Make sure that your test writes its output to the file specified "
-                                + "by the --%s flag and that its contents (%s) are in the format "
-                                + "expected by the test runner.",
-                        TEST_OUTPUT_FILE_FLAG,
-                        String.format(PYTHON_LOG_TEST_OUTPUT_FORMAT, runName));
+                message.append(
+                        String.format(
+                                " Make sure that your test writes its output to the file specified "
+                                        + "by the --%s flag and that its contents (%s) are in the "
+                                        + "format expected by the test runner.",
+                                TEST_OUTPUT_FILE_FLAG,
+                                String.format(PYTHON_LOG_TEST_OUTPUT_FORMAT, runName)));
             }
 
             reportFailure(listener, runName, message.toString());
@@ -393,6 +370,19 @@ public class PythonBinaryHostTest implements IRemoteTest, ITestFilterReceiver {
         } catch (IOException e) {
             throw new RuntimeException(e);
         } finally {
+            if (stderrFile != null) {
+                // Note that we still log stderr when parsing results from a test-written output
+                // file since it most likely contains useful debugging information.
+                try {
+                    if (mUseTestOutputFile) {
+                        FileUtil.writeToFile(result.getStderr(), stderrFile);
+                    }
+                    testLogFile(
+                            listener, String.format(PYTHON_LOG_STDERR_FORMAT, runName), stderrFile);
+                } catch (IOException e) {
+                    CLog.e(e);
+                }
+            }
             FileUtil.deleteFile(stderrFile);
             FileUtil.deleteFile(tempTestOutputFile);
         }

@@ -35,6 +35,7 @@ import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestLoggerReceiver;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.error.ErrorIdentifier;
 import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.CommandResult;
@@ -273,10 +274,11 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
                         String.format(
                                 "Device failed to boot. Error from Acloud: %s",
                                 mGceAvd.getErrors());
-                throw new TargetSetupError(
-                        errorMsg,
-                        getDeviceDescriptor(),
-                        DeviceErrorIdentifier.FAILED_TO_LAUNCH_GCE);
+                ErrorIdentifier errorIdentifier =
+                        (mGceAvd.getErrorType() != null)
+                                ? mGceAvd.getErrorType()
+                                : DeviceErrorIdentifier.FAILED_TO_LAUNCH_GCE;
+                throw new TargetSetupError(errorMsg, getDeviceDescriptor(), errorIdentifier);
             }
         }
         createGceSshMonitor(this, buildInfo, mGceAvd.hostAndPort(), this.getOptions());
@@ -481,7 +483,7 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
                         mGceAvd,
                         this.getOptions(),
                         getRunUtil(),
-                        60000L,
+                        Math.max(300000L, this.getOptions().getGceCmdTimeout()),
                         powerwashCommand.split(" "));
         if (!CommandStatus.SUCCESS.equals(powerwashRes.getStatus())) {
             CLog.e("%s", powerwashRes.getStderr());
@@ -492,6 +494,7 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
             return false;
         }
         getMonitor().waitForDeviceAvailable();
+        resetContentProviderSetup();
         return true;
     }
 }

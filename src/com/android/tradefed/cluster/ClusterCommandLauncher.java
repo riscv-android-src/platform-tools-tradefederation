@@ -47,7 +47,6 @@ import com.android.tradefed.util.SubprocessTestResultsParser;
 import com.android.tradefed.util.SystemUtil;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.time.Duration;
@@ -70,6 +69,7 @@ public class ClusterCommandLauncher
     public static final String TF_JAR_DIR = "TF_JAR_DIR";
     public static final String TF_PATH = "TF_PATH";
     public static final String TEST_WORK_DIR = "TEST_WORK_DIR";
+    public static final String ANDROID_SERIALS = "ANDROID_SERIALS";
 
     private static final Duration MAX_EVENT_RECEIVER_WAIT_TIME = Duration.ofMinutes(10);
 
@@ -146,6 +146,8 @@ public class ClusterCommandLauncher
         for (final String key : mEnvVars.keySet()) {
             runUtil.setEnvVariable(key, getEnvVar(key));
         }
+        // Add device serials to env var.
+        runUtil.setEnvVariable(ANDROID_SERIALS, String.join(",", mInvocationContext.getSerials()));
 
         final File testWorkDir = new File(getEnvVar(TEST_WORK_DIR, mRootDir.getAbsolutePath()));
         final File logDir = new File(mRootDir, "logs");
@@ -158,9 +160,7 @@ public class ClusterCommandLauncher
 
         FileIdleMonitor monitor = createFileMonitor(stdoutFile, stderrFile);
         SubprocessTestResultsParser subprocessEventParser = null;
-        try (FileOutputStream stdout = new FileOutputStream(stdoutFile);
-                FileOutputStream stderr = new FileOutputStream(stderrFile)) {
-
+        try {
             String classpath = buildJavaClasspath();
 
             // TODO(b/129111645): use proto reporting if a test suite supports it.
@@ -186,10 +186,11 @@ public class ClusterCommandLauncher
             monitor.start();
             runUtil.setWorkingDir(testWorkDir);
             CommandResult result =
-                    runUtil.runTimedCmd(
+                    runUtil.runTimedCmdWithInput(
                             mConfiguration.getCommandOptions().getInvocationTimeout(),
-                            stdout,
-                            stderr,
+                            null,
+                            stdoutFile,
+                            stderrFile,
                             javaCommandArgs.toArray(new String[javaCommandArgs.size()]));
             if (!result.getStatus().equals(CommandStatus.SUCCESS)) {
                 String error = null;
@@ -230,19 +231,23 @@ public class ClusterCommandLauncher
 
     private void runSetupScripts(
             final IRunUtil runUtil, final File stdoutFile, final File stderrFile) {
-        try (FileOutputStream stdout = new FileOutputStream(stdoutFile);
-                FileOutputStream stderr = new FileOutputStream(stderrFile)) {
+        try {
             long timeout = mScriptTimeout;
             long startTime = System.currentTimeMillis();
             for (String script : mSetupScripts) {
                 script = StringUtil.expand(script, mEnvVars);
                 CLog.i("Running a setup script: %s", script);
+                File scriptFile = new File(QuotationAwareTokenizer.tokenizeLine(script)[0]);
+                if (scriptFile.isFile()) {
+                    scriptFile.setExecutable(true);
+                }
                 // FIXME: Refactor command execution into a helper function.
                 CommandResult result =
-                        runUtil.runTimedCmd(
+                        runUtil.runTimedCmdWithInput(
                                 timeout,
-                                stdout,
-                                stderr,
+                                null,
+                                stdoutFile,
+                                stderrFile,
                                 QuotationAwareTokenizer.tokenizeLine(script));
                 if (!result.getStatus().equals(CommandStatus.SUCCESS)) {
                     String error = null;

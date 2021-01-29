@@ -21,6 +21,7 @@ package com.android.tradefed.result;
 public enum LogDataType {
 
     TEXT("txt", "text/plain", false, true),
+    UIX("uix", "text/xml", false, true),
     XML("xml", "text/xml", false, true),
     HTML("html", "text/html", true, true),
     PNG("png", "image/png", true, false),
@@ -38,7 +39,11 @@ public enum LogDataType {
     CLANG_COVERAGE("profdata", "text/plain", false, false), // LLVM indexed profile data
     PB("pb", "application/octet-stream", true, false), // Binary proto file
     TEXTPB("textproto", "text/plain", false, true), // Text proto file
-    PERFETTO("pb", "application/octet-stream", true, false), // binary proto perfetto trace file
+    PERFETTO(
+            "perfetto-trace",
+            "application/octet-stream",
+            true,
+            false), // binary proto perfetto trace file
     /* Specific text file types */
     BUGREPORT("txt", "text/plain", false, true),
     BUGREPORTZ("zip", "application/zip", true, false),
@@ -61,6 +66,10 @@ public enum LogDataType {
     KERNEL_TRACE("dat", "text/plain", false, false), // raw kernel ftrace buffer
     DIR("", "text/plain", false, false),
     CFG("cfg", "application/octet-stream", false, true),
+    TF_EVENTS("txt", "text/plain", false, true),
+    HARNESS_STD_LOG("txt", "text/plain", false, true),
+    HARNESS_CONFIG("xml", "text/xml", false, true),
+    ADB_HOST_LOG("txt", "text/plain", false, true),
     /* Unknown file type */
     UNKNOWN("dat", "text/plain", false, false);
 

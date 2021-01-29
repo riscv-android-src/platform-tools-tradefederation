@@ -19,6 +19,11 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 import com.android.tradefed.build.BuildRetrievalError;
+import com.android.tradefed.config.DynamicRemoteFileResolver;
+import com.android.tradefed.config.Option;
+import com.android.tradefed.config.OptionSetter;
+import com.android.tradefed.config.remote.IRemoteFileResolver.RemoteFileResolverArgs;
+import com.android.tradefed.config.remote.IRemoteFileResolver.ResolvedFile;
 import com.android.tradefed.util.FileUtil;
 
 import org.junit.Before;
@@ -27,6 +32,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 import java.io.File;
+import java.util.Set;
 
 /** Unit tests for {@link LocalFileResolver}. */
 @RunWith(JUnit4.class)
@@ -44,8 +50,10 @@ public class LocalFileResolverTest {
         File testFile = FileUtil.createTempFile("test-local-file", ".txt");
         try {
             File markedFile = new File("file:" + testFile.getAbsolutePath());
-            File returned = mResolver.resolveRemoteFiles(markedFile);
-            assertEquals(testFile, returned);
+            RemoteFileResolverArgs args = new RemoteFileResolverArgs();
+            args.setConsideredFile(markedFile);
+            ResolvedFile returned = mResolver.resolveRemoteFile(args);
+            assertEquals(testFile, returned.getResolvedFile());
         } finally {
             FileUtil.deleteFile(testFile);
         }
@@ -59,6 +67,28 @@ public class LocalFileResolverTest {
             fail("Should have thrown an exception.");
         } catch (BuildRetrievalError expected) {
             // Expected
+        }
+    }
+
+    class LocalTest {
+        @Option(name = "file")
+        private File mLocalFile;
+    }
+
+    @Test
+    public void testResolve() throws Exception {
+        File testFile = FileUtil.createTempFile("test-local-file", ".txt");
+        try {
+            File markedFile = new File("file:" + testFile.getAbsolutePath());
+            LocalTest test = new LocalTest();
+            OptionSetter setter = new OptionSetter(test);
+            setter.setOptionValue("file", markedFile.getPath());
+            Set<File> resolved = setter.validateRemoteFilePath(new DynamicRemoteFileResolver());
+            // Resolved but we don't track for deletion.
+            assertEquals(0, resolved.size());
+            assertEquals(testFile.getAbsolutePath(), test.mLocalFile.getAbsolutePath());
+        } finally {
+            FileUtil.deleteFile(testFile);
         }
     }
 }

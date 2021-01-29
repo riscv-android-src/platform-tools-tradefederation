@@ -18,6 +18,7 @@ package com.android.tradefed.config.yaml;
 import static com.google.common.truth.Truth.assertThat;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -27,7 +28,9 @@ import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.TextResultReporter;
 import com.android.tradefed.result.suite.SuiteResultReporter;
+import com.android.tradefed.targetprep.DeviceFlashPreparer;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.PushFilePreparer;
 import com.android.tradefed.targetprep.RunCommandTargetPreparer;
@@ -48,9 +51,11 @@ import java.util.List;
 public class ConfigurationYamlParserTest {
 
     private static final String YAML_TEST_CONFIG_1 = "/testconfigs/yaml/test-config.tf_yaml";
+    private static final int YAML_PREPARERS_CONFIG_1 = 5;   // Preparer configured for CONFIG_1
     private static final String YAML_TEST_CONFIG_2 =
             "/testconfigs/yaml/not-target-preparer.tf_yaml";
-
+    private static final String YAML_TEST_CONFIG_3 =
+            "/testconfigs/yaml/test-config-no-options.tf_yaml";
     private ConfigurationYamlParser mParser;
     private ConfigurationDef mConfigDef;
 
@@ -73,13 +78,13 @@ public class ConfigurationYamlParserTest {
             assertEquals(7, resolver.getDependencies().size());
             assertThat(resolver.getDependencies())
                     .containsExactly(
-                            new File("test.apk"),
-                            new File("test2.apk"),
-                            new File("test1.apk"),
-                            new File("tobepushed2.txt"),
-                            new File("tobepushed.txt"),
-                            new File("file1.txt"),
-                            new File("file2.txt"));
+                            "test.apk", new File("test.apk"),
+                            "test2.apk", new File("test2.apk"),
+                            "test1.apk", new File("test1.apk"),
+                            "tobepushed2.txt", new File("tobepushed2.txt"),
+                            "tobepushed.txt", new File("tobepushed.txt"),
+                            "file1.txt", new File("file1.txt"),
+                            "file2.txt", new File("file2.txt"));
             // Test
             assertEquals(1, config.getTests().size());
             assertTrue(config.getTests().get(0) instanceof AndroidJUnitTest);
@@ -89,19 +94,26 @@ public class ConfigurationYamlParserTest {
 
             // Dependencies
             // apk dependencies
-            assertEquals(5, config.getTargetPreparers().size());
-            ITargetPreparer preCommandRunner = config.getTargetPreparers().get(0);
+            int totalPreparers = config.getTargetPreparers().size();
+            int defaultPreparers = totalPreparers - YAML_PREPARERS_CONFIG_1;
+            assertTrue(totalPreparers >= YAML_PREPARERS_CONFIG_1);
+            if (defaultPreparers > 0) {
+                ITargetPreparer flashPreparer = config.getTargetPreparers().get(0);
+                assertTrue(flashPreparer instanceof DeviceFlashPreparer);
+            }
+            ITargetPreparer preCommandRunner =
+                    config.getTargetPreparers().get(defaultPreparers + 0);
             assertTrue(preCommandRunner instanceof RunCommandTargetPreparer);
-            ITargetPreparer preCommandRunner2 = config.getTargetPreparers().get(1);
+            ITargetPreparer preCommandRunner2 =
+                    config.getTargetPreparers().get(defaultPreparers + 1);
             assertTrue(preCommandRunner2 instanceof RunCommandTargetPreparer);
-
-            ITargetPreparer installApk = config.getTargetPreparers().get(2);
+            ITargetPreparer installApk = config.getTargetPreparers().get(defaultPreparers + 2);
             assertTrue(installApk instanceof SuiteApkInstaller);
             assertThat(((SuiteApkInstaller) installApk).getTestsFileName())
                     .containsExactly(
                             new File("test.apk"), new File("test2.apk"), new File("test1.apk"));
             // device file dependencies
-            ITargetPreparer pushFile = config.getTargetPreparers().get(3);
+            ITargetPreparer pushFile = config.getTargetPreparers().get(defaultPreparers + 3);
             assertTrue(pushFile instanceof PushFilePreparer);
             assertThat(((PushFilePreparer) pushFile).getPushSpecs(null))
                     .containsExactly(
@@ -109,7 +121,8 @@ public class ConfigurationYamlParserTest {
                             new File("tobepushed2.txt"),
                             "/sdcard",
                             new File("tobepushed.txt"));
-            ITargetPreparer postCommandRunner = config.getTargetPreparers().get(4);
+            ITargetPreparer postCommandRunner =
+                    config.getTargetPreparers().get(defaultPreparers + 4);
             assertTrue(postCommandRunner instanceof RunCommandTargetPreparer);
             // Result reporters
             List<ITestInvocationListener> listeners = config.getTestInvocationListeners();
@@ -135,7 +148,7 @@ public class ConfigurationYamlParserTest {
 
             // Dependencies
             // apk dependencies
-            assertEquals(5, config.getTargetPreparers().size());
+            assertEquals(YAML_PREPARERS_CONFIG_1, config.getTargetPreparers().size());
             ITargetPreparer installApk = config.getTargetPreparers().get(2);
             assertTrue(installApk instanceof SuiteApkInstaller);
             assertThat(((SuiteApkInstaller) installApk).getTestsFileName())
@@ -152,8 +165,7 @@ public class ConfigurationYamlParserTest {
                             new File("tobepushed.txt"));
             // Result reporters aren't set
             List<ITestInvocationListener> listeners = config.getTestInvocationListeners();
-            // TODO: Renable when matching project is updated
-            // assertTrue(listeners.get(0) instanceof TextResultReporter);
+            assertTrue(listeners.get(0) instanceof TextResultReporter);
         }
     }
 
@@ -167,6 +179,24 @@ public class ConfigurationYamlParserTest {
             } catch (ConfigurationException expected) {
 
             }
+        }
+    }
+
+    @Test
+    public void testParseConfig_notoptions() throws Exception {
+        try (InputStream res = readFromRes(YAML_TEST_CONFIG_3)) {
+            mParser.parse(mConfigDef, "source", res, false);
+            // Create the configuration to test the flow
+            IConfiguration config = mConfigDef.createConfiguration();
+            config.validateOptions();
+            // Test
+            assertEquals(2, config.getTests().size());
+            assertTrue(config.getTests().get(0) instanceof AndroidJUnitTest);
+            assertNull(((AndroidJUnitTest) config.getTests().get(0)).getPackageName());
+            assertTrue(config.getTests().get(1) instanceof AndroidJUnitTest);
+            assertEquals(
+                    "android.package",
+                    ((AndroidJUnitTest) config.getTests().get(1)).getPackageName());
         }
     }
 

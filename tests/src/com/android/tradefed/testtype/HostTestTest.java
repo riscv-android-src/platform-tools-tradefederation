@@ -25,6 +25,8 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.config.remote.GcsRemoteFileResolver;
 import com.android.tradefed.config.remote.IRemoteFileResolver;
+import com.android.tradefed.config.remote.IRemoteFileResolver.RemoteFileResolverArgs;
+import com.android.tradefed.config.remote.IRemoteFileResolver.ResolvedFile;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
@@ -543,7 +545,7 @@ public class HostTestTest extends TestCase {
             assertTrue(
                     "Expect a GCS bucket file: "
                             + (mGcsBucketFile != null ? mGcsBucketFile.toString() : "null"),
-                    FAKE_REMOTE_FILE_PATH.equals(mGcsBucketFile));
+                    "/downloaded/somewhere".equals(mGcsBucketFile.getPath()));
             metrics.addTestMetric("gcs-bucket-file", mGcsBucketFile.toURI().toString());
         }
 
@@ -737,9 +739,9 @@ public class HostTestTest extends TestCase {
      * test to run is a {@link TestSuite} and has dynamic options.
      */
     public void testRun_junit3TestSuite_dynamicOptions() throws Exception {
-        doReturn(new File("/downloaded/somewhere"))
+        doReturn(new ResolvedFile(new File("/downloaded/somewhere")))
                 .when(mMockResolver)
-                .resolveRemoteFiles(Mockito.eq(FAKE_REMOTE_FILE_PATH), Mockito.any());
+                .resolveRemoteFile((RemoteFileResolverArgs) Mockito.any());
         mHostTest.setClassName(DynamicTestCase.class.getName());
         TestDescription test1 = new TestDescription(DynamicTestCase.class.getName(), "testPass");
         mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
@@ -792,12 +794,17 @@ public class HostTestTest extends TestCase {
      * not set.
      */
     public void testRun_missingClass() throws Exception {
-        try {
-            mHostTest.run(mTestInfo, mListener);
-            fail("IllegalArgumentException not thrown");
-        } catch (IllegalArgumentException e) {
-            // expected
-        }
+        mListener.testRunStarted(TestableHostTest.class.getCanonicalName(), 0);
+        Capture<FailureDescription> captured = new Capture<>();
+        mListener.testRunFailed(EasyMock.capture(captured));
+        mListener.testRunEnded(0L, new HashMap<String, Metric>());
+        EasyMock.replay(mListener);
+        mHostTest.run(mTestInfo, mListener);
+        EasyMock.verify(mListener);
+        assertTrue(
+                captured.getValue()
+                        .getErrorMessage()
+                        .contains("No '--class' option was specified."));
     }
 
     /**
@@ -805,13 +812,15 @@ public class HostTestTest extends TestCase {
      * class.
      */
     public void testRun_invalidClass() throws Exception {
-        try {
-            mHostTest.setClassName("foo");
-            mHostTest.run(mTestInfo, mListener);
-            fail("IllegalArgumentException not thrown");
-        } catch (IllegalArgumentException e) {
-            // expected
-        }
+        mListener.testRunStarted(TestableHostTest.class.getCanonicalName(), 0);
+        Capture<FailureDescription> captured = new Capture<>();
+        mListener.testRunFailed(EasyMock.capture(captured));
+        mListener.testRunEnded(0L, new HashMap<String, Metric>());
+        mHostTest.setClassName("foo");
+        EasyMock.replay(mListener);
+        mHostTest.run(mTestInfo, mListener);
+        EasyMock.verify(mListener);
+        assertTrue(captured.getValue().getErrorMessage().contains("Could not load Test class foo"));
     }
 
     /**
@@ -889,16 +898,23 @@ public class HostTestTest extends TestCase {
      * classes with a method name.
      */
     public void testRun_multipleClassAndMethodName() throws Exception {
-        try {
-            OptionSetter setter = new OptionSetter(mHostTest);
-            setter.setOptionValue("class", SuccessTestCase.class.getName());
-            setter.setOptionValue("class", AnotherTestCase.class.getName());
-            mHostTest.setMethodName("testPass3");
-            mHostTest.run(mTestInfo, mListener);
-            fail("IllegalArgumentException not thrown");
-        } catch (IllegalArgumentException e) {
-            // expected
-        }
+        OptionSetter setter = new OptionSetter(mHostTest);
+        setter.setOptionValue("class", SuccessTestCase.class.getName());
+        setter.setOptionValue("class", AnotherTestCase.class.getName());
+        mHostTest.setMethodName("testPass3");
+        mListener.testRunStarted(TestableHostTest.class.getCanonicalName(), 0);
+        Capture<FailureDescription> captured = new Capture<>();
+        mListener.testRunFailed(EasyMock.capture(captured));
+        mListener.testRunEnded(0L, new HashMap<String, Metric>());
+        EasyMock.replay(mListener);
+        mHostTest.run(mTestInfo, mListener);
+        EasyMock.verify(mListener);
+        assertTrue(
+                captured.getValue()
+                        .getErrorMessage()
+                        .contains(
+                                "'--method' only supports one '--class' name. Multiple were"
+                                        + " given:"));
     }
 
     /**
@@ -1341,7 +1357,9 @@ public class HostTestTest extends TestCase {
         assertTrue(
                 failure.getErrorMessage()
                         .startsWith(
-                                "com.android.tradefed.device.DeviceNotAvailableException: dnae"));
+                                "com.android.tradefed.device.DeviceNotAvailableException"
+                                        + "[DEVICE_UNAVAILABLE|520750|LOST_SYSTEM_UNDER_TEST]: "
+                                        + "dnae"));
         assertEquals(FailureStatus.LOST_SYSTEM_UNDER_TEST, failure.getFailureStatus());
     }
 
@@ -2280,12 +2298,7 @@ public class HostTestTest extends TestCase {
         mListener.testRunEnded(0L, new HashMap<String, Metric>());
 
         EasyMock.replay(mListener);
-        try {
-            mHostTest.run(mTestInfo, mListener);
-            fail("Should have thrown an exception");
-        } catch (IllegalArgumentException expected) {
-            // expected
-        }
+        mHostTest.run(mTestInfo, mListener);
         EasyMock.verify(mListener);
         assertTrue(
                 captured.getValue()
@@ -2298,6 +2311,9 @@ public class HostTestTest extends TestCase {
      * test to run is a {@link TestSuite} and has set-options with the char ':' escaped.
      */
     public void testRun_junit3TestSuite_optionEscapeColon() throws Exception {
+        doReturn(new ResolvedFile(new File("/downloaded/somewhere")))
+                .when(mMockResolver)
+                .resolveRemoteFile((RemoteFileResolverArgs) Mockito.any());
         mHostTest.setClassName(OptionEscapeColonTestCase.class.getName());
         OptionSetter setter = new OptionSetter(mHostTest);
         setter.setOptionValue(

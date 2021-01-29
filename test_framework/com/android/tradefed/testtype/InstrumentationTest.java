@@ -36,6 +36,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.metric.GcovCodeCoverageCollector;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
+import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.BugreportCollector;
@@ -46,6 +47,7 @@ import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.result.ddmlib.DefaultRemoteAndroidTestRunner;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.retry.RetryStrategy;
@@ -194,11 +196,10 @@ public class InstrumentationTest
     private BugreportCollector.Freq mBugreportFrequency = null;
 
     @Option(
-        name = "rerun-from-file",
-        description =
-                "Use test file instead of separate adb commands for each test "
-                        + "when re-running instrumentations for tests that failed to run in previous attempts. "
-    )
+            name = "rerun-from-file",
+            description =
+                    "Use test file instead of separate adb commands for each test when re-running"
+                        + " instrumentations for tests that failed to run in previous attempts. ")
     private boolean mReRunUsingTestFile = true;
 
     @Option(
@@ -236,11 +237,10 @@ public class InstrumentationTest
     private long mCollectTestTimeout = TEST_COLLECTION_TIMEOUT_MS;
 
     @Option(
-        name = "debug",
-        description =
-                "Wait for debugger before instrumentation starts. Note "
-                        + "that this should only be used for local debugging, not suitable for automated runs."
-    )
+            name = "debug",
+            description =
+                    "Wait for debugger before instrumentation starts. Note that this should only"
+                            + " be used for local debugging, not suitable for automated runs.")
     protected boolean mDebug = false;
 
     /** @deprecated Use the --coverage option in CoverageOptions instead. */
@@ -257,8 +257,8 @@ public class InstrumentationTest
     @Option(
             name = "merge-coverage-measurements",
             description =
-                    "Merge coverage measurements from all test runs into a single measurement "
-                            + "before logging.")
+                    "Merge coverage measurements from all test runs into a single measurement"
+                            + " before logging.")
     private boolean mMergeCoverageMeasurements = false;
 
     @Deprecated
@@ -317,6 +317,13 @@ public class InstrumentationTest
             description =
                     "Whether or not to enable reporting all unexecuted tests from instrumentation.")
     private boolean mReportUnexecuted = true;
+
+    @Option(
+            name = "restart",
+            description =
+                    "If set to false, the '--no-restart' flag will be passed to the am "
+                            + "instrument command. Only works for S or later.")
+    private boolean mRestart = true;
 
     private IAbi mAbi = null;
 
@@ -694,6 +701,9 @@ public class InstrumentationTest
         if (!mWindowAnimation && apiLevel >= 14) {
             runOptions += "--no-window-animation ";
         }
+        if (!mRestart && getDevice().checkApiLevelAgainstNextRelease(31)) {
+            runOptions += "--no-restart ";
+        }
 
         if (abiName != null && getDevice().getApiLevel() > 20) {
             mInstallArgs.add(String.format("--abi %s", abiName));
@@ -784,10 +794,11 @@ public class InstrumentationTest
                     mDevice.installPackage(
                             mInstallFile, true, mInstallArgs.toArray(new String[] {}));
             if (installOutput != null) {
-                throw new RuntimeException(
+                throw new HarnessRuntimeException(
                         String.format(
                                 "Error while installing '%s': %s",
-                                mInstallFile.getName(), installOutput));
+                                mInstallFile.getName(), installOutput),
+                        DeviceErrorIdentifier.APK_INSTALLATION_FAILED);
             }
         }
         if (mRunnerName == null) {

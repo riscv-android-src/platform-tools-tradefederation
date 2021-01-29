@@ -18,8 +18,6 @@ package com.android.tradefed.result;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.invoker.IInvocationContext;
-import com.android.tradefed.log.LogUtil.CLog;
-import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.util.SubprocessEventHelper.BaseTestEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.FailedTestEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.InvocationFailedEventInfo;
@@ -35,7 +33,6 @@ import com.android.tradefed.util.SubprocessTestResultsParser;
 
 import org.json.JSONObject;
 
-import java.io.Serializable;
 import java.util.Map;
 
 /**
@@ -130,30 +127,16 @@ public final class LegacySubprocessResultsReporter extends SubprocessResultsRepo
         printEvent(SubprocessTestResultsParser.StatusKeys.TEST_RUN_ENDED, info);
     }
 
-    /* Legacy method compatible with TF/CTS 9+ (skipped in 8.1 and not called in 8). */
+    /* Legacy method compatible with TF/CTS 8.1+ (not called in 8). */
     @Override
     public void testModuleStarted(IInvocationContext moduleContext) {
-        if (!Serializable.class.isAssignableFrom(IAbi.class)) {
-            // TODO(b/154349022): remove after releasing serialization fix
-            // Test packages prior to 1d6869f will fail with a not serializable exception.
-            // see https://cs.android.com/android/_/android/platform/tools/tradefederation/+/1d6869f
-            CLog.d("testModuleStarted is called but ignored intentionally");
-            return;
-        }
         TestModuleStartedEventInfo info = new TestModuleStartedEventInfo(moduleContext);
         printEvent(SubprocessTestResultsParser.StatusKeys.TEST_MODULE_STARTED, info);
     }
 
-    /* Legacy method compatible with TF/CTS 9+ (skipped in 8.1 and not called in 8). */
+    /* Legacy method compatible with TF/CTS 8.1+ (not called in 8). */
     @Override
     public void testModuleEnded() {
-        if (!Serializable.class.isAssignableFrom(IAbi.class)) {
-            // TODO(b/154349022): remove after releasing serialization fix
-            // Test packages prior to 1d6869f will fail with a not serializable exception.
-            // see https://cs.android.com/android/_/android/platform/tools/tradefederation/+/1d6869f
-            CLog.d("testModuleEnded is called but ignored intentionally");
-            return;
-        }
         printEvent(SubprocessTestResultsParser.StatusKeys.TEST_MODULE_ENDED, new JSONObject());
     }
 
@@ -164,16 +147,9 @@ public final class LegacySubprocessResultsReporter extends SubprocessResultsRepo
         // ignore
     }
 
-    /* Legacy method compatible with TF/CTS 9+ (skipped in 8.1 and not called in 8). */
+    /* Legacy method compatible with TF/CTS 8.1+ (not called in 8). */
     @Override
     public void logAssociation(String dataName, LogFile logFile) {
-        if (!Serializable.class.isAssignableFrom(LogFile.class)) {
-            // TODO(b/154349022): remove after releasing serialization fix
-            // Test packages prior to 52fb8df will fail with a not serializable exception.
-            // see https://cs.android.com/android/_/android/platform/tools/tradefederation/+/52fb8df
-            CLog.d("logAssociation is called but ignored intentionally");
-            return;
-        }
         LogAssociationEventInfo info = new LogAssociationEventInfo(dataName, logFile);
         printEvent(SubprocessTestResultsParser.StatusKeys.LOG_ASSOCIATION, info);
     }

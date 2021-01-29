@@ -1110,7 +1110,10 @@ public class ModuleDefinitionTest {
                         return RunStrategy.FULL_MODULE_BYPASS;
                     }
                 };
-        config.setConfigurationObject(ModuleDefinition.MODULE_CONTROLLER, moduleConfig);
+        List<BaseModuleController> listController = new ArrayList<>();
+        listController.add(moduleConfig);
+        listController.add(moduleConfig);
+        config.setConfigurationObjectList(ModuleDefinition.MODULE_CONTROLLER, listController);
         List<IRemoteTest> testList = new ArrayList<>();
         testList.add(
                 new IRemoteTest() {
@@ -1451,7 +1454,8 @@ public class ModuleDefinitionTest {
 
         mMockLogSaverListener.setLogSaver(mMockLogSaver);
 
-        mMockListener.testRunStarted("run1", testCount, 0);
+        mMockListener.testRunStarted(
+                EasyMock.eq("run1"), EasyMock.eq(testCount), EasyMock.eq(0), EasyMock.anyLong());
         for (int i = 0; i < testCount; i++) {
             mMockListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
             mMockListener.testEnded(
