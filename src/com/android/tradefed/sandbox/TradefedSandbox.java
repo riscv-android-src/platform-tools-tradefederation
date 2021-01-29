@@ -30,7 +30,6 @@ import com.android.tradefed.config.proxy.AutomatedReporters;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.logger.CurrentInvocation;
-import com.android.tradefed.invoker.logger.CurrentInvocation.InvocationInfo;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.invoker.proto.InvocationContext.Context;
@@ -571,10 +570,6 @@ public class TradefedSandbox implements ISandbox {
     }
 
     private File getWorkFolder() {
-        File workfolder = CurrentInvocation.getInfo(InvocationInfo.WORK_FOLDER);
-        if (workfolder == null || !workfolder.exists()) {
-            return null;
-        }
-        return workfolder;
+        return CurrentInvocation.getWorkFolder();
     }
 }
