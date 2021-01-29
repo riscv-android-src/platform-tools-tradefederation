@@ -24,6 +24,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.invoker.TestInvocation.Stage;
+import com.android.tradefed.invoker.logger.CurrentInvocation;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.FileInputStreamSource;
@@ -116,7 +117,8 @@ public class DelegatedInvocationExecution extends InvocationExecution {
                         config.getConfigurationObject(TradefedDelegator.DELEGATE_OBJECT);
         List<String> commandLine = new ArrayList<>();
         commandLine.add(SystemUtil.getRunningJavaBinaryPath().getAbsolutePath());
-        mTmpDelegatedDir = FileUtil.createTempDir("delegated-invocation");
+        mTmpDelegatedDir =
+                FileUtil.createTempDir("delegated-invocation", CurrentInvocation.getWorkFolder());
         commandLine.add(String.format("-Djava.io.tmpdir=%s", mTmpDelegatedDir.getAbsolutePath()));
         commandLine.add("-cp");
         // Add classpath
