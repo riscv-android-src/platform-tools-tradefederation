@@ -95,6 +95,8 @@ import com.google.common.annotations.VisibleForTesting;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -966,6 +968,12 @@ public class TestInvocation implements ITestInvocation {
             CLog.e(e);
         } finally {
             scope.exit();
+            // Measure teardown disk usage before clean up
+            Long size = measureWorkFolderSize(config, info.dependenciesFolder());
+            if (size != null) {
+                InvocationMetricLogger.addInvocationMetrics(
+                        InvocationMetricKey.TEAR_DOWN_DISK_USAGE, size);
+            }
             // Ensure build infos are always cleaned up at the end of invocation.
             invocationPath.cleanUpBuilds(context, config);
             // ensure we always deregister the logger
@@ -1306,5 +1314,30 @@ public class TestInvocation implements ITestInvocation {
         public void run() {
             deleteInvocationFiles(mTestInfo, mConfig);
         }
+    }
+
+    /** Measure the size of the work folder. */
+    private Long measureWorkFolderSize(IConfiguration config, File workFolder) {
+        if (workFolder == null) {
+            return null;
+        }
+        // Only measure in parent process
+        if (config.getCommandOptions()
+                .getInvocationData()
+                .containsKey(SubprocessTfLauncher.SUBPROCESS_TAG_NAME)) {
+            return null;
+        }
+        Path folder = workFolder.toPath();
+        try {
+            long size =
+                    Files.walk(folder)
+                            .filter(p -> p.toFile().isFile())
+                            .mapToLong(p -> p.toFile().length())
+                            .sum();
+            return size;
+        } catch (IOException | RuntimeException e) {
+            CLog.e(e);
+        }
+        return null;
     }
 }
