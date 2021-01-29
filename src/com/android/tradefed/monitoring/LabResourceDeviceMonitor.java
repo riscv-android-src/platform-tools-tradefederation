@@ -88,9 +88,10 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
     private final Collection<IResourceMetricCollector> mMetricCollectors = new ArrayList<>();
     private final ReadWriteLock mLabResourceLock = new ReentrantReadWriteLock();
     private LabResource mLabResource = LabResource.newBuilder().build();
-    /** A single thread executor for all metricize operations. */
+    // The ScheduledExecutorService triggers the metricize operations base on mMetricizeCycleSec.
     private ScheduledExecutorService mMetricizeExecutor;
-
+    // The ExecutorService executes the collector functions in every metricize operation.
+    private ExecutorService mCollectionExecutor;
 
     @Option(
             name = "metricize-op-timeout",
@@ -149,30 +150,33 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
         try {
             mServer.start();
             loadMetricCollectors();
-            startMetricizeExecutor();
+            startExecutors();
             scheduleMetricizeTask();
         } catch (IOException | IllegalStateException e) {
             CLog.e(e);
-            stopMetricizeExecutor();
+            stopExecutors();
         }
     }
 
     @VisibleForTesting
-    void startMetricizeExecutor() {
+    void startExecutors() {
         mMetricizeExecutor =
                 MoreExecutors.getExitingScheduledExecutorService(
                         new ScheduledThreadPoolExecutor(1));
+        mCollectionExecutor = Executors.newSingleThreadExecutor();
     }
 
     @VisibleForTesting
-    void stopMetricizeExecutor() {
-        if (mMetricizeExecutor != null && !mMetricizeExecutor.isShutdown()) {
-            mMetricizeExecutor.shutdownNow();
-            awaitTerminateExecutor(mMetricizeExecutor);
-        }
+    void stopExecutors() {
+        awaitTerminateExecutor(mMetricizeExecutor);
+        awaitTerminateExecutor(mCollectionExecutor);
     }
 
     private void awaitTerminateExecutor(ExecutorService executor) {
+        if (executor == null) {
+            return;
+        }
+        executor.shutdownNow();
         try {
             executor.awaitTermination(EXECUTOR_TERMINATE_TIMEOUT_SEC, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
@@ -232,7 +236,7 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
         if (mServer != null && !mServer.isShutdown()) {
             mServer.shutdownNow();
         }
-        stopMetricizeExecutor();
+        stopExecutors();
     }
 
     /** {@inheritDoc} */
@@ -284,7 +288,7 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
         for (IResourceMetricCollector collector : collectors) {
             Future<Collection<Resource>> future = null;
             try {
-                future = mMetricizeExecutor.submit(collector::getHostResourceMetrics);
+                future = mCollectionExecutor.submit(collector::getHostResourceMetrics);
                 builder.addAllResource(future.get(mMetricizeTimeoutMs, TimeUnit.MILLISECONDS));
             } catch (InterruptedException
                     | ExecutionException
@@ -334,7 +338,7 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
             Future<Collection<Resource>> future = null;
             try {
                 future =
-                        mMetricizeExecutor.submit(
+                        mCollectionExecutor.submit(
                                 () ->
                                         collector.getDeviceResourceMetrics(
                                                 descriptor,
