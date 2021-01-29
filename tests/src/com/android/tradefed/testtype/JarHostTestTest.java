@@ -17,8 +17,8 @@ package com.android.tradefed.testtype;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
+import com.android.compatibility.common.tradefed.testtype.JarHostTest;
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.DeviceBuildInfo;
 import com.android.tradefed.config.OptionSetter;
@@ -272,17 +272,7 @@ public class JarHostTestTest {
         mListener.testRunEnded(0L, new HashMap<String, Metric>());
 
         EasyMock.replay(mListener);
-        try {
-            mTest.run(mTestInfo, mListener);
-            fail("Should have thrown an exception.");
-        } catch (IllegalArgumentException expected) {
-            // expected
-            assertEquals(
-                    "java.io.FileNotFoundException: "
-                            + "Could not find an artifact file associated with "
-                            + "thisjardoesnotexistatall.jar",
-                    expected.getMessage());
-        }
+        mTest.run(mTestInfo, mListener);
         EasyMock.verify(mListener);
         assertTrue(
                 captured.getValue()
@@ -373,5 +363,21 @@ public class JarHostTestTest {
         EasyMock.replay(mListener);
         mTest.run(mTestInfo, mListener);
         EasyMock.verify(mListener);
+    }
+
+    /** Test that {@link JarHostTest#split()} inherited from {@link HostTest} is still good. */
+    @Test
+    public void testSplit_withoutJar() throws Exception {
+        mTest = new JarHostTest();
+        OptionSetter setter = new OptionSetter(mTest);
+        setter.setOptionValue(
+                "class", "com.android.tradefed.testtype.JarHostTestTest$Junit4TestClass");
+        setter.setOptionValue(
+                "class", "com.android.tradefed.testtype." + "JarHostTestTest$Junit4TestClass2");
+        // sharCount is ignored; will split by number of classes
+        List<IRemoteTest> res = (List<IRemoteTest>) mTest.split(1, mTestInfo);
+        assertEquals(2, res.size());
+        assertTrue(res.get(0) instanceof JarHostTest);
+        assertTrue(res.get(1) instanceof JarHostTest);
     }
 }

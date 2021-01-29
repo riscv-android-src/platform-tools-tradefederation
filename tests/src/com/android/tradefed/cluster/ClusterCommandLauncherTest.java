@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.cluster;
 
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
 
 import com.android.tradefed.config.Configuration;
@@ -44,7 +45,6 @@ import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -110,6 +110,7 @@ public class ClusterCommandLauncherTest {
     @Test
     public void testRun() throws DeviceNotAvailableException, ConfigurationException, IOException {
         mInvocationContext.addAllocatedDevice("foo", mMockTestDevice);
+        mInvocationContext.addAllocatedDevice("bar", mMockTestDevice);
         final File tfJar = new File(mRootDir, "foo.jar");
         tfJar.createNewFile();
 
@@ -135,10 +136,11 @@ public class ClusterCommandLauncherTest {
                         mTfPath.getAbsolutePath(),
                         mTfLibDir.getAbsolutePath());
         final CommandResult mockCommandResult = new CommandResult(CommandStatus.SUCCESS);
-        when(mMockRunUtil.runTimedCmd(
+        when(mMockRunUtil.runTimedCmdWithInput(
                         Mockito.anyLong(),
-                        Mockito.<OutputStream>any(),
-                        Mockito.<OutputStream>any(),
+                        Mockito.isNull(),
+                        Mockito.<File>any(),
+                        Mockito.<File>any(),
                         Mockito.<String[]>any()))
                 .thenReturn(mockCommandResult);
         Mockito.when(mLauncher.getRunUtil()).thenReturn(mMockRunUtil);
@@ -150,10 +152,13 @@ public class ClusterCommandLauncherTest {
         Mockito.verify(mMockRunUtil).setEnvVariable("TF_WORK_DIR", mRootDir.getAbsolutePath());
         Mockito.verify(mMockRunUtil).setEnvVariable("TF_PATH", expandedTfPathValue);
         Mockito.verify(mMockRunUtil)
-                .runTimedCmd(
+                .setEnvVariable("ANDROID_SERIALS", DEVICE_SERIAL + "," + DEVICE_SERIAL);
+        Mockito.verify(mMockRunUtil)
+                .runTimedCmdWithInput(
                         Mockito.eq(10000L),
-                        Mockito.<OutputStream>any(),
-                        Mockito.<OutputStream>any(),
+                        Mockito.isNull(),
+                        Mockito.<File>any(),
+                        Mockito.<File>any(),
                         asMatchers(
                                 new String[] {
                                     SystemUtil.getRunningJavaBinaryPath().getAbsolutePath(),
@@ -164,27 +169,35 @@ public class ClusterCommandLauncherTest {
                                     "com.android.tradefed.command.CommandRunner",
                                     COMMAND,
                                     "--serial",
+                                    DEVICE_SERIAL,
+                                    "--serial",
                                     DEVICE_SERIAL
                                 }));
     }
 
     @Test
     public void testRun_withSetupScripts()
-            throws DeviceNotAvailableException, ConfigurationException {
+            throws DeviceNotAvailableException, ConfigurationException, IOException {
         mInvocationContext.addAllocatedDevice("foo", mMockTestDevice);
+        File scriptFile = new File(mRootDir, "script.py");
+        scriptFile.createNewFile();
+        scriptFile.setExecutable(false);
         final String classpath = String.format("%s/:%s/*", mTfPath, mTfPath);
         mOptionSetter.setOptionValue("cluster:env-var", "TF_PATH", mTfPath.getAbsolutePath());
         mOptionSetter.setOptionValue("cluster:env-var", "FOO", "foo");
         mOptionSetter.setOptionValue("cluster:env-var", "BAR", "bar");
         mOptionSetter.setOptionValue("cluster:env-var", "ZZZ", "zzz");
+        mOptionSetter.setOptionValue(
+                "cluster:setup-script", scriptFile.getAbsolutePath() + " --args ${FOO}");
         mOptionSetter.setOptionValue("cluster:setup-script", "foo bar zzz");
         mOptionSetter.setOptionValue("cluster:setup-script", "${FOO} ${BAR} ${ZZZ}");
         mOptionSetter.setOptionValue("cluster:command-line", COMMAND);
         final CommandResult mockCommandResult = new CommandResult(CommandStatus.SUCCESS);
-        when(mMockRunUtil.runTimedCmd(
+        when(mMockRunUtil.runTimedCmdWithInput(
                         Mockito.anyLong(),
-                        Mockito.<OutputStream>any(),
-                        Mockito.<OutputStream>any(),
+                        Mockito.isNull(),
+                        Mockito.<File>any(),
+                        Mockito.<File>any(),
                         Mockito.<String[]>any()))
                 .thenReturn(mockCommandResult);
         Mockito.when(mLauncher.getRunUtil()).thenReturn(mMockRunUtil);
@@ -198,17 +211,27 @@ public class ClusterCommandLauncherTest {
         Mockito.verify(mMockRunUtil).setEnvVariable("BAR", "bar");
         Mockito.verify(mMockRunUtil).setEnvVariable("FOO", "foo");
         Mockito.verify(mMockRunUtil).setEnvVariable("ZZZ", "zzz");
-        Mockito.verify(mMockRunUtil, Mockito.times(2))
-                .runTimedCmd(
+        Mockito.verify(mMockRunUtil)
+                .runTimedCmdWithInput(
                         Mockito.anyLong(),
-                        Mockito.<OutputStream>any(),
-                        Mockito.<OutputStream>any(),
+                        Mockito.isNull(),
+                        Mockito.<File>any(),
+                        Mockito.<File>any(),
+                        asMatchers(new String[] {scriptFile.getAbsolutePath(), "--args", "foo"}));
+        assertTrue(scriptFile.canExecute());
+        Mockito.verify(mMockRunUtil, Mockito.times(2))
+                .runTimedCmdWithInput(
+                        Mockito.anyLong(),
+                        Mockito.isNull(),
+                        Mockito.<File>any(),
+                        Mockito.<File>any(),
                         asMatchers(new String[] {"foo", "bar", "zzz"}));
         Mockito.verify(mMockRunUtil)
-                .runTimedCmd(
+                .runTimedCmdWithInput(
                         Mockito.eq(10000L),
-                        Mockito.<OutputStream>any(),
-                        Mockito.<OutputStream>any(),
+                        Mockito.isNull(),
+                        Mockito.<File>any(),
+                        Mockito.<File>any(),
                         asMatchers(
                                 new String[] {
                                     SystemUtil.getRunningJavaBinaryPath().getAbsolutePath(),
@@ -249,10 +272,11 @@ public class ClusterCommandLauncherTest {
                                 Mockito.any(), Mockito.anyBoolean(), Mockito.any()))
                 .thenReturn(mMockSubprocessTestResultsParser);
         final CommandResult mockCommandResult = new CommandResult(CommandStatus.SUCCESS);
-        when(mMockRunUtil.runTimedCmd(
+        when(mMockRunUtil.runTimedCmdWithInput(
                         Mockito.anyLong(),
-                        Mockito.<OutputStream>any(),
-                        Mockito.<OutputStream>any(),
+                        Mockito.isNull(),
+                        Mockito.<File>any(),
+                        Mockito.<File>any(),
                         Mockito.<String[]>any()))
                 .thenReturn(mockCommandResult);
         Mockito.when(mLauncher.getRunUtil()).thenReturn(mMockRunUtil);
@@ -267,10 +291,11 @@ public class ClusterCommandLauncherTest {
         Mockito.verify(mMockRunUtil).setEnvVariable("TF_PATH", tfPath.getAbsolutePath());
         Mockito.verify(mMockRunUtil).unsetEnvVariable("TF_GLOBAL_CONFIG");
         Mockito.verify(mMockRunUtil)
-                .runTimedCmd(
+                .runTimedCmdWithInput(
                         Mockito.eq(10000L),
-                        Mockito.<OutputStream>any(),
-                        Mockito.<OutputStream>any(),
+                        Mockito.isNull(),
+                        Mockito.<File>any(),
+                        Mockito.<File>any(),
                         asMatchers(
                                 new String[] {
                                     SystemUtil.getRunningJavaBinaryPath().getAbsolutePath(),

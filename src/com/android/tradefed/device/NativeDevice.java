@@ -76,6 +76,8 @@ import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.Inet6Address;
+import java.net.UnknownHostException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Clock;
@@ -139,9 +141,11 @@ public class NativeDevice implements IManagedTestDevice {
             Pattern.compile("DispatchEnabled:\\s?([01])");
     /** regex to match build signing key type */
     private static final Pattern KEYS_PATTERN = Pattern.compile("^.*-keys$");
-    private static final Pattern DF_PATTERN = Pattern.compile(
-            //Fs 1K-blks Used    Available Use%      Mounted on
-            "^/\\S+\\s+\\d+\\s+\\d+\\s+(\\d+)\\s+\\d+%\\s+/\\S*$", Pattern.MULTILINE);
+
+    private static final Pattern DF_PATTERN =
+            Pattern.compile(
+                    // Fs 1K-blks Used    Available Use%      Mounted on
+                    "^/(\\S+)\\s+\\d+\\s+\\d+\\s+(\\d+)\\s+\\d+%\\s+/\\S*$", Pattern.MULTILINE);
     private static final Pattern BUGREPORTZ_RESPONSE_PATTERN = Pattern.compile("(OK:)(.*)");
 
     protected static final long MAX_HOST_DEVICE_TIME_OFFSET = 5 * 1000;
@@ -169,6 +173,9 @@ public class NativeDevice implements IManagedTestDevice {
 
     static final String MAC_ADDRESS_PATTERN = "([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}";
     static final String MAC_ADDRESS_COMMAND = "su root cat /sys/class/net/wlan0/address";
+    static final String ETHERNET_MAC_ADDRESS_COMMAND = "cat /sys/class/net/eth0/address";
+
+    static final int ETHER_ADDR_LEN = 6;
 
     /** The network monitoring interval in ms. */
     private static final int NETWORK_MONITOR_INTERVAL = 10 * 1000;
@@ -225,6 +232,8 @@ public class NativeDevice implements IManagedTestDevice {
 
     private DeviceDescriptor mCachedDeviceDescriptor = null;
     private final Object mCacheLock = new Object();
+
+    private String mFastbootSerialNumber = null;
 
     /**
      * Interface for a generic device communication attempt.
@@ -336,6 +345,11 @@ public class NativeDevice implements IManagedTestDevice {
         RebootDeviceAction(RebootMode rebootMode, @Nullable String reason) {
             mRebootMode = rebootMode;
             mReason = reason;
+        }
+
+        public boolean isFastbootOrBootloader() {
+            return mRebootMode == RebootMode.REBOOT_INTO_BOOTLOADER
+                    || mRebootMode == RebootMode.REBOOT_INTO_FASTBOOTD;
         }
 
         @Override
@@ -468,13 +482,25 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public String getProperty(final String name) throws DeviceNotAvailableException {
+        return getPropertyWithRecovery(name, false);
+    }
+
+    /** Version of getProperty that allows to check device status and trigger recovery if needed. */
+    private String getPropertyWithRecovery(final String name, boolean recovery)
+            throws DeviceNotAvailableException {
         if (getIDevice() instanceof StubDevice) {
             return null;
         }
         if (!TestDeviceState.ONLINE.equals(getDeviceState())) {
-            // Only query property for online device
-            CLog.d("Device %s is not online cannot get property %s.", getSerialNumber(), name);
-            return null;
+            if (recovery) {
+                // Only query property for online device so trigger recovery before getting
+                // property.
+                recoverDevice();
+            } else {
+                // Only query property for online device
+                CLog.d("Device %s is not online cannot get property %s.", getSerialNumber(), name);
+                return null;
+            }
         }
         String cmd = String.format("getprop %s", name);
         CommandResult result = executeShellV2Command(cmd);
@@ -482,6 +508,16 @@ public class NativeDevice implements IManagedTestDevice {
             CLog.e(
                     "Failed to run '%s' returning null. stdout: %s\nstderr: %s\nexit code: %s",
                     cmd, result.getStdout(), result.getStderr(), result.getExitCode());
+            if (result.getStderr().contains("device offline")) {
+                if (recovery) {
+                    recoverDevice();
+                    return getPropertyWithRecovery(name, false);
+                }
+                throw new DeviceNotAvailableException(
+                        String.format("Device went offline when querying property: %s", name),
+                        getSerialNumber(),
+                        DeviceErrorIdentifier.DEVICE_UNAVAILABLE);
+            }
             return null;
         }
         if (result.getStdout() == null || result.getStdout().trim().isEmpty()) {
@@ -1438,7 +1474,7 @@ public class NativeDevice implements IManagedTestDevice {
         Matcher matcher = DF_PATTERN.matcher(dfOutput);
         if (matcher.find()) {
             try {
-                return Long.parseLong(matcher.group(1));
+                return Long.parseLong(matcher.group(2));
             } catch (NumberFormatException e) {
                 // fall through
             }
@@ -2065,8 +2101,8 @@ public class NativeDevice implements IManagedTestDevice {
      * Builds the OS command for the given fastboot command and args
      */
     private String[] buildFastbootCommand(String... commandArgs) {
-        return ArrayUtil.buildArray(new String[] {getFastbootPath(), "-s", getSerialNumber()},
-                commandArgs);
+        return ArrayUtil.buildArray(
+                new String[] {getFastbootPath(), "-s", getFastbootSerialNumber()}, commandArgs);
     }
 
     /**
@@ -2104,6 +2140,15 @@ public class NativeDevice implements IManagedTestDevice {
                     return false;
                 }
             } catch (AdbCommandRejectedException e) {
+                // Workaround to not recover device if TCP adb is used.
+                if (isAdbTcp()
+                        && (action instanceof RebootDeviceAction)
+                        && ((RebootDeviceAction) action).isFastbootOrBootloader()) {
+                    CLog.d(
+                            "Ignore AdbCommandRejectedException when TCP device is rebooted into"
+                                    + " fastboot.");
+                    return true;
+                }
                 logDeviceActionException(actionDescription, e);
             } catch (ShellCommandUnresponsiveException e) {
                 CLog.w("Device %s stopped responding when attempting %s", getSerialNumber(),
@@ -2304,20 +2349,29 @@ public class NativeDevice implements IManagedTestDevice {
         SimpleDateFormat format = new SimpleDateFormat("MM-dd HH:mm:ss.mmm");
         String dateFormatted = format.format(new Date(date));
 
-        byte[] output = new byte[0];
+        LargeOutputReceiver largeReceiver = null;
         try {
             // use IDevice directly because we don't want callers to handle
             // DeviceNotAvailableException for this method
-            CollectingByteOutputReceiver receiver = new CollectingByteOutputReceiver();
+            largeReceiver =
+                    new LargeOutputReceiver(
+                            "getLogcatSince",
+                            getSerialNumber(),
+                            getOptions().getMaxLogcatDataSize());
             String command = String.format("%s -t '%s'", LogcatReceiver.LOGCAT_CMD, dateFormatted);
-            getIDevice().executeShellCommand(command, receiver);
-            output = receiver.getOutput();
+            getIDevice().executeShellCommand(command, largeReceiver);
+            return largeReceiver.getData();
         } catch (IOException|AdbCommandRejectedException|
                 ShellCommandUnresponsiveException|TimeoutException e) {
             CLog.w("Failed to get logcat dump from %s: %s", getSerialNumber(), e.getMessage());
             CLog.e(e);
+        } finally {
+            if (largeReceiver != null) {
+                largeReceiver.cancel();
+                largeReceiver.delete();
+            }
         }
-        return new ByteArrayInputStreamSource(output);
+        return new ByteArrayInputStreamSource(new byte[0]);
     }
 
     /**
@@ -2325,15 +2379,23 @@ public class NativeDevice implements IManagedTestDevice {
      */
     @Override
     public InputStreamSource getLogcatDump() {
-        byte[] output = new byte[0];
+        LargeOutputReceiver largeReceiver = null;
         try {
             // use IDevice directly because we don't want callers to handle
             // DeviceNotAvailableException for this method
-            CollectingByteOutputReceiver receiver = new CollectingByteOutputReceiver();
+            largeReceiver =
+                    new LargeOutputReceiver(
+                            "getLogcatDump",
+                            getSerialNumber(),
+                            getOptions().getMaxLogcatDataSize());
             // add -d parameter to make this a non blocking call
-            getIDevice().executeShellCommand(LogcatReceiver.LOGCAT_CMD + " -d", receiver,
-                    LOGCAT_DUMP_TIMEOUT, TimeUnit.MILLISECONDS);
-            output = receiver.getOutput();
+            getIDevice()
+                    .executeShellCommand(
+                            LogcatReceiver.LOGCAT_CMD + " -d",
+                            largeReceiver,
+                            LOGCAT_DUMP_TIMEOUT,
+                            TimeUnit.MILLISECONDS);
+            return largeReceiver.getData();
         } catch (IOException e) {
             CLog.w("Failed to get logcat dump from %s: ", getSerialNumber(), e.getMessage());
         } catch (TimeoutException e) {
@@ -2342,8 +2404,13 @@ public class NativeDevice implements IManagedTestDevice {
             CLog.w("Failed to get logcat dump from %s: ", getSerialNumber(), e.getMessage());
         } catch (ShellCommandUnresponsiveException e) {
             CLog.w("Failed to get logcat dump from %s: ", getSerialNumber(), e.getMessage());
+        } finally {
+            if (largeReceiver != null) {
+                largeReceiver.cancel();
+                largeReceiver.delete();
+            }
         }
-        return new ByteArrayInputStreamSource(output);
+        return new ByteArrayInputStreamSource(new byte[0]);
     }
 
     /**
@@ -2472,7 +2539,7 @@ public class NativeDevice implements IManagedTestDevice {
                 type = LogDataType.BUGREPORT;
             }
             // log what we managed to capture.
-            if (bugreport != null) {
+            if (bugreport != null && bugreport.size() > 0L) {
                 listener.testLog(dataName, type, bugreport);
                 return true;
             }
@@ -2983,6 +3050,10 @@ public class NativeDevice implements IManagedTestDevice {
             throw new UnsupportedOperationException(
                     String.format("Fastboot is not available and cannot reboot into %s", mode));
         }
+
+        // Update fastboot serial number before entering fastboot mode
+        mStateMonitor.setFastbootSerialNumber(getFastbootSerialNumber());
+
         // If we go to bootloader, it's probably for flashing so ensure we re-check the provider
         mShouldSkipContentProviderSetup = false;
         CLog.i(
@@ -3762,6 +3833,78 @@ public class NativeDevice implements IManagedTestDevice {
         return null;
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public String getFastbootSerialNumber() {
+        if (mFastbootSerialNumber != null) {
+            return mFastbootSerialNumber;
+        }
+
+        // Only devices which use TCP adb have different fastboot serial number because IPv6
+        // link-local address will be used in fastboot mode.
+        if (!isAdbTcp()) {
+            mFastbootSerialNumber = getSerialNumber();
+            CLog.i(
+                    "Device %s's fastboot serial number is %s",
+                    getSerialNumber(), mFastbootSerialNumber);
+            return mFastbootSerialNumber;
+        }
+
+        mFastbootSerialNumber = getSerialNumber();
+        byte[] macEui48Bytes;
+
+        try {
+            boolean adbRoot = isAdbRoot();
+            if (!adbRoot) {
+                enableAdbRoot();
+            }
+            macEui48Bytes = getEUI48MacAddressInBytes(ETHERNET_MAC_ADDRESS_COMMAND);
+            if (!adbRoot) {
+                disableAdbRoot();
+            }
+        } catch (DeviceNotAvailableException e) {
+            CLog.e("Device %s isn't available when get fastboot serial number", getSerialNumber());
+            CLog.e(e);
+            return getSerialNumber();
+        }
+
+        String net_interface = getHostOptions().getNetworkInterface();
+        if (net_interface == null || macEui48Bytes == null) {
+            CLog.i(
+                    "Device %s's fastboot serial number is %s",
+                    getSerialNumber(), mFastbootSerialNumber);
+            return mFastbootSerialNumber;
+        }
+
+        // Create a link-local Inet6Address from the MAC address. The EUI-48 MAC address
+        // is converted to an EUI-64 MAC address per RFC 4291. The resulting EUI-64 is
+        // used to construct a link-local IPv6 address per RFC 4862.
+        byte[] addr = new byte[16];
+        addr[0] = (byte) 0xfe;
+        addr[1] = (byte) 0x80;
+        addr[8] = (byte) (macEui48Bytes[0] ^ (byte) 0x02); // flip the link-local bit
+        addr[9] = macEui48Bytes[1];
+        addr[10] = macEui48Bytes[2];
+        addr[11] = (byte) 0xff;
+        addr[12] = (byte) 0xfe;
+        addr[13] = macEui48Bytes[3];
+        addr[14] = macEui48Bytes[4];
+        addr[15] = macEui48Bytes[5];
+
+        try {
+            String host_addr = Inet6Address.getByAddress(null, addr, 0).getHostAddress();
+            mFastbootSerialNumber = "tcp:" + host_addr.split("%")[0] + "%" + net_interface;
+        } catch (UnknownHostException e) {
+            CLog.w("Failed to get %s's IPv6 link-local address", getSerialNumber());
+            CLog.w(e);
+        }
+
+        CLog.i(
+                "Device %s's fastboot serial number is %s",
+                getSerialNumber(), mFastbootSerialNumber);
+        return mFastbootSerialNumber;
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -3916,6 +4059,12 @@ public class NativeDevice implements IManagedTestDevice {
         throw new UnsupportedOperationException("No support for Package's feature");
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public Set<String> getMainlineModuleInfo() throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for Package's feature");
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -3964,7 +4113,7 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public boolean checkApiLevelAgainstNextRelease(int strictMinLevel)
             throws DeviceNotAvailableException {
-        String codeName = getProperty(DeviceProperties.BUILD_CODENAME);
+        String codeName = getPropertyWithRecovery(DeviceProperties.BUILD_CODENAME, true);
         if (codeName == null) {
             throw new DeviceRuntimeException(
                     String.format(
@@ -4475,7 +4624,8 @@ public class NativeDevice implements IManagedTestDevice {
             }
             if (exception instanceof DeviceNotAvailableException) {
                 CLog.e(
-                        "Skip Tradefed Content Provider teardown due to DeviceNotAvailableException.");
+                        "Skip Tradefed Content Provider teardown due to"
+                                + " DeviceNotAvailableException.");
                 return;
             }
             if (TestDeviceState.ONLINE.equals(getDeviceState())) {
@@ -4801,10 +4951,12 @@ public class NativeDevice implements IManagedTestDevice {
     }
 
     /**
-     * {@inheritDoc}
+     * Query Mac address from the device
+     *
+     * @param command the query command
+     * @return the MAC address of the device, null if it fails to query from the device
      */
-    @Override
-    public String getMacAddress() {
+    private String getMacAddress(String command) {
         if (getIDevice() instanceof StubDevice) {
             // Do not query MAC addresses from stub devices.
             return null;
@@ -4815,18 +4967,79 @@ public class NativeDevice implements IManagedTestDevice {
         }
         CollectingOutputReceiver receiver = new CollectingOutputReceiver();
         try {
-            mIDevice.executeShellCommand(MAC_ADDRESS_COMMAND, receiver);
+            mIDevice.executeShellCommand(command, receiver);
         } catch (IOException | TimeoutException | AdbCommandRejectedException |
                 ShellCommandUnresponsiveException e) {
-            CLog.w("Failed to query MAC address for %s", mIDevice.getSerialNumber());
+            CLog.w(
+                    "Failed to query MAC address for %s by '%s'",
+                    mIDevice.getSerialNumber(), command);
             CLog.w(e);
         }
         String output = receiver.getOutput().trim();
         if (isMacAddress(output)) {
             return output;
         }
-        CLog.d("No valid MAC address queried from device %s", mIDevice.getSerialNumber());
+        CLog.d(
+                "No valid MAC address queried from device %s by '%s'",
+                mIDevice.getSerialNumber(), command);
         return null;
+    }
+
+    /**
+     * Query EUI-48 MAC address from the device
+     *
+     * @param command the query command
+     * @return the EUI-48 MAC address in long, 0 if it fails to query from the device
+     * @throws IllegalArgumentException
+     */
+    long getEUI48MacAddressInLong(String command) {
+        String addr = getMacAddress(command);
+        if (addr == null) {
+            return 0;
+        }
+
+        String[] parts = addr.split(":");
+        if (parts.length != ETHER_ADDR_LEN) {
+            throw new IllegalArgumentException(addr + " was not a valid MAC address");
+        }
+        long longAddr = 0;
+        for (int i = 0; i < parts.length; i++) {
+            int x = Integer.valueOf(parts[i], 16);
+            if (x < 0 || 0xff < x) {
+                throw new IllegalArgumentException(addr + "was not a valid MAC address");
+            }
+            longAddr = x + (longAddr << 8);
+        }
+
+        return longAddr;
+    }
+
+    /**
+     * Query EUI-48 MAC address from the device
+     *
+     * @param command the query command
+     * @return the EUI-48 MAC address in byte[], null if it fails to query from the device
+     * @throws IllegalArgumentException
+     */
+    byte[] getEUI48MacAddressInBytes(String command) {
+        long addr = getEUI48MacAddressInLong(command);
+        if (addr == 0) {
+            return null;
+        }
+
+        byte[] bytes = new byte[ETHER_ADDR_LEN];
+        int index = ETHER_ADDR_LEN;
+        while (index-- > 0) {
+            bytes[index] = (byte) addr;
+            addr = addr >> 8;
+        }
+        return bytes;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public String getMacAddress() {
+        return getMacAddress(MAC_ADDRESS_COMMAND);
     }
 
     /** {@inheritDoc} */
@@ -5021,7 +5234,7 @@ public class NativeDevice implements IManagedTestDevice {
     }
 
     /** Reset the flag for content provider setup in order to trigger it again. */
-    void resetContentProviderSetup() {
+    protected void resetContentProviderSetup() {
         mShouldSkipContentProviderSetup = false;
     }
 

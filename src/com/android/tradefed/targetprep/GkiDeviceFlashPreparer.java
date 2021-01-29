@@ -47,13 +47,9 @@ import java.util.concurrent.TimeUnit;
 @OptionClass(alias = "gki-device-flash-preparer")
 public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
 
-    private static final String GKI_BOOT_IMG = "gki_boot.img";
     private static final String MKBOOTIMG = "mkbootimg";
     private static final String OTATOOLS_ZIP = "otatools.zip";
-    private static final String RAMDISK_RECOVERY_IMG = "ramdisk-recovery.img";
     private static final String KERNEL_IMAGE = "Image.gz";
-    private static final String VENDOR_BOOT_IMG = "vendor_boot.img";
-    private static final String DTBO_IMG = "dtbo.img";
     // Wait time for device state to stablize in millisecond
     private static final int STATE_STABLIZATION_WAIT_TIME = 60000;
 
@@ -64,14 +60,50 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
     private long mDeviceBootTime = 5 * 60 * 1000;
 
     @Option(
+            name = "gki-boot-image-name",
+            description = "The file name in BuildInfo that provides GKI boot image.")
+    private String mGkiBootImageName = "gki_boot.img";
+
+    @Option(
+            name = "ramdisk-image-name",
+            description = "The file name in BuildInfo that provides ramdisk image.")
+    private String mRamdiskImageName = "ramdisk.img";
+
+    @Option(
+            name = "vendor-boot-image-name",
+            description = "The file name in BuildInfo that provides vendor boot image.")
+    private String mVendorBootImageName = "vendor_boot.img";
+
+    @Option(
+            name = "dtbo-image-name",
+            description = "The file name in BuildInfo that provides dtbo image.")
+    private String mDtboImageName = "dtbo.img";
+
+    @Option(
             name = "boot-image-file-name",
             description =
-                    "The boot image file name to search for if gki_boot.img is provided in "
-                            + "BuildInfo and the provided file is a zip file or directory, for "
-                            + "example boot-5.4.img. By default when gki_boot.img is provided in "
-                            + "BuildInfo with a zip file or file directory, the target preparer "
-                            + "will use the first found file that matches boot(.*).img.")
+                    "The boot image file name to search for if gki-boot-image-name in "
+                            + "BuildInfo is a zip file or directory, for example boot-5.4-gz.img.")
     private String mBootImageFileName = "boot(.*).img";
+
+    @Option(
+            name = "vendor-boot-image-file-name",
+            description =
+                    "The vendor boot image file name to search for if vendor-boot-image-name in "
+                            + "BuildInfo is a zip file or directory, for example vendor_boot.img.")
+    private String mVendorBootImageFileName = "vendor_boot.img";
+
+    @Option(
+            name = "dtbo-image-file-name",
+            description =
+                    "The dtbo image file name to search for if dtbo-image-name in "
+                            + "BuildInfo is a zip file or directory, for example dtbo.img.")
+    private String mDtboImageFileName = "dtbo.img";
+
+    @Option(
+            name = "post-reboot-device-into-user-space",
+            description = "whether to boot the device in user space after flash.")
+    private boolean mPostRebootDeviceIntoUserSpace = true;
 
     private File mBootImg = null;
 
@@ -86,11 +118,15 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
         try {
             tmpDir = FileUtil.createTempDir("gki_preparer");
             validateGkiBootImg(device, buildInfo, tmpDir);
-            flashGki(device, buildInfo);
+            flashGki(device, buildInfo, tmpDir);
         } catch (IOException ioe) {
             throw new TargetSetupError(ioe.getMessage(), ioe, device.getDeviceDescriptor());
         } finally {
             FileUtil.recursiveDelete(tmpDir);
+        }
+
+        if (!mPostRebootDeviceIntoUserSpace) {
+            return;
         }
         // Wait some time after flashing the image.
         getRunUtil().sleep(STATE_STABLIZATION_WAIT_TIME);
@@ -139,12 +175,12 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
      *
      * @param device the {@link ITestDevice}
      * @param buildInfo the {@link IBuildInfo} the build info
+     * @param tmpDir the temporary directory {@link File}
      * @throws TargetSetupError, DeviceNotAvailableException, IOException
      */
-    private void flashGki(ITestDevice device, IBuildInfo buildInfo)
+    private void flashGki(ITestDevice device, IBuildInfo buildInfo, File tmpDir)
             throws TargetSetupError, DeviceNotAvailableException {
         IDeviceManager deviceManager = getDeviceManager();
-        device.waitForDeviceOnline();
         device.rebootIntoBootloader();
         long start = System.currentTimeMillis();
         deviceManager.takeFlashingPermit();
@@ -154,16 +190,23 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
         // Don't allow interruptions during flashing operations.
         getRunUtil().allowInterrupt(false);
         try {
-            if (buildInfo.getFile(VENDOR_BOOT_IMG) != null) {
-                executeFastbootCmd(
-                        device,
-                        "flash",
-                        "vendor_boot",
-                        buildInfo.getFile(VENDOR_BOOT_IMG).getAbsolutePath());
+            if (buildInfo.getFile(mVendorBootImageName) != null) {
+                File vendorBootImg =
+                        getRequestedFile(
+                                device,
+                                mVendorBootImageFileName,
+                                buildInfo.getFile(mVendorBootImageName),
+                                tmpDir);
+                executeFastbootCmd(device, "flash", "vendor_boot", vendorBootImg.getAbsolutePath());
             }
-            if (buildInfo.getFile(DTBO_IMG) != null) {
-                executeFastbootCmd(
-                        device, "flash", "dtbo", buildInfo.getFile(DTBO_IMG).getAbsolutePath());
+            if (buildInfo.getFile(mDtboImageName) != null) {
+                File dtboImg =
+                        getRequestedFile(
+                                device,
+                                mDtboImageFileName,
+                                buildInfo.getFile(mDtboImageName),
+                                tmpDir);
+                executeFastbootCmd(device, "flash", "dtbo", dtboImg.getAbsolutePath());
             }
             executeFastbootCmd(device, "flash", "boot", mBootImg.getAbsolutePath());
         } finally {
@@ -201,10 +244,13 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
     @VisibleForTesting
     protected void validateGkiBootImg(ITestDevice device, IBuildInfo buildInfo, File tmpDir)
             throws TargetSetupError {
-        if (buildInfo.getFile(GKI_BOOT_IMG) != null && mBootImageFileName != null) {
+        if (buildInfo.getFile(mGkiBootImageName) != null && mBootImageFileName != null) {
             mBootImg =
                     getRequestedFile(
-                            device, mBootImageFileName, buildInfo.getFile(GKI_BOOT_IMG), tmpDir);
+                            device,
+                            mBootImageFileName,
+                            buildInfo.getFile(mGkiBootImageName),
+                            tmpDir);
             return;
         }
         if (buildInfo.getFile(KERNEL_IMAGE) == null) {
@@ -212,9 +258,9 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
                     KERNEL_IMAGE + " is not provided. Can not generate GKI boot.img.",
                     device.getDeviceDescriptor());
         }
-        if (buildInfo.getFile(RAMDISK_RECOVERY_IMG) == null) {
+        if (buildInfo.getFile(mRamdiskImageName) == null) {
             throw new TargetSetupError(
-                    RAMDISK_RECOVERY_IMG + " is not provided. Can not generate GKI boot.img.",
+                    mRamdiskImageName + " is not provided. Can not generate GKI boot.img.",
                     device.getDeviceDescriptor());
         }
         if (buildInfo.getFile(OTATOOLS_ZIP) == null) {
@@ -232,7 +278,7 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
                                     + "--pagesize 4096 --ramdisk %s -o %s",
                             mkbootimg.getAbsolutePath(),
                             buildInfo.getFile(KERNEL_IMAGE),
-                            buildInfo.getFile(RAMDISK_RECOVERY_IMG),
+                            buildInfo.getFile(mRamdiskImageName),
                             mBootImg.getAbsolutePath());
             executeHostCommand(device, cmd);
             CLog.i("The GKI boot.img is of size %d", mBootImg.length());

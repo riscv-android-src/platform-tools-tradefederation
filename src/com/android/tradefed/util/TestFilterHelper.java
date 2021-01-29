@@ -15,6 +15,9 @@
  */
 package com.android.tradefed.util;
 
+import com.android.tradefed.error.HarnessRuntimeException;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
+
 import org.junit.runner.Description;
 
 import java.io.File;
@@ -263,8 +266,10 @@ public class TestFilterHelper {
                 cl = URLClassLoader.newInstance(urlList.toArray(new URL[0]));
                 classObj = cl.loadClass(desc.getClassName());
             } catch (MalformedURLException | ClassNotFoundException e) {
-                throw new IllegalArgumentException(
-                        String.format("Could not load Test class %s", classObj), e);
+                throw new HarnessRuntimeException(
+                        String.format("Could not load Test class %s", desc.getClassName()),
+                        e,
+                        InfraErrorIdentifier.OPTION_CONFIGURATION_ERROR);
             }
 
             // If class is explicitly annotated to be excluded, exclude it.

@@ -22,6 +22,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 
+import com.google.common.collect.ImmutableList;
 import java.util.List;
 import java.util.StringJoiner;
 
@@ -31,8 +32,14 @@ import java.util.StringJoiner;
  */
 public final class NativeCodeCoverageFlusher {
 
+    private static final String EXTRACT_SIGCGT_FORMAT =
+            "cat /proc/%d/status | grep SigCgt | awk '{ print $2 }'";
+    private static final long SIGNAL_37_BIT = 1 << (37 - 1);
     private static final String COVERAGE_FLUSH_COMMAND_FORMAT = "kill -37 %s";
-    private static final String CLEAR_NATIVE_COVERAGE_FILES = "rm -rf /data/misc/trace/*";
+    private static final String CLEAR_CLANG_COVERAGE_FILES =
+            "find /data/misc/trace -name '*.profraw' -delete";
+    private static final String CLEAR_GCOV_COVERAGE_FILES =
+            "find /data/misc/trace -name '*.gcda' -delete";
 
     private final ITestDevice mDevice;
     private final List<String> mProcessNames;
@@ -50,7 +57,8 @@ public final class NativeCodeCoverageFlusher {
      */
     public void resetCoverage() throws DeviceNotAvailableException {
         forceCoverageFlush();
-        mDevice.executeShellCommand(CLEAR_NATIVE_COVERAGE_FILES);
+        mDevice.executeShellCommand(CLEAR_CLANG_COVERAGE_FILES);
+        mDevice.executeShellCommand(CLEAR_GCOV_COVERAGE_FILES);
     }
 
     /**
@@ -62,28 +70,59 @@ public final class NativeCodeCoverageFlusher {
     public void forceCoverageFlush() throws DeviceNotAvailableException {
         checkState(mDevice.isAdbRoot(), "adb root is required to flush native coverage data.");
 
-        if ((mProcessNames == null) || mProcessNames.isEmpty()) {
-            // Use the special pid -1 to trigger a coverage flush of all running processes.
-            mDevice.executeShellCommand(String.format(COVERAGE_FLUSH_COMMAND_FORMAT, "-1"));
-        } else {
-            // Look up the pid of the processes to send them the coverage flush signal.
-            StringJoiner pidString = new StringJoiner(" ");
-            for (String processName : mProcessNames) {
-                String pid = mDevice.getProcessPid(processName);
-                if (pid == null) {
-                    CLog.w("Did not find pid for process \"%s\".", processName);
-                } else {
-                    pidString.add(pid);
-                }
-            }
+        List<Integer> signalHandlingPids = findSignalHandlingPids(mProcessNames);
+        StringJoiner pidString = new StringJoiner(" ");
 
-            if (pidString.length() > 0) {
-                mDevice.executeShellCommand(
-                        String.format(COVERAGE_FLUSH_COMMAND_FORMAT, pidString.toString()));
-            }
+        CLog.d("Signal handling pids: %s", signalHandlingPids.toString());
+
+        for (Integer pid : signalHandlingPids) {
+            pidString.add(pid.toString());
+        }
+
+        if (pidString.length() > 0) {
+            mDevice.executeShellCommand(
+                    String.format(COVERAGE_FLUSH_COMMAND_FORMAT, pidString.toString()));
         }
 
         // Wait up to 5 minutes for the device to be available after flushing coverage data.
         mDevice.waitForDeviceAvailable(5 * 60 * 1000);
+    }
+
+    /** Finds processes that handle the native coverage flush signal (37). */
+    private List<Integer> findSignalHandlingPids(List<String> processNames)
+            throws DeviceNotAvailableException {
+        // Get a list of all running pids.
+        List<ProcessInfo> allProcessInfo =
+                PsParser.getProcesses(mDevice.executeShellCommand("ps -e"));
+        ImmutableList.Builder<Integer> signalHandlingPids = ImmutableList.builder();
+
+        // Check SigCgt from /proc/<pid>/status to see if the bit for signal 37 is set.
+        for (ProcessInfo processInfo : allProcessInfo) {
+            CommandResult result =
+                    mDevice.executeShellV2Command(
+                            String.format(EXTRACT_SIGCGT_FORMAT, processInfo.getPid()));
+
+            if (!result.getStatus().equals(CommandStatus.SUCCESS) || (result.getExitCode() != 0)) {
+                CLog.w(
+                        "Failed to read /proc/%d/status for %s",
+                        processInfo.getPid(), processInfo.getName());
+            } else if (result.getStdout().trim().isEmpty()) {
+                CLog.w(
+                        "Empty string when retrieving SigCgt for %s (pid %d)",
+                        processInfo.getName(), processInfo.getPid());
+            } else {
+                long sigCgt = Long.parseLong(result.getStdout().trim(), 16);
+
+                // Check the signal bit is set and either no processes are set, or this specific
+                // process is in the process list.
+                if ((sigCgt & SIGNAL_37_BIT) == SIGNAL_37_BIT
+                        && (processNames.isEmpty()
+                                || processNames.contains(processInfo.getName()))) {
+                    signalHandlingPids.add(processInfo.getPid());
+                }
+            }
+        }
+
+        return signalHandlingPids.build();
     }
 }

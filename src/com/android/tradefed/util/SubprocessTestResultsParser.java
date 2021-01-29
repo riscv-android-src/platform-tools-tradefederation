@@ -18,6 +18,7 @@ package com.android.tradefed.util;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationGroupMetricKey;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.invoker.logger.TfObjectTracker;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -446,7 +447,7 @@ public class SubprocessTestResultsParser implements Closeable {
         public void handleEvent(String eventJson) throws JSONException {
             FailedTestEventInfo fti = new FailedTestEventInfo(new JSONObject(eventJson));
             checkCurrentTestId(fti.mClassName, fti.mTestName);
-            mListener.testFailed(mCurrentTest, fti.mTrace);
+            mListener.testFailed(mCurrentTest, fti.mFailure);
         }
     }
 
@@ -605,6 +606,29 @@ public class SubprocessTestResultsParser implements Closeable {
             List<IBuildInfo> infos = mContext.getBuildInfos();
             if (!infos.isEmpty()) {
                 Map<String, String> attributes = eventEnd.mBuildAttributes;
+                for (InvocationGroupMetricKey groupKey : InvocationGroupMetricKey.values()) {
+                    Set<String> attKeys = new HashSet<>(attributes.keySet());
+                    for (String attKey : attKeys) {
+                        if (attKey.startsWith(groupKey.toString() + ":")) {
+                            String value = attributes.remove(attKey);
+                            String group = attKey.split(":", 2)[1];
+                            if (groupKey.shouldAdd()) {
+                                try {
+                                    InvocationMetricLogger.addInvocationMetrics(
+                                            groupKey, group, Long.parseLong(value));
+                                } catch (NumberFormatException e) {
+                                    CLog.d(
+                                            "Key %s doesn't have a number value, was: %s.",
+                                            groupKey, value);
+                                    InvocationMetricLogger.addInvocationMetrics(
+                                            groupKey, group, value);
+                                }
+                            } else {
+                                InvocationMetricLogger.addInvocationMetrics(groupKey, group, value);
+                            }
+                        }
+                    }
+                }
                 for (InvocationMetricKey key : InvocationMetricKey.values()) {
                     if (!attributes.containsKey(key.toString())) {
                         continue;

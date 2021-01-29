@@ -213,4 +213,10 @@ public interface ICommandOptions {
 
     /** Returns the map of args to pass to the dynamic download query. */
     public Map<String, String> getDynamicDownloadArgs();
+
+    /** Whether or not to report the number of test cases per test types. */
+    public boolean reportTestCaseCount();
+
+    /** Set whether or not to report test cases count per test types. */
+    public void setReportTestCaseCount(boolean report);
 }

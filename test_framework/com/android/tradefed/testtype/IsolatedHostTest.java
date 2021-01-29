@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 The Android Open Source Project
+ * Copyright (C) 2020 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@ package com.android.tradefed.testtype;
 
 import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.IBuildInfo;
-import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
@@ -30,24 +29,31 @@ import com.android.tradefed.isolation.RunnerOp;
 import com.android.tradefed.isolation.RunnerReply;
 import com.android.tradefed.isolation.TestParameters;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.RunUtil;
+import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.SystemUtil;
 
-import java.io.BufferedReader;
+import com.google.common.annotations.VisibleForTesting;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.lang.ProcessBuilder.Redirect;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -55,11 +61,17 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
  * Implements a TradeFed runner that uses a subprocess to execute the tests in a low-dependency
  * environment instead of executing them on the main process.
+ *
+ * <p>This runner assumes that all of the jars configured are in the same test directory and
+ * launches the subprocess in that directory. Since it must choose a working directory for the
+ * subprocess, and many tests benefit from that directory being the test directory, this was the
+ * best compromise available.
  */
 @OptionClass(alias = "isolated-host-test")
 public class IsolatedHostTest
@@ -117,49 +129,79 @@ public class IsolatedHostTest
     private List<String> mJavaFlags = new ArrayList<>();
 
     @Option(
+            name = "use-robolectric-resources",
+            description =
+                    "Option to put the Robolectric specific resources directory option on "
+                            + "the Java command line.")
+    private boolean mRobolectricResources = false;
+
+    @Option(
             name = "exclude-paths",
             description = "The (prefix) paths to exclude from searching in the jars.")
-    private Set<String> mExcludePaths = new HashSet<>();
+    private Set<String> mExcludePaths = new HashSet<>(Arrays.asList("org/junit"));
+
+    @Option(
+            name = "java-folder",
+            description = "The JDK to be used. If unset, the JDK on $PATH will be used.")
+    private File mJdkFolder = null;
+
+    @Option(
+            name = "classpath-override",
+            description =
+                    "[Local Debug Only] Force a classpath (isolation runner dependencies are still"
+                            + " added to this classpath)")
+    private String mClasspathOverride = null;
+
+    @Option(
+            name = "robolectric-android-all-name",
+            description =
+                    "The android-all resource jar to be used, e.g."
+                            + " 'android-all-R-robolectric-r0.jar'")
+    private String mAndroidAllName = "android-all-S-robolectric-r0.jar";
+
+    @Option(
+            name = TestTimeoutEnforcer.TEST_CASE_TIMEOUT_OPTION,
+            description = TestTimeoutEnforcer.TEST_CASE_TIMEOUT_DESCRIPTION)
+    private Duration mTestCaseTimeout = Duration.ofSeconds(0L);
 
     private IBuildInfo mBuildInfo;
     private Set<String> mIncludeFilters = new HashSet<>();
     private Set<String> mExcludeFilters = new HashSet<>();
     private boolean mCollectTestsOnly = false;
+    private File mSubprocessLog;
+    private File mWorkDir;
+    private boolean mReportedFailure = false;
 
     private static final String ROOT_DIR = "ROOT_DIR";
-    private static final List<String> ISOLATION_JARS =
-            new ArrayList<>(Arrays.asList("tradefed-isolation.jar"));
     private ServerSocket mServer = null;
 
     /** {@inheritDoc} */
     @Override
     public void run(TestInformation testInfo, ITestInvocationListener listener)
             throws DeviceNotAvailableException {
+        mReportedFailure = false;
         try {
             mServer = new ServerSocket(0);
             mServer.setSoTimeout(mSocketTimeout);
 
-            ArrayList<String> cmdArgs =
-                    new ArrayList<>(
-                            List.of(
-                                    SystemUtil.getRunningJavaBinaryPath().getAbsolutePath(),
-                                    "-cp",
-                                    this.compileClassPath()));
-            cmdArgs.addAll(mJavaFlags);
-            cmdArgs.addAll(
-                    List.of(
-                            "com.android.tradefed.isolation.IsolationRunner",
-                            "-",
-                            "--port",
-                            Integer.toString(mServer.getLocalPort()),
-                            "--address",
-                            mServer.getInetAddress().getHostAddress(),
-                            "--timeout",
-                            Integer.toString(mSocketTimeout)));
-
+            String classpath = this.compileClassPath();
+            List<String> cmdArgs = this.compileCommandArgs(classpath);
             CLog.v(String.join(" ", cmdArgs));
             RunUtil runner = new RunUtil();
-            Process isolationRunner = runner.runCmdInBackground(Redirect.INHERIT, cmdArgs);
+
+            // Note the below chooses a working directory based on the jar that happens to
+            // be first in the list of configured jars.  The baked-in assumption is that
+            // all configured jars are in the same parent directory, otherwise the behavior
+            // here is non-deterministic.
+            mWorkDir = this.findJarDirectory();
+            runner.setWorkingDir(mWorkDir);
+            CLog.v("Using PWD: %s", mWorkDir.getAbsolutePath());
+
+            mSubprocessLog = FileUtil.createTempFile("subprocess-logs", "");
+            runner.setRedirectStderrToStdout(true);
+
+            Process isolationRunner =
+                    runner.runCmdInBackground(Redirect.to(mSubprocessLog), cmdArgs);
             CLog.v("Started subprocess.");
 
             Socket socket = mServer.accept();
@@ -186,17 +228,94 @@ public class IsolatedHostTest
                                 .addAllIncludeAnnotations(mIncludeAnnotations)
                                 .addAllExcludeAnnotations(mExcludeAnnotations));
             }
-            this.executeTests(socket, listener, paramsBuilder.build());
+            executeTests(socket, listener, paramsBuilder.build());
 
             RunnerMessage.newBuilder()
                     .setCommand(RunnerOp.RUNNER_OP_STOP)
                     .build()
                     .writeDelimitedTo(socket.getOutputStream());
         } catch (IOException e) {
-            listener.testRunFailed(e.getMessage());
-        } catch (ClassNotFoundException e) {
-            listener.testRunFailed(e.getMessage());
+            if (!mReportedFailure) {
+                // Avoid overriding the failure
+                listener.testRunFailed(StreamUtil.getStackTrace(e));
+            }
         }
+    }
+
+    /** Assembles the command arguments to execute the subprocess runner. */
+    public List<String> compileCommandArgs(String classpath) {
+        List<String> cmdArgs = new ArrayList<>();
+
+        if (mJdkFolder == null) {
+            cmdArgs.add(SystemUtil.getRunningJavaBinaryPath().getAbsolutePath());
+            CLog.v("Using host java version.");
+        } else {
+            File javaExec = FileUtil.findFile(mJdkFolder, "java");
+            if (javaExec == null) {
+                throw new IllegalArgumentException(
+                        String.format(
+                                "Couldn't find java executable in given JDK folder: %s",
+                                mJdkFolder.getAbsolutePath()));
+            }
+            String javaPath = javaExec.getAbsolutePath();
+            cmdArgs.add(javaPath);
+            CLog.v("Using java executable at %s", javaPath);
+        }
+
+        cmdArgs.add("-cp");
+        cmdArgs.add(classpath);
+
+        cmdArgs.addAll(mJavaFlags);
+
+        if (mRobolectricResources) {
+            cmdArgs.addAll(compileRobolectricOptions());
+        }
+
+        cmdArgs.addAll(
+                List.of(
+                        "com.android.tradefed.isolation.IsolationRunner",
+                        "-",
+                        "--port",
+                        Integer.toString(mServer.getLocalPort()),
+                        "--address",
+                        mServer.getInetAddress().getHostAddress(),
+                        "--timeout",
+                        Integer.toString(mSocketTimeout)));
+        return cmdArgs;
+    }
+
+    /**
+     * Finds the directory where the first configured jar is located.
+     *
+     * <p>This is used to determine the correct folder to use for a working directory for the
+     * subprocess runner.
+     */
+    private File findJarDirectory() {
+        File testDir = findTestDirectory();
+        for (String jar : mJars) {
+            File f = FileUtil.findFile(testDir, jar);
+            if (f != null && f.exists()) {
+                return f.getParentFile();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Retrieves the file registered in the build info as the test directory
+     *
+     * @return a {@link File} object representing the test directory
+     */
+    private File findTestDirectory() {
+        File testsDir = mBuildInfo.getFile(BuildInfoFileKey.HOST_LINKED_DIR);
+        if (testsDir != null && testsDir.exists()) {
+            return testsDir;
+        }
+        testsDir = mBuildInfo.getFile(BuildInfoFileKey.TESTDIR_IMAGE);
+        if (testsDir != null && testsDir.exists()) {
+            return testsDir;
+        }
+        throw new IllegalArgumentException("Test directory not found, cannot proceed");
     }
 
     /**
@@ -204,13 +323,9 @@ public class IsolatedHostTest
      *
      * @return a string specifying the colon separated classpath.
      */
-    private String compileClassPath() throws ClassNotFoundException {
+    private String compileClassPath() {
         List<String> paths = new ArrayList<>();
-        File testDir = mBuildInfo.getFile(BuildInfoFileKey.TESTDIR_IMAGE);
-
-        if (!testDir.exists()) {
-            throw new IllegalArgumentException("Test directory not found, cannot proceed");
-        }
+        File testDir = findTestDirectory();
 
         // This is a relatively hacky way to get around the fact that we don't have a consistent
         // way to locate tradefed related jars in all environments, so instead we dyn link to that
@@ -225,26 +340,71 @@ public class IsolatedHostTest
                             .getLocation()
                             .toURI();
 
-            String isolationJarPath =
-                    new File(tradefedJarPath).getParentFile().getAbsolutePath()
-                            + "/tradefed-isolation.jar";
+            File tradefedJar = new File(tradefedJarPath);
 
-            paths.add(isolationJarPath);
+            if (tradefedJar == null || !tradefedJar.exists()) {
+                throw new RuntimeException("tradefed.jar not found or does not exist.");
+            }
+
+            File isolationJar =
+                    FileUtil.findFile(tradefedJar.getParentFile(), "tradefed-isolation.jar");
+
+            if (isolationJar == null || !isolationJar.exists()) {
+                throw new RuntimeException("tradefed-isolation.jar not found or does not exist.");
+            }
+
+            paths.add(isolationJar.getAbsolutePath());
         } catch (URISyntaxException e) {
             throw new RuntimeException(e);
         }
 
-        for (String jar : mJars) {
-            File f = FileUtil.findFile(testDir, jar);
-            if (f != null && f.exists()) {
-                paths.add(f.getAbsolutePath());
-                paths.add(f.getParentFile().getAbsolutePath() + "/*");
+        if (mClasspathOverride != null) {
+            paths.add(mClasspathOverride);
+        } else {
+            if (mRobolectricResources) {
+                // This is contingent on the current android-all version.
+                File androidAllJar = FileUtil.findFile(testDir, mAndroidAllName);
+                if (androidAllJar == null) {
+                    throw new RuntimeException(
+                            "Could not find android-all jar needed for test execution.");
+                }
+                paths.add(androidAllJar.getAbsolutePath());
+            }
+
+            for (String jar : mJars) {
+                File f = FileUtil.findFile(testDir, jar);
+                if (f != null && f.exists()) {
+                    paths.add(f.getAbsolutePath());
+                    String parentPath = f.getParentFile().getAbsolutePath() + "/*";
+                    if (!paths.contains(parentPath)) {
+                        paths.add(parentPath);
+                    }
+                }
             }
         }
 
         String jarClasspath = String.join(java.io.File.pathSeparator, paths);
 
         return jarClasspath;
+    }
+
+    private List<String> compileRobolectricOptions() {
+        List<String> options = new ArrayList<>();
+        File testDir = findTestDirectory();
+        String dependencyDir =
+                "-Drobolectric.dependency.dir=" + testDir.getAbsolutePath() + "/android-all/";
+
+        options.add(dependencyDir);
+        options.add("-Drobolectric.offline=true");
+        options.add("-Drobolectric.logging=stdout");
+        options.add("-Drobolectric.resourcesMode=binary");
+
+        // TODO(murj) hide these options behind a debug option
+        // options.add("-Drobolectric.logging.enabled=true");
+        // options.add("-Xdebug");
+        // options.add("-Xrunjdwp:transport=dt_socket,address=8600,server=y,suspend=y");
+
+        return options;
     }
 
     /**
@@ -258,79 +418,133 @@ public class IsolatedHostTest
     private void executeTests(
             Socket socket, ITestInvocationListener listener, TestParameters params)
             throws IOException {
+        // If needed apply the wrapping listeners like timeout enforcer.
+        listener = wrapListener(listener);
         RunnerMessage.newBuilder()
                 .setCommand(RunnerOp.RUNNER_OP_RUN_TEST)
                 .setParams(params)
                 .build()
                 .writeDelimitedTo(socket.getOutputStream());
 
-        mainLoop:
-        while (true) {
-            try {
-                RunnerReply reply = RunnerReply.parseDelimitedFrom(socket.getInputStream());
-                switch (reply.getRunnerStatus()) {
-                    case RUNNER_STATUS_FINISHED_OK:
-                        CLog.v("Received message that runner finished successfully");
-                        break mainLoop;
-                    case RUNNER_STATUS_FINISHED_ERROR:
-                        CLog.e("Received message that runner errored");
-                        CLog.e("From Runner: " + reply.getMessage());
-                        listener.testRunFailed(reply.getMessage());
-                        break mainLoop;
-                    case RUNNER_STATUS_STARTING:
-                        CLog.v("Received message that runner is starting");
-                        break;
-                    default:
-                        if (reply.hasTestEvent()) {
-                            JUnitEvent event = reply.getTestEvent();
-                            TestDescription desc;
-                            switch (event.getTopic()) {
-                                case TOPIC_FAILURE:
-                                    desc =
-                                            new TestDescription(
-                                                    event.getClassName(), event.getMethodName());
-                                    listener.testFailed(desc, event.getMessage());
-                                    listener.testEnded(desc, new HashMap<String, String>());
-                                    break;
-                                case TOPIC_ASSUMPTION_FAILURE:
-                                    desc =
-                                            new TestDescription(
-                                                    event.getClassName(), event.getMethodName());
-                                    listener.testAssumptionFailure(desc, reply.getMessage());
-                                    break;
-                                case TOPIC_STARTED:
-                                    desc =
-                                            new TestDescription(
-                                                    event.getClassName(), event.getMethodName());
-                                    listener.testStarted(desc);
-                                    break;
-                                case TOPIC_FINISHED:
-                                    desc =
-                                            new TestDescription(
-                                                    event.getClassName(), event.getMethodName());
-                                    listener.testEnded(desc, new HashMap<String, String>());
-                                    break;
-                                case TOPIC_IGNORED:
-                                    desc =
-                                            new TestDescription(
-                                                    event.getClassName(), event.getMethodName());
-                                    listener.testIgnored(desc);
-                                    break;
-                                case TOPIC_RUN_STARTED:
-                                    listener.testRunStarted(
-                                            event.getClassName(), event.getTestCount());
-                                    break;
-                                case TOPIC_RUN_FINISHED:
-                                    listener.testRunEnded(
-                                            event.getElapsedTime(), new HashMap<String, String>());
-                                    break;
-                                default:
-                            }
-                        } else {
+        TestDescription currentTest = null;
+        Instant start = Instant.now();
+
+        try {
+            mainLoop:
+            while (true) {
+                try {
+                    RunnerReply reply = RunnerReply.parseDelimitedFrom(socket.getInputStream());
+                    if (reply == null) {
+                        if (currentTest != null) {
+                            // Subprocess has hard crashed
+                            listener.testFailed(currentTest, "Subprocess died unexpectedly.");
+                            listener.testEnded(
+                                    currentTest,
+                                    System.currentTimeMillis(),
+                                    new HashMap<String, Metric>());
                         }
+                        // Try collecting the hs_err logs that the JVM dumps when it segfaults.
+                        List<File> logFiles =
+                                Arrays.stream(mWorkDir.listFiles())
+                                        .filter(
+                                                f ->
+                                                        f.getName().startsWith("hs_err")
+                                                                && f.getName().endsWith(".log"))
+                                        .collect(Collectors.toList());
+
+                        for (File f : logFiles) {
+                            try (FileInputStreamSource source =
+                                    new FileInputStreamSource(f, true)) {
+                                listener.testLog("hs_err_log-VM-crash", LogDataType.TEXT, source);
+                            }
+                        }
+                        mReportedFailure = true;
+                        FailureDescription failure =
+                                FailureDescription.create(
+                                                "The subprocess died unexpectedly.",
+                                                FailureStatus.TEST_FAILURE)
+                                        .setFullRerun(false);
+                        listener.testRunFailed(failure);
+                        break mainLoop;
+                    }
+                    switch (reply.getRunnerStatus()) {
+                        case RUNNER_STATUS_FINISHED_OK:
+                            CLog.v("Received message that runner finished successfully");
+                            break mainLoop;
+                        case RUNNER_STATUS_FINISHED_ERROR:
+                            CLog.e("Received message that runner errored");
+                            CLog.e("From Runner: " + reply.getMessage());
+                            listener.testRunFailed(reply.getMessage());
+                            break mainLoop;
+                        case RUNNER_STATUS_STARTING:
+                            CLog.v("Received message that runner is starting");
+                            break;
+                        default:
+                            if (reply.hasTestEvent()) {
+                                JUnitEvent event = reply.getTestEvent();
+                                TestDescription desc;
+                                switch (event.getTopic()) {
+                                    case TOPIC_FAILURE:
+                                        desc =
+                                                new TestDescription(
+                                                        event.getClassName(),
+                                                        event.getMethodName());
+                                        listener.testFailed(desc, event.getMessage());
+                                        break;
+                                    case TOPIC_ASSUMPTION_FAILURE:
+                                        desc =
+                                                new TestDescription(
+                                                        event.getClassName(),
+                                                        event.getMethodName());
+                                        listener.testAssumptionFailure(desc, reply.getMessage());
+                                        break;
+                                    case TOPIC_STARTED:
+                                        desc =
+                                                new TestDescription(
+                                                        event.getClassName(),
+                                                        event.getMethodName());
+                                        listener.testStarted(desc, event.getStartTime());
+                                        currentTest = desc;
+                                        break;
+                                    case TOPIC_FINISHED:
+                                        desc =
+                                                new TestDescription(
+                                                        event.getClassName(),
+                                                        event.getMethodName());
+                                        listener.testEnded(
+                                                desc,
+                                                event.getEndTime(),
+                                                new HashMap<String, Metric>());
+                                        currentTest = null;
+                                        break;
+                                    case TOPIC_IGNORED:
+                                        desc =
+                                                new TestDescription(
+                                                        event.getClassName(),
+                                                        event.getMethodName());
+                                        listener.testIgnored(desc);
+                                        break;
+                                    case TOPIC_RUN_STARTED:
+                                        listener.testRunStarted(
+                                                event.getClassName(), event.getTestCount());
+                                        break;
+                                    case TOPIC_RUN_FINISHED:
+                                        listener.testRunEnded(
+                                                event.getElapsedTime(),
+                                                new HashMap<String, Metric>());
+                                        break;
+                                    default:
+                                }
+                            }
+                    }
+                } catch (SocketTimeoutException e) {
+                    listener.testRunFailed(StreamUtil.getStackTrace(e));
                 }
-            } catch (SocketTimeoutException e) {
-                listener.testRunFailed(e.getMessage());
+            }
+        } finally {
+            // This will get associated with the module since it can contains several test runs
+            try (FileInputStreamSource source = new FileInputStreamSource(mSubprocessLog, true)) {
+                listener.testLog("isolated-java-logs", LogDataType.TEXT, source);
             }
         }
     }
@@ -359,11 +573,8 @@ public class IsolatedHostTest
         File jarFile = null;
 
         // Check tests dir
-        if (buildInfo instanceof IDeviceBuildInfo) {
-            IDeviceBuildInfo deviceBuildInfo = (IDeviceBuildInfo) buildInfo;
-            File testDir = deviceBuildInfo.getTestsDir();
-            jarFile = searchJarFile(testDir, jarName);
-        }
+        File testDir = buildInfo.getFile(BuildInfoFileKey.TESTDIR_IMAGE);
+        jarFile = searchJarFile(testDir, jarName);
         if (jarFile != null) {
             return jarFile;
         }
@@ -388,36 +599,6 @@ public class IsolatedHostTest
             }
         }
         return null;
-    }
-
-    /**
-     * This allows us to pipe the subprocesses STDOUT and STDERR through CLog under appropriate log
-     * levels. It uses a separate thread to handle each stream.
-     */
-    private class LogStreamHelper implements Runnable {
-        private InputStream mStream = null;
-        private boolean mIsErrorStream = false;
-
-        public LogStreamHelper(InputStream stream, boolean isErrorStream) {
-            mStream = stream;
-        }
-
-        @Override
-        public void run() {
-            if (mIsErrorStream) {
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(mStream))) {
-                    reader.lines().forEach(line -> CLog.e("E/IsolationRunner: %s", line));
-                } catch (Exception e) {
-                    CLog.e(e);
-                }
-            } else {
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(mStream))) {
-                    reader.lines().forEach(line -> CLog.v("V/IsolationRunner: %s", line));
-                } catch (Exception e) {
-                    CLog.e(e);
-                }
-            }
-        }
     }
 
     /** {@inheritDoc} */
@@ -526,5 +707,31 @@ public class IsolatedHostTest
     @Override
     public void clearExcludeAnnotations() {
         mExcludeAnnotations.clear();
+    }
+
+    /**
+     * Copied over from HostTest to mimic its unit test harnessing.
+     *
+     * <p>Inspect several location where the artifact are usually located for different use cases to
+     * find our jar.
+     */
+    @VisibleForTesting
+    protected File getJarFile(String jarName, TestInformation testInfo)
+            throws FileNotFoundException {
+        return testInfo.getDependencyFile(jarName, /* target first*/ false);
+    }
+
+    @VisibleForTesting
+    protected void setServer(ServerSocket server) {
+        mServer = server;
+    }
+
+    private ITestInvocationListener wrapListener(ITestInvocationListener listener) {
+        if (mTestCaseTimeout.toMillis() > 0L) {
+            listener =
+                    new TestTimeoutEnforcer(
+                            mTestCaseTimeout.toMillis(), TimeUnit.MILLISECONDS, listener);
+        }
+        return listener;
     }
 }

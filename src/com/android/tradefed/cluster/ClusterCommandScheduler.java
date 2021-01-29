@@ -32,14 +32,19 @@ import com.android.tradefed.device.NoDeviceException;
 import com.android.tradefed.device.battery.BatteryController;
 import com.android.tradefed.device.battery.IBatteryInfo;
 import com.android.tradefed.device.battery.IBatteryInfo.BatteryState;
+import com.android.tradefed.error.IHarnessException;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestSummaryListener;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.result.TestSummary;
+import com.android.tradefed.result.error.ErrorIdentifier;
+import com.android.tradefed.result.error.ErrorStorageUtil;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.QuotationAwareTokenizer;
@@ -144,6 +149,7 @@ public class ClusterCommandScheduler extends CommandScheduler {
         private Set<String> mDeviceSerials = new HashSet<>();
         private String mSummary;
         private Set<String> processedSummaries = new HashSet<>();
+        private FailureDescription mFailureDescription;
         private String mError;
         private String mSubprocessCommandError;
         private File mWorkDir;
@@ -270,6 +276,18 @@ public class ClusterCommandScheduler extends CommandScheduler {
 
         /** {@inheritDoc} */
         @Override
+        public void invocationFailed(FailureDescription failure) {
+            super.invocationFailed(failure);
+
+            mFailureDescription = failure;
+            mError = failure.getErrorMessage();
+            if (failure.getCause() != null) {
+                mError = StreamUtil.getStackTrace(failure.getCause());
+            }
+        }
+
+        /** {@inheritDoc} */
+        @Override
         public void invocationEnded(long elapsedTime) {
             super.invocationEnded(elapsedTime);
 
@@ -294,8 +312,24 @@ public class ClusterCommandScheduler extends CommandScheduler {
             }
 
             // TODO: handle multi-device where only one of the build could be missing.
+            ErrorIdentifier errorId = null;
             if (getPrimaryBuildInfo() == null && mError == null) {
                 mError = "build not found";
+                // Test that the filesystem is working as it's the main reason for this error
+                // situation to occur
+                try {
+                    File f = FileUtil.createTempFile("test-filesystem", ".txt");
+                    FileUtil.deleteFile(f);
+                } catch (IOException e) {
+                    errorId = InfraErrorIdentifier.LAB_HOST_FILESYSTEM_ERROR;
+                    mError =
+                            String.format(
+                                    "[%s] Filesystem error on %s. Please notify lab admin.",
+                                    errorId.name(), ClusterHostUtil.getHostName());
+                }
+            }
+            if (errorId == null && mFailureDescription != null) {
+                errorId = mFailureDescription.getErrorIdentifier();
             }
 
             String fetchBuildTimeMillis = "-1";
@@ -347,6 +381,13 @@ public class ClusterCommandScheduler extends CommandScheduler {
                             .setData(
                                     ClusterCommandEvent.DATA_KEY_FAILED_TEST_RUN_COUNT,
                                     Integer.toString(getNumAllFailedTestRuns()));
+            if (errorId != null) {
+                eventBuilder.setData(ClusterCommandEvent.DATA_KEY_ERROR_ID_NAME, errorId.name());
+                eventBuilder.setData(ClusterCommandEvent.DATA_KEY_ERROR_ID_CODE, errorId.code());
+                eventBuilder.setData(
+                        ClusterCommandEvent.DATA_KEY_ERROR_STATUS,
+                        ErrorStorageUtil.mapStatus(errorId.status()));
+            }
             if (lostDevice != null) {
                 eventBuilder.setData(ClusterCommandEvent.DATA_KEY_LOST_DEVICE_DETECTED, lostDevice);
             }
@@ -401,8 +442,9 @@ public class ClusterCommandScheduler extends CommandScheduler {
                         if (ClusterCommand.State.CANCELED.equals(commandStatus.getState())) {
                             String cause =
                                     String.format(
-                                            "The cluster client %s has marked command "
-                                                    + "(requestId=%s, commandId=%s) canceled with reason: %s",
+                                            "The cluster client %s has marked command"
+                                                    + " (requestId=%s, commandId=%s) canceled with"
+                                                    + " reason: %s",
                                             getClusterClient().getClass().getSimpleName(),
                                             mCommandTask.getRequestId(),
                                             mCommandTask.getCommandId(),
@@ -472,6 +514,10 @@ public class ClusterCommandScheduler extends CommandScheduler {
             CLog.d("No commands available for testing.");
             return;
         }
+        if (isShuttingDown()) {
+            CLog.d("Tradefed shutting down, ignoring commands.");
+            return;
+        }
         execCommands(commands);
     }
 
@@ -499,9 +545,9 @@ public class ClusterCommandScheduler extends CommandScheduler {
             if (availableOnly && device.getState() != DeviceAllocationState.Available) {
                 continue;
             }
-            if (ClusterHostUtil.isIpPort(device.getSerial())) {
-                // Note(b/28802876): Skipping IP:PORT serials from cluster scheduling because they
-                // behave differently from physical devices and are not fully supported by TF.
+            if (ClusterHostUtil.isLocalhostIpPort(device.getSerial())) {
+                // Skipping localhost IP:PORT serials from cluster scheduling to avoid scheduling
+                // tests on TCP devices created by Local/RemoteAndroidVirtualDevice.
                 continue;
             }
             String runTargetFormat = getClusterOptions().getRunTargetFormat();
@@ -592,6 +638,10 @@ public class ClusterCommandScheduler extends CommandScheduler {
      */
     void execCommands(final List<ClusterCommand> commands) {
         for (final ClusterCommand commandTask : commands) {
+            if (isShuttingDown()) {
+                CLog.d("Tradefed shutting down, ignoring remaining commands.");
+                return;
+            }
             try {
                 final InvocationEventHandler handler = new InvocationEventHandler(commandTask);
                 switch (commandTask.getRequestType()) {
@@ -611,28 +661,48 @@ public class ClusterCommandScheduler extends CommandScheduler {
                 CLog.w(e);
                 IClusterEventUploader<ClusterCommandEvent> eventUploader =
                         getClusterClient().getCommandEventUploader();
-                eventUploader.postEvent(
+                ClusterCommandEvent.Builder eventBuilder =
                         ClusterCommandEvent.createEventBuilder(commandTask)
                                 .setHostName(ClusterHostUtil.getHostName())
                                 .setType(ClusterCommandEvent.Type.AllocationFailed)
                                 .setData(
                                         ClusterCommandEvent.DATA_KEY_ERROR,
-                                        StreamUtil.getStackTrace(e))
-                                .build());
+                                        StreamUtil.getStackTrace(e));
+                if (e.getErrorId() != null) {
+                    eventBuilder.setData(
+                            ClusterCommandEvent.DATA_KEY_ERROR_ID_NAME, e.getErrorId().name());
+                    eventBuilder.setData(
+                            ClusterCommandEvent.DATA_KEY_ERROR_ID_CODE, e.getErrorId().code());
+                    eventBuilder.setData(
+                            ClusterCommandEvent.DATA_KEY_ERROR_STATUS,
+                            ErrorStorageUtil.mapStatus(e.getErrorId().status()));
+                }
+                eventUploader.postEvent(eventBuilder.build());
                 eventUploader.flush();
             } catch (ConfigurationException | IOException | JSONException e) {
                 CLog.w("failed to execute cluster command [%s]: %s", commandTask.getTaskId(), e);
                 CLog.w(e);
                 IClusterEventUploader<ClusterCommandEvent> eventUploader =
                         getClusterClient().getCommandEventUploader();
-                eventUploader.postEvent(
+                ClusterCommandEvent.Builder eventBuilder =
                         ClusterCommandEvent.createEventBuilder(commandTask)
                                 .setHostName(ClusterHostUtil.getHostName())
                                 .setType(ClusterCommandEvent.Type.ConfigurationError)
                                 .setData(
                                         ClusterCommandEvent.DATA_KEY_ERROR,
-                                        StreamUtil.getStackTrace(e))
-                                .build());
+                                        StreamUtil.getStackTrace(e));
+                if ((e instanceof IHarnessException)
+                        && ((IHarnessException) e).getErrorId() != null) {
+                    ErrorIdentifier errorId = ((IHarnessException) e).getErrorId();
+                    eventBuilder.setData(
+                            ClusterCommandEvent.DATA_KEY_ERROR_ID_NAME, errorId.name());
+                    eventBuilder.setData(
+                            ClusterCommandEvent.DATA_KEY_ERROR_ID_CODE, errorId.code());
+                    eventBuilder.setData(
+                            ClusterCommandEvent.DATA_KEY_ERROR_STATUS,
+                            ErrorStorageUtil.mapStatus(errorId.status()));
+                }
+                eventUploader.postEvent(eventBuilder.build());
                 eventUploader.flush();
             }
         }
@@ -744,9 +814,7 @@ public class ClusterCommandScheduler extends CommandScheduler {
                     getClusterClient().getHostEventUploader();
             ClusterHostEvent.Builder builder =
                     new ClusterHostEvent.Builder()
-                            .setClusterId(getClusterOptions().getClusterId())
                             .setHostEventType(HostEventType.HostStateChanged)
-                            .setHostName(ClusterHostUtil.getHostName())
                             .setHostState(state);
             CLog.d("event uploading with state %s", state.toString());
             ClusterHostEvent event = builder.build();

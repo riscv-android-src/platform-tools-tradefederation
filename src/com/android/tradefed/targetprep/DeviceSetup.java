@@ -22,10 +22,12 @@ import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
+import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.BinaryState;
 import com.android.tradefed.util.MultiMap;
@@ -328,10 +330,10 @@ public class DeviceSetup extends BaseTargetPreparer {
     protected Map<String, String> mSetProps = new HashMap<>();
 
     @Option(
-        name = "restore-properties",
-        description =
-                "Restore previous /data/local.prop on tear down, restoring any properties DeviceSetup changed by modifying /data/local.prop."
-    )
+            name = "restore-properties",
+            description =
+                    "Restore previous /data/local.prop on tear down, restoring any properties"
+                            + " DeviceSetup changed by modifying /data/local.prop.")
     protected boolean mRestoreProperties = false;
 
     protected File mPreviousProperties;
@@ -431,8 +433,10 @@ public class DeviceSetup extends BaseTargetPreparer {
         CLog.i("Performing setup on %s", device.getSerialNumber());
 
         if (device.getOptions().isEnableAdbRoot() && !device.enableAdbRoot()) {
-            throw new TargetSetupError(String.format("Failed to enable adb root on %s",
-                    device.getSerialNumber()), device.getDeviceDescriptor());
+            throw new TargetSetupError(
+                    String.format("Failed to enable adb root on %s", device.getSerialNumber()),
+                    device.getDeviceDescriptor(),
+                    DeviceErrorIdentifier.DEVICE_UNEXPECTED_RESPONSE);
         }
 
         // Convert deprecated options into current options
@@ -473,6 +477,10 @@ public class DeviceSetup extends BaseTargetPreparer {
 
         if (e instanceof DeviceFailedToBootError) {
             CLog.d("boot failure: skipping teardown");
+            return;
+        }
+        if (!TestDeviceState.ONLINE.equals(device.getDeviceState())) {
+            CLog.d("device offline: skipping teardown");
             return;
         }
 
@@ -729,37 +737,41 @@ public class DeviceSetup extends BaseTargetPreparer {
             }
         }
 
-        if (sb.length() == 0) {
-            return;
-        }
-
-        if (mRestoreProperties) {
-            mPreviousProperties = device.pullFile("/data/local.prop");
-        }
-        CLog.d("Pushing the following properties to /data/local.prop:\n%s", sb.toString());
-        boolean result = device.pushString(sb.toString(), "/data/local.prop");
-        if (!result) {
-            throw new TargetSetupError(String.format("Failed to push /data/local.prop to %s",
-                    device.getSerialNumber()), device.getDeviceDescriptor());
-        }
-        // Set reasonable permissions for /data/local.prop
-        device.executeShellCommand("chmod 644 /data/local.prop");
-        CLog.i("Rebooting %s due to system property change", device.getSerialNumber());
-        device.reboot();
-
-        // Verify properties have expected values.
-        List<String> unmatched = new ArrayList<>();
-        for (Map.Entry<String, String> prop : mSetProps.entrySet()) {
-            String actual = device.getProperty(prop.getKey());
-            String expected = prop.getValue();
-            if (!actual.equals(expected)) {
-                unmatched.add(String.format("%s=%s(expected:%s)", prop.getKey(), actual, expected));
+        if (sb.length() != 0) {
+            if (mRestoreProperties) {
+                mPreviousProperties = device.pullFile("/data/local.prop");
             }
+            CLog.d("Pushing the following properties to /data/local.prop:\n%s", sb.toString());
+            boolean result = device.pushString(sb.toString(), "/data/local.prop");
+            if (!result) {
+                throw new TargetSetupError(
+                        String.format(
+                                "Failed to push /data/local.prop to %s", device.getSerialNumber()),
+                        device.getDeviceDescriptor(),
+                        DeviceErrorIdentifier.FAIL_PUSH_FILE);
+            }
+            // Set reasonable permissions for /data/local.prop
+            device.executeShellCommand("chmod 644 /data/local.prop");
+            CLog.i("Rebooting %s due to system property change", device.getSerialNumber());
+            device.reboot();
         }
-        if (unmatched.size() > 0) {
-            throw new TargetSetupError(
-                    String.format("Failed to set properties: %s", unmatched),
-                    device.getDeviceDescriptor());
+
+        // Log nonpersistent device properties (that change/lose values after reboot).
+        String deviceType = device.getClass().getTypeName();
+        for (Map.Entry<String, String> prop : mSetProps.entrySet()) {
+            String expected = prop.getValue();
+            String actual = device.getProperty(prop.getKey());
+            if ((expected != null && !expected.equals(actual))
+                    || (expected == null && actual != null)) {
+                String entry =
+                        String.format("%s-%s(%s:%s)", deviceType, prop.getKey(), expected, actual);
+                InvocationMetricLogger.addInvocationMetrics(
+                        InvocationMetricKey.NONPERSISTENT_DEVICE_PROPERTIES, entry);
+            } else {
+                String entry = String.format("%s-%s(%s)", deviceType, prop.getKey(), actual);
+                InvocationMetricLogger.addInvocationMetrics(
+                        InvocationMetricKey.PERSISTENT_DEVICE_PROPERTIES, entry);
+            }
         }
     }
 
@@ -928,12 +940,12 @@ public class DeviceSetup extends BaseTargetPreparer {
             }
         }
 
-        // Error message does not acknowledge mWifiSsidToPsk for parity with existing monitoring.
         if (mWifiSsid != null || !mWifiSsidToPsk.isEmpty()) {
+            String network = (mWifiSsid == null) ? mWifiSsidToPsk.toString() : mWifiSsid;
             throw new TargetSetupError(
                     String.format(
                             "Failed to connect to wifi network %s on %s",
-                            mWifiSsid, device.getSerialNumber()),
+                            network, device.getSerialNumber()),
                     device.getDeviceDescriptor(),
                     InfraErrorIdentifier.WIFI_FAILED_CONNECT);
         }
@@ -987,13 +999,16 @@ public class DeviceSetup extends BaseTargetPreparer {
         if (mMinExternalStorageKb <= 0) {
             return;
         }
-
+        // Wait for device available to ensure the mounting of sdcard
+        device.waitForDeviceAvailable();
         long freeSpace = device.getExternalStoreFreeSpace();
         if (freeSpace < mMinExternalStorageKb) {
-            throw new DeviceNotAvailableException(String.format(
-                    "External store free space %dK is less than required %dK for device %s",
-                    freeSpace , mMinExternalStorageKb, device.getSerialNumber()),
-                    device.getSerialNumber());
+            throw new DeviceNotAvailableException(
+                    String.format(
+                            "External store free space %dK is less than required %dK for device %s",
+                            freeSpace, mMinExternalStorageKb, device.getSerialNumber()),
+                    device.getSerialNumber(),
+                    DeviceErrorIdentifier.DEVICE_UNEXPECTED_RESPONSE);
         }
     }
 

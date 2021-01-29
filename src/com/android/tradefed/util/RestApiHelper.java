@@ -19,6 +19,7 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.http.ByteArrayContent;
 import com.google.api.client.http.GenericUrl;
+import com.google.api.client.http.HttpBackOffIOExceptionHandler;
 import com.google.api.client.http.HttpContent;
 import com.google.api.client.http.HttpRequest;
 import com.google.api.client.http.HttpRequestFactory;
@@ -27,6 +28,7 @@ import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.JsonObjectParser;
 import com.google.api.client.json.jackson2.JacksonFactory;
+import com.google.api.client.util.ExponentialBackOff;
 import com.google.common.annotations.VisibleForTesting;
 
 import org.json.JSONObject;
@@ -42,6 +44,7 @@ public class RestApiHelper implements IRestApiHelper {
 
     protected static final JsonFactory JSON_FACTORY = JacksonFactory.getDefaultInstance();
     protected static final String JSON_MIME = "application/json";
+    protected static final int DEFAULT_NUMBER_OF_RETRIES = 2;
 
     private HttpRequestFactory mRequestFactory;
     private String mBaseUri;
@@ -112,6 +115,8 @@ public class RestApiHelper implements IRestApiHelper {
         final GenericUrl uri = buildQueryUri(uriParts, options);
         final HttpRequest request = getRequestFactory().buildRequest(method, uri, content);
         request.setParser(new JsonObjectParser(JSON_FACTORY));
+        request.setNumberOfRetries(DEFAULT_NUMBER_OF_RETRIES);
+        request.setIOExceptionHandler(new HttpBackOffIOExceptionHandler(new ExponentialBackOff()));
         return request.execute();
     }
 

@@ -17,6 +17,10 @@
 // Content Provider apk
 android_test {
     name: "TradefedContentProvider",
+    // Restrict visibility to only those targets that need to access it.
+    visibility: [
+        "//tools/tradefederation/core/util-apps/ContentProvider/androidTest",
+    ],
     defaults: ["tradefed_errorprone_defaults"],
 
     srcs: ["java/**/*.java"],

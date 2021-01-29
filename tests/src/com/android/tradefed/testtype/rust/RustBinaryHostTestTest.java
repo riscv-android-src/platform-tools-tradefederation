@@ -74,7 +74,13 @@ public class RustBinaryHostTestTest {
     }
 
     private String resultCount(int pass, int fail, int ignore) {
-        return "test result: ok. " + pass + " passed; " + fail + " failed; " + ignore + " ignored;";
+        return "running 2 tests\ntest result: ok. "
+                + pass
+                + " passed; "
+                + fail
+                + " failed; "
+                + ignore
+                + " ignored;";
     }
 
     private CommandResult successResult(String stderr, String stdout) throws Exception {
@@ -197,10 +203,12 @@ public class RustBinaryHostTestTest {
         try {
             OptionSetter setter = new OptionSetter(mTest);
             setter.setOptionValue("test-file", binary.getAbsolutePath());
-            mockCountTests(binary, 0);
-            mockListenerStarted(binary, 0);
+            mockCountTests(binary, 2);
+            mockListenerStarted(binary, 2);
             mockListenerLog(binary);
-            CommandResult res = newCommandResult(CommandStatus.EXCEPTION, "Err.", "Exception.");
+            CommandResult res =
+                    newCommandResult(
+                            CommandStatus.EXCEPTION, "Err.", "running 2 tests\nException.");
             mockTestRunExpect(binary, res);
             mMockListener.testRunFailed((FailureDescription) EasyMock.anyObject());
             mockTestRunEnded();
@@ -210,7 +218,10 @@ public class RustBinaryHostTestTest {
         }
     }
 
-    /** If the binary reports a FAILED status, it is treated as a failed test. */
+    /**
+     * If the binary reports a FAILED status when trying to count tests, it is treated as a failed
+     * test.
+     */
     @Test
     public void testRunFail_list() throws Exception {
         File binary = FileUtil.createTempFile("rust-dir", "");
@@ -224,14 +235,6 @@ public class RustBinaryHostTestTest {
                                     EasyMock.eq(binary.getAbsolutePath()),
                                     EasyMock.eq("--list")))
                     .andReturn(listRes);
-            mMockListener.testRunStarted(
-                    EasyMock.eq(binary.getName()),
-                    EasyMock.eq(0),
-                    EasyMock.anyInt(),
-                    EasyMock.anyLong());
-            mockListenerLog(binary);
-            CommandResult res = newCommandResult(CommandStatus.FAILED, "", resultCount(6, 1, 2));
-            mockTestRunExpect(binary, res);
             mMockListener.testRunFailed((FailureDescription) EasyMock.anyObject());
             mockTestRunEnded();
             callReplayRunVerify();

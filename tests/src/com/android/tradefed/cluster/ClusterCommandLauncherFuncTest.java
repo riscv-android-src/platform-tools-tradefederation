@@ -19,7 +19,6 @@ import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 
@@ -32,6 +31,7 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.FileUtil;
@@ -108,7 +108,8 @@ public class ClusterCommandLauncherFuncTest {
         inOrder.verify(mListener).testStarted(any(TestDescription.class), anyLong());
         inOrder.verify(mListener).testEnded(any(TestDescription.class), anyLong(), eq(emptyMap));
         inOrder.verify(mListener).testStarted(any(TestDescription.class), anyLong());
-        inOrder.verify(mListener).testFailed(any(TestDescription.class), anyString());
+        inOrder.verify(mListener)
+                .testFailed(any(TestDescription.class), any(FailureDescription.class));
         inOrder.verify(mListener).testEnded(any(TestDescription.class), anyLong(), eq(emptyMap));
         inOrder.verify(mListener).testRunEnded(anyLong(), eq(emptyMap));
     }

@@ -22,9 +22,11 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.suite.params.IModuleParameter;
@@ -60,14 +62,15 @@ public class BaseTestSuite extends ITestSuite {
     public static final char TEST_OPTION_SHORT_NAME = 't';
     public static final String CONFIG_PATTERNS_OPTION = "config-patterns";
     private static final String MODULE_ARG_OPTION = "module-arg";
+    private static final String REVERSE_EXCLUDE_FILTERS = "reverse-exclude-filters";
     private static final int MAX_FILTER_DISPLAY = 20;
 
     @Option(
             name = INCLUDE_FILTER_OPTION,
             description =
                     "the include module filters to apply. Format: '[abi] <module-name> [test]'."
-                            + " See documentation:"
-                            + "https://source.android.com/devices/tech/test_infra/tradefed/testing/through-suite/option-passing",
+                        + " See documentation:"
+                        + "https://source.android.com/devices/tech/test_infra/tradefed/testing/through-suite/option-passing",
             importance = Importance.ALWAYS)
     private Set<String> mIncludeFilters = new HashSet<>();
 
@@ -75,10 +78,17 @@ public class BaseTestSuite extends ITestSuite {
             name = EXCLUDE_FILTER_OPTION,
             description =
                     "the exclude module filters to apply. Format: '[abi] <module-name> [test]'."
-                            + " See documentation:"
-                            + "https://source.android.com/devices/tech/test_infra/tradefed/testing/through-suite/option-passing",
+                        + " See documentation:"
+                        + "https://source.android.com/devices/tech/test_infra/tradefed/testing/through-suite/option-passing",
             importance = Importance.ALWAYS)
     private Set<String> mExcludeFilters = new HashSet<>();
+
+    @Option(
+            name = REVERSE_EXCLUDE_FILTERS,
+            description =
+                    "Flip exclude-filters into include-filters, in order to run only the excluded "
+                            + "set.")
+    private boolean mReverseExcludeFilters = false;
 
     @Option(
         name = MODULE_OPTION,
@@ -199,6 +209,12 @@ public class BaseTestSuite extends ITestSuite {
                             + " an empty result.")
     private boolean mFailOnEverythingFiltered = false;
 
+    @Option(
+            name = "ignore-non-preloaded-mainline-module",
+            description = "Skip installing the module(s) when the module(s) that are not"
+                            + "preloaded on device. Otherwise an exception will be thrown.")
+    private boolean mIgnoreNonPreloadedMainlineModule = false;
+
     private SuiteModuleLoader mModuleRepo;
     private Map<String, List<SuiteTestFilter>> mIncludeFiltersParsed = new HashMap<>();
     private Map<String, List<SuiteTestFilter>> mExcludeFiltersParsed = new HashMap<>();
@@ -211,6 +227,15 @@ public class BaseTestSuite extends ITestSuite {
             File testsDir = getTestsDir();
             setupFilters(testsDir);
             Set<IAbi> abis = getAbis(getDevice());
+
+            if (mReverseExcludeFilters) {
+                if (mExcludeFilters.isEmpty()) {
+                    return new LinkedHashMap<String, IConfiguration>();
+                }
+                mIncludeFilters.clear();
+                mIncludeFilters.addAll(mExcludeFilters);
+                mExcludeFilters.clear();
+            }
 
             // Create and populate the filters here
             SuiteModuleLoader.addFilters(mIncludeFilters, mIncludeFiltersParsed, abis);
@@ -286,6 +311,7 @@ public class BaseTestSuite extends ITestSuite {
                 mModuleRepo.setInvocationContext(getInvocationContext());
                 mModuleRepo.setOptimizeMainlineTest(
                         getConfiguration().getCommandOptions().getOptimizeMainlineTest());
+                mModuleRepo.setIgnoreNonPreloadedMainlineModule(mIgnoreNonPreloadedMainlineModule);
             }
 
             mModuleRepo.setParameterizedModules(mEnableParameter);
@@ -318,15 +344,19 @@ public class BaseTestSuite extends ITestSuite {
             if (mFailOnEverythingFiltered
                     && loadedTests.isEmpty()
                     && !mIncludeFiltersParsed.isEmpty()) {
-                throw new IllegalStateException(
+                throw new HarnessRuntimeException(
                         String.format(
                                 "Include filter '%s' was specified"
                                         + " but resulted in an empty test set.",
-                                includeFilter));
+                                includeFilter),
+                        InfraErrorIdentifier.OPTION_CONFIGURATION_ERROR);
             }
             return loadedTests;
-        } catch (DeviceNotAvailableException | FileNotFoundException e) {
-            throw new RuntimeException(e);
+        } catch (DeviceNotAvailableException e) {
+            throw new HarnessRuntimeException(e.getMessage(), e);
+        } catch (FileNotFoundException fnfe) {
+            throw new HarnessRuntimeException(
+                    fnfe.getMessage(), fnfe, InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
         }
     }
 
@@ -480,14 +510,16 @@ public class BaseTestSuite extends ITestSuite {
             }
         }
         if (modules.size() == 0) {
-            throw new IllegalArgumentException(
-                    String.format("No modules found matching %s", mModuleName));
+            throw new HarnessRuntimeException(
+                    String.format("No modules found matching %s", mModuleName),
+                    InfraErrorIdentifier.OPTION_CONFIGURATION_ERROR);
         } else if (modules.size() > 1) {
-            throw new IllegalArgumentException(
+            throw new HarnessRuntimeException(
                     String.format(
                             "Multiple modules found matching %s:\n%s\nWhich one did you "
                                     + "mean?\n",
-                            mModuleName, ArrayUtil.join("\n", modules)));
+                            mModuleName, ArrayUtil.join("\n", modules)),
+                    InfraErrorIdentifier.OPTION_CONFIGURATION_ERROR);
         } else {
             File mod = modules.iterator().next();
             String moduleName = mod.getName().replace(".config", "");

@@ -98,6 +98,7 @@ public class ModuleListener extends CollectingTestListener {
     /** {@inheritDoc} */
     @Override
     public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
+        CLog.d("ModuleListener.testRunEnded(%s)", elapsedTime);
         super.testRunEnded(elapsedTime, runMetrics);
         mRunInProgress = false;
     }
