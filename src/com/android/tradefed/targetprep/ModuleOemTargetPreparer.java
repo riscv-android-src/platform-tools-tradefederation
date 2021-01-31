@@ -43,6 +43,8 @@ public class ModuleOemTargetPreparer extends InstallApexModuleTargetPreparer {
     private static final String DISABLE_VERITY = "disable-verity";
     private static final String GET_APEX_PACKAGE_VERSION =
             "cmd package list packages --apex-only --show-versioncode| grep ";
+    private static final String GET_APK_PACKAGE_VERSION =
+            "cmd package list packages --show-versioncode| grep ";
     private static final String REMOUNT_COMMAND = "remount";
 
     private RunUtil mRunUtil = new RunUtil();
@@ -154,17 +156,44 @@ public class ModuleOemTargetPreparer extends InstallApexModuleTargetPreparer {
         File newFile = new File(newFileName);
         remountDevice(testInfo);
 
+
         if (moduleFile.renameTo(newFile)) {
+            CLog.i("File name changed to the preload ones");
             if (newFileName.endsWith(APEX_SUFFIX)) {
-                device.pushFile(moduleFile, APEX_DIR + moduleFile.getName());
+                String preloadPath = APEX_DIR + newFile.getName();
+                if (device.pushFile(newFile, preloadPath)) {
+                    CLog.i(
+                            "Local file %s got pushed to the preload path '%s",
+                            newFile.getName(), preloadPath);
+                } else {
+                    throw new TargetSetupError(
+                            String.format(
+                                    "Failed to push File '%s' to '%s' on device %s.",
+                                    newFile, preloadPath, device.getSerialNumber()),
+                            device.getDeviceDescriptor(),
+                            DeviceErrorIdentifier.FAIL_PUSH_FILE);
+                }
             } else { // apk
                 String modulePathOnDevice = getApkDirectory(device, packageName)[0];
+                CLog.i("apk module path on device is %s", modulePathOnDevice);
                 if (modulePathOnDevice == null) {
                     throw new TargetSetupError(
                             String.format("Not found package %s on device.", packageName),
                             device.getDeviceDescriptor());
                 }
-                device.pushFile(newFile, modulePathOnDevice + newFile.getName());
+                modulePathOnDevice += newFile.getName();
+                if (device.pushFile(newFile, modulePathOnDevice)) {
+                    CLog.i(
+                            "Local file %s got pushed to the preload path '%s",
+                            newFile.getName(), modulePathOnDevice);
+                } else {
+                    throw new TargetSetupError(
+                            String.format(
+                                    "Failed to push File '%s' to '%s' on device %s.",
+                                    newFile, modulePathOnDevice, device.getSerialNumber()),
+                            device.getDeviceDescriptor(),
+                            DeviceErrorIdentifier.FAIL_PUSH_FILE);
+                }
             }
         } else {
             throw new TargetSetupError(
@@ -271,14 +300,16 @@ public class ModuleOemTargetPreparer extends InstallApexModuleTargetPreparer {
     protected String getPackageVersioncode(ITestDevice device, String packageName, boolean isAPK)
             throws DeviceNotAvailableException {
         String packageVersion;
+        String outputs;
         if (isAPK) {
-            packageVersion = device.getAppPackageInfo(packageName).getVersionCode();
+            outputs =
+                    device.executeShellV2Command(GET_APK_PACKAGE_VERSION + packageName).getStdout();
         } else {
-            String outputs =
+            outputs =
                     device.executeShellV2Command(GET_APEX_PACKAGE_VERSION + packageName)
                             .getStdout();
-            packageVersion = outputs.split(":")[2].replaceAll("[\\n]", "");
         }
+        packageVersion = outputs.split(":")[2].replaceAll("[\\n]", "");
         CLog.i("Package '%s' version code is %s", packageName, packageVersion);
         return packageVersion;
     }
