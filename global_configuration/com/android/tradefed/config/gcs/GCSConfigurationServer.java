@@ -149,7 +149,10 @@ public class GCSConfigurationServer implements IConfigurationServer {
      * @return true if they are the same host, otherwise false;
      */
     protected boolean sameHost(String currentHostname, String hostname) {
-        return currentHostname.startsWith(hostname);
+        if (currentHostname.equals(hostname)) {
+            return true;
+        }
+        return currentHostname.startsWith(hostname + ".");
     }
 
     /**
