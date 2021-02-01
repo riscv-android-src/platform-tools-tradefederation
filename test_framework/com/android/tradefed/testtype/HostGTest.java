@@ -201,20 +201,19 @@ public class HostGTest extends GTestBase implements IBuildReceiver {
                     executeHostGTestCommand(gtestFile, cmd, maxTestTimeMs, resultParser, logger);
             // TODO: Switch throwing exceptions to use ITestInvocation.testRunFailed
             switch (testResult.getStatus()) {
-                case FAILED:
-                    // Check the command exit code. If it's 1, then this is just a red herring;
-                    // gtest returns 1 when a test fails.
-                    final Integer exitCode = testResult.getExitCode();
-                    if (exitCode == null || exitCode != 1) {
-                        throw new RuntimeException(
-                                String.format("Command run failed with exit code %s", exitCode));
-                    }
-                    break;
                 case TIMED_OUT:
                     throw new RuntimeException(
                             String.format("Command run timed out after %d ms", maxTestTimeMs));
                 case EXCEPTION:
                     throw new RuntimeException("Command run failed with exception");
+                case FAILED:
+                    // Check the command exit code. If it's 1, then this is just a red herring;
+                    // gtest returns 1 when a test fails.
+                    final Integer exitCode = testResult.getExitCode();
+                    if (exitCode == null || exitCode != 1) {
+                        // No need to handle it as the parser would have reported it already.
+                        CLog.e("Command run failed with exit code %s", exitCode);
+                    }
                 default:
                     break;
             }
