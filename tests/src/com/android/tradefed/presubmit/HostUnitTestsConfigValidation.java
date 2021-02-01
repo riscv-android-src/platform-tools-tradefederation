@@ -138,7 +138,10 @@ public class HostUnitTestsConfigValidation implements IBuildReceiver {
 
         Set<TestInfo> testInfosToRun =
                 TestMapping.getTests(
-                        mBuild, /* group */ null, /* host */ true, /* keywords */ new HashSet<>());
+                        mBuild, /* group */
+                        "presubmit", /* host */
+                        true, /* keywords */
+                        new HashSet<>());
 
         List<String> errors = new ArrayList<>();
         List<String> configs = new ArrayList<>();
