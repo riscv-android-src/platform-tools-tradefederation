@@ -93,8 +93,6 @@ public class DeviceManager implements IDeviceManager {
     /* the emulator output log name */
     private static final String EMULATOR_OUTPUT = "emulator_log";
 
-    /** the available device timeout to total command timeout ratio. */
-    private static final double AVAILABLE_DEV_TIMEOUT_RATIO = 0.9;
     /** the max timeout for available device executing command. */
     private static final long AVAILABLE_DEV_TIMEOUT_MAX_MS = 1000;
 
@@ -1055,10 +1053,16 @@ public class DeviceManager implements IDeviceManager {
     /** {@inheritDoc} */
     @Override
     public synchronized void terminateHard() {
+        terminateHard("No reason given.");
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void terminateHard(String reason) {
         checkInit();
         if (!mIsTerminated ) {
             for (IManagedTestDevice device : mManagedDeviceList) {
-                device.setRecovery(new AbortRecovery());
+                device.setRecovery(new AbortRecovery(reason));
             }
             mAdbBridge.disconnectBridge();
             terminate();
@@ -1067,6 +1071,12 @@ public class DeviceManager implements IDeviceManager {
 
     private static class AbortRecovery implements IDeviceRecovery {
 
+        private String mMessage;
+
+        AbortRecovery(String reason) {
+            mMessage = "aborted test session: " + reason;
+        }
+
         /**
          * {@inheritDoc}
          */
@@ -1074,9 +1084,7 @@ public class DeviceManager implements IDeviceManager {
         public void recoverDevice(IDeviceStateMonitor monitor, boolean recoverUntilOnline)
                 throws DeviceNotAvailableException {
             throw new DeviceNotAvailableException(
-                    "aborted test session",
-                    monitor.getSerialNumber(),
-                    InfraErrorIdentifier.INVOCATION_CANCELLED);
+                    mMessage, monitor.getSerialNumber(), InfraErrorIdentifier.INVOCATION_CANCELLED);
         }
 
         /**
@@ -1086,9 +1094,7 @@ public class DeviceManager implements IDeviceManager {
         public void recoverDeviceBootloader(IDeviceStateMonitor monitor)
                 throws DeviceNotAvailableException {
             throw new DeviceNotAvailableException(
-                    "aborted test session",
-                    monitor.getSerialNumber(),
-                    InfraErrorIdentifier.INVOCATION_CANCELLED);
+                    mMessage, monitor.getSerialNumber(), InfraErrorIdentifier.INVOCATION_CANCELLED);
         }
 
         /**
@@ -1098,9 +1104,7 @@ public class DeviceManager implements IDeviceManager {
         public void recoverDeviceRecovery(IDeviceStateMonitor monitor)
                 throws DeviceNotAvailableException {
             throw new DeviceNotAvailableException(
-                    "aborted test session",
-                    monitor.getSerialNumber(),
-                    InfraErrorIdentifier.INVOCATION_CANCELLED);
+                    mMessage, monitor.getSerialNumber(), InfraErrorIdentifier.INVOCATION_CANCELLED);
         }
 
         /** {@inheritDoc} */
@@ -1108,9 +1112,7 @@ public class DeviceManager implements IDeviceManager {
         public void recoverDeviceFastbootd(IDeviceStateMonitor monitor)
                 throws DeviceNotAvailableException {
             throw new DeviceNotAvailableException(
-                    "aborted test session",
-                    monitor.getSerialNumber(),
-                    InfraErrorIdentifier.INVOCATION_CANCELLED);
+                    mMessage, monitor.getSerialNumber(), InfraErrorIdentifier.INVOCATION_CANCELLED);
         }
     }
 
