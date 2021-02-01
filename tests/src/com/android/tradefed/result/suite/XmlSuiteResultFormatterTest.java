@@ -83,6 +83,8 @@ public class XmlSuiteResultFormatterTest {
     @Test
     public void testBasicFormat() throws Exception {
         mResultHolder.context = mContext;
+        // Ensure attributes are escaped if needed
+        mContext.addInvocationAttribute("test-type-count:JarHostTest", "5");
 
         Collection<TestRunResult> runResults = new ArrayList<>();
         runResults.add(createFakeResult("module1", 2, 0, 0, 0));
