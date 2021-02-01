@@ -177,6 +177,19 @@ public class BaseRetryDecisionTest {
     }
 
     @Test
+    public void testShouldRetry_runFailure_noFullRetry() throws Exception {
+        FailureDescription failure = FailureDescription.create("run failure");
+        failure.setFullRerun(false);
+        TestRunResult result = createResult(FailureDescription.create("failure"), null, failure);
+        boolean res = mRetryDecision.shouldRetry(mTestClass, 0, Arrays.asList(result));
+        assertTrue(res);
+        assertEquals(0, mTestClass.getIncludeFilters().size());
+        // The one passed test case is excluded
+        assertEquals(1, mTestClass.getExcludeFilters().size());
+        assertTrue(mTestClass.getExcludeFilters().contains("class#method2"));
+    }
+
+    @Test
     public void testShouldRetry_runFailure_nonRetriable() throws Exception {
         FailureDescription failure = FailureDescription.create("run failure");
         failure.setRetriable(false);

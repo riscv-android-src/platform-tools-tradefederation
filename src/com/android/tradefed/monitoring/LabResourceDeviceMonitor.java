@@ -16,11 +16,13 @@
 
 package com.android.tradefed.monitoring;
 
-import com.android.loganalysis.util.config.OptionClass;
+
 import com.android.tradefed.cluster.ClusterHostUtil;
 import com.android.tradefed.cluster.IClusterOptions;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.GlobalConfiguration;
+import com.android.tradefed.config.Option;
+import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceAllocationState;
 import com.android.tradefed.device.IDeviceMonitor;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -39,19 +41,17 @@ import com.google.protobuf.util.Timestamps;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.util.Optional;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -74,37 +74,50 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
     public static final String HOST_NAME_KEY = "hostname";
     public static final String LAB_NAME_KEY = "lab_name";
     public static final String TEST_HARNESS_KEY = "test_harness";
-    public static final String TEST_HARNESS = "tradefed";
+    public static final String HARNESS_VERSION_KEY = "harness_version";
     public static final String HOST_GROUP_KEY = "host_group";
     public static final String SERVER_HOSTNAME = "localhost";
     public static final int DEFAULT_PORT = 8887;
     public static final int DEFAULT_THREAD_COUNT = 1;
-    public static final long DEFAULT_METRICIZE_CYCLE_SEC = 300;
     public static final String POOL_ATTRIBUTE_NAME = "pool";
     public static final String RUN_TARGET_ATTRIBUTE_NAME = "run_target";
     public static final String STATUS_RESOURCE_NAME = "status";
     public static final float FIXED_METRIC_VALUE = 1.0f;
-    public static final long METRICIZE_TIMEOUT_MS = 1000;
-    private Optional<Server> mServer = Optional.empty();
-    private final IClusterOptions mClusterOptions;
+    private static final long EXECUTOR_TERMINATE_TIMEOUT_SEC = 10;
+    private Server mServer;
+    private IClusterOptions mClusterOptions;
     private DeviceLister mDeviceLister;
     private final Collection<IResourceMetricCollector> mMetricCollectors = new ArrayList<>();
-    private final long mMetricizeCycleSec;
     private final ReadWriteLock mLabResourceLock = new ReentrantReadWriteLock();
     private LabResource mLabResource = LabResource.newBuilder().build();
+    /** A single thread executor for all metricize operations. */
     private ScheduledExecutorService mMetricizeExecutor;
-    private ExecutorService mSharedCollectorExecutor;
 
-    LabResourceDeviceMonitor() {
+    @Option(
+            name = "metricize-op-timeout",
+            description =
+                    "The maximum wait time in milliseconds for every resource metric collector to"
+                            + " get metrics.")
+    private long mMetricizeTimeoutMs = 1000;
+
+    @Option(
+            name = "metricize-cycle-sec",
+            description = "The time in seconds between for each metricize cycle.")
+    private long mMetricizeCycleSec = 300;
+
+    public LabResourceDeviceMonitor() {
         super();
-        mMetricizeCycleSec = DEFAULT_METRICIZE_CYCLE_SEC;
-        mClusterOptions = ClusterHostUtil.getClusterOptions();
     }
 
+    @VisibleForTesting
     LabResourceDeviceMonitor(long metricizeCycleSec, IClusterOptions clusterOptions) {
         super();
         mMetricizeCycleSec = metricizeCycleSec;
         mClusterOptions = clusterOptions;
+    }
+
+    private IClusterOptions getClusterOptions() {
+        return mClusterOptions == null ? ClusterHostUtil.getClusterOptions() : mClusterOptions;
     }
 
     private void loadMetricCollectors() {
@@ -116,35 +129,51 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
     }
 
     @VisibleForTesting
-    Optional<Server> getServer() {
-        return mServer;
+    void setServer(Server server) {
+        mServer = server;
     }
 
     /** {@inheritDoc} */
     @Override
     public void run() {
-        if (!mServer.isPresent()) {
+        if (mServer == null) {
             mServer =
-                    Optional.of(
-                            NettyServerBuilder.forAddress(
-                                            new InetSocketAddress(SERVER_HOSTNAME, DEFAULT_PORT))
-                                    .addService(this)
-                                    .executor(Executors.newFixedThreadPool(DEFAULT_THREAD_COUNT))
-                                    .build());
-            try {
-                mServer.get().start();
-                loadMetricCollectors();
-                Executors.newSingleThreadScheduledExecutor();
-                mMetricizeExecutor =
-                        MoreExecutors.getExitingScheduledExecutorService(
-                                new ScheduledThreadPoolExecutor(1));
-                mSharedCollectorExecutor =
-                        MoreExecutors.getExitingExecutorService(
-                                (ThreadPoolExecutor) Executors.newFixedThreadPool(1));
-                scheduleMetricizeTask();
-            } catch (IOException e) {
-                CLog.e(e);
-            }
+                    NettyServerBuilder.forAddress(
+                                    new InetSocketAddress(SERVER_HOSTNAME, DEFAULT_PORT))
+                            .addService(this)
+                            .executor(Executors.newFixedThreadPool(DEFAULT_THREAD_COUNT))
+                            .build();
+        }
+        try {
+            mServer.start();
+            loadMetricCollectors();
+            startMetricizeExecutor();
+            scheduleMetricizeTask();
+        } catch (IOException | IllegalStateException e) {
+            CLog.e(e);
+        }
+    }
+
+    @VisibleForTesting
+    void startMetricizeExecutor() {
+        mMetricizeExecutor =
+                MoreExecutors.getExitingScheduledExecutorService(
+                        new ScheduledThreadPoolExecutor(1));
+    }
+
+    @VisibleForTesting
+    void stopMetricizeExecutor() {
+        if (mMetricizeExecutor != null && !mMetricizeExecutor.isShutdown()) {
+            mMetricizeExecutor.shutdownNow();
+            awaitTerminateExecutor(mMetricizeExecutor);
+        }
+    }
+
+    private void awaitTerminateExecutor(ExecutorService executor) {
+        try {
+            executor.awaitTermination(EXECUTOR_TERMINATE_TIMEOUT_SEC, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            CLog.w("Interrupted when waiting executor terminated.");
         }
     }
 
@@ -166,15 +195,9 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
         }
     }
 
-    @VisibleForTesting
-    ExecutorService getSharedCollectorExecutor() {
-        return mSharedCollectorExecutor;
-    }
-
     private void scheduleMetricizeTask() {
-        if (mMetricizeExecutor == null || mSharedCollectorExecutor == null) {
-            CLog.d(
-                    "schedule metricize task before the mMetricizeExecutor or mSharedCollectorExecutor initialized.");
+        if (mMetricizeExecutor == null) {
+            CLog.d("schedule metricize task before the mMetricizeExecutor initialized");
             return;
         }
         mMetricizeExecutor.scheduleAtFixedRate(
@@ -203,9 +226,10 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
     /** {@inheritDoc} */
     @Override
     public void stop() {
-        mServer.ifPresent(Server::shutdownNow);
-        mMetricizeExecutor.shutdownNow();
-        mSharedCollectorExecutor.shutdownNow();
+        if (mServer != null && !mServer.isShutdown()) {
+            mServer.shutdownNow();
+        }
+        stopMetricizeExecutor();
     }
 
     /** {@inheritDoc} */
@@ -225,20 +249,8 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
     @Override
     public void getLabResource(
             LabResourceRequest request, StreamObserver<LabResource> responseObserver) {
-        super.getLabResource(request, responseObserver);
         responseObserver.onNext(getCachedLabResource());
         responseObserver.onCompleted();
-    }
-
-    private Collection<Resource> enqueueCollectorTask(Callable<Collection<Resource>> task) {
-        Future<Collection<Resource>> future = mSharedCollectorExecutor.submit(task);
-        try {
-            return future.get(METRICIZE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-        } catch (InterruptedException | ExecutionException | TimeoutException e) {
-            CLog.e(e);
-            future.cancel(true);
-        }
-        return List.of();
     }
 
     /** Build host {@link MonitoredEntity}. */
@@ -247,14 +259,42 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
         MonitoredEntity.Builder builder =
                 MonitoredEntity.newBuilder()
                         .putIdentifier(HOST_NAME_KEY, ClusterHostUtil.getHostName())
-                        .putIdentifier(LAB_NAME_KEY, mClusterOptions.getLabName())
-                        .putIdentifier(TEST_HARNESS_KEY, TEST_HARNESS)
+                        .putIdentifier(LAB_NAME_KEY, getClusterOptions().getLabName())
+                        .putIdentifier(TEST_HARNESS_KEY, ClusterHostUtil.getTestHarness())
                         .addAttribute(
                                 Attribute.newBuilder()
                                         .setName(HOST_GROUP_KEY)
-                                        .setValue(mClusterOptions.getClusterId()));
+                                        .setValue(getClusterOptions().getClusterId()))
+                        .addAttribute(
+                                Attribute.newBuilder()
+                                        .setName(HARNESS_VERSION_KEY)
+                                        .setValue(ClusterHostUtil.getTfVersion()))
+                        .addAllAttribute(
+                                getClusterOptions().getNextClusterIds().stream()
+                                        .map(
+                                                pool ->
+                                                        Attribute.newBuilder()
+                                                                .setName(POOL_ATTRIBUTE_NAME)
+                                                                .setValue(pool)
+                                                                .build())
+                                        .collect(Collectors.toList()));
         for (IResourceMetricCollector collector : collectors) {
-            builder.addAllResource(enqueueCollectorTask(collector::getHostResourceMetrics));
+            Future<Collection<Resource>> future = null;
+            try {
+                future = mMetricizeExecutor.submit(collector::getHostResourceMetrics);
+                builder.addAllResource(future.get(mMetricizeTimeoutMs, TimeUnit.MILLISECONDS));
+            } catch (InterruptedException
+                    | ExecutionException
+                    | TimeoutException
+                    | RejectedExecutionException
+                    | NullPointerException e) {
+                CLog.w(
+                        "%s got %s when collecting host metrics.",
+                        collector.getClass().getSimpleName(), e.toString());
+                if (future != null) {
+                    future.cancel(true);
+                }
+            }
         }
         return builder.build();
     }
@@ -263,58 +303,53 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
     @VisibleForTesting
     MonitoredEntity buildMonitoredDevice(
             DeviceDescriptor descriptor, Collection<IResourceMetricCollector> collectors) {
-        MonitoredEntity.Builder builder = MonitoredEntity.newBuilder();
-        builder.putIdentifier(DEVICE_SERIAL_KEY, descriptor.getSerial());
-        builder.addAllAttribute(getDeviceAttributes(descriptor));
-        builder.addResource(getStatus(descriptor));
+        MonitoredEntity.Builder builder =
+                MonitoredEntity.newBuilder()
+                        .putIdentifier(DEVICE_SERIAL_KEY, descriptor.getSerial())
+                        .addAttribute(
+                                Attribute.newBuilder()
+                                        .setName(HOST_NAME_KEY)
+                                        .setValue(ClusterHostUtil.getHostName()))
+                        .addAttribute(
+                                Attribute.newBuilder()
+                                        .setName(RUN_TARGET_ATTRIBUTE_NAME)
+                                        .setValue(
+                                                ClusterHostUtil.getRunTarget(
+                                                        descriptor,
+                                                        getClusterOptions().getRunTargetFormat(),
+                                                        getClusterOptions().getDeviceTag())))
+                        .addResource(
+                                Resource.newBuilder()
+                                        .setResourceName(STATUS_RESOURCE_NAME)
+                                        .setTimestamp(
+                                                Timestamps.fromMillis(Instant.now().toEpochMilli()))
+                                        .addMetric(
+                                                Metric.newBuilder()
+                                                        .setTag(descriptor.getState().name())
+                                                        .setValue(FIXED_METRIC_VALUE)));
         for (IResourceMetricCollector collector : collectors) {
-            builder.addAllResource(
-                    enqueueCollectorTask(
-                            () ->
-                                    collector.getDeviceResourceMetrics(
-                                            descriptor,
-                                            GlobalConfiguration.getDeviceManagerInstance())));
+            Future<Collection<Resource>> future = null;
+            try {
+                future =
+                        mMetricizeExecutor.submit(
+                                () ->
+                                        collector.getDeviceResourceMetrics(
+                                                descriptor,
+                                                GlobalConfiguration.getDeviceManagerInstance()));
+                builder.addAllResource(future.get(mMetricizeTimeoutMs, TimeUnit.MILLISECONDS));
+            } catch (InterruptedException
+                    | ExecutionException
+                    | TimeoutException
+                    | RejectedExecutionException
+                    | NullPointerException e) {
+                CLog.w(
+                        "%s got %s when collecting device metrics.",
+                        collector.getClass().getSimpleName(), e.toString());
+                if (future != null) {
+                    future.cancel(true);
+                }
+            }
         }
         return builder.build();
-    }
-
-    /** Gets device attributes. */
-    @VisibleForTesting
-    List<Attribute> getDeviceAttributes(DeviceDescriptor descriptor) {
-        final List<Attribute> attributes = new ArrayList<>();
-        attributes.add(
-                Attribute.newBuilder()
-                        .setName(RUN_TARGET_ATTRIBUTE_NAME)
-                        .setValue(
-                                ClusterHostUtil.getRunTarget(
-                                        descriptor,
-                                        mClusterOptions.getRunTargetFormat(),
-                                        mClusterOptions.getDeviceTag()))
-                        .build());
-        attributes.addAll(
-                mClusterOptions
-                        .getNextClusterIds()
-                        .stream()
-                        .map(
-                                pool ->
-                                        Attribute.newBuilder()
-                                                .setName(POOL_ATTRIBUTE_NAME)
-                                                .setValue(pool)
-                                                .build())
-                        .collect(Collectors.toList()));
-        return attributes;
-    }
-
-    /** Gets device status. */
-    @VisibleForTesting
-    Resource getStatus(DeviceDescriptor descriptor) {
-        return Resource.newBuilder()
-                .setResourceName(STATUS_RESOURCE_NAME)
-                .setTimestamp(Timestamps.fromMillis(Instant.now().toEpochMilli()))
-                .addMetric(
-                        Metric.newBuilder()
-                                .setTag(descriptor.getState().name())
-                                .setValue(FIXED_METRIC_VALUE))
-                .build();
     }
 }

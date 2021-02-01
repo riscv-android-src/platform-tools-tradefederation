@@ -150,7 +150,9 @@ import com.android.tradefed.log.SimpleFileLoggerTest;
 import com.android.tradefed.log.TerribleFailureEmailHandlerTest;
 import com.android.tradefed.monitoring.LabResourceDeviceMonitorTest;
 import com.android.tradefed.monitoring.collector.DeviceBatteryResourceMetricCollectorTest;
+import com.android.tradefed.monitoring.collector.DeviceInternetAccessibilityResourceMetricCollectorTest;
 import com.android.tradefed.monitoring.collector.DeviceStorageAgeResourceMetricCollectorTest;
+import com.android.tradefed.monitoring.collector.DeviceWifiResourceMetricCollectorTest;
 import com.android.tradefed.monitoring.collector.ResourceMetricUtilTest;
 import com.android.tradefed.postprocessor.AggregatePostProcessorTest;
 import com.android.tradefed.postprocessor.AveragePostProcessorTest;
@@ -316,6 +318,7 @@ import com.android.tradefed.testtype.suite.ModuleDefinitionTest;
 import com.android.tradefed.testtype.suite.ModuleListenerTest;
 import com.android.tradefed.testtype.suite.ModuleMergerTest;
 import com.android.tradefed.testtype.suite.ModuleSplitterTest;
+import com.android.tradefed.testtype.suite.RemoteTestTimeOutEnforcerTest;
 import com.android.tradefed.testtype.suite.SuiteModuleLoaderTest;
 import com.android.tradefed.testtype.suite.TestFailureListenerTest;
 import com.android.tradefed.testtype.suite.TestMappingSuiteRunnerTest;
@@ -819,6 +822,7 @@ import org.junit.runners.Suite.SuiteClasses;
     ModuleListenerTest.class,
     ModuleMergerTest.class,
     ModuleSplitterTest.class,
+    RemoteTestTimeOutEnforcerTest.class,
     SuiteModuleLoaderTest.class,
     TestFailureListenerTest.class,
     TestMappingSuiteRunnerTest.class,
@@ -944,7 +948,9 @@ import org.junit.runners.Suite.SuiteClasses;
     LabResourceDeviceMonitorTest.class,
     // monitoring/collector
     DeviceBatteryResourceMetricCollectorTest.class,
+    DeviceInternetAccessibilityResourceMetricCollectorTest.class,
     DeviceStorageAgeResourceMetricCollectorTest.class,
+    DeviceWifiResourceMetricCollectorTest.class,
     ResourceMetricUtilTest.class
 })
 public class UnitTests {
