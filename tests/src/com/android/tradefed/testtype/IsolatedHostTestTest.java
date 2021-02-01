@@ -22,7 +22,6 @@ import static org.mockito.Mockito.doReturn;
 import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.OptionSetter;
-import com.android.tradefed.config.remote.IRemoteFileResolver;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
@@ -49,20 +48,11 @@ import java.util.List;
 /** Unit tests for {@link IsolatedHostTest}. */
 public class IsolatedHostTestTest {
 
-    private static final File FAKE_REMOTE_FILE_PATH = new File("gs://bucket/path/file");
-
     private IsolatedHostTest mHostTest;
     private ITestInvocationListener mListener;
     private IBuildInfo mMockBuildInfo;
-    private TestInformation mTestInfo;
     private ServerSocket mMockServer;
     private File mMockTestDir;
-
-    private IRemoteFileResolver mMockResolver;
-
-    public static class TestableIsolatedHostTest extends IsolatedHostTest {
-        public TestableIsolatedHostTest() {}
-    }
 
     /**
      * (copied and altered from JarHostTestTest) Helper to read a file from the res/testtype
@@ -81,22 +71,17 @@ public class IsolatedHostTestTest {
         return jarFile;
     }
 
-    /** {@inheritDoc} */
     @Before
     public void setUp() throws Exception {
-        mHostTest = new TestableIsolatedHostTest();
+        mHostTest = new IsolatedHostTest();
         mListener = EasyMock.createMock(ITestInvocationListener.class);
         mMockBuildInfo = Mockito.mock(IBuildInfo.class);
         mMockServer = Mockito.mock(ServerSocket.class);
         IInvocationContext context = new InvocationContext();
         context.addDeviceBuildInfo("device", mMockBuildInfo);
-        mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
         mHostTest.setBuild(mMockBuildInfo);
         mHostTest.setServer(mMockServer);
-        OptionSetter setter = new OptionSetter(mHostTest);
         mMockTestDir = FileUtil.createTempDir("isolatedhosttesttest");
-        // Disable pretty logging for testing
-        // setter.setOptionValue("enable-pretty-logs", "false");
     }
 
     @After
