@@ -28,6 +28,7 @@ import com.android.tradefed.util.testmapping.TestOption;
 import com.google.common.annotations.VisibleForTesting;
 
 import java.io.File;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -76,6 +77,12 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
         description = "Run tests according to the test mapping path."
     )
     private List<String> mTestMappingPaths = new ArrayList<>();
+
+    @Option(
+        name = RemoteTestTimeOutEnforcer.REMOTE_TEST_TIMEOUT_OPTION,
+        description = RemoteTestTimeOutEnforcer.REMOTE_TEST_TIMEOUT_DESCRIPTION
+    )
+    private Duration mRemoteTestTimeOut = null;
 
     @Option(
         name = "use-test-mapping-path",
@@ -179,7 +186,7 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
             String configPath = moduleConfig.getName();
             Set<TestInfo> testInfos = getTestInfos(testInfosToRun, moduleName);
             // Only keep the same matching abi runner
-            allTests.addAll(createIndividualTests(testInfos, configPath, abi));
+            allTests.addAll(createIndividualTests(testInfos, moduleConfig, abi));
             if (!allTests.isEmpty()) {
                 // Set back to IConfiguration only if IRemoteTests are created.
                 moduleConfig.setTests(allTests);
@@ -187,6 +194,14 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
                 List<String> testSources = getTestSources(testInfos);
                 configDescriptor.addMetadata(TestMapping.TEST_SOURCES, testSources);
             }
+            if (mRemoteTestTimeOut != null) {
+                // Add the timeout to metadata so that it can be used in the ModuleDefinition.
+                configDescriptor.addMetadata(
+                        RemoteTestTimeOutEnforcer.REMOTE_TEST_TIMEOUT_OPTION,
+                        mRemoteTestTimeOut.toString()
+                );
+            }
+
         }
         return testConfigs;
     }
@@ -210,12 +225,14 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
      * Create individual tests with test infos for a module.
      *
      * @param testInfos A {@code Set<TestInfo>} containing multiple test options.
-     * @param configPath A {@code String} of configuration path.
+     * @param moduleConfig The {@link IConfiguration} of the module config.
      * @return The {@link List} that are injected with the test options.
      */
     @VisibleForTesting
-    List<IRemoteTest> createIndividualTests(Set<TestInfo> testInfos, String configPath, IAbi abi) {
+    List<IRemoteTest> createIndividualTests(
+            Set<TestInfo> testInfos, IConfiguration moduleConfig, IAbi abi) {
         List<IRemoteTest> tests = new ArrayList<>();
+        String configPath = moduleConfig.getName();
         if (configPath == null) {
             throw new RuntimeException(String.format("Configuration path is null."));
         }
@@ -242,10 +259,24 @@ public class TestMappingSuiteRunner extends BaseTestSuite {
                         && !entry.getValue().getConfigurationDescription().getAbi().equals(abi)) {
                     continue;
                 }
-                tests.addAll(entry.getValue().getTests());
+                List<IRemoteTest> remoteTests = entry.getValue().getTests();
+                if (mRemoteTestTimeOut != null) {
+                    addTestSourcesToConfig(moduleConfig, remoteTests, testInfo.getSources());
+                }
+                tests.addAll(remoteTests);
             }
         }
         return tests;
+    }
+
+    /** Add test mapping's path into module configuration. */
+    private void addTestSourcesToConfig(IConfiguration config, List<IRemoteTest> tests,
+            Set<String> sources) {
+        for (IRemoteTest test : tests) {
+            config.getConfigurationDescription().addMetadata(
+                Integer.toString(test.hashCode()), new ArrayList<>(sources)
+            );
+        }
     }
 
     /**

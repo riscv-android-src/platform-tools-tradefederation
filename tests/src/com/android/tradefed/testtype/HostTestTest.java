@@ -29,7 +29,6 @@ import com.android.tradefed.config.remote.IRemoteFileResolver.RemoteFileResolver
 import com.android.tradefed.config.remote.IRemoteFileResolver.ResolvedFile;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
@@ -795,13 +794,17 @@ public class HostTestTest extends TestCase {
      * not set.
      */
     public void testRun_missingClass() throws Exception {
-        try {
-            mHostTest.run(mTestInfo, mListener);
-            fail("IllegalArgumentException not thrown");
-        } catch (HarnessRuntimeException expected) {
-            // Expected
-            assertTrue(expected.getCause() instanceof IllegalArgumentException);
-        }
+        mListener.testRunStarted(TestableHostTest.class.getCanonicalName(), 0);
+        Capture<FailureDescription> captured = new Capture<>();
+        mListener.testRunFailed(EasyMock.capture(captured));
+        mListener.testRunEnded(0L, new HashMap<String, Metric>());
+        EasyMock.replay(mListener);
+        mHostTest.run(mTestInfo, mListener);
+        EasyMock.verify(mListener);
+        assertTrue(
+                captured.getValue()
+                        .getErrorMessage()
+                        .contains("No '--class' option was specified."));
     }
 
     /**
@@ -809,14 +812,15 @@ public class HostTestTest extends TestCase {
      * class.
      */
     public void testRun_invalidClass() throws Exception {
-        try {
-            mHostTest.setClassName("foo");
-            mHostTest.run(mTestInfo, mListener);
-            fail("IllegalArgumentException not thrown");
-        } catch (HarnessRuntimeException expected) {
-            // Expected
-            assertTrue(expected.getCause() instanceof IllegalArgumentException);
-        }
+        mListener.testRunStarted(TestableHostTest.class.getCanonicalName(), 0);
+        Capture<FailureDescription> captured = new Capture<>();
+        mListener.testRunFailed(EasyMock.capture(captured));
+        mListener.testRunEnded(0L, new HashMap<String, Metric>());
+        mHostTest.setClassName("foo");
+        EasyMock.replay(mListener);
+        mHostTest.run(mTestInfo, mListener);
+        EasyMock.verify(mListener);
+        assertTrue(captured.getValue().getErrorMessage().contains("Could not load Test class foo"));
     }
 
     /**
@@ -894,17 +898,23 @@ public class HostTestTest extends TestCase {
      * classes with a method name.
      */
     public void testRun_multipleClassAndMethodName() throws Exception {
-        try {
-            OptionSetter setter = new OptionSetter(mHostTest);
-            setter.setOptionValue("class", SuccessTestCase.class.getName());
-            setter.setOptionValue("class", AnotherTestCase.class.getName());
-            mHostTest.setMethodName("testPass3");
-            mHostTest.run(mTestInfo, mListener);
-            fail("IllegalArgumentException not thrown");
-        } catch (HarnessRuntimeException expected) {
-            // Expected
-            assertTrue(expected.getCause() instanceof IllegalArgumentException);
-        }
+        OptionSetter setter = new OptionSetter(mHostTest);
+        setter.setOptionValue("class", SuccessTestCase.class.getName());
+        setter.setOptionValue("class", AnotherTestCase.class.getName());
+        mHostTest.setMethodName("testPass3");
+        mListener.testRunStarted(TestableHostTest.class.getCanonicalName(), 0);
+        Capture<FailureDescription> captured = new Capture<>();
+        mListener.testRunFailed(EasyMock.capture(captured));
+        mListener.testRunEnded(0L, new HashMap<String, Metric>());
+        EasyMock.replay(mListener);
+        mHostTest.run(mTestInfo, mListener);
+        EasyMock.verify(mListener);
+        assertTrue(
+                captured.getValue()
+                        .getErrorMessage()
+                        .contains(
+                                "'--method' only supports one '--class' name. Multiple were"
+                                        + " given:"));
     }
 
     /**
@@ -2288,13 +2298,7 @@ public class HostTestTest extends TestCase {
         mListener.testRunEnded(0L, new HashMap<String, Metric>());
 
         EasyMock.replay(mListener);
-        try {
-            mHostTest.run(mTestInfo, mListener);
-            fail("Should have thrown an exception");
-        } catch (HarnessRuntimeException expected) {
-            // Expected
-            assertTrue(expected.getCause() instanceof IllegalArgumentException);
-        }
+        mHostTest.run(mTestInfo, mListener);
         EasyMock.verify(mListener);
         assertTrue(
                 captured.getValue()

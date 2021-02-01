@@ -398,18 +398,19 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
             throw new TargetSetupError("Cannot read acloud report file.", getDeviceDescriptor());
         }
 
+        if (!GceAvdInfo.GceStatus.SUCCESS.equals(mGceAvdInfo.getStatus())) {
+            throw new TargetSetupError(
+                    "Cannot launch virtual device: " + mGceAvdInfo.getErrors(),
+                    getDeviceDescriptor(),
+                    mGceAvdInfo.getErrorType());
+        }
+
         if (Strings.isNullOrEmpty(mGceAvdInfo.instanceName())) {
             throw new TargetSetupError("No instance name in acloud report.", getDeviceDescriptor());
         }
 
         if (getHostAndPortFromAvdInfo() == null) {
             throw new TargetSetupError("No port in acloud report.", getDeviceDescriptor());
-        }
-
-        if (!GceAvdInfo.GceStatus.SUCCESS.equals(mGceAvdInfo.getStatus())) {
-            throw new TargetSetupError(
-                    "Cannot launch virtual device: " + mGceAvdInfo.getErrors(),
-                    getDeviceDescriptor());
         }
     }
 

@@ -42,6 +42,9 @@ import java.util.regex.Pattern;
  * test idents ... FAILED
  * test make_sure_no_proc_macro ... ignored
  * ...
+ * ---- tests::idents stdout ----
+ * thread 'main' panicked at 'assertion failed: `(left == right)`
+ * ...
  *
  * test result: ok. 10 passed; 1 failed; 1 ignored; 0 measured; 0 filtered out
  * </code> @See <a href="Rust test output
@@ -52,11 +55,13 @@ public class RustTestResultParser extends MultiLineReceiver {
     private String mCurrentTestFile;
     private String mCurrentTestName;
     private String mCurrentTestStatus;
+    private StringBuilder mCurrentTestTrace;
     private Matcher mCurrentMatcher;
 
     // General state
     private Collection<ITestInvocationListener> mListeners = new ArrayList<>();
     private Map<TestDescription, String> mTestResultCache;
+    private Map<TestDescription, String> mTestTraceCache;
 
     /** True if we have seen at least one test start. */
     private boolean mSeenOneTestRunStart = false;
@@ -77,6 +82,10 @@ public class RustTestResultParser extends MultiLineReceiver {
     static final Pattern RUST_ONE_LINE_RESULT = Pattern.compile("test (\\S*) \\.\\.\\. (\\S*)");
 
     static final Pattern RUNNING_PATTERN = Pattern.compile("running .* test[s]?");
+
+    static final Pattern TEST_FAIL_PATTERN = Pattern.compile("---- (\\S*) stdout ----");
+
+    static final Pattern FAILURES_PATTERN = Pattern.compile("failures:");
 
     /**
      * Create a new {@link RustTestResultParser} that reports to the given {@link
@@ -99,7 +108,9 @@ public class RustTestResultParser extends MultiLineReceiver {
     public RustTestResultParser(Collection<ITestInvocationListener> listeners, String runName) {
         mListeners.addAll(listeners);
         mCurrentTestFile = runName;
+        mCurrentTestTrace = null;
         mTestResultCache = new HashMap<>();
+        mTestTraceCache = new HashMap<>();
     }
 
     /** Process Rust unittest output. */
@@ -117,6 +128,19 @@ public class RustTestResultParser extends MultiLineReceiver {
             } else if (lineMatchesPattern(line, RUNNING_PATTERN)) {
                 mSeenOneTestRunStart = true;
                 mTrackLogsBeforeRunStart.clear();
+            } else if (lineMatchesPattern(line, TEST_FAIL_PATTERN)) {
+                if (mCurrentTestTrace != null) {
+                    reportTestTrace();
+                }
+                mCurrentTestName = mCurrentMatcher.group(1);
+                mCurrentTestTrace = new StringBuilder();
+            } else if (lineMatchesPattern(line, FAILURES_PATTERN)) {
+                if (mCurrentTestTrace != null) {
+                    reportTestTrace();
+                    mCurrentTestTrace = null;
+                }
+            } else if (mCurrentTestTrace != null) {
+                mCurrentTestTrace.append(line).append('\n');
             }
         }
     }
@@ -152,7 +176,8 @@ public class RustTestResultParser extends MultiLineReceiver {
                 if (SKIPPED_ENTRY.equals(test.getValue())) {
                     listener.testIgnored(test.getKey());
                 } else if (FAILED_ENTRY.equals(test.getValue())) {
-                    listener.testFailed(test.getKey(), ""); // no stacktrace
+                    listener.testFailed(
+                            test.getKey(), mTestTraceCache.getOrDefault(test.getKey(), ""));
                 } else if (test.getValue() != null) {
                     // Report all unexpected test result as failed tests,
                     // so they are not missed.
@@ -185,6 +210,18 @@ public class RustTestResultParser extends MultiLineReceiver {
         } else {
             mTestResultCache.put(testId, mCurrentTestStatus);
         }
+    }
+
+    private void reportTestTrace() {
+        // Remove all trailing newlines.
+        int lastNewline = mCurrentTestTrace.length();
+        while (lastNewline > 0 && mCurrentTestTrace.charAt(lastNewline - 1) == '\n') {
+            lastNewline--;
+        }
+        mCurrentTestTrace.delete(lastNewline, mCurrentTestTrace.length());
+        // Add the trace.
+        TestDescription testId = new TestDescription(mCurrentTestFile, mCurrentTestName);
+        mTestTraceCache.put(testId, mCurrentTestTrace.toString());
     }
 
     @Override

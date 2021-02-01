@@ -67,6 +67,7 @@ import com.android.tradefed.invoker.shard.ParentShardReplicate;
 import com.android.tradefed.log.ILogRegistry.EventType;
 import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
@@ -828,17 +829,24 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             device.setRecoveryMode(RecoveryMode.AVAILABLE);
         }
 
+        DeviceNotAvailableException dnae = null;
+        FreeDeviceState unavailable = null;
         if (e instanceof DeviceUnresponsiveException) {
-            ITestDevice badDevice =
-                    context.getDeviceBySerial(((DeviceUnresponsiveException) e).getSerial());
-            if (badDevice != null && !(badDevice.getIDevice() instanceof StubDevice)) {
-                deviceStates.put(badDevice, FreeDeviceState.UNRESPONSIVE);
-            }
+            dnae = (DeviceUnresponsiveException) e;
+            unavailable = FreeDeviceState.UNRESPONSIVE;
         } else if (e instanceof DeviceNotAvailableException) {
-            ITestDevice badDevice =
-                    context.getDeviceBySerial(((DeviceNotAvailableException) e).getSerial());
-            if (badDevice != null && !(badDevice.getIDevice() instanceof StubDevice)) {
-                deviceStates.put(badDevice, FreeDeviceState.UNAVAILABLE);
+            dnae = (DeviceNotAvailableException) e;
+            unavailable = FreeDeviceState.UNAVAILABLE;
+        }
+        if (dnae != null) {
+            // If we are carrying an INVOCATION_CANCELLED it has priority
+            if (!InfraErrorIdentifier.INVOCATION_CANCELLED.equals(dnae.getErrorId())) {
+                ITestDevice badDevice = context.getDeviceBySerial(dnae.getSerial());
+                if (badDevice != null && !(badDevice.getIDevice() instanceof StubDevice)) {
+                    deviceStates.put(badDevice, unavailable);
+                }
+            } else {
+                CLog.d("Invocation cancelled detected.");
             }
         }
         CLog.d("Release map of the devices: %s", deviceStates);
@@ -1310,14 +1318,23 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         List<ITestInvocationListener> delegateReporters = new ArrayList<>();
         // For debugging in the console, add a printer
         delegateReporters.add(new SuiteResultReporter());
-        for (ITestInvocationListener listener : config.getTestInvocationListeners()) {
-            // Add infra reporter if configured.
-            if ("com.google.android.tradefed.result.teststorage.ResultReporter"
-                    .equals(listener.getClass().getCanonicalName())) {
-                delegateReporters.add(listener);
-            }
+        try {
+            Class<?> objectClass =
+                    Class.forName("com.google.android.tradefed.result.teststorage.ResultReporter");
+            Object infraReporter = objectClass.getDeclaredConstructor().newInstance();
+            delegateReporters.add((ITestInvocationListener) infraReporter);
+        } catch (Exception e) {
+            CLog.e(e);
         }
         config.setTestInvocationListeners(delegateReporters);
+        try {
+            Class<?> objectClass =
+                    Class.forName("com.google.android.tradefed.result.AndroidBuildApiLogSaver");
+            Object infraLogger = objectClass.getDeclaredConstructor().newInstance();
+            config.setLogSaver((ILogSaver) infraLogger);
+        } catch (Exception e) {
+            CLog.e(e);
+        }
     }
 
     private boolean internalAddCommand(String[] args, String cmdFilePath)
@@ -1904,12 +1921,13 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         setHostState(HostState.KILLING);
         doShutdown();
         CLog.logAndDisplay(LogLevel.WARN, "Stopping invocation threads...");
+        String reason = "Tradefed is shutting down";
         for (InvocationThread thread : mInvocationThreadMap.values()) {
             thread.disableReporters();
             // TODO(b/118891716): Improve tear down
-            thread.stopInvocation("Tradefed is shutting down");
+            thread.stopInvocation(reason);
         }
-        getDeviceManager().terminateHard();
+        getDeviceManager().terminateHard(reason);
     }
 
     /**

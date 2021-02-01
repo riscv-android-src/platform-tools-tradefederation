@@ -57,12 +57,20 @@ public class ConsoleResultReporter extends TestResultListener
             description = "Display all the failures at the very end for easier visualization.")
     private boolean mDisplayFailureSummary = true;
 
+    @Option(
+            name = "display-invocation-attributes",
+            description =
+                    "Display all the invocation attributes at the very end for easier"
+                            + " visualization.")
+    private boolean mDisplayInvocationAttributes = false;
+
     private final PrintStream mStream;
     private Set<LogFile> mLoggedFiles = new LinkedHashSet<>();
     private Map<TestDescription, TestResult> mFailures = new LinkedHashMap<>();
     private String mTestTag;
     private String mRunInProgress;
     private CountingTestResultListener mResultCountListener = new CountingTestResultListener();
+    private IInvocationContext mContext;
 
     public ConsoleResultReporter() {
         this(System.out);
@@ -75,6 +83,7 @@ public class ConsoleResultReporter extends TestResultListener
     @Override
     public void invocationStarted(IInvocationContext context) {
         mTestTag = context.getTestTag();
+        mContext = context;
     }
 
     @Override
@@ -98,6 +107,11 @@ public class ConsoleResultReporter extends TestResultListener
     @Override
     public void testRunFailed(String errorMessage) {
         print(String.format("%s: run failed: %s\n", mRunInProgress, errorMessage));
+    }
+
+    @Override
+    public void testRunFailed(FailureDescription failure) {
+        print(String.format("%s: run failed: %s\n", mRunInProgress, failure));
     }
 
     @Override
@@ -153,6 +167,15 @@ public class ConsoleResultReporter extends TestResultListener
         }
         sb.append("] \r\n");
         print(sb.toString());
+        if (mDisplayInvocationAttributes && !mContext.getAttributes().isEmpty()) {
+            StringBuilder metricPrint = new StringBuilder();
+            metricPrint.append(" Metrics:\n");
+            for (String key : mContext.getAttributes().keySet()) {
+                metricPrint.append(
+                        "   " + key + "=" + mContext.getAttributes().get(key).toString() + "\n");
+            }
+            print(metricPrint.toString());
+        }
         if (mDisplayFailureSummary) {
             for (Entry<TestDescription, TestResult> entry : mFailures.entrySet()) {
                 print(getTestSummary(mTestTag, entry.getKey(), entry.getValue()));

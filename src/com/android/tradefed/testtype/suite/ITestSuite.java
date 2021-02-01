@@ -38,6 +38,7 @@ import com.android.tradefed.device.metric.CollectorHelper;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.error.HarnessRuntimeException;
+import com.android.tradefed.error.IHarnessException;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
@@ -52,6 +53,7 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLoggerReceiver;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.result.error.DeviceErrorIdentifier;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.result.error.TestErrorIdentifier;
 import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.retry.RetryStrategy;
@@ -486,12 +488,17 @@ public abstract class ITestSuite
                 mDynamicResolver.resolvePartialDownloadZip(
                         getTestsDir(), remoteFile.toString(), includeFilters, excludeFilters);
             } catch (BuildRetrievalError | FileNotFoundException e) {
-                CLog.e(
+                String message =
                         String.format(
                                 "Failed to download partial zip from %s for modules: %s",
-                                remoteFile, String.join(", ", modules)));
+                                remoteFile, String.join(", ", modules));
+                CLog.e(message);
                 CLog.e(e);
-                throw new RuntimeException(e);
+                if (e instanceof IHarnessException) {
+                    throw new HarnessRuntimeException(message, (IHarnessException) e);
+                }
+                throw new HarnessRuntimeException(
+                        message, e, InfraErrorIdentifier.ARTIFACT_DOWNLOAD_ERROR);
             }
         }
         long elapsedTime = System.currentTimeMillis() - startTime;
@@ -831,8 +838,7 @@ public abstract class ITestSuite
         module.setRetryDecision(decision);
 
         module.setEnableDynamicDownload(mEnableDynamicDownload);
-        module.addDynamicDownloadArgs(
-                mMainConfiguration.getCommandOptions().getDynamicDownloadArgs());
+        module.transferSuiteLevelOptions(mMainConfiguration);
         // Actually run the module
         module.run(
                 moduleInfo,
@@ -924,6 +930,15 @@ public abstract class ITestSuite
                 // Catch RuntimeException to avoid leaking throws that go to the invocation.
                 result.setErrorMessage(e.getMessage());
                 result.setBugreportNeeded(true);
+            } catch (DeviceNotAvailableException dnae) {
+                // Wrap the DNAE to provide a better error message
+                String message =
+                        String.format(
+                                "Device became unavailable after %s due to: %s",
+                                moduleName, dnae.getMessage());
+                DeviceNotAvailableException wrapper =
+                        new DeviceNotAvailableException(message, dnae, dnae.getSerial());
+                throw wrapper;
             }
             if (!CheckStatus.SUCCESS.equals(result.getStatus())) {
                 String errorMessage =

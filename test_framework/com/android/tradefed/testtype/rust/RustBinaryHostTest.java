@@ -136,27 +136,38 @@ public class RustBinaryHostTest extends RustTestBase implements IBuildReceiver {
         // Duplicated test cases selected by different include filters should not be counted.
         Set<String> foundTests = new HashSet<>();
         for (String filter : includeFilters) {
-            countTests(file, filter, foundTests);
+            boolean success = countTests(file, filter, foundTests);
+            if (!success) {
+                FailureDescription failure =
+                        FailureDescription.create(
+                                "Could not count the number of tests", FailureStatus.TEST_FAILURE);
+                listener.testRunFailed(failure);
+                listener.testRunEnded(0, new HashMap<String, Metric>());
+                CLog.e(failure.getErrorMessage());
+                return;
+            }
         }
         int testCount = foundTests.size();
         CLog.d("Total test count: %d", testCount);
         long startTimeMs = System.currentTimeMillis();
         listener.testRunStarted(file.getName(), testCount, 0, startTimeMs);
-        for (String filter : includeFilters) {
-            try {
-                runTestWithFilter(listener, file, filter);
-            } catch (IOException e) {
-                listener.testRunFailed(e.getMessage());
-                long testTimeMs = System.currentTimeMillis() - startTimeMs;
-                listener.testRunEnded(testTimeMs, new HashMap<String, Metric>());
-                throw new RuntimeException(e);
+        if (testCount > 0) {
+            for (String filter : includeFilters) {
+                try {
+                    runTestWithFilter(listener, file, filter);
+                } catch (IOException e) {
+                    listener.testRunFailed(e.getMessage());
+                    long testTimeMs = System.currentTimeMillis() - startTimeMs;
+                    listener.testRunEnded(testTimeMs, new HashMap<String, Metric>());
+                    throw new RuntimeException(e);
+                }
             }
         }
         long testTimeMs = System.currentTimeMillis() - startTimeMs;
         listener.testRunEnded(testTimeMs, new HashMap<String, Metric>());
     }
 
-    private void countTests(File file, String filter, Set<String> foundTests) {
+    private boolean countTests(File file, String filter, Set<String> foundTests) {
         CLog.d("Count with filter '%s' for Rust File: %s", filter, file.getAbsolutePath());
         List<String> commandLine = new ArrayList<>();
         commandLine.add(file.getAbsolutePath());
@@ -174,10 +185,12 @@ public class RustBinaryHostTest extends RustTestBase implements IBuildReceiver {
         // harness results.
         if (listResult.getStatus() == CommandStatus.SUCCESS) {
             collectTestLines(listResult.getStdout().split("\n"), foundTests);
+            return true;
         } else {
             CLog.w(
                     "Could not run command '%s' to get test list.",
                     String.join(" ", listCommandLine));
+            return false;
         }
     }
 

@@ -84,10 +84,19 @@ public class PushFilePreparer extends BaseTargetPreparer
     @Option(
             name = "push-file",
             description =
-                    "A push-spec, specifying the local file to the path where it should be pushed on "
-                            + "device. May be repeated. If multiple files are configured to be pushed "
-                            + "to the same remote path, the latest one will be pushed.")
+                    "A push-spec, specifying the local file to the path where it should be pushed"
+                        + " on device. May be repeated. If multiple files are configured to be"
+                        + " pushed to the same remote path, the latest one will be pushed.")
     private MultiMap<File, String> mPushFileSpecs = new MultiMap<>();
+
+    @Option(
+            name = "skip-abi-filtering",
+            description =
+                    "A bool to indicate we should or shouldn't skip files that match the "
+                            + "architecture string name, e.g. x86, x86_64, arm64-v8. This "
+                            + "is necessary when file or folder names match an architecture "
+                            + "version but still need to be pushed to the device.")
+    private boolean mSkipAbiFiltering = false;
 
     @Option(
             name = "backup-file",
@@ -430,7 +439,7 @@ public class PushFilePreparer extends BaseTargetPreparer
                         DeviceErrorIdentifier.FAIL_PUSH_FILE);
             }
             Set<String> filter = new HashSet<>();
-            if (mAbi != null) {
+            if (mAbi != null && !mSkipAbiFiltering) {
                 String currentArch = AbiUtils.getArchForAbi(mAbi.getName());
                 filter.addAll(AbiUtils.getArchSupported());
                 filter.remove(currentArch);

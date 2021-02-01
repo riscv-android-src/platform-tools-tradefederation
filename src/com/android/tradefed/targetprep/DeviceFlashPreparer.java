@@ -16,6 +16,7 @@
 
 package com.android.tradefed.targetprep;
 
+import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.GlobalConfiguration;
@@ -25,6 +26,7 @@ import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
+import com.android.tradefed.device.NullDevice;
 import com.android.tradefed.host.IHostOptions;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -33,8 +35,6 @@ import com.android.tradefed.targetprep.IDeviceFlasher.UserDataFlashOption;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
-
-import com.google.common.annotations.VisibleForTesting;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -113,8 +113,16 @@ public abstract class DeviceFlashPreparer extends BaseTargetPreparer {
     @Option(
             name = "flash-ramdisk",
             description =
-                    "flashes ramdisk (boot partition) in addition " + "to regular system image")
+                    "flashes ramdisk (usually on boot partition) in addition to "
+                            + "regular system image")
     private boolean mShouldFlashRamdisk = false;
+
+    @Option(
+            name = "ramdisk-partition",
+            description =
+                    "the partition (such as boot, vendor_boot) that ramdisk image "
+                            + "should be flashed to")
+    private String mRamdiskPartition = "boot";
 
     /**
      * Sets the device boot time
@@ -181,8 +189,8 @@ public abstract class DeviceFlashPreparer extends BaseTargetPreparer {
     @Override
     public void setUp(TestInformation testInfo)
             throws TargetSetupError, DeviceNotAvailableException, BuildError {
-        if (isDisabled()) {
-            CLog.i("Skipping device flashing.");
+        if (testInfo.getDevice().getIDevice() instanceof NullDevice) {
+            CLog.i("Skipping device flashing, this is a null-device.");
             return;
         }
         ITestDevice device = testInfo.getDevice();
@@ -221,6 +229,9 @@ public abstract class DeviceFlashPreparer extends BaseTargetPreparer {
                 flasher.setForceSystemFlash(mForceSystemFlash);
                 flasher.setDataWipeSkipList(mDataWipeSkipList);
                 flasher.setShouldFlashRamdisk(mShouldFlashRamdisk);
+                if (mShouldFlashRamdisk) {
+                    flasher.setRamdiskPartition(mRamdiskPartition);
+                }
                 if (flasher instanceof FastbootDeviceFlasher) {
                     ((FastbootDeviceFlasher) flasher).setFlashOptions(mFastbootFlashOptions);
                 }
@@ -442,8 +453,8 @@ public abstract class DeviceFlashPreparer extends BaseTargetPreparer {
 
     @Override
     public void tearDown(TestInformation testInfo, Throwable e) throws DeviceNotAvailableException {
-        if (isDisabled()) {
-            CLog.i("Skipping device flashing tearDown.");
+        if (testInfo.getDevice().getIDevice() instanceof NullDevice) {
+            CLog.i("Skipping device flashing tearDown, this is a null-device.");
             return;
         }
         ITestDevice device = testInfo.getDevice();
