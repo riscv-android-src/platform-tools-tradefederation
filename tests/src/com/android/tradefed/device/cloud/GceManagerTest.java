@@ -173,11 +173,11 @@ public class GceManagerTest {
                     ArrayUtil.list(
                             mOptions.getAvdDriverBinary().getAbsolutePath(),
                             "create",
-                            "--build_target",
+                            "--build-target",
                             "FLAVOR",
                             "--branch",
                             "BRANCH",
-                            "--build_id",
+                            "--build-id",
                             "BUILDID",
                             "--config_file",
                             mGceManager.getAvdConfigFile().getAbsolutePath(),
@@ -211,11 +211,11 @@ public class GceManagerTest {
                     ArrayUtil.list(
                             mOptions.getAvdDriverBinary().getAbsolutePath(),
                             "create",
-                            "--build_target",
+                            "--build-target",
                             "FLAVOR",
                             "--branch",
                             "BRANCH",
-                            "--build_id",
+                            "--build-id",
                             "BUILDID",
                             "--config_file",
                             mGceManager.getAvdConfigFile().getAbsolutePath(),
@@ -260,11 +260,11 @@ public class GceManagerTest {
                     ArrayUtil.list(
                             mOptions.getAvdDriverBinary().getAbsolutePath(),
                             "create",
-                            "--build_target",
+                            "--build-target",
                             "TARGET",
                             "--branch",
                             "BRANCH",
-                            "--build_id",
+                            "--build-id",
                             "BUILDID",
                             "--emulator-build-id",
                             "EMULATOR_BUILD_ID",
@@ -301,11 +301,11 @@ public class GceManagerTest {
                     ArrayUtil.list(
                             mOptions.getAvdDriverBinary().getAbsolutePath(),
                             "create",
-                            "--build_target",
+                            "--build-target",
                             "FLAVOR",
                             "--branch",
                             "BRANCH",
-                            "--build_id",
+                            "--build-id",
                             "BUILDID",
                             "--report-internal-ip",
                             "--no-autoconnect",
@@ -380,7 +380,7 @@ public class GceManagerTest {
         File reportFile = null;
         try {
             OptionSetter setter = new OptionSetter(mOptions);
-            setter.setOptionValue("gce-driver-param", "--kernel_build_id");
+            setter.setOptionValue("gce-driver-param", "--kernel-build-id");
             setter.setOptionValue("gce-driver-param", "KERNELBUILDID");
             reportFile = FileUtil.createTempFile("test-gce-cmd", "report");
             List<String> result = mGceManager.buildGceCmd(reportFile, mMockBuildInfo, null);
@@ -388,13 +388,13 @@ public class GceManagerTest {
                     ArrayUtil.list(
                             mOptions.getAvdDriverBinary().getAbsolutePath(),
                             "create",
-                            "--build_target",
+                            "--build-target",
                             "FLAVOR",
                             "--branch",
                             "BRANCH",
-                            "--build_id",
+                            "--build-id",
                             "BUILDID",
-                            "--kernel_build_id",
+                            "--kernel-build-id",
                             "KERNELBUILDID",
                             "--config_file",
                             mGceManager.getAvdConfigFile().getAbsolutePath(),
