@@ -27,6 +27,7 @@ import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.build.IDeviceBuildProvider;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
@@ -745,6 +746,9 @@ public class InvocationExecution implements IInvocationExecution {
                 if (collector.isDisabled()) {
                     CLog.d("%s has been disabled. Skipping.", collector);
                 } else {
+                    if (collector instanceof IConfigurationReceiver) {
+                        ((IConfigurationReceiver) collector).setConfiguration(config);
+                    }
                     listenerWithCollectors =
                             collector.init(info.getContext(), listenerWithCollectors);
                     TfObjectTracker.countWithParents(collector.getClass());

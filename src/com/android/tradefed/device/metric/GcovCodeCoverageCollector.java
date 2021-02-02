@@ -14,36 +14,37 @@
  * limitations under the License.
  */
 
-package com.android.tradefed.testtype;
+package com.android.tradefed.device.metric;
 
-import static com.google.common.base.Verify.verify;
+import static com.android.tradefed.testtype.coverage.CoverageOptions.Toolchain.GCOV;
 import static com.google.common.base.Verify.verifyNotNull;
 
+import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
-import com.android.tradefed.result.ResultForwarder;
-import com.android.tradefed.testtype.coverage.CoverageOptions;
+import com.android.tradefed.util.AdbRootElevator;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.NativeCodeCoverageFlusher;
 import com.android.tradefed.util.TarUtil;
 import com.android.tradefed.util.ZipUtil;
 
-import com.google.common.collect.ImmutableList;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.Map;
 
 /**
- * A {@link ResultForwarder} that will pull native coverage measurements off of the device and log
- * them as test artifacts.
+ * A {@link com.android.tradefed.device.metric.BaseDeviceMetricCollector} that will pull gcov
+ * coverage measurements off of the device and log them as test artifacts.
  */
-public final class NativeCodeCoverageListener extends ResultForwarder {
+public final class GcovCodeCoverageCollector extends BaseDeviceMetricCollector
+        implements IConfigurationReceiver {
 
     private static final String NATIVE_COVERAGE_DEVICE_PATH = "/data/misc/trace";
     private static final String COVERAGE_TAR_PATH =
@@ -60,28 +61,46 @@ public final class NativeCodeCoverageListener extends ResultForwarder {
     private static final String DELETE_COVERAGE_FILES_COMMAND =
             String.format("find %s -name '*.gcda' -delete", NATIVE_COVERAGE_DEVICE_PATH);
 
-    private final boolean mFlushCoverage;
-    private final ITestDevice mDevice;
-    private final NativeCodeCoverageFlusher mFlusher;
+    private NativeCodeCoverageFlusher mFlusher;
     private boolean mCollectCoverageOnTestEnd = true;
+    private IConfiguration mConfiguration;
 
-    private String mCurrentRunName;
+    @Override
+    public ITestInvocationListener init(
+            IInvocationContext context, ITestInvocationListener listener) {
+        super.init(context, listener);
 
-    public NativeCodeCoverageListener(ITestDevice device, ITestInvocationListener... listeners) {
-        super(listeners);
-        mDevice = device;
-        mFlushCoverage = false;
-        mFlusher = new NativeCodeCoverageFlusher(mDevice, ImmutableList.of());
+        if (isGcovCoverageEnabled()) {
+            // Clear coverage measurements on the device.
+            try (AdbRootElevator adbRoot = new AdbRootElevator(getDevices().get(0))) {
+                getCoverageFlusher().resetCoverage();
+            } catch (DeviceNotAvailableException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        return this;
     }
 
-    public NativeCodeCoverageListener(
-            ITestDevice device,
-            CoverageOptions coverageOptions,
-            ITestInvocationListener... listeners) {
-        super(listeners);
-        mDevice = device;
-        mFlushCoverage = coverageOptions.isCoverageFlushEnabled();
-        mFlusher = new NativeCodeCoverageFlusher(mDevice, coverageOptions.getCoverageProcesses());
+    @Override
+    public void setConfiguration(IConfiguration config) {
+        mConfiguration = config;
+    }
+
+    private boolean isGcovCoverageEnabled() {
+        return mConfiguration != null
+                && mConfiguration.getCoverageOptions().isCoverageEnabled()
+                && mConfiguration.getCoverageOptions().getCoverageToolchains().contains(GCOV);
+    }
+
+    private NativeCodeCoverageFlusher getCoverageFlusher() {
+        if (mFlusher == null) {
+            mFlusher =
+                    new NativeCodeCoverageFlusher(
+                            getDevices().get(0),
+                            mConfiguration.getCoverageOptions().getCoverageProcesses());
+        }
+        return mFlusher;
     }
 
     /**
@@ -95,19 +114,13 @@ public final class NativeCodeCoverageListener extends ResultForwarder {
     }
 
     @Override
-    public void testRunStarted(String runName, int testCount) {
-        super.testRunStarted(runName, testCount);
-        mCurrentRunName = runName;
-    }
+    public void onTestRunEnd(DeviceMetricData runData, final Map<String, Metric> runMetrics) {
+        if (!isGcovCoverageEnabled()) {
+            return;
+        }
 
-    @Override
-    public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
-        try {
-            if (mCollectCoverageOnTestEnd) {
-                logCoverageMeasurements(mCurrentRunName);
-            }
-        } finally {
-            super.testRunEnded(elapsedTime, runMetrics);
+        if (mCollectCoverageOnTestEnd) {
+            logCoverageMeasurements(getRunName());
         }
     }
 
@@ -115,23 +128,23 @@ public final class NativeCodeCoverageListener extends ResultForwarder {
     public void logCoverageMeasurements(String runName) {
         File coverageTar = null;
         File coverageZip = null;
-        try {
-            // Enable abd root on the device, otherwise the following commands will fail.
-            verify(mDevice.enableAdbRoot(), "Failed to enable adb root.");
+        ITestDevice device = getRealDevices().get(0);
 
+        // Enable abd root on the device, otherwise the following commands will fail.
+        try (AdbRootElevator adbRoot = new AdbRootElevator(device)) {
             // Flush cross-process coverage.
-            if (mFlushCoverage) {
-                mFlusher.forceCoverageFlush();
+            if (mConfiguration.getCoverageOptions().isCoverageFlushEnabled()) {
+                getCoverageFlusher().forceCoverageFlush();
             }
 
             // Compress coverage measurements on the device before pulling.
-            mDevice.executeShellCommand(ZIP_COVERAGE_FILES_COMMAND);
-            coverageTar = mDevice.pullFile(COVERAGE_TAR_PATH);
+            device.executeShellCommand(ZIP_COVERAGE_FILES_COMMAND);
+            coverageTar = device.pullFile(COVERAGE_TAR_PATH);
             verifyNotNull(
                     coverageTar,
                     "Failed to pull the native code coverage file %s",
                     COVERAGE_TAR_PATH);
-            mDevice.deleteFile(COVERAGE_TAR_PATH);
+            device.deleteFile(COVERAGE_TAR_PATH);
 
             coverageZip = convertTarToZip(coverageTar);
 
@@ -140,7 +153,7 @@ public final class NativeCodeCoverageListener extends ResultForwarder {
             }
 
             // Delete coverage files on the device.
-            mDevice.executeShellCommand(DELETE_COVERAGE_FILES_COMMAND);
+            device.executeShellCommand(DELETE_COVERAGE_FILES_COMMAND);
         } catch (DeviceNotAvailableException | IOException e) {
             throw new RuntimeException(e);
         } finally {
