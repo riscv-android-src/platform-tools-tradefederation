@@ -127,6 +127,10 @@ public class HostUnitTestsConfigValidation implements IBuildReceiver {
         }
     }
 
+    // This list contains exemption to the duplication of host-unit-tests & TEST_MAPPING.
+    // This will be used when migrating default and clean up as we clear the TEST_MAPPING files.
+    private static final Set<String> EXEMPTION_LIST = new HashSet<>(Arrays.asList());
+
     /**
      * This test ensures that unit tests are not also running as part of test mapping to avoid
      * double running them.
@@ -154,10 +158,11 @@ public class HostUnitTestsConfigValidation implements IBuildReceiver {
         testInfosToRun.stream().forEach(e -> infos.put(e.getName(), e.getSources()));
         for (String configName : configs) {
             String moduleName = FileUtil.getBaseName(new File(configName).getName());
-            if (infos.containsKey(moduleName)) {
+            if (infos.containsKey(moduleName) && !EXEMPTION_LIST.contains(moduleName)) {
                 errors.add(
                         String.format(
-                                "test '%s' is present in unit_tests and test mapping: %s",
+                                "Target '%s' is already running in host-unit-tests, it doesn't "
+                                        + "need the test mapping config: %s",
                                 moduleName, infos.get(moduleName)));
             }
         }
