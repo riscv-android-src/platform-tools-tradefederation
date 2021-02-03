@@ -15,9 +15,12 @@
  */
 package com.android.tradefed.result;
 
+import com.android.ddmlib.Log.LogLevel;
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.SubprocessEventHelper.BaseTestEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.FailedTestEventInfo;
 import com.android.tradefed.util.SubprocessEventHelper.InvocationFailedEventInfo;
@@ -35,11 +38,35 @@ import org.json.JSONObject;
 
 import java.util.Map;
 
+import sun.misc.Signal;
+import sun.misc.SignalHandler;
+
 /**
  * A frozen implementation of the subprocess results reporter which should remain compatible with
  * earlier versions of TF/CTS (e.g. 8+), despite changes in its superclass.
+ *
+ * <p>This reporter can be dynamically injected to enable subprocess reporting capability in old
+ * TF-based test suites.
  */
 public final class LegacySubprocessResultsReporter extends SubprocessResultsReporter {
+
+    private static SignalHandler handler =
+            new SignalHandler() {
+                @Override
+                public void handle(Signal sig) {
+                    CLog.logAndDisplay(
+                            LogLevel.ERROR,
+                            String.format("Received signal %s. Shutting down...", sig.getName()));
+                    GlobalConfiguration.getInstance().getCommandScheduler().shutdownHard();
+                }
+            };
+
+    public LegacySubprocessResultsReporter() {
+        // Install a signal handler to properly stop running invocations. This allows old TF-based
+        // test suites to generate test result files when interrupted.
+        // FIXME: Don't install a new handler if CommandRunner already installed one.
+        Signal.handle(new Signal("TERM"), handler);
+    }
 
     /* Legacy method compatible with TF/CTS 8+. */
     public void testAssumptionFailure(TestIdentifier testId, String trace) {
