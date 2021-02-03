@@ -30,9 +30,11 @@ import org.junit.runner.JUnitCore;
 import org.junit.runner.Request;
 import org.junit.runner.Runner;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.PrintStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashSet;
@@ -157,9 +159,12 @@ public final class IsolationRunner {
                 }
             }
         } catch (RuntimeException e) {
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            PrintStream bytePrintStream = new PrintStream(outputStream);
+            e.printStackTrace(bytePrintStream);
             RunnerReply.newBuilder()
                     .setRunnerStatus(RunnerStatus.RUNNER_STATUS_FINISHED_ERROR)
-                    .setMessage(e.getMessage())
+                    .setMessage(outputStream.toString())
                     .build()
                     .writeDelimitedTo(output);
             return;
