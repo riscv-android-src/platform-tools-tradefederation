@@ -1918,6 +1918,12 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
      */
     @Override
     public synchronized void shutdownHard() {
+        shutdownHard(true);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public synchronized void shutdownHard(boolean killAdb) {
         setHostState(HostState.KILLING);
         doShutdown();
         CLog.logAndDisplay(LogLevel.WARN, "Stopping invocation threads...");
@@ -1927,7 +1933,11 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             // TODO(b/118891716): Improve tear down
             thread.stopInvocation(reason);
         }
-        getDeviceManager().terminateHard(reason);
+        if (killAdb) {
+            getDeviceManager().terminateHard(reason);
+        } else {
+            getDeviceManager().terminate();
+        }
     }
 
     /**
