@@ -86,7 +86,12 @@ public class EventsLoggerListener implements ITestInvocationListener {
 
     @Override
     public void testRunFailed(FailureDescription failure) {
-        writeToFile(String.format("        [run failed with %s]\n", failure));
+        writeToFile(
+                String.format(
+                        "        [run failed with %s|%s|%s]\n",
+                        failure.getErrorMessage(),
+                        failure.getFailureStatus(),
+                        failure.getErrorIdentifier()));
     }
 
     @Override
