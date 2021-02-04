@@ -15,6 +15,8 @@
  */
 package com.android.tradefed.presubmit;
 
+import static org.junit.Assert.assertTrue;
+
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
@@ -129,7 +131,8 @@ public class HostUnitTestsConfigValidation implements IBuildReceiver {
 
     // This list contains exemption to the duplication of host-unit-tests & TEST_MAPPING.
     // This will be used when migrating default and clean up as we clear the TEST_MAPPING files.
-    private static final Set<String> EXEMPTION_LIST = new HashSet<>(Arrays.asList());
+    private static final Set<String> EXEMPTION_LIST =
+            new HashSet<>(Arrays.asList("env_logger_host_test_src_lib", "recovery_host_test"));
 
     /**
      * This test ensures that unit tests are not also running as part of test mapping to avoid
@@ -169,8 +172,7 @@ public class HostUnitTestsConfigValidation implements IBuildReceiver {
         if (!errors.isEmpty()) {
             String message =
                     String.format("Fail configuration check:\n%s", Joiner.on("\n").join(errors));
-            // TODO: Turn this blocking
-            Assume.assumeTrue(message, errors.isEmpty());
+            assertTrue(message, errors.isEmpty());
         }
     }
 }
