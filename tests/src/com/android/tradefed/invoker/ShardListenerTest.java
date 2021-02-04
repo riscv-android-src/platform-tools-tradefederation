@@ -21,7 +21,6 @@ import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ILogSaverListener;
-import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.LogSaverResultForwarder;
@@ -40,7 +39,7 @@ import java.util.HashMap;
 @RunWith(JUnit4.class)
 public class ShardListenerTest {
     private ShardListener mShardListener;
-    private ITestInvocationListener mMockListener;
+    private ILogSaverListener mMockListener;
     private IInvocationContext mContext;
     private ITestDevice mMockDevice;
     private ILogSaver mMockSaver;
@@ -105,8 +104,7 @@ public class ShardListenerTest {
     @Test
     public void testLogWithoutRun() {
         mMockListener.invocationStarted(mContext);
-        ((ILogSaverListener) mMockListener)
-                .logAssociation(EasyMock.eq("test-file"), EasyMock.anyObject());
+        mMockListener.logAssociation(EasyMock.eq("test-file"), EasyMock.anyObject());
         mMockListener.invocationEnded(0l);
 
         EasyMock.replay(mMockListener, mMockDevice);
@@ -119,6 +117,8 @@ public class ShardListenerTest {
     /** Test that the buffering of events is properly done in respect to the modules too. */
     @Test
     public void testBufferAndReplay_withModule() {
+        LogFile moduleLog1 = new LogFile("path", "url", LogDataType.TEXT);
+        LogFile moduleLog2 = new LogFile("path2", "url2", LogDataType.TEXT);
         IInvocationContext module1 = new InvocationContext();
         IInvocationContext module2 = new InvocationContext();
         mMockListener.invocationStarted(mContext);
@@ -134,6 +134,7 @@ public class ShardListenerTest {
         mMockListener.testStarted(tid, 0l);
         mMockListener.testEnded(tid, 0l, new HashMap<String, Metric>());
         mMockListener.testRunEnded(0l, new HashMap<String, Metric>());
+        mMockListener.logAssociation("module-log1", moduleLog1);
         mMockListener.testModuleEnded();
         // expectation on second module
         mMockListener.testModuleStarted(module2);
@@ -142,6 +143,7 @@ public class ShardListenerTest {
         mMockListener.testStarted(tid, 0l);
         mMockListener.testEnded(tid, 0l, new HashMap<String, Metric>());
         mMockListener.testRunEnded(0l, new HashMap<String, Metric>());
+        mMockListener.logAssociation("module-log2", moduleLog2);
         mMockListener.testModuleEnded();
         mMockListener.invocationEnded(0l);
 
@@ -157,6 +159,7 @@ public class ShardListenerTest {
         mShardListener.testStarted(tid, 0l);
         mShardListener.testEnded(tid, 0l, new HashMap<String, Metric>());
         mShardListener.testRunEnded(0l, new HashMap<String, Metric>());
+        mShardListener.logAssociation("module-log1", moduleLog1);
         mShardListener.testModuleEnded();
         // 2nd module
         mShardListener.testModuleStarted(module2);
@@ -164,6 +167,7 @@ public class ShardListenerTest {
         mShardListener.testStarted(tid, 0l);
         mShardListener.testEnded(tid, 0l, new HashMap<String, Metric>());
         mShardListener.testRunEnded(0l, new HashMap<String, Metric>());
+        mShardListener.logAssociation("module-log2", moduleLog2);
         mShardListener.testModuleEnded();
 
         mShardListener.invocationEnded(0l);
