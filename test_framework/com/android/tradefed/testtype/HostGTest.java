@@ -134,6 +134,8 @@ public class HostGTest extends GTestBase implements IBuildReceiver {
         } catch (IOException e) {
             throw new RuntimeException(e);
         } finally {
+            // Flush before the log to ensure order of events
+            receiver.flush();
             if (stdout != null && stdout.length() > 0L) {
                 try (FileInputStreamSource source = new FileInputStreamSource(stdout)) {
                     logger.testLog(
@@ -186,43 +188,38 @@ public class HostGTest extends GTestBase implements IBuildReceiver {
             final File gtestFile,
             final String flags,
             ITestLogger logger) {
-        try {
-            for (String cmd : getBeforeTestCmd()) {
-                CommandResult result = executeHostCommand(cmd);
-                if (!result.getStatus().equals(CommandStatus.SUCCESS)) {
-                    throw new RuntimeException(
-                            "'Before test' command failed: " + result.getStderr());
-                }
+        for (String cmd : getBeforeTestCmd()) {
+            CommandResult result = executeHostCommand(cmd);
+            if (!result.getStatus().equals(CommandStatus.SUCCESS)) {
+                throw new RuntimeException("'Before test' command failed: " + result.getStderr());
             }
+        }
 
-            long maxTestTimeMs = getMaxTestTimeMs();
-            String cmd = getGTestCmdLine(gtestFile.getAbsolutePath(), flags);
-            CommandResult testResult =
-                    executeHostGTestCommand(gtestFile, cmd, maxTestTimeMs, resultParser, logger);
-            // TODO: Switch throwing exceptions to use ITestInvocation.testRunFailed
-            switch (testResult.getStatus()) {
-                case TIMED_OUT:
-                    throw new RuntimeException(
-                            String.format("Command run timed out after %d ms", maxTestTimeMs));
-                case EXCEPTION:
-                    throw new RuntimeException("Command run failed with exception");
-                case FAILED:
-                    // Check the command exit code. If it's 1, then this is just a red herring;
-                    // gtest returns 1 when a test fails.
-                    final Integer exitCode = testResult.getExitCode();
-                    if (exitCode == null || exitCode != 1) {
-                        // No need to handle it as the parser would have reported it already.
-                        CLog.e("Command run failed with exit code %s", exitCode);
-                    }
-                default:
-                    break;
-            }
-        } finally {
-            resultParser.flush();
+        long maxTestTimeMs = getMaxTestTimeMs();
+        String cmd = getGTestCmdLine(gtestFile.getAbsolutePath(), flags);
+        CommandResult testResult =
+                executeHostGTestCommand(gtestFile, cmd, maxTestTimeMs, resultParser, logger);
+        // TODO: Switch throwing exceptions to use ITestInvocation.testRunFailed
+        switch (testResult.getStatus()) {
+            case TIMED_OUT:
+                throw new RuntimeException(
+                        String.format("Command run timed out after %d ms", maxTestTimeMs));
+            case EXCEPTION:
+                throw new RuntimeException("Command run failed with exception");
+            case FAILED:
+                // Check the command exit code. If it's 1, then this is just a red herring;
+                // gtest returns 1 when a test fails.
+                final Integer exitCode = testResult.getExitCode();
+                if (exitCode == null || exitCode != 1) {
+                    // No need to handle it as the parser would have reported it already.
+                    CLog.e("Command run failed with exit code %s", exitCode);
+                }
+            default:
+                break;
         }
         // Execute the host command if nothing failed badly before.
-        for (String cmd : getAfterTestCmd()) {
-            CommandResult result = executeHostCommand(cmd);
+        for (String afterCmd : getAfterTestCmd()) {
+            CommandResult result = executeHostCommand(afterCmd);
             if (!result.getStatus().equals(CommandStatus.SUCCESS)) {
                 throw new RuntimeException("'After test' command failed: " + result.getStderr());
             }
