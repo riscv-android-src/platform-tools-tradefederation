@@ -28,6 +28,7 @@ import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.error.TestErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.util.CommandResult;
@@ -211,7 +212,8 @@ public class RustBinaryHostTest extends RustTestBase implements IBuildReceiver {
                                     + "\nstdout: %s\nstderr: %s",
                             result.getExitCode(), result.getStdout(), result.getStderr());
             FailureDescription failure =
-                    FailureDescription.create(message, FailureStatus.TEST_FAILURE);
+                    FailureDescription.create(message, FailureStatus.TEST_FAILURE)
+                            .setErrorIdentifier(TestErrorIdentifier.TEST_BINARY_EXIT_CODE_ERROR);
             listener.testRunFailed(failure);
             CLog.e(message);
         }
