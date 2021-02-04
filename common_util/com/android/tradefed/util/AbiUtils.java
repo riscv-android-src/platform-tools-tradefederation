@@ -33,6 +33,7 @@ public class AbiUtils {
     public static final String ABI_X86_64 = "x86_64";
     public static final String ABI_MIPS = "mips";
     public static final String ABI_MIPS64 = "mips64";
+    public static final String ABI_RISCV64 = "riscv64";
 
     // List of supported architectures
     public static final String BASE_ARCH_ARM = "arm";
@@ -41,6 +42,8 @@ public class AbiUtils {
     public static final String ARCH_X86_64 = BASE_ARCH_X86 + "_64";
     public static final String BASE_ARCH_MIPS = "mips";
     public static final String ARCH_MIPS64 = BASE_ARCH_MIPS + "64";
+    public static final String BASE_ARCH_RISCV = "riscv";
+    public static final String ARCH_RISCV64 = BASE_ARCH_RISCV + "64";
 
     /** The set of 32Bit ABIs. */
     private static final Set<String> ABIS_32BIT = new LinkedHashSet<String>();
@@ -56,6 +59,11 @@ public class AbiUtils {
 
     /** The set of Mips ABIs. */
     private static final Set<String> MIPS_ABIS = new LinkedHashSet<String>();
+
+    /**
+     * The set of Riscv ABIs.
+     */
+    private static final Set<String> RISCV_ABIS = new HashSet<String>();
 
     /** The set of ABI names which Compatibility supports. */
     protected static final Set<String> ABIS_SUPPORTED_BY_COMPATIBILITY = new LinkedHashSet<>();
@@ -79,6 +87,7 @@ public class AbiUtils {
         ABIS_64BIT.add(ABI_ARM_64_V8A);
         ABIS_64BIT.add(ABI_X86_64);
         ABIS_64BIT.add(ABI_MIPS64);
+        ABIS_64BIT.add(ABI_RISCV64);
 
         ARM_ABIS.add(ABI_ARM_64_V8A);
         ARM_ABIS.add(ABI_ARM_V7A);
@@ -89,16 +98,21 @@ public class AbiUtils {
         MIPS_ABIS.add(ABI_MIPS64);
         MIPS_ABIS.add(ABI_MIPS);
 
+        RISCV_ABIS.add(ABI_RISCV64);
+
         ARCH_TO_ABIS.put(BASE_ARCH_ARM, ARM_ABIS);
         ARCH_TO_ABIS.put(ARCH_ARM64, ARM_ABIS);
         ARCH_TO_ABIS.put(BASE_ARCH_X86, INTEL_ABIS);
         ARCH_TO_ABIS.put(ARCH_X86_64, INTEL_ABIS);
         ARCH_TO_ABIS.put(BASE_ARCH_MIPS, MIPS_ABIS);
         ARCH_TO_ABIS.put(ARCH_MIPS64, MIPS_ABIS);
+        ARCH_TO_ABIS.put(BASE_ARCH_RISCV, RISCV_ABIS);
+        ARCH_TO_ABIS.put(ARCH_RISCV64, RISCV_ABIS);
 
         ABIS_SUPPORTED_BY_COMPATIBILITY.addAll(ARM_ABIS);
         ABIS_SUPPORTED_BY_COMPATIBILITY.addAll(INTEL_ABIS);
         ABIS_SUPPORTED_BY_COMPATIBILITY.addAll(MIPS_ABIS);
+        ABIS_SUPPORTED_BY_COMPATIBILITY.addAll(RISCV_ABIS);
 
         ABI_TO_ARCH.put(ABI_ARM_V7A, BASE_ARCH_ARM);
         ABI_TO_ARCH.put(ABI_ARM_64_V8A, ARCH_ARM64);
@@ -106,6 +120,7 @@ public class AbiUtils {
         ABI_TO_ARCH.put(ABI_X86_64, ARCH_X86_64);
         ABI_TO_ARCH.put(ABI_MIPS, BASE_ARCH_MIPS);
         ABI_TO_ARCH.put(ABI_MIPS64, ARCH_MIPS64);
+        ABI_TO_ARCH.put(ABI_RISCV64, ARCH_RISCV64);
 
         ABI_TO_BASE_ARCH.put(ABI_ARM_V7A, BASE_ARCH_ARM);
         ABI_TO_BASE_ARCH.put(ABI_ARM_64_V8A, BASE_ARCH_ARM);
@@ -113,6 +128,7 @@ public class AbiUtils {
         ABI_TO_BASE_ARCH.put(ABI_X86_64, BASE_ARCH_X86);
         ABI_TO_BASE_ARCH.put(ABI_MIPS, BASE_ARCH_MIPS);
         ABI_TO_BASE_ARCH.put(ABI_MIPS64, BASE_ARCH_MIPS);
+        ABI_TO_BASE_ARCH.put(ABI_RISCV64, BASE_ARCH_RISCV);
 
         ARCH_SUPPORTED.add(BASE_ARCH_ARM);
         ARCH_SUPPORTED.add(ARCH_ARM64);
@@ -120,6 +136,8 @@ public class AbiUtils {
         ARCH_SUPPORTED.add(ARCH_X86_64);
         ARCH_SUPPORTED.add(BASE_ARCH_MIPS);
         ARCH_SUPPORTED.add(ARCH_MIPS64);
+        ARCH_SUPPORTED.add(BASE_ARCH_RISCV);
+        ARCH_SUPPORTED.add(ARCH_RISCV64);
     }
 
     /**

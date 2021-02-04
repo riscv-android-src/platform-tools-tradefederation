@@ -146,6 +146,7 @@ public class AbiUtilsTest {
         assertEquals(AbiUtils.BASE_ARCH_X86, AbiUtils.getBaseArchForAbi(AbiUtils.ABI_X86_64));
         assertEquals(AbiUtils.BASE_ARCH_MIPS, AbiUtils.getBaseArchForAbi(AbiUtils.ABI_MIPS));
         assertEquals(AbiUtils.BASE_ARCH_MIPS, AbiUtils.getBaseArchForAbi(AbiUtils.ABI_MIPS64));
+	assertEquals(AbiUtils.BASE_ARCH_RISCV, AbiUtils.getBaseArchForAbi(AbiUtils.ABI_RISCV64));
     }
 
 
