@@ -180,9 +180,9 @@ public class LabResourceDeviceMonitorTest {
         when(mClusterOptions.getClusterId()).thenReturn("zoo");
         MockCollector collector1 = new MockCollector();
         MockCollector collector2 = new MockCollector();
-        mMonitor.startMetricizeExecutor();
+        mMonitor.startExecutors();
         mMonitor.buildMonitoredHost(List.of(collector1, collector2));
-        mMonitor.stopMetricizeExecutor();
+        mMonitor.stopExecutors();
         Assert.assertTrue(collector1.isFinished);
         Assert.assertTrue(collector2.isFinished);
     }
