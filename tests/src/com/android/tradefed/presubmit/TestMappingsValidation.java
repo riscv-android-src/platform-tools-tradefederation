@@ -81,6 +81,7 @@ public class TestMappingsValidation implements IBuildReceiver {
     private static final String LOCAL_COMPATIBILITY_SUITES = "compatibility_suites";
     private static final String GENERAL_TESTS = "general-tests";
     private static final String DEVICE_TESTS = "device-tests";
+    private static final String TEST_MAPPING_BUILD_SCRIPT_LINK = "https://source.android.com/compatibility/tests/development/test-mapping#packaging_build_script_rules";
     // Only Check the tests with group in presubmit or postsubmit.
     private static final Set<String> TEST_GROUPS_TO_VALIDATE =
             new HashSet<>(Arrays.asList("presubmit", "postsubmit"));
@@ -259,7 +260,13 @@ public class TestMappingsValidation implements IBuildReceiver {
             }
         }
         if (!errors.isEmpty()) {
-            fail(String.format("Fail test_suite setting check:\n%s", Joiner.on("\n").join(errors)));
+            fail(
+                    String.format(
+                            "Fail test_suite setting check:\n%s\nPlease refer to following link " +
+                                "for more details about test suite configuration.\n %s",
+                                Joiner.on("\n").join(errors), TEST_MAPPING_BUILD_SCRIPT_LINK
+                    )
+            );
         }
     }
 
