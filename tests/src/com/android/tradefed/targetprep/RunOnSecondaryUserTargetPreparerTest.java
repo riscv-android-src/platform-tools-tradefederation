@@ -16,9 +16,9 @@
 
 package com.android.tradefed.targetprep;
 
-import static com.android.tradefed.targetprep.RunOnWorkProfileTargetPreparer.RUN_TESTS_AS_USER_KEY;
-import static com.android.tradefed.targetprep.RunOnWorkProfileTargetPreparer.SKIP_TESTS_REASON_KEY;
-import static com.android.tradefed.targetprep.RunOnWorkProfileTargetPreparer.TEST_PACKAGE_NAME_OPTION;
+import static com.android.tradefed.targetprep.RunOnSecondaryUserTargetPreparer.RUN_TESTS_AS_USER_KEY;
+import static com.android.tradefed.targetprep.RunOnSecondaryUserTargetPreparer.SKIP_TESTS_REASON_KEY;
+import static com.android.tradefed.targetprep.RunOnSecondaryUserTargetPreparer.TEST_PACKAGE_NAME_OPTION;
 
 import static com.google.common.truth.Truth.assertThat;
 
@@ -108,8 +108,7 @@ public class RunOnSecondaryUserTargetPreparerTest {
 
         mPreparer.setUp(mTestInfo);
 
-        verify(mTestInfo.properties())
-                .put(RunOnWorkProfileTargetPreparer.RUN_TESTS_AS_USER_KEY, "3");
+        verify(mTestInfo.properties()).put(RUN_TESTS_AS_USER_KEY, "3");
     }
 
     @Test
@@ -120,8 +119,7 @@ public class RunOnSecondaryUserTargetPreparerTest {
 
         mPreparer.setUp(mTestInfo);
 
-        verify(mTestInfo.properties())
-                .put(RunOnSecondaryUserTargetPreparer.RUN_TESTS_AS_USER_KEY, "2");
+        verify(mTestInfo.properties()).put(RUN_TESTS_AS_USER_KEY, "2");
     }
 
     @Test
@@ -179,8 +177,7 @@ public class RunOnSecondaryUserTargetPreparerTest {
 
     @Test
     public void tearDown_removesSecondaryUser() throws Exception {
-        when(mTestInfo.properties().get(RunOnSecondaryUserTargetPreparer.RUN_TESTS_AS_USER_KEY))
-                .thenReturn("2");
+        when(mTestInfo.properties().get(RUN_TESTS_AS_USER_KEY)).thenReturn("2");
 
         mPreparer.tearDown(mTestInfo, /* throwable= */ null);
 
@@ -189,13 +186,11 @@ public class RunOnSecondaryUserTargetPreparerTest {
 
     @Test
     public void tearDown_clearsRunTestsAsUserProperty() throws Exception {
-        when(mTestInfo.properties().get(RunOnSecondaryUserTargetPreparer.RUN_TESTS_AS_USER_KEY))
-                .thenReturn("2");
+        when(mTestInfo.properties().get(RUN_TESTS_AS_USER_KEY)).thenReturn("2");
 
         mPreparer.tearDown(mTestInfo, /* throwable= */ null);
 
-        verify(mTestInfo.properties())
-                .remove(RunOnSecondaryUserTargetPreparer.RUN_TESTS_AS_USER_KEY);
+        verify(mTestInfo.properties()).remove(RUN_TESTS_AS_USER_KEY);
     }
 
     @Test

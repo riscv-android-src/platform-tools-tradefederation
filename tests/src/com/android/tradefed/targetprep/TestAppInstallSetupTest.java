@@ -17,6 +17,7 @@
 package com.android.tradefed.targetprep;
 
 import static com.android.tradefed.targetprep.TestAppInstallSetup.CHECK_MIN_SDK_OPTION;
+import static com.android.tradefed.targetprep.TestAppInstallSetup.RUN_TESTS_AS_USER_KEY;
 import static com.android.tradefed.targetprep.TestAppInstallSetup.TEST_FILE_NAME_OPTION;
 import static com.android.tradefed.targetprep.TestAppInstallSetup.THROW_IF_NOT_FOUND_OPTION;
 
@@ -198,6 +199,37 @@ public class TestAppInstallSetupTest {
         EasyMock.expect(
                         mMockTestDevice.installPackages(
                                 EasyMock.eq(mTestSplitApkFiles), EasyMock.eq(true)))
+                .andReturn(null);
+        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
+        mPrep.setUp(mTestInfo);
+        EasyMock.verify(mMockBuildInfo, mMockTestDevice);
+    }
+
+    @Test
+    public void testSetupAndTeardown_install_runTestsAsUser() throws Exception {
+        int userId = 10;
+        mPrep =
+                new TestAppInstallSetup() {
+                    @Override
+                    protected String parsePackageName(
+                            File testAppFile, DeviceDescriptor deviceDescriptor) {
+                        return PACKAGE_NAME;
+                    }
+
+                    @Override
+                    protected File getLocalPathForFilename(
+                            TestInformation testInfo, String apkFileName) throws TargetSetupError {
+                        return fakeApk;
+                    }
+                };
+        mSetter = new OptionSetter(mPrep);
+        mSetter.setOptionValue("cleanup-apks", "true");
+        mSetter.setOptionValue("test-file-name", APK_NAME);
+        mTestInfo.properties().put(RUN_TESTS_AS_USER_KEY, Integer.toString(userId));
+
+        EasyMock.expect(
+                        mMockTestDevice.installPackageForUser(
+                                EasyMock.eq(fakeApk), EasyMock.eq(true), EasyMock.eq(userId)))
                 .andReturn(null);
         EasyMock.replay(mMockBuildInfo, mMockTestDevice);
         mPrep.setUp(mTestInfo);

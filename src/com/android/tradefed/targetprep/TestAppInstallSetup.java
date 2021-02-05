@@ -73,6 +73,8 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
         INSTANT,
     }
 
+    public static final String RUN_TESTS_AS_USER_KEY = "RUN_TESTS_AS_USER";
+
     // An error message that occurs when a test APK is already present on the DUT,
     // but cannot be updated. When this occurs, the package is removed from the
     // device so that installation can continue like normal.
@@ -96,10 +98,10 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
     @Option(
             name = "split-apk-file-names",
             description =
-                    "the split apk file names separted by comma that will be installed on device. "
-                            + "Can be repeated for multiple split apk sets."
-                            + "See https://developer.android.com/studio/build/configure-apk-splits on "
-                            + "how to split apk to several files")
+                    "the split apk file names separted by comma that will be installed on device."
+                        + " Can be repeated for multiple split apk sets.See"
+                        + " https://developer.android.com/studio/build/configure-apk-splits on how"
+                        + " to split apk to several files")
     private List<String> mSplitApkFileNames = new ArrayList<>();
 
     @VisibleForTesting static final String THROW_IF_NOT_FOUND_OPTION = "throw-if-not-found";
@@ -165,10 +167,10 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
     private AaptVersion mAaptVersion = AaptVersion.AAPT;
 
     @Option(
-        name = "force-install-mode",
-        description =
-                "Force the preparer to ignore instant-mode option, and install in the requested mode."
-    )
+            name = "force-install-mode",
+            description =
+                    "Force the preparer to ignore instant-mode option, and install in the"
+                            + " requested mode.")
     private InstallMode mInstallationMode = null;
 
     private IAbi mAbi = null;
@@ -325,6 +327,10 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
             if (mInstantMode) {
                 mInstallArgs.add("--instant");
             }
+        }
+
+        if (mUserId == null && testInfo.properties().get(RUN_TESTS_AS_USER_KEY) != null) {
+            mUserId = Integer.parseInt(testInfo.properties().get(RUN_TESTS_AS_USER_KEY));
         }
 
         if (mForceQueryable && getDevice().isAppEnumerationSupported()) {
@@ -625,7 +631,12 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
     /** Attempt to remove the package from the device. */
     protected void uninstallPackage(ITestDevice device, String packageName)
             throws DeviceNotAvailableException {
-        String msg = device.uninstallPackage(packageName);
+        String msg;
+        if (mUserId == null) {
+            msg = device.uninstallPackage(packageName);
+        } else {
+            msg = device.uninstallPackageForUser(packageName, mUserId);
+        }
         if (msg != null) {
             CLog.w(String.format("error uninstalling package '%s': %s", packageName, msg));
         }
