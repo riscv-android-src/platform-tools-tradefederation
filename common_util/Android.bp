@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+package {
+    default_applicable_licenses: ["Android-Apache-2.0"],
+}
+
 java_library_host {
     name: "tradefed-common-util",
     // Restrict visibility to only those targets that need to access it.
@@ -36,4 +40,3 @@ java_library_host {
         "devtools-annotations-prebuilt",
     ],
 }
-
