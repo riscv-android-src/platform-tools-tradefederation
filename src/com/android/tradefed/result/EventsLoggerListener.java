@@ -27,7 +27,7 @@ import java.io.IOException;
 import java.util.HashMap;
 
 /** Listener that logs all the events it receives into a file */
-public class EventsLoggerListener implements ITestInvocationListener {
+public class EventsLoggerListener implements ILogSaverListener {
 
     private File mLog;
     private TestStatus mTestCaseStatus = null;
@@ -138,6 +138,11 @@ public class EventsLoggerListener implements ITestInvocationListener {
     public void testEnded(TestDescription test, long endTime, HashMap<String, Metric> testMetrics) {
         writeToFile(String.format("      - test: %s (status=%s)\n", test, mTestCaseStatus));
         mTestCaseStatus = null;
+    }
+
+    @Override
+    public void logAssociation(String dataName, LogFile logFile) {
+        writeToFile(String.format("[    log: %s | path: %s]\n", dataName, logFile.getPath()));
     }
 
     private void writeToFile(String text) {

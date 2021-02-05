@@ -46,7 +46,7 @@ public class ShardListenerTest {
 
     @Before
     public void setUp() {
-        mMockListener = EasyMock.createMock(ILogSaverListener.class);
+        mMockListener = EasyMock.createStrictMock(ILogSaverListener.class);
         mMockSaver = EasyMock.createStrictMock(ILogSaver.class);
         mShardListener = new ShardListener(mMockListener);
         mMockDevice = EasyMock.createMock(ITestDevice.class);
@@ -176,6 +176,8 @@ public class ShardListenerTest {
 
     @Test
     public void testBufferAndReplay_withModule_attempts() {
+        LogFile moduleLog1 = new LogFile("path", "url", LogDataType.TEXT);
+        LogFile moduleLog2 = new LogFile("path2", "url2", LogDataType.TEXT);
         IInvocationContext module1 = new InvocationContext();
         IInvocationContext module2 = new InvocationContext();
         mMockListener.invocationStarted(mContext);
@@ -191,6 +193,8 @@ public class ShardListenerTest {
         mMockListener.testStarted(tid, 0l);
         mMockListener.testEnded(tid, 0l, new HashMap<String, Metric>());
         mMockListener.testRunEnded(0l, new HashMap<String, Metric>());
+        mMockListener.logAssociation("moduleLog1", moduleLog1);
+        mMockListener.logAssociation("moduleLog1", moduleLog2);
         mMockListener.testModuleEnded();
         // expectation on second module
         mMockListener.testModuleStarted(module2);
@@ -211,10 +215,12 @@ public class ShardListenerTest {
         mShardListener.testStarted(tid, 0l);
         mShardListener.testEnded(tid, 0l, new HashMap<String, Metric>());
         mShardListener.testRunEnded(0l, new HashMap<String, Metric>());
+        mShardListener.logAssociation("moduleLog1", moduleLog1);
         mShardListener.testRunStarted("run1", 1, 1);
         mShardListener.testStarted(tid, 0l);
         mShardListener.testEnded(tid, 0l, new HashMap<String, Metric>());
         mShardListener.testRunEnded(0l, new HashMap<String, Metric>());
+        mShardListener.logAssociation("moduleLog1", moduleLog2);
         mShardListener.testModuleEnded();
         // 2nd module
         mShardListener.testModuleStarted(module2);
