@@ -16,6 +16,10 @@
 // with extremely few dependencies (i.e. just JUnit).  Potentially
 // this target could house a lot of our interface definitions just
 // so we can share those without too much fear of dependency hell.
+package {
+    default_applicable_licenses: ["Android-Apache-2.0"],
+}
+
 java_library_host {
     name: "tradefed-lite",
     // Restrict visibility to only those targets that need to access it.
