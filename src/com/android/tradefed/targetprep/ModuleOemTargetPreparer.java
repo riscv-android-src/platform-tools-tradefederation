@@ -46,7 +46,7 @@ public class ModuleOemTargetPreparer extends InstallApexModuleTargetPreparer {
     private static final String GET_APK_PACKAGE_VERSION =
             "cmd package list packages --show-versioncode| grep ";
     private static final String REMOUNT_COMMAND = "remount";
-
+    private long delayWaitingTime = 2000;
     private RunUtil mRunUtil = new RunUtil();
     private File mTrainFolderPath;
 
@@ -309,7 +309,11 @@ public class ModuleOemTargetPreparer extends InstallApexModuleTargetPreparer {
                     device.executeShellV2Command(GET_APEX_PACKAGE_VERSION + packageName)
                             .getStdout();
         }
-        packageVersion = outputs.split(":")[2].replaceAll("[\\n]", "");
+        // TODO(liuyg@): add wait-time to get output info and try to fix flakiness
+        RunUtil.getDefault().sleep(delayWaitingTime);
+        CLog.i("Output string is %s", outputs);
+        String[] splits = outputs.split(":", -1);
+        packageVersion = splits[splits.length - 1].replaceAll("[\\n]", "");
         CLog.i("Package '%s' version code is %s", packageName, packageVersion);
         return packageVersion;
     }
