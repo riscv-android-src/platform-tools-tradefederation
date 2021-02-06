@@ -349,7 +349,10 @@ public class TestInvocation implements ITestInvocation {
                     }
                 }
                 if (exception == null) {
+                    CLog.d("Checking that devices are online.");
                     checkDevicesAvailable(context.getDevices(), listener);
+                } else {
+                    CLog.d("Skip online check as an exception was already reported: %s", exception);
                 }
             }
             // Save the device executeShellCommand logs
