@@ -89,6 +89,10 @@ public class ClangCodeCoverageCollectorTest {
     private static final int TEST_COUNT = 5;
     private static final long ELAPSED_TIME = 1000;
 
+    private static final String PS_OUTPUT =
+            "USER       PID   PPID  VSZ   RSS   WCHAN       PC  S NAME\n"
+                    + "shell       123  1366  123    456   SyS_epoll+   0  S adbd\n";
+
     @Rule public TemporaryFolder folder = new TemporaryFolder();
 
     private HashMap<String, MetricMeasurement.Metric> mMetrics;
@@ -126,6 +130,13 @@ public class ClangCodeCoverageCollectorTest {
         doReturn(mMockBuildInfo).when(mMockBuildProvider).getBuild();
 
         doReturn(ImmutableList.of(mMockDevice)).when(mMockContext).getDevices();
+
+        doReturn(PS_OUTPUT).when(mMockDevice).executeShellCommand("ps -e");
+
+        CommandResult result = new CommandResult(CommandStatus.SUCCESS);
+        result.setStdout("ffffffffff\n");
+        result.setExitCode(0);
+        when(mMockDevice.executeShellV2Command(anyString())).thenReturn(result);
 
         mListener = new ClangCodeCoverageCollector();
         mListener.setConfiguration(mMockConfiguration);
@@ -175,9 +186,9 @@ public class ClangCodeCoverageCollectorTest {
         mListener.testRunEnded(ELAPSED_TIME, mMetrics);
         mListener.invocationEnded(ELAPSED_TIME);
 
-        // Verify the flush-all-coverage command was called twice - once on init() and once during
+        // Verify the flush-coverage command was called twice - once on init() and once during
         // the end of the test run.
-        verify(mMockDevice, times(2)).executeShellCommand("kill -37 -1");
+        verify(mMockDevice, times(2)).executeShellCommand("kill -37 123");
     }
 
     @Test
@@ -383,7 +394,9 @@ public class ClangCodeCoverageCollectorTest {
         InOrder inOrder = Mockito.inOrder(mMockDevice);
         inOrder.verify(mMockDevice).isAdbRoot();
         inOrder.verify(mMockDevice).enableAdbRoot();
-        inOrder.verify(mMockDevice).executeShellCommand("kill -37 -1");
+        inOrder.verify(mMockDevice).executeShellCommand("ps -e");
+        inOrder.verify(mMockDevice).executeShellV2Command(anyString());
+        inOrder.verify(mMockDevice).executeShellCommand("kill -37 123");
         inOrder.verify(mMockDevice, times(2)).executeShellCommand(anyString());
         inOrder.verify(mMockDevice).disableAdbRoot();
     }
