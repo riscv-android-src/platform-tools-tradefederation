@@ -30,6 +30,9 @@
 
     <test class="com.android.tradefed.testtype.suite.TestMappingSuiteRunner"/>
 
+    <!-- Add failure-retriever to skip retrying known failure -->
+    <template-include name="failure-retriever" default="empty" />
+
     <!-- Tell all AndroidJUnitTests to exclude certain annotations -->
     <option name="test-arg" value="com.android.tradefed.testtype.AndroidJUnitTest:exclude-annotation:android.platform.test.annotations.RestrictedBuildTest" />
     <option name="test-arg" value="com.android.tradefed.testtype.AndroidJUnitTest:exclude-annotation:android.platform.test.annotations.AppModeInstant" />
