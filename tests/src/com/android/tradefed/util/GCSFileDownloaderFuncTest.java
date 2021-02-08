@@ -50,8 +50,13 @@ public class GCSFileDownloaderFuncTest {
     private static final String FILE_NAME2 = "file2.txt";
     private static final String FILE_NAME3 = "file3.txt";
     private static final String FILE_NAME4 = "file4.txt";
+    private static final String FILE_NAME5 = "file5.txt";
+    private static final String FILE_NAME6 = "file6.txt";
+    private static final String EMPTY_FILE = "empty.txt";
     private static final String FOLDER_NAME1 = "folder1";
     private static final String FOLDER_NAME2 = "folder2";
+    private static final String FOLDER_NAME3 = "folder3";
+    private static final String FOLDER_NAME4 = "folder4";
     private static final String FILE_CONTENT = "Hello World!";
 
     private GCSFileDownloader mDownloader;
@@ -112,6 +117,38 @@ public class GCSFileDownloaderFuncTest {
                 FOLDER_NAME1,
                 FOLDER_NAME2,
                 FILE_NAME4);
+        // folder3 is a special file, it's a text file with 0 size.
+        // it is the same as a folder created from UI.
+        createFile(mStorage, "", BUCKET_NAME, mRemoteRoot, FOLDER_NAME1, FOLDER_NAME3 + '/');
+        createFile(
+                mStorage,
+                FILE_NAME5,
+                BUCKET_NAME,
+                mRemoteRoot,
+                FOLDER_NAME1,
+                FOLDER_NAME3,
+                FILE_NAME5);
+        // folder4 is a special file, it's a text file with 0 size.
+        // it is the same as a folder created from UI.
+        createFile(
+                mStorage,
+                "",
+                BUCKET_NAME,
+                mRemoteRoot,
+                FOLDER_NAME1,
+                FOLDER_NAME3,
+                FOLDER_NAME4 + "/");
+        createFile(
+                mStorage,
+                FILE_NAME6,
+                BUCKET_NAME,
+                mRemoteRoot,
+                FOLDER_NAME1,
+                FOLDER_NAME3,
+                FOLDER_NAME4,
+                FILE_NAME6);
+
+        createFile(mStorage, "", BUCKET_NAME, mRemoteRoot, EMPTY_FILE);
         mLocalRoot = FileUtil.createTempDir(GCSFileDownloaderFuncTest.class.getSimpleName());
     }
 
@@ -232,7 +269,7 @@ public class GCSFileDownloaderFuncTest {
 
     private void checkDownloadedFolder(File localFile) throws Exception {
         Assert.assertTrue(localFile.isDirectory());
-        Assert.assertEquals(4, localFile.list().length);
+        Assert.assertEquals(5, localFile.list().length);
         for (String filename : localFile.list()) {
             if (filename.equals(FILE_NAME2)) {
                 Assert.assertEquals(
@@ -255,6 +292,21 @@ public class GCSFileDownloaderFuncTest {
             } else if (filename.equals(FOLDER_NAME2)) {
                 File fileWithFolderName = new File(localFile.getAbsolutePath(), filename);
                 Assert.assertTrue(fileWithFolderName.isFile());
+            } else if (filename.equals(FOLDER_NAME3)) {
+                File subFolder = new File(localFile.getAbsolutePath(), filename);
+                Assert.assertTrue(subFolder.isDirectory());
+                Assert.assertEquals(2, subFolder.list().length);
+                Assert.assertEquals(
+                        FILE_NAME5,
+                        FileUtil.readStringFromFile(
+                                new File(subFolder.getAbsolutePath(), FILE_NAME5)));
+                File subSubFolder = new File(subFolder, FOLDER_NAME4);
+                Assert.assertTrue(subSubFolder.isDirectory());
+                Assert.assertEquals(1, subSubFolder.list().length);
+                Assert.assertEquals(
+                        FILE_NAME6,
+                        FileUtil.readStringFromFile(
+                                new File(subSubFolder.getAbsolutePath(), FILE_NAME6)));
             } else {
                 Assert.assertTrue(String.format("Unknonwn file %s", filename), false);
             }
@@ -266,6 +318,56 @@ public class GCSFileDownloaderFuncTest {
         try {
             mDownloader.downloadFile(
                     String.format("gs://%s/%s/%s/", BUCKET_NAME, "mRemoteRoot", "nonExistFolder"));
+            Assert.fail("Should throw BuildRetrievalError.");
+        } catch (BuildRetrievalError e) {
+            // Expect BuildRetrievalError
+        }
+    }
+
+    @Test
+    public void testDownloadFile_size0Folder() throws Exception {
+        // Test the downloader work with size0 folder correctly.
+        File localFile =
+                mDownloader.downloadFile(
+                        String.format(
+                                "gs://%s/%s/%s/%s/",
+                                BUCKET_NAME, mRemoteRoot, FOLDER_NAME1, FOLDER_NAME3));
+        Assert.assertTrue(localFile.isDirectory());
+        Assert.assertEquals(2, localFile.list().length);
+        Assert.assertEquals(
+                FILE_NAME5,
+                FileUtil.readStringFromFile(new File(localFile.getAbsolutePath(), FILE_NAME5)));
+
+        File subFolder = new File(localFile.getAbsolutePath(), FOLDER_NAME4);
+        Assert.assertTrue(subFolder.isDirectory());
+        Assert.assertEquals(
+                FILE_NAME6,
+                FileUtil.readStringFromFile(new File(subFolder.getAbsolutePath(), FILE_NAME6)));
+    }
+
+    @Test
+    public void testDownloadFile_folderWithOnlyOneFile() throws Exception {
+        File localFile =
+                mDownloader.downloadFile(
+                        String.format(
+                                "gs://%s/%s/%s/%s/%s/",
+                                BUCKET_NAME,
+                                mRemoteRoot,
+                                FOLDER_NAME1,
+                                FOLDER_NAME3,
+                                FOLDER_NAME4));
+        Assert.assertTrue(localFile.isDirectory());
+        Assert.assertEquals(1, localFile.list().length);
+        Assert.assertEquals(
+                FILE_NAME6,
+                FileUtil.readStringFromFile(new File(localFile.getAbsolutePath(), FILE_NAME6)));
+    }
+
+    @Test
+    public void testDownloadFile_emptyFile() throws Exception {
+        try {
+            mDownloader.downloadFile(
+                    String.format("gs://%s/%s/%s", BUCKET_NAME, mRemoteRoot, EMPTY_FILE));
             Assert.fail("Should throw BuildRetrievalError.");
         } catch (BuildRetrievalError e) {
             // Expect BuildRetrievalError
