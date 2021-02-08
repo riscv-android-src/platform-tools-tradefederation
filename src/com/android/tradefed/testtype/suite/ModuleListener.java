@@ -91,7 +91,11 @@ public class ModuleListener extends CollectingTestListener {
     /** {@inheritDoc} */
     @Override
     public void testRunFailed(FailureDescription failure) {
-        CLog.d("ModuleListener.testRunFailed(%s)", failure.toString());
+        CLog.d(
+                "ModuleListener.testRunFailed(%s|%s|%s)",
+                failure.getFailureStatus(),
+                failure.getErrorIdentifier(),
+                failure.getErrorMessage());
         super.testRunFailed(failure);
     }
 
