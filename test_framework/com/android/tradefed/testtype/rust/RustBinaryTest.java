@@ -153,7 +153,9 @@ public class RustBinaryTest extends RustTestBase implements IDeviceTest, IConfig
             final String fullPath)
             throws DeviceNotAvailableException {
         CLog.d("RustBinaryTest runTest: " + fullPath);
-        String cmd = fullPath;
+        File file = new File(fullPath);
+        String dir = file.getParent();
+        final String cmd = "cd " + dir + " && " + fullPath;
 
         // Rust binary does not support multiple inclusion filters,
         // so we run the test once for each include filter.
