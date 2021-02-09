@@ -24,6 +24,7 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.config.OptionDef;
+import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.targetprep.ITargetPreparer;
@@ -439,7 +440,7 @@ public class SuiteModuleLoader {
                 }
             }
         } catch (ConfigurationException e) {
-            throw new RuntimeException(
+            throw new HarnessRuntimeException(
                     String.format(
                             "Error parsing configuration: %s: '%s'",
                             configFullName, e.getMessage()),
