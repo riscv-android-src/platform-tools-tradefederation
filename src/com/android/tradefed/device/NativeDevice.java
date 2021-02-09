@@ -37,6 +37,8 @@ import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.device.contentprovider.ContentProviderHandler;
 import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.host.IHostOptions;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -2208,7 +2210,7 @@ public class NativeDevice implements IManagedTestDevice {
     /**
      * Attempts to recover device communication.
      *
-     * @throws DeviceNotAvailableException if device is not longer available
+     * @throws DeviceNotAvailableException if device is no longer available
      */
     @Override
     public void recoverDevice() throws DeviceNotAvailableException {
@@ -2218,40 +2220,49 @@ public class NativeDevice implements IManagedTestDevice {
             return;
         }
         CLog.i("Attempting recovery on %s", getSerialNumber());
+        InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.RECOVERY_ROUTINE_COUNT, 1);
+        long startTime = System.currentTimeMillis();
         try {
-            mRecovery.recoverDevice(mStateMonitor, mRecoveryMode.equals(RecoveryMode.ONLINE));
-        } catch (DeviceUnresponsiveException due) {
-            RecoveryMode previousRecoveryMode = mRecoveryMode;
-            mRecoveryMode = RecoveryMode.NONE;
             try {
-                boolean enabled = enableAdbRoot();
-                CLog.d("Device Unresponsive during recovery, is root still enabled: %s", enabled);
-            } catch (DeviceUnresponsiveException e) {
-                // Ignore exception thrown here to rethrow original exception.
-                CLog.e("Exception occurred during recovery adb root:");
-                CLog.e(e);
+                mRecovery.recoverDevice(mStateMonitor, mRecoveryMode.equals(RecoveryMode.ONLINE));
+            } catch (DeviceUnresponsiveException due) {
+                RecoveryMode previousRecoveryMode = mRecoveryMode;
+                mRecoveryMode = RecoveryMode.NONE;
+                try {
+                    boolean enabled = enableAdbRoot();
+                    CLog.d(
+                            "Device Unresponsive during recovery, is root still enabled: %s",
+                            enabled);
+                } catch (DeviceUnresponsiveException e) {
+                    // Ignore exception thrown here to rethrow original exception.
+                    CLog.e("Exception occurred during recovery adb root:");
+                    CLog.e(e);
+                }
+                mRecoveryMode = previousRecoveryMode;
+                throw due;
             }
-            mRecoveryMode = previousRecoveryMode;
-            throw due;
-        }
-        if (mRecoveryMode.equals(RecoveryMode.AVAILABLE)) {
-            // turn off recovery mode to prevent reentrant recovery
-            // TODO: look for a better way to handle this, such as doing postBootUp steps in
-            // recovery itself
-            mRecoveryMode = RecoveryMode.NONE;
-            // this might be a runtime reset - still need to run post boot setup steps
-            if (isEncryptionSupported() && isDeviceEncrypted()) {
-                unlockDevice();
+            if (mRecoveryMode.equals(RecoveryMode.AVAILABLE)) {
+                // turn off recovery mode to prevent reentrant recovery
+                // TODO: look for a better way to handle this, such as doing postBootUp steps in
+                // recovery itself
+                mRecoveryMode = RecoveryMode.NONE;
+                // this might be a runtime reset - still need to run post boot setup steps
+                if (isEncryptionSupported() && isDeviceEncrypted()) {
+                    unlockDevice();
+                }
+                postBootSetup();
+                mRecoveryMode = RecoveryMode.AVAILABLE;
+            } else if (mRecoveryMode.equals(RecoveryMode.ONLINE)) {
+                // turn off recovery mode to prevent reentrant recovery
+                // TODO: look for a better way to handle this, such as doing postBootUp steps in
+                // recovery itself
+                mRecoveryMode = RecoveryMode.NONE;
+                enableAdbRoot();
+                mRecoveryMode = RecoveryMode.ONLINE;
             }
-            postBootSetup();
-            mRecoveryMode = RecoveryMode.AVAILABLE;
-        } else if (mRecoveryMode.equals(RecoveryMode.ONLINE)) {
-            // turn off recovery mode to prevent reentrant recovery
-            // TODO: look for a better way to handle this, such as doing postBootUp steps in
-            // recovery itself
-            mRecoveryMode = RecoveryMode.NONE;
-            enableAdbRoot();
-            mRecoveryMode = RecoveryMode.ONLINE;
+        } finally {
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.RECOVERY_TIME, System.currentTimeMillis() - startTime);
         }
         CLog.i("Recovery successful for %s", getSerialNumber());
     }
