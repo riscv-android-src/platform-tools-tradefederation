@@ -52,7 +52,10 @@ public class EventsLoggerListener implements ILogSaverListener {
 
     @Override
     public void invocationFailed(FailureDescription failure) {
-        writeToFile(String.format("[invocation failed: %s]\n", failure));
+        writeToFile(
+                String.format(
+                        "[invocation failed: %s|%s|%s]\n",
+                        failure.getFailureStatus(), failure.getErrorIdentifier(), failure));
     }
 
     @Override

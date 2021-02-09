@@ -4650,8 +4650,11 @@ public class NativeDevice implements IManagedTestDevice {
     protected void checkApiLevelAgainst(String feature, int strictMinLevel) {
         try {
             if (getApiLevel() < strictMinLevel){
-                throw new IllegalArgumentException(String.format("%s not supported on %s. "
-                        + "Must be API %d.", feature, getSerialNumber(), strictMinLevel));
+                throw new HarnessRuntimeException(
+                        String.format(
+                                "%s not supported on %s. " + "Must be API %d.",
+                                feature, getSerialNumber(), strictMinLevel),
+                        DeviceErrorIdentifier.DEVICE_UNEXPECTED_RESPONSE);
             }
         } catch (DeviceNotAvailableException e) {
             throw new HarnessRuntimeException(
