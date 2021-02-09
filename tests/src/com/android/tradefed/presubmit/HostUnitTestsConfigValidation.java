@@ -24,6 +24,8 @@ import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.ConfigurationUtil;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
+import com.android.tradefed.targetprep.ITargetPreparer;
+import com.android.tradefed.targetprep.PushFilePreparer;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
@@ -99,6 +101,7 @@ public class HostUnitTestsConfigValidation implements IBuildReceiver {
                 // generated from AndroidTest.xml
                 ValidateSuiteConfigHelper.validateConfig(c);
 
+                checkPreparers(c.getTargetPreparers(), "host-unit-tests");
                 // Check that all the tests runners are well supported.
                 checkRunners(c.getTests(), "host-unit-tests");
 
@@ -112,6 +115,19 @@ public class HostUnitTestsConfigValidation implements IBuildReceiver {
         if (!errors.isEmpty()) {
             throw new ConfigurationException(
                     String.format("Fail configuration check:\n%s", Joiner.on("\n").join(errors)));
+        }
+    }
+
+    private static void checkPreparers(List<ITargetPreparer> preparers, String name)
+            throws ConfigurationException {
+        for (ITargetPreparer preparer : preparers) {
+            // Check that all preparers are supported.
+            if (preparer instanceof PushFilePreparer) {
+                throw new ConfigurationException(
+                        String.format(
+                                "preparer %s is not supported in %s.",
+                                preparer.getClass().getCanonicalName(), name));
+            }
         }
     }
 
