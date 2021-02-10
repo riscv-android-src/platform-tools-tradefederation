@@ -164,6 +164,7 @@ public class RustBinaryHostTestTest {
             mockListenerLog(binary);
             CommandResult res = successResult("", resultCount(6, 1, 2));
             mockTestRunExpect(binary, res);
+            mMockListener.testRunFailed("Test run incomplete. Started 2 tests, finished 0");
             mockTestRunEnded();
             callReplayRunVerify();
         } finally {
@@ -189,6 +190,7 @@ public class RustBinaryHostTestTest {
             mockListenerLog(binary);
             CommandResult res = successResult("", resultCount(6, 1, 2));
             mockTestRunExpect(binary, res);
+            mMockListener.testRunFailed("Test run incomplete. Started 2 tests, finished 0");
             mockTestRunEnded();
             callReplayRunVerify();
         } finally {
@@ -210,6 +212,7 @@ public class RustBinaryHostTestTest {
                     newCommandResult(
                             CommandStatus.EXCEPTION, "Err.", "running 2 tests\nException.");
             mockTestRunExpect(binary, res);
+            mMockListener.testRunFailed("Test run incomplete. Started 2 tests, finished 0");
             mMockListener.testRunFailed((FailureDescription) EasyMock.anyObject());
             mockTestRunEnded();
             callReplayRunVerify();
@@ -255,6 +258,7 @@ public class RustBinaryHostTestTest {
             mockListenerLog(binary);
             CommandResult res = newCommandResult(CommandStatus.FAILED, "", resultCount(6, 1, 2));
             mockTestRunExpect(binary, res);
+            mMockListener.testRunFailed("Test run incomplete. Started 2 tests, finished 0");
             mMockListener.testRunFailed((FailureDescription) EasyMock.anyObject());
             mockTestRunEnded();
             callReplayRunVerify();
@@ -295,6 +299,7 @@ public class RustBinaryHostTestTest {
                                     EasyMock.eq("Long")))
                     .andReturn(res);
 
+            mMockListener.testRunFailed("Test run incomplete. Started 2 tests, finished 0");
             mockTestRunEnded();
             callReplayRunVerify();
         } finally {
@@ -339,6 +344,7 @@ public class RustBinaryHostTestTest {
                                     EasyMock.eq("Other")))
                     .andReturn(res);
 
+            mMockListener.testRunFailed("Test run incomplete. Started 2 tests, finished 0");
             mockTestRunEnded();
             callReplayRunVerify();
         } finally {
@@ -398,6 +404,7 @@ public class RustBinaryHostTestTest {
                                     EasyMock.eq("--skip"),
                                     EasyMock.eq("Other")))
                     .andReturn(res);
+            mMockListener.testRunFailed("Test run incomplete. Started 2 tests, finished 0");
             mockListenerLog(binary);
             res = successResult("", resultCount(3, 0, 0));
             EasyMock.expect(
@@ -411,6 +418,7 @@ public class RustBinaryHostTestTest {
                                     EasyMock.eq("Other")))
                     .andReturn(res);
 
+            mMockListener.testRunFailed("Test run incomplete. Started 2 tests, finished 0");
             mockTestRunEnded();
             callReplayRunVerify();
         } finally {
