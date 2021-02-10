@@ -145,7 +145,7 @@ public class GsiDeviceFlashPreparer extends BaseTargetPreparer {
             // Assume this is a build problem
             throw new DeviceFailedToBootError(
                     String.format(
-                            "Device %s did not become available after flashing GKI. Exception: %s",
+                            "Device %s did not become available after flashing GSI. Exception: %s",
                             device.getSerialNumber(), e),
                     device.getDeviceDescriptor(),
                     DeviceErrorIdentifier.ERROR_AFTER_FLASHING);
