@@ -19,6 +19,8 @@ package com.android.tradefed.util;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
+import com.android.tradefed.error.HarnessRuntimeException;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -128,7 +130,7 @@ public class QuotationAwareTokenizerTest {
         try {
             QuotationAwareTokenizer.tokenizeLine(input);
             fail("IllegalArgumentException not thrown.");
-        } catch (IllegalArgumentException e) {
+        } catch (HarnessRuntimeException e) {
             // expected
         }
     }
@@ -141,7 +143,7 @@ public class QuotationAwareTokenizerTest {
         try {
             QuotationAwareTokenizer.tokenizeLine(input);
             fail("IllegalArgumentException not thrown.");
-        } catch (IllegalArgumentException e) {
+        } catch (HarnessRuntimeException e) {
             // expected
         }
     }
