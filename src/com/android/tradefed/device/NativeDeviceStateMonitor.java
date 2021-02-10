@@ -501,8 +501,9 @@ public class NativeDeviceStateMonitor implements IDeviceStateMonitor {
             CLog.i("Device %s is already %s", deviceSerial, state);
             return true;
         }
-        CLog.i("Waiting for device %s to be %s; it is currently %s...", deviceSerial,
-                state, getDeviceState());
+        CLog.i(
+                "Waiting for device %s to be in %s mode; it is currently in %s mode...",
+                deviceSerial, state, getDeviceState());
         DeviceStateListener listener = new DeviceStateListener(state);
         addDeviceStateListener(listener);
         synchronized (listener) {
