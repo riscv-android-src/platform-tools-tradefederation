@@ -1326,7 +1326,8 @@ public abstract class ITestSuite
             throw new DeviceNotAvailableException(
                     String.format(
                             "Device '%s' was not online to query %s", serial, PRODUCT_CPU_ABI_KEY),
-                    serial);
+                    serial,
+                    DeviceErrorIdentifier.DEVICE_UNAVAILABLE);
         }
         return property.trim();
     }
