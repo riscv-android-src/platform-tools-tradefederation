@@ -39,12 +39,17 @@ public class InvocationMetricLogger {
         // Approximate peak disk space usage of the invocation
         // Represent files that would usually live for the full invocation (min usage)
         TEAR_DOWN_DISK_USAGE("teardown_disk_usage", false),
+        // Represents the time we spend attempting to recover a device.
+        RECOVERY_TIME("recovery_time", true),
+        // Represents how often we enter the recover device routine.
+        RECOVERY_ROUTINE_COUNT("recovery_routine_count", true),
 
         SHUTDOWN_HARD_LATENCY("shutdown_hard_latency_ms", false),
         DEVICE_DONE_TIMESTAMP("device_done_timestamp", false),
         DEVICE_RELEASE_STATE("device_release_state", false),
         DEVICE_LOST_DETECTED("device_lost_detected", false),
         VIRTUAL_DEVICE_LOST_DETECTED("virtual_device_lost_detected", false),
+        // Count the number of time device recovery like usb reset are successful.
         DEVICE_RECOVERY("device_recovery", true),
         DEVICE_RECOVERY_FROM_RECOVERY("device_recovery_from_recovery", true),
         DEVICE_RECOVERY_FAIL("device_recovery_fail", true),
