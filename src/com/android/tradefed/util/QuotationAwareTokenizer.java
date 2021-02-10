@@ -16,6 +16,8 @@
 package com.android.tradefed.util;
 
 import com.android.ddmlib.Log;
+import com.android.tradefed.error.HarnessRuntimeException;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 
 import java.util.ArrayList;
 import java.util.regex.Matcher;
@@ -106,8 +108,9 @@ public class QuotationAwareTokenizer {
 
         if (quotation || "\\".equals(aChar)) {
             // We ended in a quotation or with an escape character; this is not valid
-            throw new IllegalArgumentException("Unexpected EOL in a quotation or after an escape " +
-                    "character");
+            throw new HarnessRuntimeException(
+                    "Unexpected EOL in a quotation or after an escape " + "character",
+                    InfraErrorIdentifier.OPTION_CONFIGURATION_ERROR);
         }
 
         // Add the final token to the tokens array.
@@ -127,16 +130,16 @@ public class QuotationAwareTokenizer {
     }
 
     /**
-     * Tokenizes the string, splitting on spaces.  Does not split between consecutive,
-     * unquoted double-quote marks.
-     * <p>
-     * See also {@link #tokenizeLine(String, String)}
+     * Tokenizes the string, splitting on spaces. Does not split between consecutive, unquoted
+     * double-quote marks.
+     *
+     * <p>See also {@link #tokenizeLine(String, String)}
      */
-    public static String[] tokenizeLine(String line) throws IllegalArgumentException {
+    public static String[] tokenizeLine(String line) {
         return tokenizeLine(line, " ", true);
     }
 
-    public static String[] tokenizeLine(String line, String delim) throws IllegalArgumentException {
+    public static String[] tokenizeLine(String line, String delim) {
         return tokenizeLine(line, delim, true);
     }
 
@@ -146,8 +149,7 @@ public class QuotationAwareTokenizer {
      *
      * <p>See also {@link #tokenizeLine(String, String)}
      */
-    public static String[] tokenizeLine(String line, boolean logging)
-            throws IllegalArgumentException {
+    public static String[] tokenizeLine(String line, boolean logging) {
         return tokenizeLine(line, " ", logging);
     }
 
