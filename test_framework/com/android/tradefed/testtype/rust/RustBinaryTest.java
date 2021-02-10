@@ -195,6 +195,8 @@ public class RustBinaryTest extends RustTestBase implements IDeviceTest, IConfig
                         0 /* retryAttempts */);
             } catch (DeviceNotAvailableException e) {
                 listener.testRunFailed(String.format("Device not available: %s", e.getMessage()));
+            } finally {
+                resultParser.flush();
             }
         }
         long testTimeMs = System.currentTimeMillis() - startTimeMs;
