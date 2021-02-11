@@ -50,6 +50,7 @@ import java.util.Set;
 public class RustBinaryHostTest extends RustTestBase implements IBuildReceiver {
 
     static final String RUST_LOG_STDERR_FORMAT = "%s-stderr";
+    static final String RUST_LOG_STDOUT_FORMAT = "%s-stdout";
 
     @Option(name = "test-file", description = "The test file name or file path.")
     private Set<String> mBinaryNames = new HashSet<>();
@@ -221,10 +222,19 @@ public class RustBinaryHostTest extends RustTestBase implements IBuildReceiver {
         File resultFile = null;
         try {
             resultFile = FileUtil.createTempFile("rust-res", ".txt");
-            FileUtil.writeToFile(result.getStderr(), resultFile);
-            try (FileInputStreamSource data = new FileInputStreamSource(resultFile)) {
-                listener.testLog(
-                        String.format(RUST_LOG_STDERR_FORMAT, runName), LogDataType.TEXT, data);
+            if (result.getStderr().length() > 0) {
+                FileUtil.writeToFile(result.getStderr(), resultFile);
+                try (FileInputStreamSource data = new FileInputStreamSource(resultFile)) {
+                    listener.testLog(
+                            String.format(RUST_LOG_STDERR_FORMAT, runName), LogDataType.TEXT, data);
+                }
+            }
+            if (result.getStdout().length() > 0) {
+                FileUtil.writeToFile(result.getStdout(), resultFile);
+                try (FileInputStreamSource data = new FileInputStreamSource(resultFile)) {
+                    listener.testLog(
+                            String.format(RUST_LOG_STDOUT_FORMAT, runName), LogDataType.TEXT, data);
+                }
             }
             String[] lines = result.getStdout().split("\n");
             RustTestResultParser parser = new RustTestResultParser(listener, runName);
