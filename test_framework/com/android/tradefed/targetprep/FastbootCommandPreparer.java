@@ -66,7 +66,7 @@ public final class FastbootCommandPreparer extends BaseTargetPreparer {
     @Override
     public void setUp(TestInformation testInformation)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
-        if (mFastbootCommands.isEmpty()) {
+        if (!mFastbootCommands.isEmpty()) {
             executeFastbootCommands(mFastbootCommands, testInformation.getDevice());
         }
     }
@@ -75,7 +75,7 @@ public final class FastbootCommandPreparer extends BaseTargetPreparer {
     @Override
     public void tearDown(TestInformation testInformation, Throwable e)
             throws DeviceNotAvailableException {
-        if (mFastbootTearDownCommands.isEmpty()) {
+        if (!mFastbootTearDownCommands.isEmpty()) {
             executeFastbootCommands(mFastbootTearDownCommands, testInformation.getDevice());
         }
     }
