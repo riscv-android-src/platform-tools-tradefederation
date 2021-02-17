@@ -34,10 +34,12 @@ import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFilterReceiver;
 import com.android.tradefed.testtype.retry.IAutoRetriableTest;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
+import com.android.tradefed.testtype.suite.SuiteTestFilter;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -87,6 +89,13 @@ public class BaseRetryDecision implements IRetryDecision {
                 "Whether or not to enable the new auto-retry. This is a feature flag for testing."
     )
     private boolean mEnableAutoRetry = true;
+
+    @Option(
+            name = "skip-retrying-list",
+            description =
+                    "If a test in the list, skip retrying it. The format is the same as the "
+                            + "SuiteTestFilter.")
+    private Set<String> mSkipRetryingList = new HashSet<>();
 
     private IInvocationContext mContext;
 
@@ -158,6 +167,13 @@ public class BaseRetryDecision implements IRetryDecision {
                 break;
         }
 
+        // TODO(b/179206516): Skip known failure list in class/method Level.
+        // Currently, only support skip list in module level.
+        if (isInSkipList(module)) {
+            CLog.d("Skip retrying known failure test of %s", module.getId());
+            return false;
+        }
+
         mStatistics.addResultsFromRun(previousResults);
         if (test instanceof ITestFilterReceiver) {
             // TODO(b/77548917): Right now we only support ITestFilterReceiver. We should expect to
@@ -215,6 +231,45 @@ public class BaseRetryDecision implements IRetryDecision {
         return failedTestCases;
     }
 
+    private static Set<TestDescription> getPassedTestCases(List<TestRunResult> previousResults) {
+        Set<TestDescription> previousPassed = new LinkedHashSet<>();
+        for (TestRunResult run : previousResults) {
+            if (run != null) {
+                for (Entry<TestDescription, TestResult> entry : run.getTestResults().entrySet()) {
+                    if (!TestStatus.FAILURE.equals(entry.getValue().getStatus())) {
+                        previousPassed.add(entry.getKey());
+                    }
+                }
+            }
+        }
+        return previousPassed;
+    }
+
+    private boolean isInSkipList(ModuleDefinition module) {
+        if (module != null) {
+            String moduleId = module.getId();
+            if (moduleId != null) {
+                SuiteTestFilter moduleIdFilter = SuiteTestFilter.createFrom(moduleId);
+                String abi = moduleIdFilter.getAbi();
+                String name = moduleIdFilter.getName();
+                for (String skipTest : mSkipRetryingList) {
+                    SuiteTestFilter skipRetryingFilter = SuiteTestFilter.createFrom(skipTest);
+                    String skipAbi = skipRetryingFilter.getAbi();
+                    String skipName = skipRetryingFilter.getName();
+                    if (abi != null
+                            && skipAbi != null
+                            && name != null
+                            && skipName != null
+                            && abi.equals(skipAbi)
+                            && name.equals(skipName)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
     /** Returns the list of failure from the previous results. */
     private static List<TestRunResult> getRunFailures(List<TestRunResult> previousResults) {
         List<TestRunResult> runFailed = new ArrayList<>();
@@ -245,6 +300,16 @@ public class BaseRetryDecision implements IRetryDecision {
             return false;
         }
         if (!runFailures.isEmpty()) {
+            if (shouldFullRerun(runFailures)) {
+                List<String> names =
+                        runFailures.stream().map(e -> e.getName()).collect(Collectors.toList());
+                CLog.d("Retry the full run since [%s] runs have failures.", names);
+                return true;
+            }
+            // If we don't attempt full rerun add filters.
+            CLog.d("Full rerun not required, excluding previously passed tests.");
+            Set<TestDescription> previouslyPassedTests = getPassedTestCases(previousResults);
+            excludePassedTests(test, previouslyPassedTests);
             return true;
         }
 
@@ -282,6 +347,16 @@ public class BaseRetryDecision implements IRetryDecision {
         return false;
     }
 
+    /** If none of the run failures require a full rerun, trigger the partial rerun logic. */
+    private boolean shouldFullRerun(List<TestRunResult> runFailures) {
+        for (TestRunResult run : runFailures) {
+            if (run.getRunFailureDescription().rerunFull()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /** Set the filters on the test runner for the retry. */
     private void addRetriedTestsToFilters(
             ITestFilterReceiver test, Map<TestDescription, TestResult> tests) {
@@ -304,6 +379,14 @@ public class BaseRetryDecision implements IRetryDecision {
                 test.addExcludeFilter(filter);
             }
             mPreviouslyFailing.add(testCase);
+        }
+    }
+
+    private void excludePassedTests(ITestFilterReceiver test, Set<TestDescription> passedTests) {
+        // Exclude all passed tests for the retry.
+        for (TestDescription testCase : passedTests) {
+            String filter = String.format("%s#%s", testCase.getClassName(), testCase.getTestName());
+            test.addExcludeFilter(filter);
         }
     }
 
@@ -368,10 +451,12 @@ public class BaseRetryDecision implements IRetryDecision {
         }
 
         if (module != null) {
-            InvocationMetricLogger.addInvocationMetrics(
-                    InvocationMetricKey.DEVICE_RESET_MODULES, module.getId());
-            InvocationMetricLogger.addInvocationMetrics(
-                    InvocationMetricKey.DEVICE_RESET_COUNT, deviceResetCount);
+            if (module.getId() != null) {
+                InvocationMetricLogger.addInvocationMetrics(
+                        InvocationMetricKey.DEVICE_RESET_MODULES, module.getId());
+                InvocationMetricLogger.addInvocationMetrics(
+                        InvocationMetricKey.DEVICE_RESET_COUNT, deviceResetCount);
+            }
 
             // Run all preparers including suite level ones.
             Throwable preparationException =

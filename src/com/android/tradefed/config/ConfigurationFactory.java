@@ -20,6 +20,7 @@ import com.android.ddmlib.Log;
 import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.config.yaml.ConfigurationYamlParser;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.ClassPathScanner;
 import com.android.tradefed.util.ClassPathScanner.IClassPathFilter;
 import com.android.tradefed.util.DirectedGraph;
@@ -311,8 +312,10 @@ public class ConfigurationFactory implements IConfigurationFactory {
             try {
                 return file.getCanonicalPath();
             } catch (IOException e) {
-                throw new ConfigurationException(String.format(
-                        "Failure when trying to determine local file canonical path %s", e));
+                throw new ConfigurationException(
+                        String.format(
+                                "Failure when trying to determine local file canonical path %s", e),
+                        InfraErrorIdentifier.CONFIGURATION_NOT_FOUND);
             }
         }
 
@@ -343,14 +346,16 @@ public class ConfigurationFactory implements IConfigurationFactory {
                 // Can not find local config.
                 if (parentName == null) {
                     throw new ConfigurationException(
-                            String.format("Can not find local config %s.", name));
+                            String.format("Can not find local config %s.", name),
+                            InfraErrorIdentifier.CONFIGURATION_NOT_FOUND);
 
                 } else {
                     throw new ConfigurationException(
                             String.format(
                                     "Bundled config '%s' is including a config '%s' that's neither "
                                             + "local nor bundled.",
-                                    parentName, name));
+                                    parentName, name),
+                            InfraErrorIdentifier.CONFIGURATION_NOT_FOUND);
                 }
             }
             try {
@@ -358,7 +363,8 @@ public class ConfigurationFactory implements IConfigurationFactory {
                 String parentRoot = new File(parentName).getParentFile().getCanonicalPath();
                 return getAbsolutePath(parentRoot, name);
             } catch (IOException e) {
-                throw new ConfigurationException(e.getMessage(), e.getCause());
+                throw new ConfigurationException(
+                        e.getMessage(), e.getCause(), InfraErrorIdentifier.CONFIGURATION_NOT_FOUND);
             }
         }
 
@@ -382,9 +388,11 @@ public class ConfigurationFactory implements IConfigurationFactory {
             // If the inclusion of configurations is a cycle we throw an exception.
             if (!mConfigGraph.isDag()) {
                 CLog.e("%s", mConfigGraph);
-                throw new ConfigurationException(String.format(
-                        "Circular configuration include: config '%s' is already included",
-                        config_name));
+                throw new ConfigurationException(
+                        String.format(
+                                "Circular configuration include: config '%s' is already included",
+                                config_name),
+                        InfraErrorIdentifier.OPTION_CONFIGURATION_ERROR);
             }
             loadConfiguration(config_name, def, deviceTagObject, templateMap, templateSeen);
         }

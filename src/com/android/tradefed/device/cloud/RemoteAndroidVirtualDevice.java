@@ -29,6 +29,8 @@ import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.device.TestDeviceOptions.InstanceType;
 import com.android.tradefed.device.cloud.GceAvdInfo.GceStatus;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.FileInputStreamSource;
@@ -36,6 +38,7 @@ import com.android.tradefed.result.ITestLoggerReceiver;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.error.DeviceErrorIdentifier;
+import com.android.tradefed.result.error.ErrorIdentifier;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
@@ -273,10 +276,11 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
                         String.format(
                                 "Device failed to boot. Error from Acloud: %s",
                                 mGceAvd.getErrors());
-                throw new TargetSetupError(
-                        errorMsg,
-                        getDeviceDescriptor(),
-                        DeviceErrorIdentifier.FAILED_TO_LAUNCH_GCE);
+                ErrorIdentifier errorIdentifier =
+                        (mGceAvd.getErrorType() != null)
+                                ? mGceAvd.getErrorType()
+                                : DeviceErrorIdentifier.FAILED_TO_LAUNCH_GCE;
+                throw new TargetSetupError(errorMsg, getDeviceDescriptor(), errorIdentifier);
             }
         }
         createGceSshMonitor(this, buildInfo, mGceAvd.hostAndPort(), this.getOptions());
@@ -343,12 +347,23 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
             // We threw before but was not reported, so throw the root cause here.
             throw mTunnelInitFailed;
         }
-        // Re-init tunnel when attempting recovery
-        CLog.i("Attempting recovery on GCE AVD %s", getSerialNumber());
-        getGceSshMonitor().closeConnection();
-        getRunUtil().sleep(WAIT_FOR_TUNNEL_OFFLINE);
-        waitForTunnelOnline(WAIT_FOR_TUNNEL_ONLINE);
-        waitForAdbConnect(WAIT_FOR_ADB_CONNECT);
+        long startTime = System.currentTimeMillis();
+        try {
+            // Re-init tunnel when attempting recovery
+            CLog.i("Attempting recovery on GCE AVD %s", getSerialNumber());
+            getGceSshMonitor().closeConnection();
+            getRunUtil().sleep(WAIT_FOR_TUNNEL_OFFLINE);
+            waitForTunnelOnline(WAIT_FOR_TUNNEL_ONLINE);
+            waitForAdbConnect(WAIT_FOR_ADB_CONNECT);
+        } catch (Exception e) {
+            // Log the entrance in recovery here to avoid double counting with super.recoverDevice.
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.RECOVERY_ROUTINE_COUNT, 1);
+            throw e;
+        } finally {
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.RECOVERY_TIME, System.currentTimeMillis() - startTime);
+        }
         // Then attempt regular recovery
         super.recoverDevice();
     }

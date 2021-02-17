@@ -34,6 +34,7 @@ public class TestEnvironment {
     final List<String> mOutputFilePatterns = new ArrayList<>();
     String mOutputFileUploadUrl = null;
     boolean mUseSubprocessReporting = false;
+    long mInvocationTimeout = 0L;
     long mOutputIdleTimeout = 0L;
     final List<String> mJvmOptions = new ArrayList<>();
     final Map<String, String> mJavaProperties = new HashMap<>();
@@ -127,6 +128,15 @@ public class TestEnvironment {
 
     public void setUseSubprocessReporting(boolean f) {
         mUseSubprocessReporting = f;
+    }
+
+    /** @return maximum millis to wait for an invocation */
+    public long getInvocationTimeout() {
+        return mInvocationTimeout;
+    }
+
+    public void setInvocationTimeout(long value) {
+        mInvocationTimeout = value;
     }
 
     /** @return maximum millis to wait for an idle subprocess */
@@ -262,6 +272,7 @@ public class TestEnvironment {
             CLog.w("output_file_upload_url is null");
         }
         obj.mUseSubprocessReporting = json.optBoolean("use_subprocess_reporting");
+        obj.mInvocationTimeout = json.optLong("invocation_timeout_millis", 0L);
         obj.mOutputIdleTimeout = json.optLong("output_idle_timeout_millis", 0L);
         obj.mContextFilePattern = json.optString("context_file_pattern");
         JSONArray extraContextFiles = json.optJSONArray("extra_context_files");

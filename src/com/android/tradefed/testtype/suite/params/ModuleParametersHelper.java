@@ -16,7 +16,9 @@
 package com.android.tradefed.testtype.suite.params;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 /** Helper to get the {@link IModuleParameter} associated with the parameter. */
 public class ModuleParametersHelper {
@@ -29,6 +31,11 @@ public class ModuleParametersHelper {
 
         sHandlerMap.put(ModuleParameters.MULTI_ABI, new NegativeHandler());
         sHandlerMap.put(ModuleParameters.NOT_MULTI_ABI, new NotMultiAbiHandler());
+    }
+
+    private static Map<ModuleParameters, Set<ModuleParameters>> sGroupMap = new HashMap<>();
+
+    static {
     }
 
     /**
@@ -44,6 +51,11 @@ public class ModuleParametersHelper {
         sOptionalHandlerMap.put(ModuleParameters.NOT_SECONDARY_USER, new NegativeHandler());
     }
 
+    private static Map<ModuleParameters, Set<ModuleParameters>> sOptionalGroupMap = new HashMap<>();
+
+    static {
+    }
+
     /**
      * Returns the {@link IModuleParameter} associated with the requested parameter.
      *
@@ -56,5 +68,42 @@ public class ModuleParametersHelper {
             return sOptionalHandlerMap.get(param);
         }
         return value;
+    }
+
+    /**
+     * Resolve a {@link ModuleParameters} from its {@link String} representation.
+     *
+     * @see #resolveParam(ModuleParameters, boolean)
+     */
+    public static Set<ModuleParameters> resolveParam(String param, boolean withOptional) {
+        return resolveParam(ModuleParameters.valueOf(param.toUpperCase()), withOptional);
+    }
+
+    /**
+     * Get the all {@link ModuleParameters} which are sub-params of a given {@link
+     * ModuleParameters}.
+     *
+     * <p>This will recursively resolve sub-groups and will only return {@link ModuleParameters}
+     * which are not groups.
+     *
+     * <p>If {@code param} is not a group then a singleton set containing {@code param} will be
+     * returned itself, regardless of {@code withOptional}.
+     *
+     * @param withOptional Whether or not to also check optional param groups.
+     */
+    public static Set<ModuleParameters> resolveParam(ModuleParameters param, boolean withOptional) {
+        Set<ModuleParameters> mappedParams = sGroupMap.get(param);
+        if (mappedParams == null && withOptional) {
+            mappedParams = sOptionalGroupMap.get(param);
+        }
+        if (mappedParams != null) {
+            Set<ModuleParameters> resolvedParams = new HashSet<>();
+            for (ModuleParameters moduleParameters : mappedParams) {
+                resolvedParams.addAll(resolveParam(moduleParameters, withOptional));
+            }
+            return resolvedParams;
+        }
+
+        return Set.of(param);
     }
 }

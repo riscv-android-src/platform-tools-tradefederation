@@ -404,6 +404,7 @@ public class RemoteAndroidVirtualDeviceTest {
                         new GceAvdInfo(
                                 "ins-name",
                                 HostAndPort.fromHost("127.0.0.1"),
+                                null,
                                 "acloud error",
                                 GceStatus.BOOT_FAIL))
                 .when(mGceHandler)
@@ -446,7 +447,7 @@ public class RemoteAndroidVirtualDeviceTest {
                         return null;
                     }
                 };
-        doReturn(new GceAvdInfo("ins-name", null, "acloud error", GceStatus.BOOT_FAIL))
+        doReturn(new GceAvdInfo("ins-name", null, null, "acloud error", GceStatus.BOOT_FAIL))
                 .when(mGceHandler)
                 .startGce(null);
         // Each invocation bellow will dump a logcat before the shutdown.
@@ -566,6 +567,7 @@ public class RemoteAndroidVirtualDeviceTest {
                                     "ins-name",
                                     HostAndPort.fromHost("127.0.0.1"),
                                     null,
+                                    null,
                                     GceStatus.SUCCESS))
                     .when(mGceHandler)
                     .startGce(null);
@@ -667,6 +669,7 @@ public class RemoteAndroidVirtualDeviceTest {
                                     "ins-name",
                                     HostAndPort.fromHost("127.0.0.1"),
                                     null,
+                                    null,
                                     GceStatus.SUCCESS))
                     .when(mGceHandler)
                     .startGce(null);
@@ -752,6 +755,7 @@ public class RemoteAndroidVirtualDeviceTest {
                             new GceAvdInfo(
                                     "ins-name",
                                     HostAndPort.fromHost("127.0.0.1"),
+                                    null,
                                     null,
                                     GceStatus.SUCCESS))
                     .when(mGceHandler)
@@ -879,7 +883,11 @@ public class RemoteAndroidVirtualDeviceTest {
         String avdConnectHost = String.format("%s@127.0.0.1", instanceUser);
         GceAvdInfo gceAvd =
                 new GceAvdInfo(
-                        instanceUser, HostAndPort.fromHost("127.0.0.1"), null, GceStatus.SUCCESS);
+                        instanceUser,
+                        HostAndPort.fromHost("127.0.0.1"),
+                        null,
+                        null,
+                        GceStatus.SUCCESS);
         doReturn(gceAvd).when(mGceHandler).startGce(null);
         OutputStream stdout = null;
         OutputStream stderr = null;

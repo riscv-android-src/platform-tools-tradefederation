@@ -30,4 +30,3 @@ java_library_host {
         "loganalysis",
     ],
 }
-

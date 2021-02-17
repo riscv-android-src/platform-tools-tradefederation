@@ -36,4 +36,3 @@ java_library_host {
         "devtools-annotations-prebuilt",
     ],
 }
-

@@ -31,4 +31,3 @@ java_library_host {
         "tradefed-device-build-interfaces",
     ],
 }
-

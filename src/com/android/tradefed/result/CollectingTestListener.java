@@ -590,4 +590,9 @@ public class CollectingTestListener implements ITestInvocationListener, ILogSave
         setCountDirty();
         mTestRunResultMap.remove(testRunName);
     }
+
+    /** Allows cleaning the module file so we avoid carrying them for too long. */
+    protected final synchronized void clearModuleLogFiles() {
+        mModuleLogFiles = new MultiMap<>();
+    }
 }

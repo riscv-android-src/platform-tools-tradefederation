@@ -42,11 +42,12 @@ public class ClusterHostUtilTest {
     private static final String EMULATOR_SERIAL = "emulator-5554";
 
     @Test
-    public void testIsIpPort() {
-        Assert.assertTrue(ClusterHostUtil.isIpPort("127.0.0.1:101"));
-        Assert.assertTrue(ClusterHostUtil.isIpPort("127.0.0.1"));
-        Assert.assertFalse(ClusterHostUtil.isIpPort(DEVICE_SERIAL));
-        Assert.assertFalse(ClusterHostUtil.isIpPort("127.0.0.1:notaport"));
+    public void testIsLocalhostIpPort() {
+        Assert.assertTrue(ClusterHostUtil.isLocalhostIpPort("127.0.0.1:101"));
+        Assert.assertTrue(ClusterHostUtil.isLocalhostIpPort("127.0.0.1"));
+        Assert.assertFalse(ClusterHostUtil.isLocalhostIpPort(DEVICE_SERIAL));
+        Assert.assertFalse(ClusterHostUtil.isLocalhostIpPort("127.0.0.1:notaport"));
+        Assert.assertFalse(ClusterHostUtil.isLocalhostIpPort("192.168.0.1:22434"));
     }
 
     // Test a valid TF version

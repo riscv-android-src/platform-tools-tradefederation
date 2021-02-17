@@ -101,8 +101,7 @@ public final class HostUtils {
                     s =
                             s.filter(
                                     je -> {
-                                        return excludePaths
-                                                .stream()
+                                        return excludePaths.stream()
                                                 .noneMatch(path -> je.getName().startsWith(path));
                                     });
                 }
@@ -214,7 +213,11 @@ public final class HostUtils {
         if (classObj.isAnnotationPresent(org.junit.runner.RunWith.class)
                 && org.junit.runner.Runner.class.isAssignableFrom(
                         classObj.getAnnotation(org.junit.runner.RunWith.class).value())) {
-            return true;
+            for (Method m : classObj.getMethods()) {
+                if (m.isAnnotationPresent(org.junit.Test.class)) {
+                    return true;
+                }
+            }
         } else if (!classObj.isAnnotationPresent(org.junit.runner.RunWith.class)) {
             if (classObj.isAnnotationPresent(SuiteClasses.class)) {
                 return true;
@@ -225,21 +228,17 @@ public final class HostUtils {
                 }
             }
             if (TestCase.class.isAssignableFrom(classObj)) {
-                return Arrays.asList(classObj.getDeclaredMethods())
-                        .stream()
+                return Arrays.asList(classObj.getDeclaredMethods()).stream()
                         .anyMatch(
                                 m -> {
                                     return m.getName().startsWith("test")
-                                            && Arrays.asList(m.getAnnotations())
-                                                    .stream()
+                                            && Arrays.asList(m.getAnnotations()).stream()
                                                     .map(anno -> anno.toString())
                                                     .noneMatch(s -> s.contains("Suppress"));
                                 });
             }
-            return false;
-        } else {
-            return false;
         }
+        return false;
     }
 
     /**

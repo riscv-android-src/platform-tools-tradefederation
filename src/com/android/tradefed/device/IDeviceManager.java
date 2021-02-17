@@ -194,6 +194,15 @@ public interface IDeviceManager {
     /** Like {@link #terminate()}, but attempts to forcefully shut down adb as well. */
     public void terminateHard();
 
+    /**
+     * Like {@link #terminateHard()}.
+     *
+     * @param reason optional reason given for the termination.
+     */
+    public default void terminateHard(String reason) {
+        terminateHard();
+    }
+
     /** Stop adb bridge and services depend on adb connections. */
     public void stopAdbBridge();
 
