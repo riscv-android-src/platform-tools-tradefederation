@@ -301,7 +301,7 @@ public class TestInvocationTest {
                             }
 
                             @Override
-                            void logHostAdb(ITestLogger logger) {
+                            void logHostAdb(IConfiguration config, ITestLogger logger) {
                                 // inop for the common test case.
                             }
                         };
@@ -1627,7 +1627,7 @@ public class TestInvocationTest {
                             }
 
                             @Override
-                            void logHostAdb(ITestLogger logger) {
+                            void logHostAdb(IConfiguration config, ITestLogger logger) {
                                 // inop for the common test case.
                             }
                         };
@@ -1716,7 +1716,7 @@ public class TestInvocationTest {
                                 }
 
                                 @Override
-                                void logHostAdb(ITestLogger logger) {
+                                void logHostAdb(IConfiguration config, ITestLogger logger) {
                                     // inop for the common test case.
                                 }
                             };
@@ -1823,7 +1823,7 @@ public class TestInvocationTest {
                                 }
 
                                 @Override
-                                void logHostAdb(ITestLogger logger) {
+                                void logHostAdb(IConfiguration config, ITestLogger logger) {
                                     // inop for the common test case.
                                 }
                             };
