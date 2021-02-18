@@ -23,28 +23,32 @@ import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceAllocationState;
 import com.android.tradefed.device.IDeviceMonitor;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.monitoring.LabResourceDeviceMonitor;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.RunUtil;
+import com.google.dualhomelab.monitoringagent.resourcemonitoring.MonitoredEntity;
+import com.google.dualhomelab.monitoringagent.resourcemonitoring.Resource;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * An {@link IDeviceMonitor} implementation that reports results to the Tradefed Cluster service.
  */
 @OptionClass(alias = "cluster-device-monitor")
-public class ClusterDeviceMonitor implements IDeviceMonitor {
+public class ClusterDeviceMonitor extends LabResourceDeviceMonitor {
 
     @Option(
             name = "host-info-cmd",
             description =
-                    "A label and command to run periodically, to "
-                            + "collect and send host info to the backend. May be repeated. Commands containing "
-                            + "spaces should be double-quoted.")
+                    "A label and command to run periodically, to collect and send host info to the"
+                            + " backend. May be repeated. Commands containing spaces should be"
+                            + " double-quoted.")
     private Map<String, String> mHostInfoCmds = new HashMap<String, String>();
 
     private Map<String, String[]> mTokenizedHostInfoCmds = null;
@@ -52,9 +56,9 @@ public class ClusterDeviceMonitor implements IDeviceMonitor {
     @Option(
             name = "host-info-cmd-timeout",
             description =
-                    "How long to wait for each "
-                            + "host-info-cmd to complete, in millis. If the command times out, a (null) value "
-                            + "will be passed to the backend for that particular command.")
+                    "How long to wait for each host-info-cmd to complete, in millis. If the"
+                            + " command times out, a (null) value will be passed to the backend for"
+                            + " that particular command.")
     private long mHostInfoCmdTimeout = 5 * 1000;
 
     /** Worker thread to dispatch a cluster host event that includes a snapshot of the devices */
@@ -112,6 +116,7 @@ public class ClusterDeviceMonitor implements IDeviceMonitor {
                             .setClusterId(getClusterOptions().getClusterId())
                             .setNextClusterIds(getClusterOptions().getNextClusterIds())
                             .setLabName(getClusterOptions().getLabName());
+            Map<String, Map<String, String>> extraInfoByDevice = getExtraInfoByDevice();
             for (DeviceDescriptor device : devices) {
                 if (device.isTemporary()) {
                     // Do not report temporary devices, they will go away when the invocation
@@ -124,13 +129,51 @@ public class ClusterDeviceMonitor implements IDeviceMonitor {
                 deviceBuilder.setRunTarget(
                         ClusterHostUtil.getRunTarget(
                                 device, runTargetFormat, getClusterOptions().getDeviceTag()));
-
+                if (extraInfoByDevice.containsKey(device.getSerial())) {
+                    deviceBuilder.addExtraInfo(extraInfoByDevice.get(device.getSerial()));
+                }
                 builder.addDeviceInfo(deviceBuilder.build());
             }
             // We want to force an upload.
             CLog.d("Dispatched devicesnapshot.");
             eventUploader.postEvent(builder.build());
             eventUploader.flush();
+        }
+
+        private Map<String, Map<String, String>> getExtraInfoByDevice() {
+            // Get device resource info from cached lab resource.
+            return getCachedLabResource().getDeviceList().stream()
+                    .collect(
+                            Collectors.toMap(
+                                    deviceEntity ->
+                                            deviceEntity
+                                                    .getIdentifierMap()
+                                                    .get(
+                                                            LabResourceDeviceMonitor
+                                                                    .DEVICE_SERIAL_KEY),
+                                    this::getExtraInfoFromDeviceEntity));
+        }
+
+        private Map<String, String> getExtraInfoFromDeviceEntity(MonitoredEntity deviceEntity) {
+            return deviceEntity.getResourceList().stream()
+                    .map(this::getExtraInfoFromResource)
+                    .reduce(new HashMap<String, String>(), this::mergeMap);
+        }
+
+        private Map<String, String> mergeMap(Map<String, String> m1, Map<String, String> m2) {
+            m1.putAll(m2);
+            return m1;
+        }
+
+        private Map<String, String> getExtraInfoFromResource(Resource resource) {
+            return resource.getMetricList().stream()
+                    .collect(
+                            Collectors.toMap(
+                                    metric ->
+                                            resource.getResourceName().toString()
+                                                    + "-"
+                                                    + metric.getTag().toString(),
+                                    metric -> String.valueOf(metric.getValue())));
         }
 
         void cancel() {
@@ -148,6 +191,7 @@ public class ClusterDeviceMonitor implements IDeviceMonitor {
     /** {@inheritDoc} */
     @Override
     public void run() {
+        super.run();
         if (ClusterHostUtil.getClusterOptions().isDeviceMonitorDisabled()) {
             return;
         }
@@ -158,6 +202,7 @@ public class ClusterDeviceMonitor implements IDeviceMonitor {
     /** {@inheritDoc} */
     @Override
     public void stop() {
+        super.stop();
         if (mDispatcher != null && mDispatcher.isAlive()) {
             mDispatcher.cancel();
         }
@@ -169,6 +214,7 @@ public class ClusterDeviceMonitor implements IDeviceMonitor {
         if (lister == null) {
             throw new NullPointerException();
         }
+        super.setDeviceLister(lister);
         mDeviceLister = lister;
     }
 
@@ -177,6 +223,7 @@ public class ClusterDeviceMonitor implements IDeviceMonitor {
     public void notifyDeviceStateChange(
             String serial, DeviceAllocationState oldState, DeviceAllocationState newState) {
         // Nothing happens. We only take snapshots. Maybe we can add state change in the future.
+        super.notifyDeviceStateChange(serial, oldState, newState);
     }
 
     @VisibleForTesting
