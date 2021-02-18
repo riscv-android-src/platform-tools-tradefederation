@@ -43,6 +43,7 @@ import com.android.tradefed.util.StreamUtil;
 import org.easymock.EasyMock;
 import org.junit.Assume;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -164,20 +165,23 @@ public class TestDeviceFuncTest implements IDeviceTest {
         }
     }
 
-    /**
-     * Verifies that the given wifi util apk can be installed and uninstalled successfully
-     */
+    /** Verifies that the given wifi util apk can be installed and uninstalled successfully */
     void assertWifiApkInstall(File tmpFile) throws DeviceNotAvailableException {
         try {
             mTestDevice.uninstallPackage(WifiHelper.INSTRUMENTATION_PKG);
-            assertFalse(mTestDevice.getInstalledPackageNames().contains(
-                    WifiHelper.INSTRUMENTATION_PKG));
+            assertFalse(
+                    mTestDevice
+                            .getInstalledPackageNames()
+                            .contains(WifiHelper.INSTRUMENTATION_PKG));
             assertNull(mTestDevice.installPackage(tmpFile, false));
-            assertTrue(mTestDevice.getInstalledPackageNames().contains(
-                    WifiHelper.INSTRUMENTATION_PKG));
-            assertFalse("apk file was not cleaned up after install",
-                    mTestDevice.doesFileExist(String.format("/data/local/tmp/%s",
-                            tmpFile.getName())));
+            assertTrue(
+                    mTestDevice
+                            .getInstalledPackageNames()
+                            .contains(WifiHelper.INSTRUMENTATION_PKG));
+            assertFalse(
+                    "apk file was not cleaned up after install",
+                    mTestDevice.doesFileExist(
+                            String.format("/data/local/tmp/%s", tmpFile.getName())));
         } finally {
             FileUtil.deleteFile(tmpFile);
         }
@@ -215,7 +219,8 @@ public class TestDeviceFuncTest implements IDeviceTest {
             deviceFilePath = String.format("%s/%s", externalStorePath, "tmp_testPushPull.txt");
             // ensure file does not already exist
             mTestDevice.deleteFile(deviceFilePath);
-            assertFalse(String.format("%s exists", deviceFilePath),
+            assertFalse(
+                    String.format("%s exists", deviceFilePath),
                     mTestDevice.doesFileExist(deviceFilePath));
 
             assertTrue(mTestDevice.pushFile(tmpFile, deviceFilePath));
@@ -255,7 +260,8 @@ public class TestDeviceFuncTest implements IDeviceTest {
             deviceFilePath = String.format("%s/%s", externalStorePath, filename);
             // ensure file does not already exist
             mTestDevice.executeShellCommand(String.format("rm %s", deviceFilePath));
-            assertFalse(String.format("%s exists", deviceFilePath),
+            assertFalse(
+                    String.format("%s exists", deviceFilePath),
                     mTestDevice.doesFileExist(deviceFilePath));
 
             assertTrue(mTestDevice.pushFile(tmpFile, deviceFilePath));
@@ -287,10 +293,11 @@ public class TestDeviceFuncTest implements IDeviceTest {
         Log.i(LOG_TAG, "testPull_noexist");
 
         // make sure the root path is valid
-        String externalStorePath =  mTestDevice.getMountPoint(IDevice.MNT_EXTERNAL_STORAGE);
+        String externalStorePath = mTestDevice.getMountPoint(IDevice.MNT_EXTERNAL_STORAGE);
         assertNotNull(externalStorePath);
         String deviceFilePath = String.format("%s/%s", externalStorePath, "thisfiledoesntexist");
-        assertFalse(String.format("%s exists", deviceFilePath),
+        assertFalse(
+                String.format("%s exists", deviceFilePath),
                 mTestDevice.doesFileExist(deviceFilePath));
         assertNull(mTestDevice.pullFile(deviceFilePath));
     }
@@ -311,7 +318,8 @@ public class TestDeviceFuncTest implements IDeviceTest {
         String deviceFilePath = String.format("%s/%s", externalStorePath, "testPull_nopermissions");
         // first push a file so we have something to retrieve
         assertTrue(mTestDevice.pushString("test data", deviceFilePath));
-        assertTrue(String.format("%s does not exist", deviceFilePath),
+        assertTrue(
+                String.format("%s does not exist", deviceFilePath),
                 mTestDevice.doesFileExist(deviceFilePath));
         File tmpFile = null;
         try {
@@ -336,7 +344,7 @@ public class TestDeviceFuncTest implements IDeviceTest {
         Log.i(LOG_TAG, "testPush_noexist");
 
         // make sure the root path is valid
-        String externalStorePath =  mTestDevice.getMountPoint(IDevice.MNT_EXTERNAL_STORAGE);
+        String externalStorePath = mTestDevice.getMountPoint(IDevice.MNT_EXTERNAL_STORAGE);
         assertNotNull(externalStorePath);
         String deviceFilePath = String.format("%s/%s", externalStorePath, "remotepath");
         assertFalse(mTestDevice.pushFile(new File("idontexist"), deviceFilePath));
@@ -357,9 +365,7 @@ public class TestDeviceFuncTest implements IDeviceTest {
         }
     }
 
-    /**
-     * Utility method to do byte-wise content comparison of two files.
-     */
+    /** Utility method to do byte-wise content comparison of two files. */
     private boolean compareFiles(File file1, File file2) throws IOException {
         BufferedInputStream stream1 = null;
         BufferedInputStream stream2 = null;
@@ -397,14 +403,17 @@ public class TestDeviceFuncTest implements IDeviceTest {
         mTestDevice.deleteFile(String.format("%s/testdir2", extStore));
 
         try {
-            assertEquals("",
-                    mTestDevice.executeShellCommand(String.format("mkdir %s/testdir2",
-                    extStore)));
-            assertEquals("", mTestDevice.executeShellCommand(
-                    String.format("touch %s/testdir2/foo.txt", extStore)));
-            assertEquals("",
-                    mTestDevice.executeShellCommand(String.format("ln -s %s/testdir2 %s/testdir",
-                    extStore, extStore)));
+            assertEquals(
+                    "",
+                    mTestDevice.executeShellCommand(String.format("mkdir %s/testdir2", extStore)));
+            assertEquals(
+                    "",
+                    mTestDevice.executeShellCommand(
+                            String.format("touch %s/testdir2/foo.txt", extStore)));
+            assertEquals(
+                    "",
+                    mTestDevice.executeShellCommand(
+                            String.format("ln -s %s/testdir2 %s/testdir", extStore, extStore)));
 
             assertNotNull(mTestDevice.getFileEntry(String.format("%s/testdir/foo.txt", extStore)));
         } finally {
@@ -415,6 +424,7 @@ public class TestDeviceFuncTest implements IDeviceTest {
     }
 
     /** Test syncing a single file using {@link TestDevice#syncFiles(File, String)}. */
+    @Ignore
     @Test
     public void testSyncFiles_normal() throws Exception {
         doTestSyncFiles(mTestDevice.getMountPoint(IDevice.MNT_EXTERNAL_STORAGE));
@@ -425,6 +435,7 @@ public class TestDeviceFuncTest implements IDeviceTest {
      *
      * <p>This variant of the test uses "${EXTERNAL_STORAGE}" in the pathname.
      */
+    @Ignore
     @Test
     public void testSyncFiles_extStorageVariable() throws Exception {
         doTestSyncFiles("${EXTERNAL_STORAGE}");
@@ -439,28 +450,32 @@ public class TestDeviceFuncTest implements IDeviceTest {
         try {
             File tmpFile = createTempTestFile(tmpDir);
             // set last modified to 10 minutes ago
-            tmpFile.setLastModified(System.currentTimeMillis() - 10*60*1000);
+            tmpFile.setLastModified(System.currentTimeMillis() - 10 * 60 * 1000);
             assertNotNull(externalStorePath);
-            expectedDeviceFilePath = String.format("%s/%s/%s", externalStorePath,
-                    tmpDir.getName(), tmpFile.getName());
+            expectedDeviceFilePath =
+                    String.format(
+                            "%s/%s/%s", externalStorePath, tmpDir.getName(), tmpFile.getName());
 
             assertTrue(mTestDevice.syncFiles(tmpDir, externalStorePath));
             assertTrue(mTestDevice.doesFileExist(expectedDeviceFilePath));
 
             // get 'ls -l' attributes of file which includes timestamp
-            String origTmpFileStamp = mTestDevice.executeShellCommand(String.format("ls -l %s",
-                    expectedDeviceFilePath));
+            String origTmpFileStamp =
+                    mTestDevice.executeShellCommand(
+                            String.format("ls -l %s", expectedDeviceFilePath));
             // now create another file and verify that is synced
             File tmpFile2 = createTempTestFile(tmpDir);
-            tmpFile2.setLastModified(System.currentTimeMillis() - 10*60*1000);
+            tmpFile2.setLastModified(System.currentTimeMillis() - 10 * 60 * 1000);
             assertTrue(mTestDevice.syncFiles(tmpDir, externalStorePath));
-            String expectedDeviceFilePath2 = String.format("%s/%s/%s", externalStorePath,
-                    tmpDir.getName(), tmpFile2.getName());
+            String expectedDeviceFilePath2 =
+                    String.format(
+                            "%s/%s/%s", externalStorePath, tmpDir.getName(), tmpFile2.getName());
             assertTrue(mTestDevice.doesFileExist(expectedDeviceFilePath2));
 
             // verify 1st file timestamp did not change
-            String unchangedTmpFileStamp = mTestDevice.executeShellCommand(String.format("ls -l %s",
-                    expectedDeviceFilePath));
+            String unchangedTmpFileStamp =
+                    mTestDevice.executeShellCommand(
+                            String.format("ls -l %s", expectedDeviceFilePath));
             assertEquals(origTmpFileStamp, unchangedTmpFileStamp);
 
             // now modify 1st file and verify it does change remotely
@@ -470,8 +485,9 @@ public class TestDeviceFuncTest implements IDeviceTest {
             stream.close();
 
             assertTrue(mTestDevice.syncFiles(tmpDir, externalStorePath));
-            String tmpFileContents = mTestDevice.executeShellCommand(String.format("cat %s",
-                    expectedDeviceFilePath));
+            String tmpFileContents =
+                    mTestDevice.executeShellCommand(
+                            String.format("cat %s", expectedDeviceFilePath));
             assertTrue(tmpFileContents.contains(testString));
         } finally {
             if (expectedDeviceFilePath != null && externalStorePath != null) {
@@ -494,8 +510,9 @@ public class TestDeviceFuncTest implements IDeviceTest {
             File tmpFile = createTempTestFile(tmpDir);
             externalStorePath = mTestDevice.getMountPoint(IDevice.MNT_EXTERNAL_STORAGE);
             assertNotNull(externalStorePath);
-            expectedDeviceFilePath = String.format("%s/%s/%s", externalStorePath,
-                    tmpDir.getName(), tmpFile.getName());
+            expectedDeviceFilePath =
+                    String.format(
+                            "%s/%s/%s", externalStorePath, tmpDir.getName(), tmpFile.getName());
 
             assertTrue(mTestDevice.pushDir(rootDir, externalStorePath));
             assertTrue(mTestDevice.doesFileExist(expectedDeviceFilePath));
@@ -526,9 +543,10 @@ public class TestDeviceFuncTest implements IDeviceTest {
         try {
             assertEquals(TestDeviceState.ONLINE, mMonitor.getDeviceState());
             // reset operation timeout to small value to make test run quicker
-            mTestDevice.setCommandTimeout(5*1000);
-            assertEquals(CommandStatus.SUCCESS,
-            mTestDevice.executeFastbootCommand("getvar", "product").getStatus());
+            mTestDevice.setCommandTimeout(5 * 1000);
+            assertEquals(
+                    CommandStatus.SUCCESS,
+                    mTestDevice.executeFastbootCommand("getvar", "product").getStatus());
             assertEquals(TestDeviceState.FASTBOOT, mMonitor.getDeviceState());
         } finally {
             mTestDevice.setCommandTimeout(origTimeout);
@@ -558,8 +576,9 @@ public class TestDeviceFuncTest implements IDeviceTest {
             IDeviceRecovery mockRecovery = EasyMock.createStrictMock(IDeviceRecovery.class);
             mTestDevice.setRecovery(mockRecovery);
             EasyMock.replay(mockRecovery);
-            assertEquals(CommandStatus.FAILED,
-            mTestDevice.executeFastbootCommand("badcommand").getStatus());
+            assertEquals(
+                    CommandStatus.FAILED,
+                    mTestDevice.executeFastbootCommand("badcommand").getStatus());
         } finally {
             mTestDevice.setRecovery(origRecovery);
             mTestDevice.reboot();
@@ -675,6 +694,7 @@ public class TestDeviceFuncTest implements IDeviceTest {
      *
      * <p>Assumes DevTools and TradeFedUiApp are currently installed.
      */
+    @Ignore
     @Test
     public void testClearErrorDialogs_crash() throws DeviceNotAvailableException {
         Log.i(LOG_TAG, "testClearErrorDialogs_crash");
@@ -728,10 +748,10 @@ public class TestDeviceFuncTest implements IDeviceTest {
     @Test
     public void testExecuteShellCommand_adbKilled() {
         // FIXME: adb typically does not recover, and this causes rest of tests to fail
-        //Log.i(LOG_TAG, "testExecuteShellCommand_adbKilled");
-        //CommandResult result = RunUtil.getInstance().runTimedCmd(30*1000, "adb", "kill-server");
-        //assertEquals(CommandStatus.SUCCESS, result.getStatus());
-        //assertSimpleShellCommand();
+        // Log.i(LOG_TAG, "testExecuteShellCommand_adbKilled");
+        // CommandResult result = RunUtil.getInstance().runTimedCmd(30*1000, "adb", "kill-server");
+        // assertEquals(CommandStatus.SUCCESS, result.getStatus());
+        // assertSimpleShellCommand();
     }
 
     /**
@@ -781,11 +801,12 @@ public class TestDeviceFuncTest implements IDeviceTest {
             FileUtil.writeToFile(source.createInputStream(), tmpTxtFile);
             CLog.i("Created file at %s", tmpTxtFile.getAbsolutePath());
             // Check we have at least our 100 lines.
-            assertTrue("Saved text file is smaller than expected",
-                    100 * 1024 <= tmpTxtFile.length());
+            assertTrue(
+                    "Saved text file is smaller than expected", 100 * 1024 <= tmpTxtFile.length());
             // ensure last log message is present in log
             String s = FileUtil.readStringFromFile(tmpTxtFile);
-            assertTrue("last log message is not in captured logcat",
+            assertTrue(
+                    "last log message is not in captured logcat",
                     s.contains("testGetLogcat_size log dump 99"));
         } finally {
             FileUtil.deleteFile(tmpTxtFile);
@@ -876,12 +897,11 @@ public class TestDeviceFuncTest implements IDeviceTest {
         }
     }
 
-    /**
-     * Run the test app UI tests and return true if they all pass.
-     */
+    /** Run the test app UI tests and return true if they all pass. */
     private boolean runUITests() throws DeviceNotAvailableException {
-        RemoteAndroidTestRunner uirunner = new RemoteAndroidTestRunner(
-                TestAppConstants.UITESTAPP_PACKAGE, getDevice().getIDevice());
+        RemoteAndroidTestRunner uirunner =
+                new RemoteAndroidTestRunner(
+                        TestAppConstants.UITESTAPP_PACKAGE, getDevice().getIDevice());
         CollectingTestListener uilistener = new CollectingTestListener();
         getDevice().runInstrumentationTests(uirunner, uilistener);
         return TestAppConstants.UI_TOTAL_TESTS == uilistener.getNumTestsInState(TestStatus.PASSED);
