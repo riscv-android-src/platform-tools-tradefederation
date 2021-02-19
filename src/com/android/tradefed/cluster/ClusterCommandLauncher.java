@@ -72,7 +72,7 @@ public class ClusterCommandLauncher
     public static final String TEST_WORK_DIR = "TEST_WORK_DIR";
     public static final String ANDROID_SERIALS = "ANDROID_SERIALS";
 
-    private static final Duration MAX_EVENT_RECEIVER_WAIT_TIME = Duration.ofMinutes(10);
+    private static final Duration MAX_EVENT_RECEIVER_WAIT_TIME = Duration.ofMinutes(30);
 
     @Option(name = "root-dir", description = "A root directory", mandatory = true)
     private File mRootDir;
