@@ -272,6 +272,12 @@ public class StubDevice implements IDevice, Serializable {
         throw new InstallException(new IOException("stub"));
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public String uninstallApp(String applicationID, String... extraArgs) throws InstallException {
+        throw new InstallException(new IOException("stub"));
+    }
+
     /**
      * {@inheritDoc}
      */
