@@ -21,9 +21,11 @@ import com.android.tradefed.build.gcs.GCSDownloaderHelper;
 import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
+import com.android.tradefed.util.RunUtil;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Map;
 
 import javax.annotation.Nonnull;
 
@@ -31,6 +33,9 @@ import javax.annotation.Nonnull;
 public class GcsRemoteFileResolver implements IRemoteFileResolver {
 
     public static final String PROTOCOL = "gs";
+
+    private static final long SLEEP_INTERVAL_MS = 5 * 1000;
+    private static final String RETRY_TIMEOUT_MS_ARG = "retry_timeout_ms";
 
     private GCSDownloaderHelper mHelper = null;
 
@@ -41,7 +46,7 @@ public class GcsRemoteFileResolver implements IRemoteFileResolver {
         String path = consideredFile.getPath();
         try {
             // We need to download the file from the bucket
-            File downloadedFile = getDownloader().fetchTestResource(path);
+            File downloadedFile = fetchResourceWithRetry(path, args.getQueryArgs());
             // Unzip it if required
             return new ResolvedFile(
                     DynamicRemoteFileResolver.unzipIfRequired(downloadedFile, args.getQueryArgs()));
@@ -65,5 +70,30 @@ public class GcsRemoteFileResolver implements IRemoteFileResolver {
             mHelper = new GCSDownloaderHelper();
         }
         return mHelper;
+    }
+
+    @VisibleForTesting
+    void sleep() {
+        RunUtil.getDefault().sleep(SLEEP_INTERVAL_MS);
+    }
+
+    /** If the retry arg is set, we retry downloading until timeout is reached */
+    private File fetchResourceWithRetry(String path, Map<String, String> queryArgs)
+            throws BuildRetrievalError {
+        String timeoutStringValue = queryArgs.get(RETRY_TIMEOUT_MS_ARG);
+        if (timeoutStringValue == null) {
+            return getDownloader().fetchTestResource(path);
+        }
+        long timeout = System.currentTimeMillis() + Long.parseLong(timeoutStringValue);
+        BuildRetrievalError error = null;
+        while (System.currentTimeMillis() < timeout) {
+            try {
+                return getDownloader().fetchTestResource(path);
+            } catch (BuildRetrievalError e) {
+                error = e;
+            }
+            sleep();
+        }
+        throw error;
     }
 }
