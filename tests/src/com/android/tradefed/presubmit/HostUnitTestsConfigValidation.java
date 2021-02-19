@@ -149,7 +149,23 @@ public class HostUnitTestsConfigValidation implements IBuildReceiver {
     // This will be used when migrating default and clean up as we clear the TEST_MAPPING files.
     private static final Set<String> EXEMPTION_LIST =
             new HashSet<>(Arrays.asList(
-                    "resources_host_test_src_lib"
+                    "libhidl-gen-utils_test",
+                    "binderParcelTest",
+                    "hello_world_test",
+                    "libandroidfw_tests",
+                    "cpu_features-cpuinfo_test",
+                    "cpu_features-bit_utils_test",
+                    "cpu_features-stack_line_reader_test",
+                    "cpu_features-string_view_test",
+                    "art_libdexfile_external_static_tests",
+                    "art_libdexfile_external_tests",
+                    "art_libdexfile_support_static_tests",
+                    "art_libdexfile_support_tests",
+                    "logd-unit-tests",
+                    "libkver_test",
+                    "cuttlefish_net_tests",
+                    "libcuttlefish_fs_tests",
+                    "memunreachable_unit_test"
             ));
 
     /**
