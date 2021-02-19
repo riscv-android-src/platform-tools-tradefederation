@@ -85,6 +85,18 @@ public class TelephonyTokenProviderTest {
     }
 
     @Test
+    public void testSimCard_securedElementThalesGemalto() throws Exception {
+        mSimInfo = new SimCardInformation();
+        mSimInfo.mHasTelephonySupport = true;
+        mSimInfo.mHasSecuredElement = true;
+        mSimInfo.mHasSeService = true;
+        Mockito.doReturn(TelephonyTokenProvider.THALES_GEMALTO_SIM_ID)
+                .when(mDevice)
+                .getProperty(TelephonyTokenProvider.GSM_OPERATOR_PROP);
+        assertTrue(provider.hasToken(mDevice, TokenProperty.SECURE_ELEMENT_SIM_CARD));
+    }
+
+    @Test
     public void testSimCard_securedElementOrange_dualSim() throws Exception {
         mSimInfo = new SimCardInformation();
         mSimInfo.mHasTelephonySupport = true;
