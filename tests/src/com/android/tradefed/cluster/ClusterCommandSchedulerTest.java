@@ -1569,22 +1569,26 @@ public class ClusterCommandSchedulerTest {
                 .thenReturn(new ClusterCommandStatus(ClusterCommand.State.CANCELED, "Reason"));
 
         // not stopped without invocation context
+        handler.setCanceled(false);
         heartbeat.run();
         assertFalse(scheduler.wasStopInvocationCalled());
 
         // not stopped if invocation ID missing
         IInvocationContext context = Mockito.mock(IInvocationContext.class, RETURNS_DEEP_STUBS);
+        handler.setCanceled(false);
         handler.invocationStarted(context);
         heartbeat.run();
         assertFalse(scheduler.wasStopInvocationCalled());
 
         // not stopped if invocation ID is non-numeric
         Mockito.when(context.getInvocationId()).thenReturn("ID");
+        handler.setCanceled(false);
         heartbeat.run();
         assertFalse(scheduler.wasStopInvocationCalled());
 
         // stopped if invocation ID is numeric
         Mockito.when(context.getInvocationId()).thenReturn("1");
+        handler.setCanceled(false);
         heartbeat.run();
         assertTrue(scheduler.wasStopInvocationCalled());
 
