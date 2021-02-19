@@ -136,6 +136,10 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
     /** {@inheritDoc} */
     @Override
     public void run() {
+        if (getClusterOptions().isDeviceMonitorDisabled()) {
+            CLog.i("LabResourceDeviceMonitor is disabled.");
+            return;
+        }
         if (mServer == null) {
             mServer =
                     // Because dockerized TF use bridge network driver now, so we remove the
@@ -193,7 +197,7 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
         }
     }
 
-    private LabResource getCachedLabResource() {
+    protected LabResource getCachedLabResource() {
         mLabResourceLock.readLock().lock();
         try {
             return mLabResource;
