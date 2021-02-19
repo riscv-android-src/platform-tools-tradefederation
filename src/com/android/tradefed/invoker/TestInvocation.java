@@ -1321,7 +1321,7 @@ public class TestInvocation implements ITestInvocation {
 
     /** Measure the size of the work folder. */
     private Long measureWorkFolderSize(IConfiguration config, File workFolder) {
-        if (workFolder == null) {
+        if (workFolder == null || !workFolder.exists()) {
             return null;
         }
         // Only measure in parent process
@@ -1329,6 +1329,14 @@ public class TestInvocation implements ITestInvocation {
                 .getInvocationData()
                 .containsKey(SubprocessTfLauncher.SUBPROCESS_TAG_NAME)) {
             return null;
+        }
+
+        Object obj = config.getConfigurationObject(ShardHelper.LAST_SHARD_DETECTOR);
+        if (obj != null) {
+            LastShardDetector lastShardDetector = (LastShardDetector) obj;
+            if (!lastShardDetector.isLastShardDone()) {
+                return null;
+            }
         }
         Path folder = workFolder.toPath();
         try {
