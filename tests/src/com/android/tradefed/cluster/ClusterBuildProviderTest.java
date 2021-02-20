@@ -24,10 +24,11 @@ import org.junit.runners.JUnit4;
 import org.mockito.Mockito;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.ZipUtil;
 import java.io.File;
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Map;
 
 /** Unit tests for {@link ClusterBuildProvider}. */
@@ -36,17 +37,30 @@ public class ClusterBuildProviderTest {
 
     private static final String RESOURCE_KEY = "resource_key_1";
     private static final String EXTRA_RESOURCE_KEY = "resource_key_2";
+    private static final String ZIP_KEY = "resource_key_3.zip";
+    private static final String FILE_NAME_IN_ZIP = "resource.txt";
 
     private File mRootDir;
     private File mResourceFile;
+    private String mResourceUrl;
     private Map<String, File> mDownloadCache;
+    private Map<String, File> mCreatedResources;
     private TestResourceDownloader mSpyDownloader;
 
     @Before
     public void setUp() throws IOException {
         mRootDir = FileUtil.createTempDir("ClusterBuildProvider");
-        mResourceFile = FileUtil.createTempFile("TestResource", ".txt");
+        File zipDir = FileUtil.createTempDir("ClusterBuildProviderZip");
+        try {
+            File fileInZip = new File(zipDir, FILE_NAME_IN_ZIP);
+            fileInZip.createNewFile();
+            mResourceFile = ZipUtil.createZip(Arrays.asList(fileInZip));
+        } finally {
+            FileUtil.recursiveDelete(zipDir);
+        }
+        mResourceUrl = mResourceFile.toURI().toURL().toString();
         mDownloadCache = ClusterBuildProvider.sDownloadCache.get();
+        mCreatedResources = ClusterBuildProvider.sCreatedResources.get();
         mSpyDownloader = Mockito.spy(new TestResourceDownloader());
     }
 
@@ -55,11 +69,14 @@ public class ClusterBuildProviderTest {
         if (mDownloadCache != null) {
             mDownloadCache.clear();
         }
+        if (mCreatedResources != null) {
+            mCreatedResources.clear();
+        }
         FileUtil.deleteFile(mResourceFile);
         FileUtil.recursiveDelete(mRootDir);
     }
 
-    private ClusterBuildProvider createClusterBuildProvider() throws MalformedURLException {
+    private ClusterBuildProvider createClusterBuildProvider() {
         ClusterBuildProvider provider =
                 new ClusterBuildProvider() {
                     @Override
@@ -68,14 +85,14 @@ public class ClusterBuildProviderTest {
                     }
                 };
         provider.setRootDir(mRootDir);
-        provider.getTestResources().put(RESOURCE_KEY, mResourceFile.toURI().toURL().toString());
+        provider.getTestResources().put(RESOURCE_KEY, mResourceUrl);
         return provider;
     }
 
     private void verifyDownloadedResource() throws IOException {
         File file = new File(mRootDir, RESOURCE_KEY);
         Assert.assertTrue(file.isFile());
-        Assert.assertEquals(file, mDownloadCache.get(mResourceFile.toURI().toURL().toString()));
+        Assert.assertEquals(file, mDownloadCache.get(mResourceUrl));
         Mockito.verify(mSpyDownloader).download(Mockito.any(), Mockito.eq(file));
     }
 
@@ -83,15 +100,46 @@ public class ClusterBuildProviderTest {
     @Test
     public void testGetBuild_multipleTestResources() throws BuildRetrievalError, IOException {
         ClusterBuildProvider provider = createClusterBuildProvider();
-        provider.getTestResources()
-                .put(EXTRA_RESOURCE_KEY, mResourceFile.toURI().toURL().toString());
+        provider.getTestResources().put(ZIP_KEY, mResourceUrl);
         provider.getBuild();
 
         verifyDownloadedResource();
         Assert.assertEquals(1, mDownloadCache.size());
-        File file = new File(mRootDir, EXTRA_RESOURCE_KEY);
+        Assert.assertEquals(2, mCreatedResources.size());
+        File zipFile = new File(mRootDir, ZIP_KEY);
+        Assert.assertTrue(zipFile.isFile());
+        Assert.assertTrue(new File(mRootDir, FILE_NAME_IN_ZIP).isFile());
+        Mockito.verify(mSpyDownloader, Mockito.never())
+                .download(Mockito.any(), Mockito.eq(zipFile));
+    }
+
+    /** Test one provider with different decompress directories. */
+    @Test
+    public void testGetBuild_decompressTestResources() throws BuildRetrievalError, IOException {
+        final String url = mResourceFile.toURI().toURL().toString();
+        ClusterBuildProvider provider = createClusterBuildProvider();
+        provider.getTestResources().put(ZIP_KEY, url);
+        provider.getDecompressTestResources().put(RESOURCE_KEY, "dir1");
+        provider.getDecompressTestResources().put(ZIP_KEY, "dir2");
+        provider.getBuild();
+
+        verifyDownloadedResource();
+        Assert.assertEquals(1, mDownloadCache.size());
+        Assert.assertEquals(2, mCreatedResources.size());
+        File file = new File(mRootDir, ZIP_KEY);
         Assert.assertTrue(file.isFile());
+        Assert.assertFalse(FileUtil.getFileForPath(mRootDir, FILE_NAME_IN_ZIP).isFile());
+        Assert.assertTrue(FileUtil.getFileForPath(mRootDir, "dir1", FILE_NAME_IN_ZIP).isFile());
+        Assert.assertTrue(FileUtil.getFileForPath(mRootDir, "dir2", FILE_NAME_IN_ZIP).isFile());
         Mockito.verify(mSpyDownloader, Mockito.never()).download(Mockito.any(), Mockito.eq(file));
+    }
+
+    /** Test decompress the resource outside of working directory. */
+    @Test(expected = BuildRetrievalError.class)
+    public void testGetBuild_invalidDecompressDirectory() throws BuildRetrievalError {
+        ClusterBuildProvider provider = createClusterBuildProvider();
+        provider.getDecompressTestResources().put(RESOURCE_KEY, "../out");
+        provider.getBuild();
     }
 
     /** Test two providers downloading from the same URL. */
@@ -104,6 +152,7 @@ public class ClusterBuildProviderTest {
 
         verifyDownloadedResource();
         Assert.assertEquals(1, mDownloadCache.size());
+        Assert.assertEquals(1, mCreatedResources.size());
     }
 
     /** Test {@link ClusterBuildProvider#getBuild()} in an invocation thread. */
@@ -115,6 +164,7 @@ public class ClusterBuildProviderTest {
 
         verifyDownloadedResource();
         Assert.assertEquals(2, mDownloadCache.size());
+        Assert.assertEquals(2, mCreatedResources.size());
         File file = new File(mRootDir, EXTRA_RESOURCE_KEY);
         Assert.assertTrue(file.isFile());
         Mockito.verify(mSpyDownloader).download(Mockito.any(), Mockito.eq(file));
