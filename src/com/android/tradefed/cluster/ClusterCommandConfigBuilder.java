@@ -294,6 +294,12 @@ public class ClusterCommandConfigBuilder {
         for (final TestResource resource : testResources) {
             config.injectOptionValue(
                     "cluster:test-resource", resource.getName(), resource.getUrl());
+            if (resource.getDecompress()) {
+                config.injectOptionValue(
+                        "cluster:decompress-test-resource",
+                        resource.getName(),
+                        resource.getDecompressDir());
+            }
         }
 
         // Inject any extra options into the configuration
