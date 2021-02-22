@@ -43,8 +43,6 @@ import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.invoker.logger.TfObjectTracker;
 import com.android.tradefed.invoker.shard.IShardHelper;
-import com.android.tradefed.invoker.shard.LastShardDetector;
-import com.android.tradefed.invoker.shard.ShardHelper;
 import com.android.tradefed.invoker.shard.TestsPoolPoller;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -903,13 +901,10 @@ public class InvocationExecution implements IInvocationExecution {
 
     /** Collect the logs from $TMPDIR/adb.$UID.log. */
     @VisibleForTesting
-    void logHostAdb(IConfiguration config, ITestLogger logger) {
-        Object obj = config.getConfigurationObject(ShardHelper.LAST_SHARD_DETECTOR);
-        if (obj != null) {
-            LastShardDetector lastShardDetector = (LastShardDetector) obj;
-            if (!lastShardDetector.isLastShardDone()) {
-                return;
-            }
+    protected void logHostAdb(IConfiguration config, ITestLogger logger) {
+        if (config.getCommandOptions().getInvocationData().containsKey("subprocess")) {
+            // Avoid relogging the adb log in a subprocess
+            return;
         }
         String tmpDir = "/tmp";
         if (System.getenv("TMPDIR") != null) {
