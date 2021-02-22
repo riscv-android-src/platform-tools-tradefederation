@@ -17,6 +17,7 @@ package com.android.tradefed.invoker;
 
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.build.VersionedFile;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ILogSaverListener;
@@ -109,13 +110,15 @@ public class ShardMainResultForwarder extends ResultForwarder implements ILogSav
             mFirstShardEndTime = System.currentTimeMillis();
         }
         mShardsRemaining--;
+        // TODO: Avoid copying *all shard context*, just copy the one that finished
+        copyShardBuildInfoToMain(mOriginalContext, mShardContextList);
         if (mShardsRemaining <= 0) {
             // TODO: consider logging all shard final times.
             CLog.logAndDisplay(
                     LogLevel.INFO,
                     "There was %s between the first and last shard ended.",
                     TimeUtil.formatElapsedTime(System.currentTimeMillis() - mFirstShardEndTime));
-            copyShardBuildInfoToMain(mOriginalContext, mShardContextList);
+
             super.invocationEnded(mTotalElapsed);
         }
     }
@@ -189,13 +192,22 @@ public class ShardMainResultForwarder extends ResultForwarder implements ILogSav
                 IBuildInfo shardBuild = shard.getBuildInfo(deviceName);
                 IBuildInfo mainBuild = main.getBuildInfo(deviceName);
                 if (mainBuild != null) {
+                    // Copy attributes
                     for (Entry<String, String> entry : shardBuild.getBuildAttributes().entrySet()) {
                         mainBuild.addBuildAttribute(entry.getKey(), entry.getValue());
+                    }
+                    // Copy file reference
+                    for (String vKey : shardBuild.getVersionedFileKeys()) {
+                        if (mainBuild.getVersionedFile(vKey) == null) {
+                            VersionedFile shardFile = shardBuild.getVersionedFile(vKey);
+                            mainBuild.setFile(vKey, shardFile.getFile(), shardFile.getVersion());
+                        }
                     }
                 } else {
                     // Should not happen
                     CLog.e(
-                            "Found a device '%s' in shard configuration but not in parent configuration.",
+                            "Found a device '%s' in shard configuration but not in parent"
+                                    + " configuration.",
                             deviceName);
                 }
             }
