@@ -3372,25 +3372,33 @@ public class NativeDevice implements IManagedTestDevice {
             CLog.i("\"enable-root\" set to false; ignoring 'adb root' request");
             return false;
         }
-        CLog.i("adb root on device %s", getSerialNumber());
-        int attempts = MAX_RETRY_ATTEMPTS + 1;
-        for (int i=1; i <= attempts; i++) {
-            String output = executeAdbCommand("root");
-            // wait for device to disappear from adb
-            waitForDeviceNotAvailable("root", 20 * 1000);
+        InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.ADB_ROOT_ROUTINE_COUNT, 1);
+        long startTime = System.currentTimeMillis();
+        try {
+            CLog.i("adb root on device %s", getSerialNumber());
+            int attempts = MAX_RETRY_ATTEMPTS + 1;
+            for (int i = 1; i <= attempts; i++) {
+                String output = executeAdbCommand("root");
+                // wait for device to disappear from adb
+                waitForDeviceNotAvailable("root", 20 * 1000);
 
-            postAdbRootAction();
+                postAdbRootAction();
 
-            // wait for device to be back online
-            waitForDeviceOnline();
+                // wait for device to be back online
+                waitForDeviceOnline();
 
-            if (isAdbRoot()) {
-                return true;
+                if (isAdbRoot()) {
+                    return true;
+                }
+                CLog.w(
+                        "'adb root' on %s unsuccessful on attempt %d of %d. Output: '%s'",
+                        getSerialNumber(), i, attempts, output);
             }
-            CLog.w("'adb root' on %s unsuccessful on attempt %d of %d. Output: '%s'",
-                    getSerialNumber(), i, attempts, output);
+            return false;
+        } finally {
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.ADB_ROOT_TIME, System.currentTimeMillis() - startTime);
         }
-        return false;
     }
 
     /**

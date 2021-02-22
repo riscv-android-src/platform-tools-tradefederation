@@ -43,6 +43,10 @@ public class InvocationMetricLogger {
         RECOVERY_TIME("recovery_time", true),
         // Represents how often we enter the recover device routine.
         RECOVERY_ROUTINE_COUNT("recovery_routine_count", true),
+        // Represents the time we spend attempting to "adb root" a device.
+        ADB_ROOT_TIME("adb_root_time", true),
+        // Represents how often we enter the "adb root" device routine.
+        ADB_ROOT_ROUTINE_COUNT("adb_root_routine_count", true),
 
         SHUTDOWN_HARD_LATENCY("shutdown_hard_latency_ms", false),
         DEVICE_DONE_TIMESTAMP("device_done_timestamp", false),
