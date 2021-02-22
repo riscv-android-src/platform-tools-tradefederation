@@ -116,7 +116,7 @@ public class LocalRunInstructionBuilderTest {
                         configDescriptor, LocalTestRunner.ATEST, null);
         assertEquals(
                 "Run following command to try the test in a local setup:\n"
-                        + "atest module_name -- --abi arm --instant",
+                        + "atest module_name -- --abi arm --module-parameter instant_app",
                 instruction);
     }
 }
