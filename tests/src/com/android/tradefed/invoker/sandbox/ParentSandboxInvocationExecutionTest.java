@@ -108,6 +108,11 @@ public class ParentSandboxInvocationExecutionTest {
                     protected IRunUtil getRunUtil() {
                         return mMockRunUtil;
                     }
+
+                    @Override
+                    protected void logHostAdb(IConfiguration config, ITestLogger logger) {
+                        // Inop for testing
+                    }
                 };
         mContext = new InvocationContext();
         mContext.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
