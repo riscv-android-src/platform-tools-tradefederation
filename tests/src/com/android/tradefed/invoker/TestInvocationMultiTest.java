@@ -58,6 +58,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /** Unit tests for {@link TestInvocation} for multi device invocation. */
+@SuppressWarnings("MustBeClosedChecker")
 @RunWith(JUnit4.class)
 public class TestInvocationMultiTest {
     private TestInvocation mInvocation;
@@ -143,6 +144,9 @@ public class TestInvocationMultiTest {
         EasyMock.expect(mMockConfig.getDeviceConfigByName("device1")).andStubReturn(holder1);
         mDevice1.setOptions(EasyMock.anyObject());
         mDevice1.setRecovery(EasyMock.anyObject());
+        EasyMock.expect(mDevice1.getLogcat())
+                .andStubReturn(new ByteArrayInputStreamSource(new byte[0]));
+        mDevice1.clearLogcat();
 
         mDevice2 = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(mDevice2.getIDevice()).andStubReturn(new StubDevice("serial2"));
@@ -153,6 +157,9 @@ public class TestInvocationMultiTest {
         holder2.addSpecificConfig(mProvider2);
         EasyMock.expect(mMockConfig.getDeviceConfigByName("device2")).andStubReturn(holder2);
         mDevice2.setOptions(EasyMock.anyObject());
+        EasyMock.expect(mDevice2.getLogcat())
+                .andStubReturn(new ByteArrayInputStreamSource(new byte[0]));
+        mDevice2.clearLogcat();
 
         mContext.addAllocatedDevice("device1", mDevice1);
         mContext.addAllocatedDevice("device2", mDevice2);
@@ -259,8 +266,14 @@ public class TestInvocationMultiTest {
     public void testResolveDynamicFails() throws Throwable {
         mDevice1 = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(mDevice1.getIDevice()).andStubReturn(new StubDevice("serial1"));
+        EasyMock.expect(mDevice1.getLogcat())
+                .andStubReturn(new ByteArrayInputStreamSource(new byte[0]));
+        mDevice1.clearLogcat();
         mDevice2 = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(mDevice2.getIDevice()).andStubReturn(new StubDevice("serial1"));
+        EasyMock.expect(mDevice2.getLogcat())
+                .andStubReturn(new ByteArrayInputStreamSource(new byte[0]));
+        mDevice2.clearLogcat();
         mContext.addAllocatedDevice("device1", mDevice1);
         mContext.addAllocatedDevice("device2", mDevice2);
 

@@ -31,7 +31,6 @@ import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.metric.AutoLogCollector;
 import com.android.tradefed.device.metric.CollectorHelper;
 import com.android.tradefed.device.metric.CountTestCasesCollector;
@@ -660,10 +659,9 @@ public class InvocationExecution implements IInvocationExecution {
             return;
         }
         IDevice idevice = device.getIDevice();
-        // non stub device
-        if (!(idevice instanceof StubDevice)) {
-            try (InputStreamSource logcatSource = device.getLogcat()) {
-                device.clearLogcat();
+        try (InputStreamSource logcatSource = device.getLogcat()) {
+            device.clearLogcat();
+            if (logcatSource != null && logcatSource.size() > 0L) {
                 String name =
                         String.format(
                                 "%s_%s",
@@ -671,7 +669,7 @@ public class InvocationExecution implements IInvocationExecution {
                 listener.testLog(name, LogDataType.LOGCAT, logcatSource);
             }
         }
-        // emulator logs
+        // Emulator logs
         if (idevice != null && idevice.isEmulator()) {
             try (InputStreamSource emulatorOutput = device.getEmulatorOutput()) {
                 // TODO: Clear the emulator log
