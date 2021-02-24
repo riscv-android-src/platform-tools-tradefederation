@@ -20,6 +20,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -232,5 +234,19 @@ public class ClusterCommandConfigBuilderTest {
         // extra options with same key were injected
         verify(mConfig, times(1)).injectOptionValue("key", "hello");
         verify(mConfig, times(1)).injectOptionValue("key", "world");
+    }
+
+    @Test
+    public void testBuild_useParallelSetup() throws IOException, ConfigurationException {
+        mTestEnvironment.setUseParallelSetup(true);
+        builder.build();
+        verify(mConfig, times(1)).injectOptionValue("parallel-setup", "true");
+        verify(mConfig, times(1)).injectOptionValue("parallel-setup-timeout", "0");
+
+        reset(mConfig);
+        mTestEnvironment.setUseParallelSetup(false);
+        builder.build();
+        verify(mConfig, never()).injectOptionValue("parallel-setup", "true");
+        verify(mConfig, never()).injectOptionValue("parallel-setup-timeout", "0");
     }
 }
