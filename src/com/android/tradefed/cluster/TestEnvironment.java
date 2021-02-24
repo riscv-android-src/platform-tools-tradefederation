@@ -43,6 +43,7 @@ public class TestEnvironment {
     String mRetryCommandLine = null;
     String mLogLevel = null;
     final List<TradefedConfigObject> mTradefedConfigObjects = new ArrayList<>();
+    boolean mUseParallelSetup = false;
 
     /**
      * Adds an environment variable.
@@ -221,6 +222,19 @@ public class TestEnvironment {
         mTradefedConfigObjects.add(obj);
     }
 
+    /**
+     * Returns whether to use parallel setup.
+     *
+     * @return a boolean.
+     */
+    public boolean useParallelSetup() {
+        return mUseParallelSetup;
+    }
+
+    public void setUseParallelSetup(boolean f) {
+        mUseParallelSetup = f;
+    }
+
     public static TestEnvironment fromJson(JSONObject json) throws JSONException {
         TestEnvironment obj = new TestEnvironment();
         final JSONArray envVars = json.optJSONArray("env_vars");
@@ -271,7 +285,7 @@ public class TestEnvironment {
         } else {
             CLog.w("output_file_upload_url is null");
         }
-        obj.mUseSubprocessReporting = json.optBoolean("use_subprocess_reporting");
+        obj.mUseSubprocessReporting = json.optBoolean("use_subprocess_reporting", true);
         obj.mInvocationTimeout = json.optLong("invocation_timeout_millis", 0L);
         obj.mOutputIdleTimeout = json.optLong("output_idle_timeout_millis", 0L);
         obj.mContextFilePattern = json.optString("context_file_pattern");
@@ -289,6 +303,7 @@ public class TestEnvironment {
         if (arr != null) {
             obj.mTradefedConfigObjects.addAll(TradefedConfigObject.fromJsonArray(arr));
         }
+        obj.mUseParallelSetup = json.optBoolean("use_parallel_setup", true);
         return obj;
     }
 }
