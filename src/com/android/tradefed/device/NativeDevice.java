@@ -2318,9 +2318,13 @@ public class NativeDevice implements IManagedTestDevice {
     @SuppressWarnings("MustBeClosedChecker")
     public InputStreamSource getLogcat() {
         if (mLogcatReceiver == null) {
-            CLog.w("Not capturing logcat for %s in background, returning a logcat dump",
-                    getSerialNumber());
-            return getLogcatDump();
+            if (!(getIDevice() instanceof StubDevice)) {
+                CLog.w(
+                        "Not capturing logcat for %s in background, returning a logcat dump",
+                        getSerialNumber());
+                return getLogcatDump();
+            }
+            return new ByteArrayInputStreamSource(new byte[0]);
         } else {
             return mLogcatReceiver.getLogcatData();
         }
