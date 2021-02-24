@@ -75,6 +75,8 @@ public class RustTestResultParser extends MultiLineReceiver {
     private static int mNumTestsStarted = 0;
     private static int mNumTestsEnded = 0;
 
+    private boolean mDoneCalled = false;
+
     // Use a special entry to mark skipped test in mTestResultCache
     static final String SKIPPED_ENTRY = "Skipped";
     // Failed but without stacktrace tests in mTestResultCache
@@ -183,6 +185,10 @@ public class RustTestResultParser extends MultiLineReceiver {
     /** Send recorded test results to all listeners. */
     @Override
     public void done() {
+        if (mDoneCalled) {
+            return;
+        }
+        mDoneCalled = true;
         for (ITestInvocationListener listener : mListeners) {
             for (Entry<TestDescription, String> test : mTestResultCache.entrySet()) {
                 listener.testStarted(test.getKey());
