@@ -155,7 +155,10 @@ public class RustBinaryTest extends RustTestBase implements IDeviceTest, IConfig
         CLog.d("RustBinaryTest runTest: " + fullPath);
         File file = new File(fullPath);
         String dir = file.getParent();
-        final String cmd = "cd " + dir + " && " + fullPath;
+        String cmd = "cd " + dir + " && " + fullPath;
+        if (mTestOptions.size() > 0) {
+            cmd += " " + String.join(" ", mTestOptions);
+        }
 
         // Rust binary does not support multiple inclusion filters,
         // so we run the test once for each include filter.
