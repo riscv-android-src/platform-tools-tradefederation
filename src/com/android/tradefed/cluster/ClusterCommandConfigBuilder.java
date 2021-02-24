@@ -206,9 +206,10 @@ public class ClusterCommandConfigBuilder {
         }
         config.setDeviceConfigList(deviceConfigs);
         // Perform target preparation in parallel with an unlimited timeout
-        // TODO(b/166455187): Consider making parallel setup options configurable
-        config.injectOptionValue("parallel-setup", "true");
-        config.injectOptionValue("parallel-setup-timeout", "0");
+        if (mTestEnvironment.useParallelSetup()) {
+            config.injectOptionValue("parallel-setup", "true");
+            config.injectOptionValue("parallel-setup-timeout", "0");
+        }
 
         config.setTest(new ClusterCommandLauncher());
         config.setLogSaver(new ClusterLogSaver());
@@ -249,6 +250,7 @@ public class ClusterCommandConfigBuilder {
         if (mTestEnvironment.useSubprocessReporting()) {
             config.injectOptionValue("cluster:use-subprocess-reporting", "true");
         }
+        config.getCommandOptions().setInvocationTimeout(mTestEnvironment.getInvocationTimeout());
         config.injectOptionValue(
                 "cluster:output-idle-timeout",
                 String.valueOf(mTestEnvironment.getOutputIdleTimeout()));
@@ -293,6 +295,12 @@ public class ClusterCommandConfigBuilder {
         for (final TestResource resource : testResources) {
             config.injectOptionValue(
                     "cluster:test-resource", resource.getName(), resource.getUrl());
+            if (resource.getDecompress()) {
+                config.injectOptionValue(
+                        "cluster:decompress-test-resource",
+                        resource.getName(),
+                        resource.getDecompressDir());
+            }
         }
 
         // Inject any extra options into the configuration

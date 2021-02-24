@@ -38,6 +38,7 @@ import com.android.tradefed.device.ITestDevice.ApexInfo;
 import com.android.tradefed.device.ITestDevice.MountPointInfo;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.contentprovider.ContentProviderHandler;
+import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.host.HostOptions;
 import com.android.tradefed.host.IHostOptions;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -53,6 +54,17 @@ import com.android.tradefed.util.KeyguardControllerState;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.ZipUtil2;
+
+import junit.framework.TestCase;
+
+import org.easymock.Capture;
+import org.easymock.EasyMock;
+import org.easymock.IAnswer;
+import org.easymock.IExpectationSetters;
+import org.junit.Assert;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
+
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -68,15 +80,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+
 import javax.annotation.Nullable;
-import junit.framework.TestCase;
-import org.easymock.Capture;
-import org.easymock.EasyMock;
-import org.easymock.IAnswer;
-import org.easymock.IExpectationSetters;
-import org.junit.Assert;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mockito;
 
 /**
  * Unit tests for {@link TestDevice}.
@@ -4146,7 +4151,8 @@ public class TestDeviceTest extends TestCase {
         };
         try {
             mTestDevice.setSetting(0, "system", "screen_brightness", "75");
-        } catch (IllegalArgumentException e) {
+        } catch (HarnessRuntimeException e) {
+            assertTrue(e.getMessage().contains("Changing settings not supported"));
             // expected
             return;
         }

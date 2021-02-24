@@ -92,6 +92,8 @@ public class ParentSandboxInvocationExecution extends InvocationExecution {
         // done in the sandbox, so tearDown should be skipped.
         mParentPreparerConfig = getParentTargetConfig(config);
         if (mParentPreparerConfig == null) {
+            // Log the host adb in the parent sandbox
+            logHostAdb(config, logger);
             return;
         }
         CLog.d("Using %s to run in the parent tear down.", SandboxOptions.PARENT_PREPARER_CONFIG);

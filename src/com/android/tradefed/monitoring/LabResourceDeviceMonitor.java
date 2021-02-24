@@ -40,7 +40,6 @@ import com.google.dualhomelab.monitoringagent.resourcemonitoring.Resource;
 import com.google.protobuf.util.Timestamps;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -59,7 +58,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
 import io.grpc.Server;
-import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder;
+import io.grpc.ServerBuilder;
 import io.grpc.stub.StreamObserver;
 
 /**
@@ -76,7 +75,6 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
     public static final String TEST_HARNESS_KEY = "test_harness";
     public static final String HARNESS_VERSION_KEY = "harness_version";
     public static final String HOST_GROUP_KEY = "host_group";
-    public static final String SERVER_HOSTNAME = "localhost";
     public static final int DEFAULT_PORT = 8887;
     public static final int DEFAULT_THREAD_COUNT = 1;
     public static final String POOL_ATTRIBUTE_NAME = "pool";
@@ -90,8 +88,10 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
     private final Collection<IResourceMetricCollector> mMetricCollectors = new ArrayList<>();
     private final ReadWriteLock mLabResourceLock = new ReentrantReadWriteLock();
     private LabResource mLabResource = LabResource.newBuilder().build();
-    /** A single thread executor for all metricize operations. */
+    // The ScheduledExecutorService triggers the metricize operations base on mMetricizeCycleSec.
     private ScheduledExecutorService mMetricizeExecutor;
+    // The ExecutorService executes the collector functions in every metricize operation.
+    private ExecutorService mCollectionExecutor;
 
     @Option(
             name = "metricize-op-timeout",
@@ -136,10 +136,17 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
     /** {@inheritDoc} */
     @Override
     public void run() {
+        if (getClusterOptions().isDeviceMonitorDisabled()) {
+            CLog.i("LabResourceDeviceMonitor is disabled.");
+            return;
+        }
         if (mServer == null) {
             mServer =
-                    NettyServerBuilder.forAddress(
-                                    new InetSocketAddress(SERVER_HOSTNAME, DEFAULT_PORT))
+                    // Because dockerized TF use bridge network driver now, so we remove the
+                    // hostname restriction for the grpc server.
+                    // The restriction should be established by setting docker port mapping.
+                    // For example: adding docker run argument "-p 127.0.0.1:8887:8887".
+                    ServerBuilder.forPort(DEFAULT_PORT)
                             .addService(this)
                             .executor(Executors.newFixedThreadPool(DEFAULT_THREAD_COUNT))
                             .build();
@@ -147,29 +154,33 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
         try {
             mServer.start();
             loadMetricCollectors();
-            startMetricizeExecutor();
+            startExecutors();
             scheduleMetricizeTask();
         } catch (IOException | IllegalStateException e) {
             CLog.e(e);
+            stopExecutors();
         }
     }
 
     @VisibleForTesting
-    void startMetricizeExecutor() {
+    void startExecutors() {
         mMetricizeExecutor =
                 MoreExecutors.getExitingScheduledExecutorService(
                         new ScheduledThreadPoolExecutor(1));
+        mCollectionExecutor = Executors.newSingleThreadExecutor();
     }
 
     @VisibleForTesting
-    void stopMetricizeExecutor() {
-        if (mMetricizeExecutor != null && !mMetricizeExecutor.isShutdown()) {
-            mMetricizeExecutor.shutdownNow();
-            awaitTerminateExecutor(mMetricizeExecutor);
-        }
+    void stopExecutors() {
+        awaitTerminateExecutor(mMetricizeExecutor);
+        awaitTerminateExecutor(mCollectionExecutor);
     }
 
     private void awaitTerminateExecutor(ExecutorService executor) {
+        if (executor == null) {
+            return;
+        }
+        executor.shutdownNow();
         try {
             executor.awaitTermination(EXECUTOR_TERMINATE_TIMEOUT_SEC, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
@@ -186,7 +197,7 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
         }
     }
 
-    private LabResource getCachedLabResource() {
+    protected LabResource getCachedLabResource() {
         mLabResourceLock.readLock().lock();
         try {
             return mLabResource;
@@ -229,7 +240,7 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
         if (mServer != null && !mServer.isShutdown()) {
             mServer.shutdownNow();
         }
-        stopMetricizeExecutor();
+        stopExecutors();
     }
 
     /** {@inheritDoc} */
@@ -281,7 +292,7 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
         for (IResourceMetricCollector collector : collectors) {
             Future<Collection<Resource>> future = null;
             try {
-                future = mMetricizeExecutor.submit(collector::getHostResourceMetrics);
+                future = mCollectionExecutor.submit(collector::getHostResourceMetrics);
                 builder.addAllResource(future.get(mMetricizeTimeoutMs, TimeUnit.MILLISECONDS));
             } catch (InterruptedException
                     | ExecutionException
@@ -331,7 +342,7 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
             Future<Collection<Resource>> future = null;
             try {
                 future =
-                        mMetricizeExecutor.submit(
+                        mCollectionExecutor.submit(
                                 () ->
                                         collector.getDeviceResourceMetrics(
                                                 descriptor,

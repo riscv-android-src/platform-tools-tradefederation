@@ -17,12 +17,20 @@ package com.android.tradefed.cluster;
 
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.OptionSetter;
+import com.android.tradefed.device.DeviceAllocationState;
+import com.android.tradefed.monitoring.LabResourceDeviceMonitor;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.IRunUtil;
+import com.google.dualhomelab.monitoringagent.resourcemonitoring.LabResource;
+import com.google.dualhomelab.monitoringagent.resourcemonitoring.Metric;
+import com.google.dualhomelab.monitoringagent.resourcemonitoring.MonitoredEntity;
+import com.google.dualhomelab.monitoringagent.resourcemonitoring.Resource;
+import com.google.protobuf.util.Timestamps;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -65,7 +73,40 @@ public class ClusterDeviceMonitorTest {
 
                     @Override
                     List<DeviceDescriptor> listDevices() {
-                        return new ArrayList<DeviceDescriptor>();
+                        List<DeviceDescriptor> devices = new ArrayList<DeviceDescriptor>();
+                        devices.add(
+                                new DeviceDescriptor(
+                                        "device1",
+                                        false,
+                                        DeviceAllocationState.Available,
+                                        "product1",
+                                        "variant1",
+                                        "sdkVersion",
+                                        "buildId",
+                                        "batteryLevel"));
+                        return devices;
+                    }
+
+                    @Override
+                    protected LabResource getCachedLabResource() {
+                        return LabResource.newBuilder()
+                                .addDevice(
+                                        MonitoredEntity.newBuilder()
+                                                .putIdentifier(
+                                                        LabResourceDeviceMonitor.DEVICE_SERIAL_KEY,
+                                                        "device1")
+                                                .addResource(
+                                                        Resource.newBuilder()
+                                                                .setResourceName("resource1")
+                                                                .setTimestamp(
+                                                                        Timestamps.fromMillis(
+                                                                                Instant.now()
+                                                                                        .toEpochMilli()))
+                                                                .addMetric(
+                                                                        Metric.newBuilder()
+                                                                                .setTag("tag1")
+                                                                                .setValue(10.0f))))
+                                .build();
                     }
                 };
         mClusterDeviceMonitorSetter = new OptionSetter(mClusterDeviceMonitor);
@@ -104,6 +145,10 @@ public class ClusterDeviceMonitorTest {
         Assert.assertEquals(Arrays.asList("cluster2", "cluster3"), hostEvent.getNextClusterIds());
         Assert.assertEquals("lab1", hostEvent.getLabName());
         Assert.assertEquals("", hostEvent.getData().get("label"));
+
+        Assert.assertEquals(1, hostEvent.getDeviceInfos().size());
+        ClusterDeviceInfo device = hostEvent.getDeviceInfos().get(0);
+        Assert.assertEquals("device1", device.getDeviceDescriptor().getSerial());
     }
 
     @Test
@@ -200,5 +245,25 @@ public class ClusterDeviceMonitorTest {
 
         Assert.assertEquals(expected, mClusterDeviceMonitor.getAdditionalHostInfo());
         EasyMock.verify(mRunUtil);
+    }
+
+    @Test
+    public void testDeviceExtraInfo() throws Exception {
+        Capture<ClusterHostEvent> capture = new Capture<>();
+        mHostEventUploader.postEvent(EasyMock.capture(capture));
+        mHostEventUploader.flush();
+        EasyMock.replay(mHostEventUploader);
+        mEventDispatcher.dispatch();
+        EasyMock.verify(mHostEventUploader);
+        ClusterHostEvent hostEvent = capture.getValue();
+        Assert.assertNotNull(hostEvent.getHostName());
+        Assert.assertNotNull(hostEvent.getTimestamp());
+        Assert.assertEquals("cluster1", hostEvent.getClusterId());
+        Assert.assertEquals(Arrays.asList("cluster2", "cluster3"), hostEvent.getNextClusterIds());
+        Assert.assertEquals(1, hostEvent.getDeviceInfos().size());
+        ClusterDeviceInfo device = hostEvent.getDeviceInfos().get(0);
+        Assert.assertEquals("device1", device.getDeviceDescriptor().getSerial());
+        Assert.assertEquals(1, device.getExtraInfo().size());
+        Assert.assertEquals("10.0", device.getExtraInfo().get("resource1-tag1"));
     }
 }

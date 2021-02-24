@@ -337,10 +337,7 @@ public class LocalAndroidVirtualDeviceTest {
 
         ITestLogger testLogger = mockReportInstanceLogs();
 
-        IDevice mockOnlineDevice = EasyMock.createMock(IDevice.class);
-        EasyMock.expect(mockOnlineDevice.getSerialNumber()).andReturn(ONLINE_SERIAL_NUMBER);
-
-        EasyMock.replay(acloudCreateRunUtil, acloudDeleteRunUtil, testLogger, mockOnlineDevice);
+        EasyMock.replay(acloudCreateRunUtil, acloudDeleteRunUtil, testLogger);
 
         // Test setUp.
         mLocalAvd.setTestLogger(testLogger);
@@ -350,6 +347,7 @@ public class LocalAndroidVirtualDeviceTest {
 
         Assert.assertEquals(ONLINE_SERIAL_NUMBER, mLocalAvd.getIDevice().getSerialNumber());
 
+        EasyMock.verify(acloudCreateRunUtil);
         File capturedHostPackageDir = new File(hostPackageDir.getValue());
         File capturedImageDir = new File(imageDir.getValue());
         File capturedInstanceDir = new File(instanceDir.getValue());
@@ -357,8 +355,6 @@ public class LocalAndroidVirtualDeviceTest {
         Assert.assertTrue(capturedImageDir.isDirectory());
         Assert.assertTrue(capturedInstanceDir.isDirectory());
 
-        // Set the device to be online.
-        mLocalAvd.setIDevice(mockOnlineDevice);
         // Create the logs and configuration that the local AVD object expects.
         File runtimeDir = new File(capturedInstanceDir, "cuttlefish_runtime");
         Assert.assertTrue(runtimeDir.mkdirs());
@@ -372,6 +368,66 @@ public class LocalAndroidVirtualDeviceTest {
 
         assertFinalDeviceState(mLocalAvd.getIDevice());
 
+        EasyMock.verify(acloudDeleteRunUtil, testLogger);
+        Assert.assertFalse(new File(reportFile.getValue()).exists());
+        Assert.assertFalse(capturedHostPackageDir.exists());
+        Assert.assertFalse(capturedImageDir.exists());
+        Assert.assertFalse(capturedInstanceDir.exists());
+    }
+
+    /** Test shutting down the device during the invocation. */
+    @Test
+    public void testShutdown() throws DeviceNotAvailableException, TargetSetupError {
+        Capture<String> reportFile = new Capture<String>();
+        Capture<String> hostPackageDir = new Capture<String>();
+        Capture<String> imageDir = new Capture<String>();
+        Capture<String> instanceDir = new Capture<String>();
+        IRunUtil acloudCreateRunUtil =
+                mockAcloudCreate(
+                        CommandStatus.SUCCESS,
+                        SUCCESS_REPORT_STRING,
+                        reportFile,
+                        hostPackageDir,
+                        imageDir,
+                        instanceDir);
+
+        IRunUtil acloudDeleteRunUtil = mockAcloudDelete(CommandStatus.SUCCESS);
+
+        ITestLogger testLogger = EasyMock.createMock(ITestLogger.class);
+
+        EasyMock.replay(acloudCreateRunUtil, acloudDeleteRunUtil, testLogger);
+
+        // Test setUp.
+        mLocalAvd.setTestLogger(testLogger);
+        mLocalAvd.currentRunUtil = acloudCreateRunUtil;
+        mLocalAvd.expectToConnect = true;
+        mLocalAvd.preInvocationSetup(mMockBuildInfo);
+
+        Assert.assertEquals(ONLINE_SERIAL_NUMBER, mLocalAvd.getIDevice().getSerialNumber());
+
+        EasyMock.verify(acloudCreateRunUtil);
+        File capturedHostPackageDir = new File(hostPackageDir.getValue());
+        File capturedImageDir = new File(imageDir.getValue());
+        File capturedInstanceDir = new File(instanceDir.getValue());
+        Assert.assertTrue(capturedHostPackageDir.isDirectory());
+        Assert.assertTrue(capturedImageDir.isDirectory());
+        Assert.assertTrue(capturedInstanceDir.isDirectory());
+
+        // Shutdown the device.
+        mLocalAvd.currentRunUtil = acloudDeleteRunUtil;
+        mLocalAvd.expectToConnect = false;
+        mLocalAvd.shutdown();
+
+        EasyMock.verify(acloudDeleteRunUtil);
+
+        // Test that tearDown does not invoke acloud again.
+        mLocalAvd.currentRunUtil = null;
+        mLocalAvd.expectToConnect = false;
+        mLocalAvd.postInvocationTearDown(null);
+
+        assertFinalDeviceState(mLocalAvd.getIDevice());
+
+        EasyMock.verify(testLogger);
         Assert.assertFalse(new File(reportFile.getValue()).exists());
         Assert.assertFalse(capturedHostPackageDir.exists());
         Assert.assertFalse(capturedImageDir.exists());
@@ -413,6 +469,7 @@ public class LocalAndroidVirtualDeviceTest {
 
         Assert.assertEquals(STUB_SERIAL_NUMBER, mLocalAvd.getIDevice().getSerialNumber());
 
+        EasyMock.verify(acloudCreateRunUtil);
         File capturedHostPackageDir = new File(hostPackageDir.getValue());
         File capturedImageDir = new File(imageDir.getValue());
         File capturedInstanceDir = new File(instanceDir.getValue());
@@ -426,6 +483,7 @@ public class LocalAndroidVirtualDeviceTest {
 
         assertFinalDeviceState(mLocalAvd.getIDevice());
 
+        EasyMock.verify(acloudDeleteRunUtil, testLogger);
         Assert.assertFalse(new File(reportFile.getValue()).exists());
         Assert.assertFalse(capturedHostPackageDir.exists());
         Assert.assertFalse(capturedImageDir.exists());
@@ -465,6 +523,7 @@ public class LocalAndroidVirtualDeviceTest {
 
         Assert.assertEquals(STUB_SERIAL_NUMBER, mLocalAvd.getIDevice().getSerialNumber());
 
+        EasyMock.verify(acloudCreateRunUtil);
         File capturedHostPackageDir = new File(hostPackageDir.getValue());
         File capturedImageDir = new File(imageDir.getValue());
         File capturedInstanceDir = new File(instanceDir.getValue());
@@ -478,6 +537,7 @@ public class LocalAndroidVirtualDeviceTest {
 
         assertFinalDeviceState(mLocalAvd.getIDevice());
 
+        EasyMock.verify(testLogger);
         Assert.assertFalse(new File(reportFile.getValue()).exists());
         Assert.assertFalse(capturedHostPackageDir.exists());
         Assert.assertFalse(capturedImageDir.exists());

@@ -16,6 +16,7 @@
 package com.android.tradefed.testtype.rust;
 
 import com.android.ddmlib.MultiLineReceiver;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
@@ -71,6 +72,11 @@ public class RustTestResultParser extends MultiLineReceiver {
      */
     private List<String> mTrackLogsBeforeRunStart = new ArrayList<>();
 
+    private static int mNumTestsStarted = 0;
+    private static int mNumTestsEnded = 0;
+
+    private boolean mDoneCalled = false;
+
     // Use a special entry to mark skipped test in mTestResultCache
     static final String SKIPPED_ENTRY = "Skipped";
     // Failed but without stacktrace tests in mTestResultCache
@@ -81,7 +87,7 @@ public class RustTestResultParser extends MultiLineReceiver {
 
     static final Pattern RUST_ONE_LINE_RESULT = Pattern.compile("test (\\S*) \\.\\.\\. (\\S*)");
 
-    static final Pattern RUNNING_PATTERN = Pattern.compile("running .* test[s]?");
+    static final Pattern RUNNING_PATTERN = Pattern.compile("running (.*) test[s]?");
 
     static final Pattern TEST_FAIL_PATTERN = Pattern.compile("---- (\\S*) stdout ----");
 
@@ -124,9 +130,18 @@ public class RustTestResultParser extends MultiLineReceiver {
             if (lineMatchesPattern(line, RUST_ONE_LINE_RESULT)) {
                 mCurrentTestName = mCurrentMatcher.group(1);
                 mCurrentTestStatus = mCurrentMatcher.group(2);
+                mNumTestsEnded++;
                 reportTestResult();
             } else if (lineMatchesPattern(line, RUNNING_PATTERN)) {
                 mSeenOneTestRunStart = true;
+                try {
+                    mNumTestsStarted = Integer.parseInt(mCurrentMatcher.group(1));
+                } catch (NumberFormatException e) {
+                    CLog.e(
+                            "Unable to determine number of tests expected, received: %s",
+                            mCurrentMatcher.group(1));
+                }
+                mNumTestsEnded = 0;
                 mTrackLogsBeforeRunStart.clear();
             } else if (lineMatchesPattern(line, TEST_FAIL_PATTERN)) {
                 if (mCurrentTestTrace != null) {
@@ -170,6 +185,10 @@ public class RustTestResultParser extends MultiLineReceiver {
     /** Send recorded test results to all listeners. */
     @Override
     public void done() {
+        if (mDoneCalled) {
+            return;
+        }
+        mDoneCalled = true;
         for (ITestInvocationListener listener : mListeners) {
             for (Entry<TestDescription, String> test : mTestResultCache.entrySet()) {
                 listener.testStarted(test.getKey());
@@ -193,6 +212,11 @@ public class RustTestResultParser extends MultiLineReceiver {
                         String.format(
                                 "test did not report any run:\n%s",
                                 String.join("\n", mTrackLogsBeforeRunStart)));
+            } else if (mNumTestsStarted > mNumTestsEnded) {
+                listener.testRunFailed(
+                        String.format(
+                                "Test run incomplete. Started %d tests, finished %d",
+                                mNumTestsStarted, mNumTestsEnded));
             }
         }
     }

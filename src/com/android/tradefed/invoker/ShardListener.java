@@ -218,6 +218,8 @@ public class ShardListener extends CollectingTestListener implements ISupportGra
                 clearResultsForName(name);
             }
             forwardLogAssociation(getModuleLogFiles(), mMainListener);
+            // Clean the file we just logged to avoid overlap
+            clearModuleLogFiles();
             mMainListener.testModuleEnded();
         }
         mModuleContext = null;

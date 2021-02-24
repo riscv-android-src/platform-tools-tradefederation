@@ -153,7 +153,12 @@ public class RustBinaryTest extends RustTestBase implements IDeviceTest, IConfig
             final String fullPath)
             throws DeviceNotAvailableException {
         CLog.d("RustBinaryTest runTest: " + fullPath);
-        String cmd = fullPath;
+        File file = new File(fullPath);
+        String dir = file.getParent();
+        String cmd = "cd " + dir + " && " + fullPath;
+        if (mTestOptions.size() > 0) {
+            cmd += " " + String.join(" ", mTestOptions);
+        }
 
         // Rust binary does not support multiple inclusion filters,
         // so we run the test once for each include filter.
@@ -193,6 +198,8 @@ public class RustBinaryTest extends RustTestBase implements IDeviceTest, IConfig
                         0 /* retryAttempts */);
             } catch (DeviceNotAvailableException e) {
                 listener.testRunFailed(String.format("Device not available: %s", e.getMessage()));
+            } finally {
+                resultParser.flush();
             }
         }
         long testTimeMs = System.currentTimeMillis() - startTimeMs;
