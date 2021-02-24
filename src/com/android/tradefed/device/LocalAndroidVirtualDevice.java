@@ -54,11 +54,14 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
     private static final int INVALID_PORT = 0;
 
     // Environment variables.
-    private static final String ANDROID_HOST_OUT = "ANDROID_HOST_OUT";
+    private static final String ANDROID_SOONG_HOST_OUT = "ANDROID_SOONG_HOST_OUT";
     private static final String TMPDIR = "TMPDIR";
 
-    // The name of the GZIP file containing launch_cvd and stop_cvd.
+    // The build info key of the cuttlefish tools.
     private static final String CVD_HOST_PACKAGE_NAME = "cvd-host_package.tar.gz";
+    // The optional build info keys for mixing images.
+    private static final String SYSTEM_IMAGE_ZIP_NAME = "system-img.zip";
+    private static final String OTA_TOOLS_ZIP_NAME = "otatools.zip";
 
     private static final String CUTTLEFISH_RUNTIME_DIR_NAME = "cuttlefish_runtime";
 
@@ -68,6 +71,8 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
     private File mImageDir = null;
     private File mInstanceDir = null;
     private File mHostPackageDir = null;
+    private File mSystemImageDir = null;
+    private File mOtaToolsDir = null;
     private List<File> mTempDirs = new ArrayList<File>();
 
     private GceAvdInfo mGceAvdInfo = null;
@@ -84,7 +89,7 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
         // The setup method in super class does not require the device to be online.
         super.preInvocationSetup(info);
 
-        createTempDirs(info);
+        prepareToolsAndImages(info);
 
         CommandResult result = null;
         File report = null;
@@ -144,12 +149,16 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
                 CLog.i(
                         "Skip deleting the temporary directories.\n"
                                 + "Address: %s\nName: %s\n"
-                                + "Host package: %s\nImage: %s\nInstance: %s",
-                        hostAndPort, instanceName, mHostPackageDir, mImageDir, mInstanceDir);
-                mTempDirs.clear();
-                mHostPackageDir = null;
-                mInstanceDir = null;
-                mImageDir = null;
+                                + "Host package: %s\nImage: %s\nInstance: %s\n"
+                                + "System image: %s\nOTA tools: %s",
+                        hostAndPort,
+                        instanceName,
+                        mHostPackageDir,
+                        mImageDir,
+                        mInstanceDir,
+                        mSystemImageDir,
+                        mOtaToolsDir);
+                resetTempDirAttributes();
             }
 
             mGceAvdInfo = null;
@@ -187,40 +196,40 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
         return file;
     }
 
-    /** Find host package in build info and extract to a temporary directory. */
-    private File findHostPackage(IBuildInfo buildInfo) throws TargetSetupError {
-        File hostPackageDir = null;
-        File hostPackage = buildInfo.getFile(CVD_HOST_PACKAGE_NAME);
-        if (hostPackage != null) {
-            try {
-                hostPackageDir = extractArchive(hostPackage);
-            } catch (IOException ex) {
-                throw new TargetSetupError(
-                        "Cannot extract host package.",
-                        ex,
-                        getDeviceDescriptor(),
-                        InfraErrorIdentifier.FAIL_TO_CREATE_FILE);
-            }
-        }
-        if (hostPackageDir == null) {
-            String androidHostOut = System.getenv(ANDROID_HOST_OUT);
-            if (!Strings.isNullOrEmpty(androidHostOut)) {
-                CLog.i(
-                        "Use the host tools in %s as the build info does not provide host package.",
-                        androidHostOut);
-                hostPackageDir = new File(androidHostOut);
-            }
-        }
-        if (hostPackageDir == null || !hostPackageDir.isDirectory()) {
+    /** Find a file in build info and extract it to a temporary directory. */
+    private File findAndExtractFile(IBuildInfo buildInfo, String fileKey) throws TargetSetupError {
+        File file = buildInfo.getFile(fileKey);
+        try {
+            return file != null ? extractArchive(file) : null;
+        } catch (IOException ex) {
             throw new TargetSetupError(
-                    String.format(
-                            "Cannot find %s in build info and %s.",
-                            CVD_HOST_PACKAGE_NAME, ANDROID_HOST_OUT),
+                    String.format("Cannot extract %s.", fileKey),
+                    ex,
                     getDeviceDescriptor(),
-                    InfraErrorIdentifier.CONFIGURED_ARTIFACT_NOT_FOUND);
+                    InfraErrorIdentifier.FAIL_TO_CREATE_FILE);
         }
-        FileUtil.chmodRWXRecursively(new File(hostPackageDir, "bin"));
-        return hostPackageDir;
+    }
+
+    /** Find a file in build info and extract it; fall back to environment variable. */
+    private File findAndExtractFile(IBuildInfo buildInfo, String fileKey, String envVar)
+            throws TargetSetupError {
+        File dir = findAndExtractFile(buildInfo, fileKey);
+        if (dir != null) {
+            return dir;
+        }
+
+        String envDir = System.getenv(envVar);
+        if (!Strings.isNullOrEmpty(envDir)) {
+            dir = new File(envDir);
+            if (dir.isDirectory()) {
+                CLog.i(
+                        "Use the files in %s as the build info does not provide %s.",
+                        envVar, fileKey);
+                return dir;
+            }
+            CLog.w("Cannot use the files in %s as it is not a directory.", envVar);
+        }
+        return null;
     }
 
     /** Find device images in build info and extract to a temporary directory. */
@@ -259,15 +268,40 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
     }
 
     /** Get the necessary files to create the instance. */
-    private void createTempDirs(IBuildInfo info) throws TargetSetupError {
+    private void prepareToolsAndImages(IBuildInfo info) throws TargetSetupError {
         try {
-            mHostPackageDir = findHostPackage(info);
+            mHostPackageDir =
+                    findAndExtractFile(info, CVD_HOST_PACKAGE_NAME, ANDROID_SOONG_HOST_OUT);
+            if (mHostPackageDir == null) {
+                throw new TargetSetupError(
+                        String.format(
+                                "Cannot find %s in build info and %s.",
+                                CVD_HOST_PACKAGE_NAME, ANDROID_SOONG_HOST_OUT),
+                        getDeviceDescriptor(),
+                        InfraErrorIdentifier.CONFIGURED_ARTIFACT_NOT_FOUND);
+            }
             mImageDir = findDeviceImages(info);
+            mSystemImageDir = findAndExtractFile(info, SYSTEM_IMAGE_ZIP_NAME);
+            mOtaToolsDir = findAndExtractFile(info, OTA_TOOLS_ZIP_NAME);
             mInstanceDir = createTempDir();
         } catch (TargetSetupError ex) {
             deleteTempDirs();
             throw ex;
         }
+        FileUtil.chmodRWXRecursively(new File(mHostPackageDir, "bin"));
+        if (mOtaToolsDir != null) {
+            FileUtil.chmodRWXRecursively(new File(mOtaToolsDir, "bin"));
+        }
+    }
+
+    /** Reset all temp dir paths to null. */
+    private void resetTempDirAttributes() {
+        mTempDirs.clear();
+        mImageDir = null;
+        mInstanceDir = null;
+        mHostPackageDir = null;
+        mSystemImageDir = null;
+        mOtaToolsDir = null;
     }
 
     /** Delete all temporary directories. */
@@ -276,10 +310,7 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
         for (File tempDir : mTempDirs) {
             FileUtil.recursiveDelete(tempDir);
         }
-        mTempDirs.clear();
-        mImageDir = null;
-        mInstanceDir = null;
-        mHostPackageDir = null;
+        resetTempDirAttributes();
     }
 
     /**
@@ -304,6 +335,17 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
     private void restoreStubDevice() {
         setIDevice(new StubLocalAndroidVirtualDevice(getInitialSerial()));
         setFastbootEnabled(false);
+    }
+
+    private void addSystemImageDirToAcloudCommand(List<String> command) {
+        if (mSystemImageDir != null) {
+            command.add("--local-system-image");
+            command.add(mSystemImageDir.getAbsolutePath());
+        }
+        if (mOtaToolsDir != null) {
+            command.add("--local-tool");
+            command.add(mOtaToolsDir.getAbsolutePath());
+        }
     }
 
     private static void addLogLevelToAcloudCommand(List<String> command, LogLevel logLevel) {
@@ -372,6 +414,7 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
                                 "--no-autoconnect",
                                 "--yes",
                                 "--skip-pre-run-check"));
+        addSystemImageDirToAcloudCommand(command);
         addLogLevelToAcloudCommand(command, logLevel);
         command.addAll(args);
 
