@@ -37,6 +37,8 @@ import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.device.contentprovider.ContentProviderHandler;
 import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.host.IHostOptions;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -2208,7 +2210,7 @@ public class NativeDevice implements IManagedTestDevice {
     /**
      * Attempts to recover device communication.
      *
-     * @throws DeviceNotAvailableException if device is not longer available
+     * @throws DeviceNotAvailableException if device is no longer available
      */
     @Override
     public void recoverDevice() throws DeviceNotAvailableException {
@@ -2218,40 +2220,49 @@ public class NativeDevice implements IManagedTestDevice {
             return;
         }
         CLog.i("Attempting recovery on %s", getSerialNumber());
+        InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.RECOVERY_ROUTINE_COUNT, 1);
+        long startTime = System.currentTimeMillis();
         try {
-            mRecovery.recoverDevice(mStateMonitor, mRecoveryMode.equals(RecoveryMode.ONLINE));
-        } catch (DeviceUnresponsiveException due) {
-            RecoveryMode previousRecoveryMode = mRecoveryMode;
-            mRecoveryMode = RecoveryMode.NONE;
             try {
-                boolean enabled = enableAdbRoot();
-                CLog.d("Device Unresponsive during recovery, is root still enabled: %s", enabled);
-            } catch (DeviceUnresponsiveException e) {
-                // Ignore exception thrown here to rethrow original exception.
-                CLog.e("Exception occurred during recovery adb root:");
-                CLog.e(e);
+                mRecovery.recoverDevice(mStateMonitor, mRecoveryMode.equals(RecoveryMode.ONLINE));
+            } catch (DeviceUnresponsiveException due) {
+                RecoveryMode previousRecoveryMode = mRecoveryMode;
+                mRecoveryMode = RecoveryMode.NONE;
+                try {
+                    boolean enabled = enableAdbRoot();
+                    CLog.d(
+                            "Device Unresponsive during recovery, is root still enabled: %s",
+                            enabled);
+                } catch (DeviceUnresponsiveException e) {
+                    // Ignore exception thrown here to rethrow original exception.
+                    CLog.e("Exception occurred during recovery adb root:");
+                    CLog.e(e);
+                }
+                mRecoveryMode = previousRecoveryMode;
+                throw due;
             }
-            mRecoveryMode = previousRecoveryMode;
-            throw due;
-        }
-        if (mRecoveryMode.equals(RecoveryMode.AVAILABLE)) {
-            // turn off recovery mode to prevent reentrant recovery
-            // TODO: look for a better way to handle this, such as doing postBootUp steps in
-            // recovery itself
-            mRecoveryMode = RecoveryMode.NONE;
-            // this might be a runtime reset - still need to run post boot setup steps
-            if (isEncryptionSupported() && isDeviceEncrypted()) {
-                unlockDevice();
+            if (mRecoveryMode.equals(RecoveryMode.AVAILABLE)) {
+                // turn off recovery mode to prevent reentrant recovery
+                // TODO: look for a better way to handle this, such as doing postBootUp steps in
+                // recovery itself
+                mRecoveryMode = RecoveryMode.NONE;
+                // this might be a runtime reset - still need to run post boot setup steps
+                if (isEncryptionSupported() && isDeviceEncrypted()) {
+                    unlockDevice();
+                }
+                postBootSetup();
+                mRecoveryMode = RecoveryMode.AVAILABLE;
+            } else if (mRecoveryMode.equals(RecoveryMode.ONLINE)) {
+                // turn off recovery mode to prevent reentrant recovery
+                // TODO: look for a better way to handle this, such as doing postBootUp steps in
+                // recovery itself
+                mRecoveryMode = RecoveryMode.NONE;
+                enableAdbRoot();
+                mRecoveryMode = RecoveryMode.ONLINE;
             }
-            postBootSetup();
-            mRecoveryMode = RecoveryMode.AVAILABLE;
-        } else if (mRecoveryMode.equals(RecoveryMode.ONLINE)) {
-            // turn off recovery mode to prevent reentrant recovery
-            // TODO: look for a better way to handle this, such as doing postBootUp steps in
-            // recovery itself
-            mRecoveryMode = RecoveryMode.NONE;
-            enableAdbRoot();
-            mRecoveryMode = RecoveryMode.ONLINE;
+        } finally {
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.RECOVERY_TIME, System.currentTimeMillis() - startTime);
         }
         CLog.i("Recovery successful for %s", getSerialNumber());
     }
@@ -2307,9 +2318,13 @@ public class NativeDevice implements IManagedTestDevice {
     @SuppressWarnings("MustBeClosedChecker")
     public InputStreamSource getLogcat() {
         if (mLogcatReceiver == null) {
-            CLog.w("Not capturing logcat for %s in background, returning a logcat dump",
-                    getSerialNumber());
-            return getLogcatDump();
+            if (!(getIDevice() instanceof StubDevice)) {
+                CLog.w(
+                        "Not capturing logcat for %s in background, returning a logcat dump",
+                        getSerialNumber());
+                return getLogcatDump();
+            }
+            return new ByteArrayInputStreamSource(new byte[0]);
         } else {
             return mLogcatReceiver.getLogcatData();
         }
@@ -3361,25 +3376,33 @@ public class NativeDevice implements IManagedTestDevice {
             CLog.i("\"enable-root\" set to false; ignoring 'adb root' request");
             return false;
         }
-        CLog.i("adb root on device %s", getSerialNumber());
-        int attempts = MAX_RETRY_ATTEMPTS + 1;
-        for (int i=1; i <= attempts; i++) {
-            String output = executeAdbCommand("root");
-            // wait for device to disappear from adb
-            waitForDeviceNotAvailable("root", 20 * 1000);
+        InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.ADB_ROOT_ROUTINE_COUNT, 1);
+        long startTime = System.currentTimeMillis();
+        try {
+            CLog.i("adb root on device %s", getSerialNumber());
+            int attempts = MAX_RETRY_ATTEMPTS + 1;
+            for (int i = 1; i <= attempts; i++) {
+                String output = executeAdbCommand("root");
+                // wait for device to disappear from adb
+                waitForDeviceNotAvailable("root", 20 * 1000);
 
-            postAdbRootAction();
+                postAdbRootAction();
 
-            // wait for device to be back online
-            waitForDeviceOnline();
+                // wait for device to be back online
+                waitForDeviceOnline();
 
-            if (isAdbRoot()) {
-                return true;
+                if (isAdbRoot()) {
+                    return true;
+                }
+                CLog.w(
+                        "'adb root' on %s unsuccessful on attempt %d of %d. Output: '%s'",
+                        getSerialNumber(), i, attempts, output);
             }
-            CLog.w("'adb root' on %s unsuccessful on attempt %d of %d. Output: '%s'",
-                    getSerialNumber(), i, attempts, output);
+            return false;
+        } finally {
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.ADB_ROOT_TIME, System.currentTimeMillis() - startTime);
         }
-        return false;
     }
 
     /**
@@ -4650,8 +4673,11 @@ public class NativeDevice implements IManagedTestDevice {
     protected void checkApiLevelAgainst(String feature, int strictMinLevel) {
         try {
             if (getApiLevel() < strictMinLevel){
-                throw new IllegalArgumentException(String.format("%s not supported on %s. "
-                        + "Must be API %d.", feature, getSerialNumber(), strictMinLevel));
+                throw new HarnessRuntimeException(
+                        String.format(
+                                "%s not supported on %s. " + "Must be API %d.",
+                                feature, getSerialNumber(), strictMinLevel),
+                        DeviceErrorIdentifier.DEVICE_UNEXPECTED_RESPONSE);
             }
         } catch (DeviceNotAvailableException e) {
             throw new HarnessRuntimeException(

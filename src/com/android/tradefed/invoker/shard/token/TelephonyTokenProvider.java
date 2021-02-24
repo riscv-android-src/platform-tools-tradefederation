@@ -26,13 +26,18 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 /** Token provider for telephony related tokens. */
 public class TelephonyTokenProvider implements ITokenProvider {
 
     public static final String ORANGE_SIM_ID = "20801";
+    public static final String THALES_GEMALTO_SIM_ID = "00101";
     public static final String GSM_OPERATOR_PROP = "gsm.sim.operator.numeric";
+
+    private static final String[] SECURE_ELEMENT_SIM_IDS = {ORANGE_SIM_ID, THALES_GEMALTO_SIM_ID};
 
     @Override
     public boolean hasToken(ITestDevice device, TokenProperty token) {
@@ -67,7 +72,10 @@ public class TelephonyTokenProvider implements ITokenProvider {
                     if (info.mHasSecuredElement && info.mHasSeService) {
                         List<String> simProp =
                                 getOptionalDualSimProperty(device, GSM_OPERATOR_PROP);
-                        if (simProp.contains(ORANGE_SIM_ID)) {
+                        // Check whether simProp contains any secure element SIM IDs.
+                        // TODO(b/180568443): Create a mechanism of checking whether a SIM card
+                        // matches the requirements of secure element test.
+                        if (!Collections.disjoint(simProp, Arrays.asList(SECURE_ELEMENT_SIM_IDS))) {
                             return true;
                         } else {
                             CLog.w(

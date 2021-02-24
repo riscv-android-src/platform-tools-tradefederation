@@ -151,7 +151,7 @@ public class AoaTargetPreparer extends BaseTargetPreparer {
         }
 
         if (mWaitForDeviceOnline) {
-            // Verify that the device is online after executing AOA actions
+            CLog.i("Checking that %s is online after preparation", device.getSerialNumber());
             device.waitForDeviceOnline();
         }
     }
@@ -164,7 +164,7 @@ public class AoaTargetPreparer extends BaseTargetPreparer {
                 throw new DeviceNotAvailableException(
                         "AOAv2-compatible device not found", serialNumber);
             }
-            CLog.d("Performing %d actions on device %s", mActions.size(), serialNumber);
+            CLog.i("Executing %d actions on %s", mActions.size(), serialNumber);
             mActions.forEach(action -> execute(device, action));
         }
     }
@@ -177,7 +177,7 @@ public class AoaTargetPreparer extends BaseTargetPreparer {
     // Parse and execute an action
     @VisibleForTesting
     void execute(AoaDevice device, String input) {
-        CLog.v("Executing '%s' on %s", input, device.getSerialNumber());
+        CLog.d("Executing '%s' on %s", input, device.getSerialNumber());
         List<List<String>> args = new ArrayList<>();
         Action action = ACTIONS.retrieve(args, input);
         if (action == null) {

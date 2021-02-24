@@ -25,6 +25,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.LocalAndroidVirtualDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -71,7 +72,7 @@ public class ClusterCommandLauncher
     public static final String TEST_WORK_DIR = "TEST_WORK_DIR";
     public static final String ANDROID_SERIALS = "ANDROID_SERIALS";
 
-    private static final Duration MAX_EVENT_RECEIVER_WAIT_TIME = Duration.ofMinutes(10);
+    private static final Duration MAX_EVENT_RECEIVER_WAIT_TIME = Duration.ofMinutes(30);
 
     @Option(name = "root-dir", description = "A root directory", mandatory = true)
     private File mRootDir;
@@ -348,23 +349,34 @@ public class ClusterCommandLauncher
         long timeout = mOutputIdleTimeout > 0 ? mOutputIdleTimeout : Long.MAX_VALUE;
         // reset USB ports if files are idle for too long
         // TODO(peykov): consider making the callback customizable
-        return new FileIdleMonitor(Duration.ofMillis(timeout), this::resetUsbPorts, files);
+        return new FileIdleMonitor(Duration.ofMillis(timeout), this::resetDevices, files);
     }
 
-    /** Performs a USB port reset on all devices. */
-    private void resetUsbPorts() {
-        CLog.i("Subprocess output idle for %d ms, attempting USB port reset.", mOutputIdleTimeout);
+    /** Performs reset on all devices. */
+    private void resetDevices() {
+        CLog.i("Subprocess output idle for %d ms, attempting device reset.", mOutputIdleTimeout);
         try (UsbHelper usb = new UsbHelper()) {
-            for (String serial : mInvocationContext.getSerials()) {
-                try (UsbDevice device = usb.getDevice(serial)) {
-                    if (device == null) {
-                        CLog.w("Device '%s' not found during USB reset.", serial);
-                        continue;
-                    }
-                    CLog.d("Resetting USB port for device '%s'", serial);
-                    device.reset();
+            List<ITestDevice> devices = mInvocationContext.getDevices();
+            for (ITestDevice device : devices) {
+                if (device instanceof LocalAndroidVirtualDevice) {
+                    CLog.d("Shutting down local virtual device '%s'", device.getSerialNumber());
+                    ((LocalAndroidVirtualDevice) device).shutdown();
+                } else {
+                    resetUsbPort(usb, device.getSerialNumber());
                 }
             }
+        }
+    }
+
+    /** Performs a USB port reset on a device. */
+    private void resetUsbPort(UsbHelper usb, String serial) {
+        try (UsbDevice device = usb.getDevice(serial)) {
+            if (device == null) {
+                CLog.w("Device '%s' not found during USB reset.", serial);
+                return;
+            }
+            CLog.d("Resetting USB port for device '%s'", serial);
+            device.reset();
         }
     }
 

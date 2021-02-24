@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.cluster;
 
+import com.android.annotations.VisibleForTesting;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.cluster.ClusterHostEvent.HostEventType;
@@ -154,6 +155,7 @@ public class ClusterCommandScheduler extends CommandScheduler {
         private String mSubprocessCommandError;
         private File mWorkDir;
         private InvocationStatus mInvocationStatus;
+        private boolean mCanceled = false;
 
         /**
          * Creates a {@link InvocationEventHandler} to track the given {@link ClusterCommand}.
@@ -171,6 +173,11 @@ public class ClusterCommandScheduler extends CommandScheduler {
          */
         public void setWorkDir(File dir) {
             mWorkDir = dir;
+        }
+
+        @VisibleForTesting
+        void setCanceled(boolean value) {
+            mCanceled = value;
         }
 
         private ClusterCommandEvent.Builder createEventBuilder() {
@@ -310,7 +317,7 @@ public class ClusterCommandScheduler extends CommandScheduler {
             if (mWorkDir != null) {
                 FileUtil.recursiveDelete(mWorkDir);
             }
-
+            
             // TODO: handle multi-device where only one of the build could be missing.
             ErrorIdentifier errorId = null;
             if (getPrimaryBuildInfo() == null && mError == null) {
@@ -433,13 +440,14 @@ public class ClusterCommandScheduler extends CommandScheduler {
             public void run() {
                 try {
                     // Check cluster command's status.
-                    if (getClusterOptions().checkCommandState()) {
+                    if (getClusterOptions().checkCommandState() && !mCanceled) {
                         ClusterCommandStatus commandStatus =
                                 getClusterClient()
                                         .getCommandStatus(
                                                 mCommandTask.getRequestId(),
                                                 mCommandTask.getCommandId());
                         if (ClusterCommand.State.CANCELED.equals(commandStatus.getState())) {
+                            mCanceled = true;
                             String cause =
                                     String.format(
                                             "The cluster client %s has marked command"

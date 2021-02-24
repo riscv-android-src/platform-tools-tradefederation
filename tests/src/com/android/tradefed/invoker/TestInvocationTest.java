@@ -128,8 +128,6 @@ public class TestInvocationTest {
     private static final String PATH = "path";
     private static final String URL = "url";
     private static final TestSummary mSummary = new TestSummary("http://www.url.com/report.txt");
-    private static final InputStreamSource EMPTY_STREAM_SOURCE =
-            new ByteArrayInputStreamSource(new byte[0]);
     private static final String LOGCAT_NAME_ERROR =
             TestInvocation.getDeviceLogName(TestInvocation.Stage.ERROR);
     private static final String LOGCAT_NAME_SETUP =
@@ -148,6 +146,16 @@ public class TestInvocationTest {
     private IGlobalConfiguration mGlobalConfiguration;
 
     private IInvocationContext mStubInvocationMetadata;
+
+    // Log streams, they need a new instance per test
+    private InputStreamSource mLogcatSetupSource =
+            new ByteArrayInputStreamSource("logcat_setup".getBytes());
+    private InputStreamSource mLogcatTestSource =
+            new ByteArrayInputStreamSource("logcat_test".getBytes());
+    private InputStreamSource mLogcatTeardownSource =
+            new ByteArrayInputStreamSource("logcat_test".getBytes());
+    private InputStreamSource mHostLogSource =
+            new ByteArrayInputStreamSource("host_log".getBytes());
 
     // The mock objects.
     private ITestDevice mMockDevice;
@@ -301,7 +309,7 @@ public class TestInvocationTest {
                             }
 
                             @Override
-                            void logHostAdb(ITestLogger logger) {
+                            protected void logHostAdb(IConfiguration config, ITestLogger logger) {
                                 // inop for the common test case.
                             }
                         };
@@ -419,8 +427,9 @@ public class TestInvocationTest {
         cmdOptions.setTestTag(expectedTestTag);
         mStubConfiguration.setCommandOptions(cmdOptions);
         mStubConfiguration.setTest(test);
-        EasyMock.expect(mMockLogger.getLog()).andReturn(EMPTY_STREAM_SOURCE);
-        EasyMock.expect(mMockDevice.getLogcat()).andReturn(EMPTY_STREAM_SOURCE).times(2);
+        EasyMock.expect(mMockLogger.getLog()).andReturn(mHostLogSource);
+        EasyMock.expect(mMockDevice.getLogcat()).andReturn(mLogcatSetupSource);
+        EasyMock.expect(mMockDevice.getLogcat()).andReturn(mLogcatTestSource);
         mMockDevice.clearLogcat();
         EasyMock.expectLastCall().times(2);
         mMockLogRegistry.unregisterLogger();
@@ -444,8 +453,9 @@ public class TestInvocationTest {
         setupMockFailureListenersAny(
                 new BuildRetrievalError("fake", InfraErrorIdentifier.ARTIFACT_DOWNLOAD_ERROR),
                 true);
-        EasyMock.expect(mMockLogger.getLog()).andReturn(EMPTY_STREAM_SOURCE);
-        EasyMock.expect(mMockDevice.getLogcat()).andReturn(EMPTY_STREAM_SOURCE).times(2);
+        EasyMock.expect(mMockLogger.getLog()).andReturn(mHostLogSource);
+        EasyMock.expect(mMockDevice.getLogcat()).andReturn(mLogcatSetupSource);
+        EasyMock.expect(mMockDevice.getLogcat()).andReturn(mLogcatTeardownSource);
         mMockDevice.clearLogcat();
         EasyMock.expectLastCall().times(2);
         Capture<IBuildInfo> captured = new Capture<>();
@@ -473,8 +483,9 @@ public class TestInvocationTest {
                         "No build found to test.", InfraErrorIdentifier.ARTIFACT_NOT_FOUND),
                 true);
 
-        EasyMock.expect(mMockLogger.getLog()).andReturn(EMPTY_STREAM_SOURCE);
-        EasyMock.expect(mMockDevice.getLogcat()).andReturn(EMPTY_STREAM_SOURCE).times(2);
+        EasyMock.expect(mMockLogger.getLog()).andReturn(mHostLogSource);
+        EasyMock.expect(mMockDevice.getLogcat()).andReturn(mLogcatSetupSource);
+        EasyMock.expect(mMockDevice.getLogcat()).andReturn(mLogcatTestSource);
         mMockDevice.clearLogcat();
         EasyMock.expectLastCall().times(2);
         Capture<IBuildInfo> captured = new Capture<>();
@@ -507,7 +518,8 @@ public class TestInvocationTest {
         mStubConfiguration.setTest(test);
         // Host log fails to report
         EasyMock.expect(mMockLogger.getLog()).andReturn(null);
-        EasyMock.expect(mMockDevice.getLogcat()).andReturn(EMPTY_STREAM_SOURCE).times(2);
+        EasyMock.expect(mMockDevice.getLogcat()).andReturn(mLogcatSetupSource);
+        EasyMock.expect(mMockDevice.getLogcat()).andReturn(mLogcatTestSource);
         mMockDevice.clearLogcat();
         EasyMock.expectLastCall().times(2);
         Capture<IBuildInfo> captured = new Capture<>();
@@ -697,7 +709,8 @@ public class TestInvocationTest {
         mMockPreparer.setUp(EasyMock.anyObject());
         EasyMock.expectLastCall().andThrow(exception);
         setupMockFailureListeners(exception);
-        EasyMock.expect(mMockDevice.getBugreport()).andReturn(EMPTY_STREAM_SOURCE);
+        EasyMock.expect(mMockDevice.getBugreport())
+                .andReturn(new ByteArrayInputStreamSource(new byte[0]));
         setEarlyDeviceReleaseExpectation();
         setupInvokeWithBuild();
 
@@ -881,10 +894,12 @@ public class TestInvocationTest {
         mStubConfiguration.getCommandOptions().setTestTag("not-default");
         setEarlyDeviceReleaseExpectation();
         setupInvoke();
-        EasyMock.expect(mMockDevice.getLogcat()).andReturn(EMPTY_STREAM_SOURCE).times(3);
+        EasyMock.expect(mMockDevice.getLogcat()).andReturn(mLogcatSetupSource);
+        EasyMock.expect(mMockDevice.getLogcat()).andReturn(mLogcatTestSource);
+        EasyMock.expect(mMockDevice.getLogcat()).andReturn(mLogcatTeardownSource);
         mMockDevice.clearLogcat();
         EasyMock.expectLastCall().times(3);
-        EasyMock.expect(mMockLogger.getLog()).andReturn(EMPTY_STREAM_SOURCE);
+        EasyMock.expect(mMockLogger.getLog()).andReturn(mHostLogSource);
         mMockBuildInfo.setDeviceSerial(SERIAL);
         mMockBuildProvider.cleanUp(mMockBuildInfo);
         setupMockSuccessListeners();
@@ -914,10 +929,12 @@ public class TestInvocationTest {
         mStubConfiguration.setCommandLine(commandLine);
         setEarlyDeviceReleaseExpectation();
         setupInvoke();
-        EasyMock.expect(mMockDevice.getLogcat()).andReturn(EMPTY_STREAM_SOURCE).times(3);
+        EasyMock.expect(mMockDevice.getLogcat()).andReturn(mLogcatSetupSource);
+        EasyMock.expect(mMockDevice.getLogcat()).andReturn(mLogcatTestSource);
+        EasyMock.expect(mMockDevice.getLogcat()).andReturn(mLogcatTeardownSource);
         mMockDevice.clearLogcat();
         EasyMock.expectLastCall().times(3);
-        EasyMock.expect(mMockLogger.getLog()).andReturn(EMPTY_STREAM_SOURCE);
+        EasyMock.expect(mMockLogger.getLog()).andReturn(mHostLogSource);
         mMockBuildInfo.setDeviceSerial(SERIAL);
         mMockBuildProvider.cleanUp(mMockBuildInfo);
         setupMockSuccessListeners();
@@ -944,10 +961,12 @@ public class TestInvocationTest {
         mStubConfiguration.setCommandLine(commandLine);
         setEarlyDeviceReleaseExpectation();
         setupInvoke();
-        EasyMock.expect(mMockDevice.getLogcat()).andReturn(EMPTY_STREAM_SOURCE).times(3);
+        EasyMock.expect(mMockDevice.getLogcat()).andReturn(mLogcatSetupSource);
+        EasyMock.expect(mMockDevice.getLogcat()).andReturn(mLogcatTestSource);
+        EasyMock.expect(mMockDevice.getLogcat()).andReturn(mLogcatTeardownSource);
         mMockDevice.clearLogcat();
         EasyMock.expectLastCall().times(3);
-        EasyMock.expect(mMockLogger.getLog()).andReturn(EMPTY_STREAM_SOURCE);
+        EasyMock.expect(mMockLogger.getLog()).andReturn(mHostLogSource);
         mMockBuildInfo.setDeviceSerial(SERIAL);
         mMockBuildProvider.cleanUp(mMockBuildInfo);
         setupMockSuccessListeners();
@@ -988,10 +1007,12 @@ public class TestInvocationTest {
         mStubConfiguration.setCommandOptions(commandOption);
         setEarlyDeviceReleaseExpectation();
         setupInvoke();
-        EasyMock.expect(mMockDevice.getLogcat()).andReturn(EMPTY_STREAM_SOURCE).times(3);
+        EasyMock.expect(mMockDevice.getLogcat()).andReturn(mLogcatSetupSource);
+        EasyMock.expect(mMockDevice.getLogcat()).andReturn(mLogcatTestSource);
+        EasyMock.expect(mMockDevice.getLogcat()).andReturn(mLogcatTeardownSource);
         mMockDevice.clearLogcat();
         EasyMock.expectLastCall().times(3);
-        EasyMock.expect(mMockLogger.getLog()).andReturn(EMPTY_STREAM_SOURCE);
+        EasyMock.expect(mMockLogger.getLog()).andReturn(mHostLogSource);
         mMockBuildInfo.setDeviceSerial(SERIAL);
         setupMockSuccessListeners();
         mMockBuildInfo.addBuildAttribute("command_line_args", "run empty");
@@ -1042,11 +1063,13 @@ public class TestInvocationTest {
     /** Set up expected calls that occur on every invoke that gets a valid build */
     private void setupInvokeWithBuild() throws DeviceNotAvailableException {
         setupInvoke();
-        EasyMock.expect(mMockDevice.getLogcat()).andReturn(EMPTY_STREAM_SOURCE).times(3);
+        EasyMock.expect(mMockDevice.getLogcat()).andReturn(mLogcatSetupSource);
+        EasyMock.expect(mMockDevice.getLogcat()).andReturn(mLogcatTestSource);
+        EasyMock.expect(mMockDevice.getLogcat()).andReturn(mLogcatTeardownSource);
         mMockDevice.clearLogcat();
         EasyMock.expectLastCall().times(3);
 
-        EasyMock.expect(mMockLogger.getLog()).andReturn(EMPTY_STREAM_SOURCE);
+        EasyMock.expect(mMockLogger.getLog()).andReturn(mHostLogSource);
         mMockBuildInfo.setDeviceSerial(SERIAL);
         mMockBuildProvider.cleanUp(mMockBuildInfo);
         EasyMock.expectLastCall().anyTimes();
@@ -1285,7 +1308,7 @@ public class TestInvocationTest {
         mMockLogSaver.invocationEnded(0L);
         setupNShardInvocation(shardCount, command);
         // Ensure that the host_log gets logged after sharding.
-        EasyMock.expect(mMockLogger.getLog()).andReturn(EMPTY_STREAM_SOURCE);
+        EasyMock.expect(mMockLogger.getLog()).andReturn(mHostLogSource);
         String logName = "host_log_before_sharding";
         mMockTestListener.testLog(
                 EasyMock.eq(logName), EasyMock.eq(LogDataType.HOST_LOG), EasyMock.anyObject());
@@ -1356,7 +1379,7 @@ public class TestInvocationTest {
         mMockLogSaver.invocationEnded(0L);
         setupNShardInvocation(shardCount, command);
         // Ensure that the host_log gets logged after sharding.
-        EasyMock.expect(mMockLogger.getLog()).andReturn(EMPTY_STREAM_SOURCE);
+        EasyMock.expect(mMockLogger.getLog()).andReturn(mHostLogSource);
         String logName = "host_log_before_sharding";
         LogFile loggedFile = new LogFile(PATH, URL, LogDataType.HOST_LOG);
         for (ITestInvocationListener listener : listenerList) {
@@ -1627,7 +1650,7 @@ public class TestInvocationTest {
                             }
 
                             @Override
-                            void logHostAdb(ITestLogger logger) {
+                            protected void logHostAdb(IConfiguration config, ITestLogger logger) {
                                 // inop for the common test case.
                             }
                         };
@@ -1716,7 +1739,8 @@ public class TestInvocationTest {
                                 }
 
                                 @Override
-                                void logHostAdb(ITestLogger logger) {
+                                protected void logHostAdb(
+                                        IConfiguration config, ITestLogger logger) {
                                     // inop for the common test case.
                                 }
                             };
@@ -1823,7 +1847,8 @@ public class TestInvocationTest {
                                 }
 
                                 @Override
-                                void logHostAdb(ITestLogger logger) {
+                                protected void logHostAdb(
+                                        IConfiguration config, ITestLogger logger) {
                                     // inop for the common test case.
                                 }
                             };

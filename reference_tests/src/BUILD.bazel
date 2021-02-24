@@ -19,6 +19,7 @@ filegroup(
         "//:CopyOnePassingOneFailingTest",
         "//:CopySimpleFailingTest",
         "//:CopySimplePassingTest",
+        "//:OnePassOneFailParamTest",
     ],
 )
 
@@ -87,4 +88,22 @@ copy_file(
     name = "CopyOnePassingOneFailingTest",
     src = "//:OnePassingOneFailingTest.jar",
     out = "clean-jars/OnePassingOneFailingTest.jar",
+)
+
+# Test with one passing test and one failing parameterized test method
+java_binary(
+    name = "OnePassOneFailParamTest",
+    srcs = [
+        "java/com/android/tradefed/referencetests/OnePassOneFailParamTest.java",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//:junit",
+    ],
+)
+
+copy_file(
+    name = "OnePassOneFailParamTest",
+    src = "//:OnePassOneFailParamTest.jar",
+    out = "clean-jars/OnePassOneFailParamTest.jar",
 )

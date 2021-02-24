@@ -15,6 +15,8 @@
  */
 package com.android.tradefed.presubmit;
 
+import static org.junit.Assert.assertTrue;
+
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
@@ -22,6 +24,8 @@ import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.ConfigurationUtil;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
+import com.android.tradefed.targetprep.ITargetPreparer;
+import com.android.tradefed.targetprep.PushFilePreparer;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
@@ -97,6 +101,7 @@ public class HostUnitTestsConfigValidation implements IBuildReceiver {
                 // generated from AndroidTest.xml
                 ValidateSuiteConfigHelper.validateConfig(c);
 
+                checkPreparers(c.getTargetPreparers(), "host-unit-tests");
                 // Check that all the tests runners are well supported.
                 checkRunners(c.getTests(), "host-unit-tests");
 
@@ -113,6 +118,19 @@ public class HostUnitTestsConfigValidation implements IBuildReceiver {
         }
     }
 
+    private static void checkPreparers(List<ITargetPreparer> preparers, String name)
+            throws ConfigurationException {
+        for (ITargetPreparer preparer : preparers) {
+            // Check that all preparers are supported.
+            if (preparer instanceof PushFilePreparer) {
+                throw new ConfigurationException(
+                        String.format(
+                                "preparer %s is not supported in %s.",
+                                preparer.getClass().getCanonicalName(), name));
+            }
+        }
+    }
+
     private static void checkRunners(List<IRemoteTest> tests, String name)
             throws ConfigurationException {
         for (IRemoteTest test : tests) {
@@ -126,6 +144,12 @@ public class HostUnitTestsConfigValidation implements IBuildReceiver {
             }
         }
     }
+
+    // This list contains exemption to the duplication of host-unit-tests & TEST_MAPPING.
+    // This will be used when migrating default and clean up as we clear the TEST_MAPPING files.
+    private static final Set<String> EXEMPTION_LIST =
+            new HashSet<>(Arrays.asList(
+            ));
 
     /**
      * This test ensures that unit tests are not also running as part of test mapping to avoid
@@ -154,18 +178,18 @@ public class HostUnitTestsConfigValidation implements IBuildReceiver {
         testInfosToRun.stream().forEach(e -> infos.put(e.getName(), e.getSources()));
         for (String configName : configs) {
             String moduleName = FileUtil.getBaseName(new File(configName).getName());
-            if (infos.containsKey(moduleName)) {
+            if (infos.containsKey(moduleName) && !EXEMPTION_LIST.contains(moduleName)) {
                 errors.add(
                         String.format(
-                                "test '%s' is present in unit_tests and test mapping: %s",
+                                "Target '%s' is already running in host-unit-tests, it doesn't "
+                                        + "need the test mapping config: %s",
                                 moduleName, infos.get(moduleName)));
             }
         }
         if (!errors.isEmpty()) {
             String message =
                     String.format("Fail configuration check:\n%s", Joiner.on("\n").join(errors));
-            // TODO: Turn this blocking
-            Assume.assumeTrue(message, errors.isEmpty());
+            assertTrue(message, errors.isEmpty());
         }
     }
 }

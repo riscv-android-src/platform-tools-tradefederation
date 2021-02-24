@@ -28,6 +28,7 @@ import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.error.TestErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.util.CommandResult;
@@ -49,6 +50,7 @@ import java.util.Set;
 public class RustBinaryHostTest extends RustTestBase implements IBuildReceiver {
 
     static final String RUST_LOG_STDERR_FORMAT = "%s-stderr";
+    static final String RUST_LOG_STDOUT_FORMAT = "%s-stdout";
 
     @Option(name = "test-file", description = "The test file name or file path.")
     private Set<String> mBinaryNames = new HashSet<>();
@@ -211,7 +213,8 @@ public class RustBinaryHostTest extends RustTestBase implements IBuildReceiver {
                                     + "\nstdout: %s\nstderr: %s",
                             result.getExitCode(), result.getStdout(), result.getStderr());
             FailureDescription failure =
-                    FailureDescription.create(message, FailureStatus.TEST_FAILURE);
+                    FailureDescription.create(message, FailureStatus.TEST_FAILURE)
+                            .setErrorIdentifier(TestErrorIdentifier.TEST_BINARY_EXIT_CODE_ERROR);
             listener.testRunFailed(failure);
             CLog.e(message);
         }
@@ -219,10 +222,19 @@ public class RustBinaryHostTest extends RustTestBase implements IBuildReceiver {
         File resultFile = null;
         try {
             resultFile = FileUtil.createTempFile("rust-res", ".txt");
-            FileUtil.writeToFile(result.getStderr(), resultFile);
-            try (FileInputStreamSource data = new FileInputStreamSource(resultFile)) {
-                listener.testLog(
-                        String.format(RUST_LOG_STDERR_FORMAT, runName), LogDataType.TEXT, data);
+            if (result.getStderr().length() > 0) {
+                FileUtil.writeToFile(result.getStderr(), resultFile);
+                try (FileInputStreamSource data = new FileInputStreamSource(resultFile)) {
+                    listener.testLog(
+                            String.format(RUST_LOG_STDERR_FORMAT, runName), LogDataType.TEXT, data);
+                }
+            }
+            if (result.getStdout().length() > 0) {
+                FileUtil.writeToFile(result.getStdout(), resultFile);
+                try (FileInputStreamSource data = new FileInputStreamSource(resultFile)) {
+                    listener.testLog(
+                            String.format(RUST_LOG_STDOUT_FORMAT, runName), LogDataType.TEXT, data);
+                }
             }
             String[] lines = result.getStdout().split("\n");
             RustTestResultParser parser = new RustTestResultParser(listener, runName);

@@ -19,5 +19,6 @@
     <!-- <option name="exclude-filter" value="MODULE_NAME PACKAGE_NAME.CLASS_NAME" /> Excludes whole class -->
     <!-- <option name="exclude-filter" value="MODULE_NAME PACKAGE_NAME.CLASS_NAME#TEST_NAME" /> Excludes individual test -->
 
-
+    <!-- Failing test: b/177915108 -->
+    <option name="exclude-filter" value="cppbor_host_test cppbor_host_test.StreamParseTest#Semantic" />
 </configuration>
