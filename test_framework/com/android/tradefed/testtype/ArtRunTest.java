@@ -19,7 +19,6 @@ package com.android.tradefed.testtype;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.invoker.ExecutionFiles.FilesKey;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -35,6 +34,7 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.RunUtil;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -64,10 +64,9 @@ public class ArtRunTest implements IRemoteTest, IAbiReceiver, ITestFilterReceive
     private static final String DALVIKVM_CMD =
             "dalvikvm|#BITNESS#| -classpath |#CLASSPATH#| |#MAINCLASS#|";
 
+    // Name of the Checker Python Archive (PAR) file.
+    public static final String CHECKER_PAR_FILENAME = "art-run-test-checker";
     private static final long CHECKER_TIMEOUT_MS = 30 * 1000;
-    public static final String TESTSUITE_CHECKER_PATH = "art-run-test-checker";
-    public static final String SINGLE_TEST_CHECKER_PATH =
-            "art-run-test-checker/art-run-test-checker";
 
     @Option(
             name = "test-timeout",
@@ -374,10 +373,6 @@ public class ArtRunTest implements IRemoteTest, IAbiReceiver, ITestFilterReceive
                 String checkerArch = AbiUtils.getArchForAbi(abi).toUpperCase();
 
                 File checkerBinary = getCheckerBinaryPath(testInfo);
-                if (checkerBinary == null) {
-                    listener.testFailed(testId, "Checker binary not found");
-                    return;
-                }
 
                 String[] checkerCommandLine = {
                         checkerBinary.getAbsolutePath(),
@@ -419,22 +414,17 @@ public class ArtRunTest implements IRemoteTest, IAbiReceiver, ITestFilterReceive
         }
     }
 
-    /**
-     * Try to find compiled Checker binary in its typical locations
-     */
+    /** Find the Checker binary (Python Archive). */
     protected File getCheckerBinaryPath(TestInformation testInfo) {
-        File checkerBinary = new File(
-                testInfo.executionFiles().get(FilesKey.TESTS_DIRECTORY),
-                TESTSUITE_CHECKER_PATH);
-
-        if (!checkerBinary.isFile()) {
-            checkerBinary = new File(
-                    testInfo.executionFiles().get(FilesKey.HOST_TESTS_DIRECTORY),
-                    SINGLE_TEST_CHECKER_PATH);
-            if (!checkerBinary.isFile()) {
-                return null;
-            }
+        File checkerBinary;
+        try {
+            checkerBinary =
+                    testInfo.getDependencyFile(CHECKER_PAR_FILENAME, /* targetFirst */ false);
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(
+                    String.format("Couldn't find Checker binary file `%s`", CHECKER_PAR_FILENAME));
         }
+        checkerBinary.setExecutable(true);
         return checkerBinary;
     }
 
