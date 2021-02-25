@@ -38,6 +38,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -57,6 +58,8 @@ import difflib.Patch;
 public class ArtRunTest implements IRemoteTest, IAbiReceiver, ITestFilterReceiver {
 
     private static final String RUNTEST_TAG = "ArtRunTest";
+
+    private static final Path ART_APEX_PATH = Paths.get("/apex", "com.android.art");
 
     private static final String DALVIKVM_CMD =
             "dalvikvm|#BITNESS#| -classpath |#CLASSPATH#| |#MAINCLASS#|";
@@ -315,10 +318,12 @@ public class ArtRunTest implements IRemoteTest, IAbiReceiver, ITestFilterReceive
 
                 String cfgPath = tmpCheckerDir + "/graph.cfg";
                 String oatPath = tmpCheckerDir + "/output.oat";
+                String dex2oatBinary = "dex2oat" + AbiUtils.getBitness(abi);
+                Path dex2oatPath = Paths.get(ART_APEX_PATH.toString(), "bin", dex2oatBinary);
                 String dex2oatCmd =
                         String.format(
-                                "dex2oat --dex-file=%s --oat-file=%s --dump-cfg=%s -j1",
-                                mClasspath.get(0), oatPath, cfgPath);
+                                "%s --dex-file=%s --oat-file=%s --dump-cfg=%s -j1",
+                                dex2oatPath, mClasspath.get(0), oatPath, cfgPath);
                 CommandResult dex2oatResult = mDevice.executeShellV2Command(dex2oatCmd);
                 if (dex2oatResult.getStatus() != CommandStatus.SUCCESS) {
                     String message =
