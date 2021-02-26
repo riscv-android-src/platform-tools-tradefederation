@@ -136,6 +136,7 @@ public class TestInvocationTest {
             TestInvocation.getDeviceLogName(TestInvocation.Stage.TEST);
     private static final String LOGCAT_NAME_TEARDOWN =
             TestInvocation.getDeviceLogName(TestInvocation.Stage.TEARDOWN);
+    private static final String CONFIG_LOG_NAME = TestInvocation.TRADEFED_CONFIG_NAME;
     /** The {@link TestInvocation} under test, with all dependencies mocked out */
     private TestInvocation mTestInvocation;
 
@@ -828,6 +829,16 @@ public class TestInvocationTest {
         logSaverListener.setLogSaver(mMockLogSaver);
         logSaverListener.invocationStarted(mStubInvocationMetadata);
         logSaverListener.testLog(
+                EasyMock.startsWith(CONFIG_LOG_NAME),
+                EasyMock.eq(LogDataType.HARNESS_CONFIG),
+                (InputStreamSource) EasyMock.anyObject());
+        logSaverListener.testLogSaved(
+                EasyMock.startsWith(CONFIG_LOG_NAME),
+                EasyMock.eq(LogDataType.HARNESS_CONFIG),
+                (InputStreamSource) EasyMock.anyObject(),
+                (LogFile) EasyMock.anyObject());
+        logSaverListener.logAssociation(EasyMock.startsWith(CONFIG_LOG_NAME), EasyMock.anyObject());
+        logSaverListener.testLog(
                 EasyMock.startsWith(LOGCAT_NAME_SETUP),
                 EasyMock.eq(LogDataType.LOGCAT),
                 (InputStreamSource) EasyMock.anyObject());
@@ -1118,6 +1129,21 @@ public class TestInvocationTest {
         mMockSummaryListener.putEarlySummary(EasyMock.anyObject());
         mMockSummaryListener.invocationStarted(mStubInvocationMetadata);
         EasyMock.expect(mMockSummaryListener.getSummary()).andReturn(null);
+
+        mMockTestListener.testLog(
+                EasyMock.startsWith(CONFIG_LOG_NAME),
+                EasyMock.eq(LogDataType.HARNESS_CONFIG),
+                (InputStreamSource) EasyMock.anyObject());
+        mMockSummaryListener.testLog(
+                EasyMock.startsWith(CONFIG_LOG_NAME),
+                EasyMock.eq(LogDataType.HARNESS_CONFIG),
+                (InputStreamSource) EasyMock.anyObject());
+        EasyMock.expect(
+                        mMockLogSaver.saveLogData(
+                                EasyMock.startsWith(CONFIG_LOG_NAME),
+                                EasyMock.eq(LogDataType.HARNESS_CONFIG),
+                                (InputStream) EasyMock.anyObject()))
+                .andReturn(new LogFile(PATH, URL, LogDataType.TEXT));
 
         if (throwable == null) {
             mMockDevice.postInvocationTearDown(null);

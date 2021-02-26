@@ -27,6 +27,8 @@ import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestLoggerReceiver;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
@@ -92,14 +94,18 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
             loadAvdInfo(report);
         } catch (IOException ex) {
             throw new TargetSetupError(
-                    "Cannot create acloud report file.", ex, getDeviceDescriptor());
+                    "Cannot create acloud report file.",
+                    ex,
+                    getDeviceDescriptor(),
+                    InfraErrorIdentifier.FAIL_TO_CREATE_FILE);
         } finally {
             FileUtil.deleteFile(report);
         }
         if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
             throw new TargetSetupError(
                     String.format("Cannot execute acloud command. stderr:\n%s", result.getStderr()),
-                    getDeviceDescriptor());
+                    getDeviceDescriptor(),
+                    InfraErrorIdentifier.ACLOUD_UNDETERMINED);
         }
 
         HostAndPort hostAndPort = mGceAvdInfo.hostAndPort();
@@ -110,7 +116,9 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
             setRecoveryMode(RecoveryMode.NONE);
             if (!adbTcpConnect(hostAndPort.getHost(), Integer.toString(hostAndPort.getPort()))) {
                 throw new TargetSetupError(
-                        String.format("Cannot connect to %s.", hostAndPort), getDeviceDescriptor());
+                        String.format("Cannot connect to %s.", hostAndPort),
+                        getDeviceDescriptor(),
+                        DeviceErrorIdentifier.FAILED_TO_CONNECT_TO_GCE);
             }
             waitForDeviceAvailable();
         } finally {
@@ -188,7 +196,10 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
                 hostPackageDir = extractArchive(hostPackage);
             } catch (IOException ex) {
                 throw new TargetSetupError(
-                        "Cannot extract host package.", ex, getDeviceDescriptor());
+                        "Cannot extract host package.",
+                        ex,
+                        getDeviceDescriptor(),
+                        InfraErrorIdentifier.FAIL_TO_CREATE_FILE);
             }
         }
         if (hostPackageDir == null) {
@@ -205,7 +216,8 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
                     String.format(
                             "Cannot find %s in build info and %s.",
                             CVD_HOST_PACKAGE_NAME, ANDROID_HOST_OUT),
-                    getDeviceDescriptor());
+                    getDeviceDescriptor(),
+                    InfraErrorIdentifier.CONFIGURED_ARTIFACT_NOT_FOUND);
         }
         FileUtil.chmodRWXRecursively(new File(hostPackageDir, "bin"));
         return hostPackageDir;
@@ -216,12 +228,18 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
         File imageZip = buildInfo.getFile(BuildInfoFileKey.DEVICE_IMAGE);
         if (imageZip == null) {
             throw new TargetSetupError(
-                    "Cannot find image zip in build info.", getDeviceDescriptor());
+                    "Cannot find image zip in build info.",
+                    getDeviceDescriptor(),
+                    InfraErrorIdentifier.CONFIGURED_ARTIFACT_NOT_FOUND);
         }
         try {
             return extractArchive(imageZip);
         } catch (IOException ex) {
-            throw new TargetSetupError("Cannot extract image zip.", ex, getDeviceDescriptor());
+            throw new TargetSetupError(
+                    "Cannot extract image zip.",
+                    ex,
+                    getDeviceDescriptor(),
+                    InfraErrorIdentifier.FAIL_TO_CREATE_FILE);
         }
     }
 
@@ -233,7 +251,10 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
             return tempDir;
         } catch (IOException ex) {
             throw new TargetSetupError(
-                    "Cannot create temporary directory.", ex, getDeviceDescriptor());
+                    "Cannot create temporary directory.",
+                    ex,
+                    getDeviceDescriptor(),
+                    InfraErrorIdentifier.FAIL_TO_CREATE_FILE);
         }
     }
 
@@ -271,7 +292,9 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
         IDevice device = getIDevice();
         if (!StubLocalAndroidVirtualDevice.class.equals(device.getClass())) {
             throw new TargetSetupError(
-                    "Unexpected device type: " + device.getClass(), getDeviceDescriptor());
+                    "Unexpected device type: " + device.getClass(),
+                    getDeviceDescriptor(),
+                    InfraErrorIdentifier.OPTION_CONFIGURATION_ERROR);
         }
         setIDevice(new StubLocalAndroidVirtualDevice(newSerialNumber));
         setFastbootEnabled(false);
@@ -380,7 +403,10 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
     private void loadAvdInfo(File report) throws TargetSetupError {
         mGceAvdInfo = GceAvdInfo.parseGceInfoFromFile(report, getDeviceDescriptor(), INVALID_PORT);
         if (mGceAvdInfo == null) {
-            throw new TargetSetupError("Cannot read acloud report file.", getDeviceDescriptor());
+            throw new TargetSetupError(
+                    "Cannot read acloud report file.",
+                    getDeviceDescriptor(),
+                    InfraErrorIdentifier.NO_ACLOUD_REPORT);
         }
 
         if (!GceAvdInfo.GceStatus.SUCCESS.equals(mGceAvdInfo.getStatus())) {
@@ -391,11 +417,17 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
         }
 
         if (Strings.isNullOrEmpty(mGceAvdInfo.instanceName())) {
-            throw new TargetSetupError("No instance name in acloud report.", getDeviceDescriptor());
+            throw new TargetSetupError(
+                    "No instance name in acloud report.",
+                    getDeviceDescriptor(),
+                    InfraErrorIdentifier.NO_ACLOUD_REPORT);
         }
 
         if (getHostAndPortFromAvdInfo() == null) {
-            throw new TargetSetupError("No port in acloud report.", getDeviceDescriptor());
+            throw new TargetSetupError(
+                    "No port in acloud report.",
+                    getDeviceDescriptor(),
+                    InfraErrorIdentifier.NO_ACLOUD_REPORT);
         }
     }
 
