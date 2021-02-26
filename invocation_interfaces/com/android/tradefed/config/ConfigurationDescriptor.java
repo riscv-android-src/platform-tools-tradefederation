@@ -67,12 +67,11 @@ public class ConfigurationDescriptor implements Serializable, Cloneable {
     private boolean mNotShardable = false;
 
     @Option(
-        name = "not-strict-shardable",
-        description =
-                "A metadata to allows a suite configuration to specify that it cannot be "
-                        + "sharded in a strict context (independent shards). If a config is already "
-                        + "not-shardable, it will be not-strict-shardable."
-    )
+            name = "not-strict-shardable",
+            description =
+                    "A metadata to allows a suite configuration to specify that it cannot be"
+                            + " sharded in a strict context (independent shards). If a config is"
+                            + " already not-shardable, it will be not-strict-shardable.")
     private boolean mNotStrictShardable = false;
 
     @Option(
@@ -85,6 +84,8 @@ public class ConfigurationDescriptor implements Serializable, Cloneable {
     private IAbi mAbi = null;
     /** Optional for a module configuration, the original name of the module. */
     private String mModuleName = null;
+    /** Optional: track the shard index of the invocation */
+    private Integer mShardIndex = null;
 
     /** a list of options applicable to rerun the test */
     private final List<OptionDef> mRerunOptions = new ArrayList<>();
@@ -180,6 +181,16 @@ public class ConfigurationDescriptor implements Serializable, Cloneable {
     /** Sets whether or not a config will run in sandboxed mode or not. */
     public void setSandboxed(boolean useSandboxed) {
         mUseSandboxing = useSandboxed;
+    }
+
+    /** Set the shard index for the invocation in local sharding. */
+    public void setShardIndex(int index) {
+        mShardIndex = index;
+    }
+
+    /** Get the shard index of the invocation during local sharding. Returns null if no sharding. */
+    public Integer getShardIndex() {
+        return mShardIndex;
     }
 
     /**
