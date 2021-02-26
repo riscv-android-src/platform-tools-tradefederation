@@ -212,6 +212,14 @@ public class TestInvocationMultiTest {
         mMockTestListener.invocationStarted(mContext);
         EasyMock.expect(mMockTestListener.getSummary()).andReturn(null);
         mMockLogSaver.invocationStarted(mContext);
+
+        mMockConfig.dumpXml(EasyMock.anyObject());
+        mMockTestListener.testLog(EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject());
+        EasyMock.expect(
+                        mMockLogSaver.saveLogData(
+                                EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject()))
+                .andReturn(new LogFile("", "", LogDataType.HARNESS_CONFIG));
+
         mMockTestListener.invocationFailed(EasyMock.<FailureDescription>anyObject());
         mMockTestListener.testLog(EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject());
         EasyMock.expect(
@@ -316,6 +324,14 @@ public class TestInvocationMultiTest {
         mMockTestListener.invocationStarted(mContext);
         EasyMock.expect(mMockTestListener.getSummary()).andReturn(null);
         mMockLogSaver.invocationStarted(mContext);
+
+        mMockConfig.dumpXml(EasyMock.anyObject());
+        mMockTestListener.testLog(EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject());
+        EasyMock.expect(
+                        mMockLogSaver.saveLogData(
+                                EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject()))
+                .andReturn(new LogFile("", "", LogDataType.HARNESS_CONFIG));
+
         FailureDescription failure =
                 FailureDescription.create(configException.getMessage(), FailureStatus.INFRA_FAILURE)
                         .setActionInProgress(ActionInProgress.FETCHING_ARTIFACTS);
@@ -391,6 +407,14 @@ public class TestInvocationMultiTest {
         mMockTestListener.invocationStarted(mContext);
         EasyMock.expect(mMockTestListener.getSummary()).andReturn(null);
         mMockLogSaver.invocationStarted(mContext);
+
+        mMockConfig.dumpXml(EasyMock.anyObject());
+        mMockTestListener.testLog(EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject());
+        EasyMock.expect(
+                        mMockLogSaver.saveLogData(
+                                EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject()))
+                .andReturn(new LogFile("", "", LogDataType.HARNESS_CONFIG));
+
         mMockTestListener.invocationFailed(EasyMock.<FailureDescription>anyObject());
         mMockTestListener.testLog(EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject());
         EasyMock.expect(
@@ -483,6 +507,14 @@ public class TestInvocationMultiTest {
         mMockTestListener.invocationStarted(mContext);
         EasyMock.expect(mMockTestListener.getSummary()).andReturn(null);
         mMockLogSaver.invocationStarted(mContext);
+
+        mMockConfig.dumpXml(EasyMock.anyObject());
+        mMockTestListener.testLog(EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject());
+        EasyMock.expect(
+                        mMockLogSaver.saveLogData(
+                                EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject()))
+                .andReturn(new LogFile("", "", LogDataType.HARNESS_CONFIG));
+
         mMockTestListener.invocationFailed(EasyMock.<FailureDescription>anyObject());
         mMockTestListener.testLog(EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject());
         EasyMock.expect(

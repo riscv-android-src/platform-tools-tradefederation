@@ -65,6 +65,7 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.log.StdoutLogger;
 import com.android.tradefed.postprocessor.IPostProcessor;
 import com.android.tradefed.result.ActionInProgress;
+import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -95,6 +96,8 @@ import com.google.common.annotations.VisibleForTesting;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -128,6 +131,7 @@ public class TestInvocation implements ITestInvocation {
     public static final String TRADEFED_LOG_NAME = "host_log";
     public static final String TRADEFED_END_HOST_LOG = "end_host_log";
     private static final String TRADEFED_DELEGATED_LOG_NAME = "delegated_parent_log";
+    public static final String TRADEFED_CONFIG_NAME = "tradefed-expanded-config";
     /** Suffix used on host_log for the part before sharding occurs. */
     static final String BEFORE_SHARDING_SUFFIX = "_before_sharding";
     static final String DEVICE_LOG_NAME_PREFIX = "device_logcat_";
@@ -472,6 +476,7 @@ public class TestInvocation implements ITestInvocation {
             ITestInvocationListener listener) {
         logStartInvocation(context, config);
         listener.invocationStarted(context);
+        logExpandedConfiguration(config, listener);
     }
 
     /** Report the exception failure as an invocation failure. */
@@ -626,6 +631,28 @@ public class TestInvocation implements ITestInvocation {
                                     testDevice.getSerialNumber(),
                                     event),
                             batteryLevel.toString());
+        }
+    }
+
+    /**
+     * Log the invocation configuration as one large XML detailing all settings in use.
+     *
+     * @param config the {@link IConfiguration} of this test run
+     * @param listener the {@link ITestLogger} with which to register the log
+     */
+    private void logExpandedConfiguration(IConfiguration config, ITestLogger listener) {
+        try (StringWriter configXmlWriter = new StringWriter();
+                PrintWriter wrapperWriter = new PrintWriter(configXmlWriter)) {
+            config.dumpXml(wrapperWriter);
+            wrapperWriter.flush();
+            // Specified UTF-8 encoding for an abundance of caution, but its possible we could want
+            // something else in the future
+            byte[] configXmlByteArray = configXmlWriter.toString().getBytes("UTF-8");
+            try (InputStreamSource source = new ByteArrayInputStreamSource(configXmlByteArray)) {
+                listener.testLog(TRADEFED_CONFIG_NAME, LogDataType.HARNESS_CONFIG, source);
+            }
+        } catch (IOException e) {
+            CLog.e(e);
         }
     }
 
