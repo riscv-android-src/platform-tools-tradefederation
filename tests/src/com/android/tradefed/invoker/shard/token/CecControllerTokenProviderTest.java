@@ -95,15 +95,15 @@ public class CecControllerTokenProviderTest {
                         + "40:89:74:65:73:74";
         try {
             BufferedReader br = new BufferedReader(new StringReader(consoleOutput));
-            assertTrue(provider.checkConsoleOutput("waiting for input", 10000, br));
+            assertTrue(provider.checkConsoleOutput("waiting for input", 250, br));
             assertTrue(
                     provider.checkConsoleOutput(
-                            provider.convertStringToHexParams("test"), 10000, br));
-            assertFalse(provider.checkConsoleOutput("wait for input", 10000, br));
-            assertFalse(provider.checkConsoleOutput("74:75:76", 10000, br));
+                            provider.convertStringToHexParams("test"), 250, br));
+            assertFalse(provider.checkConsoleOutput("wait for input", 250, br));
+            assertFalse(provider.checkConsoleOutput("74:75:76", 250, br));
             assertFalse(
                     provider.checkConsoleOutput(
-                            provider.convertStringToHexParams("testing"), 10000, br));
+                            provider.convertStringToHexParams("testing"), 250, br));
         } catch (IOException e) {
             throw new AssertionError("Unexpected IOException!", e);
         }
