@@ -332,12 +332,13 @@ public class OptionSetter {
         OptionFieldsForName fields = fieldsForArgNoThrow(name);
         if (fields == null) {
             throw new ConfigurationException(
-                    String.format("Could not find option with name '%s'", name));
+                    String.format("Could not find option with name '%s'", name),
+                    InfraErrorIdentifier.OPTION_CONFIGURATION_ERROR);
         }
         return fields;
     }
 
-    OptionFieldsForName fieldsForArgNoThrow(String name) throws ConfigurationException {
+    OptionFieldsForName fieldsForArgNoThrow(String name) {
         OptionFieldsForName fields = mOptionMap.get(name);
         if (fields == null || fields.size() == 0) {
             return null;
