@@ -24,6 +24,7 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.invoker.ExecutionFiles;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.ExecutionFiles.FilesKey;
 import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.InvocationExecution;
@@ -74,6 +75,11 @@ public class SandboxedInvocationExecution extends InvocationExecution {
         return true;
     }
 
+    @Override
+    public void cleanUpBuilds(IInvocationContext context, IConfiguration config) {
+        // Don't clean the build info in subprocess. Let the parents do it.
+    }
+
     /**
      * In order for sandbox to work without currently receiving the parent TestInformation back-fill
      * some information to find artifacts properly.
@@ -83,7 +89,7 @@ public class SandboxedInvocationExecution extends InvocationExecution {
         if (execFiles.get(FilesKey.TESTS_DIRECTORY) == null) {
             File testsDir = primaryBuild.getFile(BuildInfoFileKey.TESTDIR_IMAGE);
             if (testsDir != null && testsDir.exists()) {
-                execFiles.put(FilesKey.TESTS_DIRECTORY, testsDir);
+                execFiles.put(FilesKey.TESTS_DIRECTORY, testsDir, true);
             }
         }
         if (execFiles.get(FilesKey.TARGET_TESTS_DIRECTORY) == null) {
