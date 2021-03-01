@@ -16,6 +16,7 @@
 package com.android.tradefed;
 
 import com.android.tradefed.device.TestDeviceFuncTest;
+import com.android.tradefed.device.TestDeviceUserFuncTest;
 import com.android.tradefed.proto.PlatformProtosFuncTest;
 import com.android.tradefed.targetprep.AppSetupFuncTest;
 import com.android.tradefed.targetprep.DeviceSetupFuncTest;
@@ -31,6 +32,7 @@ import org.junit.runners.Suite.SuiteClasses;
 @SuiteClasses({
     // device
     TestDeviceFuncTest.class,
+    TestDeviceUserFuncTest.class,
     // proto
     PlatformProtosFuncTest.class,
     // targetprep
