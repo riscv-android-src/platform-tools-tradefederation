@@ -39,6 +39,7 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileSystemException;
 import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.attribute.PosixFilePermission;
 import java.util.ArrayList;
@@ -1250,5 +1251,22 @@ public class FileUtil {
                 resourceStream.close();
             }
         }
+    }
+
+    /** Returns the size reported by the directory. */
+    public static Long sizeOfDirectory(File directory) {
+        Path folder = directory.getAbsoluteFile().toPath();
+        try {
+            long size =
+                    Files.walk(folder, FileVisitOption.FOLLOW_LINKS)
+                            .filter(p -> p.toFile().isFile())
+                            .mapToLong(p -> p.toFile().length())
+                            .sum();
+            CLog.d("Directory '%s' has size: %s", directory, size);
+            return size;
+        } catch (IOException | RuntimeException e) {
+            CLog.e(e);
+        }
+        return null;
     }
 }
