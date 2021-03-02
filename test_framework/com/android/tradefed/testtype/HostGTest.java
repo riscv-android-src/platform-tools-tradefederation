@@ -136,7 +136,18 @@ public class HostGTest extends GTestBase implements IBuildReceiver {
         } finally {
             // Flush before the log to ensure order of events
             receiver.flush();
+            try {
+                // Add a small extra log to the output for verification sake.
+                FileUtil.writeToFile(
+                        String.format(
+                                "\nBinary '%s' still exists: %s", gtestFile, gtestFile.exists()),
+                        stdout,
+                        true);
+            } catch (IOException e) {
+                // Ignore
+            }
             if (stdout != null && stdout.length() > 0L) {
+
                 try (FileInputStreamSource source = new FileInputStreamSource(stdout)) {
                     logger.testLog(
                             String.format("%s-output", gtestFile.getName()),
