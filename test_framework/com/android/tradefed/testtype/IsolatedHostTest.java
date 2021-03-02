@@ -237,7 +237,11 @@ public class IsolatedHostTest
         } catch (IOException e) {
             if (!mReportedFailure) {
                 // Avoid overriding the failure
-                listener.testRunFailed(StreamUtil.getStackTrace(e));
+                FailureDescription failure =
+                        FailureDescription.create(
+                                StreamUtil.getStackTrace(e), FailureStatus.INFRA_FAILURE);
+                listener.testRunFailed(failure);
+                listener.testRunEnded(0L, new HashMap<String, Metric>());
             }
         }
     }
@@ -482,7 +486,10 @@ public class IsolatedHostTest
                             if (!runStarted) {
                                 listener.testRunStarted(this.getClass().getCanonicalName(), 0);
                             }
-                            listener.testRunFailed(reply.getMessage());
+                            FailureDescription failure =
+                                    FailureDescription.create(
+                                            reply.getMessage(), FailureStatus.INFRA_FAILURE);
+                            listener.testRunFailed(failure);
                             listener.testRunEnded(0L, new HashMap<String, Metric>());
                             break mainLoop;
                         case RUNNER_STATUS_STARTING:
@@ -548,7 +555,15 @@ public class IsolatedHostTest
                             }
                     }
                 } catch (SocketTimeoutException e) {
-                    listener.testRunFailed(StreamUtil.getStackTrace(e));
+                    mReportedFailure = true;
+                    FailureDescription failure =
+                            FailureDescription.create(
+                                    StreamUtil.getStackTrace(e), FailureStatus.INFRA_FAILURE);
+                    listener.testRunFailed(failure);
+                    listener.testRunEnded(
+                            Duration.between(start, Instant.now()).toMillis(),
+                            new HashMap<String, Metric>());
+                    break mainLoop;
                 }
             }
         } finally {
