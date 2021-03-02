@@ -1255,6 +1255,9 @@ public class FileUtil {
 
     /** Returns the size reported by the directory. */
     public static Long sizeOfDirectory(File directory) {
+        if (directory == null || !directory.isDirectory()) {
+            return null;
+        }
         Path folder = directory.getAbsoluteFile().toPath();
         try {
             long size =
@@ -1262,7 +1265,9 @@ public class FileUtil {
                             .filter(p -> p.toFile().isFile())
                             .mapToLong(p -> p.toFile().length())
                             .sum();
-            CLog.d("Directory '%s' has size: %s", directory, size);
+            CLog.d(
+                    "Directory '%s' has size: %s. Contains: %s",
+                    directory, size, Arrays.asList(directory.list()));
             return size;
         } catch (IOException | RuntimeException e) {
             CLog.e(e);

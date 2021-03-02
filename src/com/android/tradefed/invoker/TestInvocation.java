@@ -98,8 +98,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -1365,17 +1363,6 @@ public class TestInvocation implements ITestInvocation {
                 return null;
             }
         }
-        Path folder = workFolder.toPath();
-        try {
-            long size =
-                    Files.walk(folder)
-                            .filter(p -> p.toFile().isFile())
-                            .mapToLong(p -> p.toFile().length())
-                            .sum();
-            return size;
-        } catch (IOException | RuntimeException e) {
-            CLog.e(e);
-        }
-        return null;
+        return FileUtil.sizeOfDirectory(workFolder);
     }
 }
