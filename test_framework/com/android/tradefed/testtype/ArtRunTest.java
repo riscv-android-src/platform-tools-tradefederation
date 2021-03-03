@@ -441,21 +441,13 @@ public class ArtRunTest implements IRemoteTest, IAbiReceiver, ITestFilterReceive
             runTestDir.getAbsolutePath()
         };
 
-        try {
-            String checkerOutput = runAndCollectStderr(checkerCommandLine);
-            if (checkerOutput != null && !checkerOutput.isEmpty()) {
-                String errorMessage = "Checker test failed:\n" + checkerOutput;
-                listener.testLog(
-                        "graph.cfg", LogDataType.CFG, new FileInputStreamSource(localCfgPath));
-                CLog.i(errorMessage);
-                return Optional.of(errorMessage);
-            }
-        } catch (RuntimeException e) {
-            String errorMessage =
-                    String.format("Runtime exception while starting Checker process: %s", e);
-            CLog.e(errorMessage);
-            return Optional.of(errorMessage);
+        Optional<String> checkerError = runChecker(checkerCommandLine);
+        if (checkerError.isPresent()) {
+            listener.testLog("graph.cfg", LogDataType.CFG, new FileInputStreamSource(localCfgPath));
+            CLog.i(checkerError.get());
+            return checkerError;
         }
+
         FileUtil.recursiveDelete(runTestDir);
         return Optional.empty();
     }
@@ -474,16 +466,39 @@ public class ArtRunTest implements IRemoteTest, IAbiReceiver, ITestFilterReceive
         return checkerBinary;
     }
 
-    protected String runAndCollectStderr(String[] checkerCommandLine) {
+    /**
+     * Run a Checker command and check its result.
+     *
+     * @param checkerCommandLine The Checker command line to execute
+     * @return An optional error message, empty if the Checker invocation was successful
+     */
+    protected Optional<String> runChecker(String[] checkerCommandLine) {
+        CLog.d("About to run Checker command: %s", String.join(" ", checkerCommandLine));
         CommandResult result = RunUtil.getDefault().runTimedCmd(CHECKER_TIMEOUT_MS,
                 checkerCommandLine);
         if (result.getStatus() != CommandStatus.SUCCESS) {
+            String errorMessage;
             if (result.getStatus() == CommandStatus.TIMED_OUT) {
-                throw new RuntimeException("Checker timed out");
+                errorMessage =
+                        String.format("Checker command timed out after %s ms", CHECKER_TIMEOUT_MS);
+            } else {
+                errorMessage =
+                        String.format(
+                                "Checker command finished unsuccessfully: status=%s, exit"
+                                        + " code=%s,\n"
+                                        + "stdout=\n"
+                                        + "%s\n"
+                                        + "stderr=\n"
+                                        + "%s\n",
+                                result.getStatus(),
+                                result.getExitCode(),
+                                result.getStdout(),
+                                result.getStderr());
             }
-            throw new RuntimeException("Error running Checker\n" + result.getStderr());
+            CLog.i(errorMessage);
+            return Optional.of(errorMessage);
         }
-        return result.getStderr();
+        return Optional.empty();
     }
 
     /**
