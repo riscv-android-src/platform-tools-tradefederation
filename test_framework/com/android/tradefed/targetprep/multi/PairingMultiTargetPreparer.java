@@ -31,6 +31,7 @@ import com.android.tradefed.util.Sl4aBluetoothUtil.BluetoothProfile;
 
 import com.google.common.annotations.VisibleForTesting;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -67,6 +68,11 @@ public class PairingMultiTargetPreparer extends BaseMultiTargetPreparer {
                             + " android.bluetooth.BluetoothProfile")
     private Set<BluetoothProfile> mProfiles = new HashSet<>();
 
+    @Option(
+            name = "bt-pairing-timeout",
+            description = "Set the timeout (default in ms) to wait for two devices to be paired")
+    private Duration mPairingTimeout = Duration.ofMinutes(1).plusSeconds(30);
+
     @VisibleForTesting
     void setBluetoothUtil(Sl4aBluetoothUtil util) {
         mUtil = util;
@@ -89,6 +95,7 @@ public class PairingMultiTargetPreparer extends BaseMultiTargetPreparer {
                 throw new TargetSetupError(
                         "Failed to enable Bluetooth", mCompanionDevice.getDeviceDescriptor());
             }
+            mUtil.setBtPairTimeout(mPairingTimeout);
             if (!mUtil.pair(mPrimaryDevice, mCompanionDevice)) {
                 throw new TargetSetupError(
                         "Bluetooth pairing failed.", mPrimaryDevice.getDeviceDescriptor());

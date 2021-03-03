@@ -41,6 +41,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.mockito.Mock;
 
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -94,12 +95,15 @@ public class PairingMultiTargetPreparerTest {
 
     @Test
     public void testPairWithConnection() throws Exception {
+        OptionSetter setter = new OptionSetter(mPreparer);
+        setter.setOptionValue("bt-pairing-timeout", "2m30s");
         setBluetoothProfiles();
         when(mUtil.connect(any(ITestDevice.class), any(ITestDevice.class), anySet()))
                 .thenReturn(true);
         mPreparer.setUp(mContext);
         verify(mUtil).enable(mPrimary);
         verify(mUtil).enable(mSecondary);
+        verify(mUtil).setBtPairTimeout(Duration.ofMinutes(2).plusSeconds(30));
         verify(mUtil).pair(mPrimary, mSecondary);
         verify(mUtil)
                 .connect(
