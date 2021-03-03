@@ -21,6 +21,7 @@ import static org.mockito.Mockito.times;
 
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.ILogSaver;
@@ -57,6 +58,13 @@ public class ShardMainResultForwarderTest {
         mShardPrimary = new ShardMainResultForwarder(listListener, 2);
     }
 
+    private InvocationContext createContext(int shardIndex) {
+        InvocationContext main = new InvocationContext();
+        main.setConfigurationDescriptor(new ConfigurationDescriptor());
+        main.getConfigurationDescriptor().setShardIndex(shardIndex);
+        return main;
+    }
+
     /**
      * Test that build info attributes from each shard are carried to the main build info for the
      * same device.
@@ -69,13 +77,13 @@ public class ShardMainResultForwarderTest {
         main.addDeviceBuildInfo("device1", mainBuild);
         assertTrue(mainBuild.getBuildAttributes().isEmpty());
 
-        InvocationContext shard1 = new InvocationContext();
+        InvocationContext shard1 = createContext(0);
         IBuildInfo shardBuild1 = new BuildInfo();
         shard1.addAllocatedDevice("device1", Mockito.mock(ITestDevice.class));
         shard1.addDeviceBuildInfo("device1", shardBuild1);
         shardBuild1.addBuildAttribute("shard1", "value1");
 
-        InvocationContext shard2 = new InvocationContext();
+        InvocationContext shard2 = createContext(1);
         IBuildInfo shardBuild2 = new BuildInfo();
         shard2.addAllocatedDevice("device1", Mockito.mock(ITestDevice.class));
         shard2.addDeviceBuildInfo("device1", shardBuild2);
@@ -108,7 +116,7 @@ public class ShardMainResultForwarderTest {
         main.addDeviceBuildInfo("device2", mainBuild2);
         assertTrue(mainBuild2.getBuildAttributes().isEmpty());
 
-        InvocationContext shard1 = new InvocationContext();
+        InvocationContext shard1 = createContext(0);
         IBuildInfo shardBuild1 = new BuildInfo();
         shard1.addAllocatedDevice("device1", Mockito.mock(ITestDevice.class));
         shard1.addDeviceBuildInfo("device1", shardBuild1);
@@ -119,7 +127,7 @@ public class ShardMainResultForwarderTest {
         shard1.addDeviceBuildInfo("device2", shardBuild1_2);
         shardBuild1_2.addBuildAttribute("shard1_device2", "value1_device2");
 
-        InvocationContext shard2 = new InvocationContext();
+        InvocationContext shard2 = createContext(1);
         IBuildInfo shardBuild2 = new BuildInfo();
         shard2.addAllocatedDevice("device1", Mockito.mock(ITestDevice.class));
         shard2.addDeviceBuildInfo("device1", shardBuild2);
