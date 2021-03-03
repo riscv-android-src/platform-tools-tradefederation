@@ -22,6 +22,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import com.android.tradefed.command.Console.CaptureList;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.RegexTrie;
 import com.android.tradefed.util.RunUtil;
 
@@ -181,7 +182,9 @@ public class ConsoleTest {
             EasyMock.verify(mMockScheduler);
         } finally {
             mConsole.exitConsole();
-            RunUtil.getDefault().interrupt(mConsole, "interrupting");
+            RunUtil.getDefault()
+                    .interrupt(
+                            mConsole, "interrupting", InfraErrorIdentifier.TRADEFED_SHUTTING_DOWN);
             mConsole.interrupt();
             mConsole.join(2000);
         }
