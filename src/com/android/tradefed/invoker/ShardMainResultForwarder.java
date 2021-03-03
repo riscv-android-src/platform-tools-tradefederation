@@ -30,6 +30,7 @@ import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.util.TimeUtil;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map.Entry;
 
@@ -50,7 +51,7 @@ public class ShardMainResultForwarder extends ResultForwarder implements ILogSav
     private long mFirstShardEndTime = 0L;
     private IInvocationContext mOriginalContext;
     private List<IInvocationContext> mShardContextList;
-    private int shardIndex = 0;
+    private int mShardIndex = 0;
 
     /**
      * Create a {@link ShardMainResultForwarder}.
@@ -76,10 +77,18 @@ public class ShardMainResultForwarder extends ResultForwarder implements ILogSav
             super.invocationStarted(context);
             mStartReported = true;
         } else {
+            Integer shardIndex = null;
+            if (context.getConfigurationDescriptor() != null) {
+                shardIndex = context.getConfigurationDescriptor().getShardIndex();
+            }
+            int index = mShardIndex;
+            if (shardIndex != null) {
+                index = shardIndex;
+            }
             // Track serials used in each shard.
-            mOriginalContext.addSerialsFromShard(shardIndex, context.getSerials());
+            mOriginalContext.addSerialsFromShard(index, context.getSerials());
             mShardContextList.add(context);
-            shardIndex++;
+            mShardIndex++;
         }
     }
 
@@ -105,13 +114,22 @@ public class ShardMainResultForwarder extends ResultForwarder implements ILogSav
      */
     @Override
     public void invocationEnded(long elapsedTime) {
+        invocationEnded(elapsedTime, null);
+    }
+
+    /** More detailed callback to differentiate which shard finished. */
+    public void invocationEnded(long elapsedTime, IInvocationContext context) {
         mTotalElapsed += elapsedTime;
         if (mInitCount == mShardsRemaining) {
             mFirstShardEndTime = System.currentTimeMillis();
         }
         mShardsRemaining--;
-        // TODO: Avoid copying *all shard context*, just copy the one that finished
-        copyShardBuildInfoToMain(mOriginalContext, mShardContextList);
+        if (context == null) {
+            // Fallback to copy all if we didn't get the right callback.
+            copyShardBuildInfoToMain(mOriginalContext, mShardContextList);
+        } else {
+            copyShardBuildInfoToMain(mOriginalContext, Arrays.asList(context));
+        }
         if (mShardsRemaining <= 0) {
             // TODO: consider logging all shard final times.
             CLog.logAndDisplay(
