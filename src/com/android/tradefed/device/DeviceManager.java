@@ -1048,6 +1048,7 @@ public class DeviceManager implements IDeviceManager {
     @Override
     public synchronized void terminateDeviceMonitor() {
         mDvcMon.stop();
+        mDvcMonRunning = false;
     }
 
     /** {@inheritDoc} */
