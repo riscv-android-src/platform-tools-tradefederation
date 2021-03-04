@@ -43,7 +43,9 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
 /** Client that allows reporting usage metrics to clearcut. */
@@ -111,7 +113,18 @@ public class ClearcutClient {
         System.out.println(NoticeMessageUtil.getNoticeMessage(mUserType));
 
         // Executor to actually send the events.
-        mExecutor = new ScheduledThreadPoolExecutor(1);
+        mExecutor =
+                new ScheduledThreadPoolExecutor(
+                        1,
+                        new ThreadFactory() {
+                            @Override
+                            public Thread newThread(Runnable r) {
+                                Thread t = Executors.defaultThreadFactory().newThread(r);
+                                t.setDaemon(true);
+                                t.setName("clearcut-client-thread");
+                                return t;
+                            }
+                        });
         Runnable command =
                 new Runnable() {
                     @Override
