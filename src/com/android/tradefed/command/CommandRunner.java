@@ -16,11 +16,13 @@
 
 package com.android.tradefed.command;
 
+import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.clearcut.ClearcutClient;
 import com.android.tradefed.clearcut.TerminateClearcutClient;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.device.NoDeviceException;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.SerializationUtil;
@@ -32,6 +34,9 @@ import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
+
+import sun.misc.Signal;
+import sun.misc.SignalHandler;
 
 /**
  * An alternate TradeFederation entry point that will run command specified in command
@@ -108,6 +113,19 @@ public class CommandRunner {
             mScheduler = getCommandScheduler();
             mScheduler.setClearcutClient(client);
             mScheduler.start();
+            SignalHandler handler =
+                    new SignalHandler() {
+                        @Override
+                        public void handle(Signal sig) {
+                            CLog.logAndDisplay(
+                                    LogLevel.INFO,
+                                    String.format(
+                                            "Received signal %s. Shutting down.", sig.getName()));
+                            mScheduler.shutdownHard(false);
+                        }
+                    };
+            Signal.handle(new Signal("TERM"), handler);
+
             mScheduler.addCommand(args);
         } catch (ConfigurationException e) {
             printStackTrace(e);

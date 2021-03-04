@@ -30,6 +30,7 @@ import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -56,9 +57,9 @@ public class Sl4aBluetoothUtil {
     /** Holding mappings from {@link ITestDevice} instance to device MAC address */
     private Map<ITestDevice, String> mAddresses = new HashMap<>();
 
-    @VisibleForTesting long mBtPairTimeoutMs = 25000;
+    private Duration mBtPairTimeout = Duration.ofSeconds(25);
 
-    @VisibleForTesting long mBtConnectionTimeoutMs = 15000;
+    private Duration mBtConnectionTimeout = Duration.ofSeconds(15);
 
     /** SL4A RPC commands to be used for Bluetooth operations */
     @VisibleForTesting
@@ -194,6 +195,14 @@ public class Sl4aBluetoothUtil {
         public int getPriority() {
             return mPriority;
         }
+    }
+
+    public void setBtPairTimeout(Duration timeout) {
+        mBtPairTimeout = timeout;
+    }
+
+    public void setBtConnectionTimeout(Duration timeout) {
+        mBtConnectionTimeout = timeout;
     }
 
     /**
@@ -366,11 +375,11 @@ public class Sl4aBluetoothUtil {
                 Boolean res = (Boolean) client.rpcCall(Commands.BLUETOOTH_UNBOND, address);
                 if (!res) {
                     CLog.w(
-                            "Failed to unpair device %s. It may not be an actual failure, instead "
-                                    + "it may be due to trying to unpair an already unpaired device. This "
-                                    + "usually happens when device was first connected using LE transport "
-                                    + "where both LE address and classic address are paired and unpaired "
-                                    + "at the same time.",
+                            "Failed to unpair device %s. It may not be an actual failure, instead"
+                                + " it may be due to trying to unpair an already unpaired device."
+                                + " This usually happens when device was first connected using LE"
+                                + " transport where both LE address and classic address are paired"
+                                + " and unpaired at the same time.",
                             address);
                 }
             } catch (IOException e) {
@@ -611,7 +620,7 @@ public class Sl4aBluetoothUtil {
 
     private boolean waitUntilPaired(ITestDevice primary, ITestDevice secondary)
             throws InterruptedException, DeviceNotAvailableException {
-        long endTime = System.currentTimeMillis() + mBtPairTimeoutMs;
+        long endTime = System.currentTimeMillis() + mBtPairTimeout.toMillis();
         while (System.currentTimeMillis() < endTime) {
             if (isPaired(primary, secondary)) {
                 return true;
@@ -642,7 +651,7 @@ public class Sl4aBluetoothUtil {
                             .getEventDispatcher()
                             .popEvent(
                                     Events.BLUETOOTH_PROFILE_CONNECTION_STATE_CHANGED,
-                                    mBtConnectionTimeoutMs);
+                                    mBtConnectionTimeout.toMillis());
             if (event == null) {
                 CLog.w("Timeout while waiting for connection state changes for all profiles");
                 return targetProfiles;
@@ -664,7 +673,7 @@ public class Sl4aBluetoothUtil {
             Set<BluetoothProfile> connectedProfiles,
             Set<BluetoothProfile> allProfiles)
             throws InterruptedException, DeviceNotAvailableException, JSONException, IOException {
-        long endTime = System.currentTimeMillis() + mBtConnectionTimeoutMs;
+        long endTime = System.currentTimeMillis() + mBtConnectionTimeout.toMillis();
         while (System.currentTimeMillis() < endTime
                 && !connectedProfiles.containsAll(allProfiles)) {
             for (BluetoothProfile profile : allProfiles) {
@@ -687,7 +696,7 @@ public class Sl4aBluetoothUtil {
             Set<BluetoothProfile> disConnectedProfiles,
             Set<BluetoothProfile> allProfiles)
             throws InterruptedException, DeviceNotAvailableException, JSONException, IOException {
-        long endTime = System.currentTimeMillis() + mBtConnectionTimeoutMs;
+        long endTime = System.currentTimeMillis() + mBtConnectionTimeout.toMillis();
         while (System.currentTimeMillis() < endTime
                 && !disConnectedProfiles.containsAll(allProfiles)) {
             for (BluetoothProfile profile : allProfiles) {

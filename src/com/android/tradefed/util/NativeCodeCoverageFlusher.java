@@ -111,7 +111,7 @@ public final class NativeCodeCoverageFlusher {
                         "Empty string when retrieving SigCgt for %s (pid %d)",
                         processInfo.getName(), processInfo.getPid());
             } else {
-                long sigCgt = Long.parseLong(result.getStdout().trim(), 16);
+                long sigCgt = Long.parseUnsignedLong(result.getStdout().trim(), 16);
 
                 // Check the signal bit is set and either no processes are set, or this specific
                 // process is in the process list.

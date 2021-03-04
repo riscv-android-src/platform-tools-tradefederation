@@ -35,6 +35,8 @@ import org.apache.commons.compress.archivers.zip.ZipFile;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * An {@link ITargetPreparer} that sets up a system image on top of a device build with the Dynamic
@@ -44,6 +46,7 @@ import java.io.IOException;
 public class DynamicSystemPreparer extends BaseTargetPreparer {
     static final int DSU_MAX_WAIT_SEC = 10 * 60;
 
+    private static final String SYSTEM_IMAGE_NAME = "system.img";
     private static final String DEST_PATH = "/sdcard/system.raw.gz";
 
     @Option(
@@ -75,21 +78,39 @@ public class DynamicSystemPreparer extends BaseTargetPreparer {
                     InfraErrorIdentifier.CONFIGURED_ARTIFACT_NOT_FOUND);
         }
 
-        ZipFile zipFile = null;
+        List<File> tempFiles = new ArrayList<File>();
         File systemImage = null;
         File rawSystemImage = null;
         File systemImageGZ = null;
         try {
-            zipFile = new ZipFile(systemImageZipFile);
-            systemImage = ZipUtil2.extractFileFromZip(zipFile, "system.img");
+            if (systemImageZipFile.isDirectory()) {
+                systemImage = new File(systemImageZipFile, SYSTEM_IMAGE_NAME);
+            } else {
+                try (ZipFile zipFile = new ZipFile(systemImageZipFile)) {
+                    systemImage = ZipUtil2.extractFileFromZip(zipFile, SYSTEM_IMAGE_NAME);
+                }
+                if (systemImage != null) {
+                    tempFiles.add(systemImage);
+                }
+            }
+            if (systemImage == null || !systemImage.isFile()) {
+                throw new BuildError(
+                        String.format(
+                                "Cannot find %s in %s.", SYSTEM_IMAGE_NAME, mSystemImageZipName),
+                        device.getDeviceDescriptor(),
+                        InfraErrorIdentifier.CONFIGURED_ARTIFACT_NOT_FOUND);
+            }
+
             if (SparseImageUtil.isSparse(systemImage)) {
                 rawSystemImage = FileUtil.createTempFile("system", ".raw");
+                tempFiles.add(rawSystemImage);
                 SparseImageUtil.unsparse(systemImage, rawSystemImage);
             } else {
                 // system.img is already non-sparse
                 rawSystemImage = systemImage;
             }
             systemImageGZ = FileUtil.createTempFile("system", ".raw.gz");
+            tempFiles.add(systemImageGZ);
             long rawSize = rawSystemImage.length();
             ZipUtil.gzipFile(rawSystemImage, systemImageGZ);
             CLog.i("Pushing %s to %s", systemImageGZ.getAbsolutePath(), DEST_PATH);
@@ -144,10 +165,9 @@ public class DynamicSystemPreparer extends BaseTargetPreparer {
             throw new TargetSetupError(
                     "fail to install the DynamicSystemUpdate", e, device.getDeviceDescriptor());
         } finally {
-            FileUtil.deleteFile(systemImage);
-            FileUtil.deleteFile(rawSystemImage);
-            FileUtil.deleteFile(systemImageGZ);
-            ZipUtil2.closeZip(zipFile);
+            for (File tempFile : tempFiles) {
+                FileUtil.deleteFile(tempFile);
+            }
         }
     }
 

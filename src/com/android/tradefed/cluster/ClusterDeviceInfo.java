@@ -17,20 +17,29 @@ package com.android.tradefed.cluster;
 
 import com.android.tradefed.command.remote.DeviceDescriptor;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /** A class to encapsulate cluster device info to be uploaded. */
 public class ClusterDeviceInfo {
     private String mRunTarget;
     private String mGroupName;
     private DeviceDescriptor mDeviceDescriptor;
+    private Map<String, String> mExtraInfo;
 
     private ClusterDeviceInfo(
-            DeviceDescriptor deviceDescriptor, String runTarget, String groupName) {
+            DeviceDescriptor deviceDescriptor,
+            String runTarget,
+            String groupName,
+            Map<String, String> extraInfo) {
         mDeviceDescriptor = deviceDescriptor;
         mRunTarget = runTarget;
         mGroupName = groupName;
+        mExtraInfo = new LinkedHashMap<>(extraInfo);
     }
 
     public String getRunTarget() {
@@ -45,10 +54,15 @@ public class ClusterDeviceInfo {
         return mDeviceDescriptor;
     }
 
+    public Map<String, String> getExtraInfo() {
+        return new LinkedHashMap<>(mExtraInfo);
+    }
+
     public static class Builder {
         private DeviceDescriptor mDeviceDescriptor;
         private String mRunTarget;
         private String mGroupName;
+        private Map<String, String> mExtraInfo = new LinkedHashMap<>();
 
         public Builder() {}
 
@@ -67,9 +81,14 @@ public class ClusterDeviceInfo {
             return this;
         }
 
+        public Builder addExtraInfo(final Map<String, String> extraInfo) {
+            mExtraInfo.putAll(extraInfo);
+            return this;
+        }
+
         public ClusterDeviceInfo build() {
             final ClusterDeviceInfo deviceInfo =
-                    new ClusterDeviceInfo(mDeviceDescriptor, mRunTarget, mGroupName);
+                    new ClusterDeviceInfo(mDeviceDescriptor, mRunTarget, mGroupName, mExtraInfo);
             return deviceInfo;
         }
     }
@@ -94,6 +113,12 @@ public class ClusterDeviceInfo {
         json.put("sim_operator", mDeviceDescriptor.getSimOperator());
         json.put("state", mDeviceDescriptor.getState());
         json.put("group_name", mGroupName);
+        JSONArray extraInfoKeyValuePairs = new JSONArray();
+        for (Map.Entry<String, String> entry : mExtraInfo.entrySet()) {
+            extraInfoKeyValuePairs.put(
+                    new JSONObject().put("key", entry.getKey()).put("value", entry.getValue()));
+        }
+        json.put("extra_info", extraInfoKeyValuePairs);
         return json;
     }
 }

@@ -90,6 +90,8 @@ public class ProtoResultReporterTest {
         // run log
         mReporter.logAssociation(
                 "run_log1", new LogFile("path", "url", false, LogDataType.LOGCAT, 5));
+        mReporter.logAssociation(
+                "run_log1", new LogFile("path2", "url2", false, LogDataType.LOGCAT, 5));
         mReporter.testRunEnded(50L, new HashMap<String, Metric>());
 
         mReporter.testModuleEnded();
@@ -123,8 +125,8 @@ public class ProtoResultReporterTest {
         // test 2 has 1 metric and 1 log artifact
         assertEquals(1, testRecord2.getMetricsMap().size());
         assertEquals(1, testRecord2.getArtifactsMap().size());
-        // run 1 has one log file
-        assertEquals(1, run1.getArtifactsMap().size());
+        // run 1 has two log file
+        assertEquals(2, run1.getArtifactsMap().size());
     }
 
     /** Test when testRunFailed in called from within a test context (testStarted/TestEnded). */

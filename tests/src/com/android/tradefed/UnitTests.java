@@ -139,6 +139,7 @@ import com.android.tradefed.invoker.sandbox.ParentSandboxInvocationExecutionTest
 import com.android.tradefed.invoker.shard.ShardHelperTest;
 import com.android.tradefed.invoker.shard.StrictShardHelperTest;
 import com.android.tradefed.invoker.shard.TestsPoolPollerTest;
+import com.android.tradefed.invoker.shard.token.CecControllerTokenProviderTest;
 import com.android.tradefed.invoker.shard.token.TelephonyTokenProviderTest;
 import com.android.tradefed.invoker.shard.token.TokenProviderHelperTest;
 import com.android.tradefed.lite.DryRunnerTest;
@@ -237,6 +238,7 @@ import com.android.tradefed.targetprep.InstallAllTestZipAppsSetupTest;
 import com.android.tradefed.targetprep.InstallApexModuleTargetPreparerTest;
 import com.android.tradefed.targetprep.InstallApkSetupTest;
 import com.android.tradefed.targetprep.InstrumentationPreparerTest;
+import com.android.tradefed.targetprep.KnownFailurePreparerTest;
 import com.android.tradefed.targetprep.PushFilePreparerTest;
 import com.android.tradefed.targetprep.PythonVirtualenvPreparerTest;
 import com.android.tradefed.targetprep.RebootTargetPreparerTest;
@@ -329,8 +331,8 @@ import com.android.tradefed.testtype.suite.module.ArchModuleControllerTest;
 import com.android.tradefed.testtype.suite.module.BaseModuleControllerTest;
 import com.android.tradefed.testtype.suite.module.CarModuleControllerTest;
 import com.android.tradefed.testtype.suite.module.DeviceFeatureModuleControllerTest;
-import com.android.tradefed.testtype.suite.module.MinApiLevelModuleControllerTest;
 import com.android.tradefed.testtype.suite.module.NativeBridgeModuleControllerTest;
+import com.android.tradefed.testtype.suite.module.ShippingApiLevelModuleControllerTest;
 import com.android.tradefed.testtype.suite.params.InstantAppHandlerTest;
 import com.android.tradefed.testtype.suite.params.MainlineModuleHandlerTest;
 import com.android.tradefed.testtype.suite.params.ModuleParametersHelperTest;
@@ -599,6 +601,7 @@ import org.junit.runners.Suite.SuiteClasses;
     TestsPoolPollerTest.class,
 
     // invoker.shard.token
+    CecControllerTokenProviderTest.class,
     TelephonyTokenProviderTest.class,
     TokenProviderHelperTest.class,
 
@@ -699,6 +702,7 @@ import org.junit.runners.Suite.SuiteClasses;
     InstallApexModuleTargetPreparerTest.class,
     InstallApkSetupTest.class,
     InstrumentationPreparerTest.class,
+    KnownFailurePreparerTest.class,
     PushFilePreparerTest.class,
     PythonVirtualenvPreparerTest.class,
     RebootTargetPreparerTest.class,
@@ -835,8 +839,8 @@ import org.junit.runners.Suite.SuiteClasses;
     BaseModuleControllerTest.class,
     CarModuleControllerTest.class,
     DeviceFeatureModuleControllerTest.class,
-    MinApiLevelModuleControllerTest.class,
     NativeBridgeModuleControllerTest.class,
+    ShippingApiLevelModuleControllerTest.class,
 
     // testtype/suite/params
     InstantAppHandlerTest.class,

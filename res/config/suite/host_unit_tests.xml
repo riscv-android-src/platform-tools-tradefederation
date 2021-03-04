@@ -10,14 +10,14 @@
     <option name="test-arg" value="com.android.tradefed.testtype.HostGTest:native-test-timeout:0" />
 
     <!-- Force a timeout on every unit test cases -->
-    <option name="test-arg" value="com.android.compatibility.common.tradefed.testtype.JarHostTest:test-case-timeout:20s" />
-    <option name="test-arg" value="com.android.tradefed.testtype.HostGTest:test-case-timeout:20s" />
-    <option name="test-arg" value="com.android.tradefed.testtype.HostTest:test-case-timeout:20s" />
-    <option name="test-arg" value="com.android.tradefed.testtype.IsolatedHostTest:test-case-timeout:20s" />
-    <option name="test-arg" value="com.android.tradefed.testtype.python.PythonBinaryHostTest:test-case-timeout:20s" />
+    <option name="test-arg" value="com.android.compatibility.common.tradefed.testtype.JarHostTest:test-case-timeout:15s" />
+    <option name="test-arg" value="com.android.tradefed.testtype.HostGTest:test-case-timeout:15s" />
+    <option name="test-arg" value="com.android.tradefed.testtype.HostTest:test-case-timeout:15s" />
+    <option name="test-arg" value="com.android.tradefed.testtype.IsolatedHostTest:test-case-timeout:15s" />
+    <option name="test-arg" value="com.android.tradefed.testtype.python.PythonBinaryHostTest:test-case-timeout:15s" />
 
     <!-- Set timeout for ExecutableHostTest which consider a single binary one method -->
-    <option name="test-arg" value="com.android.tradefed.testtype.binary.ExecutableHostTest:per-binary-timeout:20s" />
+    <option name="test-arg" value="com.android.tradefed.testtype.binary.ExecutableHostTest:per-binary-timeout:15s" />
 
     <!-- Automated exclusion of java tests -->
     <option name="test-arg" value="com.android.tradefed.testtype.HostTest:exclude-annotation:android.platform.test.annotations.LargeTest" />
@@ -25,5 +25,5 @@
     <option name="test-arg" value="com.android.tradefed.testtype.IsolatedHostTest:exclude-annotation:android.platform.test.annotations.LargeTest" />
 
     <!-- Exclude known failures from the unit tests suite -->
-    <include name="suite/unit-tests/unit-tests-known-failures" />
+    <include name="unit-tests/unit-tests-known-failures" />
 </configuration>

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 The Android Open Source Project
+ * Copyright (C) 2021 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,18 +34,21 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/** Unit tests for {@link MinApiLevelModuleController}. */
+/** Unit tests for {@link ShippingApiLevelModuleController}. */
 @RunWith(JUnit4.class)
-public class MinApiLevelModuleControllerTest {
-    private MinApiLevelModuleController mController;
+public class ShippingApiLevelModuleControllerTest {
+    private ShippingApiLevelModuleController mController;
     private IInvocationContext mContext;
     private ITestDevice mMockDevice;
     private IDevice mMockIDevice;
     private String mApiLevelProp;
 
+    private static final String SHIPPING_API_LEVEL_PROP = "ro.product.first_api_level";
+    private static final String VENDOR_API_LEVEL_PROP = "ro.vndk.version";
+
     @Before
     public void setUp() {
-        mController = new MinApiLevelModuleController();
+        mController = new ShippingApiLevelModuleController();
         mMockDevice = EasyMock.createMock(ITestDevice.class);
         mContext = new InvocationContext();
         mContext.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
@@ -54,48 +57,84 @@ public class MinApiLevelModuleControllerTest {
         mMockIDevice = EasyMock.createMock(IDevice.class);
     }
 
-    /** Test Api Level is lower than min-api-level */
+    /**
+     * min-api-level is higher than shipping api level. The test will be skipped. No need to check
+     * vendor api level.
+     */
     @Test
-    public void testDeviceApiLevelLowerThanMinApiLevel()
+    public void testMinApiLevelHigherThanProductFirstApiLevel()
             throws DeviceNotAvailableException, ConfigurationException {
-        mApiLevelProp = "ro.build.version.sdk";
         EasyMock.expect(mMockDevice.getIDevice()).andReturn(mMockIDevice);
-        EasyMock.expect(mMockDevice.getProperty(mApiLevelProp)).andReturn("28");
+        EasyMock.expect(mMockDevice.getIntProperty(SHIPPING_API_LEVEL_PROP, 10000)).andReturn(28L);
         EasyMock.replay(mMockDevice);
         OptionSetter setter = new OptionSetter(mController);
-        setter.setOptionValue("api-level-prop", mApiLevelProp);
         setter.setOptionValue("min-api-level", "29");
         assertEquals(RunStrategy.FULL_MODULE_BYPASS, mController.shouldRunModule(mContext));
         EasyMock.verify(mMockDevice);
     }
 
-    /** Test Api Level is higher than min-api-level */
+    /**
+     * min-api-level is equal to shipping api level but higher than vendor api level. The test will
+     * be skipped.
+     */
     @Test
-    public void testDeviceApiLevelHigherThanMinApiLevel()
+    public void testMinApiLevelHigherThanVendorApiLevel()
             throws DeviceNotAvailableException, ConfigurationException {
-        mApiLevelProp = "ro.product.first_api_level";
         EasyMock.expect(mMockDevice.getIDevice()).andReturn(mMockIDevice);
-        EasyMock.expect(mMockDevice.getProperty(mApiLevelProp)).andReturn("28");
+        EasyMock.expect(mMockDevice.getIntProperty(SHIPPING_API_LEVEL_PROP, 10000)).andReturn(29L);
+        EasyMock.expect(mMockDevice.getIntProperty(VENDOR_API_LEVEL_PROP, 10000)).andReturn(28L);
         EasyMock.replay(mMockDevice);
         OptionSetter setter = new OptionSetter(mController);
-        setter.setOptionValue("api-level-prop", mApiLevelProp);
+        setter.setOptionValue("min-api-level", "29");
+        assertEquals(RunStrategy.FULL_MODULE_BYPASS, mController.shouldRunModule(mContext));
+        EasyMock.verify(mMockDevice);
+    }
+
+    /**
+     * min-api-level is lower than shipping api level and no vendor api level defined. The test will
+     * run.
+     */
+    @Test
+    public void testMinApiLevelLowerThanProductFirstApiLevel()
+            throws DeviceNotAvailableException, ConfigurationException {
+        EasyMock.expect(mMockDevice.getIDevice()).andReturn(mMockIDevice);
+        EasyMock.expect(mMockDevice.getIntProperty(SHIPPING_API_LEVEL_PROP, 10000)).andReturn(28L);
+        EasyMock.expect(mMockDevice.getIntProperty(VENDOR_API_LEVEL_PROP, 10000)).andReturn(10000L);
+        EasyMock.replay(mMockDevice);
+        OptionSetter setter = new OptionSetter(mController);
         setter.setOptionValue("min-api-level", "27");
         assertEquals(RunStrategy.RUN, mController.shouldRunModule(mContext));
         EasyMock.verify(mMockDevice);
     }
 
-    /** Test Api Level cannot be found in the Device */
+    /**
+     * min-api-level is lower than both shipping api level and vendor api level. The test will run.
+     */
+    @Test
+    public void testMinApiLevelLowerThanProductAndVendorApiLevels()
+            throws DeviceNotAvailableException, ConfigurationException {
+        EasyMock.expect(mMockDevice.getIDevice()).andReturn(mMockIDevice);
+        EasyMock.expect(mMockDevice.getIntProperty(SHIPPING_API_LEVEL_PROP, 10000)).andReturn(28L);
+        EasyMock.expect(mMockDevice.getIntProperty(VENDOR_API_LEVEL_PROP, 10000)).andReturn(27L);
+        EasyMock.replay(mMockDevice);
+        OptionSetter setter = new OptionSetter(mController);
+        setter.setOptionValue("min-api-level", "27");
+        assertEquals(RunStrategy.RUN, mController.shouldRunModule(mContext));
+        EasyMock.verify(mMockDevice);
+    }
+
+    /** no properties are defined. The test will run. */
     @Test
     public void testDeviceApiLevelNotFound()
             throws DeviceNotAvailableException, ConfigurationException {
-        mApiLevelProp = "ro.product.first_api_level";
         EasyMock.expect(mMockDevice.getIDevice()).andReturn(mMockIDevice);
-        EasyMock.expect(mMockDevice.getProperty(mApiLevelProp)).andReturn(null);
+        EasyMock.expect(mMockDevice.getIntProperty(SHIPPING_API_LEVEL_PROP, 10000))
+                .andReturn(10000L);
+        EasyMock.expect(mMockDevice.getIntProperty(VENDOR_API_LEVEL_PROP, 10000)).andReturn(10000L);
         EasyMock.replay(mMockDevice);
         OptionSetter setter = new OptionSetter(mController);
-        setter.setOptionValue("api-level-prop", mApiLevelProp);
         setter.setOptionValue("min-api-level", "27");
-        assertEquals(RunStrategy.FULL_MODULE_BYPASS, mController.shouldRunModule(mContext));
+        assertEquals(RunStrategy.RUN, mController.shouldRunModule(mContext));
         EasyMock.verify(mMockDevice);
     }
 }

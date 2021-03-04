@@ -65,6 +65,7 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.log.StdoutLogger;
 import com.android.tradefed.postprocessor.IPostProcessor;
 import com.android.tradefed.result.ActionInProgress;
+import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -95,8 +96,8 @@ import com.google.common.annotations.VisibleForTesting;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -128,6 +129,7 @@ public class TestInvocation implements ITestInvocation {
     public static final String TRADEFED_LOG_NAME = "host_log";
     public static final String TRADEFED_END_HOST_LOG = "end_host_log";
     private static final String TRADEFED_DELEGATED_LOG_NAME = "delegated_parent_log";
+    public static final String TRADEFED_CONFIG_NAME = "tradefed-expanded-config";
     /** Suffix used on host_log for the part before sharding occurs. */
     static final String BEFORE_SHARDING_SUFFIX = "_before_sharding";
     static final String DEVICE_LOG_NAME_PREFIX = "device_logcat_";
@@ -349,7 +351,10 @@ public class TestInvocation implements ITestInvocation {
                     }
                 }
                 if (exception == null) {
+                    CLog.d("Checking that devices are online.");
                     checkDevicesAvailable(context.getDevices(), listener);
+                } else {
+                    CLog.d("Skip online check as an exception was already reported: %s", exception);
                 }
             }
             // Save the device executeShellCommand logs
@@ -469,6 +474,7 @@ public class TestInvocation implements ITestInvocation {
             ITestInvocationListener listener) {
         logStartInvocation(context, config);
         listener.invocationStarted(context);
+        logExpandedConfiguration(config, listener);
     }
 
     /** Report the exception failure as an invocation failure. */
@@ -623,6 +629,28 @@ public class TestInvocation implements ITestInvocation {
                                     testDevice.getSerialNumber(),
                                     event),
                             batteryLevel.toString());
+        }
+    }
+
+    /**
+     * Log the invocation configuration as one large XML detailing all settings in use.
+     *
+     * @param config the {@link IConfiguration} of this test run
+     * @param listener the {@link ITestLogger} with which to register the log
+     */
+    private void logExpandedConfiguration(IConfiguration config, ITestLogger listener) {
+        try (StringWriter configXmlWriter = new StringWriter();
+                PrintWriter wrapperWriter = new PrintWriter(configXmlWriter)) {
+            config.dumpXml(wrapperWriter);
+            wrapperWriter.flush();
+            // Specified UTF-8 encoding for an abundance of caution, but its possible we could want
+            // something else in the future
+            byte[] configXmlByteArray = configXmlWriter.toString().getBytes("UTF-8");
+            try (InputStreamSource source = new ByteArrayInputStreamSource(configXmlByteArray)) {
+                listener.testLog(TRADEFED_CONFIG_NAME, LogDataType.HARNESS_CONFIG, source);
+            }
+        } catch (IOException e) {
+            CLog.e(e);
         }
     }
 
@@ -1318,7 +1346,7 @@ public class TestInvocation implements ITestInvocation {
 
     /** Measure the size of the work folder. */
     private Long measureWorkFolderSize(IConfiguration config, File workFolder) {
-        if (workFolder == null) {
+        if (workFolder == null || !workFolder.exists()) {
             return null;
         }
         // Only measure in parent process
@@ -1327,17 +1355,14 @@ public class TestInvocation implements ITestInvocation {
                 .containsKey(SubprocessTfLauncher.SUBPROCESS_TAG_NAME)) {
             return null;
         }
-        Path folder = workFolder.toPath();
-        try {
-            long size =
-                    Files.walk(folder)
-                            .filter(p -> p.toFile().isFile())
-                            .mapToLong(p -> p.toFile().length())
-                            .sum();
-            return size;
-        } catch (IOException | RuntimeException e) {
-            CLog.e(e);
+
+        Object obj = config.getConfigurationObject(ShardHelper.LAST_SHARD_DETECTOR);
+        if (obj != null) {
+            LastShardDetector lastShardDetector = (LastShardDetector) obj;
+            if (!lastShardDetector.isLastShardDone()) {
+                return null;
+            }
         }
-        return null;
+        return FileUtil.sizeOfDirectory(workFolder);
     }
 }

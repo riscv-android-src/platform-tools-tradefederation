@@ -294,10 +294,13 @@ public class GceManager {
             }
         }
 
-        // If args passed by gce-driver-param do not contain build_id or branch,
-        // use build_id and branch from device BuildInfo
-        if (!gceDriverParams.contains("--build_id") && !gceDriverParams.contains("--branch")) {
-            gceArgs.add("--build_target");
+        /* If args passed by gce-driver-param contain build-target or build_target, there is no need
+        to pass the build info from device BuildInfo to gce arguments. Otherwise, generate gce args
+        from device BuildInfo. Please refer to acloud arguments for the supported format:
+        https://android.googlesource.com/platform/tools/acloud/+/refs/heads/master/create/create_args.py  */
+        if (!gceDriverParams.contains("--build-target")
+                && !gceDriverParams.contains("--build_target")) {
+            gceArgs.add("--build-target");
             if (b.getBuildAttributes().containsKey("build_target")) {
                 // If BuildInfo contains the attribute for a build target, use that.
                 gceArgs.add(b.getBuildAttributes().get("build_target"));
@@ -306,9 +309,10 @@ public class GceManager {
             }
             gceArgs.add("--branch");
             gceArgs.add(b.getBuildBranch());
-            gceArgs.add("--build_id");
+            gceArgs.add("--build-id");
             gceArgs.add(b.getBuildId());
         }
+
         // Add additional args passed by gce-driver-param.
         gceArgs.addAll(gceDriverParams);
         // Get extra params by instance type
