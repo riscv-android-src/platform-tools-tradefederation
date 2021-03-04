@@ -130,7 +130,10 @@ public abstract class BaseHostJUnit4Test implements IAbiReceiver, ITestInformati
      */
     public final void installPackage(String apkFileName, String... options)
             throws DeviceNotAvailableException, TargetSetupError {
-        installPackage(getDevice(), apkFileName, options);
+        final DeviceTestRunOptions installOptions = new DeviceTestRunOptions(null /*unused*/);
+        installOptions.setApkFileName(apkFileName);
+        installOptions.setInstallArgs(options);
+        installPackage(installOptions);
     }
 
     /**
@@ -142,24 +145,11 @@ public abstract class BaseHostJUnit4Test implements IAbiReceiver, ITestInformati
      */
     public final void installPackage(ITestDevice device, String apkFileName, String... options)
             throws DeviceNotAvailableException, TargetSetupError {
-        SuiteApkInstaller installer = createSuiteApkInstaller();
-        // Force the apk clean up
-        installer.setCleanApk(true);
-        // Store the preparer for cleanup
-        mInstallers.put(installer, device);
-        installer.addTestFileName(apkFileName);
-        installer.setAbi(getAbi());
-        for (String option : options) {
-            installer.addInstallArg(option);
-        }
-        try {
-            installer.setUp(mTestInfo);
-        } catch (BuildError e) {
-            // For some reason we forgot the BuildError part of the interface so it's hard to add
-            // it now
-            throw new TargetSetupError(
-                    e.getMessage(), e, device.getDeviceDescriptor(), e.getErrorId());
-        }
+        final DeviceTestRunOptions installOptions = new DeviceTestRunOptions(null /*unused*/);
+        installOptions.setApkFileName(apkFileName);
+        installOptions.setDevice(device);
+        installOptions.setInstallArgs(options);
+        installPackage(installOptions);
     }
 
     /**
@@ -173,7 +163,12 @@ public abstract class BaseHostJUnit4Test implements IAbiReceiver, ITestInformati
     public final void installPackageAsUser(
             String apkFileName, boolean grantPermission, int userId, String... options)
             throws DeviceNotAvailableException, TargetSetupError {
-        installPackageAsUser(getDevice(), apkFileName, grantPermission, userId, options);
+        final DeviceTestRunOptions installOptions = new DeviceTestRunOptions(null /*unused*/);
+        installOptions.setApkFileName(apkFileName);
+        installOptions.setGrantPermission(grantPermission);
+        installOptions.setUserId(userId);
+        installOptions.setInstallArgs(options);
+        installPackage(installOptions);
     }
 
     /**
@@ -192,16 +187,39 @@ public abstract class BaseHostJUnit4Test implements IAbiReceiver, ITestInformati
             int userId,
             String... options)
             throws DeviceNotAvailableException, TargetSetupError {
-        SuiteApkInstaller installer = createSuiteApkInstaller();
+        final DeviceTestRunOptions installOptions = new DeviceTestRunOptions(null /*unused*/);
+        installOptions.setApkFileName(apkFileName);
+        installOptions.setDevice(device);
+        installOptions.setGrantPermission(grantPermission);
+        installOptions.setUserId(userId);
+        installOptions.setInstallArgs(options);
+        installPackage(installOptions);
+    }
+
+    /**
+     * Install an apk based on the {@link DeviceTestRunOptions} on the device. Apk will be
+     * auto-cleaned.
+     *
+     * @param options The options of the package installation.
+     */
+    public final void installPackage(DeviceTestRunOptions options)
+            throws DeviceNotAvailableException, TargetSetupError {
+        final SuiteApkInstaller installer = createSuiteApkInstaller();
+        final ITestDevice device = options.getDevice() == null
+                ? getDevice() : options.getDevice();
         // Force the apk clean up
         installer.setCleanApk(true);
         // Store the preparer for cleanup
         mInstallers.put(installer, device);
-        installer.addTestFileName(apkFileName);
-        installer.setUserId(userId);
-        installer.setShouldGrantPermission(grantPermission);
+        installer.addTestFileName(options.getApkFileName());
+        // If a userId is provided, grantPermission can be set for the apk installation.
+        if (options.getUserId() != null) {
+            installer.setUserId(options.getUserId());
+            installer.setShouldGrantPermission(options.isGrantPermission());
+        }
+        installer.setForceQueryable(options.isForceQueryable());
         installer.setAbi(getAbi());
-        for (String option : options) {
+        for (String option : options.getInstallArgs()) {
             installer.addInstallArg(option);
         }
         try {
