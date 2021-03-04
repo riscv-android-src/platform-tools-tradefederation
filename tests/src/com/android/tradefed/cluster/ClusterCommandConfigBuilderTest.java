@@ -20,6 +20,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -200,14 +202,27 @@ public class ClusterCommandConfigBuilderTest {
     }
 
     @Test
+    public void testBuild_timeouts() throws IOException, ConfigurationException {
+        mTestEnvironment.setInvocationTimeout(12345);
+        mTestEnvironment.setOutputIdleTimeout(1234);
+
+        builder.build();
+        // JVM options and java properties were injected
+        verify(mConfig.getCommandOptions(), times(1)).setInvocationTimeout(12345L);
+        verify(mConfig, times(1)).injectOptionValue("cluster:output-idle-timeout", "1234");
+    }
+
+    @Test
     public void testBuild_testResources() throws IOException, ConfigurationException {
-        mTestResources.add(new TestResource("N1", "U1"));
-        mTestContext.addTestResource(new TestResource("N2", "U2"));
+        mTestResources.add(new TestResource("N1", "U1", true, "D1"));
+        mTestContext.addTestResource(new TestResource("N2", "U2", false, null));
 
         builder.build();
         // test resources from both sources were injected
         verify(mConfig, times(1)).injectOptionValue("cluster:test-resource", "N1", "U1");
+        verify(mConfig, times(1)).injectOptionValue("cluster:decompress-test-resource", "N1", "D1");
         verify(mConfig, times(1)).injectOptionValue("cluster:test-resource", "N2", "U2");
+        verify(mConfig, times(0)).injectOptionValue("cluster:decompress-test-resource", "N2", "");
     }
 
     @Test
@@ -219,5 +234,19 @@ public class ClusterCommandConfigBuilderTest {
         // extra options with same key were injected
         verify(mConfig, times(1)).injectOptionValue("key", "hello");
         verify(mConfig, times(1)).injectOptionValue("key", "world");
+    }
+
+    @Test
+    public void testBuild_useParallelSetup() throws IOException, ConfigurationException {
+        mTestEnvironment.setUseParallelSetup(true);
+        builder.build();
+        verify(mConfig, times(1)).injectOptionValue("parallel-setup", "true");
+        verify(mConfig, times(1)).injectOptionValue("parallel-setup-timeout", "0");
+
+        reset(mConfig);
+        mTestEnvironment.setUseParallelSetup(false);
+        builder.build();
+        verify(mConfig, never()).injectOptionValue("parallel-setup", "true");
+        verify(mConfig, never()).injectOptionValue("parallel-setup-timeout", "0");
     }
 }

@@ -36,6 +36,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
 
@@ -102,7 +103,19 @@ public class RustBinaryTestTest {
 
     /** Add mocked Call "path --list" to count the number of tests. */
     private void mockCountTests(String path, String result) throws DeviceNotAvailableException {
-        EasyMock.expect(mMockITestDevice.executeShellCommand(path + " --list")).andReturn(result);
+        mockCountTests(path, result, "");
+    }
+
+    /** Add mocked Call "path --list" to count the number of tests. */
+    private void mockCountTests(String path, String result, String flags)
+            throws DeviceNotAvailableException {
+        File file = new File(path);
+        String dir = file.getParent();
+        String cmd = "cd " + dir + " && " + path;
+        if (flags.length() > 0) {
+            cmd += " " + flags;
+        }
+        EasyMock.expect(mMockITestDevice.executeShellCommand(cmd + " --list")).andReturn(result);
     }
 
     /** Add mocked call to testRunStarted. */
@@ -381,5 +394,30 @@ public class RustBinaryTestTest {
                 new String[] {
                     " OnlyMe --skip NotMe2 --skip other", " Me2 --skip NotMe2 --skip other"
                 });
+    }
+
+    @Test
+    public void testOptions() throws Exception {
+        OptionSetter setter = new OptionSetter(mRustBinaryTest);
+        setter.setOptionValue("test-options", "--option");
+
+        final String testPath = RustBinaryTest.DEFAULT_TEST_PATH;
+        final String test1 = "test1";
+        final String testPath1 = String.format("%s/%s", testPath, test1);
+        final String[] files = new String[] {test1};
+
+        // Find files
+        MockFileUtil.setMockDirContents(mMockITestDevice, testPath, test1);
+        EasyMock.expect(mMockITestDevice.doesFileExist(testPath)).andReturn(true);
+        EasyMock.expect(mMockITestDevice.isDirectory(testPath)).andReturn(true);
+        EasyMock.expect(mMockITestDevice.getChildren(testPath)).andReturn(files);
+        EasyMock.expect(mMockITestDevice.isDirectory(testPath1)).andReturn(false);
+        EasyMock.expect(mMockITestDevice.isExecutable(testPath1)).andReturn(true);
+
+        mockCountTests(testPath1, runListOutput(42), "--option");
+        mockTestRunStarted("test1", 42);
+        mockShellCommand(testPath1 + " --option");
+        mockTestRunEnded();
+        callReplayRunVerify();
     }
 }

@@ -22,7 +22,6 @@ import static org.mockito.Mockito.doReturn;
 import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.OptionSetter;
-import com.android.tradefed.config.remote.IRemoteFileResolver;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
@@ -49,20 +48,11 @@ import java.util.List;
 /** Unit tests for {@link IsolatedHostTest}. */
 public class IsolatedHostTestTest {
 
-    private static final File FAKE_REMOTE_FILE_PATH = new File("gs://bucket/path/file");
-
     private IsolatedHostTest mHostTest;
     private ITestInvocationListener mListener;
     private IBuildInfo mMockBuildInfo;
-    private TestInformation mTestInfo;
     private ServerSocket mMockServer;
     private File mMockTestDir;
-
-    private IRemoteFileResolver mMockResolver;
-
-    public static class TestableIsolatedHostTest extends IsolatedHostTest {
-        public TestableIsolatedHostTest() {}
-    }
 
     /**
      * (copied and altered from JarHostTestTest) Helper to read a file from the res/testtype
@@ -81,22 +71,17 @@ public class IsolatedHostTestTest {
         return jarFile;
     }
 
-    /** {@inheritDoc} */
     @Before
     public void setUp() throws Exception {
-        mHostTest = new TestableIsolatedHostTest();
+        mHostTest = new IsolatedHostTest();
         mListener = EasyMock.createMock(ITestInvocationListener.class);
         mMockBuildInfo = Mockito.mock(IBuildInfo.class);
         mMockServer = Mockito.mock(ServerSocket.class);
         IInvocationContext context = new InvocationContext();
         context.addDeviceBuildInfo("device", mMockBuildInfo);
-        mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
         mHostTest.setBuild(mMockBuildInfo);
         mHostTest.setServer(mMockServer);
-        OptionSetter setter = new OptionSetter(mHostTest);
         mMockTestDir = FileUtil.createTempDir("isolatedhosttesttest");
-        // Disable pretty logging for testing
-        // setter.setOptionValue("enable-pretty-logs", "false");
     }
 
     @After
@@ -413,12 +398,66 @@ public class IsolatedHostTestTest {
         mHostTest.addIncludeFilter(className + "#test2Failing");
         mHostTest.addExcludeFilter(className + "#test2Failing");
         TestInformation testInfo = TestInformation.newBuilder().build();
-        TestDescription test =
-                new TestDescription("org.junit.runner.manipulation.Filter", "initializationError");
 
         // Typical no tests found flow
         mListener.testLog(
                 (String) EasyMock.anyObject(), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
+
+        EasyMock.replay(mListener);
+        mHostTest.run(testInfo, mListener);
+        EasyMock.verify(mListener);
+    }
+
+    @Test
+    public void testParameterizedTest() throws Exception {
+        final String jarName = "OnePassOneFailParamTest.jar";
+        setUpSimpleMockJarTest(jarName);
+        TestInformation testInfo = TestInformation.newBuilder().build();
+        String className = "com.android.tradefed.referencetests.OnePassOneFailParamTest";
+
+        TestDescription test1 = new TestDescription(className, "testBoolean[0]");
+        TestDescription test2 = new TestDescription(className, "testBoolean[1]");
+
+        mListener.testRunStarted(EasyMock.eq(className), EasyMock.eq(2));
+        mListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
+        mListener.testEnded(
+                EasyMock.eq(test1),
+                EasyMock.anyLong(),
+                EasyMock.<HashMap<String, Metric>>anyObject());
+        mListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
+        mListener.testFailed(EasyMock.eq(test2), (String) EasyMock.anyObject());
+        mListener.testEnded(
+                EasyMock.eq(test2),
+                EasyMock.anyLong(),
+                EasyMock.<HashMap<String, Metric>>anyObject());
+        mListener.testLog(
+                (String) EasyMock.anyObject(), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+
+        EasyMock.replay(mListener);
+        mHostTest.run(testInfo, mListener);
+        EasyMock.verify(mListener);
+    }
+
+    @Test
+    public void testParameterizedTest_exclude() throws Exception {
+        final String jarName = "OnePassOneFailParamTest.jar";
+        setUpSimpleMockJarTest(jarName);
+        TestInformation testInfo = TestInformation.newBuilder().build();
+        String className = "com.android.tradefed.referencetests.OnePassOneFailParamTest";
+
+        TestDescription test1 = new TestDescription(className, "testBoolean[0]");
+        mHostTest.addExcludeFilter(className + "#testBoolean[1]");
+
+        mListener.testRunStarted(EasyMock.eq(className), EasyMock.eq(1));
+        mListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
+        mListener.testEnded(
+                EasyMock.eq(test1),
+                EasyMock.anyLong(),
+                EasyMock.<HashMap<String, Metric>>anyObject());
+        mListener.testLog(
+                (String) EasyMock.anyObject(), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
+        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
 
         EasyMock.replay(mListener);
         mHostTest.run(testInfo, mListener);

@@ -21,8 +21,10 @@ import com.android.tradefed.config.ConfigurationDescriptor.LocalTestRunner;
 import com.android.tradefed.config.OptionDef;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.testtype.suite.params.ModuleParameters;
 
 import java.util.List;
+
 
 /** Utility to compile the instruction to run test locally. */
 public class LocalRunInstructionBuilder {
@@ -134,7 +136,7 @@ public class LocalRunInstructionBuilder {
         if (paramMetadata != null
                 && paramMetadata.size() > 0
                 && "instant".equals(paramMetadata.get(0))) {
-            instruction.append(" --instant");
+            instruction.append(" --module-parameter " + ModuleParameters.INSTANT_APP);
         }
         return instruction.toString();
     }

@@ -493,7 +493,14 @@ public abstract class ProtoResultReporter
         Map<String, Any> fullmap = new HashMap<>();
         fullmap.putAll(current.getArtifactsMap());
         Any any = Any.pack(createFileProto(logFile));
-        fullmap.put(dataName, any);
+        // Ensure keys are made unique to avoid colliding in the proto representation.
+        int count = 0;
+        String key;
+        do {
+            key = String.format("%s%s", dataName, count == 0 ? "" : count);
+            count++;
+        } while (fullmap.containsKey(key));
+        fullmap.put(key, any);
         current.putAllArtifacts(fullmap);
     }
 

@@ -48,9 +48,11 @@ import java.util.Map.Entry;
 public class ShardListener extends CollectingTestListener implements ISupportGranularResults {
 
     private ITestInvocationListener mMainListener;
+    private ShardMainResultForwarder mShardMainForwarder;
     private IInvocationContext mModuleContext = null;
     private int mAttemptInProgress = 0;
     private boolean mEnableGranularResults = false;
+    private IInvocationContext mContext;
 
     /**
      * Create a {@link ShardListener}.
@@ -62,6 +64,9 @@ public class ShardListener extends CollectingTestListener implements ISupportGra
      */
     public ShardListener(ITestInvocationListener main) {
         mMainListener = main;
+        if (main instanceof ShardMainResultForwarder) {
+            mShardMainForwarder = (ShardMainResultForwarder) main;
+        }
     }
 
     /** {@inheritDoc} */
@@ -79,6 +84,7 @@ public class ShardListener extends CollectingTestListener implements ISupportGra
      */
     @Override
     public void invocationStarted(IInvocationContext context) {
+        mContext = context;
         super.invocationStarted(context);
         synchronized (mMainListener) {
             mMainListener.invocationStarted(context);
@@ -218,6 +224,8 @@ public class ShardListener extends CollectingTestListener implements ISupportGra
                 clearResultsForName(name);
             }
             forwardLogAssociation(getModuleLogFiles(), mMainListener);
+            // Clean the file we just logged to avoid overlap
+            clearModuleLogFiles();
             mMainListener.testModuleEnded();
         }
         mModuleContext = null;
@@ -231,7 +239,11 @@ public class ShardListener extends CollectingTestListener implements ISupportGra
             logShardContent(getMergedTestRunResults());
             // Report all logs not associated with test runs
             forwardLogAssociation(getNonAssociatedLogFiles(), mMainListener);
-            mMainListener.invocationEnded(elapsedTime);
+            if (mShardMainForwarder != null) {
+                mShardMainForwarder.invocationEnded(elapsedTime, mContext);
+            } else {
+                mMainListener.invocationEnded(elapsedTime);
+            }
         }
     }
 

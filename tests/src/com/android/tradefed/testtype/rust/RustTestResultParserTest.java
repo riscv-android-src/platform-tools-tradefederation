@@ -244,4 +244,20 @@ public class RustTestResultParserTest extends RustParserTestBase {
         mParser.done();
         verify(mMockListener);
     }
+
+    @Test
+    public void testParseTimeout() {
+        String[] contents = readInFile(RUST_OUTPUT_FILE_5);
+        for (int i = 0; i < 9; i++) {
+            mMockListener.testStarted(EasyMock.anyObject());
+            mMockListener.testEnded(
+                    EasyMock.anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
+        }
+        mMockListener.testRunFailed(
+                EasyMock.eq("Test run incomplete. Started 10 tests, finished 9"));
+        replay(mMockListener);
+        mParser.processNewLines(contents);
+        mParser.done();
+        verify(mMockListener);
+    }
 }

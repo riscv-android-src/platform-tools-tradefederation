@@ -44,17 +44,19 @@ import org.mockito.stubbing.Answer;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.Arrays;
 
 /** Unit tests for {@link DynamicSystemPreparer}. */
 @RunWith(JUnit4.class)
 public class DynamicSystemPreparerTest {
     // Input build info.
     private static final String SYSTEM_IMAGE_NAME = "system.img";
+    private static final String SYSTEM_IMAGE_ZIP_NAME = "system-img.zip";
 
     private IBuildInfo mBuildInfo;
     private ITestDevice mMockDevice;
     private TestInformation mTestInfo;
+    private File mSystemImageDir;
     private File mSystemImageZip;
     // The object under test.
     private DynamicSystemPreparer mPreparer;
@@ -62,9 +64,12 @@ public class DynamicSystemPreparerTest {
     @Before
     public void setUp() throws IOException {
         mMockDevice = Mockito.mock(ITestDevice.class);
-        mSystemImageZip = createImageZip(SYSTEM_IMAGE_NAME);
+        mSystemImageDir = createImageDir(SYSTEM_IMAGE_NAME);
+        mSystemImageZip =
+                ZipUtil.createZip(
+                        Arrays.asList(new File(mSystemImageDir, SYSTEM_IMAGE_NAME)),
+                        "DynamicSystem");
         mBuildInfo = new BuildInfo();
-        mBuildInfo.setFile("system-img.zip", mSystemImageZip, "0");
 
         mPreparer = new DynamicSystemPreparer();
 
@@ -80,6 +85,7 @@ public class DynamicSystemPreparerTest {
             mBuildInfo.cleanUp();
             mBuildInfo = null;
         }
+        FileUtil.recursiveDelete(mSystemImageDir);
         FileUtil.deleteFile(mSystemImageZip);
     }
 
@@ -89,22 +95,6 @@ public class DynamicSystemPreparerTest {
             new File(tempDir, fileName).createNewFile();
         }
         return tempDir;
-    }
-
-    private File createImageZip(String... fileNames) throws IOException {
-        File tempDir = null;
-        try {
-            tempDir = createImageDir(fileNames);
-
-            ArrayList<File> tempFiles = new ArrayList<File>(fileNames.length);
-            for (String fileName : fileNames) {
-                tempFiles.add(new File(tempDir, fileName));
-            }
-
-            return ZipUtil.createZip(tempFiles);
-        } finally {
-            FileUtil.recursiveDelete(tempDir);
-        }
     }
 
     private void mockGsiToolStatus(String status) throws DeviceNotAvailableException {
@@ -124,7 +114,25 @@ public class DynamicSystemPreparerTest {
     }
 
     @Test
-    public void testSetUp() throws TargetSetupError, BuildError, DeviceNotAvailableException {
+    public void testSetUp_imageDir()
+            throws TargetSetupError, BuildError, DeviceNotAvailableException {
+        mBuildInfo.setFile(SYSTEM_IMAGE_ZIP_NAME, mSystemImageDir, "0");
+        Mockito.when(mMockDevice.pushFile(Mockito.any(), Mockito.eq("/sdcard/system.raw.gz")))
+                .thenReturn(Boolean.TRUE);
+        Mockito.when(mMockDevice.waitForDeviceNotAvailable(Mockito.anyLong())).thenReturn(true);
+        mockGsiToolStatus("running");
+        CommandResult res = new CommandResult();
+        res.setStdout("");
+        res.setStatus(CommandStatus.SUCCESS);
+        Mockito.when(mMockDevice.executeShellV2Command("gsi_tool enable")).thenReturn(res);
+        mPreparer.setUp(mTestInfo);
+        Assert.assertTrue(new File(mSystemImageDir, SYSTEM_IMAGE_NAME).exists());
+    }
+
+    @Test
+    public void testSetUp_imageZip()
+            throws TargetSetupError, BuildError, DeviceNotAvailableException {
+        mBuildInfo.setFile(SYSTEM_IMAGE_ZIP_NAME, mSystemImageZip, "0");
         Mockito.when(mMockDevice.pushFile(Mockito.any(), Mockito.eq("/sdcard/system.raw.gz")))
                 .thenReturn(Boolean.TRUE);
         Mockito.when(mMockDevice.waitForDeviceNotAvailable(Mockito.anyLong())).thenReturn(true);
@@ -138,6 +146,7 @@ public class DynamicSystemPreparerTest {
 
     @Test
     public void testSetUp_installationFail() throws BuildError, DeviceNotAvailableException {
+        mBuildInfo.setFile(SYSTEM_IMAGE_ZIP_NAME, mSystemImageZip, "0");
         Mockito.when(mMockDevice.pushFile(Mockito.any(), Mockito.eq("/sdcard/system.raw.gz")))
                 .thenReturn(Boolean.TRUE);
         Mockito.when(mMockDevice.waitForDeviceNotAvailable(Mockito.anyLong())).thenReturn(false);
@@ -153,6 +162,7 @@ public class DynamicSystemPreparerTest {
 
     @Test
     public void testSetUp_rebootFail() throws BuildError, DeviceNotAvailableException {
+        mBuildInfo.setFile(SYSTEM_IMAGE_ZIP_NAME, mSystemImageZip, "0");
         Mockito.when(mMockDevice.pushFile(Mockito.any(), Mockito.eq("/sdcard/system.raw.gz")))
                 .thenReturn(Boolean.TRUE);
         Mockito.when(mMockDevice.waitForDeviceNotAvailable(Mockito.anyLong())).thenReturn(true);
@@ -168,6 +178,7 @@ public class DynamicSystemPreparerTest {
     @Test
     public void testSetUp_noDsuRunningAfterRebootFail()
             throws BuildError, DeviceNotAvailableException {
+        mBuildInfo.setFile(SYSTEM_IMAGE_ZIP_NAME, mSystemImageZip, "0");
         Mockito.when(mMockDevice.pushFile(Mockito.any(), Mockito.eq("/sdcard/system.raw.gz")))
                 .thenReturn(Boolean.TRUE);
         Mockito.when(mMockDevice.waitForDeviceNotAvailable(Mockito.anyLong())).thenReturn(true);

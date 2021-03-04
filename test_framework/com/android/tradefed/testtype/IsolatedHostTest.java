@@ -237,7 +237,11 @@ public class IsolatedHostTest
         } catch (IOException e) {
             if (!mReportedFailure) {
                 // Avoid overriding the failure
-                listener.testRunFailed(StreamUtil.getStackTrace(e));
+                FailureDescription failure =
+                        FailureDescription.create(
+                                StreamUtil.getStackTrace(e), FailureStatus.INFRA_FAILURE);
+                listener.testRunFailed(failure);
+                listener.testRunEnded(0L, new HashMap<String, Metric>());
             }
         }
     }
@@ -429,6 +433,7 @@ public class IsolatedHostTest
         TestDescription currentTest = null;
         Instant start = Instant.now();
 
+        boolean runStarted = false;
         try {
             mainLoop:
             while (true) {
@@ -452,6 +457,9 @@ public class IsolatedHostTest
                                                                 && f.getName().endsWith(".log"))
                                         .collect(Collectors.toList());
 
+                        if (!runStarted) {
+                            listener.testRunStarted(this.getClass().getCanonicalName(), 0);
+                        }
                         for (File f : logFiles) {
                             try (FileInputStreamSource source =
                                     new FileInputStreamSource(f, true)) {
@@ -465,6 +473,7 @@ public class IsolatedHostTest
                                                 FailureStatus.TEST_FAILURE)
                                         .setFullRerun(false);
                         listener.testRunFailed(failure);
+                        listener.testRunEnded(0L, new HashMap<String, Metric>());
                         break mainLoop;
                     }
                     switch (reply.getRunnerStatus()) {
@@ -474,7 +483,14 @@ public class IsolatedHostTest
                         case RUNNER_STATUS_FINISHED_ERROR:
                             CLog.e("Received message that runner errored");
                             CLog.e("From Runner: " + reply.getMessage());
-                            listener.testRunFailed(reply.getMessage());
+                            if (!runStarted) {
+                                listener.testRunStarted(this.getClass().getCanonicalName(), 0);
+                            }
+                            FailureDescription failure =
+                                    FailureDescription.create(
+                                            reply.getMessage(), FailureStatus.INFRA_FAILURE);
+                            listener.testRunFailed(failure);
+                            listener.testRunEnded(0L, new HashMap<String, Metric>());
                             break mainLoop;
                         case RUNNER_STATUS_STARTING:
                             CLog.v("Received message that runner is starting");
@@ -525,6 +541,7 @@ public class IsolatedHostTest
                                         listener.testIgnored(desc);
                                         break;
                                     case TOPIC_RUN_STARTED:
+                                        runStarted = true;
                                         listener.testRunStarted(
                                                 event.getClassName(), event.getTestCount());
                                         break;
@@ -538,7 +555,15 @@ public class IsolatedHostTest
                             }
                     }
                 } catch (SocketTimeoutException e) {
-                    listener.testRunFailed(StreamUtil.getStackTrace(e));
+                    mReportedFailure = true;
+                    FailureDescription failure =
+                            FailureDescription.create(
+                                    StreamUtil.getStackTrace(e), FailureStatus.INFRA_FAILURE);
+                    listener.testRunFailed(failure);
+                    listener.testRunEnded(
+                            Duration.between(start, Instant.now()).toMillis(),
+                            new HashMap<String, Metric>());
+                    break mainLoop;
                 }
             }
         } finally {

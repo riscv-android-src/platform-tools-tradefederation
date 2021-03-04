@@ -36,8 +36,8 @@ public class TestResourceDownloader {
 
     private IRunUtil mRunUtil = null;
 
-    public void download(TestResource resource, File dest) throws IOException {
-        final URL url = new URL(resource.getUrl());
+    public void download(String urlString, File dest) throws IOException {
+        final URL url = new URL(urlString);
         final String protocol = url.getProtocol();
         final File parent = dest.getParentFile();
         if (!parent.exists()) {

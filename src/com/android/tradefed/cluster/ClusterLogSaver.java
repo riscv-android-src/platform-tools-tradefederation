@@ -94,8 +94,8 @@ public class ClusterLogSaver implements ILogSaver {
     @Option(
             name = "context-file-pattern",
             description =
-                    "A regex pattern for test context file(s). A test context file is a"
-                            + " file to be used in successive invocations to pass context information.")
+                    "A regex pattern for test context file(s). A test context file is a file to be"
+                            + " used in successive invocations to pass context information.")
     private String mContextFilePattern = null;
 
     @Option(name = "file-picking-strategy", description = "A picking strategy for file(s)")
@@ -111,7 +111,8 @@ public class ClusterLogSaver implements ILogSaver {
     @Option(
             name = "retry-command-line",
             description =
-                    "A command line to store in test context. This will replace the original command line in a retry invocation.")
+                    "A command line to store in test context. This will replace the original"
+                            + " command line in a retry invocation.")
     private String mRetryCommandLine = null;
 
     private File mLogDir;
@@ -361,7 +362,8 @@ public class ClusterLogSaver implements ILogSaver {
             testContext.setCommandLine(mRetryCommandLine);
             testContext.addEnvVars(envVars);
             final String name = getRelativePath(contextFile.toPath()).toString();
-            testContext.addTestResource(new TestResource(name, outputFileUrls.get(contextFile)));
+            testContext.addTestResource(
+                    new TestResource(name, outputFileUrls.get(contextFile), false, ""));
             try {
                 CLog.i("Updating test context: %s", testContext.toString());
                 client.updateTestContext(mRequestId, mCommandId, testContext);

@@ -56,6 +56,7 @@ import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -193,7 +194,7 @@ public class Sl4aBluetoothUtilTest {
                 .thenReturn("address_2");
         when(mPrimaryClient.rpcCall(Commands.BLUETOOTH_GET_BONDED_DEVICES))
                 .thenReturn(new JSONArray("[]"));
-        mBluetoothUtil.mBtPairTimeoutMs = 1000;
+        mBluetoothUtil.setBtPairTimeout(Duration.ofSeconds(1));
         assertFalse(mBluetoothUtil.pair(mPrimary, mSecondary));
     }
 
@@ -279,7 +280,7 @@ public class Sl4aBluetoothUtilTest {
                 .thenReturn(new JSONArray("[]"))
                 .thenReturn(new JSONArray("[{address: address_2}]"));
 
-        mBluetoothUtil.mBtConnectionTimeoutMs = 1000;
+        mBluetoothUtil.setBtConnectionTimeout(Duration.ofSeconds(1));
         assertTrue(mBluetoothUtil.connect(mPrimary, mSecondary, PROFILES));
         verify(mPrimaryClient)
                 .rpcCall(Commands.BLUETOOTH_START_CONNECTION_STATE_CHANGE_MONITOR, "address_2");
@@ -324,7 +325,7 @@ public class Sl4aBluetoothUtilTest {
                 .thenReturn(new JSONArray("[{address: address_2}]"))
                 .thenReturn(new JSONArray("[]"));
 
-        mBluetoothUtil.mBtConnectionTimeoutMs = 1000;
+        mBluetoothUtil.setBtConnectionTimeout(Duration.ofSeconds(1));
         assertTrue(mBluetoothUtil.disconnect(mPrimary, mSecondary, PROFILES));
 
         verify(mPrimaryClient)

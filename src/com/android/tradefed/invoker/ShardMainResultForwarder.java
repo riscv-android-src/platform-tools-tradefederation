@@ -17,6 +17,7 @@ package com.android.tradefed.invoker;
 
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.build.VersionedFile;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ILogSaverListener;
@@ -29,6 +30,7 @@ import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.util.TimeUtil;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map.Entry;
 
@@ -49,7 +51,7 @@ public class ShardMainResultForwarder extends ResultForwarder implements ILogSav
     private long mFirstShardEndTime = 0L;
     private IInvocationContext mOriginalContext;
     private List<IInvocationContext> mShardContextList;
-    private int shardIndex = 0;
+    private int mShardIndex = 0;
 
     /**
      * Create a {@link ShardMainResultForwarder}.
@@ -75,10 +77,18 @@ public class ShardMainResultForwarder extends ResultForwarder implements ILogSav
             super.invocationStarted(context);
             mStartReported = true;
         } else {
+            Integer shardIndex = null;
+            if (context.getConfigurationDescriptor() != null) {
+                shardIndex = context.getConfigurationDescriptor().getShardIndex();
+            }
+            int index = mShardIndex;
+            if (shardIndex != null) {
+                index = shardIndex;
+            }
             // Track serials used in each shard.
-            mOriginalContext.addSerialsFromShard(shardIndex, context.getSerials());
+            mOriginalContext.addSerialsFromShard(index, context.getSerials());
             mShardContextList.add(context);
-            shardIndex++;
+            mShardIndex++;
         }
     }
 
@@ -104,18 +114,29 @@ public class ShardMainResultForwarder extends ResultForwarder implements ILogSav
      */
     @Override
     public void invocationEnded(long elapsedTime) {
+        invocationEnded(elapsedTime, null);
+    }
+
+    /** More detailed callback to differentiate which shard finished. */
+    public void invocationEnded(long elapsedTime, IInvocationContext context) {
         mTotalElapsed += elapsedTime;
         if (mInitCount == mShardsRemaining) {
             mFirstShardEndTime = System.currentTimeMillis();
         }
         mShardsRemaining--;
+        if (context == null) {
+            // Fallback to copy all if we didn't get the right callback.
+            copyShardBuildInfoToMain(mOriginalContext, mShardContextList);
+        } else {
+            copyShardBuildInfoToMain(mOriginalContext, Arrays.asList(context));
+        }
         if (mShardsRemaining <= 0) {
             // TODO: consider logging all shard final times.
             CLog.logAndDisplay(
                     LogLevel.INFO,
                     "There was %s between the first and last shard ended.",
                     TimeUtil.formatElapsedTime(System.currentTimeMillis() - mFirstShardEndTime));
-            copyShardBuildInfoToMain(mOriginalContext, mShardContextList);
+
             super.invocationEnded(mTotalElapsed);
         }
     }
@@ -189,13 +210,22 @@ public class ShardMainResultForwarder extends ResultForwarder implements ILogSav
                 IBuildInfo shardBuild = shard.getBuildInfo(deviceName);
                 IBuildInfo mainBuild = main.getBuildInfo(deviceName);
                 if (mainBuild != null) {
+                    // Copy attributes
                     for (Entry<String, String> entry : shardBuild.getBuildAttributes().entrySet()) {
                         mainBuild.addBuildAttribute(entry.getKey(), entry.getValue());
+                    }
+                    // Copy file reference
+                    for (String vKey : shardBuild.getVersionedFileKeys()) {
+                        if (mainBuild.getVersionedFile(vKey) == null) {
+                            VersionedFile shardFile = shardBuild.getVersionedFile(vKey);
+                            mainBuild.setFile(vKey, shardFile.getFile(), shardFile.getVersion());
+                        }
                     }
                 } else {
                     // Should not happen
                     CLog.e(
-                            "Found a device '%s' in shard configuration but not in parent configuration.",
+                            "Found a device '%s' in shard configuration but not in parent"
+                                    + " configuration.",
                             deviceName);
                 }
             }

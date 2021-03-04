@@ -55,6 +55,11 @@ public class GcsRemoteFileResolverTest {
                     protected GCSDownloaderHelper getDownloader() {
                         return mMockHelper;
                     }
+
+                    @Override
+                    void sleep() {
+                        // Skip sleeping in tests
+                    }
                 };
     }
 
@@ -62,6 +67,27 @@ public class GcsRemoteFileResolverTest {
     public void testResolve() throws Exception {
         RemoteFileResolverArgs args = new RemoteFileResolverArgs();
         args.setConsideredFile(new File("gs:/fake/file"));
+        mResolver.resolveRemoteFile(args);
+
+        Mockito.verify(mMockHelper).fetchTestResource("gs:/fake/file");
+    }
+
+    @Test
+    public void testResolveWithTimeout() throws Exception {
+        // First attempt fails
+        Mockito.doThrow(
+                        new BuildRetrievalError(
+                                "download failure", InfraErrorIdentifier.ARTIFACT_DOWNLOAD_ERROR))
+                .when(mMockHelper)
+                .fetchTestResource("gs:/fake/file");
+        // Second attempt is good
+        Mockito.doReturn(new File("gcstest")).when(mMockHelper).fetchTestResource("gs:/fake/file");
+
+        RemoteFileResolverArgs args = new RemoteFileResolverArgs();
+        args.setConsideredFile(new File("gs:/fake/file"));
+        Map<String, String> queryArgs = new HashMap<>();
+        queryArgs.put("retry_timeout_ms", "5000");
+        args.addQueryArgs(queryArgs);
         mResolver.resolveRemoteFile(args);
 
         Mockito.verify(mMockHelper).fetchTestResource("gs:/fake/file");

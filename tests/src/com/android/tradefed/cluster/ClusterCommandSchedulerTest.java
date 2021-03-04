@@ -1125,8 +1125,8 @@ public class ClusterCommandSchedulerTest {
 
     private List<TestResource> createMockTestResources() {
         List<TestResource> testResources = new ArrayList<TestResource>();
-        testResources.add(new TestResource("name1", "url2"));
-        testResources.add(new TestResource("name2", "url2"));
+        testResources.add(new TestResource("name1", "url2", false, ""));
+        testResources.add(new TestResource("name2", "url2", true, "dir2"));
         return testResources;
     }
 
@@ -1150,6 +1150,14 @@ public class ClusterCommandSchedulerTest {
             assertEquals(testResources.size(), buildProvider.getTestResources().size());
             for (TestResource r : testResources) {
                 assertEquals(r.getUrl(), buildProvider.getTestResources().get(r.getName()));
+                assertEquals(
+                        r.getDecompress(),
+                        buildProvider.getDecompressTestResources().containsKey(r.getName()));
+                if (r.getDecompress()) {
+                    assertEquals(
+                            r.getDecompressDir(),
+                            buildProvider.getDecompressTestResources().get(r.getName()));
+                }
             }
         }
 
@@ -1569,22 +1577,26 @@ public class ClusterCommandSchedulerTest {
                 .thenReturn(new ClusterCommandStatus(ClusterCommand.State.CANCELED, "Reason"));
 
         // not stopped without invocation context
+        handler.setCanceled(false);
         heartbeat.run();
         assertFalse(scheduler.wasStopInvocationCalled());
 
         // not stopped if invocation ID missing
         IInvocationContext context = Mockito.mock(IInvocationContext.class, RETURNS_DEEP_STUBS);
+        handler.setCanceled(false);
         handler.invocationStarted(context);
         heartbeat.run();
         assertFalse(scheduler.wasStopInvocationCalled());
 
         // not stopped if invocation ID is non-numeric
         Mockito.when(context.getInvocationId()).thenReturn("ID");
+        handler.setCanceled(false);
         heartbeat.run();
         assertFalse(scheduler.wasStopInvocationCalled());
 
         // stopped if invocation ID is numeric
         Mockito.when(context.getInvocationId()).thenReturn("1");
+        handler.setCanceled(false);
         heartbeat.run();
         assertTrue(scheduler.wasStopInvocationCalled());
 
