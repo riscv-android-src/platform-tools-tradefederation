@@ -15,7 +15,7 @@
  */
 package com.android.tradefed.testtype.suite.module;
 
-import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
@@ -26,10 +26,11 @@ import com.android.tradefed.log.LogUtil.CLog;
  * Base class for a module controller to not run tests on versions below a specified SDK version
  * number.
  */
-class MinSdkModuleController extends BaseModuleController {
+public class MinSdkModuleController extends BaseModuleController {
 
     private static final String SDK_VERSION_PROP = "ro.build.version.sdk";
 
+    @Option(name = "min-sdk-level", description = "The minimum api-level on which tests will run.")
     private int mMinSdkVersion;
 
     /** @param minSdkVersion The minimum sdk version on which tests will run. */
