@@ -70,7 +70,8 @@ public class AdbStopServerPreparer extends BaseTargetPreparer {
         getDeviceManager().stopAdbBridge();
 
         // Kill the default adb server
-        getRunUtil().runTimedCmd(CMD_TIMEOUT, "adb", "kill-server");
+        callAdbServerAndLog("kill-server", "Tradefed: AdbStopServerPreparer called kill-server\n");
+
         // Let the adb process finish
         getRunUtil().sleep(2000);
 
@@ -111,7 +112,8 @@ public class AdbStopServerPreparer extends BaseTargetPreparer {
                         testInfo.getDevice().getDeviceDescriptor());
             }
         } else {
-            getRunUtil().runTimedCmd(CMD_TIMEOUT, "adb", "start-server");
+            callAdbServerAndLog(
+                    "start-server", "Tradefed: AdbStopServerPreparer called start-server\n");
             throw new TargetSetupError(
                     "Could not find a new version of adb to tests.",
                     testInfo.getDevice().getDeviceDescriptor());
@@ -123,7 +125,7 @@ public class AdbStopServerPreparer extends BaseTargetPreparer {
     public void tearDown(TestInformation testInfo, Throwable e) throws DeviceNotAvailableException {
         FileUtil.recursiveDelete(mTmpDir);
         // Kill the test adb server
-        getRunUtil().runTimedCmd(CMD_TIMEOUT, "adb", "kill-server");
+        callAdbServerAndLog("kill-server", "Tradefed: AdbStopServerPreparer called kill-server\n");
         // Restart the one from the parent PATH (original one)
         CommandResult restart = getRunUtil().runTimedCmd(CMD_TIMEOUT, "adb", "start-server");
         CLog.d("Restart adb -  stdout: %s\nstderr: %s", restart.getStdout(), restart.getStderr());
@@ -153,6 +155,18 @@ public class AdbStopServerPreparer extends BaseTargetPreparer {
         return mRunUtil;
     }
 
+    private void callAdbServerAndLog(String command, String message) {
+        getRunUtil().runTimedCmd(CMD_TIMEOUT, "adb", command);
+        File adbLog = findAdbLog();
+        if (adbLog != null) {
+            try {
+                FileUtil.writeToFile(message, adbLog, true);
+            } catch (IOException e) {
+                CLog.e(e);
+            }
+        }
+    }
+
     private File renameAdbBinary(File originalAdb) {
         try {
             mTmpDir = FileUtil.createTempDir("adb");
@@ -171,5 +185,27 @@ public class AdbStopServerPreparer extends BaseTargetPreparer {
             return null;
         }
         return renamedAdbBinary;
+    }
+
+    @VisibleForTesting
+    protected File findAdbLog() {
+        String tmpDir = "/tmp";
+        if (System.getenv("TMPDIR") != null) {
+            tmpDir = System.getenv("TMPDIR");
+        }
+        CommandResult uidRes =
+                RunUtil.getDefault()
+                        .runTimedCmd(60000, "id", "-u", System.getProperty("user.name"));
+        if (!CommandStatus.SUCCESS.equals(uidRes.getStatus())) {
+            CLog.e("Failed to collect UID for adb logs: %s", uidRes.getStderr());
+            return null;
+        }
+        String uid = uidRes.getStdout().trim();
+        File adbLog = new File(tmpDir, String.format("adb.%s.log", uid));
+        if (!adbLog.exists()) {
+            CLog.i("Did not find adb log file: %s, upload skipped.", adbLog);
+            return null;
+        }
+        return adbLog;
     }
 }
