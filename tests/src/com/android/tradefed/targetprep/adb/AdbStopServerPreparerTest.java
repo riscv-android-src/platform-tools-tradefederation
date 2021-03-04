@@ -75,6 +75,11 @@ public class AdbStopServerPreparerTest {
                     String getEnvironment(String key) {
                         return mEnvironment;
                     }
+
+                    @Override
+                    protected File findAdbLog() {
+                        return null;
+                    }
                 };
         mMockBuild = new BuildInfo();
         mFakeAdbFile = FileUtil.createTempFile("adb", "");
