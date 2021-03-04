@@ -22,6 +22,7 @@ import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.ConfigurationUtil;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
+import com.android.tradefed.config.Option;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner;
 import com.android.tradefed.testtype.IBuildReceiver;
 import com.android.tradefed.testtype.suite.ValidateSuiteConfigHelper;
@@ -46,6 +47,11 @@ import java.util.List;
 @RunWith(DeviceJUnit4ClassRunner.class)
 public class DeviceTestsConfigValidation implements IBuildReceiver {
 
+    @Option(
+            name = "config-extension",
+            description = "The expected extension from configuration to check.")
+    private String mConfigExtension = "config";
+
     private IBuildInfo mBuild;
 
     @Override
@@ -64,10 +70,10 @@ public class DeviceTestsConfigValidation implements IBuildReceiver {
         IDeviceBuildInfo deviceBuildInfo = (IDeviceBuildInfo) mBuild;
         File testsDir = deviceBuildInfo.getTestsDir();
         List<File> extraTestCasesDirs = Arrays.asList(testsDir);
-        // Only load the .config as .xml might be data in device-tests.zip case.
+        String configPattern = ".*\\." + mConfigExtension + "$";
         configs.addAll(
                 ConfigurationUtil.getConfigNamesFileFromDirs(
-                        null, extraTestCasesDirs, Arrays.asList(".*\\.config$")));
+                        null, extraTestCasesDirs, Arrays.asList(configPattern)));
         for (File config : configs) {
             try {
                 IConfiguration c =
