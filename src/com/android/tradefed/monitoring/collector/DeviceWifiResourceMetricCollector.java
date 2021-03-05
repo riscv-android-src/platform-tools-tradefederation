@@ -43,35 +43,57 @@ public class DeviceWifiResourceMetricCollector implements IResourceMetricCollect
     FREQUENCY=5500
     AVG_RSSI=-77
     */
-    public static final String WIFI_METRIC_CMD = "wpa_cli -i wlan0 signal_poll";
-    public static final Pattern WIFI_METRIC_PATTERN =
+    public static final String WIFI_SIGNAL_CMD = "wpa_cli -i wlan0 signal_poll";
+    /*
+    wpa_cli status example response:
+    bssid=d8:47:32:23:26:36
+    freq=5785
+    ssid=foo
+    id=0
+    id_str=foo-bar
+    mode=station
+    wifi_generation=5
+    pairwise_cipher=CCMP
+    group_cipher=CCMP
+    key_mgmt=WPA2-PSK
+    wpa_state=COMPLETED
+    ip_address=192.168.0.244
+    address=16:cb:cf:39:91:4b
+    uuid=97dc605c-72a7-5546-9d15-d950a789da14
+    ieee80211ac=1
+    */
+    public static final String WIFI_STATUS_CMD = "wpa_cli -i wlan0 status";
+    public static final Pattern WIFI_SIGNAL_PATTERN =
             Pattern.compile(
                     "RSSI=(?<rssi>[\\-0-9]+)\\nLINKSPEED=(?<speed>[0-9]+)\\nNOISE="
                             + "(?<noise>[\\-0-9]+)\\n");
+    public static final Pattern WIFI_STATUS_PATTERN =
+            Pattern.compile("bssid=.*\\nfreq=.*\\nssid=" + "(?<ssid>.*)");
     public static final String RSSI = "rssi";
     public static final String SPEED = "speed";
     public static final String NOISE = "noise";
+    public static final String SSID = "ssid";
     private static final long CMD_TIMEOUT_MS = 500;
 
     /** Issues adb shell command and parses the WiFi metrics. */
     @Override
     public Collection<Resource> getDeviceResourceMetrics(
             DeviceDescriptor descriptor, IDeviceManager deviceManager) {
-        final Optional<String> response =
-                ResourceMetricUtil.GetCommandResponse(
-                        deviceManager, descriptor.getSerial(), WIFI_METRIC_CMD, CMD_TIMEOUT_MS);
-        if (!response.isPresent()) {
-            return List.of();
-        }
-        final Matcher matcher = WIFI_METRIC_PATTERN.matcher(response.get());
-        if (!matcher.find()) {
+        final Matcher signalMatcher =
+                getWifiCmdResponseMatcher(
+                        descriptor, deviceManager, WIFI_SIGNAL_CMD, WIFI_SIGNAL_PATTERN);
+        final Matcher statusMatcher =
+                getWifiCmdResponseMatcher(
+                        descriptor, deviceManager, WIFI_STATUS_CMD, WIFI_STATUS_PATTERN);
+        if (!signalMatcher.find() || !statusMatcher.find()) {
             return List.of();
         }
         Resource.Builder builder =
                 Resource.newBuilder()
+                        .setResourceInstance(statusMatcher.group(SSID))
                         .setResourceName(WIFI_METRIC_NAME)
                         .setTimestamp(ResourceMetricUtil.GetCurrentTimestamp());
-        float speed = ResourceMetricUtil.RoundedMetricValue(matcher.group(SPEED));
+        float speed = ResourceMetricUtil.RoundedMetricValue(signalMatcher.group(SPEED));
         if (speed == 0.f) {
             // If the speed is 0, the rest metrics are meaningless.
             return List.of(
@@ -82,13 +104,28 @@ public class DeviceWifiResourceMetricCollector implements IResourceMetricCollect
                         Metric.newBuilder()
                                 .setTag(RSSI)
                                 .setValue(
-                                        ResourceMetricUtil.RoundedMetricValue(matcher.group(RSSI))))
+                                        ResourceMetricUtil.RoundedMetricValue(
+                                                signalMatcher.group(RSSI))))
                 .addMetric(
                         Metric.newBuilder()
                                 .setTag(NOISE)
                                 .setValue(
                                         ResourceMetricUtil.RoundedMetricValue(
-                                                matcher.group(NOISE))));
+                                                signalMatcher.group(NOISE))));
         return List.of(builder.build());
+    }
+
+    private Matcher getWifiCmdResponseMatcher(
+            DeviceDescriptor descriptor,
+            IDeviceManager deviceManager,
+            String cmd,
+            Pattern responsePattern) {
+        final Optional<String> response =
+                ResourceMetricUtil.GetCommandResponse(
+                        deviceManager, descriptor.getSerial(), cmd, CMD_TIMEOUT_MS);
+        if (!response.isPresent()) {
+            return responsePattern.matcher("");
+        }
+        return responsePattern.matcher(response.get());
     }
 }
