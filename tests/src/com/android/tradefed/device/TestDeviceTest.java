@@ -3990,6 +3990,28 @@ public class TestDeviceTest extends TestCase {
         assertTrue(mTestDevice.hasFeature("feature:com.google.android.feature.EXCHANGE_6_2"));
     }
 
+    /** Unit test for {@link TestDevice#hasFeature(String)} on versioned feature. */
+    public void testHasFeature_versioned() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public String getSerialNumber() {
+                return "serial";
+            }
+
+            @Override
+            public String executeShellCommand(String command) throws DeviceNotAvailableException {
+                return "feature:com.google.android.feature.EXCHANGE_6_2\n" +
+                       "feature:com.google.android.feature.GOOGLE_BUILD_VERSIONED=2\n" +
+                       "feature:org.com.google.android.feature.GOOGLE_BUILD_ORG=1\n" +
+                       "feature:com.google.android.feature.GOOGLE_BUILD_EXT";
+            }
+        };
+        assertFalse(mTestDevice.hasFeature("feature:com.google.android.feature"));
+        assertFalse(mTestDevice.hasFeature("com.google.android.feature.GOOGLE_BUILD_ORG"));
+        assertFalse(mTestDevice.hasFeature("com.google.android.feature.GOOGLE_BUILD"));
+        assertTrue(mTestDevice.hasFeature("feature:com.google.android.feature.GOOGLE_BUILD_VERSIONED"));
+    }
+
     /**
      * Unit test for {@link TestDevice#getSetting(int, String, String)}.
      */
