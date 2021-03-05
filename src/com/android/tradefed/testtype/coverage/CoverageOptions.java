@@ -64,6 +64,13 @@ public final class CoverageOptions {
     @Option(name = "llvm-profdata-path", description = "Path to llvm-profdata tool.")
     private File mLlvmProfdataPath = null;
 
+    @Option(
+            name = "profraw-filter",
+            description =
+                    "The regex of profraw files to merge for coverage measurements.  E.g."
+                            + " \"foo.*\\.profraw\".  Default: \".*\\.profraw\"")
+    private String mProfrawFilter = ".*\\.profraw";
+
     /**
      * Returns whether coverage measurements should be collected from this run.
      *
@@ -108,5 +115,14 @@ public final class CoverageOptions {
      */
     public File getLlvmProfdataPath() {
         return mLlvmProfdataPath;
+    }
+
+    /**
+     * Returns the prefix of profdata filenames used for coverage measurements.
+     *
+     * @return a {@link String} containing the prefix of profdata filenames
+     */
+    public String getProfrawFilter() {
+        return mProfrawFilter;
     }
 }
