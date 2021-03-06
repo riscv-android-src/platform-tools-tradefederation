@@ -149,6 +149,16 @@ public class HostUnitTestsConfigValidation implements IBuildReceiver {
     // This will be used when migrating default and clean up as we clear the TEST_MAPPING files.
     private static final Set<String> EXEMPTION_LIST =
             new HashSet<>(Arrays.asList(
+              "statsd_testdrive_test",
+              "signature-host-tests",
+              "compat-changeid-annotation-processor-test",
+              "annotationvisitortest",
+              "trebuchet-core-tests",
+              "unsupportedappusage-processor-test",
+              "geotz_data_pipeline_tests",
+              "class2nonsdklisttest",
+              "s2-geometry-library-java-tests",
+              "trebuchet-startup-common-tests"
             ));
 
     /**
