@@ -368,4 +368,32 @@ public class HostGTestTest {
         String testOutput = new String(mFakeReceiver.getReceivedOutput(), StandardCharsets.UTF_8);
         assertEquals(expected, testOutput);
     }
+
+    /** Test runTest method but executing from a hardlink */
+    @Test
+    public void testRunTest_hardlink() throws Exception {
+        String moduleName = "hello_world_test";
+        mSetter.setOptionValue("module-name", moduleName);
+
+        File hostLinkedFolder = createSubFolder("hosttestcases");
+        Path outputPath = Paths.get(hostLinkedFolder.getAbsolutePath(), moduleName + ".called");
+        String script =
+                String.format(
+                        "echo \"$@\" > %s; echo \"stdout: %s\"; echo \"stderr: %s\" >&2",
+                        outputPath, moduleName, moduleName);
+
+        Path tmpScriptPath = Paths.get(hostLinkedFolder.getAbsolutePath(), moduleName + ".tmp");
+        createExecutableFile(tmpScriptPath, script);
+
+        Path scriptPath = Paths.get(hostLinkedFolder.getAbsolutePath(), moduleName);
+        FileUtil.hardlinkFile(tmpScriptPath.toFile(), scriptPath.toFile());
+
+        DeviceBuildInfo buildInfo = new DeviceBuildInfo();
+        buildInfo.setFile(BuildInfoKey.BuildInfoFileKey.HOST_LINKED_DIR, hostLinkedFolder, "0.0");
+        mHostGTest.setBuild(buildInfo);
+
+        mHostGTest.run(mTestInfo, mMockInvocationListener);
+
+        assertNotEquals(0, mFakeReceiver.getReceivedOutput().length);
+    }
 }
