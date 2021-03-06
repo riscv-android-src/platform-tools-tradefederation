@@ -1346,6 +1346,7 @@ public class TestInvocation implements ITestInvocation {
 
     /** Measure the size of the work folder. */
     private Long measureWorkFolderSize(IConfiguration config, File workFolder) {
+        CLog.d("Measuring size of %s", workFolder);
         if (workFolder == null || !workFolder.exists()) {
             return null;
         }
@@ -1353,6 +1354,7 @@ public class TestInvocation implements ITestInvocation {
         if (config.getCommandOptions()
                 .getInvocationData()
                 .containsKey(SubprocessTfLauncher.SUBPROCESS_TAG_NAME)) {
+            CLog.d("Skip measuring size since we are in subprocess");
             return null;
         }
 
