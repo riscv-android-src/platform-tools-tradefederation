@@ -16,6 +16,7 @@
 package com.android.tradefed.command;
 
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.ErrorIdentifier;
 import com.android.tradefed.util.RunInterruptedException;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -41,7 +42,18 @@ public class CommandInterrupter {
     // tracks whether a thread is currently interruptible
     private ConcurrentMap<Thread, Boolean> mInterruptible = new MapMaker().weakKeys().makeMap();
     // presence of an interrupt error message indicates that the thread should be interrupted
-    private ConcurrentMap<Thread, String> mInterruptMessage = new MapMaker().weakKeys().makeMap();
+    private ConcurrentMap<Thread, MessageAndErrorId> mInterruptMessage =
+            new MapMaker().weakKeys().makeMap();
+
+    private class MessageAndErrorId {
+        public String message;
+        public ErrorIdentifier errorId;
+
+        MessageAndErrorId(String message, ErrorIdentifier errorId) {
+            this.message = message;
+            this.errorId = errorId;
+        }
+    }
 
     @VisibleForTesting
     // FIXME: reduce visibility once RunUtil interrupt tests are removed
@@ -103,11 +115,12 @@ public class CommandInterrupter {
      * @param message interruption message
      */
     // FIXME: reduce visibility once RunUtil interrupt methods are removed
-    public void interrupt(@Nonnull Thread thread, @Nonnull String message) {
+    public void interrupt(
+            @Nonnull Thread thread, @Nonnull String message, ErrorIdentifier errorId) {
         if (message == null) {
             throw new IllegalArgumentException("message cannot be null.");
         }
-        mInterruptMessage.put(thread, message);
+        mInterruptMessage.put(thread, new MessageAndErrorId(message, errorId));
         if (isInterruptible(thread)) {
             thread.interrupt();
         }
@@ -120,9 +133,9 @@ public class CommandInterrupter {
     public void checkInterrupted() throws RunInterruptedException {
         Thread thread = Thread.currentThread();
         if (isInterruptible()) {
-            String message = mInterruptMessage.remove(thread);
-            if (message != null) {
-                throw new RunInterruptedException(message);
+            MessageAndErrorId error = mInterruptMessage.remove(thread);
+            if (error != null) {
+                throw new RunInterruptedException(error.message, error.errorId);
             }
         }
     }
