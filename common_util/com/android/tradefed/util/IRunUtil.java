@@ -17,6 +17,7 @@
 package com.android.tradefed.util;
 
 import com.android.annotations.Nullable;
+import com.android.tradefed.result.error.ErrorIdentifier;
 
 import java.io.File;
 import java.io.IOException;
@@ -356,6 +357,16 @@ public interface IRunUtil {
      * @param message the message for {@link RunInterruptedException}.
      */
     public void interrupt(Thread thread, String message);
+
+    /**
+     * Interrupts the ongoing/forthcoming run operations on the given thread. The run operations on
+     * the given thread will throw {@link RunInterruptedException}.
+     *
+     * @param thread
+     * @param message the message for {@link RunInterruptedException}.
+     * @param errorId Representing the cause of the interruption when known.
+     */
+    public void interrupt(Thread thread, String message, ErrorIdentifier errorId);
 
     /**
      * Decide whether or not when creating a process, unsetting environment variable is higher
