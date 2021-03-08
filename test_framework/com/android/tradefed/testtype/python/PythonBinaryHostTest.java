@@ -195,15 +195,14 @@ public class PythonBinaryHostTest implements IRemoteTest, ITestFilterReceiver {
             testDir = mTestInfo.executionFiles().get(FilesKey.TESTS_DIRECTORY);
         }
         if (testDir != null && testDir.exists()) {
-            File libDir = new File(testDir, "lib");
             List<String> ldLibraryPath = new ArrayList<>();
-            if (libDir.exists()) {
-                ldLibraryPath.add(libDir.getAbsolutePath());
-            }
-
-            File lib64Dir = new File(testDir, "lib64");
-            if (lib64Dir.exists()) {
-                ldLibraryPath.add(lib64Dir.getAbsolutePath());
+            List<String> libPaths =
+                    Arrays.asList("lib", "lib64", "host/testcases/lib", "host/testcases/lib64");
+            for (String path : libPaths) {
+                File libDir = new File(testDir, path);
+                if (libDir.exists()) {
+                    ldLibraryPath.add(libDir.getAbsolutePath());
+                }
             }
             if (!ldLibraryPath.isEmpty()) {
                 mLdLibraryPath = Joiner.on(":").join(ldLibraryPath);
