@@ -286,6 +286,7 @@ public class GkiDeviceFlashPreparerTest {
                                 "boot",
                                 mBuildInfo.getFile("gki_boot.img").getAbsolutePath()))
                 .andReturn(mSuccessResult);
+        EasyMock.expect(mMockDevice.executeLongFastbootCommand("-w")).andReturn(mSuccessResult);
         mMockRunUtil.allowInterrupt(true);
         doSetupExpectations();
         EasyMock.replay(mMockDevice, mMockRunUtil);
@@ -329,6 +330,7 @@ public class GkiDeviceFlashPreparerTest {
                                 EasyMock.eq("dtbo"),
                                 EasyMock.matches(".*dtbo.img")))
                 .andReturn(mSuccessResult);
+        EasyMock.expect(mMockDevice.executeLongFastbootCommand("-w")).andReturn(mSuccessResult);
         mMockRunUtil.allowInterrupt(true);
         doSetupExpectations();
         EasyMock.replay(mMockDevice, mMockRunUtil);
@@ -384,6 +386,7 @@ public class GkiDeviceFlashPreparerTest {
                                 "boot",
                                 mBuildInfo.getFile("gki_boot.img").getAbsolutePath()))
                 .andReturn(mSuccessResult);
+        EasyMock.expect(mMockDevice.executeLongFastbootCommand("-w")).andReturn(mSuccessResult);
         mMockRunUtil.allowInterrupt(true);
         mMockRunUtil.sleep(EasyMock.anyLong());
         mMockDevice.rebootUntilOnline();
