@@ -428,6 +428,12 @@ public class TestInvocation implements ITestInvocation {
                 // If host_log is reported, remove the hook
                 Runtime.getRuntime().removeShutdownHook(reportThread);
 
+                // Measure teardown disk usage before clean up
+                Long size = measureWorkFolderSize(config, testInfo);
+                if (size != null) {
+                    InvocationMetricLogger.addInvocationMetrics(
+                            InvocationMetricKey.TEAR_DOWN_DISK_USAGE, size);
+                }
                 elapsedTime = System.currentTimeMillis() - startTime;
                 reportInvocationEnded(config, context, listener, elapsedTime);
             } finally {
@@ -996,12 +1002,6 @@ public class TestInvocation implements ITestInvocation {
             CLog.e(e);
         } finally {
             scope.exit();
-            // Measure teardown disk usage before clean up
-            Long size = measureWorkFolderSize(config, info.dependenciesFolder());
-            if (size != null) {
-                InvocationMetricLogger.addInvocationMetrics(
-                        InvocationMetricKey.TEAR_DOWN_DISK_USAGE, size);
-            }
             // Ensure build infos are always cleaned up at the end of invocation.
             invocationPath.cleanUpBuilds(context, config);
             // ensure we always deregister the logger
@@ -1345,7 +1345,11 @@ public class TestInvocation implements ITestInvocation {
     }
 
     /** Measure the size of the work folder. */
-    private Long measureWorkFolderSize(IConfiguration config, File workFolder) {
+    private Long measureWorkFolderSize(IConfiguration config, TestInformation testInfo) {
+        if (testInfo == null) {
+            return null;
+        }
+        File workFolder = testInfo.dependenciesFolder();
         CLog.d("Measuring size of %s", workFolder);
         if (workFolder == null || !workFolder.exists()) {
             return null;
