@@ -348,31 +348,6 @@ public class HostGTestTest {
         assertEquals("TEST FAILED\n", testOutput);
     }
 
-    /* Test that if the test module exits with a non-zero code other than 1, an exception is thrown
-     * and the run stops. */
-    @Test
-    public void testAbnormalTestCmdExitHandled() throws Exception {
-        String moduleName = "hello_world_test";
-        String hostLinkedFolderName = "hosttestcases";
-        File hostLinkedFolder = createSubFolder(hostLinkedFolderName);
-        Path errorScriptPath = Paths.get(hostLinkedFolder.getAbsolutePath(), moduleName);
-        createExecutableFile(errorScriptPath, "echo 'TEST BLOWING UP'; exit 2");
-
-        DeviceBuildInfo buildInfo = new DeviceBuildInfo();
-        buildInfo.setFile(BuildInfoKey.BuildInfoFileKey.HOST_LINKED_DIR, hostLinkedFolder, "0.0");
-        mHostGTest.setBuild(buildInfo);
-
-        mSetter.setOptionValue("module-name", moduleName);
-
-        try {
-            mHostGTest.run(mTestInfo, mMockInvocationListener);
-            fail("Didn't throw RuntimeException for test cmd with bad exit code");
-        } catch (RuntimeException e) {
-            // Expected exception
-        }
-        assertNotEquals(0, mFakeReceiver.getReceivedOutput().length);
-    }
-
     @Test
     public void testBothStdoutAndStderrCollected() throws Exception {
         String moduleName = "hello_world_test";

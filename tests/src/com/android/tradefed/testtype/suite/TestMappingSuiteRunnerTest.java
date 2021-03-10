@@ -16,12 +16,14 @@
 package com.android.tradefed.testtype.suite;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationDef;
+import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.IConfiguration;
@@ -189,6 +191,69 @@ public class TestMappingSuiteRunnerTest {
             Set<IAbi> abis = new HashSet<>();
             abis.add(new Abi(ABI_1, AbiUtils.getBitness(ABI_1)));
             return abis;
+        }
+    }
+
+    /**
+     * Test for {@link TestMappingSuiteRunner#loadTests()} that the configuration is created with
+     * the remote test timeout information and the hash code of each IRemoteTest object with the
+     * corresponding test mapping's path.
+     */
+    @Test
+    public void testLoadTestsWhenRemoteTestTimeoutIsSet() throws Exception {
+        File tempDir = null;
+        try {
+            mOptionSetter.setOptionValue("test-mapping-test-group", "postsubmit");
+            mOptionSetter.setOptionValue(
+                    RemoteTestTimeOutEnforcer.REMOTE_TEST_TIMEOUT_OPTION, "15m");
+
+            tempDir = FileUtil.createTempDir("test_mapping");
+
+            File srcDir = FileUtil.createTempDir("src", tempDir);
+            String srcFile =
+                    File.separator + TEST_DATA_DIR + File.separator + DISABLED_PRESUBMIT_TESTS;
+            InputStream resourceStream = this.getClass().getResourceAsStream(srcFile);
+            FileUtil.saveResourceFile(resourceStream, srcDir, DISABLED_PRESUBMIT_TESTS);
+
+            srcFile = File.separator + TEST_DATA_DIR + File.separator + "test_mapping_1";
+            resourceStream = this.getClass().getResourceAsStream(srcFile);
+            FileUtil.saveResourceFile(resourceStream, srcDir, TEST_MAPPING);
+            File subDir = FileUtil.createTempDir("sub_dir", srcDir);
+            srcFile = File.separator + TEST_DATA_DIR + File.separator + "test_mapping_2";
+            resourceStream = this.getClass().getResourceAsStream(srcFile);
+            FileUtil.saveResourceFile(resourceStream, subDir, TEST_MAPPING);
+
+            List<File> filesToZip =
+                    Arrays.asList(srcDir, new File(tempDir, DISABLED_PRESUBMIT_TESTS));
+            File zipFile = Paths.get(tempDir.getAbsolutePath(), TEST_MAPPINGS_ZIP).toFile();
+            ZipUtil.createZip(filesToZip, zipFile);
+
+            IDeviceBuildInfo mockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
+            EasyMock.expect(mockBuildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR))
+                    .andStubReturn(null);
+            EasyMock.expect(mockBuildInfo.getTestsDir())
+                    .andStubReturn(new File("non-existing-dir"));
+            EasyMock.expect(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).andReturn(zipFile);
+
+            mRunner.setBuild(mockBuildInfo);
+            EasyMock.replay(mockBuildInfo);
+
+            LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
+
+            for (IConfiguration config : configMap.values()) {
+                ConfigurationDescriptor configDesc = config.getConfigurationDescription();
+                assertEquals(
+                        configDesc.getMetaData(
+                                RemoteTestTimeOutEnforcer.REMOTE_TEST_TIMEOUT_OPTION).get(0),
+                        "PT15M"
+                );
+                for(IRemoteTest test : config.getTests()) {
+                    assertNotNull(configDesc.getMetaData(Integer.toString(test.hashCode())));
+                }
+            }
+            EasyMock.verify(mockBuildInfo);
+        } finally {
+            FileUtil.recursiveDelete(tempDir);
         }
     }
 
@@ -788,21 +853,17 @@ public class TestMappingSuiteRunnerTest {
      */
     @Test
     public void testCreateIndividualTestsWithDifferentTestInfos() throws Exception {
-        File tempDir = null;
-        try {
-            tempDir = FileUtil.createTempDir("tmp");
-            File moduleConfig = new File(tempDir, "module_name.config");
-            moduleConfig.createNewFile();
-            Set<TestInfo> testInfos = new HashSet<>();
-            testInfos.add(createTestInfo("test", "path"));
-            testInfos.add(createTestInfo("test2", "path"));
-            String configPath = moduleConfig.getAbsolutePath();
-            assertEquals(2, mRunner2.createIndividualTests(testInfos, configPath, null).size());
-            assertEquals(1, mRunner2.getIncludeFilter().size());
-            assertEquals(1, mRunner2.getExcludeFilter().size());
-        } finally {
-            FileUtil.recursiveDelete(tempDir);
-        }
+        IConfiguration config =
+                ConfigurationFactory.getInstance()
+                        .createConfigurationFromArgs(new String[] {EMPTY_CONFIG});
+        config.setTest(new StubTest());
+        config.getConfigurationDescription().setModuleName(TEST_CONFIG_NAME);
+        Set<TestInfo> testInfos = new HashSet<>();
+        testInfos.add(createTestInfo("test", "path"));
+        testInfos.add(createTestInfo("test2", "path"));
+        assertEquals(2, mRunner2.createIndividualTests(testInfos, config, null).size());
+        assertEquals(1, mRunner2.getIncludeFilter().size());
+        assertEquals(1, mRunner2.getExcludeFilter().size());
     }
 
     /**
@@ -811,23 +872,19 @@ public class TestMappingSuiteRunnerTest {
      */
     @Test
     public void testCreateIndividualTestsWithDifferentTestOptions() throws Exception {
-        File tempDir = null;
-        try {
-            tempDir = FileUtil.createTempDir("tmp");
-            File moduleConfig = new File(tempDir, "module_name.config");
-            moduleConfig.createNewFile();
-            Set<TestInfo> testInfos = new HashSet<>();
-            testInfos.add(createTestInfo("test", "path"));
-            TestInfo info = new TestInfo("test", "path", false);
-            info.addOption(new TestOption("include-filter", "include-filter"));
-            testInfos.add(info);
-            String configPath = moduleConfig.getAbsolutePath();
-            assertEquals(2, mRunner2.createIndividualTests(testInfos, configPath, null).size());
-            assertEquals(1, mRunner2.getIncludeFilter().size());
-            assertEquals(0, mRunner2.getExcludeFilter().size());
-        } finally {
-            FileUtil.recursiveDelete(tempDir);
-        }
+        IConfiguration config =
+                ConfigurationFactory.getInstance()
+                        .createConfigurationFromArgs(new String[] {EMPTY_CONFIG});
+        config.setTest(new StubTest());
+        config.getConfigurationDescription().setModuleName(TEST_CONFIG_NAME);
+        Set<TestInfo> testInfos = new HashSet<>();
+        testInfos.add(createTestInfo("test", "path"));
+        TestInfo info = new TestInfo("test", "path", false);
+        info.addOption(new TestOption("include-filter", "include-filter"));
+        testInfos.add(info);
+        assertEquals(2, mRunner2.createIndividualTests(testInfos, config, null).size());
+        assertEquals(1, mRunner2.getIncludeFilter().size());
+        assertEquals(0, mRunner2.getExcludeFilter().size());
     }
 
     @Test
@@ -952,21 +1009,15 @@ public class TestMappingSuiteRunnerTest {
      */
     @Test
     public void testCreateIndividualTestsWithSameTestInfos() throws Exception {
-        File tempDir = null;
-        try {
-            tempDir = FileUtil.createTempDir("tmp");
-            File moduleConfig = new File(tempDir, "module_name.config");
-            moduleConfig.createNewFile();
-            String configPath = moduleConfig.getAbsolutePath();
-            Set<TestInfo> testInfos = new HashSet<>();
-            testInfos.add(createTestInfo("test", "path"));
-            testInfos.add(createTestInfo("test", "path"));
-            assertEquals(1, mRunner2.createIndividualTests(testInfos, configPath, null).size());
-            assertEquals(1, mRunner2.getIncludeFilter().size());
-            assertEquals(1, mRunner2.getExcludeFilter().size());
-        } finally {
-            FileUtil.recursiveDelete(tempDir);
-        }
+        IConfiguration config =
+                ConfigurationFactory.getInstance()
+                        .createConfigurationFromArgs(new String[] {EMPTY_CONFIG});
+        Set<TestInfo> testInfos = new HashSet<>();
+        testInfos.add(createTestInfo("test", "path"));
+        testInfos.add(createTestInfo("test", "path"));
+        assertEquals(1, mRunner2.createIndividualTests(testInfos, config, null).size());
+        assertEquals(1, mRunner2.getIncludeFilter().size());
+        assertEquals(1, mRunner2.getExcludeFilter().size());
     }
 
     /** Helper to create specific test infos. */

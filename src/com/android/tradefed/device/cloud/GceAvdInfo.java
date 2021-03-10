@@ -19,6 +19,7 @@ import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.ErrorIdentifier;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.FileUtil;
@@ -57,6 +58,7 @@ public class GceAvdInfo {
 
     private String mInstanceName;
     private HostAndPort mHostAndPort;
+    private ErrorIdentifier mErrorType;
     private String mErrors;
     private GceStatus mStatus;
     private HashMap<String, String> mBuildVars;
@@ -75,9 +77,14 @@ public class GceAvdInfo {
     }
 
     public GceAvdInfo(
-            String instanceName, HostAndPort hostAndPort, String errors, GceStatus status) {
+            String instanceName,
+            HostAndPort hostAndPort,
+            ErrorIdentifier errorType,
+            String errors,
+            GceStatus status) {
         mInstanceName = instanceName;
         mHostAndPort = hostAndPort;
+        mErrorType = errorType;
         mErrors = errors;
         mStatus = status;
         mBuildVars = new HashMap<String, String>();
@@ -90,6 +97,8 @@ public class GceAvdInfo {
                 + mInstanceName
                 + ", mHostAndPort="
                 + mHostAndPort
+                + ", mErrorType="
+                + mErrorType
                 + ", mErrors="
                 + mErrors
                 + ", mStatus="
@@ -105,6 +114,10 @@ public class GceAvdInfo {
 
     public HostAndPort hostAndPort() {
         return mHostAndPort;
+    }
+
+    public ErrorIdentifier getErrorType() {
+        return mErrorType;
     }
 
     public String getErrors() {
@@ -170,13 +183,19 @@ public class GceAvdInfo {
             CLog.w("No data provided");
             return null;
         }
+        InfraErrorIdentifier errorId = null;
         String errors = data;
         try {
             errors = parseErrorField(data);
             JSONObject res = new JSONObject(data);
             String status = res.getString("status");
-            JSONArray devices = null;
             GceStatus gceStatus = GceStatus.valueOf(status);
+            String errorType = res.has("error_type") ? res.getString("error_type") : null;
+            errorId =
+                    GceStatus.SUCCESS.equals(gceStatus)
+                            ? null
+                            : determineAcloudErrorType(errorType);
+            JSONArray devices = null;
             if (GceStatus.FAIL.equals(gceStatus) || GceStatus.BOOT_FAIL.equals(gceStatus)) {
                 // In case of failure we still look for instance name to shutdown if needed.
                 if (res.getJSONObject("data").has("devices_failing_boot")) {
@@ -195,6 +214,7 @@ public class GceAvdInfo {
                             new GceAvdInfo(
                                     instanceName,
                                     HostAndPort.fromString(ip).withDefaultPort(remoteAdbPort),
+                                    errorId,
                                     errors,
                                     gceStatus);
                     for (String buildVar : BUILD_VARS) {
@@ -213,18 +233,15 @@ public class GceAvdInfo {
             CLog.e("Failed to parse JSON %s:", data);
             CLog.e(e);
         }
+
         // If errors are found throw an exception with the acloud message.
-        if (errors.isEmpty()) {
-            throw new TargetSetupError(
-                    String.format("acloud errors: %s", data),
-                    descriptor,
-                    InfraErrorIdentifier.ACLOUD_UNDETERMINED);
-        } else {
-            throw new TargetSetupError(
-                    String.format("acloud errors: %s", errors),
-                    descriptor,
-                    InfraErrorIdentifier.ACLOUD_UNDETERMINED);
+        if (errorId == null) {
+            errorId = InfraErrorIdentifier.ACLOUD_UNDETERMINED;
         }
+        throw new TargetSetupError(
+                String.format("acloud errors: %s", !errors.isEmpty() ? errors : data),
+                descriptor,
+                errorId);
     }
 
     private static String parseErrorField(String data) throws JSONException {
@@ -235,6 +252,20 @@ public class GceAvdInfo {
             res += (errors.getString(i) + "\n");
         }
         return res;
+    }
+
+    @VisibleForTesting
+    static InfraErrorIdentifier determineAcloudErrorType(String errorType) {
+        InfraErrorIdentifier identifier;
+        if (errorType == null || errorType.isEmpty()) {
+            return null;
+        }
+        try {
+            identifier = InfraErrorIdentifier.valueOf(errorType);
+        } catch (Exception e) {
+            identifier = InfraErrorIdentifier.ACLOUD_UNRECOGNIZED_ERROR_TYPE;
+        }
+        return identifier;
     }
 
     @VisibleForTesting

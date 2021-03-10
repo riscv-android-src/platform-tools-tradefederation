@@ -36,6 +36,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.concurrent.TimeUnit;
 
@@ -102,7 +103,10 @@ public class RustBinaryTestTest {
 
     /** Add mocked Call "path --list" to count the number of tests. */
     private void mockCountTests(String path, String result) throws DeviceNotAvailableException {
-        EasyMock.expect(mMockITestDevice.executeShellCommand(path + " --list")).andReturn(result);
+        File file = new File(path);
+        String dir = file.getParent();
+        String cmd = "cd " + dir + " && " + path;
+        EasyMock.expect(mMockITestDevice.executeShellCommand(cmd + " --list")).andReturn(result);
     }
 
     /** Add mocked call to testRunStarted. */

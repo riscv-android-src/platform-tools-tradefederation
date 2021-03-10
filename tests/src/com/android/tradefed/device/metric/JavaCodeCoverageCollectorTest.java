@@ -421,7 +421,7 @@ public class JavaCodeCoverageCollectorTest {
 
     private static <T> boolean[] getProbes(Class<T> clazz, ExecutionDataStore execData)
             throws IOException {
-        return execData.get(classId(clazz), vmName(clazz), PROBE_COUNT).getProbes();
+        return execData.get(classId(clazz), vmName(clazz), PROBE_COUNT).getProbesCopy();
     }
 
     private static HashMap<String, Metric> createMetricsWithCoverageMeasurement(String devicePath) {

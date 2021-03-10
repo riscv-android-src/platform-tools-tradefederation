@@ -66,6 +66,8 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.expect(mMockDevice.getDeviceDescriptor()).andStubReturn(null);
         EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(mMockIDevice);
         EasyMock.expect(mMockDevice.getDeviceState()).andStubReturn(TestDeviceState.ONLINE);
+        mMockDevice.waitForDeviceAvailable();
+        EasyMock.expectLastCall().anyTimes();
         mMockBuildInfo = new DeviceBuildInfo("0", "");
         mDeviceSetup = new DeviceSetup();
         mTmpDir = FileUtil.createTempDir("tmp");
