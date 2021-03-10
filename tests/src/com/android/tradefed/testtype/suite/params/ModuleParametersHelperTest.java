@@ -21,6 +21,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+import java.util.Set;
+
 /** Unit tests for {@link ModuleParametersHelper}. */
 @RunWith(JUnit4.class)
 public class ModuleParametersHelperTest {
@@ -33,5 +35,25 @@ public class ModuleParametersHelperTest {
                     ModuleParametersHelper.getParameterHandler(param, /* Include optional */ true);
             assertNotNull(handler);
         }
+    }
+
+    @Test
+    public void resolveParam_notGroupParam_returnsSetOfSameParam() {
+        Set<ModuleParameters> resolvedParams =
+                ModuleParametersHelper.resolveParam(
+                        ModuleParameters.INSTANT_APP, /* withOptional= */ true);
+
+        assertEquals(resolvedParams.size(), 1);
+        assertEquals(resolvedParams.iterator().next(), ModuleParameters.INSTANT_APP);
+    }
+
+    @Test
+    public void resolveParamString_notGroupParam_returnsSetOfSameParam() {
+        Set<ModuleParameters> resolvedParams =
+                ModuleParametersHelper.resolveParam(
+                        ModuleParameters.INSTANT_APP.toString(), /* withOptional= */ true);
+
+        assertEquals(resolvedParams.size(), 1);
+        assertEquals(resolvedParams.iterator().next(), ModuleParameters.INSTANT_APP);
     }
 }

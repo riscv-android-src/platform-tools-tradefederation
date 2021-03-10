@@ -16,6 +16,7 @@
 package com.android.tradefed.command;
 
 import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.QuotationAwareTokenizer;
 
@@ -272,8 +273,8 @@ public class CommandFileParser {
                         String[] args = QuotationAwareTokenizer.tokenizeLine(inputLine);
                         lArgs = new CommandLine(Arrays.asList(args), file,
                                 lineNumber);
-                    } catch (IllegalArgumentException e) {
-                        throw new ConfigurationException(e.getMessage());
+                    } catch (HarnessRuntimeException e) {
+                        throw new ConfigurationException(e.getMessage(), e, e.getErrorId());
                     }
 
                     if (isLineMacro(lArgs)) {

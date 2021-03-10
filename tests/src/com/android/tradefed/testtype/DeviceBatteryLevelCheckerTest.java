@@ -17,6 +17,7 @@
 package com.android.tradefed.testtype;
 
 import com.android.ddmlib.IDevice;
+import com.android.ddmlib.IShellOutputReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IDeviceMonitor;
 import com.android.tradefed.device.IDeviceStateMonitor;
@@ -41,6 +42,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 import java.util.HashMap;
+import java.util.concurrent.TimeUnit;
 
 /** Unit tests for {@link DeviceBatteryLevelChecker}. */
 @RunWith(JUnit4.class)
@@ -80,6 +82,20 @@ public class DeviceBatteryLevelCheckerTest {
         @Override
         public String executeShellCommand(String command) throws DeviceNotAvailableException {
             return mFakeTestDevice.executeShellCommand(command);
+        }
+
+        @Override
+        public void executeShellCommand(
+                final String command,
+                final IShellOutputReceiver receiver,
+                final long maxTimeToOutputShellResponse,
+                final TimeUnit timeUnit,
+                final int retryAttempts)
+                throws DeviceNotAvailableException {
+            String bugreport = "bugreport";
+            if (command.equals(bugreport)) {
+                receiver.addOutput(bugreport.getBytes(), 0, bugreport.length());
+            }
         }
 
         @Override

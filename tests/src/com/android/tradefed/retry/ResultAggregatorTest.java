@@ -32,13 +32,16 @@ import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.MultiFailureDescription;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.retry.ISupportGranularResults;
+import com.android.tradefed.util.FileUtil;
 
 import org.easymock.EasyMock;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+import java.io.File;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -86,6 +89,15 @@ public class ResultAggregatorTest {
         mInvocationContext.addDeviceBuildInfo(
                 ConfigurationDef.DEFAULT_DEVICE_NAME, new BuildInfo());
         mModuleContext = new InvocationContext();
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        if (mAggregator != null) {
+            for (File f : mAggregator.getEventsLogs()) {
+                FileUtil.deleteFile(f);
+            }
+        }
     }
 
     @Test

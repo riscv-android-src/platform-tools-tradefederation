@@ -98,6 +98,56 @@ public class RustTestResultParserTest extends RustParserTestBase {
     }
 
     @Test
+    public void testRegexRunning() {
+        String[] goodPatterns = {
+            "running 1 test", "running 42 tests",
+        };
+        String[] wrongPatterns = {
+            "  running 42 tests", "running tests",
+        };
+        for (String s : goodPatterns) {
+            assertTrue(s, RustTestResultParser.RUNNING_PATTERN.matcher(s).matches());
+        }
+        for (String s : wrongPatterns) {
+            assertFalse(s, RustTestResultParser.RUNNING_PATTERN.matcher(s).matches());
+        }
+    }
+
+    @Test
+    public void testRegexTestFail() {
+        String[] goodPatterns = {
+            "---- tests::test_foo stdout ----", "---- test_foo stdout ----",
+        };
+        String[] wrongPatterns = {
+            "--- tests::test_foo stdout ---",
+            "tests::test_foo stdout",
+            "--- tests::test_foo stderr ---",
+        };
+        for (String s : goodPatterns) {
+            assertTrue(s, RustTestResultParser.TEST_FAIL_PATTERN.matcher(s).matches());
+        }
+        for (String s : wrongPatterns) {
+            assertFalse(s, RustTestResultParser.TEST_FAIL_PATTERN.matcher(s).matches());
+        }
+    }
+
+    @Test
+    public void testRegexFailures() {
+        String[] goodPatterns = {
+            "failures:",
+        };
+        String[] wrongPatterns = {
+            "not failures:", " failures:", " failures: something",
+        };
+        for (String s : goodPatterns) {
+            assertTrue(s, RustTestResultParser.FAILURES_PATTERN.matcher(s).matches());
+        }
+        for (String s : wrongPatterns) {
+            assertFalse(s, RustTestResultParser.FAILURES_PATTERN.matcher(s).matches());
+        }
+    }
+
+    @Test
     public void testParseRealOutput() {
         String[] contents = readInFile(RUST_OUTPUT_FILE_1);
 
@@ -121,11 +171,23 @@ public class RustTestResultParserTest extends RustParserTestBase {
             mMockListener.testEnded(
                     EasyMock.anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
         }
+        String identsTrace =
+                String.join(
+                        "\n",
+                        "thread 'idents' panicked at 'assertion failed: `(left == right)`",
+                        "  left: `\"_\"`,",
+                        " right: `\"_abc\"`', external/rust/crates/proc-macro2/tests/test.rs:13:5");
         mMockListener.testFailed(
-                EasyMock.eq(new TestDescription("test", "idents")), (String) EasyMock.anyObject());
+                EasyMock.eq(new TestDescription("test", "idents")), EasyMock.eq(identsTrace));
+        String literalStringTrace =
+                String.join(
+                        "\n",
+                        "thread 'literal_string' panicked at 'assertion failed: `(left == right)`",
+                        "  left: `\"\\\"didn\\'t\\\"\"`,",
+                        " right: `\"fake\"`', external/rust/crates/proc-macro2/tests/test.rs:86:5");
         mMockListener.testFailed(
                 EasyMock.eq(new TestDescription("test", "literal_string")),
-                (String) EasyMock.anyObject());
+                EasyMock.eq(literalStringTrace));
         replay(mMockListener);
         mParser.processNewLines(contents);
         mParser.done();
@@ -173,7 +235,26 @@ public class RustTestResultParserTest extends RustParserTestBase {
         String[] contents = readInFile(RUST_OUTPUT_FILE_4);
         mMockListener.testRunFailed(
                 EasyMock.eq(
-                        "test did not report any run:\nCANNOT LINK EXECUTABLE \"/data/local/tmp/keystore2_test/x86_64/keystore2_test\": library \"libkeystore2_crypto.so\" not found: needed by main executable"));
+                        "test did not report any run:\n"
+                            + "CANNOT LINK EXECUTABLE"
+                            + " \"/data/local/tmp/keystore2_test/x86_64/keystore2_test\": library"
+                            + " \"libkeystore2_crypto.so\" not found: needed by main executable"));
+        replay(mMockListener);
+        mParser.processNewLines(contents);
+        mParser.done();
+        verify(mMockListener);
+    }
+
+    @Test
+    public void testParseTimeout() {
+        String[] contents = readInFile(RUST_OUTPUT_FILE_5);
+        for (int i = 0; i < 9; i++) {
+            mMockListener.testStarted(EasyMock.anyObject());
+            mMockListener.testEnded(
+                    EasyMock.anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
+        }
+        mMockListener.testRunFailed(
+                EasyMock.eq("Test run incomplete. Started 10 tests, finished 9"));
         replay(mMockListener);
         mParser.processNewLines(contents);
         mParser.done();

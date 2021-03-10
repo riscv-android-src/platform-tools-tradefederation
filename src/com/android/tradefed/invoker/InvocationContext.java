@@ -395,12 +395,24 @@ public class InvocationContext implements IInvocationContext {
         // Metadata
         List<Metadata> metadatas = new ArrayList<>();
         for (String key : mInvocationAttributes.keySet()) {
-            Metadata value =
-                    Metadata.newBuilder()
-                            .setKey(key)
-                            .addAllValue(mInvocationAttributes.get(key))
-                            .build();
-            metadatas.add(value);
+            if (mInvocationAttributes.get(key) != null) {
+                try {
+                    Metadata value =
+                            Metadata.newBuilder()
+                                    .setKey(key)
+                                    .addAllValue(mInvocationAttributes.get(key))
+                                    .build();
+                    metadatas.add(value);
+                } catch (RuntimeException e) {
+                    CLog.e(
+                            "Invocation attribute key '%s' raised exception. values: %s",
+                            key, mInvocationAttributes.get(key));
+                    CLog.e(e);
+                }
+
+            } else {
+                CLog.e("Invocation attribute Key '%s' has null value.", key);
+            }
         }
         contextBuilder.addAllMetadata(metadatas);
         // Configuration Description

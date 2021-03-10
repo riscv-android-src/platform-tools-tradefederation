@@ -17,6 +17,7 @@ package com.android.tradefed.targetprep;
 
 import com.android.tradefed.build.BootstrapBuildProvider;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.util.BuildInfoUtil;
@@ -30,6 +31,7 @@ import com.android.tradefed.util.BuildInfoUtil;
  * @see DeviceBuildInfoInjector
  * @see BootstrapBuildProvider
  */
+@OptionClass(alias = "device-build-info-strapper")
 public class DeviceBuildInfoBootStrapper extends BaseTargetPreparer {
 
     @Option(name = "override-device-build-id", description = "the device buid id to inject.")

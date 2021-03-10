@@ -42,7 +42,6 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.BugreportCollector;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
-import com.android.tradefed.result.ITestLifeCycleReceiver;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
@@ -64,6 +63,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -945,15 +945,24 @@ public class InstrumentationTest
     private boolean runInstrumentationTests(
             TestInformation testInfo,
             IRemoteAndroidTestRunner runner,
-            ITestLifeCycleReceiver... receivers)
+            ITestInvocationListener... receivers)
             throws DeviceNotAvailableException {
+        InstrumentationListener instrumentationListener =
+                new InstrumentationListener(getDevice(), new HashSet<>(), receivers);
+        instrumentationListener.setDisableDuplicateCheck(mDisableDuplicateCheck);
+        if (mEnableSoftRestartCheck) {
+            instrumentationListener.setOriginalSystemServer(
+                    getDevice().getProcessByName("system_server"));
+        }
+        instrumentationListener.setReportUnexecutedTests(mReportUnexecuted);
+
         if (testInfo != null && testInfo.properties().containsKey(RUN_TESTS_AS_USER_KEY)) {
             return mDevice.runInstrumentationTestsAsUser(
                     runner,
                     Integer.parseInt(testInfo.properties().get(RUN_TESTS_AS_USER_KEY)),
-                    receivers);
+                    instrumentationListener);
         }
-        return mDevice.runInstrumentationTests(runner, receivers);
+        return mDevice.runInstrumentationTests(runner, instrumentationListener);
     }
 
     /**

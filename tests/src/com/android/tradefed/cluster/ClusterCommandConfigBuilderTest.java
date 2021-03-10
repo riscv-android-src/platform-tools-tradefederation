@@ -200,6 +200,17 @@ public class ClusterCommandConfigBuilderTest {
     }
 
     @Test
+    public void testBuild_timeouts() throws IOException, ConfigurationException {
+        mTestEnvironment.setInvocationTimeout(12345);
+        mTestEnvironment.setOutputIdleTimeout(1234);
+
+        builder.build();
+        // JVM options and java properties were injected
+        verify(mConfig.getCommandOptions(), times(1)).setInvocationTimeout(12345L);
+        verify(mConfig, times(1)).injectOptionValue("cluster:output-idle-timeout", "1234");
+    }
+
+    @Test
     public void testBuild_testResources() throws IOException, ConfigurationException {
         mTestResources.add(new TestResource("N1", "U1"));
         mTestContext.addTestResource(new TestResource("N2", "U2"));

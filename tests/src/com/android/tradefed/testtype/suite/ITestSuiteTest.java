@@ -416,7 +416,11 @@ public class ITestSuiteTest {
             ITestInvocationListener listener, int totalAttempt, boolean testFailed) {
         listener.testModuleStarted(EasyMock.anyObject());
         for (int attemptNumber = 0; attemptNumber < totalAttempt; attemptNumber++) {
-            listener.testRunStarted(TEST_CONFIG_NAME, 1, attemptNumber);
+            listener.testRunStarted(
+                    EasyMock.eq(TEST_CONFIG_NAME),
+                    EasyMock.eq(1),
+                    EasyMock.eq(attemptNumber),
+                    EasyMock.anyLong());
             TestDescription test = new TestDescription(EMPTY_CONFIG, EMPTY_CONFIG);
             listener.testStarted(test, 0);
             if (testFailed) {
