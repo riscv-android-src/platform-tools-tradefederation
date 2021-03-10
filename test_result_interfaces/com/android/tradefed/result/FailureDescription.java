@@ -39,6 +39,8 @@ public class FailureDescription {
     private @Nullable Throwable mCause = null;
     // Whether or not the error is retriable by Tradefed auto-retry. By Default we retry it all.
     private boolean mRetriable = true;
+    // Test Feature: whether or not to rerun the full run in case of run failure.
+    private boolean mRunFailureReRunAll = true;
 
     // Error identifiers
     // Optional: The error identifier and its code
@@ -112,6 +114,17 @@ public class FailureDescription {
     /** Returns whether or not the error is retriable or not. */
     public boolean isRetriable() {
         return mRetriable;
+    }
+
+    /** Sets whether or not to rerun the full run when a run failure occurs. */
+    public FailureDescription setFullRerun(boolean fullRerun) {
+        mRunFailureReRunAll = fullRerun;
+        return this;
+    }
+
+    /** Returns whether or not we need to retry the full run or not. */
+    public boolean rerunFull() {
+        return mRunFailureReRunAll;
     }
 
     /** Sets the {@link ErrorIdentifier} representing the failure. */

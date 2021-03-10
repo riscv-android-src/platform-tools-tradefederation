@@ -78,13 +78,13 @@ public class ConfigurationYamlParserTest {
             assertEquals(7, resolver.getDependencies().size());
             assertThat(resolver.getDependencies())
                     .containsExactly(
-                            new File("test.apk"),
-                            new File("test2.apk"),
-                            new File("test1.apk"),
-                            new File("tobepushed2.txt"),
-                            new File("tobepushed.txt"),
-                            new File("file1.txt"),
-                            new File("file2.txt"));
+                            "test.apk", new File("test.apk"),
+                            "test2.apk", new File("test2.apk"),
+                            "test1.apk", new File("test1.apk"),
+                            "tobepushed2.txt", new File("tobepushed2.txt"),
+                            "tobepushed.txt", new File("tobepushed.txt"),
+                            "file1.txt", new File("file1.txt"),
+                            "file2.txt", new File("file2.txt"));
             // Test
             assertEquals(1, config.getTests().size());
             assertTrue(config.getTests().get(0) instanceof AndroidJUnitTest);

@@ -95,6 +95,8 @@ import com.google.common.annotations.VisibleForTesting;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -346,6 +348,12 @@ public class TestInvocation implements ITestInvocation {
                         executor.invokeAll(callableTasks, 5, TimeUnit.MINUTES);
                     }
                 }
+                if (exception == null) {
+                    CLog.d("Checking that devices are online.");
+                    checkDevicesAvailable(context.getDevices(), listener);
+                } else {
+                    CLog.d("Skip online check as an exception was already reported: %s", exception);
+                }
             }
             // Save the device executeShellCommand logs
             logExecuteShellCommand(context.getDevices(), listener);
@@ -541,6 +549,10 @@ public class TestInvocation implements ITestInvocation {
             return;
         }
         if (device.getIDevice() instanceof StubDevice) {
+            return;
+        }
+        if (!TestDeviceState.ONLINE.equals(device.getDeviceState())) {
+            CLog.d("Skipping bugreportz on %s. Device is offline.");
             return;
         }
         // logBugreport will report a regular bugreport if bugreportz is not supported.
@@ -959,6 +971,12 @@ public class TestInvocation implements ITestInvocation {
             CLog.e(e);
         } finally {
             scope.exit();
+            // Measure teardown disk usage before clean up
+            Long size = measureWorkFolderSize(config, info.dependenciesFolder());
+            if (size != null) {
+                InvocationMetricLogger.addInvocationMetrics(
+                        InvocationMetricKey.TEAR_DOWN_DISK_USAGE, size);
+            }
             // Ensure build infos are always cleaned up at the end of invocation.
             invocationPath.cleanUpBuilds(context, config);
             // ensure we always deregister the logger
@@ -1219,6 +1237,32 @@ public class TestInvocation implements ITestInvocation {
     }
 
     /**
+     * If no previous exception occurred, report if the device is not available anymore after tests
+     * finish running.
+     */
+    private void checkDevicesAvailable(
+            List<ITestDevice> devices, ITestInvocationListener listener) {
+        for (ITestDevice device : devices) {
+            if (device == null) {
+                continue;
+            }
+            if (device.getIDevice() instanceof StubDevice) {
+                continue;
+            }
+            try {
+                device.waitForDeviceOnline();
+            } catch (DeviceNotAvailableException e) {
+                String msg =
+                        String.format("Device was left offline after tests: %s", e.getMessage());
+                DeviceNotAvailableException wrap =
+                        new DeviceNotAvailableException(msg, e, e.getSerial(), e.getErrorId());
+                reportFailure(
+                        createFailureFromException(wrap, FailureStatus.INFRA_FAILURE), listener);
+            }
+        }
+    }
+
+    /**
      * Helper that use the command line to backfill a {@link IBuildInfo} for reporting in case of
      * download failure.
      */
@@ -1273,5 +1317,30 @@ public class TestInvocation implements ITestInvocation {
         public void run() {
             deleteInvocationFiles(mTestInfo, mConfig);
         }
+    }
+
+    /** Measure the size of the work folder. */
+    private Long measureWorkFolderSize(IConfiguration config, File workFolder) {
+        if (workFolder == null) {
+            return null;
+        }
+        // Only measure in parent process
+        if (config.getCommandOptions()
+                .getInvocationData()
+                .containsKey(SubprocessTfLauncher.SUBPROCESS_TAG_NAME)) {
+            return null;
+        }
+        Path folder = workFolder.toPath();
+        try {
+            long size =
+                    Files.walk(folder)
+                            .filter(p -> p.toFile().isFile())
+                            .mapToLong(p -> p.toFile().length())
+                            .sum();
+            return size;
+        } catch (IOException | RuntimeException e) {
+            CLog.e(e);
+        }
+        return null;
     }
 }

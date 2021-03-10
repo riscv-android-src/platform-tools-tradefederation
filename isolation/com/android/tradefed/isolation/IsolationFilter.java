@@ -66,6 +66,16 @@ final class IsolationFilter extends Filter {
     }
 
     private boolean checkFilters(Description desc) {
+        // If it's a suite, we check if at least one of the children can run, if yes then we run it
+        if (desc.isSuite()) {
+            for (Description child : desc.getChildren()) {
+                if (checkFilters(child)) {
+                    return true;
+                }
+            }
+            // If no child can run, then the suite is skipped
+            return false;
+        }
         String packageName = getPackageName(desc);
         String className = desc.getClassName();
         String methodName = String.format("%s#%s", className, desc.getMethodName());

@@ -188,6 +188,41 @@ public class FilePullerLogCollectorTest {
         assertTrue(collector.isPostProcessed());
     }
 
+    /** Test the compress directory option. */
+    @Test
+    public void testCompressDirectoryBeforeUpload() throws Exception {
+        EasyMock.expect(mMockDevice.getDeviceState()).andReturn(TestDeviceState.ONLINE);
+        PostProcessingFilePullerLogCollector collector = new PostProcessingFilePullerLogCollector();
+        OptionSetter setter = new OptionSetter(collector);
+        setter.setOptionValue("directory-keys", "data/local/tmp");
+        setter.setOptionValue("compress-directories", "true");
+
+        ITestInvocationListener listener = collector.init(mContext, mMockListener);
+        TestDescription test = new TestDescription("class", "test");
+        Map<String, String> metrics = new HashMap<>();
+        metrics.put("log1", "data/local/tmp");
+
+        Capture<HashMap<String, Metric>> capture = new Capture<>();
+        mMockListener.testStarted(test, 0L);
+        EasyMock.expect(mMockDevice.getIDevice()).andReturn(mMockIDevice);
+        EasyMock.expect(mMockDevice.pullDir(EasyMock.anyObject(), EasyMock.anyObject()))
+                .andReturn(true);
+        mMockDevice.deleteFile("data/local/tmp");
+        // Verify logging is only done for compressed file which file name starts with last folder
+        // name.
+        mMockListener.testLog(EasyMock.startsWith("tmp"), EasyMock.eq(LogDataType.ZIP),
+                EasyMock.anyObject());
+        mMockListener.testEnded(EasyMock.eq(test), EasyMock.eq(50L), EasyMock.capture(capture));
+
+        EasyMock.replay(mMockDevice, mMockListener);
+        listener.testStarted(test, 0L);
+        listener.testEnded(test, 50L, TfMetricProtoUtil.upgradeConvert(metrics));
+        EasyMock.verify(mMockDevice, mMockListener);
+
+        // Assert the post processor was called and completed for the compressed zip file.
+        assertTrue(collector.isPostProcessed());
+    }
+
     private static class PostProcessingFilePullerLogCollector extends FilePullerLogCollector {
         private boolean mIsPostProcessed = false;
 

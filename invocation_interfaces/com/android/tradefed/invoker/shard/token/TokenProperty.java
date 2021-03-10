@@ -23,4 +23,5 @@ public enum TokenProperty {
     SIM_CARD,
     UICC_SIM_CARD,
     SECURE_ELEMENT_SIM_CARD,
+    CEC_TEST_CONTROLLER,
 }

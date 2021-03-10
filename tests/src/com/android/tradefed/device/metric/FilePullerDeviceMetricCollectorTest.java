@@ -15,7 +15,6 @@ import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
-import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import org.junit.Before;
@@ -51,18 +50,22 @@ public class FilePullerDeviceMetricCollectorTest {
                     @Override
                     public void processMetricFile(
                             String key, File metricFile, DeviceMetricData data) {
-                        try (FileInputStreamSource source = new FileInputStreamSource(metricFile)) {
-                            testLog(key, LogDataType.TEXT, source);
+                        LogDataType logDataType = LogDataType.TEXT;
+                        if (metricFile.getAbsolutePath().endsWith(".zip")) {
+                            logDataType = LogDataType.ZIP;
+                        }
+                        try (FileInputStreamSource source = new FileInputStreamSource(metricFile,
+                                true)) {
+                            testLog(key, logDataType, source);
                         }
                     }
+
                     @Override
                     public void processMetricDirectory(
                             String key, File metricDirectory, DeviceMetricData data) {
                         try (FileInputStreamSource source = new FileInputStreamSource(
-                                metricDirectory)) {
+                                metricDirectory, true)) {
                             testLog(key, LogDataType.TEXT, source);
-                        } finally {
-                            FileUtil.deleteFile(metricDirectory);
                         }
                     }
                 };
@@ -214,6 +217,27 @@ public class FilePullerDeviceMetricCollectorTest {
 
         Mockito.verify(mMockListener)
                 .testLog(Mockito.eq("coverageDirectory"), Mockito.eq(LogDataType.TEXT),
+                        Mockito.any());
+    }
+
+    /**
+     * Test to check if the zip file is generated when the compress directory options is enabled.
+     */
+    @Test
+    public void testCompressDirectoryOption() throws Exception {
+        OptionSetter setter = new OptionSetter(mFilePuller);
+        setter.setOptionValue("directory-keys", "coverageDirectory");
+        setter.setOptionValue("compress-directories", "true");
+        HashMap<String, Metric> currentMetrics = new HashMap<>();
+
+        Mockito.when(mMockDevice.pullDir(Mockito.eq("coverageDirectory"),
+                Mockito.any(File.class))).thenReturn(true);
+
+        mFilePuller.testRunStarted("fakeRun", 5);
+        mFilePuller.testRunEnded(500, currentMetrics);
+
+        Mockito.verify(mMockListener)
+                .testLog(Mockito.eq("coverageDirectory"), Mockito.eq(LogDataType.ZIP),
                         Mockito.any());
     }
 }

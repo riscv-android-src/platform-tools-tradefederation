@@ -139,6 +139,7 @@ import com.android.tradefed.invoker.sandbox.ParentSandboxInvocationExecutionTest
 import com.android.tradefed.invoker.shard.ShardHelperTest;
 import com.android.tradefed.invoker.shard.StrictShardHelperTest;
 import com.android.tradefed.invoker.shard.TestsPoolPollerTest;
+import com.android.tradefed.invoker.shard.token.CecControllerTokenProviderTest;
 import com.android.tradefed.invoker.shard.token.TelephonyTokenProviderTest;
 import com.android.tradefed.invoker.shard.token.TokenProviderHelperTest;
 import com.android.tradefed.lite.DryRunnerTest;
@@ -150,6 +151,7 @@ import com.android.tradefed.log.SimpleFileLoggerTest;
 import com.android.tradefed.log.TerribleFailureEmailHandlerTest;
 import com.android.tradefed.monitoring.LabResourceDeviceMonitorTest;
 import com.android.tradefed.monitoring.collector.DeviceBatteryResourceMetricCollectorTest;
+import com.android.tradefed.monitoring.collector.DeviceInternetAccessibilityResourceMetricCollectorTest;
 import com.android.tradefed.monitoring.collector.DeviceStorageAgeResourceMetricCollectorTest;
 import com.android.tradefed.monitoring.collector.DeviceWifiResourceMetricCollectorTest;
 import com.android.tradefed.monitoring.collector.ResourceMetricUtilTest;
@@ -236,6 +238,7 @@ import com.android.tradefed.targetprep.InstallAllTestZipAppsSetupTest;
 import com.android.tradefed.targetprep.InstallApexModuleTargetPreparerTest;
 import com.android.tradefed.targetprep.InstallApkSetupTest;
 import com.android.tradefed.targetprep.InstrumentationPreparerTest;
+import com.android.tradefed.targetprep.KnownFailurePreparerTest;
 import com.android.tradefed.targetprep.PushFilePreparerTest;
 import com.android.tradefed.targetprep.PythonVirtualenvPreparerTest;
 import com.android.tradefed.targetprep.RebootTargetPreparerTest;
@@ -317,6 +320,7 @@ import com.android.tradefed.testtype.suite.ModuleDefinitionTest;
 import com.android.tradefed.testtype.suite.ModuleListenerTest;
 import com.android.tradefed.testtype.suite.ModuleMergerTest;
 import com.android.tradefed.testtype.suite.ModuleSplitterTest;
+import com.android.tradefed.testtype.suite.RemoteTestTimeOutEnforcerTest;
 import com.android.tradefed.testtype.suite.SuiteModuleLoaderTest;
 import com.android.tradefed.testtype.suite.TestFailureListenerTest;
 import com.android.tradefed.testtype.suite.TestMappingSuiteRunnerTest;
@@ -597,6 +601,7 @@ import org.junit.runners.Suite.SuiteClasses;
     TestsPoolPollerTest.class,
 
     // invoker.shard.token
+    CecControllerTokenProviderTest.class,
     TelephonyTokenProviderTest.class,
     TokenProviderHelperTest.class,
 
@@ -697,6 +702,7 @@ import org.junit.runners.Suite.SuiteClasses;
     InstallApexModuleTargetPreparerTest.class,
     InstallApkSetupTest.class,
     InstrumentationPreparerTest.class,
+    KnownFailurePreparerTest.class,
     PushFilePreparerTest.class,
     PythonVirtualenvPreparerTest.class,
     RebootTargetPreparerTest.class,
@@ -820,6 +826,7 @@ import org.junit.runners.Suite.SuiteClasses;
     ModuleListenerTest.class,
     ModuleMergerTest.class,
     ModuleSplitterTest.class,
+    RemoteTestTimeOutEnforcerTest.class,
     SuiteModuleLoaderTest.class,
     TestFailureListenerTest.class,
     TestMappingSuiteRunnerTest.class,
@@ -945,6 +952,7 @@ import org.junit.runners.Suite.SuiteClasses;
     LabResourceDeviceMonitorTest.class,
     // monitoring/collector
     DeviceBatteryResourceMetricCollectorTest.class,
+    DeviceInternetAccessibilityResourceMetricCollectorTest.class,
     DeviceStorageAgeResourceMetricCollectorTest.class,
     DeviceWifiResourceMetricCollectorTest.class,
     ResourceMetricUtilTest.class

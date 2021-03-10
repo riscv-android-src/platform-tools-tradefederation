@@ -245,7 +245,9 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
         serializer.startTag(NS, BUILD_TAG);
         for (String key : holder.context.getAttributes().keySet()) {
             serializer.attribute(
-                    NS, key, String.join(",", holder.context.getAttributes().get(key)));
+                    NS,
+                    sanitizeAttributesKey(key),
+                    String.join(",", holder.context.getAttributes().get(key)));
         }
         addBuildInfoAttributes(serializer, holder);
         serializer.endTag(NS, BUILD_TAG);
@@ -709,5 +711,9 @@ public class XmlSuiteResultFormatter implements IFormatterGenerator {
     @VisibleForTesting
     static String sanitizeXmlContent(String s) {
         return XmlEscapers.xmlContentEscaper().escape(s);
+    }
+
+    private static String sanitizeAttributesKey(String attribute) {
+        return attribute.replace(":", "_");
     }
 }

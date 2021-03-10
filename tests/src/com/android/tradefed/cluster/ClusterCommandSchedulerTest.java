@@ -1642,7 +1642,8 @@ public class ClusterCommandSchedulerTest {
         scheduler.start();
         EasyMock.verify(mMockHostUploader);
         ClusterHostEvent hostEvent = capture.getValue();
-        assertEquals(CLUSTER_ID, hostEvent.getClusterId());
+        assertNotNull(hostEvent.getHostName());
+        assertNotNull(hostEvent.getTimestamp());
         assertEquals(CommandScheduler.HostState.RUNNING, hostEvent.getHostState());
         stopScheduler(scheduler);
     }

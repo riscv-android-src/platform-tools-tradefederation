@@ -16,9 +16,11 @@
 package com.android.tradefed.testtype;
 
 import com.android.ddmlib.MultiLineReceiver;
+import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.error.TestErrorIdentifier;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -26,8 +28,8 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map.Entry;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
@@ -91,6 +93,7 @@ import java.util.regex.Pattern;
  */
 public class PythonUnitTestResultParser extends MultiLineReceiver {
 
+    private boolean mFinalizeWhenParsing = true;
     // Current test state
     private ParserState mCurrentParseState;
     private String mCurrentTestName;
@@ -202,6 +205,7 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
         mTestResultCache = new HashMap<>();
         mIncludeFilters = includeFilters;
         mExcludeFilters = excludeFilters;
+        mCurrentParseState = ParserState.TEST_CASE;
     }
 
     /**
@@ -217,17 +221,28 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
                 throw new PythonUnitTestParseException("Test execution failed");
             }
 
-            mCurrentParseState = ParserState.TEST_CASE;
             for (String line : lines) {
                 parse(line);
             }
 
-            if (mCurrentParseState != ParserState.COMPLETE) {
-                throw new PythonUnitTestParseException(
-                        "Parser finished in unexpected state " + mCurrentParseState.toString());
+            if (mFinalizeWhenParsing) {
+                finalizeParser();
             }
         } catch (PythonUnitTestParseException e) {
-            throw new RuntimeException(e.getMessage());
+            throw new HarnessRuntimeException(
+                    e.getMessage(), TestErrorIdentifier.OUTPUT_PARSER_ERROR);
+        }
+    }
+
+    public void setFinalizeWhenParsing(boolean shouldFinalize) {
+        mFinalizeWhenParsing = shouldFinalize;
+    }
+
+    public void finalizeParser() {
+        if (mCurrentParseState != ParserState.COMPLETE) {
+            throw new HarnessRuntimeException(
+                    "Parser finished in unexpected state " + mCurrentParseState.toString(),
+                    TestErrorIdentifier.OUTPUT_PARSER_ERROR);
         }
     }
 

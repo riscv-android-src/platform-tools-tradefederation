@@ -980,7 +980,7 @@ public class NativeDeviceTest {
     @Test
     public void testTestLogBugreport() {
         final String dataName = "test";
-        final InputStreamSource stream = new ByteArrayInputStreamSource(null);
+        final InputStreamSource stream = new ByteArrayInputStreamSource("bugreportz".getBytes());
         mTestDevice =
                 new TestableAndroidNativeDevice() {
                     @Override
@@ -1004,7 +1004,7 @@ public class NativeDeviceTest {
     @Test
     public void testTestLogBugreport_oldDevice() {
         final String dataName = "test";
-        final InputStreamSource stream = new ByteArrayInputStreamSource(null);
+        final InputStreamSource stream = new ByteArrayInputStreamSource("bugreport".getBytes());
         mTestDevice =
                 new TestableAndroidNativeDevice() {
                     @Override
@@ -3117,7 +3117,8 @@ public class NativeDeviceTest {
                     @Override
                     public String executeShellCommand(String command)
                             throws DeviceNotAvailableException {
-                        return "lrwxr-xr-x 1 root shell 7 2009-01-01 00:00 /system/bin/start -> toolbox";
+                        return "lrwxr-xr-x 1 root shell 7 2009-01-01 00:00 /system/bin/start ->"
+                                + " toolbox";
                     }
                 };
         assertTrue(mTestDevice.isExecutable("/system/bin/start"));
@@ -3156,16 +3157,19 @@ public class NativeDeviceTest {
                         return "total 416\n"
                                 + "drwxr-xr-x 74 root root    4096 2009-01-01 00:00 app\n"
                                 + "drwxr-xr-x  3 root shell   8192 2009-01-01 00:00 bin\n"
-                                + "-rw-r--r--  1 root root    5020 2009-01-01 00:00 build.prop\n"
+                                + "-rw-r--r--  1 root root    5020 2009-01-01 00:00"
+                                + " build.prop\n"
                                 + "drwxr-xr-x 15 root root    4096 2009-01-01 00:00 etc\n"
                                 + "drwxr-xr-x  2 root root    4096 2009-01-01 00:00 fake-libs\n"
                                 + "drwxr-xr-x  2 root root    8192 2009-01-01 00:00 fonts\n"
                                 + "drwxr-xr-x  4 root root    4096 2009-01-01 00:00 framework\n"
                                 + "drwxr-xr-x  6 root root    8192 2009-01-01 00:00 lib\n"
-                                + "drwx------  2 root root    4096 1970-01-01 00:00 lost+found\n"
+                                + "drwx------  2 root root    4096 1970-01-01 00:00"
+                                + " lost+found\n"
                                 + "drwxr-xr-x  3 root root    4096 2009-01-01 00:00 media\n"
                                 + "drwxr-xr-x 68 root root    4096 2009-01-01 00:00 priv-app\n"
-                                + "-rw-r--r--  1 root root  137093 2009-01-01 00:00 recovery-from-boot.p\n"
+                                + "-rw-r--r--  1 root root  137093 2009-01-01 00:00"
+                                + " recovery-from-boot.p\n"
                                 + "drwxr-xr-x  9 root root    4096 2009-01-01 00:00 usr\n"
                                 + "drwxr-xr-x  8 root shell   4096 2009-01-01 00:00 vendor\n"
                                 + "drwxr-xr-x  2 root shell   4096 2009-01-01 00:00 xbin\n";

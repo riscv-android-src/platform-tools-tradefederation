@@ -17,14 +17,12 @@ package com.android.tradefed.testtype;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import com.android.compatibility.common.tradefed.testtype.JarHostTest;
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.DeviceBuildInfo;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.invoker.ExecutionFiles.FilesKey;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
@@ -274,17 +272,7 @@ public class JarHostTestTest {
         mListener.testRunEnded(0L, new HashMap<String, Metric>());
 
         EasyMock.replay(mListener);
-        try {
-            mTest.run(mTestInfo, mListener);
-            fail("Should have thrown an exception.");
-        } catch (HarnessRuntimeException expected) {
-            // expected
-            assertEquals(
-                    "java.io.FileNotFoundException: "
-                            + "Could not find an artifact file associated with "
-                            + "thisjardoesnotexistatall.jar",
-                    expected.getMessage());
-        }
+        mTest.run(mTestInfo, mListener);
         EasyMock.verify(mListener);
         assertTrue(
                 captured.getValue()
