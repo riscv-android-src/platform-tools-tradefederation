@@ -574,4 +574,29 @@ public class FileUtilTest {
             FileUtil.recursiveDelete(tmpDir);
         }
     }
+
+    @Test
+    public void testSizeOfDirectory_hardlink() throws IOException {
+        File tmpDir = FileUtil.createTempDir("dir-size-tests");
+        File rootFile = null;
+        try {
+            rootFile = FileUtil.createTempFile("size-file", "");
+            FileUtil.writeToFile("size", rootFile);
+            long size = FileUtil.sizeOfDirectory(tmpDir);
+            assertEquals(0L, size);
+            File hardlink = new File(tmpDir, "hardlink");
+            FileUtil.hardlinkFile(rootFile, hardlink);
+            size = FileUtil.sizeOfDirectory(tmpDir);
+            assertEquals(4L, size);
+            FileUtil.deleteFile(rootFile);
+            size = FileUtil.sizeOfDirectory(tmpDir);
+            assertEquals(4L, size);
+            FileUtil.deleteFile(hardlink);
+            size = FileUtil.sizeOfDirectory(tmpDir);
+            assertEquals(0L, size);
+        } finally {
+            FileUtil.recursiveDelete(tmpDir);
+            FileUtil.deleteFile(rootFile);
+        }
+    }
 }
