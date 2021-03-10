@@ -30,6 +30,7 @@ public class TokenProviderHelper {
         sHandlerMap.put(TokenProperty.SIM_CARD, new TelephonyTokenProvider());
         sHandlerMap.put(TokenProperty.UICC_SIM_CARD, new TelephonyTokenProvider());
         sHandlerMap.put(TokenProperty.SECURE_ELEMENT_SIM_CARD, new TelephonyTokenProvider());
+        sHandlerMap.put(TokenProperty.CEC_TEST_CONTROLLER, new CecControllerTokenProvider());
     }
 
     /** Returns the {@link ITokenProvider} associated with the requested token. */

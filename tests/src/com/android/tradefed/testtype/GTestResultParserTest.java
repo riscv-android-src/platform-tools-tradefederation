@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.testtype;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -438,5 +439,7 @@ public class GTestResultParserTest extends GTestParserTestBase {
         resultParser.processNewLines(contents);
         resultParser.flush();
         EasyMock.verify(mockRunListener);
+        FailureDescription cap = captured.getValue();
+        assertEquals("Test run incomplete. Expected 11 tests, received 0", cap.getErrorMessage());
     }
 }

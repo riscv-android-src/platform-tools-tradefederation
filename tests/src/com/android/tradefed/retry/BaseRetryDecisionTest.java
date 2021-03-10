@@ -30,11 +30,13 @@ import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFilterReceiver;
+import com.android.tradefed.testtype.suite.ModuleDefinition;
 
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mockito;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -177,6 +179,19 @@ public class BaseRetryDecisionTest {
     }
 
     @Test
+    public void testShouldRetry_runFailure_noFullRetry() throws Exception {
+        FailureDescription failure = FailureDescription.create("run failure");
+        failure.setFullRerun(false);
+        TestRunResult result = createResult(FailureDescription.create("failure"), null, failure);
+        boolean res = mRetryDecision.shouldRetry(mTestClass, 0, Arrays.asList(result));
+        assertTrue(res);
+        assertEquals(0, mTestClass.getIncludeFilters().size());
+        // The one passed test case is excluded
+        assertEquals(1, mTestClass.getExcludeFilters().size());
+        assertTrue(mTestClass.getExcludeFilters().contains("class#method2"));
+    }
+
+    @Test
     public void testShouldRetry_runFailure_nonRetriable() throws Exception {
         FailureDescription failure = FailureDescription.create("run failure");
         failure.setRetriable(false);
@@ -226,6 +241,26 @@ public class BaseRetryDecisionTest {
         TestRunResult result3 = createResult(FailureDescription.create("failure"), null);
         boolean res3 = mRetryDecision.shouldRetry(mTestClass, 0, Arrays.asList(result3));
         assertFalse(res3);
+    }
+
+    @Test
+    public void testShouldRetry_skip_retrying_list() throws Exception {
+        final String SKIP_RETRYING_LIST = "skip-retrying-list";
+        final String moduleID1 = "x86 module1";
+        final String moduleID2 = "x86 module2";
+        TestRunResult result = createResult(null, FailureDescription.create("failure2"));
+        // module1 in the skip-retrying-list, it should return false.
+        ModuleDefinition module1 = Mockito.mock(ModuleDefinition.class);
+        Mockito.when(module1.getId()).thenReturn(moduleID1);
+        OptionSetter setter = new OptionSetter(mRetryDecision);
+        setter.setOptionValue(SKIP_RETRYING_LIST, moduleID1);
+        boolean res = mRetryDecision.shouldRetry(mTestClass, module1, 0, Arrays.asList(result));
+        assertFalse(res);
+        // module2 is not in the skip-retrying-list, it should return true.
+        ModuleDefinition module2 = Mockito.mock(ModuleDefinition.class);
+        Mockito.when(module2.getId()).thenReturn(moduleID2);
+        boolean res2 = mRetryDecision.shouldRetry(mTestClass, module2, 0, Arrays.asList(result));
+        assertTrue(res2);
     }
 
     /** Ensure we abort the retry if there are too many failed test cases. */

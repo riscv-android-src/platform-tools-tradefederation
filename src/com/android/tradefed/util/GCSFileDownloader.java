@@ -34,6 +34,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.math.BigInteger;
 import java.net.SocketException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -223,9 +224,19 @@ public class GCSFileDownloader extends GCSCommon implements IFileDownloader {
             }
             Objects objects = listOperation.execute();
             if (objects.getItems() != null && !objects.getItems().isEmpty()) {
-                subFiles.addAll(objects.getItems());
+                for (int i = 0; i < objects.getItems().size(); i++) {
+                    if (objects.getItems().get(i).getName().equals(folder)) {
+                        // If the folder is created from UI, the folder itself
+                        // is a size 0 text file and its name will be
+                        // the folder's name, we should ignore this file.
+                        continue;
+                    }
+                    subFiles.add(objects.getItems().get(i));
+                }
             }
             if (objects.getPrefixes() != null && !objects.getPrefixes().isEmpty()) {
+                // size 0 sub-folders will also be listed under the prefix.
+                // So this includes all the sub-folders.
                 subFolders.addAll(objects.getPrefixes());
             }
             pageToken = objects.getNextPageToken();
@@ -257,7 +268,18 @@ public class GCSFileDownloader extends GCSCommon implements IFileDownloader {
         return name;
     }
 
-    /** check given filename is a folder or not. */
+    /**
+     * Check given filename is a folder or not.
+     *
+     * <p>There 2 types of folders in gcs: 1. Created explicitly from UI. The folder is a size 0
+     * text file (it's an object). 2. When upload a file, all its parent folders will be created,
+     * but these folders doesn't exist (not objects) in gcs. This function work for both cases. But
+     * we should not try to download the size 0 folders.
+     *
+     * @param bucketName is the gcs bucket name.
+     * @param filename is the relative path to the bucket.
+     * @return true if the filename is a folder, otherwise false.
+     */
     @VisibleForTesting
     boolean isRemoteFolder(String bucketName, String filename) throws IOException {
         filename = sanitizeDirectoryName(filename);
@@ -270,9 +292,14 @@ public class GCSFileDownloader extends GCSCommon implements IFileDownloader {
                         .setMaxResults(1l)
                         .execute();
         if (objects.getItems() != null && !objects.getItems().isEmpty()) {
+            // The filename is end with '/', if there are objects use filename as prefix
+            // then filename must be a folder.
             return true;
         }
         if (objects.getPrefixes() != null && !objects.getPrefixes().isEmpty()) {
+            // This will happen when the folder only contains folders but no objects.
+            // objects.getItems() will be empty, but objects.getPrefixes will list
+            // sub-folders.
             return true;
         }
         return false;
@@ -314,7 +341,16 @@ public class GCSFileDownloader extends GCSCommon implements IFileDownloader {
     }
 
     private void fetchRemoteFile(String bucketName, String remoteFilename, File localFile)
-            throws IOException {
+            throws IOException, BuildRetrievalError {
+        CLog.d("Fetching gs://%s/%s to %s.", bucketName, remoteFilename, localFile.toString());
+        StorageObject meta = getRemoteFileMetaData(bucketName, remoteFilename);
+        if (meta == null || meta.getSize().equals(BigInteger.ZERO)) {
+            throw new BuildRetrievalError(
+                    String.format(
+                            "File (not folder) gs://%s/%s doesn't exist or is size 0.",
+                            bucketName, remoteFilename),
+                    InfraErrorIdentifier.GCS_ERROR);
+        }
         try (OutputStream writeStream = new FileOutputStream(localFile)) {
             getStorage()
                     .objects()
@@ -330,9 +366,11 @@ public class GCSFileDownloader extends GCSCommon implements IFileDownloader {
      * @param remoteFolderName remote folder name, must end with "/"
      * @param localFolder local folder
      * @throws IOException
+     * @throws BuildRetrievalError
      */
     private void recursiveDownloadFolder(
-            String bucketName, String remoteFolderName, File localFolder) throws IOException {
+            String bucketName, String remoteFolderName, File localFolder)
+            throws IOException, BuildRetrievalError {
         CLog.d("Downloading folder gs://%s/%s.", bucketName, remoteFolderName);
         if (!localFolder.exists()) {
             FileUtil.mkdirsRWX(localFolder);

@@ -183,13 +183,16 @@ public interface ICommandScheduler {
      */
     public void completeHandover();
 
+    /** Attempt to forcefully shutdown the command scheduler. Same as shutdownHard(true). */
+    public void shutdownHard();
+
     /**
      * Attempt to forcefully shutdown the command scheduler.
-     * <p/>
-     * Similar to {@link #shutdown()}, but will also forcefully kill the adb connection, in an
+     *
+     * <p>Similar to {@link #shutdown()}, but will also optionally kill the adb connection, in an
      * attempt to 'inspire' invocations in progress to complete quicker.
      */
-    public void shutdownHard();
+    public void shutdownHard(boolean killAdb);
 
     /**
      * Start the {@link ICommandScheduler}.

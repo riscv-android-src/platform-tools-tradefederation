@@ -20,6 +20,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.verify;
 
 import com.android.tradefed.config.Configuration;
@@ -35,6 +36,9 @@ import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.RunInterruptedException;
+import com.android.tradefed.util.RunUtil;
 
 import org.hamcrest.CoreMatchers;
 import org.junit.After;
@@ -60,6 +64,8 @@ public class ClusterCommandLauncherFuncTest {
     private static final String LEGACY_TRADEFED_COMMAND = "fake.xml --null-device --run testRun PF";
     private static final String LEGACY_TRADEFED_COMMAND_FOR_INVOCATION_FAILURE =
             "fake.xml --null-device --fail-invocation-with-cause cause";
+    private static final String LEGACY_TRADEFED_COMMAND_FOR_LARGE_TEST =
+            "fake.xml --null-device --run testRun P100";
 
     private File mRootDir;
     private IConfiguration mConfiguration;
@@ -135,5 +141,37 @@ public class ClusterCommandLauncherFuncTest {
         }
 
         verify(mListener).invocationFailed(any(Throwable.class));
+    }
+
+    @Test
+    public void testRun_withLegacyTradefed_invocationInterrupted()
+            throws IOException, ConfigurationException, DeviceNotAvailableException {
+        File tfJar = new File(mRootDir, "tradefed.jar");
+        FileUtil.writeToFile(getClass().getResourceAsStream(LEGACY_TRADEFED_JAR), tfJar);
+        FileUtil.writeToFile(
+                getClass().getResourceAsStream("/config/tf/fake.xml"),
+                new File(mRootDir, "fake.xml"));
+        mOptionSetter.setOptionValue("cluster:env-var", "TF_PATH", mRootDir.getAbsolutePath());
+        mOptionSetter.setOptionValue("cluster:use-subprocess-reporting", "true");
+        mOptionSetter.setOptionValue(
+                "cluster:command-line", LEGACY_TRADEFED_COMMAND_FOR_LARGE_TEST);
+        IRunUtil runUtil = RunUtil.getDefault();
+        runUtil.allowInterrupt(true);
+        Thread thread = Thread.currentThread();
+        doAnswer(
+                        invocation -> {
+                            runUtil.interrupt(thread, "interrupt");
+                            return null;
+                        })
+                .when(mListener)
+                .testRunStarted(any(String.class), anyInt(), anyInt(), anyLong());
+        try {
+            mLauncher.run(mTestInformation, mListener);
+            fail("RunInterruptedException should be thrown");
+        } catch (RunInterruptedException e) {
+        }
+        HashMap<String, MetricMeasurement.Metric> emptyMap = new HashMap<>();
+        verify(mListener).testRunStarted(eq("testRun"), anyInt(), anyInt(), anyLong());
+        verify(mListener).testRunEnded(anyLong(), eq(emptyMap));
     }
 }

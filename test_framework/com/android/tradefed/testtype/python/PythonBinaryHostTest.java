@@ -43,12 +43,13 @@ import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
-import com.android.tradefed.util.SubprocessTestResultsParser;
 
 import com.google.common.base.Joiner;
+import com.google.common.base.Strings;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -272,32 +273,69 @@ public class PythonBinaryHostTest implements IRemoteTest, ITestFilterReceiver {
         AdbUtils.updateAdb(testInfo, getRunUtil(), getAdbPath());
         // Add all the other options
         commandLine.addAll(mTestOptions);
-        CommandResult result =
-                getRunUtil().runTimedCmd(mTestTimeout, commandLine.toArray(new String[0]));
+
+        // Prepare the parser if needed
         String runName = pyFile.getName();
         PythonForwarder forwarder = new PythonForwarder(listener, runName);
-        if (result.getStdout() != null) {
-            CLog.logAndDisplay(Log.LogLevel.INFO, "\nstdout:\n%s", result.getStdout());
-            try (InputStreamSource data =
-                    new ByteArrayInputStreamSource(result.getStdout().getBytes())) {
-                listener.testLog(
-                        String.format(PYTHON_LOG_STDOUT_FORMAT, runName), LogDataType.TEXT, data);
-            }
+        ITestInvocationListener receiver = forwarder;
+        if (mTestCaseTimeout.toMillis() > 0L) {
+            receiver =
+                    new TestTimeoutEnforcer(
+                            mTestCaseTimeout.toMillis(), TimeUnit.MILLISECONDS, receiver);
         }
-        if (result.getStderr() != null) {
-            CLog.logAndDisplay(Log.LogLevel.INFO, "\nstderr:\n%s", result.getStderr());
-        }
+        PythonUnitTestResultParser pythonParser =
+                new PythonUnitTestResultParser(
+                        Arrays.asList(receiver), "python-run", mIncludeFilters, mExcludeFilters);
+
+        CommandResult result = null;
         File stderrFile = null;
         try {
-            // Note that we still log stderr when parsing results from a test-written output file
-            // since it most likely contains useful debugging information.
             stderrFile = FileUtil.createTempFile("python-res", ".txt");
-            FileUtil.writeToFile(result.getStderr(), stderrFile);
-            testLogFile(listener, String.format(PYTHON_LOG_STDERR_FORMAT, runName), stderrFile);
+            if (mUseTestOutputFile) {
+                result = getRunUtil().runTimedCmd(mTestTimeout, commandLine.toArray(new String[0]));
+            } else {
+                pythonParser.setFinalizeWhenParsing(false);
+                FileOutputStream fileOutputParser =
+                        new FileOutputStream(stderrFile) {
+                            @Override
+                            public void write(byte[] b, int off, int len) throws IOException {
+                                super.write(b, off, len);
+                                pythonParser.addOutput(b, off, len);
+                            }
+
+                            @Override
+                            public void flush() throws IOException {
+                                super.flush();
+                                pythonParser.flush();
+                            }
+                        };
+                result =
+                        getRunUtil()
+                                .runTimedCmd(
+                                        mTestTimeout,
+                                        null,
+                                        fileOutputParser,
+                                        commandLine.toArray(new String[0]));
+                fileOutputParser.flush();
+                pythonParser.finalizeParser();
+            }
+
+            if (!Strings.isNullOrEmpty(result.getStdout())) {
+                CLog.logAndDisplay(Log.LogLevel.INFO, "\nstdout:\n%s", result.getStdout());
+                try (InputStreamSource data =
+                        new ByteArrayInputStreamSource(result.getStdout().getBytes())) {
+                    listener.testLog(
+                            String.format(PYTHON_LOG_STDOUT_FORMAT, runName),
+                            LogDataType.TEXT,
+                            data);
+                }
+            }
+            if (!Strings.isNullOrEmpty(result.getStderr())) {
+                CLog.logAndDisplay(Log.LogLevel.INFO, "\nstderr:\n%s", result.getStderr());
+            }
 
             File testOutputFile = stderrFile;
             String testOutput = result.getStderr();
-
             if (mUseTestOutputFile) {
                 testOutputFile = tempTestOutputFile;
                 // This assumes that the output file is encoded using the same charset as the
@@ -308,35 +346,7 @@ public class PythonBinaryHostTest implements IRemoteTest, ITestFilterReceiver {
                         String.format(PYTHON_LOG_TEST_OUTPUT_FORMAT, runName),
                         testOutputFile);
             }
-
-            // If it doesn't have the std output TEST_RUN_STARTED, use regular parser.
-            if (!testOutput.contains("TEST_RUN_STARTED")) {
-                ITestInvocationListener receiver = forwarder;
-                if (mTestCaseTimeout.toMillis() > 0L) {
-                    receiver =
-                            new TestTimeoutEnforcer(
-                                    mTestCaseTimeout.toMillis(), TimeUnit.MILLISECONDS, receiver);
-                }
-                // Attempt to parse the pure python output
-                PythonUnitTestResultParser pythonParser =
-                        new PythonUnitTestResultParser(
-                                Arrays.asList(receiver),
-                                "python-run",
-                                mIncludeFilters,
-                                mExcludeFilters);
-                pythonParser.processNewLines(testOutput.split("\n"));
-            } else {
-                if (!mIncludeFilters.isEmpty() || !mExcludeFilters.isEmpty()) {
-                    throw new RuntimeException(
-                            "Non-unittest python test does not support using filters in "
-                                    + "PythonBinaryHostTest. Please use test runner "
-                                    + "ExecutableHostTest instead.");
-                }
-                try (SubprocessTestResultsParser parser =
-                        new SubprocessTestResultsParser(forwarder, mTestInfo.getContext())) {
-                    parser.parseFile(testOutputFile);
-                }
-            }
+            pythonParser.processNewLines(testOutput.split("\n"));
         } catch (RuntimeException e) {
             StringBuilder message = new StringBuilder();
             message.append(
@@ -360,6 +370,19 @@ public class PythonBinaryHostTest implements IRemoteTest, ITestFilterReceiver {
         } catch (IOException e) {
             throw new RuntimeException(e);
         } finally {
+            if (stderrFile != null) {
+                // Note that we still log stderr when parsing results from a test-written output
+                // file since it most likely contains useful debugging information.
+                try {
+                    if (mUseTestOutputFile) {
+                        FileUtil.writeToFile(result.getStderr(), stderrFile);
+                    }
+                    testLogFile(
+                            listener, String.format(PYTHON_LOG_STDERR_FORMAT, runName), stderrFile);
+                } catch (IOException e) {
+                    CLog.e(e);
+                }
+            }
             FileUtil.deleteFile(stderrFile);
             FileUtil.deleteFile(tempTestOutputFile);
         }
