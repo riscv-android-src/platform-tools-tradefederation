@@ -23,6 +23,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.util.CommandResult;
@@ -64,7 +65,8 @@ public class ContentProviderHandlerTest {
     public void testSetUp_install() throws Exception {
         doReturn(1).when(mMockDevice).getCurrentUser();
         doReturn(null).when(mMockDevice).installPackage(any(), eq(true), eq(true));
-        doReturn(null)
+        CommandResult resSet = new CommandResult(CommandStatus.SUCCESS);
+        doReturn(resSet)
                 .when(mMockDevice)
                 .executeShellV2Command(
                         String.format(
@@ -339,6 +341,36 @@ public class ContentProviderHandlerTest {
                 "\"content://android.tradefed.contentprovider/filepath%252Ffile%2520name"
                         + "%2520spaced%2520%28data%29\"",
                 espacedUrl);
+    }
+
+    /** Test {@link ContentProviderHandler#doesFileExist(String)}. */
+    @Test
+    public void testDoesFileExist() throws Exception {
+        String devicePath = "path/somewhere/file.txt";
+
+        when(mMockDevice.getCurrentUser()).thenReturn(99);
+        when(mMockDevice.executeShellCommand(
+                        "content query --user 99 --uri "
+                                + ContentProviderHandler.createEscapedContentUri(devicePath)))
+                .thenReturn("");
+
+        assertTrue(mProvider.doesFileExist(devicePath));
+    }
+
+    /**
+     * Test {@link ContentProviderHandler#doesFileExist(String)} returns false when 'adb shell
+     * content query' returns no results.
+     */
+    @Test
+    public void testDoesFileExist_NotExists() throws Exception {
+        String devicePath = "path/somewhere/";
+
+        when(mMockDevice.getCurrentUser()).thenReturn(99);
+        when(mMockDevice.executeShellCommand(
+                        "content query --user 99 --uri "
+                                + ContentProviderHandler.createEscapedContentUri(devicePath)))
+                .thenReturn("No result found.\n");
+        assertFalse(mProvider.doesFileExist(devicePath));
     }
 
     @Test
