@@ -220,6 +220,11 @@ public class TestDeviceOptions {
     private boolean mSkipTearDown = false;
 
     @Option(
+            name = "use-oxygen",
+            description = "Whether or not to use virtual devices created by Oxygen.")
+    private boolean mUseOxygen = false;
+
+    @Option(
             name = "wait-gce-teardown",
             description = "Whether or not to block on gce teardown before proceeding.")
     private boolean mWaitForGceTearDown = false;
@@ -624,6 +629,11 @@ public class TestDeviceOptions {
     /** Returns true if we should block on GCE tear down completion before proceeding. */
     public boolean waitForGceTearDown() {
         return mWaitForGceTearDown;
+    }
+
+    /** Returns true if use Oxygen to create virtual devices. False otherwise. */
+    public boolean useOxygen() {
+        return mUseOxygen;
     }
 
     /** Returns the instance type of GCE virtual device that should be created */
