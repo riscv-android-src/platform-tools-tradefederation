@@ -14,7 +14,7 @@
   ~ See the License for the specific language governing permissions and
   ~ limitations under the License.
   -->
-<!-- Common configuration that launches an headless emulator locally -->
+<!-- Common configuration that launches an emulator locally -->
 <configuration description="Common configuration for local emulator runs">
     <option name="new-emulator" value="true" />
     <target_preparer class="com.android.tradefed.targetprep.LocalEmulatorLaunch"/>

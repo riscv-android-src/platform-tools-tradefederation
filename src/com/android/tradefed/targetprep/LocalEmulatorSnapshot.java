@@ -25,10 +25,10 @@ import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.util.RunUtil;
 
 import java.time.Duration;
-import java.util.Arrays;
+import java.util.List;
 
 /** A TargetPreparer intended for generating a clean headless emulator snapshot */
-public class LocalEmulatorSnapshot extends BaseTargetPreparer {
+public class LocalEmulatorSnapshot extends BaseLocalEmulatorPreparer {
 
     @Option(name = "boot-timeout", description = "maximum duration to wait for emulator to boot")
     private Duration mBootTimeout = Duration.ofMinutes(2);
@@ -38,18 +38,10 @@ public class LocalEmulatorSnapshot extends BaseTargetPreparer {
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
         ITestDevice allocatedDevice = testInformation.getDevice();
         IDeviceManager manager = GlobalConfiguration.getDeviceManagerInstance();
+        List<String> args = buildEmulatorLaunchArgs();
+        args.add("-wipe-data");
         manager.launchEmulator(
-                allocatedDevice,
-                mBootTimeout.toMillis(),
-                RunUtil.getDefault(),
-                Arrays.asList(
-                        "emulator",
-                        "-feature",
-                        "QuickbootFileBacked,FastSnapshotV1",
-                        "-gpu",
-                        "swiftshader_indirect",
-                        "-wipe-data",
-                        "-no-window"));
+                allocatedDevice, mBootTimeout.toMillis(), RunUtil.getDefault(), args);
     }
 
     @Override
