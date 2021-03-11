@@ -15,6 +15,10 @@
  */
 package com.android.tradefed.device;
 
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+
 import com.android.ddmlib.AdbCommandRejectedException;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.IDevice.DeviceState;
@@ -4451,5 +4455,149 @@ public class TestDeviceTest extends TestCase {
         assertNotNull(source);
         StreamUtil.close(source);
         verifyMocks();
+    }
+
+    /** Test {@link TestDevice#doesFileExist(String)}. */
+    public void testDoesFileExists() throws Exception {
+        injectShellResponse("ls \"/data/local/tmp/file\"", "file");
+        EasyMock.replay(mMockIDevice);
+        assertTrue(mTestDevice.doesFileExist("/data/local/tmp/file"));
+        EasyMock.verify(mMockIDevice);
+    }
+
+    /** Test {@link TestDevice#doesFileExist(String)} when the file does not exists. */
+    public void testDoesFileExists_notExists() throws Exception {
+        injectShellResponse(
+                "ls \"/data/local/tmp/file\"",
+                "ls: cannot access 'file': No such file or directory\n");
+        EasyMock.replay(mMockIDevice);
+        assertFalse(mTestDevice.doesFileExist("/data/local/tmp/file"));
+        EasyMock.verify(mMockIDevice);
+    }
+
+    /**
+     * Test {@link TestDevice#doesFileExist(String)} using content provider when the file is in
+     * external storage path.
+     */
+    public void testDoesFileExists_sdcard() throws Exception {
+        mTestDevice = createTestDevice();
+
+        TestableTestDevice spy = (TestableTestDevice) Mockito.spy(mTestDevice);
+        ContentProviderHandler cp = Mockito.mock(ContentProviderHandler.class);
+        doReturn(cp).when(spy).getContentProvider();
+
+        final String fakeFile = "/sdcard/file";
+        final String targetFilePath = "/storage/emulated/10/file";
+
+        doReturn("").when(spy).executeShellCommand(Mockito.contains("content query --user 10"));
+
+        EasyMock.replay(mMockIDevice);
+        spy.doesFileExist(fakeFile);
+        EasyMock.verify(mMockIDevice);
+
+        verify(spy, times(1)).getContentProvider();
+        verify(cp, times(1)).doesFileExist(targetFilePath);
+    }
+
+    /** Push a file using the content provider. */
+    public void testPushFile_contentProvider() throws Exception {
+        mTestDevice = createTestDevice();
+        TestableTestDevice spy = (TestableTestDevice) Mockito.spy(mTestDevice);
+        setupContentProvider(spy);
+
+        final String fakeRemotePath = "/sdcard/";
+        File tmpFile = FileUtil.createTempFile("push", ".test");
+
+        CommandResult writeContent = new CommandResult(CommandStatus.SUCCESS);
+        writeContent.setStdout("");
+        doReturn(writeContent)
+                .when(spy)
+                .executeShellV2Command(Mockito.contains("content write"), (File) Mockito.any());
+        EasyMock.replay(mMockIDevice);
+        try {
+            boolean res = spy.pushFile(tmpFile, fakeRemotePath);
+            EasyMock.verify(mMockIDevice);
+            assertTrue(res);
+            verify(spy, times(1))
+                    .installPackage(Mockito.any(), Mockito.anyBoolean(), Mockito.anyBoolean());
+            ContentProviderHandler cp = spy.getContentProvider();
+            assertFalse(cp.contentProviderNotFound());
+            // Since it didn't fail, we did not re-install the content provider
+            verify(spy, times(1))
+                    .installPackage(Mockito.any(), Mockito.anyBoolean(), Mockito.anyBoolean());
+            cp.tearDown();
+        } finally {
+            FileUtil.deleteFile(tmpFile);
+        }
+    }
+
+    /** Push a file using the content provider. */
+    public void testPushFile_contentProvider_notFound() throws Exception {
+        mTestDevice = createTestDevice();
+        TestableTestDevice spy = (TestableTestDevice) Mockito.spy(mTestDevice);
+        setupContentProvider(spy);
+
+        final String fakeRemotePath = "/sdcard/";
+        File tmpFile = FileUtil.createTempFile("push", ".test");
+
+        CommandResult writeContent = new CommandResult(CommandStatus.SUCCESS);
+        writeContent.setStdout("");
+        writeContent.setStderr(
+                "java.lang.IllegalStateException: Could not find provider: "
+                        + "android.tradefed.contentprovider");
+        doReturn(writeContent)
+                .when(spy)
+                .executeShellV2Command(Mockito.contains("content write"), (File) Mockito.any());
+        doReturn(null).when(spy).uninstallPackage(Mockito.eq("android.tradefed.contentprovider"));
+        EasyMock.replay(mMockIDevice);
+        try {
+            boolean res = spy.pushFile(tmpFile, fakeRemotePath);
+            EasyMock.verify(mMockIDevice);
+            assertFalse(res);
+            verify(spy, times(1))
+                    .installPackage(Mockito.any(), Mockito.anyBoolean(), Mockito.anyBoolean());
+            // Since it fails, requesting the content provider again will re-do setup.
+            ContentProviderHandler cp = spy.getContentProvider();
+            assertFalse(cp.contentProviderNotFound());
+            verify(spy, times(2))
+                    .installPackage(Mockito.any(), Mockito.anyBoolean(), Mockito.anyBoolean());
+            cp.tearDown();
+        } finally {
+            FileUtil.deleteFile(tmpFile);
+        }
+    }
+
+    private void setupContentProvider(TestableTestDevice spy) throws Exception {
+        doReturn(null)
+                .when(spy)
+                .installPackage(Mockito.any(), Mockito.anyBoolean(), Mockito.anyBoolean());
+        CommandResult setLegacy = new CommandResult(CommandStatus.SUCCESS);
+        doReturn(setLegacy).when(spy).executeShellV2Command(Mockito.contains("cmd appops set"));
+
+        CommandResult getLegacy = new CommandResult(CommandStatus.SUCCESS);
+        getLegacy.setStdout("LEGACY_STORAGE: allow");
+        doReturn(getLegacy).when(spy).executeShellV2Command(Mockito.contains("cmd appops get"));
+
+        doReturn(null).when(spy).uninstallPackage(Mockito.eq("android.tradefed.contentprovider"));
+    }
+
+    private TestableTestDevice createTestDevice() {
+        return new TestableTestDevice() {
+            @Override
+            public int getApiLevel() throws DeviceNotAvailableException {
+                return 29;
+            }
+
+            @Override
+            public int getCurrentUser() throws DeviceNotAvailableException, DeviceRuntimeException {
+                return 10;
+            }
+
+            @Override
+            public boolean isPackageInstalled(String packageName, String userId)
+                    throws DeviceNotAvailableException {
+                return false;
+            }
+        };
     }
 }
