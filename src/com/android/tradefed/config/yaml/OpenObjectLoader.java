@@ -21,6 +21,8 @@ import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.log.FileLogger;
 import com.android.tradefed.result.suite.SuiteResultReporter;
 
+import java.io.File;
+
 /** Loader for the default objects available in AOSP. */
 public class OpenObjectLoader implements IDefaultObjectLoader {
 
@@ -49,7 +51,7 @@ public class OpenObjectLoader implements IDefaultObjectLoader {
                                 Configuration.BUILD_PROVIDER_TYPE_NAME,
                                 DependenciesResolver.class.getName());
         // Set all the dependencies on the provider
-        for (String depencency : loadConfiguration.getDependencies()) {
+        for (String dependency : loadConfiguration.getDependencies()) {
             String optionName =
                     String.format(
                             "%s%c%d%c%s",
@@ -62,8 +64,8 @@ public class OpenObjectLoader implements IDefaultObjectLoader {
                     .getConfigDef()
                     .addOptionDef(
                             optionName,
-                            null,
-                            depencency,
+                            new File(dependency).getName(),
+                            dependency,
                             loadConfiguration.getConfigDef().getName(),
                             Configuration.BUILD_PROVIDER_TYPE_NAME);
         }

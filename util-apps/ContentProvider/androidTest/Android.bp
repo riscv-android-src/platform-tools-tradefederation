@@ -26,7 +26,8 @@ android_test {
 	"TradefedContentProvider",
     ],
 
-    sdk_version: "24",
+    sdk_version: "30",
+    min_sdk_version: "24",
 
     test_suites: ["general-tests"],
 }

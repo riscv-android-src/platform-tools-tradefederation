@@ -218,6 +218,15 @@ public class RunOnWorkProfileTargetPreparerTest {
     }
 
     @Test
+    public void tearDown_clearsRunTestsAsUserProperty() throws Exception {
+        when(mTestInfo.properties().get(RUN_TESTS_AS_USER_KEY)).thenReturn("10");
+
+        mPreparer.tearDown(mTestInfo, /* throwable= */ null);
+
+        verify(mTestInfo.properties()).remove(RUN_TESTS_AS_USER_KEY);
+    }
+
+    @Test
     public void setUp_doesNotSupportManagedUsers_doesNotChangeTestUser() throws Exception {
         when(mTestInfo.getDevice().hasFeature("android.software.managed_users")).thenReturn(false);
 

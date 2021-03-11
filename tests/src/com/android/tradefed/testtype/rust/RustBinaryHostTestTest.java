@@ -125,9 +125,15 @@ public class RustBinaryHostTestTest {
     }
 
     /** Add mocked call to check listener log file. */
-    private void mockListenerLog(File binary) {
+    private void mockListenerLog(File binary, boolean error) {
+        if (error) {
+            mMockListener.testLog(
+                    EasyMock.eq(binary.getName() + "-stderr"),
+                    EasyMock.eq(LogDataType.TEXT),
+                    EasyMock.anyObject());
+        }
         mMockListener.testLog(
-                EasyMock.eq(binary.getName() + "-stderr"),
+                EasyMock.eq(binary.getName() + "-stdout"),
                 EasyMock.eq(LogDataType.TEXT),
                 EasyMock.anyObject());
     }
@@ -161,9 +167,10 @@ public class RustBinaryHostTestTest {
             setter.setOptionValue("test-file", binary.getAbsolutePath());
             mockCountTests(binary, 9);
             mockListenerStarted(binary, 9);
-            mockListenerLog(binary);
+            mockListenerLog(binary, false);
             CommandResult res = successResult("", resultCount(6, 1, 2));
             mockTestRunExpect(binary, res);
+            mMockListener.testRunFailed("Test run incomplete. Started 2 tests, finished 0");
             mockTestRunEnded();
             callReplayRunVerify();
         } finally {
@@ -186,9 +193,10 @@ public class RustBinaryHostTestTest {
             setter.setOptionValue("test-file", binary.getAbsolutePath());
             mockCountTests(binary, 9);
             mockListenerStarted(binary, 9);
-            mockListenerLog(binary);
+            mockListenerLog(binary, false);
             CommandResult res = successResult("", resultCount(6, 1, 2));
             mockTestRunExpect(binary, res);
+            mMockListener.testRunFailed("Test run incomplete. Started 2 tests, finished 0");
             mockTestRunEnded();
             callReplayRunVerify();
         } finally {
@@ -203,13 +211,14 @@ public class RustBinaryHostTestTest {
         try {
             OptionSetter setter = new OptionSetter(mTest);
             setter.setOptionValue("test-file", binary.getAbsolutePath());
-            mockCountTests(binary, 0);
-            mockListenerStarted(binary, 0);
-            mockListenerLog(binary);
+            mockCountTests(binary, 2);
+            mockListenerStarted(binary, 2);
+            mockListenerLog(binary, true);
             CommandResult res =
                     newCommandResult(
                             CommandStatus.EXCEPTION, "Err.", "running 2 tests\nException.");
             mockTestRunExpect(binary, res);
+            mMockListener.testRunFailed("Test run incomplete. Started 2 tests, finished 0");
             mMockListener.testRunFailed((FailureDescription) EasyMock.anyObject());
             mockTestRunEnded();
             callReplayRunVerify();
@@ -218,7 +227,10 @@ public class RustBinaryHostTestTest {
         }
     }
 
-    /** If the binary reports a FAILED status, it is treated as a failed test. */
+    /**
+     * If the binary reports a FAILED status when trying to count tests, it is treated as a failed
+     * test.
+     */
     @Test
     public void testRunFail_list() throws Exception {
         File binary = FileUtil.createTempFile("rust-dir", "");
@@ -232,14 +244,6 @@ public class RustBinaryHostTestTest {
                                     EasyMock.eq(binary.getAbsolutePath()),
                                     EasyMock.eq("--list")))
                     .andReturn(listRes);
-            mMockListener.testRunStarted(
-                    EasyMock.eq(binary.getName()),
-                    EasyMock.eq(0),
-                    EasyMock.anyInt(),
-                    EasyMock.anyLong());
-            mockListenerLog(binary);
-            CommandResult res = newCommandResult(CommandStatus.FAILED, "", resultCount(6, 1, 2));
-            mockTestRunExpect(binary, res);
             mMockListener.testRunFailed((FailureDescription) EasyMock.anyObject());
             mockTestRunEnded();
             callReplayRunVerify();
@@ -257,9 +261,10 @@ public class RustBinaryHostTestTest {
             setter.setOptionValue("test-file", binary.getAbsolutePath());
             mockCountTests(binary, 9);
             mockListenerStarted(binary, 9);
-            mockListenerLog(binary);
+            mockListenerLog(binary, false);
             CommandResult res = newCommandResult(CommandStatus.FAILED, "", resultCount(6, 1, 2));
             mockTestRunExpect(binary, res);
+            mMockListener.testRunFailed("Test run incomplete. Started 2 tests, finished 0");
             mMockListener.testRunFailed((FailureDescription) EasyMock.anyObject());
             mockTestRunEnded();
             callReplayRunVerify();
@@ -288,7 +293,7 @@ public class RustBinaryHostTestTest {
                                     EasyMock.eq("--list")))
                     .andReturn(successResult("", runListOutput(9)));
             mockListenerStarted(binary, 9);
-            mockListenerLog(binary);
+            mockListenerLog(binary, false);
             CommandResult res = successResult("", resultCount(6, 1, 2));
             EasyMock.expect(
                             mMockRunUtil.runTimedCmd(
@@ -300,6 +305,7 @@ public class RustBinaryHostTestTest {
                                     EasyMock.eq("Long")))
                     .andReturn(res);
 
+            mMockListener.testRunFailed("Test run incomplete. Started 2 tests, finished 0");
             mockTestRunEnded();
             callReplayRunVerify();
         } finally {
@@ -331,7 +337,7 @@ public class RustBinaryHostTestTest {
                     .andReturn(successResult("", runListOutput(3)));
             mockListenerStarted(binary, 3);
 
-            mockListenerLog(binary);
+            mockListenerLog(binary, false);
             CommandResult res = successResult("", resultCount(3, 0, 0));
             EasyMock.expect(
                             mMockRunUtil.runTimedCmd(
@@ -344,6 +350,7 @@ public class RustBinaryHostTestTest {
                                     EasyMock.eq("Other")))
                     .andReturn(res);
 
+            mMockListener.testRunFailed("Test run incomplete. Started 2 tests, finished 0");
             mockTestRunEnded();
             callReplayRunVerify();
         } finally {
@@ -391,7 +398,7 @@ public class RustBinaryHostTestTest {
             mockListenerStarted(binary, 4);
 
             // Multiple include filters are run one by one.
-            mockListenerLog(binary);
+            mockListenerLog(binary, false);
             CommandResult res = successResult("", resultCount(2, 0, 0));
             EasyMock.expect(
                             mMockRunUtil.runTimedCmd(
@@ -403,7 +410,8 @@ public class RustBinaryHostTestTest {
                                     EasyMock.eq("--skip"),
                                     EasyMock.eq("Other")))
                     .andReturn(res);
-            mockListenerLog(binary);
+            mMockListener.testRunFailed("Test run incomplete. Started 2 tests, finished 0");
+            mockListenerLog(binary, false);
             res = successResult("", resultCount(3, 0, 0));
             EasyMock.expect(
                             mMockRunUtil.runTimedCmd(
@@ -416,6 +424,7 @@ public class RustBinaryHostTestTest {
                                     EasyMock.eq("Other")))
                     .andReturn(res);
 
+            mMockListener.testRunFailed("Test run incomplete. Started 2 tests, finished 0");
             mockTestRunEnded();
             callReplayRunVerify();
         } finally {

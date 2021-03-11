@@ -18,6 +18,7 @@ package com.android.tradefed.targetprep;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.TestInformation;
 
 import java.util.ArrayList;
@@ -43,32 +44,30 @@ public final class FastbootCommandPreparer extends BaseTargetPreparer {
 
     @Option(
             name = "stay-fastboot",
-            description = "True to keep the device in bootloader or fastbootd mode.")
+            description =
+                    "True to keep the device in bootloader or fastbootd mode after the commands"
+                            + " executed.")
     private boolean mStayFastboot = false;
 
-    @Option(name = "command", description = "Fastboot commands to run.")
+    @Option(
+            name = "command",
+            description =
+                    "Fastboot commands to run in setup. Device will be rebooted after the commands"
+                            + " executed.")
     private List<String> mFastbootCommands = new ArrayList<String>();
+
+    @Option(
+            name = "teardown-command",
+            description =
+                    "Fastboot commands to run in teardown. Device will be rebooted after the"
+                            + " commands executed.")
+    private List<String> mFastbootTearDownCommands = new ArrayList<String>();
 
     @Override
     public void setUp(TestInformation testInformation)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
-        if (mFastbootMode == FastbootMode.BOOTLOADER) {
-            testInformation.getDevice().rebootIntoBootloader();
-        } else {
-            testInformation.getDevice().rebootIntoFastbootd();
-        }
-
-        for (String cmd : mFastbootCommands) {
-            // Ignore reboots since we'll reboot in the end.
-            if (cmd.trim().equals("reboot")) {
-                continue;
-            }
-
-            testInformation.getDevice().executeFastbootCommand(cmd.split("\\s+"));
-        }
-
-        if (!mStayFastboot) {
-            testInformation.getDevice().reboot();
+        if (!mFastbootCommands.isEmpty()) {
+            executeFastbootCommands(mFastbootCommands, testInformation.getDevice());
         }
     }
 
@@ -76,6 +75,25 @@ public final class FastbootCommandPreparer extends BaseTargetPreparer {
     @Override
     public void tearDown(TestInformation testInformation, Throwable e)
             throws DeviceNotAvailableException {
-        testInformation.getDevice().reboot();
+        if (!mFastbootTearDownCommands.isEmpty()) {
+            executeFastbootCommands(mFastbootTearDownCommands, testInformation.getDevice());
+        }
+    }
+
+    private void executeFastbootCommands(List<String> commands, ITestDevice device)
+            throws DeviceNotAvailableException {
+        if (mFastbootMode == FastbootMode.BOOTLOADER) {
+            device.rebootIntoBootloader();
+        } else {
+            device.rebootIntoFastbootd();
+        }
+
+        for (String cmd : commands) {
+            device.executeFastbootCommand(cmd.split("\\s+"));
+        }
+
+        if (!mStayFastboot) {
+            device.reboot();
+        }
     }
 }

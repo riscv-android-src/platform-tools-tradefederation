@@ -737,36 +737,40 @@ public class DeviceSetup extends BaseTargetPreparer {
             }
         }
 
-        if (sb.length() == 0) {
-            return;
+        if (sb.length() != 0) {
+            if (mRestoreProperties) {
+                mPreviousProperties = device.pullFile("/data/local.prop");
+            }
+            CLog.d("Pushing the following properties to /data/local.prop:\n%s", sb.toString());
+            boolean result = device.pushString(sb.toString(), "/data/local.prop");
+            if (!result) {
+                throw new TargetSetupError(
+                        String.format(
+                                "Failed to push /data/local.prop to %s", device.getSerialNumber()),
+                        device.getDeviceDescriptor(),
+                        DeviceErrorIdentifier.FAIL_PUSH_FILE);
+            }
+            // Set reasonable permissions for /data/local.prop
+            device.executeShellCommand("chmod 644 /data/local.prop");
+            CLog.i("Rebooting %s due to system property change", device.getSerialNumber());
+            device.reboot();
         }
-
-        if (mRestoreProperties) {
-            mPreviousProperties = device.pullFile("/data/local.prop");
-        }
-        CLog.d("Pushing the following properties to /data/local.prop:\n%s", sb.toString());
-        boolean result = device.pushString(sb.toString(), "/data/local.prop");
-        if (!result) {
-            throw new TargetSetupError(
-                    String.format(
-                            "Failed to push /data/local.prop to %s", device.getSerialNumber()),
-                    device.getDeviceDescriptor(),
-                    DeviceErrorIdentifier.FAIL_PUSH_FILE);
-        }
-        // Set reasonable permissions for /data/local.prop
-        device.executeShellCommand("chmod 644 /data/local.prop");
-        CLog.i("Rebooting %s due to system property change", device.getSerialNumber());
-        device.reboot();
 
         // Log nonpersistent device properties (that change/lose values after reboot).
+        String deviceType = device.getClass().getTypeName();
         for (Map.Entry<String, String> prop : mSetProps.entrySet()) {
             String expected = prop.getValue();
             String actual = device.getProperty(prop.getKey());
             if ((expected != null && !expected.equals(actual))
                     || (expected == null && actual != null)) {
-                String entry = String.format("%s(%s:%s)", prop.getKey(), expected, actual);
+                String entry =
+                        String.format("%s-%s(%s:%s)", deviceType, prop.getKey(), expected, actual);
                 InvocationMetricLogger.addInvocationMetrics(
                         InvocationMetricKey.NONPERSISTENT_DEVICE_PROPERTIES, entry);
+            } else {
+                String entry = String.format("%s-%s(%s)", deviceType, prop.getKey(), actual);
+                InvocationMetricLogger.addInvocationMetrics(
+                        InvocationMetricKey.PERSISTENT_DEVICE_PROPERTIES, entry);
             }
         }
     }
@@ -936,12 +940,12 @@ public class DeviceSetup extends BaseTargetPreparer {
             }
         }
 
-        // Error message does not acknowledge mWifiSsidToPsk for parity with existing monitoring.
         if (mWifiSsid != null || !mWifiSsidToPsk.isEmpty()) {
+            String network = (mWifiSsid == null) ? mWifiSsidToPsk.toString() : mWifiSsid;
             throw new TargetSetupError(
                     String.format(
                             "Failed to connect to wifi network %s on %s",
-                            mWifiSsid, device.getSerialNumber()),
+                            network, device.getSerialNumber()),
                     device.getDeviceDescriptor(),
                     InfraErrorIdentifier.WIFI_FAILED_CONNECT);
         }
@@ -995,13 +999,16 @@ public class DeviceSetup extends BaseTargetPreparer {
         if (mMinExternalStorageKb <= 0) {
             return;
         }
-
+        // Wait for device available to ensure the mounting of sdcard
+        device.waitForDeviceAvailable();
         long freeSpace = device.getExternalStoreFreeSpace();
         if (freeSpace < mMinExternalStorageKb) {
-            throw new DeviceNotAvailableException(String.format(
-                    "External store free space %dK is less than required %dK for device %s",
-                    freeSpace , mMinExternalStorageKb, device.getSerialNumber()),
-                    device.getSerialNumber());
+            throw new DeviceNotAvailableException(
+                    String.format(
+                            "External store free space %dK is less than required %dK for device %s",
+                            freeSpace, mMinExternalStorageKb, device.getSerialNumber()),
+                    device.getSerialNumber(),
+                    DeviceErrorIdentifier.DEVICE_UNEXPECTED_RESPONSE);
         }
     }
 
