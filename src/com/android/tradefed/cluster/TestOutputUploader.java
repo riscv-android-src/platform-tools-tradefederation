@@ -104,7 +104,12 @@ public class TestOutputUploader {
                 return ArrayUtil.list("gsutil", "cp", file.getAbsolutePath(), uploadUrl);
             case HTTP_PROTOCOL:
             case HTTPS_PROTOCOL:
+                // uploadUrl for HTTP prototal should include filename.
+                if (!uploadUrl.endsWith("/")) {
+                    uploadUrl += "/";
+                }
                 // Add -L option to handle redirect.
+                uploadUrl += file.getName();
                 return ArrayUtil.list(
                         "curl",
                         "-X",
