@@ -239,6 +239,7 @@ import com.android.tradefed.targetprep.InstallApexModuleTargetPreparerTest;
 import com.android.tradefed.targetprep.InstallApkSetupTest;
 import com.android.tradefed.targetprep.InstrumentationPreparerTest;
 import com.android.tradefed.targetprep.KnownFailurePreparerTest;
+import com.android.tradefed.targetprep.LocalEmulatorLaunchTest;
 import com.android.tradefed.targetprep.PushFilePreparerTest;
 import com.android.tradefed.targetprep.PythonVirtualenvPreparerTest;
 import com.android.tradefed.targetprep.RebootTargetPreparerTest;
@@ -704,6 +705,7 @@ import org.junit.runners.Suite.SuiteClasses;
     InstallApkSetupTest.class,
     InstrumentationPreparerTest.class,
     KnownFailurePreparerTest.class,
+    LocalEmulatorLaunchTest.class,
     PushFilePreparerTest.class,
     PythonVirtualenvPreparerTest.class,
     RebootTargetPreparerTest.class,
