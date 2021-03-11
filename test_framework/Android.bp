@@ -28,6 +28,7 @@ java_library_host {
         "perfetto_metrics-full",
         "test-composers",
         "truth-prebuilt",
+        "platformprotos",
     ],
     libs: [
         "tradefed-lib-core",
