@@ -1104,6 +1104,8 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         for (Object ctrlObject : ctrlObjectList) {
             if (ctrlObject instanceof BaseModuleController) {
                 BaseModuleController controller = (BaseModuleController) ctrlObject;
+                // Track usage of the controller
+                TfObjectTracker.countWithParents(controller.getClass());
                 // module_controller can also control the log collection for the one module
                 if (failureListener != null) {
                     failureListener.applyModuleConfiguration(controller.shouldCaptureBugreport());
