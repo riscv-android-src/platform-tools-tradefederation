@@ -102,7 +102,8 @@ import javax.annotation.concurrent.GuardedBy;
  */
 public class NativeDevice implements IManagedTestDevice {
 
-    private static final String SD_CARD = "/sdcard/";
+    protected static final String SD_CARD = "/sdcard/";
+    protected static final String STORAGE_EMULATED = "/storage/emulated/";
     /**
      * Allow pauses of up to 2 minutes while receiving bugreport.
      * <p/>
@@ -1005,7 +1006,7 @@ public class NativeDevice implements IManagedTestDevice {
     public boolean pullFile(final String remoteFilePath, final File localFile)
             throws DeviceNotAvailableException {
 
-        if (remoteFilePath.startsWith(SD_CARD)) {
+        if (isSdcardOrEmulated(remoteFilePath)) {
             ContentProviderHandler handler = getContentProvider();
             if (handler != null) {
                 return handler.pullFile(remoteFilePath, localFile);
@@ -1113,7 +1114,7 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public boolean pushFile(final File localFile, final String remoteFilePath)
             throws DeviceNotAvailableException {
-        if (remoteFilePath.startsWith(SD_CARD)) {
+        if (isSdcardOrEmulated(remoteFilePath)) {
             ContentProviderHandler handler = getContentProvider();
             if (handler != null) {
                 return handler.pushFile(localFile, remoteFilePath);
@@ -1188,6 +1189,15 @@ public class NativeDevice implements IManagedTestDevice {
     /** {@inheritDoc} */
     @Override
     public boolean doesFileExist(String deviceFilePath) throws DeviceNotAvailableException {
+        if (isSdcardOrEmulated(deviceFilePath)) {
+            ContentProviderHandler handler = getContentProvider();
+            if (handler != null) {
+                CLog.d("Delegating check to ContentProvider doesFileExist(%s)", deviceFilePath);
+
+                return handler.doesFileExist(deviceFilePath);
+            }
+        }
+        CLog.d("Using 'ls' to check doesFileExist(%s)", deviceFilePath);
         String lsGrep = executeShellCommand(String.format("ls \"%s\"", deviceFilePath));
         return !lsGrep.contains("No such file or directory");
     }
@@ -1195,7 +1205,7 @@ public class NativeDevice implements IManagedTestDevice {
     /** {@inheritDoc} */
     @Override
     public void deleteFile(String deviceFilePath) throws DeviceNotAvailableException {
-        if (deviceFilePath.startsWith(SD_CARD)) {
+        if (isSdcardOrEmulated(deviceFilePath)) {
             ContentProviderHandler handler = getContentProvider();
             if (handler != null) {
                 if (handler.deleteFile(deviceFilePath)) {
@@ -1528,7 +1538,7 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public boolean pullDir(String deviceFilePath, File localDir)
             throws DeviceNotAvailableException {
-        if (deviceFilePath.startsWith(SD_CARD)) {
+        if (isSdcardOrEmulated(deviceFilePath)) {
             ContentProviderHandler handler = getContentProvider();
             if (handler != null) {
                 return handler.pullDir(deviceFilePath, localDir);
@@ -1576,6 +1586,11 @@ public class NativeDevice implements IManagedTestDevice {
             }
         }
         return true;
+    }
+
+    /** Checks whether path is external storage path. */
+    private boolean isSdcardOrEmulated(String path) {
+        return path.startsWith(SD_CARD) || path.startsWith(STORAGE_EMULATED);
     }
 
     /**
@@ -4461,6 +4476,10 @@ public class NativeDevice implements IManagedTestDevice {
         }
         if (mContentProvider == null) {
             mContentProvider = new ContentProviderHandler(this);
+        }
+        // Force the install if we saw an error with content provider installation.
+        if (mContentProvider.contentProviderNotFound()) {
+            mShouldSkipContentProviderSetup = false;
         }
         if (!mShouldSkipContentProviderSetup) {
             boolean res = mContentProvider.setUp();
