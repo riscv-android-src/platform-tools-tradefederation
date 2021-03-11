@@ -434,6 +434,8 @@ public class TestInvocation implements ITestInvocation {
                     InvocationMetricLogger.addInvocationMetrics(
                             InvocationMetricKey.TEAR_DOWN_DISK_USAGE, size);
                 }
+                InvocationMetricLogger.addInvocationMetrics(
+                        InvocationMetricKey.INVOCATION_END, System.currentTimeMillis());
                 elapsedTime = System.currentTimeMillis() - startTime;
                 reportInvocationEnded(config, context, listener, elapsedTime);
             } finally {
@@ -772,6 +774,8 @@ public class TestInvocation implements ITestInvocation {
             IRescheduler rescheduler,
             ITestInvocationListener... extraListeners)
             throws DeviceNotAvailableException, Throwable {
+        InvocationMetricLogger.addInvocationMetrics(
+                InvocationMetricKey.INVOCATION_START, System.currentTimeMillis());
         // Handle the automated reporting
         applyAutomatedReporters(config);
 
@@ -902,9 +906,13 @@ public class TestInvocation implements ITestInvocation {
             }
 
             long start = System.currentTimeMillis();
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.FETCH_BUILD_START, start);
             boolean providerSuccess =
                     invokeFetchBuild(info, config, rescheduler, listener, invocationPath);
-            long fetchBuildDuration = System.currentTimeMillis() - start;
+            long end = System.currentTimeMillis();
+            InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.FETCH_BUILD_END, end);
+            long fetchBuildDuration = end - start;
             InvocationMetricLogger.addInvocationMetrics(
                     InvocationMetricKey.FETCH_BUILD, fetchBuildDuration);
             CLog.d("Fetch build duration: %s", TimeUtil.formatElapsedTime(fetchBuildDuration));
