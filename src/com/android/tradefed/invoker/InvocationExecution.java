@@ -34,6 +34,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.metric.AutoLogCollector;
 import com.android.tradefed.device.metric.CollectorHelper;
+import com.android.tradefed.device.metric.CountTestCasesCollector;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.invoker.ExecutionFiles.FilesKey;
@@ -749,6 +750,10 @@ public class InvocationExecution implements IInvocationExecution {
             // Wrap collectors in each other and collection will be sequential, do this in the
             // loop to ensure they are always initialized against the right context.
             ITestInvocationListener listenerWithCollectors = listener;
+            if (config.getCommandOptions().reportTestCaseCount()) {
+                CountTestCasesCollector counter = new CountTestCasesCollector(test);
+                clonedCollectors.add(counter);
+            }
             for (IMetricCollector collector : clonedCollectors) {
                 if (collector.isDisabled()) {
                     CLog.d("%s has been disabled. Skipping.", collector);

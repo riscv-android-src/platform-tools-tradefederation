@@ -249,6 +249,7 @@ public class ClusterCommandConfigBuilder {
         if (mTestEnvironment.useSubprocessReporting()) {
             config.injectOptionValue("cluster:use-subprocess-reporting", "true");
         }
+        config.getCommandOptions().setInvocationTimeout(mTestEnvironment.getInvocationTimeout());
         config.injectOptionValue(
                 "cluster:output-idle-timeout",
                 String.valueOf(mTestEnvironment.getOutputIdleTimeout()));

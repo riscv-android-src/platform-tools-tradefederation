@@ -158,10 +158,11 @@ public final class RetryRescheduler implements IRemoteTest, IConfigurationReceiv
 
             // Transfer log level from retry to subconfig
             ILeveledLogOutput originalLogger = originalConfig.getLogOutput();
-            originalLogger.setLogLevel(mConfiguration.getLogOutput().getLogLevel());
-            if (originalLogger instanceof FileLogger) {
+            ILeveledLogOutput retryLogger = mConfiguration.getLogOutput();
+            originalLogger.setLogLevel(retryLogger.getLogLevel());
+            if (originalLogger instanceof FileLogger && retryLogger instanceof FileLogger) {
                 ((FileLogger) originalLogger)
-                        .setLogLevelDisplay(mConfiguration.getLogOutput().getLogLevel());
+                        .setLogLevelDisplay(((FileLogger) retryLogger).getLogLevelDisplay());
             }
 
             handleExtraResultReporter(originalConfig, mConfiguration);

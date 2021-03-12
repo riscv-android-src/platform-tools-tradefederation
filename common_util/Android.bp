@@ -15,13 +15,13 @@
 java_library_host {
     name: "tradefed-common-util",
     // Restrict visibility to only those targets that need to access it.
-//    visibility: [
-//        "//tools/tradefederation/core",
-//        "//tools/tradefederation/core/clearcut_client",
-//        "//tools/tradefederation/core/device_build_interfaces",
-//        "//tools/tradefederation/core/invocation_interfaces",
-//        "//tools/tradefederation/core/test_result_interfaces",
-//    ],
+    visibility: [
+        "//tools/tradefederation/core",
+        "//tools/tradefederation/core/clearcut_client",
+        "//tools/tradefederation/core/device_build_interfaces",
+        "//tools/tradefederation/core/invocation_interfaces",
+        "//tools/tradefederation/core/test_result_interfaces",
+    ],
     defaults: ["tradefed_defaults"],
     srcs: [
         "com/**/*.java",
@@ -36,4 +36,3 @@ java_library_host {
         "devtools-annotations-prebuilt",
     ],
 }
-

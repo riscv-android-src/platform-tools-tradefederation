@@ -19,6 +19,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -216,9 +217,9 @@ public class InvocationExecutionTest {
         mConfig.setTests(tests);
         mExec.runTests(info, mConfig, mMockLogListener);
 
-        verify(mMockLogListener).testRunStarted("runName", 3, 0);
-        verify(mMockLogListener).testRunStarted("runName", 3, 1);
-        verify(mMockLogListener).testRunStarted("runName", 3, 2);
+        verify(mMockLogListener).testRunStarted(eq("runName"), eq(3), eq(0), Mockito.anyLong());
+        verify(mMockLogListener).testRunStarted(eq("runName"), eq(3), eq(1), Mockito.anyLong());
+        verify(mMockLogListener).testRunStarted(eq("runName"), eq(3), eq(2), Mockito.anyLong());
 
         verify(mMockLogListener, times(3))
                 .testLog(Mockito.eq("TestStub#test1-file"), Mockito.any(), Mockito.any());
@@ -248,9 +249,9 @@ public class InvocationExecutionTest {
                 new LogSaverResultForwarder(mConfig.getLogSaver(), Arrays.asList(mMockLogListener));
         mExec.runTests(info, mConfig, forwarder);
 
-        verify(mMockLogListener).testRunStarted("runName", 3, 0);
-        verify(mMockLogListener).testRunStarted("runName", 3, 1);
-        verify(mMockLogListener).testRunStarted("runName", 3, 2);
+        verify(mMockLogListener).testRunStarted(eq("runName"), eq(3), eq(0), Mockito.anyLong());
+        verify(mMockLogListener).testRunStarted(eq("runName"), eq(3), eq(1), Mockito.anyLong());
+        verify(mMockLogListener).testRunStarted(eq("runName"), eq(3), eq(2), Mockito.anyLong());
 
         verify(mMockLogListener, times(3))
                 .testLog(Mockito.eq("TestStub#test1-file"), Mockito.any(), Mockito.any());

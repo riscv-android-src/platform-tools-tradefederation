@@ -98,6 +98,15 @@ public class CurrentInvocation {
         }
     }
 
+    /** Returns the current work folder for the invocation or null if none set yet. */
+    public static File getWorkFolder() {
+        File workfolder = getInfo(InvocationInfo.WORK_FOLDER);
+        if (workfolder == null || !workfolder.exists()) {
+            return null;
+        }
+        return workfolder;
+    }
+
     /** Clear the invocation info for an invocation. */
     public static void clearInvocationInfos() {
         ThreadGroup group = Thread.currentThread().getThreadGroup();
