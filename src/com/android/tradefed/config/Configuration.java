@@ -21,6 +21,7 @@ import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.command.ICommandOptions;
 import com.android.tradefed.config.OptionSetter.FieldDef;
+import com.android.tradefed.config.proxy.TradefedDelegator;
 import com.android.tradefed.device.IDeviceRecovery;
 import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.device.TestDeviceOptions;
@@ -1251,17 +1252,22 @@ public class Configuration implements IConfiguration {
     @Override
     public void resolveDynamicOptions(DynamicRemoteFileResolver resolver)
             throws ConfigurationException, BuildRetrievalError {
+        List<Object> configObjects = new ArrayList<>(getAllConfigurationObjects());
         // Resolve regardless of sharding if we are in remote environment because we know that's
         // where the execution will occur.
         if (!isRemoteEnvironment()) {
             ICommandOptions options = getCommandOptions();
-            if (options.getShardCount() != null && options.getShardIndex() == null) {
-                CLog.w("Skipping download due to local sharding detected.");
+            if (getConfigurationObject(TradefedDelegator.DELEGATE_OBJECT) != null) {
+                configObjects.clear();
+                configObjects.add(getConfigurationObject(TradefedDelegator.DELEGATE_OBJECT));
+                CLog.d("Resolving only delegator object dynamic download.");
+            } else if (options.getShardCount() != null && options.getShardIndex() == null) {
+                CLog.w("Skipping dynamic download due to local sharding detected.");
                 return;
             }
         }
 
-        ArgsOptionParser argsParser = new ArgsOptionParser(getAllConfigurationObjects());
+        ArgsOptionParser argsParser = new ArgsOptionParser(configObjects);
         CLog.d("Resolve and download remote files from @Option");
         // Setup and validate the GCS File paths
         mRemoteFiles.addAll(argsParser.validateRemoteFilePath(resolver));
