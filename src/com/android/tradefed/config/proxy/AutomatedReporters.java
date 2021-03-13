@@ -19,10 +19,12 @@ import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.proto.FileProtoResultReporter;
 import com.android.tradefed.result.proto.StreamProtoResultReporter;
 
 import com.google.common.collect.ImmutableSet;
 
+import java.io.File;
 import java.util.List;
 
 /**
@@ -33,8 +35,9 @@ import java.util.List;
 public class AutomatedReporters {
 
     public static final String PROTO_REPORTING_PORT = "PROTO_REPORTING_PORT";
+    public static final String PROTO_REPORTING_FILE = "PROTO_REPORTING_FILE";
     private static final ImmutableSet<String> REPORTER_MAPPING =
-            ImmutableSet.of(PROTO_REPORTING_PORT);
+            ImmutableSet.of(PROTO_REPORTING_PORT, PROTO_REPORTING_FILE);
 
     /**
      * Complete the listeners based on the environment.
@@ -49,16 +52,21 @@ public class AutomatedReporters {
             }
             switch (key) {
                 case PROTO_REPORTING_PORT:
-                    StreamProtoResultReporter reporter = new StreamProtoResultReporter();
+                    StreamProtoResultReporter streamProto = new StreamProtoResultReporter();
                     try {
-                        reporter.setProtoReportPort(Integer.parseInt(envValue));
+                        streamProto.setProtoReportPort(Integer.parseInt(envValue));
                         List<ITestInvocationListener> listeners =
                                 configuration.getTestInvocationListeners();
-                        listeners.add(reporter);
+                        listeners.add(streamProto);
                         configuration.setTestInvocationListeners(listeners);
                     } catch (NumberFormatException e) {
                         CLog.e(e);
                     }
+                    break;
+                case PROTO_REPORTING_FILE:
+                    FileProtoResultReporter fileReporter = new FileProtoResultReporter();
+                    fileReporter.setOutputFile(new File(envValue));
+                    addToReporters(configuration, fileReporter);
                     break;
                 default:
                     break;
@@ -69,5 +77,11 @@ public class AutomatedReporters {
     @VisibleForTesting
     protected String getEnv(String key) {
         return System.getenv(key);
+    }
+
+    private void addToReporters(IConfiguration configuration, ITestInvocationListener reporter) {
+        List<ITestInvocationListener> listeners = configuration.getTestInvocationListeners();
+        listeners.add(reporter);
+        configuration.setTestInvocationListeners(listeners);
     }
 }
