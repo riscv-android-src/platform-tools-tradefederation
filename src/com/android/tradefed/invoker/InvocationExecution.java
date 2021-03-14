@@ -223,6 +223,7 @@ public class InvocationExecution implements IInvocationExecution {
     public void doSetup(TestInformation testInfo, IConfiguration config, final ITestLogger listener)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
         long start = System.currentTimeMillis();
+        InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.SETUP_START, start);
         try {
             // Before all the individual setup, make the multi-pre-target-preparer devices setup
             runMultiTargetPreparers(
@@ -289,7 +290,9 @@ public class InvocationExecution implements IInvocationExecution {
         } finally {
             // Note: These metrics are handled in a try in case of a kernel reset or device issue.
             // Setup timing metric. It does not include flashing time on boot tests.
-            long setupDuration = System.currentTimeMillis() - start;
+            long end = System.currentTimeMillis();
+            InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.SETUP_END, end);
+            long setupDuration = end - start;
             InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.SETUP, setupDuration);
             CLog.d("Setup duration: %s'", TimeUtil.formatElapsedTime(setupDuration));
             // Upload the setup logcat after setup is complete.
