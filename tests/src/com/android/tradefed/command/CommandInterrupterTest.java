@@ -20,6 +20,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.RunInterruptedException;
 
 import com.google.common.base.Stopwatch;
@@ -68,7 +69,10 @@ public class CommandInterrupterTest {
                 () -> {
                     // flag thread for interruption
                     mInterrupter.allowInterrupt();
-                    mInterrupter.interrupt(Thread.currentThread(), MESSAGE);
+                    mInterrupter.interrupt(
+                            Thread.currentThread(),
+                            MESSAGE,
+                            InfraErrorIdentifier.TRADEFED_SHUTTING_DOWN);
                     assertTrue(Thread.interrupted());
 
                     try {
@@ -87,7 +91,10 @@ public class CommandInterrupterTest {
                 () -> {
                     // block interrupts, but flag for interruption
                     mInterrupter.blockInterrupt();
-                    mInterrupter.interrupt(Thread.currentThread(), MESSAGE);
+                    mInterrupter.interrupt(
+                            Thread.currentThread(),
+                            MESSAGE,
+                            InfraErrorIdentifier.TRADEFED_SHUTTING_DOWN);
                     assertFalse(Thread.interrupted());
 
                     // not interrupted
@@ -109,7 +116,10 @@ public class CommandInterrupterTest {
                 () -> {
                     // flag thread for interruption
                     mInterrupter.allowInterrupt();
-                    mInterrupter.interrupt(Thread.currentThread(), MESSAGE);
+                    mInterrupter.interrupt(
+                            Thread.currentThread(),
+                            MESSAGE,
+                            InfraErrorIdentifier.TRADEFED_SHUTTING_DOWN);
                     assertTrue(Thread.interrupted());
 
                     try {

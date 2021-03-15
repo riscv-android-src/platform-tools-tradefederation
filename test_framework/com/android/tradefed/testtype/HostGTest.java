@@ -41,6 +41,8 @@ import org.json.JSONObject;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -136,7 +138,18 @@ public class HostGTest extends GTestBase implements IBuildReceiver {
         } finally {
             // Flush before the log to ensure order of events
             receiver.flush();
+            try {
+                // Add a small extra log to the output for verification sake.
+                FileUtil.writeToFile(
+                        String.format(
+                                "\nBinary '%s' still exists: %s", gtestFile, gtestFile.exists()),
+                        stdout,
+                        true);
+            } catch (IOException e) {
+                // Ignore
+            }
             if (stdout != null && stdout.length() > 0L) {
+
                 try (FileInputStreamSource source = new FileInputStreamSource(stdout)) {
                     logger.testLog(
                             String.format("%s-output", gtestFile.getName()),
@@ -196,6 +209,16 @@ public class HostGTest extends GTestBase implements IBuildReceiver {
         }
 
         long maxTestTimeMs = getMaxTestTimeMs();
+        // Check and print whether this is a hardlink
+        try {
+            Object o = Files.getAttribute(Paths.get(gtestFile.toURI()), "unix:nlink");
+            if (o != null) {
+                CLog.d("unix:nlink for %s - %s", gtestFile, o);
+            }
+        } catch (IOException e) {
+            CLog.e(e);
+        }
+
         String cmd = getGTestCmdLine(gtestFile.getAbsolutePath(), flags);
         CommandResult testResult =
                 executeHostGTestCommand(gtestFile, cmd, maxTestTimeMs, resultParser, logger);

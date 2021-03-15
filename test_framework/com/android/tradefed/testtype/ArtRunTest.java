@@ -45,6 +45,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -170,7 +171,7 @@ public class ArtRunTest implements IRemoteTest, IAbiReceiver, ITestFilterReceive
     /**
      * Run a single ART run-test (on device).
      *
-     * @param listener {@link ITestInvocationListener} listener for test
+     * @param listener The {@link ITestInvocationListener} object associated to the executed test
      * @throws DeviceNotAvailableException If there was a problem communicating with the device.
      */
     void runArtTest(TestInformation testInfo, ITestInvocationListener listener)
@@ -191,13 +192,16 @@ public class ArtRunTest implements IRemoteTest, IAbiReceiver, ITestFilterReceive
         // TODO: Turn this into an an option of the `ArtRunTest` class?
         testCmd = testCmd.replace("|#MAINCLASS#|", "Main");
 
-        CLog.d("About to run run-test command: %s", testCmd);
+        CLog.d("About to run run-test command: `%s`", testCmd);
         // Note: We only run one test at the moment.
         int testCount = 1;
         listener.testRunStarted(runName, testCount);
         listener.testStarted(testId);
 
         try {
+            // TODO: The "run" step should be configurable, as is the case in current ART
+            // `run-test` scripts).
+
             // Execute the test on device.
             CommandResult testResult =
                     mDevice.executeShellV2Command(
@@ -211,199 +215,51 @@ public class ArtRunTest implements IRemoteTest, IAbiReceiver, ITestFilterReceive
                 listener.testFailed(testId, message);
                 return;
             }
+            Integer exitCode = testResult.getExitCode();
+            CLog.v("`%s` on %s returned exit code: %d", testCmd, deviceSerialNumber, exitCode);
             String actualStdoutText = testResult.getStdout();
-            CLog.v("%s on %s returned stdout: %s", testCmd, deviceSerialNumber, actualStdoutText);
+            CLog.v("`%s` on %s returned stdout: %s", testCmd, deviceSerialNumber, actualStdoutText);
             String actualStderrText = testResult.getStderr();
-            CLog.v("%s on %s returned stderr: %s", testCmd, deviceSerialNumber, actualStderrText);
+            CLog.v("`%s` on %s returned stderr: %s", testCmd, deviceSerialNumber, actualStderrText);
 
             // TODO: The "check" step should be configurable, as is the case in current ART
             // `run-test` scripts).
 
-            // Check the test's standard output.
-            if (actualStdoutText == null) {
-                listener.testFailed(testId, "No standard output received to compare to.");
-                return;
-            }
-            try {
-                String expectedStdoutFileName =
-                        String.format("%s-expected-stdout.txt", mRunTestName);
-                File expectedStdoutFile =
-                        testInfo.getDependencyFile(expectedStdoutFileName, /* targetFirst */ true);
-                CLog.i(
-                        "Found expected standard output for run-test %s: %s",
-                        mRunTestName, expectedStdoutFile);
-                String expectedStdoutText = FileUtil.readStringFromFile(expectedStdoutFile);
-
-                if (!actualStdoutText.equals(expectedStdoutText)) {
-                    // Produce a unified diff output for the error message.
-                    String diff =
-                            computeDiff(
-                                    expectedStdoutText,
-                                    actualStdoutText,
-                                    "expected-stdout.txt",
-                                    "stdout");
-                    String errorMessage =
-                            "The test's standard output does not match the expected standard "
-                                    + "output:\n"
-                                    + diff;
-                    CLog.i("%s FAILED: %s", mRunTestName, errorMessage);
-                    listener.testFailed(testId, errorMessage);
-                    return;
-                }
-            } catch (IOException ioe) {
-                CLog.e(
-                        "I/O error while accessing expected standard output file for test %s: %s",
-                        mRunTestName, ioe);
-                listener.testFailed(
-                        testId, "I/O error while accessing expected standard output file.");
-                return;
-            }
-
-            // Check the test's standard error.
-            if (actualStderrText == null) {
-                listener.testFailed(testId, "No standard error received to compare to.");
-                return;
-            }
-            try {
-                String expectedStderrFileName =
-                        String.format("%s-expected-stderr.txt", mRunTestName);
-                File expectedStderrFile =
-                        testInfo.getDependencyFile(expectedStderrFileName, /* targetFirst */ true);
-                CLog.i(
-                        "Found expected standard error for run-test %s: %s",
-                        mRunTestName, expectedStderrFile);
-                String expectedStderrText = FileUtil.readStringFromFile(expectedStderrFile);
-
-                if (!actualStderrText.equals(expectedStderrText)) {
-                    // Produce a unified diff output for the error message.
-                    String diff =
-                            computeDiff(
-                                    expectedStderrText,
-                                    actualStderrText,
-                                    "expected-stderr.txt",
-                                    "stderr");
-                    String errorMessage =
-                            "The test's standard error does not match the expected standard "
-                                    + "error:\n"
-                                    + diff;
-                    CLog.i("%s FAILED: %s", mRunTestName, errorMessage);
-                    listener.testFailed(testId, errorMessage);
-                    return;
-                }
-            } catch (IOException ioe) {
-                CLog.e(
-                        "I/O error while accessing expected standard error file for test %s: %s",
-                        mRunTestName, ioe);
-                listener.testFailed(
-                        testId, "I/O error while accessing expected standard error file.");
-                return;
-            }
-
-            if (mRunTestName.contains("-checker-")) {
-                // not particularly reliable way of constructing a temporary dir
-                String tmpCheckerDir =
-                        String.format("/data/local/tmp/%s", mRunTestName.replaceAll("/", "-"));
-                String mkdirCmd = String.format("mkdir -p \"%s\"", tmpCheckerDir);
-                CommandResult mkdirResult = mDevice.executeShellV2Command(mkdirCmd);
-                if (mkdirResult.getStatus() != CommandStatus.SUCCESS) {
-                    String message =
-                            String.format(
-                                    "Cannot create a directory on the device: %s",
-                                    mkdirResult.getStderr());
-                    CLog.e(message);
-                    listener.testFailed(testId, message);
-                    return;
-                }
-
-                String cfgPath = tmpCheckerDir + "/graph.cfg";
-                String oatPath = tmpCheckerDir + "/output.oat";
-                String dex2oatBinary = "dex2oat" + AbiUtils.getBitness(abi);
-                Path dex2oatPath = Paths.get(ART_APEX_PATH.toString(), "bin", dex2oatBinary);
-                String dex2oatCmd =
-                        String.format(
-                                "%s --dex-file=%s --oat-file=%s --dump-cfg=%s -j1",
-                                dex2oatPath, mClasspath.get(0), oatPath, cfgPath);
-                CommandResult dex2oatResult = mDevice.executeShellV2Command(dex2oatCmd);
-                if (dex2oatResult.getStatus() != CommandStatus.SUCCESS) {
-                    String message =
-                            String.format(
-                                    "Error while running dex2oat: %s", dex2oatResult.getStderr());
-                    CLog.e(message);
-                    listener.testFailed(testId, message);
-                    return;
-                }
-
-                File runTestDir;
-                try {
-                    runTestDir =
-                            Files.createTempDirectory(
-                                    testInfo.dependenciesFolder().toPath(), mRunTestName)
-                                    .toFile();
-                } catch (IOException e) {
-                    CLog.e(e);
-                    listener.testFailed(testId, "I/O error while creating test dir.");
-                    return;
-                }
-
-                File localCfgPath = new File(runTestDir, "graph.cfg");
-                if (localCfgPath.isFile()) {
-                    localCfgPath.delete();
-                }
-
-                if (!mDevice.pullFile(cfgPath, localCfgPath)) {
-                    listener.testFailed(testId, "Cannot pull cfg file from the device");
-                    return;
-                }
-
-                File tempJar = new File(runTestDir, "temp.jar");
-                if (!mDevice.pullFile(mClasspath.get(0), tempJar)) {
-                    listener.testFailed(testId, "Cannot pull jar file from the device");
-                    return;
-                }
-
-                try {
-                    extractSourcesFromJar(runTestDir, tempJar);
-                } catch (IOException e) {
-                    listener.testFailed(testId, "Error unpacking test jar");
-                    CLog.e("Jar unpacking failed with exception %s", e);
-                    CLog.e(e);
-                    return;
-                }
-
-                String checkerArch = AbiUtils.getArchForAbi(abi).toUpperCase();
-
-                File checkerBinary = getCheckerBinaryPath(testInfo);
-
-                String[] checkerCommandLine = {
-                        checkerBinary.getAbsolutePath(),
-                        "--no-print-cfg",
-                        "-q",
-                        "--arch=" + checkerArch,
-                        localCfgPath.getAbsolutePath(),
-                        runTestDir.getAbsolutePath()
-                };
-
-                try {
-                    String checkerOutput = runAndCollectStderr(checkerCommandLine);
-                    if (checkerOutput != null && !checkerOutput.isEmpty()) {
-                        listener.testFailed(testId, "Checker failed\n" + checkerOutput);
-                        listener.testLog(
-                                "graph.cfg",
-                                LogDataType.CFG,
-                                new FileInputStreamSource(localCfgPath));
-                    }
-                } catch (RuntimeException e) {
-                    CLog.e(e);
-                    listener.testFailed(testId, "Error while starting Checker process");
-                }
-                FileUtil.recursiveDelete(runTestDir);
-            }
+            // List of encountered errors during the test.
+            List<String> errors = new ArrayList<>();
 
             // Check the test's exit code.
-            if (testResult.getExitCode() != 0) {
-                listener.testFailed(
-                        testId,
-                        String.format("Test exited with code %s", testResult.getExitCode()));
+            Optional<String> exitCodeError = checkExitCode(exitCode);
+            exitCodeError.ifPresent(e -> errors.add(e));
+
+            // Check the test's standard output.
+            Optional<String> stdoutError =
+                    checkTestOutput(
+                            testInfo,
+                            actualStdoutText,
+                            /* outputShortName */ "stdout",
+                            /* outputPrettyName */ "standard output");
+            stdoutError.ifPresent(e -> errors.add(e));
+
+            // Check the test's standard error.
+            Optional<String> stderrError =
+                    checkTestOutput(
+                            testInfo,
+                            actualStderrText,
+                            /* outputShortName */ "stderr",
+                            /* outputPrettyName */ "standard error");
+            stderrError.ifPresent(e -> errors.add(e));
+
+            // If the test us a Checker test, run Checker and check its output.
+            if (mRunTestName.contains("-checker-")) {
+                Optional<String> checkerError = executeCheckerTest(testInfo, listener);
+                checkerError.ifPresent(e -> errors.add(e));
+            }
+
+            // Process potential errors.
+            if (!errors.isEmpty()) {
+                String errorMessage = String.join("\n", errors);
+                listener.testFailed(testId, errorMessage);
             }
         } finally {
             HashMap<String, Metric> emptyTestMetrics = new HashMap<>();
@@ -412,6 +268,188 @@ public class ArtRunTest implements IRemoteTest, IAbiReceiver, ITestFilterReceive
             // TODO: Pass an actual value as `elapsedTimeMillis` argument.
             listener.testRunEnded(/* elapsedTimeMillis*/ 0, emptyTestRunMetrics);
         }
+    }
+
+    /**
+     * Check the exit code returned by a test command.
+     *
+     * @param exitCode The exit code returned by the test command
+     * @return An optional error message, empty if the test exit code indicated success
+     */
+    protected Optional<String> checkExitCode(Integer exitCode) {
+        if (exitCode != 0) {
+            String errorMessage =
+                    String.format("Test `%s` exited with code %d", mRunTestName, exitCode);
+            CLog.i(errorMessage);
+            return Optional.of(errorMessage);
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * Check an output produced by a test command.
+     *
+     * <p>Used to check the standard output and the standard error of a test.
+     *
+     * @param testInfo The {@link TestInformation} object associated to the executed test
+     * @param actualOutputText The output produced by the test
+     * @param outputShortName The short name of the output channel
+     * @param outputPrettyName A prettier name for the output channel, used in error messages
+     * @return An optional error message, empty if the checked output is valid
+     */
+    protected Optional<String> checkTestOutput(
+            TestInformation testInfo,
+            String actualOutputText,
+            String outputShortName,
+            String outputPrettyName) {
+        final String expectedFileName = String.format("expected-%s.txt", outputShortName);
+        final String actualFileName = outputShortName;
+
+        if (actualOutputText == null) {
+            String errorMessage =
+                    String.format(
+                            "No %s received to compare to for test `%s`",
+                            outputPrettyName, mRunTestName);
+            CLog.e(errorMessage);
+            return Optional.of(errorMessage);
+        }
+        try {
+            String expectedOutputFileName = String.format("%s-%s", mRunTestName, expectedFileName);
+            File expectedOutputFile =
+                    testInfo.getDependencyFile(expectedOutputFileName, /* targetFirst */ true);
+            CLog.i(
+                    "Found expected %s for run-test `%s`: `%s`",
+                    outputPrettyName, mRunTestName, expectedOutputFile);
+            String expectedOutputText = FileUtil.readStringFromFile(expectedOutputFile);
+
+            if (!actualOutputText.equals(expectedOutputText)) {
+                // Produce a unified diff output for the error message.
+                String diff =
+                        computeDiff(
+                                expectedOutputText,
+                                actualOutputText,
+                                expectedFileName,
+                                actualFileName);
+                String errorMessage =
+                        String.format(
+                                "The actual %s does not match the expected %s for test `%s`:\n%s",
+                                outputPrettyName, outputPrettyName, mRunTestName, diff);
+                CLog.i(errorMessage);
+                return Optional.of(errorMessage);
+            }
+        } catch (IOException ioe) {
+            String errorMessage =
+                    String.format(
+                            "I/O error while accessing expected %s for test `%s`: %s",
+                            outputPrettyName, mRunTestName, ioe);
+            CLog.e(errorMessage);
+            return Optional.of(errorMessage);
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * Execute a Checker test and check its output.
+     *
+     * <p>Checker tests are additional tests included in some ART run-tests, written as annotations
+     * in the comments of a test's source files, and used to verify ART's compiler.
+     *
+     * @param testInfo The {@link TestInformation} object associated to the executed test
+     * @param listener The {@link ITestInvocationListener} object associated to the executed test
+     * @return An optional error message, empty if the Checker test succeeded
+     */
+    protected Optional<String> executeCheckerTest(
+            TestInformation testInfo, ITestInvocationListener listener)
+            throws DeviceNotAvailableException {
+        // TODO: Encapsulate the device temp dir creation logic in its own method.
+        String tmpCheckerDir =
+                String.format("/data/local/tmp/%s", mRunTestName.replaceAll("/", "-"));
+        String mkdirCmd = String.format("mkdir -p \"%s\"", tmpCheckerDir);
+        CommandResult mkdirResult = mDevice.executeShellV2Command(mkdirCmd);
+        if (mkdirResult.getStatus() != CommandStatus.SUCCESS) {
+            String errorMessage =
+                    String.format(
+                            "Cannot create directory `%s` on device", mkdirResult.getStderr());
+            CLog.e(errorMessage);
+            return Optional.of(errorMessage);
+        }
+
+        String cfgPath = tmpCheckerDir + "/graph.cfg";
+        String oatPath = tmpCheckerDir + "/output.oat";
+        String abi = mAbi.getName();
+        String dex2oatBinary = "dex2oat" + AbiUtils.getBitness(abi);
+        Path dex2oatPath = Paths.get(ART_APEX_PATH.toString(), "bin", dex2oatBinary);
+        String dex2oatCmd =
+                String.format(
+                        "%s --dex-file=%s --oat-file=%s --dump-cfg=%s -j1",
+                        dex2oatPath, mClasspath.get(0), oatPath, cfgPath);
+        CommandResult dex2oatResult = mDevice.executeShellV2Command(dex2oatCmd);
+        if (dex2oatResult.getStatus() != CommandStatus.SUCCESS) {
+            String errorMessage =
+                    String.format("Error while running dex2oat: %s", dex2oatResult.getStderr());
+            CLog.e(errorMessage);
+            return Optional.of(errorMessage);
+        }
+
+        File runTestDir;
+        try {
+            runTestDir =
+                    Files.createTempDirectory(testInfo.dependenciesFolder().toPath(), mRunTestName)
+                            .toFile();
+        } catch (IOException e) {
+            String errorMessage = String.format("I/O error while creating test dir: %s", e);
+            CLog.e(errorMessage);
+            return Optional.of(errorMessage);
+        }
+
+        File localCfgPath = new File(runTestDir, "graph.cfg");
+        if (localCfgPath.isFile()) {
+            localCfgPath.delete();
+        }
+
+        if (!mDevice.pullFile(cfgPath, localCfgPath)) {
+            String errorMessage = "Cannot pull CFG file from the device";
+            CLog.e(errorMessage);
+            return Optional.of(errorMessage);
+        }
+
+        File tempJar = new File(runTestDir, "temp.jar");
+        if (!mDevice.pullFile(mClasspath.get(0), tempJar)) {
+            String errorMessage = "Cannot pull JAR file from the device";
+            CLog.e(errorMessage);
+            return Optional.of(errorMessage);
+        }
+
+        try {
+            extractSourcesFromJar(runTestDir, tempJar);
+        } catch (IOException e) {
+            String errorMessage = String.format("Error unpacking test JAR file: %s", e);
+            CLog.e(errorMessage);
+            return Optional.of(errorMessage);
+        }
+
+        String checkerArch = AbiUtils.getArchForAbi(mAbi.getName()).toUpperCase();
+
+        File checkerBinary = getCheckerBinaryPath(testInfo);
+
+        String[] checkerCommandLine = {
+            checkerBinary.getAbsolutePath(),
+            "--no-print-cfg",
+            "-q",
+            "--arch=" + checkerArch,
+            localCfgPath.getAbsolutePath(),
+            runTestDir.getAbsolutePath()
+        };
+
+        Optional<String> checkerError = runChecker(checkerCommandLine);
+        if (checkerError.isPresent()) {
+            listener.testLog("graph.cfg", LogDataType.CFG, new FileInputStreamSource(localCfgPath));
+            CLog.i(checkerError.get());
+            return checkerError;
+        }
+
+        FileUtil.recursiveDelete(runTestDir);
+        return Optional.empty();
     }
 
     /** Find the Checker binary (Python Archive). */
@@ -428,16 +466,39 @@ public class ArtRunTest implements IRemoteTest, IAbiReceiver, ITestFilterReceive
         return checkerBinary;
     }
 
-    protected String runAndCollectStderr(String[] checkerCommandLine) {
+    /**
+     * Run a Checker command and check its result.
+     *
+     * @param checkerCommandLine The Checker command line to execute
+     * @return An optional error message, empty if the Checker invocation was successful
+     */
+    protected Optional<String> runChecker(String[] checkerCommandLine) {
+        CLog.d("About to run Checker command: %s", String.join(" ", checkerCommandLine));
         CommandResult result = RunUtil.getDefault().runTimedCmd(CHECKER_TIMEOUT_MS,
                 checkerCommandLine);
         if (result.getStatus() != CommandStatus.SUCCESS) {
+            String errorMessage;
             if (result.getStatus() == CommandStatus.TIMED_OUT) {
-                throw new RuntimeException("Checker timed out");
+                errorMessage =
+                        String.format("Checker command timed out after %s ms", CHECKER_TIMEOUT_MS);
+            } else {
+                errorMessage =
+                        String.format(
+                                "Checker command finished unsuccessfully: status=%s, exit"
+                                        + " code=%s,\n"
+                                        + "stdout=\n"
+                                        + "%s\n"
+                                        + "stderr=\n"
+                                        + "%s\n",
+                                result.getStatus(),
+                                result.getExitCode(),
+                                result.getStdout(),
+                                result.getStderr());
             }
-            throw new RuntimeException("Error running Checker\n" + result.getStderr());
+            CLog.i(errorMessage);
+            return Optional.of(errorMessage);
         }
-        return result.getStderr();
+        return Optional.empty();
     }
 
     /**

@@ -70,6 +70,7 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ResultForwarder;
+import com.android.tradefed.result.error.ErrorIdentifier;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.result.suite.SuiteResultReporter;
 import com.android.tradefed.sandbox.ISandbox;
@@ -714,6 +715,14 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
          * invocations.
          */
         public void stopInvocation(String message) {
+            stopInvocation(message, null);
+        }
+
+        /**
+         * Stops a running invocation. {@link CommandScheduler#shutdownHard()} will stop all running
+         * invocations.
+         */
+        public void stopInvocation(String message, ErrorIdentifier errorId) {
             getInvocation().notifyInvocationStopped(message);
             for (ITestDevice device : mInvocationContext.getDevices()) {
                 if (TestDeviceState.ONLINE.equals(device.getDeviceState())) {
@@ -739,7 +748,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             if (getShutdownTimeout() != 0) {
                 RunUtil.getDefault().setInterruptibleInFuture(this, getShutdownTimeout());
             }
-            RunUtil.getDefault().interrupt(this, message);
+            RunUtil.getDefault().interrupt(this, message, errorId);
         }
 
         /**
@@ -1931,7 +1940,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         for (InvocationThread thread : mInvocationThreadMap.values()) {
             thread.disableReporters();
             // TODO(b/118891716): Improve tear down
-            thread.stopInvocation(reason);
+            thread.stopInvocation(reason, InfraErrorIdentifier.TRADEFED_SHUTTING_DOWN);
         }
         if (killAdb) {
             getDeviceManager().terminateHard(reason);

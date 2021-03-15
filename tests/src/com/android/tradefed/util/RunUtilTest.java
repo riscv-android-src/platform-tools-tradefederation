@@ -26,6 +26,7 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 
 import com.android.tradefed.command.CommandInterrupter;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.IRunUtil.EnvPriority;
 import com.android.tradefed.util.IRunUtil.IRunnableResult;
 import com.android.tradefed.util.RunUtil.RunnableResult;
@@ -281,7 +282,8 @@ public class RunUtilTest {
         final String message = "it is alright now";
         mRunUtil.allowInterrupt(true);
         try{
-            mRunUtil.interrupt(Thread.currentThread(), message);
+            mRunUtil.interrupt(
+                    Thread.currentThread(), message, InfraErrorIdentifier.TRADEFED_SHUTTING_DOWN);
             fail("RunInterruptedException was expected, but not thrown.");
         } catch (final RunInterruptedException e) {
             assertEquals(message, e.getMessage());
@@ -297,7 +299,8 @@ public class RunUtilTest {
         final String message = "it is alright now";
         try{
             mRunUtil.allowInterrupt(false);
-            mRunUtil.interrupt(Thread.currentThread(), message);
+            mRunUtil.interrupt(
+                    Thread.currentThread(), message, InfraErrorIdentifier.TRADEFED_SHUTTING_DOWN);
             mRunUtil.sleep(1);
             mRunUtil.allowInterrupt(true);
             mRunUtil.sleep(1);
@@ -315,9 +318,12 @@ public class RunUtilTest {
         final String message3 = "rock this town";
         mRunUtil.allowInterrupt(true);
         try {
-            mRunUtil.interrupt(Thread.currentThread(), message1);
-            mRunUtil.interrupt(Thread.currentThread(), message2);
-            mRunUtil.interrupt(Thread.currentThread(), message3);
+            mRunUtil.interrupt(
+                    Thread.currentThread(), message1, InfraErrorIdentifier.TRADEFED_SHUTTING_DOWN);
+            mRunUtil.interrupt(
+                    Thread.currentThread(), message2, InfraErrorIdentifier.TRADEFED_SHUTTING_DOWN);
+            mRunUtil.interrupt(
+                    Thread.currentThread(), message3, InfraErrorIdentifier.TRADEFED_SHUTTING_DOWN);
             fail("RunInterruptedException was expected, but not thrown.");
         } catch (final RunInterruptedException e) {
             assertEquals(message1, e.getMessage());

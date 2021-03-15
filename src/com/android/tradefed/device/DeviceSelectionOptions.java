@@ -18,6 +18,7 @@ package com.android.tradefed.device;
 import com.android.annotations.VisibleForTesting;
 import com.android.ddmlib.IDevice;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.config.OptionUpdateRule;
 import com.android.tradefed.device.DeviceManager.FastbootDevice;
 import com.android.tradefed.device.cloud.VmRemoteDevice;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -115,16 +116,19 @@ public class DeviceSelectionOptions implements IDeviceSelection {
     // ============================ END DEVICE TYPE Related Options ============================
 
     @Option(
-        name = "min-battery",
-        description =
-                "only run this test on a device whose battery level is at least the given amount. "
-                        + "Scale: 0-100"
-    )
+            name = "min-battery",
+            description =
+                    "only run this test on a device whose battery level is at least the given"
+                            + " amount. Scale: 0-100",
+            updateRule = OptionUpdateRule.GREATEST)
     private Integer mMinBattery = null;
 
-    @Option(name = "max-battery", description =
-        "only run this test on a device whose battery level is strictly less than the given " +
-        "amount. Scale: 0-100")
+    @Option(
+            name = "max-battery",
+            description =
+                    "only run this test on a device whose battery level is strictly less than the "
+                            + "given amount. Scale: 0-100",
+            updateRule = OptionUpdateRule.LEAST)
     private Integer mMaxBattery = null;
 
     @Option(
@@ -156,8 +160,11 @@ public class DeviceSelectionOptions implements IDeviceSelection {
             "this Android SDK/API level")
     private Integer mMinSdk = null;
 
-    @Option(name = "max-sdk-level", description = "Only run this test on devices that are running " +
-        "this or lower Android SDK/API level")
+    @Option(
+            name = "max-sdk-level",
+            description =
+                    "Only run this test on devices that are running "
+                            + "this or lower Android SDK/API level")
     private Integer mMaxSdk = null;
 
     // If we have tried to fetch the environment variable ANDROID_SERIAL before.
@@ -492,7 +499,8 @@ public class DeviceSelectionOptions implements IDeviceSelection {
                 addNoMatchReason(
                         deviceSerial,
                         String.format(
-                                "device product type (%s) does not match requested product types(%s)",
+                                "device product type (%s) does not match requested product"
+                                        + " types(%s)",
                                 productType, productTypes));
                 return false;
             }

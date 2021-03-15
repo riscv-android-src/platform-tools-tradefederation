@@ -22,9 +22,9 @@ import static org.junit.Assert.fail;
 
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.LogDataType;
-
 import com.android.tradefed.testtype.Abi;
 import com.android.tradefed.testtype.IAbi;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -557,6 +557,46 @@ public class FileUtilTest {
                     partialContent.toString(), FileUtil.readStringFromFile(tmpFile, 1024, 4096));
         } finally {
             FileUtil.deleteFile(tmpFile);
+        }
+    }
+
+    @Test
+    public void testSizeOfDirectory() throws IOException {
+        File tmpDir = FileUtil.createTempDir("dir-size-tests");
+        try {
+            long size = FileUtil.sizeOfDirectory(tmpDir);
+            assertEquals(0L, size);
+            File rootFile = FileUtil.createTempFile("size-file", "", tmpDir);
+            FileUtil.writeToFile("size", rootFile);
+            size = FileUtil.sizeOfDirectory(tmpDir);
+            assertEquals(4L, size);
+        } finally {
+            FileUtil.recursiveDelete(tmpDir);
+        }
+    }
+
+    @Test
+    public void testSizeOfDirectory_hardlink() throws IOException {
+        File tmpDir = FileUtil.createTempDir("dir-size-tests");
+        File rootFile = null;
+        try {
+            rootFile = FileUtil.createTempFile("size-file", "");
+            FileUtil.writeToFile("size", rootFile);
+            long size = FileUtil.sizeOfDirectory(tmpDir);
+            assertEquals(0L, size);
+            File hardlink = new File(tmpDir, "hardlink");
+            FileUtil.hardlinkFile(rootFile, hardlink);
+            size = FileUtil.sizeOfDirectory(tmpDir);
+            assertEquals(4L, size);
+            FileUtil.deleteFile(rootFile);
+            size = FileUtil.sizeOfDirectory(tmpDir);
+            assertEquals(4L, size);
+            FileUtil.deleteFile(hardlink);
+            size = FileUtil.sizeOfDirectory(tmpDir);
+            assertEquals(0L, size);
+        } finally {
+            FileUtil.recursiveDelete(tmpDir);
+            FileUtil.deleteFile(rootFile);
         }
     }
 }

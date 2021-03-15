@@ -16,27 +16,22 @@
 package com.android.tradefed.testtype.suite.module;
 
 import com.android.tradefed.config.Option;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
-import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 
-/**
- * Base class for a module controller to not run tests on versions below a specified SDK version
- * number.
- */
-public class MinSdkModuleController extends BaseModuleController {
+/** Base class for a module controller to not run tests when it below a specified API Level. */
+public class MinApiLevelModuleController extends BaseModuleController {
 
-    private static final String SDK_VERSION_PROP = "ro.build.version.sdk";
+    @Option(
+            name = "api-level-prop",
+            description = "Read the api level from which prop. e.g.'ro.product.first_api_level'")
+    private String mApiLevelProp = "ro.build.version.sdk";
 
-    @Option(name = "min-sdk-level", description = "The minimum api-level on which tests will run.")
-    private int mMinSdkVersion;
-
-    /** @param minSdkVersion The minimum sdk version on which tests will run. */
-    protected MinSdkModuleController(int minSdkVersion) {
-        mMinSdkVersion = minSdkVersion;
-    }
+    @Option(name = "min-api-level", description = "The minimum api-level on which tests will run.")
+    private Integer mMinApiLevel = 0;
 
     @Override
     public RunStrategy shouldRun(IInvocationContext context) {
@@ -45,32 +40,28 @@ public class MinSdkModuleController extends BaseModuleController {
                 continue;
             }
             try {
-                String sdkVersionString = device.getProperty(SDK_VERSION_PROP);
-                int sdkVersion = -1;
+                String apiLevelString = device.getProperty(mApiLevelProp);
+                int apiLevel = -1;
                 try {
-                    if (sdkVersionString != null) {
-                        sdkVersion = Integer.parseInt(sdkVersionString);
+                    if (apiLevelString != null) {
+                        apiLevel = Integer.parseInt(apiLevelString);
                     } else {
-                        CLog.d("SDK version is null");
+                        CLog.d("Cannot get the API Level.");
                     }
                 } catch (NumberFormatException e) {
-                    CLog.d(
-                            "Error parsing system property "
-                                    + SDK_VERSION_PROP
-                                    + ": "
-                                    + e.getMessage());
+                    CLog.d("Error parsing system property %s: %s", mApiLevelProp, e.getMessage());
                 }
-                if (sdkVersion >= mMinSdkVersion) {
+                if (apiLevel >= mMinApiLevel) {
                     continue;
                 }
                 CLog.d(
-                        "Skipping module %s because SDK version %d is < " + mMinSdkVersion + ".",
-                        getModuleName(),
-                        sdkVersion);
+                        "Skipping module %s because API Level %d is < %d.",
+                        getModuleName(), apiLevel, mMinApiLevel);
                 return RunStrategy.FULL_MODULE_BYPASS;
             } catch (DeviceNotAvailableException e) {
-                CLog.e("Couldn't check SDK version on %s", device.getSerialNumber());
+                CLog.e("Couldn't check API Level on %s", device.getSerialNumber());
                 CLog.e(e);
+                throw new RuntimeException(e);
             }
         }
         return RunStrategy.RUN;

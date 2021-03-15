@@ -15,6 +15,8 @@
  */
 package com.android.tradefed.device;
 
+import com.android.tradefed.log.LogUtil.CLog;
+
 import java.util.LinkedList;
 import java.util.List;
 
@@ -75,7 +77,11 @@ public class DeviceMonitorMultiplexer implements IDeviceMonitor {
     @Override
     public synchronized void stop() {
         for (IDeviceMonitor monitor : mDeviceMonitors) {
-            monitor.stop();
+            try {
+                monitor.stop();
+            } catch (RuntimeException e) {
+                CLog.e(e);
+            }
         }
     }
 }

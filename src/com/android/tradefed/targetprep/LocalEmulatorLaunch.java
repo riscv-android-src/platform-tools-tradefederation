@@ -25,15 +25,15 @@ import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.util.RunUtil;
 
 import java.time.Duration;
-import java.util.Arrays;
+import java.util.List;
 
 /**
- * A TargetPreparer that launches an headless emulator locally from an android build environment.
+ * A TargetPreparer that launches an emulator locally from an android build environment.
  *
  * <p>Its highly recommended to prepare an emulator snapshot (eg tradefed run
  * emulator/generate-snapshot) before running any configs that includes this.
  */
-public class LocalEmulatorLaunch extends BaseTargetPreparer {
+public class LocalEmulatorLaunch extends BaseLocalEmulatorPreparer {
 
     @Option(name = "boot-timeout", description = "maximum duration to wait for emulator to boot")
     private Duration mBootTimeout = Duration.ofSeconds(30);
@@ -43,12 +43,11 @@ public class LocalEmulatorLaunch extends BaseTargetPreparer {
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
         ITestDevice allocatedDevice = testInformation.getDevice();
         IDeviceManager manager = GlobalConfiguration.getDeviceManagerInstance();
+        List<String> args = buildEmulatorLaunchArgs();
+        args.add("-read-only");
+
         manager.launchEmulator(
-                allocatedDevice,
-                mBootTimeout.toMillis(),
-                RunUtil.getDefault(),
-                Arrays.asList(
-                        "emulator", "-gpu", "swiftshader_indirect", "-no-window", "-read-only"));
+                allocatedDevice, mBootTimeout.toMillis(), RunUtil.getDefault(), args);
     }
 
     @Override

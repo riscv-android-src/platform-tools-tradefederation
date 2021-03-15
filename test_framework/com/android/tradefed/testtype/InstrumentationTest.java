@@ -477,6 +477,10 @@ public class InstrumentationTest
         return mTestPackageName;
     }
 
+    public void setWindowAnimation(boolean windowAnimation) {
+        mWindowAnimation = windowAnimation;
+    }
+
     /**
      * Sets the test package filter.
      * <p/>

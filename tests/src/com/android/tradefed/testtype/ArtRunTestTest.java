@@ -223,6 +223,48 @@ public class ArtRunTestTest {
     }
 
     /**
+     * Test the behavior of the run method when the shell command on device returns a non-zero exit
+     * code.
+     */
+    @Test
+    public void testRunSingleTest_nonZeroExitCode()
+            throws ConfigurationException, DeviceNotAvailableException, IOException {
+        final String runTestName = "test";
+        mSetter.setOptionValue("run-test-name", runTestName);
+        createExpectedStdoutFile(runTestName);
+        createExpectedStderrFile(runTestName);
+        final String classpath = "/data/local/tmp/test/test.jar";
+        mSetter.setOptionValue("classpath", classpath);
+
+        // Pre-test checks.
+        EasyMock.expect(mMockAbi.getName()).andReturn("abi");
+        EasyMock.expect(mMockITestDevice.getSerialNumber()).andReturn("");
+        String runName = "ArtRunTest_abi";
+        // Beginning of test.
+        mMockInvocationListener.testRunStarted(runName, 1);
+        TestDescription testId = new TestDescription(runName, runTestName);
+        mMockInvocationListener.testStarted(testId);
+        String cmd = String.format("dalvikvm64 -classpath %s Main", classpath);
+        // Test execution.
+        CommandResult result = createMockCommandResult("output\n", "no error\n", /* exitCode */ 1);
+        EasyMock.expect(
+                        mMockITestDevice.executeShellV2Command(
+                                cmd, 60000L, TimeUnit.MILLISECONDS, 0))
+                .andReturn(result);
+        mMockInvocationListener.testFailed(testId, "Test `test` exited with code 1");
+        mMockInvocationListener.testEnded(
+                EasyMock.eq(testId), (HashMap<String, Metric>) EasyMock.anyObject());
+        mMockInvocationListener.testRunEnded(
+                EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
+
+        replayMocks();
+
+        mArtRunTest.run(mTestInfo, mMockInvocationListener);
+
+        verifyMocks();
+    }
+
+    /**
      * Test the behavior of the run method when the standard output produced by the shell command on
      * device differs from the expected standard output.
      */
@@ -254,7 +296,8 @@ public class ArtRunTestTest {
                 .andReturn(result);
         // End of test.
         String errorMessage =
-                "The test's standard output does not match the expected standard output:\n"
+                "The actual standard output does not match the expected standard output"
+                        + " for test `test`:\n"
                         + "--- expected-stdout.txt\n"
                         + "+++ stdout\n"
                         + "@@ -1,1 +1,1 @@\n"
@@ -305,7 +348,8 @@ public class ArtRunTestTest {
                 .andReturn(result);
         // End of test.
         String errorMessage =
-                "The test's standard error does not match the expected standard error:\n"
+                "The actual standard error does not match the expected standard error"
+                        + " for test `test`:\n"
                         + "--- expected-stderr.txt\n"
                         + "+++ stderr\n"
                         + "@@ -1,1 +1,1 @@\n"
@@ -325,11 +369,11 @@ public class ArtRunTestTest {
     }
 
     /**
-     * Test the behavior of the run method when the shell command on device returns a non-zero exit
-     * code.
+     * Test the behavior of the run method when a test execution leads to multiple errors
+     * (unexpected standard output, unexpected standard error, non-zero exit code).
      */
     @Test
-    public void testRunSingleTest_nonZeroExitCode()
+    public void testRunSingleTest_multipleErrors()
             throws ConfigurationException, DeviceNotAvailableException, IOException {
         final String runTestName = "test";
         mSetter.setOptionValue("run-test-name", runTestName);
@@ -348,12 +392,31 @@ public class ArtRunTestTest {
         mMockInvocationListener.testStarted(testId);
         String cmd = String.format("dalvikvm64 -classpath %s Main", classpath);
         // Test execution.
-        CommandResult result = createMockCommandResult("output\n", "no error\n", /* exitCode */ 1);
+        CommandResult result =
+                createMockCommandResult("unexpected\n", "unexpected error\n", /* exitCode */ 2);
         EasyMock.expect(
                         mMockITestDevice.executeShellV2Command(
                                 cmd, 60000L, TimeUnit.MILLISECONDS, 0))
                 .andReturn(result);
-        mMockInvocationListener.testFailed(testId, "Test exited with code 1");
+        // End of test.
+        String errorMessage =
+                "Test `test` exited with code 2\n"
+                        + "The actual standard output does not match the expected standard output"
+                        + " for test `test`:\n"
+                        + "--- expected-stdout.txt\n"
+                        + "+++ stdout\n"
+                        + "@@ -1,1 +1,1 @@\n"
+                        + "-output\n"
+                        + "+unexpected\n"
+                        + "\n"
+                        + "The actual standard error does not match the expected standard error"
+                        + " for test `test`:\n"
+                        + "--- expected-stderr.txt\n"
+                        + "+++ stderr\n"
+                        + "@@ -1,1 +1,1 @@\n"
+                        + "-no error\n"
+                        + "+unexpected error\n";
+        mMockInvocationListener.testFailed(testId, errorMessage);
         mMockInvocationListener.testEnded(
                 EasyMock.eq(testId), (HashMap<String, Metric>) EasyMock.anyObject());
         mMockInvocationListener.testRunEnded(

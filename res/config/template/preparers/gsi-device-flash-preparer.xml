@@ -14,6 +14,10 @@
      limitations under the License.
 -->
 <configuration description="Common template for flashing the device with GSI image." >
+    <!-- Optional step to prepare device such as flash base build before GSI upgrade -->
     <template-include name="base-preparer" default="empty" />
+    <!-- Optional step to flash GKI. Can use template/preparers/gki-device-flash-preparer -->
+    <template-include name="gki-preparer" default="empty" />
+    <!-- https://docs.partner.android.com/gms/testing/vts/vts-compliance#vts. -->
     <target_preparer class="com.android.tradefed.targetprep.GsiDeviceFlashPreparer" />
 </configuration>

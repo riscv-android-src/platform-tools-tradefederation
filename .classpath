@@ -47,5 +47,7 @@
 	<classpathentry kind="var" path="TRADEFED_ROOT/out/soong/.intermediates/external/snakeyaml/snakeyaml/linux_glibc_common/javac/snakeyaml.jar"/>
 	<classpathentry kind="var" path="TRADEFED_ROOT/out/soong/.intermediates/prebuilts/tools/common/m2/diffutils-prebuilt-jar/linux_glibc_common/combined/diffutils-prebuilt-jar.jar"/>
 	<classpathentry kind="var" path="TRADEFED_ROOT/out/soong/.intermediates/prebuilts/misc/common/commons-cli/commons-cli-1.2/linux_glibc_common/combined/commons-cli-1.2.jar"/>
+	<classpathentry kind="var" path="TRADEFED_ROOT/out/soong/.intermediates/tools/tradefederation/core/tradefed-lib-core/linux_glibc_common/javac/tradefed-lib-core.jar"/>
+	<classpathentry kind="var" path="TRADEFED_ROOT/out/soong/.intermediates/external/grpc-grpc-java/grpc-java/linux_glibc_common/combined/grpc-java.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

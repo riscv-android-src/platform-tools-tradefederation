@@ -132,4 +132,8 @@ public class FileProtoResultReporter extends ProtoResultReporter {
     private void nextOutputFile() {
         mIndex++;
     }
+
+    public void setOutputFile(File outputFile) {
+        mOutputFile = outputFile;
+    }
 }

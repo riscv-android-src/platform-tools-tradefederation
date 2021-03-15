@@ -288,6 +288,20 @@ public class TestAppInstallSetupTest {
     }
 
     @Test
+    public void testSetup_forceQueryableIsFalse() throws Exception {
+        EasyMock.expect(mMockTestDevice.isAppEnumerationSupported()).andStubReturn(true);
+        EasyMock.expect(mMockTestDevice.installPackage(
+                EasyMock.eq(fakeApk), EasyMock.eq(true))).andReturn(null);
+        EasyMock.expect(
+                mMockTestDevice.installPackages(
+                        EasyMock.eq(mTestSplitApkFiles), EasyMock.eq(true))).andReturn(null);
+        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
+        mPrep.setForceQueryable(false);
+        mPrep.setUp(mTestInfo);
+        EasyMock.verify(mMockBuildInfo, mMockTestDevice);
+    }
+
+    @Test
     public void testInstallFailure() throws Exception {
         final String failure = "INSTALL_PARSE_FAILED_MANIFEST_MALFORMED";
         EasyMock.expect(mMockTestDevice.installPackage(EasyMock.eq(fakeApk), EasyMock.eq(true)))

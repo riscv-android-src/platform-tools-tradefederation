@@ -250,6 +250,14 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
     }
 
     /**
+     * The default value of the force queryable is true. Update it to false if the apk to be
+     * installed should not be queryable.
+     */
+    public void setForceQueryable(boolean forceQueryable) {
+        mForceQueryable = forceQueryable;
+    }
+
+    /**
      * Resolve the actual apk path based on testing artifact information inside build info.
      *
      * @param testInfo The {@link TestInformation} for the invocation.
