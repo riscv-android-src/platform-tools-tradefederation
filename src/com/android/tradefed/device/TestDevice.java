@@ -1576,10 +1576,15 @@ public class TestDevice extends NativeDevice {
         if (!feature.startsWith("feature:")) {
             feature = "feature:" + feature;
         }
+        final String versionedFeature = feature + "=";
         String commandOutput = executeShellCommand("pm list features");
         for (String line: commandOutput.split("\\s+")) {
-            // Each line in the output of the command has the format "feature:{FEATURE_VALUE}".
-            if (feature.equals(line)) {
+            // Each line in the output of the command has the format
+            // "feature:{FEATURE_VALUE}[={FEATURE_VERSION}]".
+            if (line.equals(feature)) {
+                return true;
+            }
+            if (line.startsWith(versionedFeature)) {
                 return true;
             }
         }

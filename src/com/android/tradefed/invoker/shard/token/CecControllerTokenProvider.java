@@ -36,6 +36,7 @@ import java.util.regex.Pattern;
 public class CecControllerTokenProvider implements ITokenProvider {
 
     private static final int TIMEOUT_MILLIS = 10000;
+    private List<String> devicesWithToken = new ArrayList<>();
 
     @Override
     public boolean hasToken(ITestDevice device, TokenProperty token) {
@@ -144,6 +145,12 @@ public class CecControllerTokenProvider implements ITokenProvider {
     boolean isCecAdapterConnected(ITestDevice device) throws DeviceNotAvailableException {
         List<String> launchCommand = new ArrayList();
         Process mCecClient;
+        String serialNo = device.getProperty("ro.serialno");
+
+        if (devicesWithToken.contains(serialNo)) {
+            /* This device has been checked and issued a token, don't check again. */
+            return true;
+        }
 
         launchCommand.add("cec-client");
 
@@ -166,7 +173,6 @@ public class CecControllerTokenProvider implements ITokenProvider {
                 launchCommand.add("x");
             }
 
-            String serialNo = device.getProperty("ro.serialno");
             String serialNoParam = convertStringToHexParams(serialNo);
             StringBuilder sendVendorCommand = new StringBuilder("cmd hdmi_control vendorcommand ");
             sendVendorCommand.append(" -t " + targetDevice);
@@ -184,6 +190,8 @@ public class CecControllerTokenProvider implements ITokenProvider {
 
                         device.executeShellCommand(sendVendorCommand.toString());
                         if (checkConsoleOutput(serialNoParam, TIMEOUT_MILLIS, inputConsole)) {
+                            /* Add to list of devices with token, it need not be checked again */
+                            devicesWithToken.add(serialNo);
                             return true;
                         }
                     } else {

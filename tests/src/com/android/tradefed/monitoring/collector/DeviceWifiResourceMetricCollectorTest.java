@@ -17,6 +17,7 @@
 package com.android.tradefed.monitoring.collector;
 
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.mockito.Mock;
@@ -37,9 +38,9 @@ import java.util.concurrent.TimeUnit;
 
 /** Tests for {@link DeviceWifiResourceMetricCollector}. */
 public class DeviceWifiResourceMetricCollectorTest {
-    private static final String MOCK_NO_WIFI_RESPONSE =
+    private static final String MOCK_NO_WIFI_SIGNAL_RESPONSE =
             String.join("\n", "RSSI=-9999", "LINKSPEED=0", "NOISE=-119", "FREQUENCY=2412");
-    private static final String MOCK_WIFI_RESPONSE =
+    private static final String MOCK_WIFI_SIGNAL_RESPONSE =
             String.join(
                     "\n",
                     "RSSI=-76",
@@ -47,6 +48,24 @@ public class DeviceWifiResourceMetricCollectorTest {
                     "NOISE=-189",
                     "FREQUENCY=2412",
                     "AVG_RSSI=-77");
+    private static final String MOCK_WIFI_STATUS_RESPONSE =
+            String.join(
+                    "\n",
+                    "bssid=d8:47:32:23:26:36",
+                    "freq=5785",
+                    "ssid=foo-bar",
+                    "id=0",
+                    "id_str=foo-bar",
+                    "mode=station",
+                    "wifi_generation=5",
+                    "pairwise_cipher=CCMP",
+                    "group_cipher=CCMP",
+                    "key_mgmt=WPA2-PSK",
+                    "wpa_state=COMPLETED",
+                    "ip_address=192.168.0.244",
+                    "address=16:cb:cf:39:91:4b",
+                    "uuid=97dc605c-72a7-5546-9d15-d950a789da14",
+                    "ieee80211ac=1");
     @Mock private IDeviceManager mDeviceManager;
     @Rule public MockitoRule rule = MockitoJUnit.rule();
     private final DeviceWifiResourceMetricCollector mCollector =
@@ -59,12 +78,11 @@ public class DeviceWifiResourceMetricCollectorTest {
                 }
             };
 
-    /** Tests getting metrics when no wifi connection. */
-    @Test
-    public void testGetDeviceResourceMetrics_noWifi() {
+    @Before
+    public void setup() {
         when(mDeviceManager.executeCmdOnAvailableDevice(
                         "foo",
-                        DeviceWifiResourceMetricCollector.WIFI_METRIC_CMD,
+                        DeviceWifiResourceMetricCollector.WIFI_STATUS_CMD,
                         500,
                         TimeUnit.MILLISECONDS))
                 .thenReturn(
@@ -76,7 +94,29 @@ public class DeviceWifiResourceMetricCollectorTest {
 
                             @Override
                             public String getStdout() {
-                                return MOCK_NO_WIFI_RESPONSE;
+                                return MOCK_WIFI_STATUS_RESPONSE;
+                            }
+                        });
+    }
+
+    /** Tests getting metrics when no wifi connection. */
+    @Test
+    public void testGetDeviceResourceMetrics_noWifi() {
+        when(mDeviceManager.executeCmdOnAvailableDevice(
+                        "foo",
+                        DeviceWifiResourceMetricCollector.WIFI_SIGNAL_CMD,
+                        500,
+                        TimeUnit.MILLISECONDS))
+                .thenReturn(
+                        new CommandResult() {
+                            @Override
+                            public CommandStatus getStatus() {
+                                return CommandStatus.SUCCESS;
+                            }
+
+                            @Override
+                            public String getStdout() {
+                                return MOCK_NO_WIFI_SIGNAL_RESPONSE;
                             }
                         });
         Collection<Resource> resources =
@@ -84,6 +124,7 @@ public class DeviceWifiResourceMetricCollectorTest {
         Assert.assertEquals(1, resources.size());
         Resource resource = resources.iterator().next();
         Assert.assertEquals("wifi", resource.getResourceName());
+        Assert.assertEquals("foo-bar", resource.getResourceInstance());
         Assert.assertEquals(1, resource.getMetricCount());
         Assert.assertEquals("speed", resource.getMetric(0).getTag());
         Assert.assertEquals(0.f, resource.getMetric(0).getValue(), 0.f);
@@ -94,7 +135,7 @@ public class DeviceWifiResourceMetricCollectorTest {
     public void testGetDeviceResourceMetrics_success() {
         when(mDeviceManager.executeCmdOnAvailableDevice(
                         "foo",
-                        DeviceWifiResourceMetricCollector.WIFI_METRIC_CMD,
+                        DeviceWifiResourceMetricCollector.WIFI_SIGNAL_CMD,
                         500,
                         TimeUnit.MILLISECONDS))
                 .thenReturn(
@@ -106,7 +147,7 @@ public class DeviceWifiResourceMetricCollectorTest {
 
                             @Override
                             public String getStdout() {
-                                return MOCK_WIFI_RESPONSE;
+                                return MOCK_WIFI_SIGNAL_RESPONSE;
                             }
                         });
         Collection<Resource> resources =
@@ -114,6 +155,7 @@ public class DeviceWifiResourceMetricCollectorTest {
         Assert.assertEquals(1, resources.size());
         Resource resource = resources.iterator().next();
         Assert.assertEquals("wifi", resource.getResourceName());
+        Assert.assertEquals("foo-bar", resource.getResourceInstance());
         Assert.assertEquals(165.f, resource.getMetric(0).getValue(), 0.f);
         Assert.assertEquals(-76.f, resource.getMetric(1).getValue(), 0.f);
         Assert.assertEquals(-189.f, resource.getMetric(2).getValue(), 0.f);

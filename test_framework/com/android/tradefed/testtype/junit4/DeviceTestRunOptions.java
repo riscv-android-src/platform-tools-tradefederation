@@ -31,6 +31,8 @@ public class DeviceTestRunOptions {
 
     private String mTestClassName; // optional
     private String mTestMethodName; // optional
+    private String mApkFileName; // optional
+    private String[] mInstallArgs; // optional
     private Integer mUserId; // optional
     private Long mTestTimeoutMs = BaseHostJUnit4Test.DEFAULT_TEST_TIMEOUT_MS; // optional
     private Long mMaxTimeToOutputMs; // optional
@@ -41,6 +43,8 @@ public class DeviceTestRunOptions {
     private boolean mDisableIsolatedStorage = false; // optional
     private boolean mDisableWindowAnimation = false; // optional
     private boolean mDisableRestart = false; // optional
+    private boolean mGrantPermission = false; // optional
+    private boolean mForceQueryable = true; // optional
     private Map<String, String> mInstrumentationArgs = new LinkedHashMap<>(); // optional
     private List<ITestLifeCycleReceiver> mExtraListeners = new ArrayList<>(); // optional
 
@@ -254,5 +258,52 @@ public class DeviceTestRunOptions {
 
     public void clearExtraListeners() {
         mExtraListeners.clear();
+    }
+
+    /** Returns the name of the apk file for the apk installation. */
+    public String getApkFileName() {
+        return mApkFileName;
+    }
+
+    /** Sets the name of the apk file for the apk installation. */
+    public DeviceTestRunOptions setApkFileName(String apkFileName) {
+        mApkFileName = apkFileName;
+        return this;
+    }
+
+    /** Returns extra options of the install command. */
+    public String[] getInstallArgs() {
+        if (mInstallArgs == null) {
+            return new String[] {};
+        }
+        return mInstallArgs;
+    }
+
+    /** Sets extra options of the install command. */
+    public DeviceTestRunOptions setInstallArgs(String... installArgs) {
+        mInstallArgs = installArgs;
+        return this;
+    }
+
+    /** Whether to grant permissions for the apk installation. */
+    public boolean isGrantPermission() {
+        return mGrantPermission;
+    }
+
+    /** Grants permissions for the apk installation. */
+    public DeviceTestRunOptions setGrantPermission(boolean grantPermission) {
+        mGrantPermission = grantPermission;
+        return this;
+    }
+
+    /** Whether or not the apk to be installed should be queryable. The default value is true. */
+    public boolean isForceQueryable() {
+        return mForceQueryable;
+    }
+
+    /** Sets {@code false} if the apk to be installed should not be queryable. */
+    public DeviceTestRunOptions setForceQueryable(boolean forceQueryable) {
+        mForceQueryable = forceQueryable;
+        return this;
     }
 }

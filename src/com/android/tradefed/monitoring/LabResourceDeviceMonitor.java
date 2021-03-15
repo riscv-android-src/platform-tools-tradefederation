@@ -51,6 +51,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -148,7 +149,20 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
                     // For example: adding docker run argument "-p 127.0.0.1:8887:8887".
                     ServerBuilder.forPort(DEFAULT_PORT)
                             .addService(this)
-                            .executor(Executors.newFixedThreadPool(DEFAULT_THREAD_COUNT))
+                            .executor(
+                                    Executors.newFixedThreadPool(
+                                            DEFAULT_THREAD_COUNT,
+                                            new ThreadFactory() {
+                                                @Override
+                                                public Thread newThread(Runnable r) {
+                                                    Thread t =
+                                                            Executors.defaultThreadFactory()
+                                                                    .newThread(r);
+                                                    t.setDaemon(true);
+                                                    t.setName("lab-resource-server");
+                                                    return t;
+                                                }
+                                            }))
                             .build();
         }
         try {
@@ -166,8 +180,28 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
     void startExecutors() {
         mMetricizeExecutor =
                 MoreExecutors.getExitingScheduledExecutorService(
-                        new ScheduledThreadPoolExecutor(1));
-        mCollectionExecutor = Executors.newSingleThreadExecutor();
+                        new ScheduledThreadPoolExecutor(
+                                1,
+                                new ThreadFactory() {
+                                    @Override
+                                    public Thread newThread(Runnable r) {
+                                        Thread t = Executors.defaultThreadFactory().newThread(r);
+                                        t.setDaemon(true);
+                                        t.setName("lab-resource-metricize-executor");
+                                        return t;
+                                    }
+                                }));
+        mCollectionExecutor =
+                Executors.newSingleThreadExecutor(
+                        new ThreadFactory() {
+                            @Override
+                            public Thread newThread(Runnable r) {
+                                Thread t = Executors.defaultThreadFactory().newThread(r);
+                                t.setDaemon(true);
+                                t.setName("lab-resource-collection-executor");
+                                return t;
+                            }
+                        });
     }
 
     @VisibleForTesting

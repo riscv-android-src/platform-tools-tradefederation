@@ -416,7 +416,7 @@ public class DeviceManagerTest {
 
     /** Test freeing an emulator */
     @Test
-    public void testFreeDevice_emulator() {
+    public void testFreeDevice_emulator() throws DeviceNotAvailableException {
         mDeviceSelections.setStubEmulatorRequested(true);
         EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.FORCE_AVAILABLE))
                 .andReturn(new DeviceEventResponse(DeviceAllocationState.Available, true));
@@ -424,7 +424,10 @@ public class DeviceManagerTest {
         EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.ALLOCATE_REQUEST))
                 .andReturn(new DeviceEventResponse(DeviceAllocationState.Allocated, true));
         mMockTestDevice.stopLogcat();
+        EasyMock.expect(mMockTestDevice.executeAdbCommand("emu", "kill")).andReturn("");
         EasyMock.expect(mMockTestDevice.getEmulatorProcess()).andStubReturn(new MockProcess());
+        EasyMock.expect(mMockTestDevice.waitForDeviceNotAvailable(EasyMock.anyLong()))
+                .andReturn(Boolean.TRUE);
         EasyMock.expect(mMockTestDevice.waitForDeviceNotAvailable(EasyMock.anyLong())).andReturn(
                 Boolean.TRUE);
         EasyMock.expect(mMockTestDevice.handleAllocationEvent(DeviceEvent.FREE_AVAILABLE))
