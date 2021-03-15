@@ -1261,7 +1261,9 @@ public class Configuration implements IConfiguration {
                 configObjects.clear();
                 configObjects.add(getConfigurationObject(TradefedDelegator.DELEGATE_OBJECT));
                 CLog.d("Resolving only delegator object dynamic download.");
-            } else if (options.getShardCount() != null && options.getShardIndex() == null) {
+            } else if (options.getShardCount() != null
+                    && options.getShardCount() > 1
+                    && options.getShardIndex() == null) {
                 CLog.w("Skipping dynamic download due to local sharding detected.");
                 return;
             }
