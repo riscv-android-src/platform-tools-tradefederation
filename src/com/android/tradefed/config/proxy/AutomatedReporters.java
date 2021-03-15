@@ -36,7 +36,7 @@ public class AutomatedReporters {
 
     public static final String PROTO_REPORTING_PORT = "PROTO_REPORTING_PORT";
     public static final String PROTO_REPORTING_FILE = "PROTO_REPORTING_FILE";
-    private static final ImmutableSet<String> REPORTER_MAPPING =
+    public static final ImmutableSet<String> REPORTER_MAPPING =
             ImmutableSet.of(PROTO_REPORTING_PORT, PROTO_REPORTING_FILE);
 
     /**
