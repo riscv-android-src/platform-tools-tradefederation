@@ -63,7 +63,7 @@ public class TestResourceDownloader {
                             "Failed to download %s: command status=%s", url, result.getStatus());
             CLog.e(msg);
             CLog.e("stdout:\n'''\n%s'''\n", result.getStdout());
-            CLog.d("stderr:\n'''\n%s'''\n", result.getStderr());
+            CLog.e("stderr:\n'''\n%s'''\n", result.getStderr());
             throw new RuntimeException(msg);
         }
         return;
