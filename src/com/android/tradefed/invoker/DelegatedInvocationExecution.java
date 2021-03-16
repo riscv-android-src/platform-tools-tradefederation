@@ -88,6 +88,19 @@ public class DelegatedInvocationExecution extends InvocationExecution {
     }
 
     @Override
+    public void runDevicePreInvocationSetup(
+            IInvocationContext context, IConfiguration config, ITestLogger logger)
+            throws DeviceNotAvailableException, TargetSetupError {
+        // Do nothing
+    }
+
+    @Override
+    public void runDevicePostInvocationTearDown(
+            IInvocationContext context, IConfiguration config, Throwable exception) {
+        // Do nothing
+    }
+
+    @Override
     public void doTeardown(
             TestInformation testInfo,
             IConfiguration config,
