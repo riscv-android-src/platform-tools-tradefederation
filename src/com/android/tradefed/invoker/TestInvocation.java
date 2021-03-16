@@ -139,6 +139,7 @@ public class TestInvocation implements ITestInvocation {
     static final String INVOCATION_ENDED_BUGREPORT_NAME = "invocation_ended_bugreport";
     static final String TARGET_SETUP_ERROR_BUGREPORT_NAME = "target_setup_error_bugreport";
     static final String BATT_TAG = "[battery level]";
+    static final String RECOVERY_LOG_DEVICE_PATH = "/tmp/recovery.log";
 
     public enum Stage {
         ERROR("error"),
@@ -350,6 +351,7 @@ public class TestInvocation implements ITestInvocation {
                         executor.invokeAll(callableTasks, 5, TimeUnit.MINUTES);
                     }
                 }
+                reportRecoveryLogs(context.getDevices(), listener);
                 if (exception == null) {
                     CLog.d("Checking that devices are online.");
                     checkDevicesAvailable(context.getDevices(), listener);
@@ -1238,6 +1240,34 @@ public class TestInvocation implements ITestInvocation {
             addInvocationMetric(InvocationMetricKey.VIRTUAL_DEVICE_LOST_DETECTED, countVirtualLost);
         }
         return devicesStates;
+    }
+
+    private void reportRecoveryLogs(List<ITestDevice> devices, ITestInvocationListener listener) {
+        for (ITestDevice device : devices) {
+            if (device == null) {
+                continue;
+            }
+            if (device.getIDevice() instanceof StubDevice) {
+                continue;
+            }
+            if (device.getDeviceState() != TestDeviceState.RECOVERY) {
+                continue;
+            }
+            try {
+                File recovery_log = device.pullFile(RECOVERY_LOG_DEVICE_PATH);
+                if (recovery_log == null) {
+                    return;
+                }
+                try (FileInputStreamSource fis = new FileInputStreamSource(recovery_log)) {
+                    listener.testLog(
+                            String.format("recovery_log_%s.txt", device.getSerialNumber()),
+                            LogDataType.TEXT,
+                            fis);
+                }
+            } catch (DeviceNotAvailableException e) {
+                CLog.i("Device unavailable, can't pull recovery.log");
+            }
+        }
     }
 
     private void reportInvocationEnded(
