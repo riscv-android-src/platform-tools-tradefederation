@@ -56,6 +56,7 @@ import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.device.metric.BaseDeviceMetricCollector;
 import com.android.tradefed.device.metric.DeviceMetricData;
 import com.android.tradefed.device.metric.IMetricCollector;
+import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.guice.InvocationScope;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.invoker.shard.IShardHelper;
@@ -141,6 +142,7 @@ public class TestInvocationTest {
     private TestInvocation mTestInvocation;
 
     private FailureStatus mExceptedStatus = null;
+    private boolean mShardingEarlyFailure = false;
 
     private IConfiguration mStubConfiguration;
     private IConfiguration mStubMultiConfiguration;
@@ -1153,7 +1155,7 @@ public class TestInvocationTest {
             EasyMock.expectLastCall().anyTimes();
         }
 
-        if (!(throwable instanceof BuildRetrievalError)) {
+        if (!(throwable instanceof BuildRetrievalError) && !mShardingEarlyFailure) {
             EasyMock.expect(
                             mMockLogSaver.saveLogData(
                                     EasyMock.startsWith(LOGCAT_NAME_SETUP),
@@ -1226,7 +1228,7 @@ public class TestInvocationTest {
                                                         + SERIAL),
                                         EasyMock.anyObject()))
                         .andReturn(true);
-            } else if (!(throwable instanceof TargetSetupError)) {
+            } else if (!(throwable instanceof TargetSetupError) && !mShardingEarlyFailure) {
                 // Handle test logcat listeners
                 EasyMock.expect(
                                 mMockLogSaver.saveLogData(
@@ -1244,20 +1246,22 @@ public class TestInvocationTest {
                         (InputStreamSource) EasyMock.anyObject());
             }
             // Handle teardown logcat listeners
-            EasyMock.expect(
-                            mMockLogSaver.saveLogData(
-                                    EasyMock.startsWith(LOGCAT_NAME_TEARDOWN),
-                                    EasyMock.eq(LogDataType.LOGCAT),
-                                    (InputStream) EasyMock.anyObject()))
-                    .andReturn(new LogFile(PATH, URL, LogDataType.TEXT));
-            mMockTestListener.testLog(
-                    EasyMock.startsWith(LOGCAT_NAME_TEARDOWN),
-                    EasyMock.eq(LogDataType.LOGCAT),
-                    (InputStreamSource) EasyMock.anyObject());
-            mMockSummaryListener.testLog(
-                    EasyMock.startsWith(LOGCAT_NAME_TEARDOWN),
-                    EasyMock.eq(LogDataType.LOGCAT),
-                    (InputStreamSource) EasyMock.anyObject());
+            if (!mShardingEarlyFailure) {
+                EasyMock.expect(
+                                mMockLogSaver.saveLogData(
+                                        EasyMock.startsWith(LOGCAT_NAME_TEARDOWN),
+                                        EasyMock.eq(LogDataType.LOGCAT),
+                                        (InputStream) EasyMock.anyObject()))
+                        .andReturn(new LogFile(PATH, URL, LogDataType.TEXT));
+                mMockTestListener.testLog(
+                        EasyMock.startsWith(LOGCAT_NAME_TEARDOWN),
+                        EasyMock.eq(LogDataType.LOGCAT),
+                        (InputStreamSource) EasyMock.anyObject());
+                mMockSummaryListener.testLog(
+                        EasyMock.startsWith(LOGCAT_NAME_TEARDOWN),
+                        EasyMock.eq(LogDataType.LOGCAT),
+                        (InputStreamSource) EasyMock.anyObject());
+            }
 
             if (stopped) {
                 mMockTestListener.invocationFailed(EasyMock.<FailureDescription>anyObject());
@@ -2160,6 +2164,101 @@ public class TestInvocationTest {
         assertEquals("processor1", listKeys.get(3));
 
         assertTrue(mockLogSaverListener.mWasLoggerSet);
+    }
+
+    @Test
+    public void testInvoke_shardingException() throws Throwable {
+        mShardingEarlyFailure = true;
+        RuntimeException failedShard =
+                new HarnessRuntimeException(
+                        "Failed to shard", InfraErrorIdentifier.FAIL_TO_CREATE_FILE);
+        mTestInvocation =
+                new TestInvocation() {
+                    @Override
+                    ILogRegistry getLogRegistry() {
+                        return mMockLogRegistry;
+                    }
+
+                    @Override
+                    public IInvocationExecution createInvocationExec(RunMode mode) {
+                        return new InvocationExecution() {
+                            @Override
+                            public boolean shardConfig(
+                                    IConfiguration config,
+                                    TestInformation testInfo,
+                                    IRescheduler rescheduler,
+                                    ITestLogger logger) {
+                                throw failedShard;
+                            }
+
+                            @Override
+                            protected String getAdbVersion() {
+                                return null;
+                            }
+
+                            @Override
+                            protected void logHostAdb(IConfiguration config, ITestLogger logger) {
+                                // inop for the common test case.
+                            }
+                        };
+                    }
+
+                    @Override
+                    protected void setExitCode(ExitCode code, Throwable stack) {
+                        // Empty on purpose
+                    }
+
+                    @Override
+                    InvocationScope getInvocationScope() {
+                        // Avoid re-entry in the current TF invocation scope for unit tests.
+                        return new InvocationScope();
+                    }
+
+                    @Override
+                    public void registerExecutionFiles(ExecutionFiles executionFiles) {
+                        // Empty on purpose
+                    }
+
+                    @Override
+                    protected void applyAutomatedReporters(IConfiguration config) {
+                        // Empty on purpose
+                    }
+
+                    @Override
+                    protected void addInvocationMetric(InvocationMetricKey key, long value) {}
+
+                    @Override
+                    protected void addInvocationMetric(InvocationMetricKey key, String value) {}
+                };
+        mStubConfiguration.getCommandOptions().setShardCount(5);
+        mStubConfiguration.getCommandOptions().setShardIndex(2);
+        mMockBuildInfo.addBuildAttribute("shard_count", "5");
+        mMockBuildInfo.addBuildAttribute("shard_index", "2");
+        mMockDevice.postInvocationTearDown(EasyMock.anyObject());
+
+        IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
+        setupMockFailureListeners(failedShard);
+
+        setEarlyDeviceReleaseExpectation();
+        setupInvokeWithBuild();
+        mStubConfiguration.setTest(test);
+        mStubMultiConfiguration.setTest(test);
+        EasyMock.expect(mMockBuildProvider.getBuild()).andReturn(mMockBuildInfo);
+        replayMocks(test);
+        EasyMock.reset(mMockLogger, mMockLogRegistry);
+        mMockLogRegistry.registerLogger(mMockLogger);
+
+        mMockLogger.init();
+        mMockLogger.closeLog();
+        EasyMock.expectLastCall().times(2);
+        mMockLogRegistry.unregisterLogger();
+        EasyMock.expectLastCall().times(2);
+        mMockLogRegistry.dumpToGlobalLog(mMockLogger);
+        EasyMock.expect(mMockLogger.getLog()).andReturn(mHostLogSource);
+        EasyMock.replay(mockRescheduler, mMockLogger, mMockLogRegistry);
+        mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
+        verifyMocks(test, mockRescheduler);
+        verifySummaryListener();
     }
 
     private class TestLogSaverListener implements ILogSaverListener {

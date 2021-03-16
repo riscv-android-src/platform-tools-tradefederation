@@ -933,9 +933,11 @@ public class TestInvocation implements ITestInvocation {
                 // devices (Remote devices for example) require extra preparation step to be
                 // available, but sharding requires the device to be available in some cases. So
                 // we call the device setup early to meet all the requirements.
+                boolean startInvocationCalled = false;
                 if (shardCount != null && shardIndex != null) {
                     deviceInit = true;
                     startInvocation(config, context, listener);
+                    startInvocationCalled = true;
                     try {
                         invocationPath.runDevicePreInvocationSetup(context, config, listener);
                     } catch (DeviceNotAvailableException | TargetSetupError e) {
@@ -967,11 +969,23 @@ public class TestInvocation implements ITestInvocation {
                 try {
                     sharding = invocationPath.shardConfig(config, info, rescheduler, listener);
                 } catch (RuntimeException unexpected) {
+                    CLog.e("Exception during sharding.");
+                    CLog.e(unexpected);
                     if (deviceInit) {
                         // If we did an early setup, do the tear down.
-                        invocationPath.runDevicePostInvocationTearDown(context, config, null);
+                        invocationPath.runDevicePostInvocationTearDown(context, config, unexpected);
                     }
-                    throw unexpected;
+                    // Call the reporting to get debugging infos.
+                    if (!startInvocationCalled) {
+                        startInvocation(config, context, listener);
+                    }
+                    reportFailure(
+                            createFailureFromException(unexpected, FailureStatus.INFRA_FAILURE)
+                                    .setActionInProgress(ActionInProgress.TEST),
+                            listener);
+                    reportHostLog(listener, config);
+                    listener.invocationEnded(0L);
+                    return;
                 }
                 if (sharding) {
                     CLog.i(
