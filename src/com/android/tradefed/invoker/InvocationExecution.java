@@ -341,7 +341,7 @@ public class InvocationExecution implements IInvocationExecution {
 
     /** {@inheritDoc} */
     @Override
-    public final void runDevicePreInvocationSetup(
+    public void runDevicePreInvocationSetup(
             IInvocationContext context, IConfiguration config, ITestLogger logger)
             throws DeviceNotAvailableException, TargetSetupError {
         customizeDevicePreInvocation(config, context);
@@ -368,7 +368,7 @@ public class InvocationExecution implements IInvocationExecution {
 
     /** {@inheritDoc} */
     @Override
-    public final void runDevicePostInvocationTearDown(
+    public void runDevicePostInvocationTearDown(
             IInvocationContext context, IConfiguration config, Throwable exception) {
         // Extra tear down step for the device
         for (String deviceName : context.getDeviceConfigNames()) {
