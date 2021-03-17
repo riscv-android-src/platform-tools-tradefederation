@@ -27,6 +27,7 @@ import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
 import com.android.helper.aoa.AoaDevice;
+import com.android.helper.aoa.AoaKey;
 import com.android.helper.aoa.UsbHelper;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
@@ -142,9 +143,12 @@ public class AoaTargetPreparerTest {
 
     @Test
     public void testWrite() {
-        mPreparer.execute(mDevice, "write Test 0123");
+        mPreparer.execute(mDevice, "write Abc 0123");
 
-        verify(mDevice).pressKeys(List.of(0x17, 0x08, 0x16, 0x17, 0x2C, 0x27, 0x1E, 0x1F, 0x20));
+        verify(mDevice).pressKeys(List.of(
+                new AoaKey(0x04, AoaKey.Modifier.SHIFT), new AoaKey(0x05), new AoaKey(0x06),
+                new AoaKey(0x2C),
+                new AoaKey(0x27), new AoaKey(0x1E), new AoaKey(0x1F), new AoaKey(0x20)));
         verifyNoMoreInteractions(ignoreStubs(mDevice));
     }
 
@@ -154,15 +158,18 @@ public class AoaTargetPreparerTest {
         mPreparer.execute(mDevice, "key 0x2B"); // accepts hexadecimal values
         mPreparer.execute(mDevice, "key tab"); // accepts key descriptions
 
-        verify(mDevice, times(3)).pressKeys(List.of(0x2B));
+        verify(mDevice, times(3)).pressKeys(List.of(new AoaKey(0x2B)));
         verifyNoMoreInteractions(ignoreStubs(mDevice));
     }
 
     @Test
     public void testKeys_combination() {
-        mPreparer.execute(mDevice, "key 2*a 3*down 2*0x2B");
+        mPreparer.execute(mDevice, "key 2*A 3*down 2*0x2B");
 
-        verify(mDevice).pressKeys(List.of(0x04, 0x04, 0x51, 0x51, 0x51, 0x2B, 0x2B));
+        verify(mDevice).pressKeys(List.of(
+                new AoaKey(0x04, AoaKey.Modifier.SHIFT), new AoaKey(0x04, AoaKey.Modifier.SHIFT),
+                new AoaKey(0x51), new AoaKey(0x51), new AoaKey(0x51),
+                new AoaKey(0x2B), new AoaKey(0x2B)));
         verifyNoMoreInteractions(ignoreStubs(mDevice));
     }
 
