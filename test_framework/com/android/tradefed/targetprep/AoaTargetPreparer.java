@@ -16,6 +16,7 @@
 package com.android.tradefed.targetprep;
 
 import com.android.helper.aoa.AoaDevice;
+import com.android.helper.aoa.AoaKey;
 import com.android.helper.aoa.UsbHelper;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
@@ -63,7 +64,7 @@ import java.util.stream.Stream;
 public class AoaTargetPreparer extends BaseTargetPreparer {
 
     private static final String POINT = "(\\d{1,3}) (\\d{1,3})";
-    private static final Pattern KEY = Pattern.compile("\\s+(?:(\\d+)\\*)?([a-zA-Z0-9]+)");
+    private static final Pattern KEY = Pattern.compile("\\s+(?:(\\d+)\\*)?([a-zA-Z0-9-_]+)");
 
     @FunctionalInterface
     private interface Action extends BiConsumer<AoaDevice, List<String>> {}
@@ -93,25 +94,25 @@ public class AoaTargetPreparer extends BaseTargetPreparer {
         // keyboard
         ACTIONS.put(
                 (device, args) -> {
-                    List<Integer> keys =
+                    List<AoaKey> keys =
                             Stream.of(args.get(0).split(""))
-                                    .map(AoaTargetPreparer::parseKeycode)
+                                    .map(AoaTargetPreparer::parseKey)
                                     .collect(Collectors.toList());
                     device.pressKeys(keys);
                 },
-                "write ([a-zA-Z0-9\\s]+)");
+                "write ([a-zA-Z0-9-_\\s]+)");
         ACTIONS.put(
                 (device, args) -> {
-                    List<Integer> keys = new ArrayList<>();
+                    List<AoaKey> keys = new ArrayList<>();
                     Matcher matcher = KEY.matcher(args.get(0));
                     while (matcher.find()) {
                         int count = matcher.group(1) == null ? 1 : Integer.decode(matcher.group(1));
-                        Integer keycode = parseKeycode(matcher.group(2));
-                        keys.addAll(Collections.nCopies(count, keycode));
+                        AoaKey key = parseKey(matcher.group(2));
+                        keys.addAll(Collections.nCopies(count, key));
                     }
                     device.pressKeys(keys);
                 },
-                "key((?: (?:\\d+\\*)?[a-zA-Z0-9]+)+)");
+                "key((?: (?:\\d+\\*)?[a-zA-Z0-9-_]+)+)");
 
         // other
         ACTIONS.put((device, args) -> device.wakeUp(), "wake");
@@ -196,68 +197,54 @@ public class AoaTargetPreparer extends BaseTargetPreparer {
         return Duration.ofMillis(Long.parseLong(millis));
     }
 
-    // Convert a string value into a HID keycode
-    private static Integer parseKeycode(String key) {
-        if (key == null || key.isEmpty()) {
+    // Convert a string value into an AOA key
+    private static AoaKey parseKey(String value) {
+        if (value == null || value.isEmpty()) {
             return null;
         }
-        if (key.matches("\\s+")) {
-            return 0x2C; // Convert whitespace to the space character
+        if (value.matches("\\s+")) {
+            return new AoaKey(0x2C); // Convert whitespace to the space character
         }
-        // Lookup keycode or try to parse into an integer
-        Integer keycode = KEYCODES.get(key.toLowerCase());
-        return keycode != null ? keycode : Integer.decode(key);
+        // Lookup key (case sensitive and insensitive) or try to parse into an integer
+        AoaKey key = KEYS.get(value);
+        if (key == null) {
+            key = KEYS.get(value.toLowerCase());
+        }
+        return key != null ? key : new AoaKey(Integer.decode(value));
     }
 
     // Map of characters to HID keycodes
-    private static final Map<String, Integer> KEYCODES = new HashMap<>();
+    private static final Map<String, AoaKey> KEYS = new HashMap<>();
 
     static {
-        // Letters
-        KEYCODES.put("a", 0x04);
-        KEYCODES.put("b", 0x05);
-        KEYCODES.put("c", 0x06);
-        KEYCODES.put("d", 0x07);
-        KEYCODES.put("e", 0x08);
-        KEYCODES.put("f", 0x09);
-        KEYCODES.put("g", 0x0A);
-        KEYCODES.put("h", 0x0B);
-        KEYCODES.put("i", 0x0C);
-        KEYCODES.put("j", 0x0D);
-        KEYCODES.put("k", 0x0E);
-        KEYCODES.put("l", 0x0F);
-        KEYCODES.put("m", 0x10);
-        KEYCODES.put("n", 0x11);
-        KEYCODES.put("o", 0x12);
-        KEYCODES.put("p", 0x13);
-        KEYCODES.put("q", 0x14);
-        KEYCODES.put("r", 0x15);
-        KEYCODES.put("s", 0x16);
-        KEYCODES.put("t", 0x17);
-        KEYCODES.put("u", 0x18);
-        KEYCODES.put("v", 0x19);
-        KEYCODES.put("w", 0x1A);
-        KEYCODES.put("x", 0x1B);
-        KEYCODES.put("y", 0x1C);
-        KEYCODES.put("z", 0x1D);
+        // Letters (case-sensitive)
+        for (int usage = 0x04, letter = 'a'; letter <= 'z'; usage++, letter++) {
+            String lowerCase = Character.toString((char) letter);
+            KEYS.put(lowerCase, new AoaKey(usage));
+            KEYS.put(lowerCase.toUpperCase(), new AoaKey(usage, AoaKey.Modifier.SHIFT));
+        }
+
         // Numbers
-        KEYCODES.put("1", 0x1E);
-        KEYCODES.put("2", 0x1F);
-        KEYCODES.put("3", 0x20);
-        KEYCODES.put("4", 0x21);
-        KEYCODES.put("5", 0x22);
-        KEYCODES.put("6", 0x23);
-        KEYCODES.put("7", 0x24);
-        KEYCODES.put("8", 0x25);
-        KEYCODES.put("9", 0x26);
-        KEYCODES.put("0", 0x27);
+        KEYS.put("1", new AoaKey(0x1E));
+        KEYS.put("2", new AoaKey(0x1F));
+        KEYS.put("3", new AoaKey(0x20));
+        KEYS.put("4", new AoaKey(0x21));
+        KEYS.put("5", new AoaKey(0x22));
+        KEYS.put("6", new AoaKey(0x23));
+        KEYS.put("7", new AoaKey(0x24));
+        KEYS.put("8", new AoaKey(0x25));
+        KEYS.put("9", new AoaKey(0x26));
+        KEYS.put("0", new AoaKey(0x27));
+
         // Additional keys
-        KEYCODES.put("enter", 0x28);
-        KEYCODES.put("tab", 0x2B);
-        KEYCODES.put("space", 0x2C);
-        KEYCODES.put("right", 0x4F);
-        KEYCODES.put("left", 0x50);
-        KEYCODES.put("down", 0x51);
-        KEYCODES.put("up", 0x52);
+        KEYS.put("enter", new AoaKey(0x28));
+        KEYS.put("tab", new AoaKey(0x2B));
+        KEYS.put("space", new AoaKey(0x2C));
+        KEYS.put("right", new AoaKey(0x4F));
+        KEYS.put("left", new AoaKey(0x50));
+        KEYS.put("down", new AoaKey(0x51));
+        KEYS.put("up", new AoaKey(0x52));
+        KEYS.put("-", new AoaKey(0x2D));
+        KEYS.put("_", new AoaKey(0x2D, AoaKey.Modifier.SHIFT));
     }
 }
