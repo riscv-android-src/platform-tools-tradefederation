@@ -17,6 +17,8 @@ package com.android.tradefed.testtype;
 
 import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
@@ -46,6 +48,7 @@ import com.google.common.annotations.VisibleForTesting;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.ProcessBuilder.Redirect;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -79,7 +82,8 @@ public class IsolatedHostTest
                 IBuildReceiver,
                 ITestAnnotationFilterReceiver,
                 ITestFilterReceiver,
-                ITestCollector {
+                ITestCollector,
+                IConfigurationReceiver {
     @Option(
             name = "class",
             description =
@@ -171,15 +175,21 @@ public class IsolatedHostTest
     private File mSubprocessLog;
     private File mWorkDir;
     private boolean mReportedFailure = false;
+    private IConfiguration mConfiguration;
 
     private static final String ROOT_DIR = "ROOT_DIR";
     private ServerSocket mServer = null;
+
+    private File mCoverageDestination;
+    private File mAgent;
 
     /** {@inheritDoc} */
     @Override
     public void run(TestInformation testInfo, ITestInvocationListener listener)
             throws DeviceNotAvailableException {
         mReportedFailure = false;
+        mCoverageDestination = null;
+        mAgent = null;
         try {
             mServer = new ServerSocket(0);
             mServer.setSoTimeout(mSocketTimeout);
@@ -234,7 +244,9 @@ public class IsolatedHostTest
                     .setCommand(RunnerOp.RUNNER_OP_STOP)
                     .build()
                     .writeDelimitedTo(socket.getOutputStream());
-        } catch (IOException e) {
+            // Ensure the subprocess finishes
+            isolationRunner.waitFor(1, TimeUnit.MINUTES);
+        } catch (IOException | InterruptedException e) {
             if (!mReportedFailure) {
                 // Avoid overriding the failure
                 FailureDescription failure =
@@ -242,6 +254,16 @@ public class IsolatedHostTest
                                 StreamUtil.getStackTrace(e), FailureStatus.INFRA_FAILURE);
                 listener.testRunFailed(failure);
                 listener.testRunEnded(0L, new HashMap<String, Metric>());
+            }
+        } finally {
+            FileUtil.deleteFile(mAgent);
+            mAgent = null;
+            if (mCoverageDestination != null && mCoverageDestination.length() > 0) {
+                try (FileInputStreamSource source =
+                        new FileInputStreamSource(mCoverageDestination, true)) {
+                    listener.testLog("coverage", LogDataType.COVERAGE, source);
+                }
+                mCoverageDestination = null;
             }
         }
     }
@@ -265,7 +287,19 @@ public class IsolatedHostTest
             cmdArgs.add(javaPath);
             CLog.v("Using java executable at %s", javaPath);
         }
-
+        if (mConfiguration != null && mConfiguration.getCoverageOptions().isCoverageEnabled()) {
+            try {
+                mCoverageDestination = FileUtil.createTempFile("coverage", ".exec");
+                mAgent = extractJacocoAgent();
+                String javaAgent =
+                        String.format(
+                                "-javaagent:%s=destfile=%s",
+                                mAgent.getAbsolutePath(), mCoverageDestination.getAbsolutePath());
+                cmdArgs.add(javaAgent);
+            } catch (IOException e) {
+                CLog.e(e);
+            }
+        }
         cmdArgs.add("-cp");
         cmdArgs.add(classpath);
 
@@ -734,6 +768,11 @@ public class IsolatedHostTest
         mExcludeAnnotations.clear();
     }
 
+    @Override
+    public void setConfiguration(IConfiguration configuration) {
+        mConfiguration = configuration;
+    }
+
     /**
      * Copied over from HostTest to mimic its unit test harnessing.
      *
@@ -758,5 +797,17 @@ public class IsolatedHostTest
                             mTestCaseTimeout.toMillis(), TimeUnit.MILLISECONDS, listener);
         }
         return listener;
+    }
+
+    /** Returns a {@link File} pointing to the jacoco args jar file extracted from the resources. */
+    private File extractJacocoAgent() throws IOException {
+        String jacocoAgentRes = "/jacoco/jacocoagent.jar";
+        InputStream jacocoAgentStream = getClass().getResourceAsStream(jacocoAgentRes);
+        if (jacocoAgentStream == null) {
+            throw new IOException("Could not find " + jacocoAgentRes);
+        }
+        File jacocoAgent = FileUtil.createTempFile("jacocoagent", ".jar");
+        FileUtil.writeToFile(jacocoAgentStream, jacocoAgent);
+        return jacocoAgent;
     }
 }
