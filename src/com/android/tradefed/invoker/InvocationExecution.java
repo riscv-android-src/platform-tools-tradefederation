@@ -457,6 +457,9 @@ public class InvocationExecution implements IInvocationExecution {
         IInvocationContext context = testInfo.getContext();
         Throwable deferredThrowable = null;
 
+        InvocationMetricLogger.addInvocationMetrics(
+                InvocationMetricKey.TEARDOWN_START, System.currentTimeMillis());
+
         List<IMultiTargetPreparer> multiPreparers = config.getMultiTargetPreparers();
         deferredThrowable =
                 runMultiTargetPreparersTearDown(
@@ -534,6 +537,9 @@ public class InvocationExecution implements IInvocationExecution {
 
         // Collect adb logs.
         logHostAdb(config, logger);
+
+        InvocationMetricLogger.addInvocationMetrics(
+                InvocationMetricKey.TEARDOWN_END, System.currentTimeMillis());
 
         if (deferredThrowable != null) {
             throw deferredThrowable;

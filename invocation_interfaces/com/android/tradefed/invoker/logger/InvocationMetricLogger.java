@@ -75,6 +75,8 @@ public class InvocationMetricLogger {
         FETCH_BUILD_END("tf_fetch_build_end_timestamp", false),
         SETUP_START("tf_setup_start_timestamp", false),
         SETUP_END("tf_setup_end_timestamp", false),
+        TEARDOWN_START("tf_teardown_start_timestamp", false),
+        TEARDOWN_END("tf_teardown_end_timestamp", false),
         INVOCATION_END("tf_invocation_end_timestamp", false);
 
         private final String mKeyName;
