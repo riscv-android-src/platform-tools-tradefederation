@@ -77,7 +77,7 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
 
     /** Execute common setup procedure and launch the virtual device. */
     @Override
-    public void preInvocationSetup(IBuildInfo info)
+    public synchronized void preInvocationSetup(IBuildInfo info)
             throws TargetSetupError, DeviceNotAvailableException {
         // The setup method in super class does not require the device to be online.
         super.preInvocationSetup(info);
@@ -120,27 +120,12 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
 
     /** Execute common tear-down procedure and stop the virtual device. */
     @Override
-    public void postInvocationTearDown(Throwable exception) {
+    public synchronized void postInvocationTearDown(Throwable exception) {
         TestDeviceOptions options = getOptions();
         HostAndPort hostAndPort = getHostAndPortFromAvdInfo();
         String instanceName = (mGceAvdInfo != null ? mGceAvdInfo.instanceName() : null);
         try {
-            if (!options.shouldSkipTearDown() && hostAndPort != null) {
-                if (!adbTcpDisconnect(
-                        hostAndPort.getHost(), Integer.toString(hostAndPort.getPort()))) {
-                    CLog.e("Cannot disconnect from %s", hostAndPort.toString());
-                }
-            }
-
-            if (!options.shouldSkipTearDown() && instanceName != null) {
-                CommandResult result = acloudDelete(instanceName, options);
-                if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
-                    CLog.e("Cannot stop the virtual device.");
-                }
-            } else {
-                CLog.i("Skip stopping the virtual device.");
-            }
-
+            shutdown();
             reportInstanceLogs();
         } finally {
             restoreStubDevice();
@@ -398,6 +383,13 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
             throw new TargetSetupError("Cannot read acloud report file.", getDeviceDescriptor());
         }
 
+        if (!GceAvdInfo.GceStatus.SUCCESS.equals(mGceAvdInfo.getStatus())) {
+            throw new TargetSetupError(
+                    "Cannot launch virtual device: " + mGceAvdInfo.getErrors(),
+                    getDeviceDescriptor(),
+                    mGceAvdInfo.getErrorType());
+        }
+
         if (Strings.isNullOrEmpty(mGceAvdInfo.instanceName())) {
             throw new TargetSetupError("No instance name in acloud report.", getDeviceDescriptor());
         }
@@ -405,11 +397,39 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
         if (getHostAndPortFromAvdInfo() == null) {
             throw new TargetSetupError("No port in acloud report.", getDeviceDescriptor());
         }
+    }
 
-        if (!GceAvdInfo.GceStatus.SUCCESS.equals(mGceAvdInfo.getStatus())) {
-            throw new TargetSetupError(
-                    "Cannot launch virtual device: " + mGceAvdInfo.getErrors(),
-                    getDeviceDescriptor());
+    /** Shutdown the device. */
+    public synchronized void shutdown() {
+        TestDeviceOptions options = getOptions();
+        if (options.shouldSkipTearDown()) {
+            CLog.i("Skip shutting down the virtual device.");
+            return;
+        }
+        HostAndPort hostAndPort = getHostAndPortFromAvdInfo();
+        String instanceName = (mGceAvdInfo != null ? mGceAvdInfo.instanceName() : null);
+
+        try {
+            if (hostAndPort != null) {
+                if (!adbTcpDisconnect(
+                        hostAndPort.getHost(), Integer.toString(hostAndPort.getPort()))) {
+                    CLog.e("Cannot disconnect from %s", hostAndPort.toString());
+                }
+            } else {
+                CLog.i("Skip disconnecting.");
+            }
+
+            if (instanceName != null) {
+                CommandResult result = acloudDelete(instanceName, options);
+                if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
+                    CLog.e("Cannot stop the virtual device.");
+                }
+            } else {
+                CLog.i("Skip acloud delete.");
+            }
+        } finally {
+            // Remove AVD info to avoid deleting the device more than once.
+            mGceAvdInfo = null;
         }
     }
 

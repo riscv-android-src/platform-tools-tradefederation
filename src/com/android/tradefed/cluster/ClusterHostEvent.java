@@ -29,8 +29,6 @@ import java.util.Map;
 /** A class to encapsulate cluster host events to be uploaded. */
 public class ClusterHostEvent implements IClusterEvent {
     private long mTimestamp;
-    private String mHostName;
-    private String mTfVersion;
     private String mClusterId;
     private List<String> mNextClusterIds;
     private List<ClusterDeviceInfo> mDeviceInfos = new ArrayList<>();
@@ -39,6 +37,8 @@ public class ClusterHostEvent implements IClusterEvent {
     public static final String EVENT_QUEUE = "host-event-queue";
     public static final String LABEL_KEY = "label";
     public static final String HOST_IP_KEY = "host_ip";
+    public static final String TEST_HARNESS_START_TIME_KEY = "test_harness_start_time_ms";
+    public static final String TRADEFED = "TRADEFED";
 
     /** Enums of the different types of host events. */
     public enum HostEventType {
@@ -74,11 +74,20 @@ public class ClusterHostEvent implements IClusterEvent {
     }
 
     public String getHostName() {
-        return mHostName;
+        return ClusterHostUtil.getHostName();
     }
 
+    @Deprecated
     public String getTfVersion() {
-        return mTfVersion;
+        return getTestHarnessVersion();
+    }
+
+    public String getTestHarnessVersion() {
+        return ClusterHostUtil.getTfVersion();
+    }
+
+    public String getTestHarness() {
+        return TRADEFED;
     }
 
     public String getClusterId() {
@@ -87,10 +96,6 @@ public class ClusterHostEvent implements IClusterEvent {
 
     public CommandScheduler.HostState getHostState() {
         return mHostState;
-    }
-
-    public long getTfStartTime() {
-        return ClusterHostUtil.getTfStartTimeMillis();
     }
 
     public List<ClusterDeviceInfo> getDeviceInfos() {
@@ -116,8 +121,6 @@ public class ClusterHostEvent implements IClusterEvent {
     public static class Builder {
         private HostEventType mType;
         private long mTimestamp = System.currentTimeMillis();
-        private String mHostName;
-        private String mTfVersion;
         private String mClusterId;
         private List<String> mNextClusterIds;
         private List<ClusterDeviceInfo> mDeviceInfos = new ArrayList<ClusterDeviceInfo>();
@@ -125,7 +128,12 @@ public class ClusterHostEvent implements IClusterEvent {
         private CommandScheduler.HostState mHostState = CommandScheduler.HostState.UNKNOWN;
         private String mLabName;
 
-        public Builder() {}
+        public Builder() {
+            mData.put(HOST_IP_KEY, ClusterHostUtil.getHostIpAddress());
+            mData.put(
+                    TEST_HARNESS_START_TIME_KEY,
+                    String.valueOf(ClusterHostUtil.getTfStartTimeMillis()));
+        }
 
         public Builder setHostEventType(final HostEventType type) {
             mType = type;
@@ -139,16 +147,6 @@ public class ClusterHostEvent implements IClusterEvent {
 
         public Builder setClusterId(final String clusterId) {
             mClusterId = clusterId;
-            return this;
-        }
-
-        public Builder setHostName(final String hostname) {
-            mHostName = hostname;
-            return this;
-        }
-
-        public Builder setTfVersion(final String tfVersion) {
-            mTfVersion = tfVersion;
             return this;
         }
 
@@ -191,8 +189,6 @@ public class ClusterHostEvent implements IClusterEvent {
             final ClusterHostEvent event = new ClusterHostEvent();
             event.mType = mType;
             event.mTimestamp = mTimestamp;
-            event.mHostName = mHostName;
-            event.mTfVersion = mTfVersion;
             event.mClusterId = mClusterId;
             event.mDeviceInfos = new ArrayList<>(mDeviceInfos);
             event.mData = new HashMap<>(mData);
@@ -211,7 +207,9 @@ public class ClusterHostEvent implements IClusterEvent {
         json.put("time", this.getTimestamp() / 1000);
         if (this.getType() != null) json.put("type", this.getType().toString());
         json.put("hostname", this.getHostName());
-        json.put("tf_version", this.getTfVersion());
+        json.put("tf_version", this.getTestHarnessVersion());
+        json.put("test_harness_version", this.getTestHarnessVersion());
+        json.put("test_harness", this.getTestHarness());
         json.put("cluster", this.getClusterId());
         JSONArray deviceInfos = new JSONArray();
         for (ClusterDeviceInfo d : this.getDeviceInfos()) {
@@ -224,7 +222,6 @@ public class ClusterHostEvent implements IClusterEvent {
         }
         if (this.getLabName() != null) json.put("lab_name", this.getLabName());
         json.put("state", this.getHostState().toString());
-        json.put("tf_start_time_seconds", this.getTfStartTime() / 1000);
         return json;
     }
 }

@@ -129,7 +129,7 @@ public class RunOnWorkProfileTargetPreparer extends BaseTargetPreparer
     @Override
     public void tearDown(TestInformation testInfo, Throwable e) throws DeviceNotAvailableException {
         int workProfileId = Integer.parseInt(testInfo.properties().get(RUN_TESTS_AS_USER_KEY));
-
+        testInfo.properties().remove(RUN_TESTS_AS_USER_KEY);
         testInfo.getDevice().removeUser(workProfileId);
     }
 

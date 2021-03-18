@@ -46,35 +46,11 @@ java_genrule_host {
         "protoc-gen-grpc-java-plugin",
         "soong_zip",
      ],
-     arch: "common",
      cmd: "$(location aprotoc) -Iexternal/protobuf/src" +
         " -Itools/tradefederation/core/proto/monitoring/server" +
         " --plugin=protoc-gen-grpc=$(location protoc-gen-grpc-java-plugin) $(in)" +
         " --grpc_out=$(genDir) && $(location soong_zip) -o $(out) -C $(genDir) -D $(genDir)",
      out: ["tradefed-grpc.srcjar"],
-}
-
-python_library_host {
-    name: "tradefed-protos-py",
-    pkg_path: "atest",
-    srcs: ["proto/**/*.proto"],
-    visibility: [
-        "//tools/asuite/atest",
-    ],
-    libs: [
-        "libprotobuf-python",
-    ],
-    proto: {
-        include_dirs: ["external/protobuf/src"],
-    },
-    version: {
-        py2: {
-            enabled: true,
-        },
-        py3: {
-            enabled: true,
-        },
-    },
 }
 
 // Main Target to build tradefed jar

@@ -20,6 +20,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import com.android.ddmlib.IDevice;
 import com.android.tradefed.build.DeviceBuildInfo;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
@@ -72,6 +73,7 @@ public class DeviceFlashPreparerTest {
         mMockDevice = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(mMockDevice.getSerialNumber()).andReturn("foo").anyTimes();
         EasyMock.expect(mMockDevice.getOptions()).andReturn(new TestDeviceOptions()).anyTimes();
+        EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(EasyMock.createMock(IDevice.class));
         mMockBuildInfo = new DeviceBuildInfo("0", "");
         mMockBuildInfo.setDeviceImageFile(new File("foo"), "0");
         mMockBuildInfo.setBuildFlavor("flavor");
@@ -169,11 +171,13 @@ public class DeviceFlashPreparerTest {
             mTestInfo
                     .getContext()
                     .addDeviceBuildInfo("device", EasyMock.createMock(IBuildInfo.class));
+            EasyMock.replay(mMockDevice);
             mDeviceFlashPreparer.setUp(mTestInfo);
             fail("IllegalArgumentException not thrown");
         } catch (IllegalArgumentException e) {
             // expected
         }
+        EasyMock.verify(mMockDevice);
     }
 
     /**
@@ -184,11 +188,13 @@ public class DeviceFlashPreparerTest {
     public void testSetUp_noRamdisk() throws Exception {
         mSetter.setOptionValue("flash-ramdisk", "true");
         try {
+            EasyMock.replay(mMockDevice);
             mDeviceFlashPreparer.setUp(mTestInfo);
             fail("IllegalArgumentException not thrown");
         } catch (IllegalArgumentException e) {
             // expected
         }
+        EasyMock.verify(mMockDevice);
     }
 
     /** Test {@link DeviceFlashPreparer#setUp(TestInformation)} when build does not boot. */

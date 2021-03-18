@@ -81,6 +81,14 @@ public class PackageInfo {
         return mAttributes.get("versionName");
     }
 
+    /**
+     * Returns the version name of the application. Note: this will return <code>null</code> if
+     * 'versionCode' attribute was not found
+     */
+    public String getVersionCode() {
+        return mAttributes.get("versionCode");
+    }
+
     /** Returns where the package is located in the filesystem. */
     public String getCodePath() {
         return mAttributes.get("codePath");

@@ -188,6 +188,17 @@ public class RunOnSecondaryUserTargetPreparerTest {
     }
 
     @Test
+    public void tearDown_clearsRunTestsAsUserProperty() throws Exception {
+        when(mTestInfo.properties().get(RunOnSecondaryUserTargetPreparer.RUN_TESTS_AS_USER_KEY))
+                .thenReturn("2");
+
+        mPreparer.tearDown(mTestInfo, /* throwable= */ null);
+
+        verify(mTestInfo.properties())
+                .remove(RunOnSecondaryUserTargetPreparer.RUN_TESTS_AS_USER_KEY);
+    }
+
+    @Test
     public void setUp_doesNotSupportAdditionalUsers_doesNotChangeTestUser() throws Exception {
         when(mTestInfo.getDevice().getMaxNumberOfUsersSupported()).thenReturn(1);
 

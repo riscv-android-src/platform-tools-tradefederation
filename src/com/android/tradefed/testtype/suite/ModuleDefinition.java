@@ -1075,8 +1075,16 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         mEnableDynamicDownload = enableDynamicDownload;
     }
 
-    public void addDynamicDownloadArgs(Map<String, String> extraArgs) {
-        mModuleConfiguration.getCommandOptions().getDynamicDownloadArgs().putAll(extraArgs);
+    /** Copy a few of the suite level configuration */
+    public void transferSuiteLevelOptions(IConfiguration mSuiteConfiguration) {
+        mModuleConfiguration
+                .getCommandOptions()
+                .getDynamicDownloadArgs()
+                .putAll(mSuiteConfiguration.getCommandOptions().getDynamicDownloadArgs());
+        mModuleConfiguration
+                .getCommandOptions()
+                .setReportTestCaseCount(
+                        mSuiteConfiguration.getCommandOptions().reportTestCaseCount());
     }
 
     /**
