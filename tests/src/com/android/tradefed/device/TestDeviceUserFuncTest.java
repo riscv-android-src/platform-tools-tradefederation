@@ -104,4 +104,18 @@ public class TestDeviceUserFuncTest implements IDeviceTest {
             }
         }
     }
+
+    /**
+     * Tests the isUserRunning method semi-independently
+     *
+     * <p>Assuming the device is left in a default state after other tests, the default user should
+     * be running, which means we can test our method. If this test fails, it means either a)
+     * another test isn't cleaning up properly or b) our method is broken. Either result is worth
+     * knowing.
+     */
+    @Test
+    public void testIsUserRunning() throws Exception {
+        final int DEFAULT_USER = 0;
+        assertTrue(mTestDevice.isUserRunning(DEFAULT_USER));
+    }
 }
