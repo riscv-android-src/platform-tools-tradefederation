@@ -33,7 +33,7 @@ import java.util.List;
  * <p>Its highly recommended to prepare an emulator snapshot (eg tradefed run
  * emulator/generate-snapshot) before running any configs that includes this.
  */
-public class LocalEmulatorLaunch extends BaseLocalEmulatorPreparer {
+public class LocalEmulatorLaunch extends BaseEmulatorPreparer {
 
     @Option(name = "boot-timeout", description = "maximum duration to wait for emulator to boot")
     private Duration mBootTimeout = Duration.ofSeconds(30);
@@ -45,9 +45,9 @@ public class LocalEmulatorLaunch extends BaseLocalEmulatorPreparer {
         IDeviceManager manager = GlobalConfiguration.getDeviceManagerInstance();
         List<String> args = buildEmulatorLaunchArgs();
         args.add("-read-only");
+        RunUtil runUtil = buildRunUtilForEmulatorLaunch();
 
-        manager.launchEmulator(
-                allocatedDevice, mBootTimeout.toMillis(), RunUtil.getDefault(), args);
+        manager.launchEmulator(allocatedDevice, mBootTimeout.toMillis(), runUtil, args);
     }
 
     @Override

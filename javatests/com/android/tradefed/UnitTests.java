@@ -103,7 +103,8 @@ import com.android.tradefed.device.metric.BugreportzOnFailureCollectorTest;
 import com.android.tradefed.device.metric.ClangCodeCoverageCollectorTest;
 import com.android.tradefed.device.metric.DebugHostLogOnFailureCollectorTest;
 import com.android.tradefed.device.metric.DeviceMetricDataTest;
-import com.android.tradefed.device.metric.EmulatorMemoryCpuCollectorTest;
+import com.android.tradefed.device.metric.EmulatorMemoryCpuCapturerTest;
+
 import com.android.tradefed.device.metric.FilePullerDeviceMetricCollectorTest;
 import com.android.tradefed.device.metric.FilePullerLogCollectorTest;
 import com.android.tradefed.device.metric.GcovCodeCoverageCollectorTest;
@@ -553,7 +554,7 @@ import org.junit.runners.Suite.SuiteClasses;
     ClangCodeCoverageCollectorTest.class,
     DebugHostLogOnFailureCollectorTest.class,
     DeviceMetricDataTest.class,
-    EmulatorMemoryCpuCollectorTest.class,
+    EmulatorMemoryCpuCapturerTest.class,
     FilePullerDeviceMetricCollectorTest.class,
     FilePullerLogCollectorTest.class,
     GcovCodeCoverageCollectorTest.class,
