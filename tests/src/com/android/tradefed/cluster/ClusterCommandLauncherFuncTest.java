@@ -35,6 +35,7 @@ import com.android.tradefed.metrics.proto.MetricMeasurement;
 import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunInterruptedException;
@@ -160,7 +161,10 @@ public class ClusterCommandLauncherFuncTest {
         Thread thread = Thread.currentThread();
         doAnswer(
                         invocation -> {
-                            runUtil.interrupt(thread, "interrupt");
+                            runUtil.interrupt(
+                                    thread,
+                                    "interrupt",
+                                    InfraErrorIdentifier.TRADEFED_SHUTTING_DOWN);
                             return null;
                         })
                 .when(mListener)

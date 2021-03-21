@@ -15,7 +15,8 @@
 -->
 <configuration description="Common template preparer for dynamic system upgrade (DSU)." >
     <template-include name="base-preparer" default="empty" />
-    <target_preparer class="com.android.tradefed.targetprep.DynamicSystemPreparer" />
-    <!-- Can use template/preparers/gki-device-flash-preparer for extra GKI flash-->
+    <!-- Flash GKI before GSI. Can use template template/preparers/gki-device-flash-preparer -->
+    <!-- https://docs.partner.android.com/gms/testing/vts/vts-compliance#vts. -->
     <template-include name="gki-preparer" default="empty" />
+    <target_preparer class="com.android.tradefed.targetprep.DynamicSystemPreparer" />
 </configuration>

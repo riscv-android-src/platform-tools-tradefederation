@@ -35,7 +35,6 @@ java_library_host {
         type: "full",
     },
     static_libs: [
-        "platformprotos",
         "asuite_proto_java",
     ],
 }

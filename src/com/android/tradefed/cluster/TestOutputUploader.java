@@ -84,7 +84,7 @@ public class TestOutputUploader {
                                 file.getAbsolutePath(), result.getStatus());
                 CLog.e(msg);
                 CLog.e("stdout:\n'''\n%s'''\n", result.getStdout());
-                CLog.d("stderr:\n'''\n%s'''\n", result.getStderr());
+                CLog.e("stderr:\n'''\n%s'''\n", result.getStderr());
                 throw new RuntimeException(msg);
             }
         }
@@ -104,7 +104,12 @@ public class TestOutputUploader {
                 return ArrayUtil.list("gsutil", "cp", file.getAbsolutePath(), uploadUrl);
             case HTTP_PROTOCOL:
             case HTTPS_PROTOCOL:
+                // uploadUrl for HTTP prototal should include filename.
+                if (!uploadUrl.endsWith("/")) {
+                    uploadUrl += "/";
+                }
                 // Add -L option to handle redirect.
+                uploadUrl += file.getName();
                 return ArrayUtil.list(
                         "curl",
                         "-X",

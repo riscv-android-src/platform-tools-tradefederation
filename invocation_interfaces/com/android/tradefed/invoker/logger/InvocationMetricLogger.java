@@ -38,7 +38,7 @@ public class InvocationMetricLogger {
         // -- Disk memory usage --
         // Approximate peak disk space usage of the invocation
         // Represent files that would usually live for the full invocation (min usage)
-        TEAR_DOWN_DISK_USAGE("teardown_disk_usage", false),
+        TEAR_DOWN_DISK_USAGE("teardown_disk_usage_bytes", false),
         // Represents the time we spend attempting to recover a device.
         RECOVERY_TIME("recovery_time", true),
         // Represents how often we enter the recover device routine.
@@ -69,7 +69,15 @@ public class InvocationMetricLogger {
         DEVICE_RESET_COUNT("device_reset_count", true),
         DEVICE_RESET_MODULES("device_reset_modules", true),
         NONPERSISTENT_DEVICE_PROPERTIES("nonpersistent_device_properties", true),
-        PERSISTENT_DEVICE_PROPERTIES("persistent_device_properties", true);
+        PERSISTENT_DEVICE_PROPERTIES("persistent_device_properties", true),
+        INVOCATION_START("tf_invocation_start_timestamp", false),
+        FETCH_BUILD_START("tf_fetch_build_start_timestamp", false),
+        FETCH_BUILD_END("tf_fetch_build_end_timestamp", false),
+        SETUP_START("tf_setup_start_timestamp", false),
+        SETUP_END("tf_setup_end_timestamp", false),
+        TEARDOWN_START("tf_teardown_start_timestamp", false),
+        TEARDOWN_END("tf_teardown_end_timestamp", false),
+        INVOCATION_END("tf_invocation_end_timestamp", false);
 
         private final String mKeyName;
         // Whether or not to add the value when the key is added again.

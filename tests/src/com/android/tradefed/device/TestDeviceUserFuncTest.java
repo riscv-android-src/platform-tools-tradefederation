@@ -16,8 +16,9 @@
 package com.android.tradefed.device;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner;
 import com.android.tradefed.testtype.IDeviceTest;
@@ -62,8 +63,7 @@ public class TestDeviceUserFuncTest implements IDeviceTest {
         try {
             final String userName = "Google";
             userId = mTestDevice.createUser(userName, false, false);
-            assertNotEquals(0, userId);
-            assertNotEquals(-1, userId);
+            assertTrue(userId > 0);
 
             List<Integer> listedIDs = mTestDevice.listUsers();
             boolean containsUserId = listedIDs.contains(userId);
@@ -80,5 +80,42 @@ public class TestDeviceUserFuncTest implements IDeviceTest {
                 mTestDevice.removeUser(userId);
             }
         }
+    }
+
+    /** Tries creating, starting, and stopping a user. */
+    @Test
+    public void testStartUser_IsRunningUser_StopUser() throws Exception {
+        int userId = -1;
+        try {
+            final String username = "Google";
+            userId = mTestDevice.createUser(username, false, false);
+            assertTrue(userId > 0);
+
+            mTestDevice.startUser(userId);
+
+            assertTrue(mTestDevice.isUserRunning(userId));
+
+            mTestDevice.stopUser(userId);
+
+            assertFalse(mTestDevice.isUserRunning(userId));
+        } finally {
+            if (userId != -1) {
+                mTestDevice.removeUser(userId);
+            }
+        }
+    }
+
+    /**
+     * Tests the isUserRunning method semi-independently
+     *
+     * <p>Assuming the device is left in a default state after other tests, the default user should
+     * be running, which means we can test our method. If this test fails, it means either a)
+     * another test isn't cleaning up properly or b) our method is broken. Either result is worth
+     * knowing.
+     */
+    @Test
+    public void testIsUserRunning() throws Exception {
+        final int DEFAULT_USER = 0;
+        assertTrue(mTestDevice.isUserRunning(DEFAULT_USER));
     }
 }
