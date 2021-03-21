@@ -20,13 +20,15 @@ import static org.junit.Assert.assertTrue;
 
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.CommandResult;
+import com.android.tradefed.util.CommandStatus;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.mockito.Mockito;
+import static org.mockito.Mockito.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -42,7 +44,9 @@ public class TestOutputUploaderTest {
 
     @Before
     public void setUp() throws IOException {
-        mMockRunUtil = Mockito.mock(IRunUtil.class);
+        mMockRunUtil = mock(IRunUtil.class);
+        when(mMockRunUtil.runTimedCmdRetry(anyLong(), anyLong(), anyInt(), anyVararg()))
+                .thenReturn(new CommandResult(CommandStatus.SUCCESS));
         mTestOutputUploader =
                 new TestOutputUploader() {
                     @Override
@@ -86,7 +90,7 @@ public class TestOutputUploaderTest {
             destRootFolder = FileUtil.createTempDir(this.getClass().getName());
             final String uploadUrl = "file://" + destRootFolder.getAbsolutePath();
             mTestOutputUploader.setUploadUrl(uploadUrl);
-
+            
             final String outputFileUrl = mTestOutputUploader.uploadFile(mOutputFile, "sub_dir");
 
             assertEquals(uploadUrl + "/" + "sub_dir" + "/" + mOutputFile.getName(), outputFileUrl);
@@ -98,5 +102,28 @@ public class TestOutputUploaderTest {
                 FileUtil.recursiveDelete(destRootFolder);
             }
         }
+    }
+
+    @Test
+    public void testUploadFile_httpProtocol_withDestPath() throws IOException {
+        final String uploadUrl = "http://test.hostname.com";
+        mTestOutputUploader.setUploadUrl(uploadUrl);
+
+        final String outputFileUrl = mTestOutputUploader.uploadFile(mOutputFile, "sub_dir");
+
+        assertEquals(uploadUrl + "/" + "sub_dir" + "/" + mOutputFile.getName(), outputFileUrl);
+        verify(mMockRunUtil)
+                .runTimedCmdRetry(
+                        TestOutputUploader.UPLOAD_TIMEOUT_MS,
+                        TestOutputUploader.RETRY_INTERVAL_MS,
+                        TestOutputUploader.MAX_RETRY_COUNT,
+                        new String[] {
+                            "curl",
+                            "-X",
+                            "POST",
+                            "-F file=@" + mOutputFile.getAbsolutePath(),
+                            "-fL",
+                            outputFileUrl
+                        });
     }
 }

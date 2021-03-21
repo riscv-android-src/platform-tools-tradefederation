@@ -15,44 +15,32 @@
  */
 package com.android.tradefed.util;
 
+import com.android.tradefed.error.HarnessRuntimeException;
+import com.android.tradefed.result.error.ErrorIdentifier;
 
-/**
- * Thrown when a run operation is interrupted by an external request.
- */
-@SuppressWarnings("serial")
-public class RunInterruptedException extends RuntimeException {
+/** Thrown when a run operation is interrupted by an external request. */
+public class RunInterruptedException extends HarnessRuntimeException {
+
+    private static final long serialVersionUID = 100L;
+
     /**
      * Creates a {@link RunInterruptedException}.
+     *
+     * @param message The message associated with the exception
+     * @param errorId The {@link ErrorIdentifier} categorizing the exception.
      */
-    public RunInterruptedException() {
-        super();
+    public RunInterruptedException(String message, ErrorIdentifier errorId) {
+        super(message, errorId);
     }
 
     /**
      * Creates a {@link RunInterruptedException}.
      *
-     * @param msg a descriptive message.
+     * @param message The message associated with the exception
+     * @param cause The cause of the exception
+     * @param errorId The {@link ErrorIdentifier} categorizing the exception.
      */
-    public RunInterruptedException(String msg) {
-        super(msg);
-    }
-
-    /**
-     * Creates a {@link RunInterruptedException}.
-     *
-     * @param cause the root {@link Throwable} that caused the device to become unavailable.
-     */
-    public RunInterruptedException(Throwable cause) {
-        super(cause);
-    }
-
-    /**
-     * Creates a {@link RunInterruptedException}.
-     *
-     * @param msg a descriptive message.
-     * @param cause the root {@link Throwable} that caused the device to become unavailable.
-     */
-    public RunInterruptedException(String msg, Throwable cause) {
-        super(msg, cause);
+    public RunInterruptedException(String message, Throwable cause, ErrorIdentifier errorId) {
+        super(message, cause, errorId);
     }
 }

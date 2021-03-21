@@ -42,6 +42,7 @@ import com.android.tradefed.error.IHarnessException;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.TfObjectTracker;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.invoker.shard.token.ITokenRequest;
 import com.android.tradefed.invoker.shard.token.TokenProperty;
@@ -867,6 +868,8 @@ public abstract class ITestSuite
         Map<String, String> failures = new LinkedHashMap<>();
         boolean bugreportNeeded = false;
         for (ISystemStatusChecker checker : checkers) {
+            // Track usage of the checker
+            TfObjectTracker.countWithParents(checker.getClass());
             // Check if the status checker should be skipped.
             if (mSystemStatusCheckBlacklist.contains(checker.getClass().getName())) {
                 CLog.d(

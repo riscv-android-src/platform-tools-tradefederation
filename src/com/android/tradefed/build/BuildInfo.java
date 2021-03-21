@@ -75,6 +75,10 @@ public class BuildInfo implements IBuildInfo {
                 BuildInfoFileKey.TARGET_LINKED_DIR.getFileKey(),
             };
 
+    /** These files will be fully copied instead of hardlink. */
+    private static final Set<String> FULL_COPY_FILES =
+            new HashSet<>(Arrays.asList("libunwindstack_unit_test", "libunwindstack.so"));
+
     /**
      * Creates a {@link BuildInfo} using default attribute values.
      */
@@ -224,7 +228,7 @@ public class BuildInfo implements IBuildInfo {
             File copyFile;
             if (origFile.isDirectory()) {
                 copyFile = FileUtil.createTempDir(fileEntry.getKey());
-                FileUtil.recursiveHardlink(origFile, copyFile);
+                FileUtil.recursiveHardlink(origFile, copyFile, false, FULL_COPY_FILES);
             } else {
                 // Only using createTempFile to create a unique dest filename
                 copyFile = FileUtil.createTempFile(fileEntry.getKey(),

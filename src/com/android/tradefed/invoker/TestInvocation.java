@@ -139,6 +139,7 @@ public class TestInvocation implements ITestInvocation {
     static final String INVOCATION_ENDED_BUGREPORT_NAME = "invocation_ended_bugreport";
     static final String TARGET_SETUP_ERROR_BUGREPORT_NAME = "target_setup_error_bugreport";
     static final String BATT_TAG = "[battery level]";
+    static final String RECOVERY_LOG_DEVICE_PATH = "/tmp/recovery.log";
 
     public enum Stage {
         ERROR("error"),
@@ -350,6 +351,7 @@ public class TestInvocation implements ITestInvocation {
                         executor.invokeAll(callableTasks, 5, TimeUnit.MINUTES);
                     }
                 }
+                reportRecoveryLogs(context.getDevices(), listener);
                 if (exception == null) {
                     CLog.d("Checking that devices are online.");
                     checkDevicesAvailable(context.getDevices(), listener);
@@ -428,6 +430,14 @@ public class TestInvocation implements ITestInvocation {
                 // If host_log is reported, remove the hook
                 Runtime.getRuntime().removeShutdownHook(reportThread);
 
+                // Measure teardown disk usage before clean up
+                Long size = measureWorkFolderSize(config, testInfo);
+                if (size != null) {
+                    InvocationMetricLogger.addInvocationMetrics(
+                            InvocationMetricKey.TEAR_DOWN_DISK_USAGE, size);
+                }
+                InvocationMetricLogger.addInvocationMetrics(
+                        InvocationMetricKey.INVOCATION_END, System.currentTimeMillis());
                 elapsedTime = System.currentTimeMillis() - startTime;
                 reportInvocationEnded(config, context, listener, elapsedTime);
             } finally {
@@ -766,6 +776,8 @@ public class TestInvocation implements ITestInvocation {
             IRescheduler rescheduler,
             ITestInvocationListener... extraListeners)
             throws DeviceNotAvailableException, Throwable {
+        InvocationMetricLogger.addInvocationMetrics(
+                InvocationMetricKey.INVOCATION_START, System.currentTimeMillis());
         // Handle the automated reporting
         applyAutomatedReporters(config);
 
@@ -896,9 +908,13 @@ public class TestInvocation implements ITestInvocation {
             }
 
             long start = System.currentTimeMillis();
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.FETCH_BUILD_START, start);
             boolean providerSuccess =
                     invokeFetchBuild(info, config, rescheduler, listener, invocationPath);
-            long fetchBuildDuration = System.currentTimeMillis() - start;
+            long end = System.currentTimeMillis();
+            InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.FETCH_BUILD_END, end);
+            long fetchBuildDuration = end - start;
             InvocationMetricLogger.addInvocationMetrics(
                     InvocationMetricKey.FETCH_BUILD, fetchBuildDuration);
             CLog.d("Fetch build duration: %s", TimeUtil.formatElapsedTime(fetchBuildDuration));
@@ -919,9 +935,11 @@ public class TestInvocation implements ITestInvocation {
                 // devices (Remote devices for example) require extra preparation step to be
                 // available, but sharding requires the device to be available in some cases. So
                 // we call the device setup early to meet all the requirements.
+                boolean startInvocationCalled = false;
                 if (shardCount != null && shardIndex != null) {
                     deviceInit = true;
                     startInvocation(config, context, listener);
+                    startInvocationCalled = true;
                     try {
                         invocationPath.runDevicePreInvocationSetup(context, config, listener);
                     } catch (DeviceNotAvailableException | TargetSetupError e) {
@@ -953,11 +971,23 @@ public class TestInvocation implements ITestInvocation {
                 try {
                     sharding = invocationPath.shardConfig(config, info, rescheduler, listener);
                 } catch (RuntimeException unexpected) {
+                    CLog.e("Exception during sharding.");
+                    CLog.e(unexpected);
                     if (deviceInit) {
                         // If we did an early setup, do the tear down.
-                        invocationPath.runDevicePostInvocationTearDown(context, config, null);
+                        invocationPath.runDevicePostInvocationTearDown(context, config, unexpected);
                     }
-                    throw unexpected;
+                    // Call the reporting to get debugging infos.
+                    if (!startInvocationCalled) {
+                        startInvocation(config, context, listener);
+                    }
+                    reportFailure(
+                            createFailureFromException(unexpected, FailureStatus.INFRA_FAILURE)
+                                    .setActionInProgress(ActionInProgress.TEST),
+                            listener);
+                    reportHostLog(listener, config);
+                    listener.invocationEnded(0L);
+                    return;
                 }
                 if (sharding) {
                     CLog.i(
@@ -996,12 +1026,6 @@ public class TestInvocation implements ITestInvocation {
             CLog.e(e);
         } finally {
             scope.exit();
-            // Measure teardown disk usage before clean up
-            Long size = measureWorkFolderSize(config, info.dependenciesFolder());
-            if (size != null) {
-                InvocationMetricLogger.addInvocationMetrics(
-                        InvocationMetricKey.TEAR_DOWN_DISK_USAGE, size);
-            }
             // Ensure build infos are always cleaned up at the end of invocation.
             invocationPath.cleanUpBuilds(context, config);
             // ensure we always deregister the logger
@@ -1232,6 +1256,34 @@ public class TestInvocation implements ITestInvocation {
         return devicesStates;
     }
 
+    private void reportRecoveryLogs(List<ITestDevice> devices, ITestInvocationListener listener) {
+        for (ITestDevice device : devices) {
+            if (device == null) {
+                continue;
+            }
+            if (device.getIDevice() instanceof StubDevice) {
+                continue;
+            }
+            if (device.getDeviceState() != TestDeviceState.RECOVERY) {
+                continue;
+            }
+            try {
+                File recovery_log = device.pullFile(RECOVERY_LOG_DEVICE_PATH);
+                if (recovery_log == null) {
+                    return;
+                }
+                try (FileInputStreamSource fis = new FileInputStreamSource(recovery_log)) {
+                    listener.testLog(
+                            String.format("recovery_log_%s.txt", device.getSerialNumber()),
+                            LogDataType.TEXT,
+                            fis);
+                }
+            } catch (DeviceNotAvailableException e) {
+                CLog.i("Device unavailable, can't pull recovery.log");
+            }
+        }
+    }
+
     private void reportInvocationEnded(
             IConfiguration config,
             IInvocationContext context,
@@ -1345,7 +1397,12 @@ public class TestInvocation implements ITestInvocation {
     }
 
     /** Measure the size of the work folder. */
-    private Long measureWorkFolderSize(IConfiguration config, File workFolder) {
+    private Long measureWorkFolderSize(IConfiguration config, TestInformation testInfo) {
+        if (testInfo == null) {
+            return null;
+        }
+        File workFolder = testInfo.dependenciesFolder();
+        CLog.d("Measuring size of %s", workFolder);
         if (workFolder == null || !workFolder.exists()) {
             return null;
         }
@@ -1353,6 +1410,7 @@ public class TestInvocation implements ITestInvocation {
         if (config.getCommandOptions()
                 .getInvocationData()
                 .containsKey(SubprocessTfLauncher.SUBPROCESS_TAG_NAME)) {
+            CLog.d("Skip measuring size since we are in subprocess");
             return null;
         }
 

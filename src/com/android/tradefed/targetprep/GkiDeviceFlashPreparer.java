@@ -105,6 +105,11 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
             description = "whether to boot the device in user space after flash.")
     private boolean mPostRebootDeviceIntoUserSpace = true;
 
+    @Option(
+            name = "wipe-device-after-gki-flash",
+            description = "Whether to wipe device after GKI boot image flash.")
+    private boolean mShouldWipeDevice = true;
+
     private File mBootImg = null;
 
     /** {@inheritDoc} */
@@ -209,6 +214,10 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
                 executeFastbootCmd(device, "flash", "dtbo", dtboImg.getAbsolutePath());
             }
             executeFastbootCmd(device, "flash", "boot", mBootImg.getAbsolutePath());
+
+            if (mShouldWipeDevice) {
+                executeFastbootCmd(device, "-w");
+            }
         } finally {
             deviceManager.returnFlashingPermit();
             // Allow interruption at the end no matter what.

@@ -149,6 +149,9 @@ public class HostUnitTestsConfigValidation implements IBuildReceiver {
     // This will be used when migrating default and clean up as we clear the TEST_MAPPING files.
     private static final Set<String> EXEMPTION_LIST =
             new HashSet<>(Arrays.asList(
+              "geotz_data_pipeline_tests",
+              "trebuchet-core-tests",
+              "trebuchet-startup-common-tests"
             ));
 
     /**

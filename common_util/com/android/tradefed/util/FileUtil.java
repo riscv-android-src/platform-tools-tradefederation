@@ -19,8 +19,11 @@ package com.android.tradefed.util;
 import com.android.ddmlib.Log;
 import com.android.tradefed.command.FatalHostError;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.error.IHarnessException;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.error.ErrorIdentifier;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.testtype.IAbi;
 
 import java.io.BufferedInputStream;
@@ -114,6 +117,32 @@ public class FileUtil {
             super(msg);
         }
 
+    }
+
+    /** Harness exception that helps carrying file issues. */
+    public static class HarnessIOException extends IOException implements IHarnessException {
+
+        private ErrorIdentifier mErrorId;
+        private String mOrigin;
+
+        HarnessIOException(Throwable cause, ErrorIdentifier errorId) {
+            super(cause);
+            mErrorId = errorId;
+            mOrigin =
+                    StackWalker.getInstance(java.lang.StackWalker.Option.RETAIN_CLASS_REFERENCE)
+                            .getCallerClass()
+                            .getCanonicalName();
+        }
+
+        @Override
+        public ErrorIdentifier getErrorId() {
+            return mErrorId;
+        }
+
+        @Override
+        public String getOrigin() {
+            return mOrigin;
+        }
     }
 
     /**
@@ -388,7 +417,11 @@ public class FileUtil {
             CLog.d("Creating temp file at %s with prefix \"%s\" suffix \"%s\"",
                     parentDir.getAbsolutePath(), prefix, suffix);
         }
-        returnFile = File.createTempFile(prefix, suffix, parentDir);
+        try {
+            returnFile = File.createTempFile(prefix, suffix, parentDir);
+        } catch (IOException e) {
+            throw new HarnessIOException(e, InfraErrorIdentifier.LAB_HOST_FILESYSTEM_ERROR);
+        }
         verifyDiskSpace(returnFile);
         return returnFile;
     }
@@ -475,6 +508,28 @@ public class FileUtil {
      */
     public static void recursiveHardlink(File sourceDir, File destDir, boolean ignoreExistingFile)
             throws IOException {
+        recursiveHardlink(sourceDir, destDir, ignoreExistingFile, new HashSet<>());
+    }
+
+    /**
+     * Recursively hardlink folder contents.
+     *
+     * <p>Only supports copying of files and directories - symlinks are not copied. If the
+     * destination directory does not exist, it will be created.
+     *
+     * @param sourceDir the folder that contains the files to copy
+     * @param destDir the destination folder
+     * @param ignoreExistingFile If True and the file being linked already exists, skip the
+     *     exception.
+     * @param copyInsteadofHardlink Set of files that needs to be copied instead of linked.
+     * @throws IOException
+     */
+    public static void recursiveHardlink(
+            File sourceDir,
+            File destDir,
+            boolean ignoreExistingFile,
+            Set<String> copyInsteadofHardlink)
+            throws IOException {
         if (!destDir.isDirectory() && !destDir.mkdir()) {
             throw new IOException(String.format("Could not create directory %s",
                     destDir.getAbsolutePath()));
@@ -484,7 +539,11 @@ public class FileUtil {
             if (childFile.isDirectory()) {
                 recursiveHardlink(childFile, destChild, ignoreExistingFile);
             } else if (childFile.isFile()) {
-                hardlinkFile(childFile, destChild, ignoreExistingFile);
+                if (copyInsteadofHardlink.contains(childFile.getName())) {
+                    FileUtil.copyFile(childFile, destChild);
+                } else {
+                    hardlinkFile(childFile, destChild, ignoreExistingFile);
+                }
             }
         }
     }

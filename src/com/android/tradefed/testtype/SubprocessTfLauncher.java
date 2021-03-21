@@ -273,7 +273,9 @@ public abstract class SubprocessTfLauncher
         mRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
         mRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
         mRunUtil.unsetEnvVariable(ANDROID_SERIAL_VAR);
-        mRunUtil.unsetEnvVariable(AutomatedReporters.PROTO_REPORTING_PORT);
+        for (String variable : AutomatedReporters.REPORTER_MAPPING) {
+            mRunUtil.unsetEnvVariable(variable);
+        }
 
         if (mGlobalConfig == null) {
             // If the global configuration is not set in option, create a filtered global

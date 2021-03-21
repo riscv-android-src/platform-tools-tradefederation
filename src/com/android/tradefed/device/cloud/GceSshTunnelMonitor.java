@@ -139,7 +139,7 @@ public class GceSshTunnelMonitor extends Thread {
         mQuit = true;
         closeConnection();
         getRunUtil().allowInterrupt(true);
-        getRunUtil().interrupt(this, "shutting down the monitor thread.");
+        getRunUtil().interrupt(this, "shutting down the monitor thread.", null);
         interrupt();
     }
 

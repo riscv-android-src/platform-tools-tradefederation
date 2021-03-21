@@ -223,6 +223,7 @@ public class InvocationExecution implements IInvocationExecution {
     public void doSetup(TestInformation testInfo, IConfiguration config, final ITestLogger listener)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
         long start = System.currentTimeMillis();
+        InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.SETUP_START, start);
         try {
             // Before all the individual setup, make the multi-pre-target-preparer devices setup
             runMultiTargetPreparers(
@@ -289,7 +290,9 @@ public class InvocationExecution implements IInvocationExecution {
         } finally {
             // Note: These metrics are handled in a try in case of a kernel reset or device issue.
             // Setup timing metric. It does not include flashing time on boot tests.
-            long setupDuration = System.currentTimeMillis() - start;
+            long end = System.currentTimeMillis();
+            InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.SETUP_END, end);
+            long setupDuration = end - start;
             InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.SETUP, setupDuration);
             CLog.d("Setup duration: %s'", TimeUtil.formatElapsedTime(setupDuration));
             // Upload the setup logcat after setup is complete.
@@ -338,7 +341,7 @@ public class InvocationExecution implements IInvocationExecution {
 
     /** {@inheritDoc} */
     @Override
-    public final void runDevicePreInvocationSetup(
+    public void runDevicePreInvocationSetup(
             IInvocationContext context, IConfiguration config, ITestLogger logger)
             throws DeviceNotAvailableException, TargetSetupError {
         customizeDevicePreInvocation(config, context);
@@ -365,7 +368,7 @@ public class InvocationExecution implements IInvocationExecution {
 
     /** {@inheritDoc} */
     @Override
-    public final void runDevicePostInvocationTearDown(
+    public void runDevicePostInvocationTearDown(
             IInvocationContext context, IConfiguration config, Throwable exception) {
         // Extra tear down step for the device
         for (String deviceName : context.getDeviceConfigNames()) {
@@ -454,6 +457,9 @@ public class InvocationExecution implements IInvocationExecution {
         IInvocationContext context = testInfo.getContext();
         Throwable deferredThrowable = null;
 
+        InvocationMetricLogger.addInvocationMetrics(
+                InvocationMetricKey.TEARDOWN_START, System.currentTimeMillis());
+
         List<IMultiTargetPreparer> multiPreparers = config.getMultiTargetPreparers();
         deferredThrowable =
                 runMultiTargetPreparersTearDown(
@@ -531,6 +537,9 @@ public class InvocationExecution implements IInvocationExecution {
 
         // Collect adb logs.
         logHostAdb(config, logger);
+
+        InvocationMetricLogger.addInvocationMetrics(
+                InvocationMetricKey.TEARDOWN_END, System.currentTimeMillis());
 
         if (deferredThrowable != null) {
             throw deferredThrowable;

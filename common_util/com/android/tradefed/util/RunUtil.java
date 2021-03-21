@@ -19,6 +19,7 @@ package com.android.tradefed.util;
 import com.android.annotations.Nullable;
 import com.android.tradefed.command.CommandInterrupter;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.ErrorIdentifier;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
@@ -550,7 +551,13 @@ public class RunUtil implements IRunUtil {
     /** {@inheritDoc} */
     @Override
     public synchronized void interrupt(Thread thread, String message) {
-        mInterrupter.interrupt(thread, message);
+        interrupt(thread, message, null);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public synchronized void interrupt(Thread thread, String message, ErrorIdentifier errorId) {
+        mInterrupter.interrupt(thread, message, errorId);
         mInterrupter.checkInterrupted();
     }
 
