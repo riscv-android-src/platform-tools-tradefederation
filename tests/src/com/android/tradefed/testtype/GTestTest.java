@@ -626,6 +626,16 @@ public class GTestTest {
         EasyMock.verify(mMockITestDevice);
     }
 
+    /** Test {@link GTest#getGTestCmdLine(String, String)} with environment variable. */
+    @Test
+    public void testGetGTestCmdLine_envVar() throws Exception {
+        mSetter.setOptionValue("gtest-env", "VAR1=VAL1");
+        mSetter.setOptionValue("gtest-env", "VAR2=VAL2");
+
+        String cmd_line = mGTest.getGTestCmdLine("test_path", "flags");
+        assertEquals("VAR1=VAL1 VAR2=VAL2 test_path flags", cmd_line);
+    }
+
     /** Test {@link GTest#getGTestCmdLine(String, String)} with non-default user. */
     @Test
     public void testGetGTestCmdLine_runAs() throws Exception {
