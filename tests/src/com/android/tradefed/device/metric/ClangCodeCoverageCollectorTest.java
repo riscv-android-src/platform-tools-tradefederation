@@ -231,6 +231,46 @@ public class ClangCodeCoverageCollectorTest {
     }
 
     @Test
+    public void testRun_profraw_filter_option() throws Exception {
+        mCoverageOptionsSetter.setOptionValue("coverage", "true");
+        mCoverageOptionsSetter.setOptionValue("coverage-toolchain", "CLANG");
+        mCoverageOptionsSetter.setOptionValue("profraw-filter", "file.*\\.profraw");
+
+        // Setup mocks.
+        doReturn(true).when(mMockDevice).isAdbRoot();
+        File tarGz =
+                createTarGz(
+                        ImmutableMap.of(
+                                "path/to/coverage.profraw",
+                                ByteString.copyFromUtf8("coverage.profraw"),
+                                "path/to/file.profraw",
+                                ByteString.copyFromUtf8("file.profraw"),
+                                "path/to/file1.profraw",
+                                ByteString.copyFromUtf8("file1.profraw")));
+        returnFileContentsOnShellCommand(mMockDevice, tarGz);
+        doReturn(createProfileToolZip()).when(mMockBuildInfo).getFile(anyString());
+
+        // Simulate a test run.
+        mListener.init(mMockContext, mFakeListener);
+        mListener.testRunStarted(RUN_NAME, TEST_COUNT);
+        mListener.testRunEnded(ELAPSED_TIME, mMetrics);
+        mListener.invocationEnded(ELAPSED_TIME);
+
+        // Verify that the command line contains the files above.
+        List<String> command = mCommandArgumentCaptor.getCommand();
+        checkListContainsSuffixes(
+                command,
+                ImmutableList.of("llvm-profdata", "path/to/file.profraw", "path/to/file1.profraw"));
+        checkListDoesNotContainSuffix(command, "path/to/coverage.profraw");
+
+        // Verify testLog(..) was called with a single indexed profile data.
+        List<ByteString> logs = mFakeListener.getLogs();
+        assertThat(logs).hasSize(1);
+
+        FileUtil.deleteFile(tarGz);
+    }
+
+    @Test
     public void testOtherFileTypes_ignored() throws Exception {
         mCoverageOptionsSetter.setOptionValue("coverage", "true");
         mCoverageOptionsSetter.setOptionValue("coverage-toolchain", "CLANG");
