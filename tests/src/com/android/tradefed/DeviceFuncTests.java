@@ -15,6 +15,7 @@
  */
 package com.android.tradefed;
 
+import com.android.tradefed.device.TestDeviceFileFuncTest;
 import com.android.tradefed.device.TestDeviceFuncTest;
 import com.android.tradefed.device.TestDevicePackageFuncTest;
 import com.android.tradefed.device.TestDeviceUserFuncTest;
@@ -33,6 +34,8 @@ import org.junit.runners.Suite.SuiteClasses;
 @SuiteClasses({
     // device
     TestDeviceFuncTest.class,
+    // device tests by function type
+    TestDeviceFileFuncTest.class,
     TestDevicePackageFuncTest.class,
     TestDeviceUserFuncTest.class,
     // proto
