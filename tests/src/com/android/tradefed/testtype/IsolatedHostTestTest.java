@@ -58,16 +58,21 @@ public class IsolatedHostTestTest {
      * (copied and altered from JarHostTestTest) Helper to read a file from the res/testtype
      * directory and return it.
      *
-     * @param filename the name of the file in the res/testtype directory
+     * @param filename the name of the file in the resources.
      * @param parentDir dir where to put the jar. Null if in default tmp directory.
      * @param name name to use in the target directory for the jar.
      * @return the extracted jar file.
      */
     protected File getJarResource(String filename, File parentDir, String name) throws IOException {
-        InputStream jarFileStream = getClass().getResourceAsStream(filename);
-        File jarFile = new File(parentDir, name);
-        jarFile.createNewFile();
-        FileUtil.writeToFile(jarFileStream, jarFile);
+        File jarFile = null;
+        try (InputStream jarFileStream = getClass().getResourceAsStream(filename)) {
+            if (jarFileStream == null) {
+                throw new RuntimeException(String.format("Failed to read resource '%s'", filename));
+            }
+            jarFile = new File(parentDir, name);
+            jarFile.createNewFile();
+            FileUtil.writeToFile(jarFileStream, jarFile);
+        }
         return jarFile;
     }
 
@@ -145,7 +150,7 @@ public class IsolatedHostTestTest {
 
     private OptionSetter setUpSimpleMockJarTest(String jarName) throws Exception {
         OptionSetter setter = new OptionSetter(mHostTest);
-        getJarResource("/referenceTests/" + jarName, mMockTestDir, jarName);
+        getJarResource("/" + jarName, mMockTestDir, jarName);
         doReturn(mMockTestDir).when(mMockBuildInfo).getFile(BuildInfoFileKey.HOST_LINKED_DIR);
         doReturn(mMockTestDir).when(mMockBuildInfo).getFile(BuildInfoFileKey.TESTDIR_IMAGE);
         setter.setOptionValue("jar", jarName);
