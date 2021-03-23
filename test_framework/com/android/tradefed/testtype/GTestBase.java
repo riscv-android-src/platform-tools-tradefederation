@@ -129,10 +129,17 @@ public abstract class GTestBase
     private String mLdLibraryPath = null;
 
     @Option(
+            name = "gtest-env",
+            description =
+                    "Environment variable to set before executing test.  "
+                            + "Format is VARIABLE=VALUE.  Can be repeated")
+    private List<String> mEnvironmentVars = new ArrayList<>();
+
+    @Option(
             name = "native-test-flag",
             description =
-                    "Additional flag values to pass to the native test's shell command. "
-                            + "Flags should be complete, including any necessary dashes: \"--flag=value\"")
+                    "Additional flag values to pass to the native test's shell command. Flags"
+                        + " should be complete, including any necessary dashes: \"--flag=value\"")
     private List<String> mGTestFlags = new ArrayList<>();
 
     @Option(
@@ -151,18 +158,18 @@ public abstract class GTestBase
     @Option(
             name = "collect-tests-only",
             description =
-                    "Only invoke the test binary to collect list of applicable test cases. "
-                            + "All test run callbacks will be triggered, but test execution will "
-                            + "not be actually carried out. This option ignores sharding parameters, so "
-                            + "each shard will end up collecting all tests.")
+                    "Only invoke the test binary to collect list of applicable test cases. All"
+                        + " test run callbacks will be triggered, but test execution will not be"
+                        + " actually carried out. This option ignores sharding parameters, so each"
+                        + " shard will end up collecting all tests.")
     private boolean mCollectTestsOnly = false;
 
     @Option(
             name = "test-filter-key",
             description =
-                    "run the gtest with the --gtest_filter populated with the filter from "
-                            + "the json filter file associated with the binary, the filter file will have "
-                            + "the same name as the binary with the .json extension.")
+                    "run the gtest with the --gtest_filter populated with the filter from the json"
+                        + " filter file associated with the binary, the filter file will have the"
+                        + " same name as the binary with the .json extension.")
     private String mTestFilterKey = null;
 
     @Option(
@@ -573,6 +580,8 @@ public abstract class GTestBase
         if (mLdLibraryPath != null) {
             gTestCmdLine.append(String.format("LD_LIBRARY_PATH=%s ", mLdLibraryPath));
         }
+
+        for (String environmentVar : mEnvironmentVars) gTestCmdLine.append(environmentVar + " ");
 
         // su to requested user
         if (mRunTestAs != null) {
