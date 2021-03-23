@@ -90,4 +90,32 @@ public class TestDevicePackageFuncTest implements IDeviceTest {
             FileUtil.deleteFile(testApkFile);
         }
     }
+
+    /**
+     * Tests the {@link ITestDevice#isPackageInstalled(String)} method
+     *
+     * <p>This test ensures the method is consistent with the package listing method.
+     */
+    @Test
+    public void testIsPackageInstalled_basic() throws Exception {
+        File testApkFile = WifiHelper.extractWifiUtilApk();
+        try {
+            // Install the WiFi helper
+            assertNull(mTestDevice.installPackage(testApkFile, false));
+            assertTrue(
+                    mTestDevice
+                            .getInstalledPackageNames()
+                            .contains(WifiHelper.INSTRUMENTATION_PKG));
+
+            // Only try to uninstall the package if the install appears to have succeeded
+            try {
+                assertTrue(mTestDevice.isPackageInstalled(WifiHelper.INSTRUMENTATION_PKG));
+            } finally {
+                // Try cleaning up the WiFi helper
+                mTestDevice.uninstallPackage(WifiHelper.INSTRUMENTATION_PKG);
+            }
+        } finally {
+            FileUtil.deleteFile(testApkFile);
+        }
+    }
 }
