@@ -28,9 +28,9 @@ java_library_host {
     ],
     static_libs: [
         "protobuf-java-util-prebuilt-jar",
+        "asuite_proto_java",
     ],
     libs: [
-        "tradefed-protos",
         "tradefed-common-util",
         "devtools-annotations-prebuilt",
     ],
