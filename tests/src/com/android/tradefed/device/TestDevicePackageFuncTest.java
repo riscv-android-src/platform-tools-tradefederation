@@ -118,4 +118,43 @@ public class TestDevicePackageFuncTest implements IDeviceTest {
             FileUtil.deleteFile(testApkFile);
         }
     }
+
+    /**
+     * Performs a install/uninstall flow with a created user
+     *
+     * <p>This tests the user-specific flow of installing packages
+     */
+    @Test
+    public void testInstallListUninstall_forUser() throws Exception {
+        File testApkFile = WifiHelper.extractWifiUtilApk();
+        final String username = "Google";
+        int userId = -1;
+        try {
+            userId = mTestDevice.createUser(username, false, false);
+
+            // Install the WiFi helper
+            assertNull(mTestDevice.installPackageForUser(testApkFile, false, userId));
+            assertTrue(
+                    mTestDevice.isPackageInstalled(
+                            WifiHelper.INSTRUMENTATION_PKG, Integer.toString(userId)));
+
+            // Ensure the APK is cleaned up
+            assertFalse(
+                    "apk file was not cleaned up after install",
+                    mTestDevice.doesFileExist(
+                            String.format("/data/local/tmp/%s", testApkFile.getName())));
+
+            // Try uninstalling the WiFi helper
+            mTestDevice.uninstallPackage(WifiHelper.INSTRUMENTATION_PKG);
+            assertFalse(
+                    mTestDevice
+                            .getInstalledPackageNames()
+                            .contains(WifiHelper.INSTRUMENTATION_PKG));
+        } finally {
+            if (userId != -1) {
+                mTestDevice.removeUser(userId);
+            }
+            FileUtil.deleteFile(testApkFile);
+        }
+    }
 }
