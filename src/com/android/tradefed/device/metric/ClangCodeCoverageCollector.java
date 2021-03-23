@@ -160,7 +160,9 @@ public final class ClangCodeCoverageCollector extends BaseDeviceMetricCollector
             }
 
             untarDir = TarUtil.extractTarGzipToTemp(coverageTarGz, "clang_coverage");
-            Set<String> rawProfileFiles = FileUtil.findFiles(untarDir, ".*\\.profraw");
+            Set<String> rawProfileFiles =
+                    FileUtil.findFiles(
+                            untarDir, mConfiguration.getCoverageOptions().getProfrawFilter());
 
             if (rawProfileFiles.isEmpty()) {
                 CLog.i("No Clang code coverage measurements found.");
