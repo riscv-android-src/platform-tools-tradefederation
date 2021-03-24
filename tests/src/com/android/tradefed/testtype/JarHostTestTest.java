@@ -63,7 +63,7 @@ import java.util.Map;
 public class JarHostTestTest {
 
     private static final String TEST_JAR1 = "/testtype/testJar1.jar";
-    private static final String TEST_JAR2 = "/testtype/testJarJunit4.jar";
+    private static final String TEST_JAR2 = "/OnePassingOneFailingTest.jar";
     private HostTest mTest;
     private DeviceBuildInfo mStubBuildInfo;
     private TestInformation mTestInfo;
@@ -315,14 +315,19 @@ public class JarHostTestTest {
         mTest.setTestInformation(mTestInfo);
         assertEquals(2, mTest.countTestCases());
 
-        mListener.testRunStarted("com.android.tradefed.JUnit4TfUnitTest", 2);
+        mListener.testRunStarted("com.android.tradefed.referencetests.OnePassingOneFailingTest", 2);
         TestDescription testOne =
-                new TestDescription("com.android.tradefed.JUnit4TfUnitTest", "testOne");
+                new TestDescription(
+                        "com.android.tradefed.referencetests.OnePassingOneFailingTest",
+                        "test1Passing");
         TestDescription testTwo =
-                new TestDescription("com.android.tradefed.JUnit4TfUnitTest", "testTwo");
+                new TestDescription(
+                        "com.android.tradefed.referencetests.OnePassingOneFailingTest",
+                        "test2Failing");
         mListener.testStarted(testOne);
         mListener.testEnded(EasyMock.eq(testOne), EasyMock.<HashMap<String, Metric>>anyObject());
         mListener.testStarted(testTwo);
+        mListener.testFailed(EasyMock.eq(testTwo), (String) EasyMock.anyObject());
         mListener.testEnded(EasyMock.eq(testTwo), EasyMock.<HashMap<String, Metric>>anyObject());
         mListener.testRunEnded(EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
@@ -344,19 +349,25 @@ public class JarHostTestTest {
         mTest.setDevice(device);
         OptionSetter setter = new OptionSetter(mTest);
         setter.setOptionValue("enable-pretty-logs", "false");
-        setter.setOptionValue("class", "com.android.tradefed.JUnit4TfUnitTest");
+        setter.setOptionValue(
+                "class", "com.android.tradefed.referencetests.OnePassingOneFailingTest");
         // full class count without sharding
         mTest.setTestInformation(mTestInfo);
         assertEquals(2, mTest.countTestCases());
 
-        mListener.testRunStarted("com.android.tradefed.JUnit4TfUnitTest", 2);
+        mListener.testRunStarted("com.android.tradefed.referencetests.OnePassingOneFailingTest", 2);
         TestDescription testOne =
-                new TestDescription("com.android.tradefed.JUnit4TfUnitTest", "testOne");
+                new TestDescription(
+                        "com.android.tradefed.referencetests.OnePassingOneFailingTest",
+                        "test1Passing");
         TestDescription testTwo =
-                new TestDescription("com.android.tradefed.JUnit4TfUnitTest", "testTwo");
+                new TestDescription(
+                        "com.android.tradefed.referencetests.OnePassingOneFailingTest",
+                        "test2Failing");
         mListener.testStarted(testOne);
         mListener.testEnded(EasyMock.eq(testOne), EasyMock.<HashMap<String, Metric>>anyObject());
         mListener.testStarted(testTwo);
+        mListener.testFailed(EasyMock.eq(testTwo), (String) EasyMock.anyObject());
         mListener.testEnded(EasyMock.eq(testTwo), EasyMock.<HashMap<String, Metric>>anyObject());
         mListener.testRunEnded(EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
