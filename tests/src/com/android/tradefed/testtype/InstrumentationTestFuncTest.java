@@ -95,6 +95,7 @@ public class InstrumentationTestFuncTest implements IDeviceTest, ITestInformatio
     }
 
     /** Test normal run scenario with a single passed test result. */
+    @Ignore
     @Test
     public void testRun() throws DeviceNotAvailableException {
         Log.i(LOG_TAG, "testRun");
@@ -117,6 +118,7 @@ public class InstrumentationTestFuncTest implements IDeviceTest, ITestInformatio
     }
 
     /** Test normal run scenario with a single failed test result. */
+    @Ignore
     @Test
     public void testRun_testFailed() throws DeviceNotAvailableException {
         Log.i(LOG_TAG, "testRun_testFailed");
@@ -139,6 +141,7 @@ public class InstrumentationTestFuncTest implements IDeviceTest, ITestInformatio
     }
 
     /** Test run scenario where test process crashes. */
+    @Ignore
     @Test
     public void testRun_testCrash() throws DeviceNotAvailableException {
         Log.i(LOG_TAG, "testRun_testCrash");
@@ -179,6 +182,7 @@ public class InstrumentationTestFuncTest implements IDeviceTest, ITestInformatio
     }
 
     /** Test run scenario where test run hangs indefinitely, and times out. */
+    @Ignore
     @Test
     public void testRun_testTimeout() throws DeviceNotAvailableException {
         Log.i(LOG_TAG, "testRun_testTimeout");
@@ -201,9 +205,9 @@ public class InstrumentationTestFuncTest implements IDeviceTest, ITestInformatio
                         }
                     });
             assertEquals(
-                    "Test failed to run to completion. Reason: 'Failed to receive adb shell test "
-                            + "output within 2500 ms. Test may have timed out, or adb connection to device "
-                            + "became unresponsive'. Check device logcat for details",
+                    "Test failed to run to completion. Reason: 'Failed to receive adb shell test"
+                        + " output within 2500 ms. Test may have timed out, or adb connection to"
+                        + " device became unresponsive'. Check device logcat for details",
                     error[0]);
         } finally {
             getDevice().setRecoveryMode(initMode);
@@ -212,6 +216,7 @@ public class InstrumentationTestFuncTest implements IDeviceTest, ITestInformatio
     }
 
     /** Test run scenario where device reboots during test run. */
+    @Ignore
     @Test
     public void testRun_deviceReboot() throws Exception {
         Log.i(LOG_TAG, "testRun_deviceReboot");
@@ -352,6 +357,7 @@ public class InstrumentationTestFuncTest implements IDeviceTest, ITestInformatio
      * (currently TIMEOUT_TEST_METHOD and CRASH_TEST_METHOD). Verify that results are recorded for
      * all tests in the suite.
      */
+    @Ignore
     @Test
     public void testRun_rerun() throws Exception {
         Log.i(LOG_TAG, "testRun_rerun");
@@ -381,6 +387,7 @@ public class InstrumentationTestFuncTest implements IDeviceTest, ITestInformatio
      *
      * <p>Expect run to proceed, but be reported as a run failure
      */
+    @Ignore
     @Test
     public void testRun_rerunCrash() throws Exception {
         Log.i(LOG_TAG, "testRun_rerunCrash");
@@ -403,6 +410,7 @@ public class InstrumentationTestFuncTest implements IDeviceTest, ITestInformatio
      *
      * <p>Expect a run failure to be reported
      */
+    @Ignore
     @Test
     public void testRun_rerunHang() throws Exception {
         Log.i(LOG_TAG, "testRun_rerunHang");
