@@ -59,6 +59,11 @@ public class DynamicSystemPreparer extends BaseTargetPreparer {
             description = "Number of GB to be allocated for DSU user-data.")
     private long mUserDataSizeInGb = 16L; // 16GB
 
+    @Option(
+            name = "wait-for-device-online",
+            description = "whether to wait for device online after install DSU.")
+    private boolean mWaitForDeviceOnline = true;
+
     private boolean isDSURunning(ITestDevice device) throws DeviceNotAvailableException {
         CollectingOutputReceiver receiver = new CollectingOutputReceiver();
         device.executeShellCommand("gsi_tool status", receiver);
@@ -142,6 +147,13 @@ public class DynamicSystemPreparer extends BaseTargetPreparer {
                         "Timed out waiting for DSU installation to complete and reboot",
                         device.getDeviceDescriptor());
             }
+
+            // If installing user build by DSU, the device will boot up without user debug mode.
+            // The adb command can not be executed immediately after upgrade to a user build by DSU.
+            if (!mWaitForDeviceOnline) {
+                return;
+            }
+
             try {
                 // waitForDeviceOnline() throws DeviceNotAvailableException if device does not
                 // become online within timeout.
