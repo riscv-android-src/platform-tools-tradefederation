@@ -15,7 +15,7 @@
  */
 package com.android.tradefed.util;
 
-import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
+import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.http.ByteArrayContent;
 import com.google.api.client.http.GenericUrl;
@@ -62,7 +62,7 @@ public class RestApiHelper implements IRestApiHelper {
     }
 
     /**
-     * Creates an API helper instance which uses a {@link GoogleCredential} for authentication.
+     * Creates an API helper instance which uses a {@link Credential} for authentication.
      *
      * @param baseUri the base URI of the API
      * @param serviceAccount the name of the service account to use
@@ -77,7 +77,7 @@ public class RestApiHelper implements IRestApiHelper {
             throws GeneralSecurityException, IOException {
 
         HttpTransport transport = GoogleNetHttpTransport.newTrustedTransport();
-        GoogleCredential credential =
+        Credential credential =
                 GoogleApiClientUtil.createCredentialFromP12File(serviceAccount, keyFile, scopes);
         HttpRequestFactory requestFactory = transport.createRequestFactory(credential);
 
@@ -85,7 +85,7 @@ public class RestApiHelper implements IRestApiHelper {
     }
 
     /**
-     * Creates an API helper instance which uses a {@link GoogleCredential} for authentication.
+     * Creates an API helper instance which uses a {@link Credential} for authentication.
      *
      * @param baseUri the base URI of the API
      * @param jsonKeyFile the service account json key file
@@ -97,7 +97,7 @@ public class RestApiHelper implements IRestApiHelper {
             String baseUri, File jsonKeyFile, Collection<String> scopes)
             throws GeneralSecurityException, IOException {
         HttpTransport transport = GoogleNetHttpTransport.newTrustedTransport();
-        GoogleCredential credential =
+        Credential credential =
                 GoogleApiClientUtil.createCredentialFromJsonKeyFile(jsonKeyFile, scopes);
         HttpRequestFactory requestFactory = transport.createRequestFactory(credential);
         return new RestApiHelper(requestFactory, baseUri);
