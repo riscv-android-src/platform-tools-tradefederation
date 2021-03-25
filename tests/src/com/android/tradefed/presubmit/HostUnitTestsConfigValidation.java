@@ -16,6 +16,7 @@
 package com.android.tradefed.presubmit;
 
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeTrue;
 
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
@@ -159,16 +160,37 @@ public class HostUnitTestsConfigValidation implements IBuildReceiver {
      * double running them.
      */
     @Test
-    public void testNotInTestMapping() {
+    public void testNotInTestMappingPresubmit() {
+        List<String> errors = getErrors("presubmit");
+        if (!errors.isEmpty()) {
+            String message =
+                    String.format("Fail configuration check:\n%s", Joiner.on("\n").join(errors));
+            assertTrue(message, errors.isEmpty());
+        }
+    }
+
+    /**
+     * This test ensures that unit tests are not also running as part of test mapping to avoid
+     * double running them.
+     */
+    @Test
+    public void testNotInTestMappingPostsubmit() {
+        List<String> errors = getErrors("postsubmit");
+        if (!errors.isEmpty()) {
+            String message =
+                    String.format("Fail configuration check:\n%s", Joiner.on("\n").join(errors));
+            // TODO: Turn blocking
+            assumeTrue(message, errors.isEmpty());
+        }
+    }
+
+    private List<String> getErrors(String group) {
         // We need the test mapping files for this test.
         Assume.assumeNotNull(mBuild.getFile("test_mappings.zip"));
 
         Set<TestInfo> testInfosToRun =
                 TestMapping.getTests(
-                        mBuild, /* group */
-                        "presubmit", /* host */
-                        true, /* keywords */
-                        new HashSet<>());
+                        mBuild, group, /* host */ true, /* keywords */ new HashSet<>());
 
         List<String> errors = new ArrayList<>();
         List<String> configs = new ArrayList<>();
@@ -189,10 +211,6 @@ public class HostUnitTestsConfigValidation implements IBuildReceiver {
                                 moduleName, infos.get(moduleName)));
             }
         }
-        if (!errors.isEmpty()) {
-            String message =
-                    String.format("Fail configuration check:\n%s", Joiner.on("\n").join(errors));
-            assertTrue(message, errors.isEmpty());
-        }
+        return errors;
     }
 }
