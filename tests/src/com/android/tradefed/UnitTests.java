@@ -16,6 +16,7 @@
 
 package com.android.tradefed;
 
+import com.android.tradefed.auth.ServiceAccountKeyCredentialFactoryTest;
 import com.android.tradefed.build.AppDeviceBuildInfoTest;
 import com.android.tradefed.build.BootstrapBuildProviderTest;
 import com.android.tradefed.build.BuildInfoTest;
@@ -433,6 +434,8 @@ import org.junit.runners.Suite.SuiteClasses;
  */
 @RunWith(Suite.class)
 @SuiteClasses({
+    // Auth
+    ServiceAccountKeyCredentialFactoryTest.class,
 
     // build
     AppDeviceBuildInfoTest.class,
