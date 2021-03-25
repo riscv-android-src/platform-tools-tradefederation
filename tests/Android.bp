@@ -42,6 +42,7 @@ tradefed_java_library_host {
         ":OnePassOneFailParamTest",
         ":OnePassingOneFailingTest",
         ":SimplePassingTest",
+        ":MultipleClassesTest",
     ],
 
     javacflags: [

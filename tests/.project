@@ -16,6 +16,11 @@
 	</natures>
 	<linkedResources>
 		<link>
+			<name>OnePassingOneFailingTest</name>
+			<type>2</type>
+			<locationURI>TRADEFED_ROOT/out/soong/.intermediates/tools/tradefederation/core/reference_tests/OnePassingOneFailingTest/linux_glibc_common/combined</locationURI>
+		</link>
+		<link>
 			<name>easymock</name>
 			<type>2</type>
 			<locationURI>TRADEFED_ROOT/external/easymock/src</locationURI>
@@ -29,6 +34,11 @@
 			<name>objenesis</name>
 			<type>2</type>
 			<locationURI>TRADEFED_ROOT/external/objenesis/main/src/main/java</locationURI>
+		</link>
+		<link>
+			<name>test_jar</name>
+			<type>2</type>
+			<locationURI>TRADEFED_ROOT/out/soong/.intermediates/tools/tradefederation/core/reference_tests/MultipleClassesTest/linux_glibc_common/combined</locationURI>
 		</link>
 		<link>
 			<name>tradefedproto</name>
