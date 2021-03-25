@@ -16,8 +16,7 @@
 package com.android.tradefed.util;
 
 import com.android.tradefed.host.HostOptions;
-
-import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
+import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.services.storage.Storage;
@@ -47,7 +46,7 @@ public abstract class GCSCommon {
     public GCSCommon() {}
 
     protected Storage getStorage(Collection<String> scopes) throws IOException {
-        GoogleCredential credential = null;
+        Credential credential = null;
         try {
             if (mStorage == null) {
                 credential =

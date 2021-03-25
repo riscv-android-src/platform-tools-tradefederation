@@ -16,6 +16,7 @@
 
 package com.android.tradefed.config;
 
+import com.android.tradefed.auth.ICredentialFactory;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.command.CommandScheduler;
 import com.android.tradefed.command.ICommandScheduler;
@@ -81,6 +82,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     public static final String GLOBAL_CONFIG_SERVER = "global_config_server";
     public static final String SANDBOX_FACTORY_TYPE_NAME = "sandbox_factory";
     public static final String RESOURCE_METRIC_COLLECTOR_TYPE_NAME = "resource_metric_collector";
+    public static final String CREDENTIAL_FACTORY_TYPE_NAME = "credential_factory";
 
     public static final String GLOBAL_CONFIG_VARIABLE = "TF_GLOBAL_CONFIG";
     public static final String GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE =
@@ -310,6 +312,8 @@ public class GlobalConfiguration implements IGlobalConfiguration {
             sObjTypeMap.put(
                     RESOURCE_METRIC_COLLECTOR_TYPE_NAME,
                     new ObjTypeInfo(IResourceMetricCollector.class, true));
+            sObjTypeMap.put(
+                    CREDENTIAL_FACTORY_TYPE_NAME, new ObjTypeInfo(ICredentialFactory.class, false));
         }
         return sObjTypeMap;
     }
@@ -464,9 +468,14 @@ public class GlobalConfiguration implements IGlobalConfiguration {
                 getConfigurationObjectList(RESOURCE_METRIC_COLLECTOR_TYPE_NAME);
     }
 
-    /**
-     * Internal helper to get the list of config object
-     */
+    /** {@inheritDoc} */
+    @Override
+    @SuppressWarnings("unchecked")
+    public ICredentialFactory getCredentialFactory() {
+        return (ICredentialFactory) getConfigurationObject(CREDENTIAL_FACTORY_TYPE_NAME);
+    }
+
+    /** Internal helper to get the list of config object */
     private List<?> getConfigurationObjectList(String typeName) {
         return mConfigMap.get(typeName);
     }

@@ -66,6 +66,7 @@ public class AutomatedReporters {
                 case PROTO_REPORTING_FILE:
                     FileProtoResultReporter fileReporter = new FileProtoResultReporter();
                     fileReporter.setOutputFile(new File(envValue));
+                    fileReporter.setDelimitedOutput(false);
                     addToReporters(configuration, fileReporter);
                     break;
                 default:
