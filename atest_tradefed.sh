@@ -58,6 +58,6 @@ java $RDBG_FLAG \
     -XX:+HeapDumpOnOutOfMemoryError \
     -XX:-OmitStackTraceInFastThrow \
     $TRADEFED_OPTS \
-    -cp ${TF_PATH} \
+    -cp "${TF_PATH}" \
     -DTF_JAR_DIR=${TF_JAR_DIR} ${java_tmp_dir_opt} \
     com.android.tradefed.command.CommandRunner "$@"

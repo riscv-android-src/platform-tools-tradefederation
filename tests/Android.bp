@@ -37,6 +37,12 @@ tradefed_java_library_host {
     srcs: ["src/**/*.java"],
 
     java_resource_dirs: ["res"],
+    java_resources: [
+        ":SimpleFailingTest",
+        ":OnePassOneFailParamTest",
+        ":OnePassingOneFailingTest",
+        ":SimplePassingTest",
+    ],
 
     javacflags: [
         "-g",

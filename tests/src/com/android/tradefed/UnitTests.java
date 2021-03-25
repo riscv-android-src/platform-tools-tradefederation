@@ -16,6 +16,7 @@
 
 package com.android.tradefed;
 
+import com.android.tradefed.auth.ServiceAccountKeyCredentialFactoryTest;
 import com.android.tradefed.build.AppDeviceBuildInfoTest;
 import com.android.tradefed.build.BootstrapBuildProviderTest;
 import com.android.tradefed.build.BuildInfoTest;
@@ -399,7 +400,6 @@ import com.android.tradefed.util.SubprocessTestResultsParserTest;
 import com.android.tradefed.util.TableBuilderTest;
 import com.android.tradefed.util.TableFormatterTest;
 import com.android.tradefed.util.TarUtilTest;
-import com.android.tradefed.util.TestLoaderTest;
 import com.android.tradefed.util.TimeUtilTest;
 import com.android.tradefed.util.TimeValTest;
 import com.android.tradefed.util.VersionParserTest;
@@ -434,6 +434,8 @@ import org.junit.runners.Suite.SuiteClasses;
  */
 @RunWith(Suite.class)
 @SuiteClasses({
+    // Auth
+    ServiceAccountKeyCredentialFactoryTest.class,
 
     // build
     AppDeviceBuildInfoTest.class,
@@ -916,7 +918,6 @@ import org.junit.runners.Suite.SuiteClasses;
     TableBuilderTest.class,
     TableFormatterTest.class,
     TarUtilTest.class,
-    TestLoaderTest.class,
     TimeUtilTest.class,
     TimeValTest.class,
     VersionParserTest.class,

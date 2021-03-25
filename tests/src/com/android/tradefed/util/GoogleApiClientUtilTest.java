@@ -18,8 +18,7 @@ package com.android.tradefed.util;
 
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.OptionSetter;
-
-import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
+import com.google.api.client.auth.oauth2.Credential;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -55,16 +54,16 @@ public class GoogleApiClientUtilTest {
         boolean mDefaultCredentialUsed = false;
 
         @Override
-        GoogleCredential doCreateCredentialFromJsonKeyFile(File file, Collection<String> scopes)
+        Credential doCreateCredentialFromJsonKeyFile(File file, Collection<String> scopes)
                 throws IOException, GeneralSecurityException {
             mKeyFiles.add(file);
-            return Mockito.mock(GoogleCredential.class);
+            return Mockito.mock(Credential.class);
         }
 
         @Override
-        GoogleCredential doCreateDefaultCredential(Collection<String> scopes) throws IOException {
+        Credential doCreateDefaultCredential(Collection<String> scopes) throws IOException {
             mDefaultCredentialUsed = true;
-            return Mockito.mock(GoogleCredential.class);
+            return Mockito.mock(Credential.class);
         }
     }
 
@@ -103,8 +102,8 @@ public class GoogleApiClientUtilTest {
 
     @Test
     public void testCreateCredential() throws Exception {
-        GoogleCredential credentail = mUtil.doCreateCredential(SCOPES, mKey, null);
-        Assert.assertNotNull(credentail);
+        Credential credential = mUtil.doCreateCredential(SCOPES, mKey, null);
+        Assert.assertNotNull(credential);
         Assert.assertEquals(1, mUtil.mKeyFiles.size());
         Assert.assertEquals(mKey, mUtil.mKeyFiles.get(0));
         Assert.assertFalse(mUtil.mDefaultCredentialUsed);
@@ -118,8 +117,8 @@ public class GoogleApiClientUtilTest {
                 "host_options:service-account-json-key-file",
                 HOST_OPTION_JSON_KEY,
                 mKey.getAbsolutePath());
-        GoogleCredential credentail = mUtil.doCreateCredential(SCOPES, null, HOST_OPTION_JSON_KEY);
-        Assert.assertNotNull(credentail);
+        Credential credential = mUtil.doCreateCredential(SCOPES, null, HOST_OPTION_JSON_KEY);
+        Assert.assertNotNull(credential);
         Assert.assertEquals(1, mUtil.mKeyFiles.size());
         Assert.assertEquals(mKey, mUtil.mKeyFiles.get(0));
         Assert.assertFalse(mUtil.mDefaultCredentialUsed);
@@ -127,8 +126,8 @@ public class GoogleApiClientUtilTest {
 
     @Test
     public void testCreateCredential_useFallbackKeyFile() throws Exception {
-        GoogleCredential credentail = mUtil.doCreateCredential(SCOPES, null, "not-exist-key", mKey);
-        Assert.assertNotNull(credentail);
+        Credential credential = mUtil.doCreateCredential(SCOPES, null, "not-exist-key", mKey);
+        Assert.assertNotNull(credential);
         Assert.assertEquals(1, mUtil.mKeyFiles.size());
         Assert.assertEquals(mKey, mUtil.mKeyFiles.get(0));
         Assert.assertFalse(mUtil.mDefaultCredentialUsed);
@@ -136,8 +135,8 @@ public class GoogleApiClientUtilTest {
 
     @Test
     public void testCreateCredential_useDefault() throws Exception {
-        GoogleCredential credentail = mUtil.doCreateCredential(SCOPES, null, "not-exist-key");
-        Assert.assertNotNull(credentail);
+        Credential credential = mUtil.doCreateCredential(SCOPES, null, "not-exist-key");
+        Assert.assertNotNull(credential);
         Assert.assertEquals(0, mUtil.mKeyFiles.size());
         Assert.assertTrue(mUtil.mDefaultCredentialUsed);
     }
