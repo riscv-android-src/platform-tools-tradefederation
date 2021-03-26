@@ -137,7 +137,8 @@ public class TestsPoolPollerTest {
         poller.setMetricCollectors(mMetricCollectors);
         poller.run(mTestInfo, mListener);
         Mockito.verify(mListener, Mockito.times(numTests))
-                .testRunStarted(Mockito.anyString(), Mockito.anyInt());
+                .testRunStarted(
+                        Mockito.anyString(), Mockito.anyInt(), Mockito.eq(0), Mockito.anyLong());
         Mockito.verify(mListener, Mockito.times(numTests))
                 .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
         assertEquals(0, tracker.getCount());
