@@ -27,6 +27,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.cloud.NestedRemoteDevice;
+import com.android.tradefed.device.metric.CountTestCasesCollector;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.invoker.TestInformation;
@@ -223,6 +224,11 @@ public final class TestsPoolPoller
                         // If test can receive collectors then let it handle the how to set them up
                         test.run(info, listener);
                     } else {
+                        if (mConfig != null && mConfig.getCommandOptions().reportTestCaseCount()) {
+                            CountTestCasesCollector counter = new CountTestCasesCollector(test);
+                            listenerWithCollectors =
+                                    counter.init(info.getContext(), listenerWithCollectors);
+                        }
                         test.run(info, listenerWithCollectors);
                     }
                 } catch (RuntimeException e) {

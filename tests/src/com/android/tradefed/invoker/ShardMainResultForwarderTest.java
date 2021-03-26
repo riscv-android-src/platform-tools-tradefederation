@@ -23,6 +23,7 @@ import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationGroupMetricKey;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ILogSaverListener;
@@ -41,6 +42,7 @@ import org.mockito.MockitoAnnotations;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 /** Unit tests for {@link ShardMainResultForwarder}. */
 @RunWith(JUnit4.class)
@@ -185,5 +187,52 @@ public class ShardMainResultForwarderTest {
         Mockito.verify(mMockLogListener, times(1))
                 .testLogSaved(Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any());
         Mockito.verify(mMockLogListener, times(1)).invocationEnded(500L);
+    }
+
+    @Test
+    public void testForward_contextAttributes() {
+        IInvocationContext main = new InvocationContext();
+        IBuildInfo mainBuild = new BuildInfo();
+        main.addAllocatedDevice("device1", Mockito.mock(ITestDevice.class));
+        main.addDeviceBuildInfo("device1", mainBuild);
+        assertTrue(mainBuild.getBuildAttributes().isEmpty());
+
+        InvocationContext shard1 = createContext(0);
+        shard1.addInvocationAttribute(
+                InvocationGroupMetricKey.TEST_TYPE_COUNT.toString() + ":" + "type1", "2");
+        shard1.addInvocationAttribute(
+                InvocationGroupMetricKey.TEST_TYPE_COUNT.toString() + ":" + "type2", "5");
+        IBuildInfo shardBuild1 = new BuildInfo();
+        shard1.addAllocatedDevice("device1", Mockito.mock(ITestDevice.class));
+        shard1.addDeviceBuildInfo("device1", shardBuild1);
+
+        InvocationContext shard2 = createContext(1);
+        shard2.addInvocationAttribute(
+                InvocationGroupMetricKey.TEST_TYPE_COUNT.toString() + ":" + "type1", "4");
+        shard2.addInvocationAttribute(
+                InvocationGroupMetricKey.TEST_TYPE_COUNT.toString() + ":" + "type3", "1");
+        IBuildInfo shardBuild2 = new BuildInfo();
+        shard2.addAllocatedDevice("device1", Mockito.mock(ITestDevice.class));
+        shard2.addDeviceBuildInfo("device1", shardBuild2);
+
+        mShardPrimary.invocationStarted(main);
+        mShardPrimary.invocationStarted(shard1);
+        mShardPrimary.invocationStarted(shard2);
+        mShardPrimary.invocationEnded(0l, shard1);
+        mShardPrimary.invocationEnded(1l, shard2);
+
+        Map<String, String> attributes = main.getAttributes().getUniqueMap();
+        assertEquals(
+                "6",
+                attributes.get(
+                        InvocationGroupMetricKey.TEST_TYPE_COUNT.toString() + ":" + "type1"));
+        assertEquals(
+                "5",
+                attributes.get(
+                        InvocationGroupMetricKey.TEST_TYPE_COUNT.toString() + ":" + "type2"));
+        assertEquals(
+                "1",
+                attributes.get(
+                        InvocationGroupMetricKey.TEST_TYPE_COUNT.toString() + ":" + "type3"));
     }
 }
