@@ -62,7 +62,7 @@ import java.util.Map;
 @RunWith(JUnit4.class)
 public class JarHostTestTest {
 
-    private static final String TEST_JAR1 = "/testtype/testJar1.jar";
+    private static final String TEST_JAR1 = "/MultipleClassesTest.jar";
     private static final String TEST_JAR2 = "/OnePassingOneFailingTest.jar";
     private HostTest mTest;
     private DeviceBuildInfo mStubBuildInfo;
@@ -143,71 +143,39 @@ public class JarHostTestTest {
         setter.setOptionValue("jar", testJar.getName());
         // full class count without sharding
         mTest.setTestInformation(mTestInfo);
-        assertEquals(238, mTest.countTestCases());
+        assertEquals(4, mTest.countTestCases());
 
         List<IRemoteTest> tests = new ArrayList<>(mTest.split(5, mTestInfo));
         // HostTest sharding does not respect the shard-count hint (expected)
-        assertEquals(8, tests.size());
+        assertEquals(3, tests.size());
 
         // 5 shards total the number of tests.
         int total = 0;
         IRemoteTest shard1 = tests.get(0);
         assertTrue(shard1 instanceof HostTest);
+        ((HostTest) shard1).setTestInformation(mTestInfo);
         ((HostTest) shard1).setBuild(new BuildInfo());
         ((HostTest) shard1).setDevice(device);
-        assertEquals(28, ((HostTest) shard1).countTestCases());
+        assertEquals(2, ((HostTest) shard1).countTestCases());
         total += ((HostTest) shard1).countTestCases();
 
         IRemoteTest shard2 = tests.get(1);
         assertTrue(shard2 instanceof HostTest);
+        ((HostTest) shard2).setTestInformation(mTestInfo);
         ((HostTest) shard2).setBuild(new BuildInfo());
         ((HostTest) shard2).setDevice(device);
-        assertEquals(30, ((HostTest) shard2).countTestCases());
+        assertEquals(1, ((HostTest) shard2).countTestCases());
         total += ((HostTest) shard2).countTestCases();
 
         IRemoteTest shard3 = tests.get(2);
         assertTrue(shard3 instanceof HostTest);
+        ((HostTest) shard3).setTestInformation(mTestInfo);
         ((HostTest) shard3).setBuild(new BuildInfo());
         ((HostTest) shard3).setDevice(device);
-        assertEquals(30, ((HostTest) shard3).countTestCases());
+        assertEquals(1, ((HostTest) shard3).countTestCases());
         total += ((HostTest) shard3).countTestCases();
 
-        IRemoteTest shard4 = tests.get(3);
-        assertTrue(shard4 instanceof HostTest);
-        ((HostTest) shard4).setBuild(new BuildInfo());
-        ((HostTest) shard4).setDevice(device);
-        assertEquals(30, ((HostTest) shard4).countTestCases());
-        total += ((HostTest) shard4).countTestCases();
-
-        IRemoteTest shard5 = tests.get(4);
-        assertTrue(shard5 instanceof HostTest);
-        ((HostTest) shard5).setBuild(new BuildInfo());
-        ((HostTest) shard5).setDevice(device);
-        assertEquals(30, ((HostTest) shard5).countTestCases());
-        total += ((HostTest) shard5).countTestCases();
-
-        IRemoteTest shard6 = tests.get(5);
-        assertTrue(shard6 instanceof HostTest);
-        ((HostTest) shard6).setBuild(new BuildInfo());
-        ((HostTest) shard6).setDevice(device);
-        assertEquals(30, ((HostTest) shard6).countTestCases());
-        total += ((HostTest) shard6).countTestCases();
-
-        IRemoteTest shard7 = tests.get(6);
-        assertTrue(shard7 instanceof HostTest);
-        ((HostTest) shard7).setBuild(new BuildInfo());
-        ((HostTest) shard7).setDevice(device);
-        assertEquals(30, ((HostTest) shard7).countTestCases());
-        total += ((HostTest) shard7).countTestCases();
-
-        IRemoteTest shard8 = tests.get(7);
-        assertTrue(shard8 instanceof HostTest);
-        ((HostTest) shard8).setBuild(new BuildInfo());
-        ((HostTest) shard8).setDevice(device);
-        assertEquals(30, ((HostTest) shard8).countTestCases());
-        total += ((HostTest) shard8).countTestCases();
-
-        assertEquals(238, total);
+        assertEquals(4, total);
     }
 
     /** Avoid collision between --class and --jar when they reference common classes. */
@@ -222,10 +190,10 @@ public class JarHostTestTest {
         setter.setOptionValue("enable-pretty-logs", "false");
         setter.setOptionValue("jar", testJar.getName());
         // Explicitly request a class from the jar
-        setter.setOptionValue("class", "android.ui.cts.TestClass8");
-        // full class count without sharding should be 238
+        setter.setOptionValue("class", "com.android.tradefed.referencetests.SimplePassingTest");
+        // full class count without sharding should be 1
         mTest.setTestInformation(mTestInfo);
-        assertEquals(238, mTest.countTestCases());
+        assertEquals(1, mTest.countTestCases());
     }
 
     /**
