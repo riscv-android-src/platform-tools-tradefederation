@@ -268,6 +268,7 @@ public class InstrumentationTestFuncTest implements IDeviceTest, ITestInformatio
     }
 
     /** Test that when a max-timeout is set the instrumentation is stopped. */
+    @Ignore
     @Test
     public void testRun_maxTimeout() throws Exception {
         Log.i(LOG_TAG, "testRun_maxTimeout");
