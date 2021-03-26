@@ -63,3 +63,18 @@ java_test_host {
         unit_test: false,
     },
 }
+
+java_test_host {
+    name: "MultipleClassesTest",
+    srcs: [
+        "src/java/com/android/tradefed/referencetests/SimplePassingTest.java",
+        "src/java/com/android/tradefed/referencetests/OnePassingOneFailingTest.java",
+        "src/java/com/android/tradefed/referencetests/SimpleFailingTest.java",
+    ],
+    libs: [
+        "junit",
+    ],
+    test_options: {
+        unit_test: false,
+    },
+}
