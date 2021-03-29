@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+package {
+    default_applicable_licenses: ["Android-Apache-2.0"],
+}
+
 java_test_host {
     name: "SimpleFailingTest",
     srcs: [
@@ -57,6 +61,21 @@ java_test_host {
         "src/java/com/android/tradefed/referencetests/SimplePassingTest.java",
     ],
     static_libs: [
+        "junit",
+    ],
+    test_options: {
+        unit_test: false,
+    },
+}
+
+java_test_host {
+    name: "MultipleClassesTest",
+    srcs: [
+        "src/java/com/android/tradefed/referencetests/SimplePassingTest.java",
+        "src/java/com/android/tradefed/referencetests/OnePassingOneFailingTest.java",
+        "src/java/com/android/tradefed/referencetests/SimpleFailingTest.java",
+    ],
+    libs: [
         "junit",
     ],
     test_options: {
