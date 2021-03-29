@@ -999,6 +999,9 @@ public class HostTest
                                 && !Modifier.isProtected(modifiers)
                                 && !Modifier.isInterface(modifiers)
                                 && !Modifier.isAbstract(modifiers)) {
+                            if (!mClasses.isEmpty() && !mClasses.contains(className)) {
+                                continue;
+                            }
                             classes.add(cls);
                             classNames.add(className);
                         }
@@ -1261,6 +1264,7 @@ public class HostTest
                 Collection<? extends Object> subTests;
                 if (classObj != null) {
                     test.addClassName(classObj.getName());
+                    test.mJars = this.mJars;
                     subTests = test.mClasses;
                 } else {
                     test.addTestMethod(testObj);
