@@ -69,8 +69,6 @@ public class HostUnitTestsConfigValidation implements IBuildReceiver {
             new HashSet<>(
                     Arrays.asList(
                             // Only accept runners that can be pure host-tests.
-                            "com.android.compatibility.common.tradefed.testtype.JarHostTest",
-                            "com.android.tradefed.testtype.HostTest",
                             "com.android.tradefed.testtype.HostGTest",
                             "com.android.tradefed.testtype.IsolatedHostTest",
                             "com.android.tradefed.testtype.python.PythonBinaryHostTest",
