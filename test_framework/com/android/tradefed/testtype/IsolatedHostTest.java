@@ -142,7 +142,8 @@ public class IsolatedHostTest
     @Option(
             name = "exclude-paths",
             description = "The (prefix) paths to exclude from searching in the jars.")
-    private Set<String> mExcludePaths = new HashSet<>(Arrays.asList("org/junit"));
+    private Set<String> mExcludePaths =
+            new HashSet<>(Arrays.asList("org/junit", "com/google/common/collect/testing/google"));
 
     @Option(
             name = "java-folder",
