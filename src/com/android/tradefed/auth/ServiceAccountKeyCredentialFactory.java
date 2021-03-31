@@ -16,10 +16,18 @@
 
 package com.android.tradefed.auth;
 
-import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.util.FileUtil;
+
+import com.google.api.client.auth.oauth2.Credential;
+import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
+import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
+import com.google.api.client.json.gson.GsonFactory;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -28,13 +36,6 @@ import java.security.GeneralSecurityException;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-
-import com.google.api.client.auth.oauth2.Credential;
-import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
-import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
-import com.google.api.client.json.jackson2.JacksonFactory;
-import org.json.JSONException;
-import org.json.JSONObject;
 
 /** A credential factory to create service account key based oauth {@link Credential}. */
 @OptionClass(alias = "service-account-key-credential-factory", global_namespace = false)
@@ -57,7 +58,7 @@ public class ServiceAccountKeyCredentialFactory implements ICredentialFactory {
                     GoogleCredential.fromStream(
                                     new FileInputStream(mKeyFile),
                                     GoogleNetHttpTransport.newTrustedTransport(),
-                                    JacksonFactory.getDefaultInstance())
+                                    GsonFactory.getDefaultInstance())
                             .createScoped(scopes);
             return credential;
         } catch (GeneralSecurityException e) {
