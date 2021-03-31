@@ -18,6 +18,7 @@ package com.android.tradefed.util;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.host.HostOptions;
 import com.android.tradefed.log.LogUtil.CLog;
+
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
@@ -26,7 +27,7 @@ import com.google.api.client.http.HttpRequest;
 import com.google.api.client.http.HttpRequestInitializer;
 import com.google.api.client.http.HttpResponse;
 import com.google.api.client.http.HttpUnsuccessfulResponseHandler;
-import com.google.api.client.json.jackson2.JacksonFactory;
+import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.client.util.ExponentialBackOff;
 import com.google.common.annotations.VisibleForTesting;
 
@@ -75,7 +76,7 @@ public class GoogleApiClientUtil {
                 GoogleCredential.fromStream(
                                 new FileInputStream(file),
                                 GoogleNetHttpTransport.newTrustedTransport(),
-                                JacksonFactory.getDefaultInstance())
+                                GsonFactory.getDefaultInstance())
                         .createScoped(scopes);
         return credentail;
     }
@@ -180,7 +181,7 @@ public class GoogleApiClientUtil {
             throws GeneralSecurityException, IOException {
         return new GoogleCredential.Builder()
                 .setTransport(GoogleNetHttpTransport.newTrustedTransport())
-                .setJsonFactory(JacksonFactory.getDefaultInstance())
+                .setJsonFactory(GsonFactory.getDefaultInstance())
                 .setServiceAccountId(serviceAccount)
                 .setServiceAccountScopes(scopes)
                 .setServiceAccountPrivateKeyFromP12File(keyFile)
