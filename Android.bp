@@ -103,6 +103,8 @@ java_library_host {
         "protobuf-java-util-prebuilt-jar",
         "aoa-helper",
         "error_prone_annotations-2.0.18",
+	"google-api-java-client-assembly",
+	"auto_value_annotations",
         "google-api-java-client-min-repackaged",
         "google-api-services-compute",
         "google-api-services-storage",
