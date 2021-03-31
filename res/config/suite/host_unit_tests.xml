@@ -4,6 +4,8 @@
     <option name="null-device" value="true" />
     <include name="suite/base-suite" />
 
+    <!-- Force python unit tests into verbose so we can parse them -->
+    <option name="test-arg" value="com.android.tradefed.testtype.python.PythonBinaryHostTest:python-options:-vv" />
     <!-- Force GTest to report binary name in results -->
     <option name="test-arg" value="com.android.tradefed.testtype.HostGTest:prepend-filename:true" />
     <!-- We set the timeout on the method level below so no need to limit the binary -->
