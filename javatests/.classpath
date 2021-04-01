@@ -39,5 +39,8 @@
 	<classpathentry kind="var" path="TRADEFED_ROOT/out/soong/.intermediates/tools/tradefederation/core/tradefed-lib-core/linux_glibc_common/javac/tradefed-lib-core.jar"/>
 	<classpathentry kind="var" path="TRADEFED_ROOT/out/soong/.intermediates/external/grpc-grpc-java/testing/grpc-java-testing/linux_glibc_common/javac/grpc-java-testing.jar"/>
 	<classpathentry kind="var" path="TRADEFED_ROOT/out/soong/.intermediates/prebuilts/tools/common/m2/protobuf-java-util-prebuilt-jar/linux_glibc_common/combined/protobuf-java-util-prebuilt-jar.jar"/>
+	<classpathentry kind="var" path="TRADEFED_ROOT/out/soong/.intermediates/tools/asuite/atest/asuite_proto_java/linux_glibc_common/combined/asuite_proto_java.jar"/>
+	<classpathentry kind="var" path="TRADEFED_ROOT/out/soong/.intermediates/prebuilts/tools/common/google-api-java-client/1.31.3/google-api-java-client-assembly/linux_glibc_common/combined/google-api-java-client-assembly.jar"/>
+	<classpathentry kind="var" path="TRADEFED_ROOT/out/soong/.intermediates/tools/tradefederation/core/tests/tradefed-test-protos/linux_glibc_common/combined/tradefed-test-protos.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
