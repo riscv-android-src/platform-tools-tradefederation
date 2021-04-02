@@ -17,6 +17,5 @@
     <!-- Use HostTest runner to have JUnit3 and JUnit4 Suite support -->
     <test class="com.android.tradefed.testtype.HostTest" >
         <option name="class" value="com.android.tradefed.UnitTests" />
-        <option name="class" value="com.android.tradefed.prodtests.UnitTests" />
     </test>
 </configuration>
