@@ -81,6 +81,9 @@ public class CommandOptions implements ICommandOptions {
             importance = Importance.ALWAYS)
     private boolean mLoopMode = false;
 
+    @Option(name = "max-loops", description = "the maximum number of loops.")
+    private long mMaxLoopCount = Long.MAX_VALUE;
+
     @Option(name = "all-devices", description =
             "fork this command to run on all connected devices.")
     private boolean mAllDevices = false;
@@ -319,6 +322,10 @@ public class CommandOptions implements ICommandOptions {
         return mMinLoopTime;
     }
 
+    @Override
+    public long getMaxLoopCount() {
+        return mMaxLoopCount;
+    }
 
     @Override
     public ICommandOptions clone() {
