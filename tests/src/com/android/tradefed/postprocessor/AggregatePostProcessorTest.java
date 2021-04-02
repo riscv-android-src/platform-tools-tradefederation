@@ -48,6 +48,7 @@ public class AggregatePostProcessorTest {
     private static final String STATS_KEY_STDEV = "stdev";
     private static final String STATS_KEY_MEDIAN = "median";
     private static final String STATS_KEY_TOTAL = "total";
+    private static final String STATS_KEY_COUNT = "count";
     private static final String STATS_KEY_PERCENTILE_PREFIX = "p";
     // Separator for final upload
     private static final String STATS_KEY_SEPARATOR = "-";
@@ -76,6 +77,7 @@ public class AggregatePostProcessorTest {
         singularDoubleStats.put(STATS_KEY_STDEV, "0.73");
         singularDoubleStats.put(STATS_KEY_MEDIAN, "2.00");
         singularDoubleStats.put(STATS_KEY_TOTAL, "6.00");
+        singularDoubleStats.put(STATS_KEY_COUNT, "3.00");
 
         // Construct ListMultimap of multiple iterations of test metrics.
         // Stores processed metrics which is overwitten with every test; this is consistent with
@@ -162,6 +164,16 @@ public class AggregatePostProcessorTest {
                         .build()
                         .getMeasurements()
                         .getSingleString());
+        Assert.assertTrue(
+                processedMetrics.containsKey(
+                        String.join(STATS_KEY_SEPARATOR, singularDoubleKey, STATS_KEY_COUNT)));
+        Assert.assertEquals(
+                singularDoubleStats.get(STATS_KEY_COUNT),
+                processedMetrics
+                        .get(String.join(STATS_KEY_SEPARATOR, singularDoubleKey, STATS_KEY_COUNT))
+                        .build()
+                        .getMeasurements()
+                        .getSingleString());
     }
 
     /** Test correct aggregation of list double metrics. */
@@ -179,6 +191,7 @@ public class AggregatePostProcessorTest {
         listDoubleStats.put(STATS_KEY_STDEV, "0.60");
         listDoubleStats.put(STATS_KEY_MEDIAN, "2.05");
         listDoubleStats.put(STATS_KEY_TOTAL, "12.10");
+        listDoubleStats.put(STATS_KEY_COUNT, "6.00");
 
         // Stores processed metrics which is overwitten with every test; this is consistent with
         // the current reporting behavior. We only test the correctness on the final metrics values.
@@ -261,6 +274,16 @@ public class AggregatePostProcessorTest {
                         .build()
                         .getMeasurements()
                         .getSingleString());
+        Assert.assertTrue(
+                processedMetrics.containsKey(
+                        listDoubleKey + STATS_KEY_SEPARATOR + STATS_KEY_COUNT));
+        Assert.assertEquals(
+                listDoubleStats.get(STATS_KEY_COUNT),
+                processedMetrics
+                        .get(listDoubleKey + STATS_KEY_SEPARATOR + STATS_KEY_COUNT)
+                        .build()
+                        .getMeasurements()
+                        .getSingleString());
     }
 
 
@@ -306,6 +329,9 @@ public class AggregatePostProcessorTest {
         Assert.assertFalse(
                 processedMetrics.containsKey(
                         String.join(STATS_KEY_SEPARATOR, nonNumericKey, STATS_KEY_TOTAL)));
+        Assert.assertFalse(
+                processedMetrics.containsKey(
+                        String.join(STATS_KEY_SEPARATOR, nonNumericKey, STATS_KEY_COUNT)));
     }
 
     /** Test empty result. */
@@ -348,6 +374,9 @@ public class AggregatePostProcessorTest {
         Assert.assertFalse(
                 processedMetrics.containsKey(
                         String.join(STATS_KEY_SEPARATOR, emptyResultKey, STATS_KEY_TOTAL)));
+        Assert.assertFalse(
+                processedMetrics.containsKey(
+                        String.join(STATS_KEY_SEPARATOR, emptyResultKey, STATS_KEY_COUNT)));
     }
 
     /** Test single run. */
@@ -438,6 +467,16 @@ public class AggregatePostProcessorTest {
                         .build()
                         .getMeasurements()
                         .getSingleString());
+        Assert.assertTrue(
+                processedMetrics.containsKey(
+                        String.join(STATS_KEY_SEPARATOR, singleRunKey, STATS_KEY_COUNT)));
+        Assert.assertEquals(
+                singleRunVal,
+                processedMetrics
+                        .get(String.join(STATS_KEY_SEPARATOR, singleRunKey, STATS_KEY_COUNT))
+                        .build()
+                        .getMeasurements()
+                        .getSingleString());
     }
 
 
@@ -479,6 +518,9 @@ public class AggregatePostProcessorTest {
         Assert.assertTrue(
                 processedMetrics.containsKey(
                         String.join(STATS_KEY_SEPARATOR, key, STATS_KEY_TOTAL)));
+        Assert.assertTrue(
+                processedMetrics.containsKey(
+                        String.join(STATS_KEY_SEPARATOR, key, STATS_KEY_COUNT)));
     }
 
     /**
@@ -515,6 +557,9 @@ public class AggregatePostProcessorTest {
         Assert.assertTrue(
                 processedMetrics.containsKey(
                         String.join(STATS_KEY_SEPARATOR, key, STATS_KEY_TOTAL)));
+        Assert.assertTrue(
+                processedMetrics.containsKey(
+                        String.join(STATS_KEY_SEPARATOR, key, STATS_KEY_COUNT)));
     }
 
     /**
@@ -622,6 +667,7 @@ public class AggregatePostProcessorTest {
         listDoubleStats.put(STATS_KEY_STDEV, "0.60");
         listDoubleStats.put(STATS_KEY_MEDIAN, "2.05");
         listDoubleStats.put(STATS_KEY_TOTAL, "12.10");
+        listDoubleStats.put(STATS_KEY_COUNT, "6.00");
         listDoubleStats.put(STATS_KEY_PERCENTILE_PREFIX + "7", "1.24");
         listDoubleStats.put(STATS_KEY_PERCENTILE_PREFIX + "54", "2.11");
         listDoubleStats.put(STATS_KEY_PERCENTILE_PREFIX + "97", "2.84");
@@ -704,6 +750,16 @@ public class AggregatePostProcessorTest {
                 listDoubleStats.get(STATS_KEY_TOTAL),
                 processedMetrics
                         .get(listDoubleKey + STATS_KEY_SEPARATOR + STATS_KEY_TOTAL)
+                        .build()
+                        .getMeasurements()
+                        .getSingleString());
+        Assert.assertTrue(
+                processedMetrics.containsKey(
+                        listDoubleKey + STATS_KEY_SEPARATOR + STATS_KEY_COUNT));
+        Assert.assertEquals(
+                listDoubleStats.get(STATS_KEY_COUNT),
+                processedMetrics
+                        .get(listDoubleKey + STATS_KEY_SEPARATOR + STATS_KEY_COUNT)
                         .build()
                         .getMeasurements()
                         .getSingleString());

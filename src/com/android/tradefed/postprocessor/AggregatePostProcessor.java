@@ -36,9 +36,13 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * A metric aggregator that gives the min, max, mean, variance and standard deviation for numeric
- * metrics collected during multiple-iteration test runs, treating them as doubles. Non-numeric
- * metrics are ignored.
+ * A metric aggregator that gives the min, max, mean, variance, standard deviation, total, count and
+ * optionally percentiles for numeric metrics collected during multiple-iteration test runs,
+ * treating them as doubles. Non-numeric metrics are ignored. Metrics that have a mix of numeric and
+ * non-numeric values will also be ignored.
+ *
+ * <p>Note that count will only be present if a metric has all-numeric values; otherwise, it will be
+ * absent along with all the other stats.
  *
  * <p>It parses metrics from single string as currently metrics are passed this way.
  */
@@ -58,6 +62,7 @@ public class AggregatePostProcessor extends BasePostProcessor {
     private static final String STATS_KEY_STDEV = "stdev";
     private static final String STATS_KEY_MEDIAN = "median";
     private static final String STATS_KEY_TOTAL = "total";
+    private static final String STATS_KEY_COUNT = "count";
     private static final String STATS_KEY_PERCENTILE_PREFIX = "p";
     // Separator for final upload
     private static final String STATS_KEY_SEPARATOR = "-";
@@ -207,6 +212,7 @@ public class AggregatePostProcessor extends BasePostProcessor {
         stats.put(STATS_KEY_STDEV, Math.sqrt(variance));
         stats.put(STATS_KEY_MEDIAN, median);
         stats.put(STATS_KEY_TOTAL, sum);
+        stats.put(STATS_KEY_COUNT, count);
         percentiles
                 .entrySet()
                 .stream()
