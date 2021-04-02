@@ -241,6 +241,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         private final int mId;
         private final String[] mArgs;
         private final String mCommandFilePath;
+        private long mCount;
 
         /** the total amount of time this command was executing. Used to prioritize */
         private long mTotalExecTime = 0;
@@ -249,6 +250,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             mId = id;
             mArgs = args;
             mCommandFilePath = commandFilePath;
+            mCount = 0;
         }
 
         synchronized void incrementExecTime(long execTime) {
@@ -278,6 +280,14 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
          */
         String getCommandFilePath() {
             return mCommandFilePath;
+        }
+
+        public void incrementScheduledCount() {
+            mCount++;
+        }
+
+        public long getScheduledCount() {
+            return mCount;
         }
     }
 
@@ -341,6 +351,10 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
 
         public boolean isLoopMode() {
             return mConfig.getCommandOptions().isLoopMode();
+        }
+
+        public long getMaxLoopCount() {
+            return mConfig.getCommandOptions().getMaxLoopCount();
         }
 
         public Long getSleepTime() {
@@ -1127,7 +1141,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             ExecutableCommand cmd = cmdDeviceEntry.getKey();
             startInvocation(cmdDeviceEntry.getValue(), cmd,
                     new FreeDeviceHandler(getDeviceManager()));
-            if (cmd.isLoopMode()) {
+            cmd.getCommandTracker().incrementScheduledCount();
+            if (cmd.isLoopMode()
+                    && cmd.getCommandTracker().getScheduledCount() < cmd.getMaxLoopCount()) {
                 addNewExecCommandToQueue(cmd.getCommandTracker());
             }
         }
