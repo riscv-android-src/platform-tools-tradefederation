@@ -22,11 +22,13 @@ import com.android.tradefed.testtype.DeviceJUnit4ClassRunner;
 import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
+import com.android.tradefed.util.FileUtil;
 
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.io.File;
 import java.util.Random;
 
 /** Functional tests for the {@link ITestDevice} user management APIs */
@@ -52,6 +54,7 @@ public class TestDeviceShellFuncTest implements IDeviceTest {
         mInternalStorage = "/data/local/tmp";
     }
 
+    /** Runs a couple basic commands like `ls` and `cat` on a file we push. */
     @Test
     public void testExecuteShellCommand_basic() throws Exception {
         final String testTag = "testExecuteShellCommand_basic";
@@ -88,6 +91,11 @@ public class TestDeviceShellFuncTest implements IDeviceTest {
         }
     }
 
+    /**
+     * Runs a couple basic commands like `ls` and `cat` on a file that we push
+     *
+     * <p>Uses the executeShellV2Command API instead of the original
+     */
     @Test
     public void testExecuteShellCommandV2_basic() throws Exception {
         final String testTag = "testExecuteShellCommandV2_basic";
@@ -110,7 +118,7 @@ public class TestDeviceShellFuncTest implements IDeviceTest {
                     mTestDevice.executeShellV2Command(String.format("ls %s", devicePath));
 
             // Check that the command succeeded (it should have)
-            assumeTrue(CommandStatus.SUCCESS == outputResult.getStatus());
+            assertEquals(CommandStatus.SUCCESS, outputResult.getStatus());
 
             // Verify `ls` outputs the file we anticipate
             assertEquals(devicePath.trim(), outputResult.getStdout().trim());
@@ -128,6 +136,24 @@ public class TestDeviceShellFuncTest implements IDeviceTest {
             if (devicePath != null) {
                 mTestDevice.deleteFile(devicePath);
             }
+        }
+    }
+
+    /** Tests one of the variants of executeShellV2Command */
+    @Test
+    public void testExecuteShellCommand_pipeStdin() throws Exception {
+        final String testTag = "testExecuteShellCommand_pipeStdin";
+        final String contents = generateRandomString(64);
+        File input = FileUtil.createTempFile(testTag, "");
+        FileUtil.writeToFile(contents, input);
+
+        try {
+            CommandResult result = mTestDevice.executeShellV2Command("cat", input);
+
+            assumeTrue(CommandStatus.SUCCESS == result.getStatus());
+            assertEquals(contents, result.getStdout());
+        } finally {
+            FileUtil.deleteFile(input);
         }
     }
 
