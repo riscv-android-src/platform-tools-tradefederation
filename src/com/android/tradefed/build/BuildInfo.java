@@ -76,7 +76,7 @@ public class BuildInfo implements IBuildInfo {
             };
 
     /** These files will be fully copied instead of hardlink. */
-    private static final Set<String> FULL_COPY_FILES =
+    public static final Set<String> FULL_COPY_FILES =
             new HashSet<>(Arrays.asList("libunwindstack_unit_test", "libunwindstack.so"));
 
     /**
