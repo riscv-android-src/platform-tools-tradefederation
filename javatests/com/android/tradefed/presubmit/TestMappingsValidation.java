@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.presubmit;
 
+import static java.lang.String.format;
 import static org.junit.Assert.fail;
 
 import com.android.tradefed.build.IBuildInfo;
@@ -24,6 +25,7 @@ import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.ConfigurationUtil;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
+import com.android.tradefed.config.Option;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner;
 import com.android.tradefed.testtype.IBuildReceiver;
@@ -37,6 +39,9 @@ import com.android.tradefed.util.testmapping.TestOption;
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -47,10 +52,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.json.JSONObject;
-import org.json.JSONArray;
-import org.json.JSONException;
 import org.junit.Assume;
 import org.junit.After;
 import org.junit.Before;
@@ -66,6 +69,16 @@ import org.junit.runner.RunWith;
 @RunWith(DeviceJUnit4ClassRunner.class)
 public class TestMappingsValidation implements IBuildReceiver {
 
+    @Option(name = "test-group-to-validate", description = "The test groups to be validated.")
+    private Set<String> mTestGroupToValidate =
+            new HashSet<>(Arrays.asList("presubmit", "postsubmit"));
+
+    @Option(name = "skip-modules", description = "Test modules that could be skipped.")
+    private Set<String> mSkipModules = new HashSet<>();
+
+    @Option(name = "enforce-module-name-check", description = "Enforce failing test if it is set.")
+    private boolean mEnforceModuleNameCheck = false;
+
     // pattern used to identify java class names conforming to java naming conventions.
     private static final Pattern CLASS_OR_METHOD_REGEX =
             Pattern.compile(
@@ -75,19 +88,15 @@ public class TestMappingsValidation implements IBuildReceiver {
     private static final Pattern REGULAR_EXPRESSION = Pattern.compile("(\\?+)|(\\*+)");
     private static final String MODULE_INFO = "module-info.json";
     private static final String TEST_MAPPINGS_ZIP = "test_mappings.zip";
-    private static final String GENERAL_TESTS_ZIP = "general-tests.zip";
     private static final String INCLUDE_FILTER = "include-filter";
     private static final String EXCLUDE_FILTER = "exclude-filter";
     private static final String LOCAL_COMPATIBILITY_SUITES = "compatibility_suites";
     private static final String GENERAL_TESTS = "general-tests";
     private static final String DEVICE_TESTS = "device-tests";
-    private static final String TEST_MAPPING_BUILD_SCRIPT_LINK = "https://source.android.com/compatibility/tests/development/test-mapping#packaging_build_script_rules";
-    // Only Check the tests with group in presubmit or postsubmit.
-    private static final Set<String> TEST_GROUPS_TO_VALIDATE =
-            new HashSet<>(Arrays.asList("presubmit", "postsubmit"));
-
-    private static final Set<String> MAINLINE_TEST_GROUPS_TO_VALIDATE =
-            new HashSet<>(Arrays.asList("mainline-presubmit", "mainline-postsubmit"));
+    private static final String TEST_MAPPING_BUILD_SCRIPT_LINK =
+            "https://source.android.com/compatibility/tests/development/test-mapping#packaging_build_script_rules";
+    private static final String MODULE_NAME = "module_name";
+    private static final String MAINLINE = "mainline";
 
     // Check the mainline parameter configured in a test config must end with .apk, .apks, or .apex.
     private static final Set<String> MAINLINE_PARAMETERS_TO_VALIDATE =
@@ -97,7 +106,7 @@ public class TestMappingsValidation implements IBuildReceiver {
     private IConfigurationFactory mConfigFactory = null;
     private IDeviceBuildInfo deviceBuildInfo = null;
     private IBuildInfo mBuild;
-    private JSONObject moduleInfo = null;
+    private JsonObject mergedModuleInfo = new JsonObject();
     private Map<String, Set<TestInfo>> allTests = null;
 
     /** Type of filters used in test options in TEST_MAPPING files. */
@@ -116,62 +125,25 @@ public class TestMappingsValidation implements IBuildReceiver {
     }
 
     @Before
-    public void setUp() throws IOException, JSONException {
+    public void setUp() throws IOException {
         Assume.assumeTrue(mBuild instanceof IDeviceBuildInfo);
         mConfigFactory = ConfigurationFactory.getInstance();
         deviceBuildInfo = (IDeviceBuildInfo) mBuild;
         testMappingsDir =
                 TestMapping.extractTestMappingsZip(deviceBuildInfo.getFile(TEST_MAPPINGS_ZIP));
-        File file = deviceBuildInfo.getFile(MODULE_INFO);
-        moduleInfo = new JSONObject(FileUtil.readStringFromFile(file));
+        mergeModuleInfo(deviceBuildInfo.getFile(MODULE_INFO));
+        for (String fileKey : deviceBuildInfo.getVersionedFileKeys()) {
+            if (fileKey.contains("additional-module-info")) {
+                CLog.i("Merging additional %s.json", fileKey);
+                mergeModuleInfo(deviceBuildInfo.getFile(fileKey));
+            }
+        }
         allTests = TestMapping.getAllTests(testMappingsDir);
     }
 
     @After
     public void tearDown() {
         FileUtil.recursiveDelete(testMappingsDir);
-    }
-
-    /**
-     * Test all the TEST_MAPPING files and make sure they are properly configured with
-     * parameterized mainline modules.
-     */
-    @Test
-    public void testValidTestMappingForParameterizedMainlineModules() {
-        List<String> errors = new ArrayList<>();
-        for (String testGroup : allTests.keySet()) {
-            if (!MAINLINE_TEST_GROUPS_TO_VALIDATE.contains(testGroup)) {
-                CLog.d("Check mainline group only, skip checking tests with group: %s", testGroup);
-                continue;
-            }
-            for (TestInfo testInfo : allTests.get(testGroup)) {
-                // If there are brackets existing in the name, that means it's for parameterized
-                // mainline modules, so try to get the modules by indexing the brackets.
-                String testName = testInfo.getName();
-                int firstIndex = testName.indexOf("[");
-                int lastIndex = testName.indexOf("]");
-                if (firstIndex == -1 && lastIndex == -1) {
-                    continue;
-                }
-                else if (firstIndex != -1 && lastIndex != -1) {
-                    String mainlineParam = testName.substring(firstIndex+1, lastIndex);
-                    String error =
-                            validateMainlineModuleConfig(mainlineParam, testInfo.getSources());
-                    if (!Strings.isNullOrEmpty(error)){
-                        errors.add(error);
-                    }
-                }
-                else {
-                    errors.add(
-                            String.format("Unmatched \"[]\" for \"%s\" configured in the %s. " +
-                                "Parameter must contain [].", testName, testInfo.getSources()));
-                }
-            }
-        }
-        if (!errors.isEmpty()) {
-            fail(String.format("Fail TEST_MAPPING check for parameterized mainline modules: \n%s",
-                    Joiner.on("\n").join(errors)));
-        }
     }
 
     /**
@@ -214,19 +186,72 @@ public class TestMappingsValidation implements IBuildReceiver {
     }
 
     /**
-     * Test all the TEST_MAPPING files and make sure they contain the suite setting in
-     * module-info.json.
+     * This test can only be enabled for BVT only cause it needs many other build targets involved.
+     * Test all TEST_MAPPING files and make sure each test entry is properly configured in build
+     * targets.
      */
     @Test
-    public void testTestSuiteSetting() throws JSONException {
+    public void testValidateTestEntry() {
         List<String> errors = new ArrayList<>();
         for (String testGroup : allTests.keySet()) {
-            if (!TEST_GROUPS_TO_VALIDATE.contains(testGroup)) {
+            if (!mTestGroupToValidate.contains(testGroup)) {
                 CLog.d("Skip checking tests with group: %s", testGroup);
                 continue;
             }
             for (TestInfo testInfo : allTests.get(testGroup)) {
-                if (!validateSuiteSetting(testInfo.getName(), testInfo.getKeywords())) {
+                String moduleName = testInfo.getName();
+                if (mSkipModules.contains(moduleName)) {
+                    CLog.w("Test Module: %s is in the skip list. Ignore checking...", moduleName);
+                    continue;
+                }
+                if (testGroup.contains(MAINLINE)) {
+                    errors.addAll(validateMainlineTest(testInfo));
+                } else {
+                    if (!mergedModuleInfo.has(moduleName)) {
+                        errors.add(
+                                format(
+                                        "Test Module: %s doesn't exist in any build targets,"
+                                                + " TEST_MAPPING file path: %s",
+                                        testInfo.getName(), testInfo.getSources()));
+                    }
+                }
+            }
+        }
+        if (!errors.isEmpty()) {
+            String error = format("Fail test entry check:\n%s", Joiner.on("\n").join(errors));
+            if (!mEnforceModuleNameCheck) {
+                CLog.w(error);
+            } else {
+                fail(error);
+            }
+        }
+    }
+
+    /**
+     * Test all the TEST_MAPPING files and make sure they contain the suite setting in
+     * module-info.json.
+     */
+    @Test
+    public void testTestSuiteSetting() {
+        List<String> errors = new ArrayList<>();
+        for (String testGroup : allTests.keySet()) {
+            if (!mTestGroupToValidate.contains(testGroup)) {
+                CLog.d("Skip checking tests with group: %s", testGroup);
+                continue;
+            }
+            for (TestInfo testInfo : allTests.get(testGroup)) {
+                String moduleName = testInfo.getName();
+                if (mSkipModules.contains(moduleName)) {
+                    CLog.w("Test Module: %s is in the skip list. Ignore checking...", moduleName);
+                    continue;
+                }
+                if (testGroup.contains(MAINLINE)) {
+                    Matcher matcher = TestMapping.MAINLINE_REGEX.matcher(moduleName);
+                    if (matcher.find()) {
+                        moduleName = matcher.group(1);
+                    }
+                }
+                if (!validateSuiteSetting(moduleName)) {
                     errors.add(
                             String.format(
                                     "Missing test_suite setting for test: %s, test group: %s, "
@@ -410,19 +435,21 @@ public class TestMappingsValidation implements IBuildReceiver {
      * Validate if the name exists in module-info.json and with the correct suite setting.
      *
      * @param name A {@code String} name of the test.
-     * @param keywords A {@code Set<String>} keywords of the test.
      * @return true if name exists in module-info.json and matches either "general-tests" or
      *     "device-tests", or name doesn't exist in module-info.json.
      */
-    private boolean validateSuiteSetting(String name, Set<String> keywords) throws JSONException {
-        if (!moduleInfo.has(name)) {
+    private boolean validateSuiteSetting(String name) {
+        if (!mergedModuleInfo.has(name)) {
             CLog.w("Test Module: %s can't be found in module-info.json. Ignore checking...", name);
             return true;
         }
-        JSONArray compatibilitySuites =
-                moduleInfo.getJSONObject(name).getJSONArray(LOCAL_COMPATIBILITY_SUITES);
-        for (int i = 0; i < compatibilitySuites.length(); i++) {
-            String suite = compatibilitySuites.optString(i);
+        JsonArray compatibilitySuites =
+                mergedModuleInfo
+                        .getAsJsonObject(name)
+                        .get(LOCAL_COMPATIBILITY_SUITES)
+                        .getAsJsonArray();
+        for (int i = 0; i < compatibilitySuites.size(); i++) {
+            String suite = compatibilitySuites.get(i).getAsString();
             if (suite.equals(GENERAL_TESTS) || suite.equals(DEVICE_TESTS)) {
                 return true;
             }
@@ -459,5 +486,39 @@ public class TestMappingsValidation implements IBuildReceiver {
             }
         }
         return testInfos;
+    }
+
+    private void mergeModuleInfo(File file) throws IOException {
+        JsonObject json = new Gson().fromJson(FileUtil.readStringFromFile(file), JsonObject.class);
+        json.entrySet()
+                .forEach(
+                        moduleInfo ->
+                                mergeModuleInfoByName(moduleInfo.getValue().getAsJsonObject()));
+    }
+
+    private void mergeModuleInfoByName(JsonObject jsonObject) {
+        mergedModuleInfo.add(jsonObject.get(MODULE_NAME).getAsString(), jsonObject);
+    }
+
+    /** Validate mainline test with parameterized mainline modules is properly configured. */
+    private List<String> validateMainlineTest(TestInfo testInfo) {
+        List<String> errors = new ArrayList<>();
+        try {
+            Matcher matcher = TestMapping.getMainlineTestModuleName(testInfo);
+            if (!mergedModuleInfo.has(matcher.group(1))) {
+                errors.add(
+                        format(
+                                "Test Module: %s doesn't exist in any build targets,"
+                                        + " TEST_MAPPING file path: %s",
+                                testInfo.getName(), testInfo.getSources()));
+            }
+            String error = validateMainlineModuleConfig(matcher.group(2), testInfo.getSources());
+            if (!Strings.isNullOrEmpty(error)) {
+                errors.add(error);
+            }
+        } catch (ConfigurationException e) {
+            errors.add(e.getMessage());
+        }
+        return errors;
     }
 }
