@@ -25,6 +25,7 @@ import com.android.tradefed.util.FileUtil;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.Ignore;
 import org.junit.runner.RunWith;
 
 import java.io.File;
@@ -124,6 +125,7 @@ public class TestDevicePackageFuncTest implements IDeviceTest {
      *
      * <p>This tests the user-specific flow of installing packages
      */
+    @Ignore
     @Test
     public void testInstallListUninstall_forUser() throws Exception {
         File testApkFile = WifiHelper.extractWifiUtilApk();
