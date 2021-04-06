@@ -248,7 +248,8 @@ public class PythonBinaryHostTest implements IRemoteTest, ITestFilterReceiver {
             commandLine.add("-s");
             commandLine.add(mTestInfo.getDevice().getSerialNumber());
         }
-
+        // Set the process working dir as the directory of the main binary
+        getRunUtil().setWorkingDir(pyFile.getParentFile());
         if (mLdLibraryPath != null) {
             getRunUtil().setEnvVariable(LD_LIBRARY_PATH, mLdLibraryPath);
         }
