@@ -219,4 +219,10 @@ public interface ICommandOptions {
 
     /** Set whether or not to report test cases count per test types. */
     public void setReportTestCaseCount(boolean report);
+
+    /**
+     * Returns the maximum number of times to scheduled the command. Has no effect if isLoopMode is
+     * false.
+     */
+    public long getMaxLoopCount();
 }

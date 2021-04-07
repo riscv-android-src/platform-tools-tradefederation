@@ -34,7 +34,7 @@ tradefed_java_library_host {
     defaults: ["tradefed_errorprone_defaults"],
 
     // Only compile source java files in this lib.
-    srcs: ["src/**/*.java"],
+    srcs: ["com/**/*.java"],
 
     java_resource_dirs: ["res"],
     java_resources: [

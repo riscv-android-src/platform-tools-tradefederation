@@ -109,6 +109,7 @@ public final class PythonBinaryHostTestTest {
         mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("SERIAL");
         mMockRunUtil.setEnvVariable(PythonBinaryHostTest.ANDROID_SERIAL_VAR, "SERIAL");
+        mMockRunUtil.setWorkingDir(EasyMock.anyObject());
 
         mPythonBinary = FileUtil.createTempFile("python-dir", "");
         mTestInfo.executionFiles().put(FilesKey.HOST_TESTS_DIRECTORY, new File("/path-not-exist"));

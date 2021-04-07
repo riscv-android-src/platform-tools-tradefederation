@@ -27,7 +27,7 @@ import com.google.api.client.http.HttpResponse;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.JsonObjectParser;
-import com.google.api.client.json.jackson2.JacksonFactory;
+import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.client.util.ExponentialBackOff;
 import com.google.common.annotations.VisibleForTesting;
 
@@ -42,7 +42,7 @@ import java.util.Map;
 /** A helper class for performing REST API calls. */
 public class RestApiHelper implements IRestApiHelper {
 
-    protected static final JsonFactory JSON_FACTORY = JacksonFactory.getDefaultInstance();
+    protected static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
     protected static final String JSON_MIME = "application/json";
     protected static final int DEFAULT_NUMBER_OF_RETRIES = 2;
 

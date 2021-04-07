@@ -76,7 +76,7 @@ public class BuildInfo implements IBuildInfo {
             };
 
     /** These files will be fully copied instead of hardlink. */
-    private static final Set<String> FULL_COPY_FILES =
+    public static final Set<String> FULL_COPY_FILES =
             new HashSet<>(Arrays.asList("libunwindstack_unit_test", "libunwindstack.so"));
 
     /**
@@ -234,7 +234,12 @@ public class BuildInfo implements IBuildInfo {
                 copyFile = FileUtil.createTempFile(fileEntry.getKey(),
                         FileUtil.getExtension(origFile.getName()));
                 copyFile.delete();
-                FileUtil.hardlinkFile(origFile, copyFile);
+                if (FULL_COPY_FILES.contains(origFile.getName())) {
+                    CLog.d("Doing full copy for %s", origFile);
+                    FileUtil.copyFile(origFile, copyFile);
+                } else {
+                    FileUtil.hardlinkFile(origFile, copyFile);
+                }
             }
             setFile(fileEntry.getKey(), copyFile, fileEntry.getValue().getVersion());
         }

@@ -49,7 +49,6 @@ import java.util.Map;
 @OptionClass(alias = "run-on-work-profile")
 public class RunOnWorkProfileTargetPreparer extends BaseTargetPreparer
         implements IConfigurationReceiver {
-
     @VisibleForTesting static final String RUN_TESTS_AS_USER_KEY = "RUN_TESTS_AS_USER";
 
     @VisibleForTesting static final String TEST_PACKAGE_NAME_OPTION = "test-package-name";

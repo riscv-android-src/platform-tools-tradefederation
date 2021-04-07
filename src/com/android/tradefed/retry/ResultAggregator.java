@@ -408,6 +408,7 @@ public class ResultAggregator extends CollectingTestListener {
                 mAggregatedForwarder.logAssociation(key, log);
             }
         }
+        clearModuleLogFiles();
         mAggregatedForwarder.testModuleEnded();
         // Ensure we don't carry results from one module to another.
         for (String name : resultNames) {

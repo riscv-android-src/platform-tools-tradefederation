@@ -16,7 +16,6 @@
 
 package com.android.tradefed.testtype;
 
-
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 
@@ -94,7 +93,7 @@ public class InstrumentationTest
     /** default timeout for tests collection */
     static final long TEST_COLLECTION_TIMEOUT_MS = 2 * 60 * 1000;
 
-    static final String RUN_TESTS_AS_USER_KEY = "RUN_TESTS_AS_USER";
+    public static final String RUN_TESTS_AS_USER_KEY = "RUN_TESTS_AS_USER";
 
     @Option(
         name = "package",

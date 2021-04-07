@@ -962,7 +962,7 @@ public class TestInvocation implements ITestInvocation {
                                 invocationPath.reportLogs(device, listener, Stage.ERROR);
                             }
                             reportHostLog(listener, config);
-                            listener.invocationEnded(0L);
+                            reportInvocationEnded(config, context, listener, 0L);
                         }
                         return;
                     }

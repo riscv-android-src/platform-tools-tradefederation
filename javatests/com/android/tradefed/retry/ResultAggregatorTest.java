@@ -1492,6 +1492,7 @@ public class ResultAggregatorTest {
     public void testForwarding_module_module() throws Exception {
         TestDescription test1 = new TestDescription("classname", "test1");
         TestDescription test2 = new TestDescription("classname", "test2");
+        LogFile moduleLog = new LogFile("module-log", "url", LogDataType.TEXT);
 
         EasyMock.expect(mDetailedListener.supportGranularResults()).andStubReturn(true);
 
@@ -1529,6 +1530,8 @@ public class ResultAggregatorTest {
                 EasyMock.anyLong(),
                 EasyMock.<HashMap<String, Metric>>anyObject());
         mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
+        mDetailedListener.logAssociation("module-log", moduleLog);
+        mDetailedListener.testModuleEnded();
 
         // Aggregated listeners receives the aggregated results
         mAggListener.testRunStarted(
@@ -1545,8 +1548,9 @@ public class ResultAggregatorTest {
                 EasyMock.<HashMap<String, Metric>>anyObject());
         mAggListener.testRunEnded(450L, new HashMap<String, Metric>());
 
+        mAggListener.logAssociation("module-log", moduleLog);
         mAggListener.testModuleEnded();
-        mDetailedListener.testModuleEnded();
+
 
         // second module
         mAggListener.testModuleStarted(mModuleContext);
@@ -1621,6 +1625,7 @@ public class ResultAggregatorTest {
         mAggregator.testStarted(test2);
         mAggregator.testEnded(test2, new HashMap<String, Metric>());
         mAggregator.testRunEnded(450L, new HashMap<String, Metric>());
+        mAggregator.logAssociation("module-log", moduleLog);
         mAggregator.testModuleEnded();
 
         // Module 2 starts
