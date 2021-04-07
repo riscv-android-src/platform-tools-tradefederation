@@ -747,7 +747,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             listener.testStarted(testEntry.getKey(), testEntry.getValue().getStartTime());
             switch (testEntry.getValue().getStatus()) {
                 case FAILURE:
-                    listener.testFailed(testEntry.getKey(), testEntry.getValue().getStackTrace());
+                    listener.testFailed(testEntry.getKey(), testEntry.getValue().getFailure());
                     break;
                 case ASSUMPTION_FAILURE:
                     listener.testAssumptionFailure(
@@ -758,7 +758,10 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                     break;
                 case INCOMPLETE:
                     listener.testFailed(
-                            testEntry.getKey(), "Test did not complete due to exception.");
+                            testEntry.getKey(),
+                            FailureDescription.create(
+                                    "Test did not complete due to exception.",
+                                    FailureStatus.TEST_FAILURE));
                     break;
                 default:
                     break;
