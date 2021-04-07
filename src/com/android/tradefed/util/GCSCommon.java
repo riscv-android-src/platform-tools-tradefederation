@@ -18,7 +18,7 @@ package com.android.tradefed.util;
 import com.android.tradefed.host.HostOptions;
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
-import com.google.api.client.json.jackson2.JacksonFactory;
+import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.services.storage.Storage;
 
 import java.io.File;
@@ -54,7 +54,7 @@ public abstract class GCSCommon {
                 mStorage =
                         new Storage.Builder(
                                         GoogleNetHttpTransport.newTrustedTransport(),
-                                        JacksonFactory.getDefaultInstance(),
+                                        GsonFactory.getDefaultInstance(),
                                         GoogleApiClientUtil.configureRetryStrategy(
                                                 GoogleApiClientUtil.setHttpTimeout(
                                                         credential,

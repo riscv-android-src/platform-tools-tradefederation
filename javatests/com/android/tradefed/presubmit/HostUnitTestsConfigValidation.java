@@ -16,7 +16,6 @@
 package com.android.tradefed.presubmit;
 
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assume.assumeTrue;
 
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
@@ -69,8 +68,6 @@ public class HostUnitTestsConfigValidation implements IBuildReceiver {
             new HashSet<>(
                     Arrays.asList(
                             // Only accept runners that can be pure host-tests.
-                            "com.android.compatibility.common.tradefed.testtype.JarHostTest",
-                            "com.android.tradefed.testtype.HostTest",
                             "com.android.tradefed.testtype.HostGTest",
                             "com.android.tradefed.testtype.IsolatedHostTest",
                             "com.android.tradefed.testtype.python.PythonBinaryHostTest",
@@ -179,8 +176,7 @@ public class HostUnitTestsConfigValidation implements IBuildReceiver {
         if (!errors.isEmpty()) {
             String message =
                     String.format("Fail configuration check:\n%s", Joiner.on("\n").join(errors));
-            // TODO: Turn blocking
-            assumeTrue(message, errors.isEmpty());
+            assertTrue(message, errors.isEmpty());
         }
     }
 

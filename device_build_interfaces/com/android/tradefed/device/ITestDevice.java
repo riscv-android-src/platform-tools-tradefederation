@@ -216,6 +216,18 @@ public interface ITestDevice extends INativeDevice {
     public String uninstallPackage(String packageName) throws DeviceNotAvailableException;
 
     /**
+     * Uninstall an Android package from device for a given user.
+     *
+     * @param packageName the Android package to uninstall
+     * @param userId the integer user id to uninstall for.
+     * @return a {@link String} with an error code, or <code>null</code> if success.
+     * @throws DeviceNotAvailableException if connection with device is lost and cannot be
+     *     recovered.
+     */
+    public String uninstallPackageForUser(String packageName, int userId)
+            throws DeviceNotAvailableException;
+
+    /**
      * Install an Android application made of several APK files (one main and extra split packages).
      * See "https://developer.android.com/studio/build/configure-apk-splits" on how to split apk to
      * several files.

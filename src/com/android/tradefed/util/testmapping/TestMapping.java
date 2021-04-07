@@ -16,6 +16,7 @@
 package com.android.tradefed.util.testmapping;
 
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.ZipUtil2;
@@ -53,6 +54,8 @@ public class TestMapping {
 
     // Key for test sources information stored in meta data of ConfigurationDescription.
     public static final String TEST_SOURCES = "Test Sources";
+    // Pattern used to identify mainline tests without parameterized modules configured.
+    public static final Pattern MAINLINE_REGEX = Pattern.compile("(\\S+)\\[(\\S+)\\]");
 
     private static final String PRESUBMIT = "presubmit";
     private static final String IMPORTS = "imports";
@@ -442,5 +445,23 @@ public class TestMapping {
      */
     private Map<String, Set<TestInfo>> getTestCollection() {
         return mTestCollection;
+    }
+
+    /**
+     * Helper to get the matcher for parameterized mainline tests.
+     *
+     * @param {@code Set<TestInfo>} of tests set in the build artifact, test_mappings.zip.
+     * @return A {@link Matcher} for parameterized mainline tests.
+     */
+    public static Matcher getMainlineTestModuleName(TestInfo info) throws ConfigurationException {
+        Matcher matcher = MAINLINE_REGEX.matcher(info.getName());
+        if (matcher.find()) {
+            return matcher;
+        }
+        throw new ConfigurationException(
+                String.format(
+                        "Unmatched \"[]\" for \"%s\" configured in the %s. "
+                                + "Parameter must contain square brackets.",
+                        info.getName(), info.getSources()));
     }
 }

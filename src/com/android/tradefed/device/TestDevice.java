@@ -362,17 +362,34 @@ public class TestDevice extends NativeDevice {
     @Override
     public String uninstallPackage(final String packageName) throws DeviceNotAvailableException {
         // use array to store response, so it can be returned to caller
+        return uninstallPackage(packageName, /* extraArgs= */ null);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public String uninstallPackageForUser(final String packageName, int userId)
+            throws DeviceNotAvailableException {
+        return uninstallPackage(packageName, "--user " + userId);
+    }
+
+    private String uninstallPackage(String packageName, @Nullable String extraArgs)
+            throws DeviceNotAvailableException {
+        final String finalExtraArgs = (extraArgs == null) ? "" : extraArgs;
+
+        // use array to store response, so it can be returned to caller
         final String[] response = new String[1];
-        DeviceAction uninstallAction = new DeviceAction() {
-            @Override
-            public boolean run() throws InstallException {
-                CLog.d("Uninstalling %s", packageName);
-                String result = getIDevice().uninstallPackage(packageName);
-                response[0] = result;
-                return result == null;
-            }
-        };
-        performDeviceAction(String.format("uninstall %s", packageName), uninstallAction,
+        DeviceAction uninstallAction =
+                () -> {
+                    CLog.d("Uninstalling %s with extra args %s", packageName, finalExtraArgs);
+
+                    String result = getIDevice().uninstallApp(packageName, finalExtraArgs);
+                    response[0] = result;
+                    return result == null;
+                };
+
+        performDeviceAction(
+                String.format("uninstall %s with extra args %s", packageName, finalExtraArgs),
+                uninstallAction,
                 MAX_RETRY_ATTEMPTS);
         return response[0];
     }
@@ -829,7 +846,8 @@ public class TestDevice extends NativeDevice {
         Pattern anrPattern = Pattern.compile(".*notResponding=true.*AppNotRespondingDialog.*");
         String systemStatusOutput =
                 executeShellCommand(
-                        "dumpsys activity processes | grep -e .*crashing=true.*AppErrorDialog.* -e .*notResponding=true.*AppNotRespondingDialog.*");
+                        "dumpsys activity processes | grep -e .*crashing=true.*AppErrorDialog.* -e"
+                                + " .*notResponding=true.*AppNotRespondingDialog.*");
         Matcher crashMatcher = crashPattern.matcher(systemStatusOutput);
         while (crashMatcher.find()) {
             errorDialogCount++;

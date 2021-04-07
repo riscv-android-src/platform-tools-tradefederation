@@ -14,7 +14,7 @@
 
 LOCAL_PATH := $(call my-dir)
 COMPATIBILITY.tradefed_tests_dir := \
-  $(COMPATIBILITY.tradefed_tests_dir) $(LOCAL_PATH)/res/config $(LOCAL_PATH)/tests/res/config
+  $(COMPATIBILITY.tradefed_tests_dir) $(LOCAL_PATH)/res/config $(LOCAL_PATH)/javatests/res/config
 
 include $(CLEAR_VARS)
 
@@ -45,13 +45,13 @@ $(HOST_OUT_JAVA_LIBRARIES)/tradefed.jar : $(HOST_OUT)/tradefed/loganalysis.jar
 tradefed-core: tradefed tradefed-isolation tradefed-test-framework atest_tradefed.sh tradefed-contrib tf-contrib-tests script_help.sh tradefed.sh
 
 .PHONY: tradefed-all
-tradefed-all: tradefed-core tradefed-tests tradefed_win loganalysis-tests compatibility-host-util compatibility-tradefed
+tradefed-all: tradefed-core tradefed-tests tradefed_win compatibility-host-util compatibility-tradefed
 
 ########################################################
 # Zip up the built files and dist it as tradefed.zip
 
 # Do not include "tradefed" in here, it's created below from tradefed-no-fwk
-tradefed_dist_host_jars := tradefed-test-framework tradefed-tests loganalysis loganalysis-tests tradefed-contrib tf-contrib-tests tradefed-isolation compatibility-tradefed compatibility-host-util
+tradefed_dist_host_jars := tradefed-test-framework tradefed-tests loganalysis tradefed-contrib tf-contrib-tests tradefed-isolation compatibility-tradefed compatibility-host-util
 tradefed_dist_host_exes := tradefed.sh tradefed_win.bat script_help.sh atest_tradefed.sh
 tradefed_dist_test_apks := TradeFedUiTestApp TradeFedTestApp
 
