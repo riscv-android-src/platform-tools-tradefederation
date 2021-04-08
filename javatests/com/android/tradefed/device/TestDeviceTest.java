@@ -137,6 +137,11 @@ public class TestDeviceTest extends TestCase {
         public boolean isAdbTcp() {
             return false;
         }
+
+        @Override
+        protected boolean supportsShellV2() {
+            return true;
+        }
     }
 
     /**
@@ -612,6 +617,11 @@ public class TestDeviceTest extends TestCase {
                     @Override
                     void doReboot(RebootMode rebootMode, @Nullable final String reason)
                             throws DeviceNotAvailableException, UnsupportedOperationException {}
+
+                    @Override
+                    protected boolean supportsShellV2() {
+                        return true;
+                    }
                 };
         mTestDevice.setRecovery(mMockRecovery);
         final String testCommand = "simple command";
@@ -679,6 +689,11 @@ public class TestDeviceTest extends TestCase {
                     @Override
                     void doReboot(RebootMode rebootMode, @Nullable final String reason)
                             throws DeviceNotAvailableException, UnsupportedOperationException {}
+
+                    @Override
+                    protected boolean supportsShellV2() {
+                        return true;
+                    }
                 };
         mTestDevice.setRecovery(mMockRecovery);
         final String testCommand = "simple command";
@@ -729,6 +744,11 @@ public class TestDeviceTest extends TestCase {
                     @Override
                     void doReboot(RebootMode rebootMode, @Nullable final String reason)
                             throws DeviceNotAvailableException, UnsupportedOperationException {}
+
+                    @Override
+                    protected boolean supportsShellV2() {
+                        return true;
+                    }
                 };
         mTestDevice.setRecovery(mMockRecovery);
         final String testCommand = "simple command";
@@ -4009,7 +4029,9 @@ public class TestDeviceTest extends TestCase {
         assertFalse(mTestDevice.hasFeature("feature:com.google.android.feature"));
         assertFalse(mTestDevice.hasFeature("com.google.android.feature.GOOGLE_BUILD_ORG"));
         assertFalse(mTestDevice.hasFeature("com.google.android.feature.GOOGLE_BUILD"));
-        assertTrue(mTestDevice.hasFeature("feature:com.google.android.feature.GOOGLE_BUILD_VERSIONED"));
+        assertTrue(
+                mTestDevice.hasFeature(
+                        "feature:com.google.android.feature.GOOGLE_BUILD_VERSIONED"));
     }
 
     /**

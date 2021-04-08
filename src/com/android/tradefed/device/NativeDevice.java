@@ -102,6 +102,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.GuardedBy;
 
@@ -199,6 +200,14 @@ public class NativeDevice implements IManagedTestDevice {
     private long mCmdTimeout = 2 * 60 * 1000L;
     /** The time in ms to wait for a 'long' command to complete. */
     private long mLongCmdTimeout = 25 * 60 * 1000L;
+
+    /**
+     * The delimiter that separates the actual shell output and the exit status.
+     *
+     * <p>Used to determine the exit status of the command run by adb shell for devices that do not
+     * support shell_v2.
+     */
+    private static final String EXIT_STATUS_DELIMITER = "x";
 
     private IDevice mIDevice;
     private IDeviceRecovery mRecovery = new WaitDeviceRecovery();
@@ -582,6 +591,15 @@ public class NativeDevice implements IManagedTestDevice {
     }
 
     /**
+     * Returns true if the device supports the adb shell V2 features.
+     *
+     * <p>Shell V2 features are required for calling any of the executeShellV2Command APIs.
+     */
+    protected boolean supportsShellV2() {
+        return getIDevice().supportsFeature(IDevice.Feature.SHELL_V2);
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
@@ -910,7 +928,17 @@ public class NativeDevice implements IManagedTestDevice {
             final TimeUnit timeUnit,
             int retryAttempts)
             throws DeviceNotAvailableException {
-        final String[] fullCmd = buildAdbShellCommand(cmd);
+        // If the device does not support the v2 shell features. Exit status will not be propagated
+        // and stdout/stderr will be merged in stdout.
+        //
+        // There's nothing we can do to separate the two streams, but we can alter the command to
+        // retrieve the exit status.
+        //
+        // Note that this does *not* call `adb features` on each invocation. ddmlib caches all the
+        // adb features on the first query.
+        boolean parseExitStatus = !supportsShellV2();
+
+        final String[] fullCmd = buildAdbShellCommand(cmd, parseExitStatus);
         AdbShellAction adbActionV2 =
                 new AdbShellAction(
                         fullCmd,
@@ -918,7 +946,22 @@ public class NativeDevice implements IManagedTestDevice {
                         pipeToOutput,
                         timeUnit.toMillis(maxTimeoutForCommand));
         performDeviceAction(String.format("adb %s", fullCmd[4]), adbActionV2, retryAttempts);
+        if (parseExitStatus) {
+            postProcessExitStatus(adbActionV2.mResult);
+        }
         return adbActionV2.mResult;
+    }
+
+    private void postProcessExitStatus(@Nonnull CommandResult result) {
+        String stdout = result.getStdout();
+        int delimiterIndex = stdout.lastIndexOf(EXIT_STATUS_DELIMITER);
+        String actualStdout = stdout.substring(0, delimiterIndex);
+        String exitStatusText = stdout.substring(delimiterIndex + 1);
+        result.setExitCode(Integer.parseUnsignedInt(exitStatusText.trim()));
+        result.setStdout(actualStdout);
+        if (result.getStatus() == CommandStatus.SUCCESS && result.getExitCode() != 0) {
+            result.setStatus(CommandStatus.FAILED);
+        }
     }
 
     /** {@inheritDoc} */
@@ -2096,15 +2139,24 @@ public class NativeDevice implements IManagedTestDevice {
     }
 
     /** Builds the OS command for the given adb shell command session and args */
-    private String[] buildAdbShellCommand(String command) {
+    private String[] buildAdbShellCommand(String command, boolean forceExitStatusDetection) {
         // TODO: implement the shell v2 support in ddmlib itself.
         String[] commandArgs =
                 QuotationAwareTokenizer.tokenizeLine(
                         command,
                         /** No logging */
                         false);
+
+        String[] exitStatusProbe;
+        if (forceExitStatusDetection) {
+            exitStatusProbe = new String[] {";", "echo", EXIT_STATUS_DELIMITER + "$?"};
+        } else {
+            exitStatusProbe = new String[] {};
+        }
         return ArrayUtil.buildArray(
-                new String[] {"adb", "-s", getSerialNumber(), "shell"}, commandArgs);
+                new String[] {"adb", "-s", getSerialNumber(), "shell"},
+                commandArgs,
+                exitStatusProbe);
     }
 
     /**
