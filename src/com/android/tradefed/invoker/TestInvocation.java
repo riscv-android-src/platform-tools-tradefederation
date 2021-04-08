@@ -657,7 +657,26 @@ public class TestInvocation implements ITestInvocation {
             // something else in the future
             byte[] configXmlByteArray = configXmlWriter.toString().getBytes("UTF-8");
             try (InputStreamSource source = new ByteArrayInputStreamSource(configXmlByteArray)) {
-                listener.testLog(TRADEFED_CONFIG_NAME, LogDataType.HARNESS_CONFIG, source);
+                String configOutputName;
+                boolean isSandboxParent = config.getCommandOptions().shouldUseSandboxing();
+                boolean isSandboxChild = config.getConfigurationDescription().shouldUseSandbox();
+                if (isSandboxParent || isSandboxChild) {
+                    // Either the parent or child of a sandbox so we need to tailor the config
+                    // logging names
+                    String prefix;
+                    if (isSandboxChild) {
+                        prefix = "child-sandbox";
+                    } else {
+                        prefix = "parent-sandbox";
+                    }
+
+                    configOutputName = String.format("%s-%s", prefix, TRADEFED_CONFIG_NAME);
+                } else {
+                    // No sandboxing involved (at least known), so use the default name
+                    configOutputName = TRADEFED_CONFIG_NAME;
+                }
+
+                listener.testLog(configOutputName, LogDataType.HARNESS_CONFIG, source);
             }
         } catch (IOException e) {
             CLog.e(e);
