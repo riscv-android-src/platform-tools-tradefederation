@@ -47,6 +47,7 @@ import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.StreamUtil;
+import com.android.tradefed.util.IRunUtil.EnvPriority;
 
 import com.google.common.io.CharStreams;
 
@@ -110,6 +111,8 @@ public final class PythonBinaryHostTestTest {
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("SERIAL");
         mMockRunUtil.setEnvVariable(PythonBinaryHostTest.ANDROID_SERIAL_VAR, "SERIAL");
         mMockRunUtil.setWorkingDir(EasyMock.anyObject());
+        mMockRunUtil.setEnvVariablePriority(EnvPriority.SET);
+        mMockRunUtil.setEnvVariable(EasyMock.eq("PATH"), EasyMock.anyObject());
 
         mPythonBinary = FileUtil.createTempFile("python-dir", "");
         mTestInfo.executionFiles().put(FilesKey.HOST_TESTS_DIRECTORY, new File("/path-not-exist"));
@@ -785,22 +788,14 @@ public final class PythonBinaryHostTestTest {
         CommandResult pathRes = new CommandResult();
         pathRes.setStatus(CommandStatus.SUCCESS);
         pathRes.setStdout("bin/");
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                PythonBinaryHostTest.PATH_TIMEOUT_MS,
-                                "/bin/bash",
-                                "-c",
-                                "echo $PATH"))
+        EasyMock.expect(mMockRunUtil.runTimedCmd(60000L, "/bin/bash", "-c", "echo $PATH"))
                 .andReturn(pathRes);
         mMockRunUtil.setEnvVariable("PATH", String.format("%s:bin/", adbPath.getParent()));
 
         CommandResult versionRes = new CommandResult();
         versionRes.setStatus(CommandStatus.SUCCESS);
         versionRes.setStdout("bin/");
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                PythonBinaryHostTest.PATH_TIMEOUT_MS, "adb", "version"))
-                .andReturn(versionRes);
+        EasyMock.expect(mMockRunUtil.runTimedCmd(60000L, "adb", "version")).andReturn(versionRes);
     }
 
     private static InputStreamSource inputStreamSourceContainsText(String text) {
