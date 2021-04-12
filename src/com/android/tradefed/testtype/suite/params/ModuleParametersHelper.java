@@ -44,6 +44,11 @@ public class ModuleParametersHelper {
     private static Map<ModuleParameters, Set<ModuleParameters>> sGroupMap = new HashMap<>();
 
     static {
+        sGroupMap.put(
+                ModuleParameters.MULTIUSER,
+                Set.of(
+                        ModuleParameters.RUN_ON_WORK_PROFILE,
+                        ModuleParameters.RUN_ON_SECONDARY_USER));
     }
 
     /**
