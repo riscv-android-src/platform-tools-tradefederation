@@ -28,18 +28,21 @@ public enum ModuleParameters {
     NOT_SECONDARY_USER("not_secondary_user", "secondary_user_family"),
 
     // Multi-user
-    RUN_ON_WORK_PROFILE("run_on_work_profile", "run_on_work_profile_family");
+    RUN_ON_WORK_PROFILE("run_on_work_profile", "run_on_work_profile_family"),
+    RUN_ON_SECONDARY_USER("run_on_secondary_user", "run_on_secondary_user_family");
 
     public static final String INSTANT_APP_FAMILY = "instant_app_family";
     public static final String MULTI_ABI_FAMILY = "multi_abi_family";
     public static final String SECONDARY_USER_FAMILY = "secondary_user_family";
     public static final String RUN_ON_WORK_PROFILE_FAMILY = "run_on_work_profile_family";
+    public static final String RUN_ON_SECONDARY_USER_FAMILY = "run_on_secondary_user_family";
     public static final String[] FAMILY_LIST =
             new String[] {
                 INSTANT_APP_FAMILY,
                 MULTI_ABI_FAMILY,
                 SECONDARY_USER_FAMILY,
-                RUN_ON_WORK_PROFILE_FAMILY
+                RUN_ON_WORK_PROFILE_FAMILY,
+                RUN_ON_SECONDARY_USER_FAMILY
             };
 
     private final String mName;
