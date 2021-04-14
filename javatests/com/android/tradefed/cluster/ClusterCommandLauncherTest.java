@@ -113,18 +113,17 @@ public class ClusterCommandLauncherTest {
         mInvocationContext.addAllocatedDevice("bar", mMockTestDevice);
         final File tfJar = new File(mRootDir, "foo.jar");
         tfJar.createNewFile();
-
+        final File extraJar = new File(mTfPath, "extra.jar");
+        extraJar.createNewFile();
         final String tfPathValue =
                 String.format(
                         "${TF_WORK_DIR}/%s:${TF_WORK_DIR}/%s:${TF_WORK_DIR}/%s",
                         tfJar.getName(), mTfPath.getName(), mTfLibDir.getName());
         final List<String> jars = new ArrayList<>();
         jars.add(tfJar.getAbsolutePath());
-        jars.add(String.format("%s/", mTfPath));
-        jars.add(String.format("%s/*", mTfPath));
-        jars.add(String.format("%s/", mTfLibDir));
-        jars.add(String.format("%s/*", mTfLibDir));
-        final String classPath = ArrayUtil.join(":", jars);
+        jars.add(extraJar.getAbsolutePath());
+        final String classpath = ArrayUtil.join(":", jars);
+        System.out.println(classpath);
         mOptionSetter.setOptionValue("cluster:jvm-option", "-Xmx1g");
         mOptionSetter.setOptionValue("cluster:env-var", "TF_PATH", tfPathValue);
         mOptionSetter.setOptionValue("cluster:java-property", "FOO", "${TF_WORK_DIR}/foo");
@@ -163,7 +162,7 @@ public class ClusterCommandLauncherTest {
                                 new String[] {
                                     SystemUtil.getRunningJavaBinaryPath().getAbsolutePath(),
                                     "-cp",
-                                    classPath,
+                                    classpath,
                                     "-Xmx1g",
                                     "-DFOO=" + mRootDir.getAbsolutePath() + "/foo",
                                     "com.android.tradefed.command.CommandRunner",
@@ -179,10 +178,12 @@ public class ClusterCommandLauncherTest {
     public void testRun_withSetupScripts()
             throws DeviceNotAvailableException, ConfigurationException, IOException {
         mInvocationContext.addAllocatedDevice("foo", mMockTestDevice);
+        final File tfJar = new File(mTfPath, "foo.jar");
+        tfJar.createNewFile();
+        final String classpath = tfJar.getAbsolutePath();
         File scriptFile = new File(mRootDir, "script.py");
         scriptFile.createNewFile();
         scriptFile.setExecutable(false);
-        final String classpath = String.format("%s/:%s/*", mTfPath, mTfPath);
         mOptionSetter.setOptionValue("cluster:env-var", "TF_PATH", mTfPath.getAbsolutePath());
         mOptionSetter.setOptionValue("cluster:env-var", "FOO", "foo");
         mOptionSetter.setOptionValue("cluster:env-var", "BAR", "bar");
