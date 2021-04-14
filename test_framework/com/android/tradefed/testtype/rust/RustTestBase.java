@@ -30,14 +30,10 @@ import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 /** Base class of RustBinaryHostTest and RustBinaryTest */
 @OptionClass(alias = "rust-test")
 public abstract class RustTestBase implements IRemoteTest, ITestFilterReceiver {
-
-    private static final Pattern TEST_LIST_PATTERN =
-            Pattern.compile("(\\d+) tests?, (\\d+) benchmarks?");
 
     @Option(
             name = "test-options",
@@ -50,6 +46,12 @@ public abstract class RustTestBase implements IRemoteTest, ITestFilterReceiver {
             isTimeVal = true)
     protected long mTestTimeout = 20 * 1000L; // milliseconds
 
+    @Option(
+            name = "is-benchmark",
+            description =
+                    "Set to true if module is a benchmark. Module is treated as test by default.")
+    protected boolean mIsBenchmark = false;
+
     @Option(name = "include-filter", description = "A substr filter of test case names to run.")
     private Set<String> mIncludeFilters = new LinkedHashSet<>();
 
@@ -58,8 +60,13 @@ public abstract class RustTestBase implements IRemoteTest, ITestFilterReceiver {
 
     // A wrapper that can be redefined in unit tests to create a (mocked) result parser.
     @VisibleForTesting
-    IShellOutputReceiver createParser(ITestInvocationListener listener, String runName) {
-        return new RustTestResultParser(listener, runName);
+    IShellOutputReceiver createParser(
+            ITestInvocationListener listener, String runName, boolean isBenchmark) {
+        if (!isBenchmark) {
+            return new RustTestResultParser(listener, runName);
+        } else {
+            return new RustBenchmarkResultParser(listener, runName);
+        }
     }
 
     /** {@inheritDoc} */
@@ -111,11 +118,14 @@ public abstract class RustTestBase implements IRemoteTest, ITestFilterReceiver {
     }
 
     /** Find test case names in testList and add them into foundTests. */
-    protected static void collectTestLines(String[] testList, Set<String> foundTests) {
+    protected static void collectTestLines(
+            String[] testList, Set<String> foundTests, boolean isBenchmark) {
         // Rust test --list returns "testName: test" for each test.
+        // In case of criterion benchmarks it's "benchName: bench".
+        final String tag = isBenchmark ? ": bench" : ": test";
         int counter = 0;
         for (String line : testList) {
-            if (line.endsWith(": test")) {
+            if (line.endsWith(tag)) {
                 counter++;
                 foundTests.add(line);
             }
