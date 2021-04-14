@@ -23,6 +23,7 @@ import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -105,6 +106,15 @@ public class RustBinaryHostTestTest {
         return listOutput + tests.length + " tests, 0 benchmarks";
     }
 
+    // shared with RustBinaryTestTest
+    static String runListBenchmarksOutput(int numTests) {
+        String listOutput = "";
+        for (int i = 1; i <= numTests; i++) {
+            listOutput += "test_case_" + i + ": bench\n";
+        }
+        return listOutput;
+    }
+
     /** Add mocked call "binary --list" to count the number of tests. */
     private void mockCountTests(File binary, int numOfTest) throws Exception {
         EasyMock.expect(
@@ -113,6 +123,16 @@ public class RustBinaryHostTestTest {
                                 EasyMock.eq(binary.getAbsolutePath()),
                                 EasyMock.eq("--list")))
                 .andReturn(successResult("", runListOutput(numOfTest)));
+    }
+
+    private void mockCountBenchmarks(File binary, int numOfTest) throws Exception {
+        EasyMock.expect(
+                        mMockRunUtil.runTimedCmdSilently(
+                                EasyMock.anyLong(),
+                                EasyMock.eq(binary.getAbsolutePath()),
+                                EasyMock.eq("--bench"),
+                                EasyMock.eq("--list")))
+                .andReturn(successResult("", runListBenchmarksOutput(numOfTest)));
     }
 
     /** Add mocked testRunStarted call to the listener. */
@@ -143,6 +163,18 @@ public class RustBinaryHostTestTest {
                         mMockRunUtil.runTimedCmd(
                                 EasyMock.anyLong(), EasyMock.eq(binary.getAbsolutePath())))
                 .andReturn(res);
+    }
+
+    private void mockBenchmarkRunExpect(File binary, String output) throws Exception {
+        CommandResult res = newCommandResult(CommandStatus.SUCCESS, "", "");
+        EasyMock.expect(
+                        mMockRunUtil.runTimedCmd(
+                                EasyMock.anyLong(),
+                                EasyMock.eq(binary.getAbsolutePath()),
+                                EasyMock.eq("--bench"),
+                                EasyMock.eq("--color"),
+                                EasyMock.eq("never")))
+                .andReturn(successResult("", output));
     }
 
     /** Add mocked call to testRunEnded. */
@@ -425,6 +457,104 @@ public class RustBinaryHostTestTest {
                     .andReturn(res);
 
             mMockListener.testRunFailed("Test run incomplete. Started 2 tests, finished 0");
+            mockTestRunEnded();
+            callReplayRunVerify();
+        } finally {
+            FileUtil.deleteFile(binary);
+        }
+    }
+
+    /** Test benchmark run */
+    @Test
+    public void testRun_benchmark() throws Exception {
+        File binary = FileUtil.createTempFile("rust-dir", "");
+        try {
+            OptionSetter setter = new OptionSetter(mTest);
+            setter.setOptionValue("test-file", binary.getAbsolutePath());
+            setter.setOptionValue("is-benchmark", "true");
+            mockCountBenchmarks(binary, 2);
+            mockListenerStarted(binary, 2);
+            mockListenerLog(binary, false);
+            mockBenchmarkRunExpect(
+                    binary,
+                    "Benchmarking test1\n"
+                            + "test                   time:   [0.1 ms 0.1 ms 0.1 ms]\n"
+                            + "Benchmarking test2\n"
+                            + "test                   time:   [0.1 ms 0.1 ms 0.1 ms]\n");
+
+            TestDescription desc1 = new TestDescription(binary.getName(), "test1");
+            TestDescription desc2 = new TestDescription(binary.getName(), "test2");
+            mMockListener.testStarted(desc1);
+            mMockListener.testEnded(
+                    EasyMock.eq(desc1), EasyMock.<HashMap<String, Metric>>anyObject());
+            mMockListener.testStarted(desc2);
+            mMockListener.testEnded(
+                    EasyMock.eq(desc2), EasyMock.<HashMap<String, Metric>>anyObject());
+            mockTestRunEnded();
+            callReplayRunVerify();
+        } finally {
+            FileUtil.deleteFile(binary);
+        }
+    }
+
+    @Test
+    public void testRun_benchmarkDoubleStart() throws Exception {
+        File binary = FileUtil.createTempFile("rust-dir", "");
+        try {
+            OptionSetter setter = new OptionSetter(mTest);
+            setter.setOptionValue("test-file", binary.getAbsolutePath());
+            setter.setOptionValue("is-benchmark", "true");
+            mockCountBenchmarks(binary, 2);
+            mockListenerStarted(binary, 2);
+            mockListenerLog(binary, false);
+            mockBenchmarkRunExpect(
+                    binary,
+                    "Benchmarking test1\n"
+                            + "Benchmarking test2\n"
+                            + "test                   time:   [0.1 ms 0.1 ms 0.1 ms]\n");
+
+            TestDescription desc1 = new TestDescription(binary.getName(), "test1");
+            TestDescription desc2 = new TestDescription(binary.getName(), "test2");
+            mMockListener.testStarted(desc1);
+            mMockListener.testFailed(EasyMock.eq(desc1), EasyMock.<String>anyObject());
+            mMockListener.testEnded(
+                    EasyMock.eq(desc1), EasyMock.<HashMap<String, Metric>>anyObject());
+            mMockListener.testStarted(desc2);
+            mMockListener.testEnded(
+                    EasyMock.eq(desc2), EasyMock.<HashMap<String, Metric>>anyObject());
+            mockTestRunEnded();
+            callReplayRunVerify();
+        } finally {
+            FileUtil.deleteFile(binary);
+        }
+    }
+
+    @Test
+    public void testRun_benchmarkNotFinished() throws Exception {
+        File binary = FileUtil.createTempFile("rust-dir", "");
+        try {
+            OptionSetter setter = new OptionSetter(mTest);
+            setter.setOptionValue("test-file", binary.getAbsolutePath());
+            setter.setOptionValue("is-benchmark", "true");
+            mockCountBenchmarks(binary, 2);
+            mockListenerStarted(binary, 2);
+            mockListenerLog(binary, false);
+            mockBenchmarkRunExpect(
+                    binary,
+                    "Benchmarking test1\n"
+                            + "test                   time:   [0.1 ms 0.1 ms 0.1 ms]\n"
+                            + "Benchmarking test2\n");
+
+            TestDescription desc1 = new TestDescription(binary.getName(), "test1");
+            TestDescription desc2 = new TestDescription(binary.getName(), "test2");
+            mMockListener.testStarted(desc1);
+            mMockListener.testEnded(
+                    EasyMock.eq(desc1), EasyMock.<HashMap<String, Metric>>anyObject());
+            mMockListener.testStarted(desc2);
+            mMockListener.testFailed(EasyMock.eq(desc2), EasyMock.<String>anyObject());
+            mMockListener.testEnded(
+                    EasyMock.eq(desc2), EasyMock.<HashMap<String, Metric>>anyObject());
+            mMockListener.testRunFailed(EasyMock.<String>anyObject());
             mockTestRunEnded();
             callReplayRunVerify();
         } finally {
