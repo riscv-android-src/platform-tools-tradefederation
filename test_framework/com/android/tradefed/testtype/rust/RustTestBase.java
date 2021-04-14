@@ -44,7 +44,7 @@ public abstract class RustTestBase implements IRemoteTest, ITestFilterReceiver {
             name = "test-timeout",
             description = "Timeout for a single test file to terminate.",
             isTimeVal = true)
-    protected long mTestTimeout = 20 * 1000L; // milliseconds
+    protected long mTestTimeout = 60 * 1000L; // milliseconds
 
     @Option(
             name = "is-benchmark",
