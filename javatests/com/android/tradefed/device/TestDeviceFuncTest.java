@@ -734,7 +734,8 @@ public class TestDeviceFuncTest implements IDeviceTest {
         Log.i(LOG_TAG, "testDisableKeyguard");
         getDevice().reboot();
         mTestDevice.waitForDeviceAvailable();
-        RunUtil.getDefault().sleep(3000);
+        // Bump from 3000 to reduce risk of racing "wm dismiss-keyguard"
+        RunUtil.getDefault().sleep(5000);
         KeyguardControllerState keyguard = mTestDevice.getKeyguardState();
         if (keyguard == null) {
             // If the getKeyguardState is not supported.
