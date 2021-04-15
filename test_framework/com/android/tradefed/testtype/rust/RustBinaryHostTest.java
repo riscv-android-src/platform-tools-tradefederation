@@ -16,6 +16,7 @@
 package com.android.tradefed.testtype.rust;
 
 import com.android.annotations.VisibleForTesting;
+import com.android.ddmlib.IShellOutputReceiver;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.Option;
@@ -176,6 +177,11 @@ public class RustBinaryHostTest extends RustTestBase implements IBuildReceiver {
         commandLine.addAll(mTestOptions);
         addFiltersToArgs(commandLine, filter);
 
+        // Pass parameter to criterion so it performs the benchmarking.
+        if (mIsBenchmark) {
+            commandLine.add("--bench");
+        }
+
         List<String> listCommandLine = new ArrayList<>(commandLine);
         listCommandLine.add("--list");
         CommandResult listResult =
@@ -186,7 +192,7 @@ public class RustBinaryHostTest extends RustTestBase implements IBuildReceiver {
         // overall failure, but we don't know how to parse arbitrary test
         // harness results.
         if (listResult.getStatus() == CommandStatus.SUCCESS) {
-            collectTestLines(listResult.getStdout().split("\n"), foundTests);
+            collectTestLines(listResult.getStdout().split("\n"), foundTests, mIsBenchmark);
             return true;
         } else {
             CLog.w(
@@ -203,6 +209,14 @@ public class RustBinaryHostTest extends RustTestBase implements IBuildReceiver {
         commandLine.add(file.getAbsolutePath());
         commandLine.addAll(mTestOptions);
         addFiltersToArgs(commandLine, filter);
+
+        // Pass parameter to criterion so it performs the benchmarking.
+        if (mIsBenchmark) {
+            commandLine.add("--bench");
+            commandLine.add("--color");
+            commandLine.add("never");
+        }
+
         CLog.d("Running test with filter '%s'", filter);
         CommandResult result =
                 getRunUtil().runTimedCmd(mTestTimeout, commandLine.toArray(new String[0]));
@@ -236,10 +250,9 @@ public class RustBinaryHostTest extends RustTestBase implements IBuildReceiver {
                             String.format(RUST_LOG_STDOUT_FORMAT, runName), LogDataType.TEXT, data);
                 }
             }
-            String[] lines = result.getStdout().split("\n");
-            RustTestResultParser parser = new RustTestResultParser(listener, runName);
-            parser.processNewLines(lines);
-            parser.done();
+            IShellOutputReceiver parser = createParser(listener, runName, mIsBenchmark);
+            parser.addOutput(result.getStdout().getBytes(), 0, result.getStdout().length());
+            parser.flush();
         } catch (RuntimeException e) {
             listener.testRunFailed(
                     String.format("Failed to parse the rust test output: %s", e.getMessage()));

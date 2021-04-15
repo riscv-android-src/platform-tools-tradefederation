@@ -49,6 +49,7 @@ public class InvocationMetricLogger {
         ADB_ROOT_ROUTINE_COUNT("adb_root_routine_count", true),
 
         SHUTDOWN_HARD_LATENCY("shutdown_hard_latency_ms", false),
+        DEVICE_COUNT("device_count", false),
         DEVICE_DONE_TIMESTAMP("device_done_timestamp", false),
         DEVICE_RELEASE_STATE("device_release_state", false),
         DEVICE_LOST_DETECTED("device_lost_detected", false),
@@ -75,6 +76,8 @@ public class InvocationMetricLogger {
         FETCH_BUILD_END("tf_fetch_build_end_timestamp", false),
         SETUP_START("tf_setup_start_timestamp", false),
         SETUP_END("tf_setup_end_timestamp", false),
+        TEARDOWN_START("tf_teardown_start_timestamp", false),
+        TEARDOWN_END("tf_teardown_end_timestamp", false),
         INVOCATION_END("tf_invocation_end_timestamp", false);
 
         private final String mKeyName;

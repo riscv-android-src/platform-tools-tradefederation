@@ -19,6 +19,7 @@ import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.host.HostOptions;
 import com.android.tradefed.log.LogUtil.CLog;
 
+import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.http.HttpBackOffUnsuccessfulResponseHandler;
@@ -26,7 +27,7 @@ import com.google.api.client.http.HttpRequest;
 import com.google.api.client.http.HttpRequestInitializer;
 import com.google.api.client.http.HttpResponse;
 import com.google.api.client.http.HttpUnsuccessfulResponseHandler;
-import com.google.api.client.json.jackson2.JacksonFactory;
+import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.client.util.ExponentialBackOff;
 import com.google.common.annotations.VisibleForTesting;
 
@@ -58,24 +59,26 @@ public class GoogleApiClientUtil {
      *
      * @param file is the p12 key file
      * @param scopes is the API's scope.
-     * @return a {@link GoogleCredential}.
+     * @return a {@link Credential}.
      * @throws FileNotFoundException
      * @throws IOException
      * @throws GeneralSecurityException
      */
-    public static GoogleCredential createCredentialFromJsonKeyFile(
-            File file, Collection<String> scopes) throws IOException, GeneralSecurityException {
+    public static Credential createCredentialFromJsonKeyFile(File file, Collection<String> scopes)
+            throws IOException, GeneralSecurityException {
         return getInstance().doCreateCredentialFromJsonKeyFile(file, scopes);
     }
 
     @VisibleForTesting
-    GoogleCredential doCreateCredentialFromJsonKeyFile(File file, Collection<String> scopes)
+    Credential doCreateCredentialFromJsonKeyFile(File file, Collection<String> scopes)
             throws IOException, GeneralSecurityException {
-        return GoogleCredential.fromStream(
-                        new FileInputStream(file),
-                        GoogleNetHttpTransport.newTrustedTransport(),
-                        JacksonFactory.getDefaultInstance())
-                .createScoped(scopes);
+        Credential credentail =
+                GoogleCredential.fromStream(
+                                new FileInputStream(file),
+                                GoogleNetHttpTransport.newTrustedTransport(),
+                                GsonFactory.getDefaultInstance())
+                        .createScoped(scopes);
+        return credentail;
     }
 
     /**
@@ -90,11 +93,11 @@ public class GoogleApiClientUtil {
      * @param hostOptionKeyFileName {@link HostOptions}'service-account-json-key-file option's key;
      *     it can be null.
      * @param backupKeyFiles backup key files.
-     * @return a {@link GoogleCredential}
+     * @return a {@link Credential}
      * @throws IOException
      * @throws GeneralSecurityException
      */
-    public static GoogleCredential createCredential(
+    public static Credential createCredential(
             Collection<String> scopes,
             File primaryKeyFile,
             String hostOptionKeyFileName,
@@ -105,12 +108,13 @@ public class GoogleApiClientUtil {
     }
 
     @VisibleForTesting
-    GoogleCredential doCreateCredential(
+    Credential doCreateCredential(
             Collection<String> scopes,
             File primaryKeyFile,
             String hostOptionKeyFileName,
             File... backupKeyFiles)
             throws IOException, GeneralSecurityException {
+
         List<File> keyFiles = new ArrayList<File>();
         if (primaryKeyFile != null) {
             keyFiles.add(primaryKeyFile);
@@ -145,7 +149,7 @@ public class GoogleApiClientUtil {
     }
 
     @VisibleForTesting
-    GoogleCredential doCreateDefaultCredential(Collection<String> scopes) throws IOException {
+    Credential doCreateDefaultCredential(Collection<String> scopes) throws IOException {
         try {
             CLog.d("Using local authentication.");
             return GoogleCredential.getApplicationDefault().createScoped(scopes);
@@ -167,17 +171,17 @@ public class GoogleApiClientUtil {
      * @param serviceAccount is the service account
      * @param keyFile is the p12 key file
      * @param scopes is the API's scope.
-     * @return a {@link GoogleCredential}.
+     * @return a {@link Credential}.
      * @throws GeneralSecurityException
      * @throws IOException
      */
     @Deprecated
-    public static GoogleCredential createCredentialFromP12File(
+    public static Credential createCredentialFromP12File(
             String serviceAccount, File keyFile, Collection<String> scopes)
             throws GeneralSecurityException, IOException {
         return new GoogleCredential.Builder()
                 .setTransport(GoogleNetHttpTransport.newTrustedTransport())
-                .setJsonFactory(JacksonFactory.getDefaultInstance())
+                .setJsonFactory(GsonFactory.getDefaultInstance())
                 .setServiceAccountId(serviceAccount)
                 .setServiceAccountScopes(scopes)
                 .setServiceAccountPrivateKeyFromP12File(keyFile)
@@ -185,8 +189,7 @@ public class GoogleApiClientUtil {
     }
 
     /**
-     * @param requestInitializer a {@link HttpRequestInitializer}, normally it's {@link
-     *     GoogleCredential}.
+     * @param requestInitializer a {@link HttpRequestInitializer}, normally it's {@link Credential}.
      * @param connectTimeout connect timeout in milliseconds.
      * @param readTimeout read timeout in milliseconds.
      * @return a {@link HttpRequestInitializer} with timeout.

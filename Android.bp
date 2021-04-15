@@ -34,9 +34,6 @@ java_library_host {
         include_dirs: ["external/protobuf/src"],
         type: "full",
     },
-    static_libs: [
-        "asuite_proto_java",
-    ],
 }
 
 java_genrule_host {
@@ -106,7 +103,8 @@ java_library_host {
         "protobuf-java-util-prebuilt-jar",
         "aoa-helper",
         "error_prone_annotations-2.0.18",
-        "google-api-java-client-min-repackaged",
+        "google-api-java-client-assembly",
+        "auto_value_annotations",
         "google-api-services-compute",
         "google-api-services-storage",
         "gson-prebuilt-jar",

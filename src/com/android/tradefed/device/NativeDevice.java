@@ -1121,6 +1121,13 @@ public class NativeDevice implements IManagedTestDevice {
         throw new UnsupportedOperationException("No support for Package Manager's features");
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public String uninstallPackageForUser(final String packageName, int userId)
+            throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for Package Manager's features");
+    }
+
     /**
      * {@inheritDoc}
      */
