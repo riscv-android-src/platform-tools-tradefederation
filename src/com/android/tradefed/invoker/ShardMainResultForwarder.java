@@ -18,6 +18,7 @@ package com.android.tradefed.invoker;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.VersionedFile;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationGroupMetricKey;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ILogSaverListener;
@@ -31,7 +32,9 @@ import com.android.tradefed.util.TimeUtil;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 
 /**
@@ -52,6 +55,8 @@ public class ShardMainResultForwarder extends ResultForwarder implements ILogSav
     private IInvocationContext mOriginalContext;
     private List<IInvocationContext> mShardContextList;
     private int mShardIndex = 0;
+
+    private Map<String, Long> mInvocationMetrics = new HashMap<>();
 
     /**
      * Create a {@link ShardMainResultForwarder}.
@@ -126,9 +131,10 @@ public class ShardMainResultForwarder extends ResultForwarder implements ILogSav
         mShardsRemaining--;
         if (context == null) {
             // Fallback to copy all if we didn't get the right callback.
-            copyShardBuildInfoToMain(mOriginalContext, mShardContextList);
+            copyShardBuildInfoToMain(mOriginalContext, mShardContextList, true);
         } else {
-            copyShardBuildInfoToMain(mOriginalContext, Arrays.asList(context));
+            copyShardBuildInfoToMain(
+                    mOriginalContext, Arrays.asList(context), mShardsRemaining <= 0);
         }
         if (mShardsRemaining <= 0) {
             // TODO: consider logging all shard final times.
@@ -204,7 +210,7 @@ public class ShardMainResultForwarder extends ResultForwarder implements ILogSav
      * @param shardContexts the list of {@link IInvocationContext}s, one for each shard invocation.
      */
     private void copyShardBuildInfoToMain(
-            IInvocationContext main, List<IInvocationContext> shardContexts) {
+            IInvocationContext main, List<IInvocationContext> shardContexts, boolean lastContext) {
         for (IInvocationContext shard : shardContexts) {
             for (String deviceName : shard.getDeviceConfigNames()) {
                 IBuildInfo shardBuild = shard.getBuildInfo(deviceName);
@@ -228,6 +234,35 @@ public class ShardMainResultForwarder extends ResultForwarder implements ILogSav
                                     + " configuration.",
                             deviceName);
                 }
+            }
+            // Copy invocation metrics to main
+            for (InvocationGroupMetricKey key : InvocationGroupMetricKey.values()) {
+                Map<String, String> attributes = shard.getAttributes().getUniqueMap();
+                for (String attKey : attributes.keySet()) {
+                    if (attKey.startsWith(key.toString())) {
+                        if (key.shouldAdd()) {
+                            long baseValue = 0L;
+                            if (mInvocationMetrics.get(attKey) != null) {
+                                baseValue = mInvocationMetrics.get(attKey);
+                            }
+                            try {
+                                long newVal = baseValue + Long.parseLong(attributes.get(attKey));
+                                mInvocationMetrics.put(attKey, newVal);
+                            } catch (NumberFormatException e) {
+                                CLog.e(e);
+                            }
+                        } else {
+                            main.addInvocationAttribute(attKey, attributes.get(attKey));
+                        }
+                    }
+                }
+            }
+            if (lastContext) {
+                for (Entry<String, Long> entryMetric : mInvocationMetrics.entrySet()) {
+                    main.addInvocationAttribute(
+                            entryMetric.getKey(), Long.toString(entryMetric.getValue()));
+                }
+                mInvocationMetrics.clear();
             }
         }
     }

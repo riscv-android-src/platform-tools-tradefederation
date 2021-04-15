@@ -16,6 +16,11 @@
 package com.android.tradefed.targetprep;
 
 import com.android.annotations.VisibleForTesting;
+import com.android.incfs.install.adb.ddmlib.DeviceConnection;
+import com.android.incfs.install.adb.ddmlib.DeviceLogger;
+import com.android.incfs.install.IncrementalInstallSession;
+import com.android.incfs.install.IncrementalInstallSession.Builder;
+import com.android.incfs.install.PendingBlock;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.command.remote.DeviceDescriptor;
@@ -36,6 +41,7 @@ import com.android.tradefed.util.AaptParser;
 import com.android.tradefed.util.AaptParser.AaptVersion;
 import com.android.tradefed.util.AbiFormatter;
 import com.android.tradefed.util.BuildTestsZipUtils;
+import com.android.utils.StdLogger;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableListMultimap;
@@ -45,6 +51,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -52,9 +59,12 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
  * A {@link ITargetPreparer} that installs one or more apps from a {@link
@@ -72,6 +82,10 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
         FULL,
         INSTANT,
     }
+
+    private static final int INCREMENTAL_INSTALL_TIMEOUT_SECONDS = 240;
+
+    public static final String RUN_TESTS_AS_USER_KEY = "RUN_TESTS_AS_USER";
 
     // An error message that occurs when a test APK is already present on the DUT,
     // but cannot be updated. When this occurs, the package is removed from the
@@ -96,10 +110,10 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
     @Option(
             name = "split-apk-file-names",
             description =
-                    "the split apk file names separted by comma that will be installed on device. "
-                            + "Can be repeated for multiple split apk sets."
-                            + "See https://developer.android.com/studio/build/configure-apk-splits on "
-                            + "how to split apk to several files")
+                    "the split apk file names separted by comma that will be installed on device."
+                        + " Can be repeated for multiple split apk sets.See"
+                        + " https://developer.android.com/studio/build/configure-apk-splits on how"
+                        + " to split apk to several files")
     private List<String> mSplitApkFileNames = new ArrayList<>();
 
     @VisibleForTesting static final String THROW_IF_NOT_FOUND_OPTION = "throw-if-not-found";
@@ -165,11 +179,21 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
     private AaptVersion mAaptVersion = AaptVersion.AAPT;
 
     @Option(
-        name = "force-install-mode",
-        description =
-                "Force the preparer to ignore instant-mode option, and install in the requested mode."
-    )
+            name = "force-install-mode",
+            description =
+                    "Force the preparer to ignore instant-mode option, and install in the"
+                            + " requested mode.")
     private InstallMode mInstallationMode = null;
+
+    @Option(
+            name = "incremental",
+            description =
+                    "Performs an installation using incremental streaming. Given the"
+                            + " non-deterministic nature of an incremental installation, it is not"
+                            + " guaranteed that a test run with this option will yield the same"
+                            + " results of previous or future invocations.")
+    @VisibleForTesting
+    protected boolean mIncrementalInstallation = false;
 
     private IAbi mAbi = null;
     private Integer mUserId = null;
@@ -177,6 +201,7 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
 
     private Set<String> mPackagesInstalled = new HashSet<>();
     private TestInformation mTestInfo;
+    @VisibleForTesting protected IncrementalInstallSession incrementalInstallSession;
 
     protected void setTestInformation(TestInformation testInfo) {
         mTestInfo = testInfo;
@@ -335,6 +360,10 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
             }
         }
 
+        if (mUserId == null && testInfo.properties().get(RUN_TESTS_AS_USER_KEY) != null) {
+            mUserId = Integer.parseInt(testInfo.properties().get(RUN_TESTS_AS_USER_KEY));
+        }
+
         if (mForceQueryable && getDevice().isAppEnumerationSupported()) {
             mInstallArgs.add("--force-queryable");
         }
@@ -441,8 +470,27 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
         ImmutableListMultimap<String, File> packageToFiles =
                 ImmutableListMultimap.copyOf(appFilesAndPackages.entrySet()).inverse();
 
+        Builder builder = null;
+        if (mIncrementalInstallation) {
+            builder = getIncrementalInstallSessionBuilder();
+        }
+
         for (Map.Entry<String, List<File>> e : Multimaps.asMap(packageToFiles).entrySet()) {
-            installSinglePackage(device, e.getKey(), e.getValue());
+            if (mIncrementalInstallation) {
+                CLog.d(
+                        "Performing incremental installation of apk %s with %s ...",
+                        e.getKey(), e.getValue());
+                addPackageToIncrementalInstallSession(builder, e.getKey(), e.getValue());
+                if (mCleanup) {
+                    mPackagesInstalled.add(e.getKey());
+                }
+            } else {
+                installSinglePackage(device, e.getKey(), e.getValue());
+            }
+        }
+
+        if (mIncrementalInstallation && builder != null) {
+            installPackageIncrementally(builder);
         }
     }
 
@@ -633,9 +681,17 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
     /** Attempt to remove the package from the device. */
     protected void uninstallPackage(ITestDevice device, String packageName)
             throws DeviceNotAvailableException {
-        String msg = device.uninstallPackage(packageName);
+        String msg;
+        if (mUserId == null) {
+            msg = device.uninstallPackage(packageName);
+        } else {
+            msg = device.uninstallPackageForUser(packageName, mUserId);
+        }
         if (msg != null) {
             CLog.w(String.format("error uninstalling package '%s': %s", packageName, msg));
+        }
+        if (mIncrementalInstallation) {
+            incrementalInstallSession.close();
         }
     }
 
@@ -650,5 +706,79 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
                     DeviceErrorIdentifier.AAPT_PARSER_FAILED);
         }
         return parser.getPackageName();
+    }
+
+    /**
+     * Add APKs from package to incremental installation session builder object.
+     *
+     * @param builder The Builder object for the incremental install session.
+     * @param packageName The name of the package to be added.
+     * @param packageFiles List of files to be added to builder object.
+     * @throws TargetSetupError
+     */
+    private void addPackageToIncrementalInstallSession(
+            Builder builder, String packageName, List<File> packageFiles) throws TargetSetupError {
+        for (File apk : packageFiles) {
+            Path apkPath = apk.toPath();
+            Path apkSignaturePath = Paths.get(String.format("%s.idsig", apkPath.toString()));
+            if (!apkSignaturePath.toFile().exists()) {
+                throw new TargetSetupError(
+                        String.format(
+                                "Unable to retrieve v4 signature for file: %s",
+                                apkPath.getFileName()),
+                        getDevice().getDeviceDescriptor(),
+                        InfraErrorIdentifier.CONFIGURED_ARTIFACT_NOT_FOUND);
+            }
+            builder.addApk(apkPath, apkSignaturePath);
+        }
+    }
+
+    /**
+     * Start the incremental installation session for a test app.
+     *
+     * @param builder The Builder object for the incremental install session.
+     * @throws TargetSetupError
+     */
+    @VisibleForTesting
+    protected void installPackageIncrementally(Builder builder) throws TargetSetupError {
+        try {
+            incrementalInstallSession = builder.build();
+            String deviceSerialNumber = getDevice().getSerialNumber();
+            DeviceConnection.Factory deviceConnection =
+                    DeviceConnection.getFactory(deviceSerialNumber);
+            incrementalInstallSession.start(Executors.newCachedThreadPool(), deviceConnection);
+            incrementalInstallSession.waitForInstallCompleted(
+                    INCREMENTAL_INSTALL_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        } catch (InterruptedException | IOException e) {
+            throw new TargetSetupError(
+                    String.format("Failed to start incremental install session."),
+                    e,
+                    getDevice().getDeviceDescriptor(),
+                    DeviceErrorIdentifier.APK_INSTALLATION_FAILED);
+        }
+    }
+
+    /** Initialize the session builder for installing a test app incrementally. */
+    @VisibleForTesting
+    protected Builder getIncrementalInstallSessionBuilder() {
+        if (mGrantPermission != null && mGrantPermission) {
+            mInstallArgs.add("-g");
+        }
+
+        if (mUserId != null) {
+            mInstallArgs.add("--user");
+            mInstallArgs.add(Integer.toString(mUserId));
+        }
+
+        Random randomBlock = new Random();
+        Builder incrementalInstallSessionBuilder =
+                new Builder()
+                        .setLogger(new DeviceLogger(new StdLogger(StdLogger.Level.ERROR)))
+                        .addExtraArgs(mInstallArgs.toArray(new String[] {}))
+                        .setBlockFilter(
+                                (PendingBlock b) ->
+                                        (b.getBlockIndex()
+                                                != randomBlock.nextInt(b.getFileBlockCount())));
+        return incrementalInstallSessionBuilder;
     }
 }

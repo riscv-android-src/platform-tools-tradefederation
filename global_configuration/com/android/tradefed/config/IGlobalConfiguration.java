@@ -16,6 +16,7 @@
 
 package com.android.tradefed.config;
 
+import com.android.tradefed.auth.ICredentialFactory;
 import com.android.tradefed.command.ICommandScheduler;
 import com.android.tradefed.device.DeviceManager;
 import com.android.tradefed.device.IDeviceManager;
@@ -80,6 +81,13 @@ public interface IGlobalConfiguration {
      *     </code> if none was specified.
      */
     public List<IResourceMetricCollector> getResourceMetricCollectors();
+
+    /**
+     * Gets the {@link ICredentialFactory} for creating credentials.
+     *
+     * @return {@link ICredentialFactory} or <code>null</code> if none was specified.
+     */
+    public ICredentialFactory getCredentialFactory();
 
     /**
      * Set the {@link IDeviceMonitor}.

@@ -40,7 +40,7 @@ import com.android.tradefed.util.RunUtil;
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.json.JsonFactory;
-import com.google.api.client.json.jackson2.JacksonFactory;
+import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.services.compute.Compute;
 import com.google.api.services.compute.Compute.Instances.GetSerialPortOutput;
 import com.google.api.services.compute.ComputeScopes;
@@ -66,7 +66,7 @@ public class GceManager {
     private static final long BUGREPORT_TIMEOUT = 15 * 60 * 1000L;
     private static final long REMOTE_FILE_OP_TIMEOUT = 10 * 60 * 1000L;
     private static final Pattern BUGREPORTZ_RESPONSE_PATTERN = Pattern.compile("(OK:)(.*)");
-    private static final JsonFactory JSON_FACTORY = JacksonFactory.getDefaultInstance();
+    private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
     private static final List<String> SCOPES = Arrays.asList(ComputeScopes.COMPUTE_READONLY);
 
     private DeviceDescriptor mDeviceDescriptor;
