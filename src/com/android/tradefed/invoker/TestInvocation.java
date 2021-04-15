@@ -383,6 +383,8 @@ public class TestInvocation implements ITestInvocation {
             }
             mStatus = "done running tests";
             CurrentInvocation.setActionInProgress(ActionInProgress.FREE_RESOURCES);
+            // Log count of allocated devices for test accounting
+            addInvocationMetric(InvocationMetricKey.DEVICE_COUNT, context.getNumDevicesAllocated());
             // Track the timestamp when we are done with devices
             addInvocationMetric(
                     InvocationMetricKey.DEVICE_DONE_TIMESTAMP, System.currentTimeMillis());

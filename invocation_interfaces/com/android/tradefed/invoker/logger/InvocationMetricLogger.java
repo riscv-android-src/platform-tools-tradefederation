@@ -49,6 +49,7 @@ public class InvocationMetricLogger {
         ADB_ROOT_ROUTINE_COUNT("adb_root_routine_count", true),
 
         SHUTDOWN_HARD_LATENCY("shutdown_hard_latency_ms", false),
+        DEVICE_COUNT("device_count", false),
         DEVICE_DONE_TIMESTAMP("device_done_timestamp", false),
         DEVICE_RELEASE_STATE("device_release_state", false),
         DEVICE_LOST_DETECTED("device_lost_detected", false),
