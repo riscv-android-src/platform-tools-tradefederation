@@ -46,10 +46,16 @@ public class ResourceMetricUtil {
         final CommandResult result =
                 deviceManager.executeCmdOnAvailableDevice(
                         serial, cmd, timeoutMs, TimeUnit.MILLISECONDS);
+        if (result == null) {
+            CLog.d(
+                    "Null command result for executing %s on device %s with timeout %d ms",
+                    cmd, serial, timeoutMs);
+            return Optional.empty();
+        }
         if (result.getStatus().equals(CommandStatus.SUCCESS) && result.getStdout() != null) {
             return Optional.of(result.getStdout());
         } else {
-            CLog.e(
+            CLog.d(
                     "Failed to execute command %s on device %s: %s",
                     cmd, serial, result.getStderr());
             return Optional.empty();
