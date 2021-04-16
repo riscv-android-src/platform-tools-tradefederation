@@ -95,13 +95,6 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
     private ExecutorService mCollectionExecutor;
 
     @Option(
-            name = "metricize-op-timeout",
-            description =
-                    "The maximum wait time in milliseconds for every resource metric collector to"
-                            + " get metrics.")
-    private long mMetricizeTimeoutMs = 1000;
-
-    @Option(
             name = "metricize-cycle-sec",
             description = "The time in seconds between for each metricize cycle.")
     private long mMetricizeCycleSec = 300;
@@ -327,7 +320,8 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
             Future<Collection<Resource>> future = null;
             try {
                 future = mCollectionExecutor.submit(collector::getHostResourceMetrics);
-                builder.addAllResource(future.get(mMetricizeTimeoutMs, TimeUnit.MILLISECONDS));
+                builder.addAllResource(
+                        future.get(collector.getHostMetricizeTimeoutMs(), TimeUnit.MILLISECONDS));
             } catch (InterruptedException
                     | ExecutionException
                     | TimeoutException
@@ -381,7 +375,8 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
                                         collector.getDeviceResourceMetrics(
                                                 descriptor,
                                                 GlobalConfiguration.getDeviceManagerInstance()));
-                builder.addAllResource(future.get(mMetricizeTimeoutMs, TimeUnit.MILLISECONDS));
+                builder.addAllResource(
+                        future.get(collector.getDeviceMetricizeTimeoutMs(), TimeUnit.MILLISECONDS));
             } catch (InterruptedException
                     | ExecutionException
                     | TimeoutException
