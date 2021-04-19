@@ -204,8 +204,3 @@ sh_binary_host {
     name: "run_tf_cmd.sh",
     src: "run_tf_cmd.sh",
 }
-
-sh_binary_host {
-    name: "atest_tradefed.sh",
-    src: "atest_tradefed.sh",
-}
