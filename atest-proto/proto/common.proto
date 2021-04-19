@@ -3,8 +3,8 @@ syntax = "proto2";
 option java_package = "com.android.asuite.clearcut";
 
 message Duration {
-  required int64 seconds = 1;
-  required int32 nanos = 2;
+  optional int64 seconds = 1;
+  optional int32 nanos = 2;
 }
 
 // ----------------
