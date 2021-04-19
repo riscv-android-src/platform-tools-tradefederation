@@ -31,7 +31,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /** The collector pings google.com to check if the device has internet accessibility or not. */
-class DeviceInternetAccessibilityResourceMetricCollector implements IResourceMetricCollector {
+public class DeviceInternetAccessibilityResourceMetricCollector implements IResourceMetricCollector {
     public static final String INTERNET_ACCESSIBILITY_METRIC_NAME = "internet_access";
     /*
     The example response:
