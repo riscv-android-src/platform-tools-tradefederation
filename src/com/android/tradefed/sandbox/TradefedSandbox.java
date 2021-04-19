@@ -557,12 +557,19 @@ public class TradefedSandbox implements ISandbox {
 
     private void logAndCleanHeapDump(File heapDumpDir, ITestLogger logger) {
         try {
-            if (heapDumpDir != null && heapDumpDir.listFiles().length != 0) {
-                for (File f : heapDumpDir.listFiles()) {
-                    FileInputStreamSource fileInput = new FileInputStreamSource(f);
-                    logger.testLog(f.getName(), LogDataType.HPROF, fileInput);
-                    StreamUtil.cancel(fileInput);
-                }
+            if (heapDumpDir == null) {
+                return;
+            }
+            if (!heapDumpDir.isDirectory()) {
+                return;
+            }
+            if (heapDumpDir.listFiles().length == 0) {
+                return;
+            }
+            for (File f : heapDumpDir.listFiles()) {
+                FileInputStreamSource fileInput = new FileInputStreamSource(f);
+                logger.testLog(f.getName(), LogDataType.HPROF, fileInput);
+                StreamUtil.cancel(fileInput);
             }
         } finally {
             FileUtil.recursiveDelete(heapDumpDir);
