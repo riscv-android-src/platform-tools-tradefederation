@@ -19,6 +19,7 @@ package com.android.tradefed.command;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.clearcut.ClearcutClient;
 import com.android.tradefed.clearcut.TerminateClearcutClient;
+import com.android.tradefed.command.CommandRunner.ExitCode;
 import com.android.tradefed.config.ArgsOptionParser;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
@@ -1134,7 +1135,15 @@ public class Console extends Thread {
     public static void main(final String[] mainArgs) throws InterruptedException,
             ConfigurationException {
         Console console = new Console();
-        startConsole(console, mainArgs);
+        try {
+            startConsole(console, mainArgs);
+        } catch (ConfigurationException e) {
+            e.printStackTrace();
+            System.exit(ExitCode.CONFIG_EXCEPTION.getCodeValue());
+        } catch (InterruptedException interrupt) {
+            interrupt.printStackTrace();
+            System.exit(ExitCode.THROWABLE_EXCEPTION.getCodeValue());
+        }
     }
 
     /**
