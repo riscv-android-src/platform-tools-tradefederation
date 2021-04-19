@@ -47,6 +47,7 @@ import com.android.tradefed.command.CommandOptionsTest;
 import com.android.tradefed.command.CommandRunnerTest;
 import com.android.tradefed.command.CommandSchedulerTest;
 import com.android.tradefed.command.ConsoleTest;
+import com.android.tradefed.command.console.ConfigCompletorTest;
 import com.android.tradefed.command.remote.RemoteManagerTest;
 import com.android.tradefed.command.remote.RemoteOperationTest;
 import com.android.tradefed.config.ArgsOptionParserTest;
@@ -356,7 +357,6 @@ import com.android.tradefed.util.BundletoolUtilTest;
 import com.android.tradefed.util.ByteArrayListTest;
 import com.android.tradefed.util.ClassPathScannerTest;
 import com.android.tradefed.util.ConditionPriorityBlockingQueueTest;
-import com.android.tradefed.util.ConfigCompletorTest;
 import com.android.tradefed.util.DirectedGraphTest;
 import com.android.tradefed.util.EmailTest;
 import com.android.tradefed.util.FakeTestsZipFolderTest;
@@ -474,6 +474,9 @@ import org.junit.runners.Suite.SuiteClasses;
     CommandRunnerTest.class,
     CommandSchedulerTest.class,
     ConsoleTest.class,
+
+    // command.console
+    ConfigCompletorTest.class,
 
     // command.remote
     RemoteManagerTest.class,
@@ -874,7 +877,6 @@ import org.junit.runners.Suite.SuiteClasses;
     ByteArrayListTest.class,
     ClassPathScannerTest.class,
     ConditionPriorityBlockingQueueTest.class,
-    ConfigCompletorTest.class,
     DirectedGraphTest.class,
     EmailTest.class,
     FakeTestsZipFolderTest.class,
