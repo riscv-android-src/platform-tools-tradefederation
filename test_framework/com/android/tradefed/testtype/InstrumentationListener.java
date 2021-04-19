@@ -23,6 +23,7 @@ import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogcatCrashResultForwarder;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.error.TestErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.util.ProcessInfo;
 
@@ -40,6 +41,9 @@ final class InstrumentationListener extends LogcatCrashResultForwarder {
 
     // Message from ddmlib InstrumentationResultParser for interrupted instrumentation.
     private static final String DDMLIB_INSTRU_FAILURE_MSG = "Test run failed to complete";
+    // Message from ddmlib for ShellCommandUnresponsiveException
+    private static final String DDMLIB_SHELL_UNRESPONSIVE =
+            "Failed to receive adb shell test output within";
 
     private Set<TestDescription> mTests = new HashSet<>();
     private Set<TestDescription> mDuplicateTests = new HashSet<>();
@@ -111,6 +115,15 @@ final class InstrumentationListener extends LogcatCrashResultForwarder {
                     error.setFailureStatus(FailureStatus.SYSTEM_UNDER_TEST_CRASHED);
                 }
             }
+        } else if (error.getErrorMessage().startsWith(DDMLIB_SHELL_UNRESPONSIVE)) {
+            String wrapMessage =
+                    String.format(
+                            "Instrumentation did not output anything for the configured timeout. "
+                                    + "ddmlib reported error: %s.",
+                            error.getErrorMessage());
+            error.setErrorMessage(wrapMessage);
+            error.setFailureStatus(FailureStatus.TIMED_OUT);
+            error.setErrorIdentifier(TestErrorIdentifier.INSTRUMENTATION_TIMED_OUT);
         }
         super.testRunFailed(error);
     }
