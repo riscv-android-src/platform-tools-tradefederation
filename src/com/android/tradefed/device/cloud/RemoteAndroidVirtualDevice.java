@@ -491,6 +491,24 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
         }
         String username = this.getOptions().getInstanceUser();
         String powerwashCommand = String.format("/home/%s/bin/powerwash_cvd", username);
+        if (this.getOptions().useOxygen()) {
+            // TODO(dshi): Simplify the logic after Oxygen creates symlink of the tmp dir.
+            CommandResult result =
+                    GceManager.remoteSshCommandExecution(
+                            mGceAvd,
+                            this.getOptions(),
+                            getRunUtil(),
+                            10000L,
+                            "toybox find /tmp -name powerwash_cvd".split(" "));
+            if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
+                CLog.e("Failed to locate powerwash_cvd: %s", result.getStderr());
+                return false;
+            }
+            String powerwashPath = result.getStdout();
+            // Remove tailing `/bin/powerwash_cvd`
+            String tmpDir = powerwashPath.substring(0, powerwashPath.length() - 18);
+            powerwashCommand = String.format("HOME=%s %s", tmpDir, powerwashPath);
+        }
         CommandResult powerwashRes =
                 GceManager.remoteSshCommandExecution(
                         mGceAvd,

@@ -917,4 +917,96 @@ public class RemoteAndroidVirtualDeviceTest {
         mTestDevice.powerwashGce();
         EasyMock.verify(mMockRunUtil, mMockIDevice);
     }
+
+    /** Test powerwash Oxygen GCE command */
+    @Test
+    public void testPowerwashOxygenGce() throws Exception {
+        mTestDevice =
+                new TestableRemoteAndroidVirtualDevice() {
+                    @Override
+                    public IDevice getIDevice() {
+                        return mMockIDevice;
+                    }
+
+                    @Override
+                    GceManager getGceHandler() {
+                        return mGceHandler;
+                    }
+
+                    @Override
+                    void createGceSshMonitor(
+                            ITestDevice device,
+                            IBuildInfo buildInfo,
+                            HostAndPort hostAndPort,
+                            TestDeviceOptions deviceOptions) {
+                        // ignore
+                    }
+                };
+        String instanceUser = "user1";
+        IBuildInfo mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
+        OptionSetter setter = new OptionSetter(mTestDevice.getOptions());
+        setter.setOptionValue("instance-user", instanceUser);
+        setter.setOptionValue("use-oxygen", "true");
+        String powerwashCommand = "HOME=/tmp/cf_dir /tmp/cf_dir/bin/powerwash_cvd";
+        String avdConnectHost = String.format("%s@127.0.0.1", instanceUser);
+        GceAvdInfo gceAvd =
+                new GceAvdInfo(
+                        instanceUser,
+                        HostAndPort.fromHost("127.0.0.1"),
+                        null,
+                        null,
+                        GceStatus.SUCCESS);
+        doReturn(gceAvd).when(mGceHandler).startGce(null);
+        OutputStream stdout = null;
+        OutputStream stderr = null;
+        CommandResult locateCmdResult = new CommandResult(CommandStatus.SUCCESS);
+        locateCmdResult.setStdout("/tmp/cf_dir/bin/powerwash_cvd");
+        EasyMock.expect(
+                        mMockRunUtil.runTimedCmd(
+                                EasyMock.anyLong(),
+                                EasyMock.eq(stdout),
+                                EasyMock.eq(stderr),
+                                EasyMock.eq("ssh"),
+                                EasyMock.eq("-o"),
+                                EasyMock.eq("UserKnownHostsFile=/dev/null"),
+                                EasyMock.eq("-o"),
+                                EasyMock.eq("StrictHostKeyChecking=no"),
+                                EasyMock.eq("-o"),
+                                EasyMock.eq("ServerAliveInterval=10"),
+                                EasyMock.eq("-i"),
+                                EasyMock.anyObject(),
+                                EasyMock.eq(avdConnectHost),
+                                EasyMock.eq("toybox"),
+                                EasyMock.eq("find"),
+                                EasyMock.eq("/tmp"),
+                                EasyMock.eq("-name"),
+                                EasyMock.eq("powerwash_cvd")))
+                .andReturn(locateCmdResult);
+        CommandResult powerwashCmdResult = new CommandResult(CommandStatus.SUCCESS);
+        EasyMock.expect(
+                        mMockRunUtil.runTimedCmd(
+                                EasyMock.anyLong(),
+                                EasyMock.eq(stdout),
+                                EasyMock.eq(stderr),
+                                EasyMock.eq("ssh"),
+                                EasyMock.eq("-o"),
+                                EasyMock.eq("UserKnownHostsFile=/dev/null"),
+                                EasyMock.eq("-o"),
+                                EasyMock.eq("StrictHostKeyChecking=no"),
+                                EasyMock.eq("-o"),
+                                EasyMock.eq("ServerAliveInterval=10"),
+                                EasyMock.eq("-i"),
+                                EasyMock.anyObject(),
+                                EasyMock.eq(avdConnectHost),
+                                EasyMock.eq("HOME=/tmp/cf_dir"),
+                                EasyMock.eq("/tmp/cf_dir/bin/powerwash_cvd")))
+                .andReturn(powerwashCmdResult);
+        EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable(EasyMock.anyLong()))
+                .andReturn(mMockIDevice);
+        EasyMock.replay(mMockRunUtil, mMockIDevice);
+        // Launch GCE before powerwash.
+        mTestDevice.launchGce(mMockBuildInfo);
+        mTestDevice.powerwashGce();
+        EasyMock.verify(mMockRunUtil, mMockIDevice);
+    }
 }
