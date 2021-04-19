@@ -2129,8 +2129,8 @@ public class NativeDevice implements IManagedTestDevice {
      */
     protected boolean performDeviceAction(String actionDescription, final DeviceAction action,
             int retryAttempts) throws DeviceNotAvailableException {
-
         for (int i = 0; i < retryAttempts + 1; i++) {
+            boolean shouldRecover = true;
             try {
                 return action.run();
             } catch (TimeoutException e) {
@@ -2160,12 +2160,16 @@ public class NativeDevice implements IManagedTestDevice {
                 }
                 logDeviceActionException(actionDescription, e);
             } catch (ShellCommandUnresponsiveException e) {
-                CLog.w("Device %s stopped responding when attempting %s", getSerialNumber(),
-                        actionDescription);
+                // ShellCommandUnresponsiveException is thrown when no output occurs within the
+                // timeout. It doesn't necessarily mean the device is offline.
+                shouldRecover = false;
+                CLog.w(
+                        "Command: '%s' on '%s' went over its timeout for outputing a response.",
+                        actionDescription, getSerialNumber());
             }
-            // TODO: currently treat all exceptions the same. In future consider different recovery
-            // mechanisms for time out's vs IOExceptions
-            recoverDevice();
+            if (shouldRecover) {
+                recoverDevice();
+            }
         }
         if (retryAttempts > 0) {
             throw new DeviceUnresponsiveException(
