@@ -17,7 +17,10 @@
 package com.android.tradefed.targetprep;
 
 import com.android.tradefed.config.Option;
+import com.android.tradefed.util.RunUtil;
 
+import java.io.File;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -26,7 +29,7 @@ import java.util.List;
  *
  * <p>Handles input and processing of common arguments.
  */
-public abstract class BaseLocalEmulatorPreparer extends BaseTargetPreparer {
+public abstract class BaseEmulatorPreparer extends BaseTargetPreparer {
     @Option(name = "gpu", description = "emulator gpu mode to use")
     private String mGpu = "swiftshader_indirect";
 
@@ -39,9 +42,28 @@ public abstract class BaseLocalEmulatorPreparer extends BaseTargetPreparer {
     @Option(name = "feature", description = "comma separated list of emulator features to enable")
     private String mFeatures = "";
 
+    @Option(name = "avd-name", description = "avd name to use")
+    private String mAvdName = null;
+
+    @Option(
+            name = "sdk-root",
+            description = "Android SDK root file path. If set, --emulator-path will be ignored")
+    private File mSdkRoot = null;
+
+    @Option(
+            name = "avd-root",
+            description =
+                    "file path to custom AVD storage location. "
+                            + "If unset, emulator will use the default AVD folder.")
+    private File mAvdRoot = null;
+
     protected List<String> buildEmulatorLaunchArgs() {
         List<String> args = new ArrayList<>();
-        args.add(mEmulatorPath);
+        if (mSdkRoot != null) {
+            args.add(Paths.get(mSdkRoot.getAbsolutePath(), "emulator", "emulator").toString());
+        } else {
+            args.add(mEmulatorPath);
+        }
         args.add("-gpu");
         args.add(mGpu);
         if (!mWindow) {
@@ -51,6 +73,21 @@ public abstract class BaseLocalEmulatorPreparer extends BaseTargetPreparer {
             args.add("-feature");
             args.add(mFeatures);
         }
+        if (mAvdName != null) {
+            args.add("-avd");
+            args.add(mAvdName);
+        }
         return args;
+    }
+
+    protected RunUtil buildRunUtilForEmulatorLaunch() {
+        RunUtil runUtil = new RunUtil();
+        if (mSdkRoot != null) {
+            runUtil.setEnvVariable("ANDROID_HOME", mSdkRoot.getAbsolutePath());
+        }
+        if (mAvdRoot != null) {
+            runUtil.setEnvVariable("ANDROID_AVD_HOME", mAvdRoot.getAbsolutePath());
+        }
+        return runUtil;
     }
 }
