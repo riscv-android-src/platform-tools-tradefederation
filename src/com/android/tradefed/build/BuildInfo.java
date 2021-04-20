@@ -662,8 +662,8 @@ public class BuildInfo implements IBuildInfo {
             buildInfo.setBuildBranch(protoBuild.getBranch());
         }
         // Attributes
-        for (String key : protoBuild.getAttributes().keySet()) {
-            buildInfo.addBuildAttribute(key, protoBuild.getAttributes().get(key));
+        for (String key : protoBuild.getAttributesMap().keySet()) {
+            buildInfo.addBuildAttribute(key, protoBuild.getAttributesMap().get(key));
         }
         // Versioned File
         for (KeyBuildFilePair filePair : protoBuild.getVersionedFileList()) {
