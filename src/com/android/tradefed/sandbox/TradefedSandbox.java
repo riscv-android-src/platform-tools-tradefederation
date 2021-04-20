@@ -185,11 +185,6 @@ public class TradefedSandbox implements ISandbox {
             if (mProtoReceiver != null) {
                 mProtoReceiver.completeModuleEvents();
             }
-            // Log the configuration used to run
-            try (InputStreamSource configFile =
-                    new FileInputStreamSource(mSerializedConfiguration)) {
-                logger.testLog("sandbox-config", LogDataType.HARNESS_CONFIG, configFile);
-            }
             try (InputStreamSource contextFile = new FileInputStreamSource(mSerializedContext)) {
                 logger.testLog("sandbox-context", LogDataType.PB, contextFile);
             }
