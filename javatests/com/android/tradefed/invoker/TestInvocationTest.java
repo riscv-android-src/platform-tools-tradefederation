@@ -831,15 +831,15 @@ public class TestInvocationTest {
         logSaverListener.setLogSaver(mMockLogSaver);
         logSaverListener.invocationStarted(mStubInvocationMetadata);
         logSaverListener.testLog(
-                EasyMock.startsWith(CONFIG_LOG_NAME),
+                EasyMock.contains(CONFIG_LOG_NAME),
                 EasyMock.eq(LogDataType.HARNESS_CONFIG),
                 (InputStreamSource) EasyMock.anyObject());
         logSaverListener.testLogSaved(
-                EasyMock.startsWith(CONFIG_LOG_NAME),
+                EasyMock.contains(CONFIG_LOG_NAME),
                 EasyMock.eq(LogDataType.HARNESS_CONFIG),
                 (InputStreamSource) EasyMock.anyObject(),
                 (LogFile) EasyMock.anyObject());
-        logSaverListener.logAssociation(EasyMock.startsWith(CONFIG_LOG_NAME), EasyMock.anyObject());
+        logSaverListener.logAssociation(EasyMock.contains(CONFIG_LOG_NAME), EasyMock.anyObject());
         logSaverListener.testLog(
                 EasyMock.startsWith(LOGCAT_NAME_SETUP),
                 EasyMock.eq(LogDataType.LOGCAT),
@@ -1133,16 +1133,16 @@ public class TestInvocationTest {
         EasyMock.expect(mMockSummaryListener.getSummary()).andReturn(null);
 
         mMockTestListener.testLog(
-                EasyMock.startsWith(CONFIG_LOG_NAME),
+                EasyMock.contains(CONFIG_LOG_NAME),
                 EasyMock.eq(LogDataType.HARNESS_CONFIG),
                 (InputStreamSource) EasyMock.anyObject());
         mMockSummaryListener.testLog(
-                EasyMock.startsWith(CONFIG_LOG_NAME),
+                EasyMock.contains(CONFIG_LOG_NAME),
                 EasyMock.eq(LogDataType.HARNESS_CONFIG),
                 (InputStreamSource) EasyMock.anyObject());
         EasyMock.expect(
                         mMockLogSaver.saveLogData(
-                                EasyMock.startsWith(CONFIG_LOG_NAME),
+                                EasyMock.contains(CONFIG_LOG_NAME),
                                 EasyMock.eq(LogDataType.HARNESS_CONFIG),
                                 (InputStream) EasyMock.anyObject()))
                 .andReturn(new LogFile(PATH, URL, LogDataType.TEXT));
