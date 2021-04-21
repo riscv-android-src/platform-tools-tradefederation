@@ -271,6 +271,9 @@ public class AbiUtils {
      */
     public static Set<String> parseAbiListFromProperty(String abiListProp) {
         Set<String> abiSet = new HashSet<>();
+        if (abiListProp == null) {
+            return abiSet;
+        }
         String[] abiList = abiListProp.split(",");
         for (String abi : abiList) {
             String trimmedAbi = abi.trim();
