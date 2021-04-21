@@ -1927,8 +1927,6 @@ public class TestDevice extends NativeDevice {
     @Override
     public Set<Long> listDisplayIds() throws DeviceNotAvailableException {
         Set<Long> displays = new HashSet<>();
-        // Zero is the default display
-        displays.add(0L);
         CommandResult res = executeShellV2Command("dumpsys SurfaceFlinger | grep 'color modes:'");
         if (!CommandStatus.SUCCESS.equals(res.getStatus())) {
             CLog.e("Something went wrong while listing displays: %s", res.getStderr());
@@ -1942,6 +1940,15 @@ public class TestDevice extends NativeDevice {
                 displays.add(Long.parseLong(m.group("id")));
             }
         }
+
+        // If the device is older and did not report any displays
+        // then add the default.
+        // Note: this assumption breaks down if the device also has multiple displays
+        if (displays.isEmpty()) {
+            // Zero is the default display
+            displays.add(0L);
+        }
+
         return displays;
     }
 }
