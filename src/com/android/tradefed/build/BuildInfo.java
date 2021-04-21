@@ -639,8 +639,10 @@ public class BuildInfo implements IBuildInfo {
             // Restore the original type of build info.
             try {
                 buildInfo =
-                        (BuildInfo)
-                                Class.forName(buildClass).getDeclaredConstructor().newInstance();
+                        Class.forName(buildClass)
+                                .asSubclass(BuildInfo.class)
+                                .getDeclaredConstructor()
+                                .newInstance();
             } catch (InstantiationException
                     | IllegalAccessException
                     | ClassNotFoundException
