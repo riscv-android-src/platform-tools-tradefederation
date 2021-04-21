@@ -190,28 +190,16 @@ public class ContentProviderHandlerTest {
     /** Test {@link ContentProviderHandler#pullFile(String, File)}. */
     @Test
     public void testPullFile_createLocalFileIfNotExist() throws Exception {
-        File pullTo = new File("content-provider-test.txt");
+        File pullTo = FileUtil.createTempFile("content-provider-test", ".txt");
+        // Delete to test unexisting file.
+        pullTo.delete();
         String devicePath = "path/somewhere/file.txt";
         mockPullFileSuccess();
 
         try {
             assertFalse(pullTo.exists());
-            mProvider.pullFile(devicePath, pullTo);
-            assertTrue(pullTo.exists());
-        } finally {
-            FileUtil.deleteFile(pullTo);
-        }
-    }
-
-    /** Test {@link ContentProviderHandler#pullFile(String, File)}. */
-    @Test
-    public void testPullFile_success() throws Exception {
-        File pullTo = new File("content-provider-test.txt");
-        String devicePath = "path/somewhere/file.txt";
-
-        try {
-            mockPullFileSuccess();
             assertTrue(mProvider.pullFile(devicePath, pullTo));
+            assertTrue(pullTo.exists());
         } finally {
             FileUtil.deleteFile(pullTo);
         }
