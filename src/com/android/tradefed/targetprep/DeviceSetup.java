@@ -766,7 +766,11 @@ public class DeviceSetup extends BaseTargetPreparer {
                 device.executeShellCommand("input keyevent 82");
                 // send HOME press in case keyguard was already dismissed, so we bring device back
                 // to home screen
-                device.executeShellCommand("input keyevent 3");
+                // No need for this on Wear OS, since that causes the launcher to show
+                // instead of the home screen
+                if (!device.hasFeature("android.hardware.type.watch")) {
+                    device.executeShellCommand("input keyevent 3");
+                }
                 break;
             case OFF:
                 CLog.d("Setting screen always on to false");

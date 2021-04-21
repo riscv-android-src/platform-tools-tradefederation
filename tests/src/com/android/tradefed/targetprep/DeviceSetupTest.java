@@ -1337,6 +1337,8 @@ public class DeviceSetupTest extends TestCase {
         if (screenOn) {
             EasyMock.expect(mMockDevice.executeShellCommand("svc power stayon true")).andReturn("");
             EasyMock.expect(mMockDevice.executeShellCommand("input keyevent 82")).andReturn("");
+            EasyMock.expect(mMockDevice.hasFeature("android.hardware.type.watch"))
+                    .andStubReturn(false);
             EasyMock.expect(mMockDevice.executeShellCommand("input keyevent 3")).andReturn("");
         }
         if (testHarness) {
