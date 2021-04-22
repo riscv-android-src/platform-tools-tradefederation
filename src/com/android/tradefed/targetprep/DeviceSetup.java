@@ -126,8 +126,8 @@ public class DeviceSetup extends BaseTargetPreparer {
     @Option(name = "bluetooth",
             description = "Turn bluetooth on or off")
     protected BinaryState mBluetooth = BinaryState.IGNORE;
-    // ON:  service call bluetooth_manager 6
-    // OFF: service call bluetooth_manager 8
+    // ON:  svc bluetooth enable
+    // OFF: svc bluetooth disable
 
     @Option(name = "nfc",
             description = "Turn nfc on or off")
@@ -595,7 +595,7 @@ public class DeviceSetup extends BaseTargetPreparer {
                 "ifconfig eth0 up", "ifconfig eth0 down");
 
         setCommandForBinaryState(mBluetooth, mRunCommandAfterSettings,
-                "service call bluetooth_manager 6", "service call bluetooth_manager 8");
+                "svc bluetooth enable", "svc bluetooth disable");
 
         setCommandForBinaryState(mNfc, mRunCommandAfterSettings,
                 "svc nfc enable", "svc nfc disable");
