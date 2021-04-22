@@ -9,7 +9,6 @@
 	<classpathentry kind="src" path="objenesis"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/ddmlib"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/tf-remote-client"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/platform-annotations"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/tradefederation"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER">
 		<attributes>
