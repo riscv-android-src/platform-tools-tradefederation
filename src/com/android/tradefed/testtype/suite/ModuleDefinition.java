@@ -92,6 +92,7 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Container for the test run configuration. This class is an helper to prepare and run the tests.
@@ -544,6 +545,8 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 Throwable exception = (runException != null) ? runException : preparationException;
                 // Tear down
                 runTearDown(moduleInfo, exception);
+                // Verify device did not crash
+                checkEndModuleDevice(moduleInfo);
             } catch (DeviceNotAvailableException dnae) {
                 CLog.e(
                         "Module %s failed during tearDown with: %s",
@@ -957,6 +960,31 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                         device.setRecoveryMode(origMode);
                     }
                 }
+            }
+        }
+    }
+
+    /** Verify that the device did not crash after the module. */
+    private void checkEndModuleDevice(TestInformation testInfo) throws DeviceNotAvailableException {
+        for (ITestDevice device : testInfo.getDevices()) {
+            if (device.getIDevice() instanceof StubDevice) {
+                continue;
+            }
+            long deviceDate = device.getDeviceDate();
+            if (deviceDate == 0L) {
+                continue;
+            }
+            boolean restarted =
+                    device.deviceSoftRestartedSince(deviceDate - 5000L, TimeUnit.MILLISECONDS);
+            if (restarted) {
+                CLog.e("Detected a soft-restart after module %s", mId);
+                InvocationMetricLogger.addInvocationMetrics(
+                        InvocationMetricKey.SOFT_RESTART_AFTER_MODULE, 1);
+                device.waitForDeviceAvailable();
+                // TODO: Enable actually failing module for reporting
+                /*throw new HarnessRuntimeException(
+                String.format("Device '%s' crashed after running %s.", device.getSerialNumber(), mId),
+                DeviceErrorIdentifier.DEVICE_CRASHED);*/
             }
         }
     }

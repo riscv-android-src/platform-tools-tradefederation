@@ -303,7 +303,7 @@ public class ModuleDefinitionTest {
     }
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
         mMockLogSaver = EasyMock.createMock(ILogSaver.class);
         mMockLogSaverListener = EasyMock.createStrictMock(ILogSaverListener.class);
 
@@ -320,6 +320,8 @@ public class ModuleDefinitionTest {
         mMultiTargetPrepList = new ArrayList<>();
         mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
         mMockDevice = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(mMockDevice.getDeviceDate()).andReturn(0L).anyTimes();
+        EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(EasyMock.createMock(IDevice.class));
         mModule =
                 new ModuleDefinition(
                         MODULE_NAME,

@@ -43,7 +43,8 @@ public enum DeviceErrorIdentifier implements ErrorIdentifier {
     ERROR_AFTER_FLASHING(520_502, FailureStatus.LOST_SYSTEM_UNDER_TEST),
 
     DEVICE_UNAVAILABLE(520_750, FailureStatus.LOST_SYSTEM_UNDER_TEST),
-    DEVICE_UNRESPONSIVE(520_751, FailureStatus.LOST_SYSTEM_UNDER_TEST);
+    DEVICE_UNRESPONSIVE(520_751, FailureStatus.LOST_SYSTEM_UNDER_TEST),
+    DEVICE_CRASHED(520_752, FailureStatus.SYSTEM_UNDER_TEST_CRASHED);
 
     private final long code;
     private final @Nonnull FailureStatus status;
