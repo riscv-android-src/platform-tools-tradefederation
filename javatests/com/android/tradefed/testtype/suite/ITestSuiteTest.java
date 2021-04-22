@@ -288,7 +288,7 @@ public class ITestSuiteTest {
     }
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
         // Start with the Guice scope setup
         mScope = new InvocationScope();
         mScope.enter();
@@ -302,6 +302,7 @@ public class ITestSuiteTest {
         mMockDevice = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("SERIAL");
         EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(EasyMock.createMock(IDevice.class));
+        EasyMock.expect(mMockDevice.getDeviceDate()).andReturn(0L).anyTimes();
         mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
         EasyMock.expect(mMockBuildInfo.getRemoteFiles()).andReturn(null).once();
         mMockSysChecker = EasyMock.createMock(ISystemStatusChecker.class);

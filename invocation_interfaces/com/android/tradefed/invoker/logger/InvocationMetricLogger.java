@@ -47,6 +47,8 @@ public class InvocationMetricLogger {
         ADB_ROOT_TIME("adb_root_time", true),
         // Represents how often we enter the "adb root" device routine.
         ADB_ROOT_ROUTINE_COUNT("adb_root_routine_count", true),
+        // Track if soft restart is occurring after test module
+        SOFT_RESTART_AFTER_MODULE("soft_restart_after_module", true),
 
         SHUTDOWN_HARD_LATENCY("shutdown_hard_latency_ms", false),
         DEVICE_COUNT("device_count", false),
