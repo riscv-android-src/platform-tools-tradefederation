@@ -187,11 +187,14 @@ public class ShardHelper implements IShardHelper {
                 }
             }
         }
-        // clean up original builds
-        for (String deviceName : context.getDeviceConfigNames()) {
-            config.getDeviceConfigByName(deviceName)
-                    .getBuildProvider()
-                    .cleanUp(context.getBuildInfo(deviceName));
+        // If we are sharding inside sandbox, don't clean, let the parent do it.
+        if (!config.getConfigurationDescription().shouldUseSandbox()) {
+            // clean up original builds
+            for (String deviceName : context.getDeviceConfigNames()) {
+                config.getDeviceConfigByName(deviceName)
+                        .getBuildProvider()
+                        .cleanUp(context.getBuildInfo(deviceName));
+            }
         }
         return true;
     }
