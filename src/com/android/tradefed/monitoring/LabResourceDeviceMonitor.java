@@ -25,6 +25,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceAllocationState;
 import com.android.tradefed.device.IDeviceMonitor;
+import com.android.tradefed.device.TestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.monitoring.collector.IResourceMetricCollector;
 
@@ -366,6 +367,10 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
                                                 Metric.newBuilder()
                                                         .setTag(descriptor.getState().name())
                                                         .setValue(FIXED_METRIC_VALUE)));
+        // Continue to collect resource metrics if the device is a full stack android device.
+        if (!descriptor.getDeviceClass().equals(TestDevice.class.getSimpleName())) {
+            return builder.build();
+        }
         for (IResourceMetricCollector collector : collectors) {
             Future<Collection<Resource>> future = null;
             try {
