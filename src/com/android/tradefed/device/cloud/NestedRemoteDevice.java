@@ -32,6 +32,7 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
+import com.android.tradefed.util.MultiMap;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
@@ -70,6 +71,9 @@ public class NestedRemoteDevice extends TestDevice {
     /** When calling launch_cvd, the launcher.log is populated. */
     private static final String LAUNCHER_LOG_PATH = "/home/%s/cuttlefish_runtime/launcher.log";
 
+    /** a cached invocation context attributes so that it can be used during device reset */
+    private MultiMap<String, String> mAttributes = null;
+
     /**
      * Creates a {@link NestedRemoteDevice}.
      *
@@ -84,6 +88,13 @@ public class NestedRemoteDevice extends TestDevice {
         if (stateMonitor instanceof NestedDeviceStateMonitor) {
             ((NestedDeviceStateMonitor) stateMonitor).setDevice(this);
         }
+    }
+
+    @Override
+    public void preInvocationSetup(IBuildInfo info, MultiMap<String, String> attributes)
+            throws TargetSetupError, DeviceNotAvailableException {
+        super.preInvocationSetup(info, attributes);
+        mAttributes = attributes;
     }
 
     /** Teardown and restore the virtual device so testing can proceed. */
@@ -161,7 +172,7 @@ public class NestedRemoteDevice extends TestDevice {
         // Reset recovery since it's a new device
         setRecoveryMode(RecoveryMode.AVAILABLE);
         try {
-            preInvocationSetup(info);
+            preInvocationSetup(info, mAttributes);
         } catch (TargetSetupError e) {
             CLog.e("Failed to re-init the device %s", getSerialNumber());
             CLog.e(e);

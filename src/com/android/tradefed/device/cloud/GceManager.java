@@ -35,6 +35,7 @@ import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.GoogleApiClientUtil;
 import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.RunUtil;
 
 import com.google.api.client.auth.oauth2.Credential;
@@ -143,16 +144,21 @@ public class GceManager {
     }
 
     public GceAvdInfo startGce() throws TargetSetupError {
-        return startGce(null);
+        return startGce(null, null);
     }
 
     /**
      * Attempt to start a gce instance
      *
+     * @param ipDevice the initial IP of the GCE instance to run AVD in, <code>null</code> if not
+     *     applicable
+     * @param attributes attributes associated with current invocation, used for passing applicable
+     *     information down to the GCE instance to be added as VM metadata
      * @return a {@link GceAvdInfo} describing the GCE instance. Could be a BOOT_FAIL instance.
      * @throws TargetSetupError
      */
-    public GceAvdInfo startGce(String ipDevice) throws TargetSetupError {
+    public GceAvdInfo startGce(String ipDevice, MultiMap<String, String> attributes)
+            throws TargetSetupError {
         mGceAvdInfo = null;
         // For debugging purposes bypass.
         if (mGceHost != null && mGceInstanceName != null) {
@@ -167,7 +173,7 @@ public class GceManager {
         File reportFile = null;
         try {
             reportFile = FileUtil.createTempFile("gce_avd_driver", ".json");
-            List<String> gceArgs = buildGceCmd(reportFile, mBuildInfo, ipDevice);
+            List<String> gceArgs = buildGceCmd(reportFile, mBuildInfo, ipDevice, attributes);
 
             long driverTimeoutMs = getTestDeviceOptions().getGceCmdTimeout();
             if (!getTestDeviceOptions().allowGceCmdTimeoutOverride()) {
@@ -260,7 +266,8 @@ public class GceManager {
     }
 
     /** Build and return the command to launch GCE. Exposed for testing. */
-    protected List<String> buildGceCmd(File reportFile, IBuildInfo b, String ipDevice) {
+    protected List<String> buildGceCmd(
+            File reportFile, IBuildInfo b, String ipDevice, MultiMap<String, String> attributes) {
         File avdDriverFile = getTestDeviceOptions().getAvdDriverBinary();
         if (!avdDriverFile.exists()) {
             throw new HarnessRuntimeException(
@@ -311,6 +318,17 @@ public class GceManager {
             gceArgs.add(b.getBuildBranch());
             gceArgs.add("--build-id");
             gceArgs.add(b.getBuildId());
+        }
+
+        // process any info in the invocation context that should be passed onto GCE driver
+        // as meta data to be associated with the VM instance
+        if (attributes != null) {
+            for (String key : getTestDeviceOptions().getInvocationAttributeToMetadata()) {
+                for (String value : attributes.get(key)) {
+                    gceArgs.add("--gce-metadata");
+                    gceArgs.add(String.format("%s:%s", key, value));
+                }
+            }
         }
 
         // Add additional args passed by gce-driver-param.

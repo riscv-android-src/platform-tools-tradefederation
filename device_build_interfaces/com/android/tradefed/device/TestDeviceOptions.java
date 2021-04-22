@@ -265,6 +265,15 @@ public class TestDeviceOptions {
     )
     private String mCrosPassword = null;
 
+    @Option(
+            name = "invocation-attribute-to-metadata",
+            description =
+                    "Pass the named attribute found in invocation context to GCE driver (acloud)"
+                            + " as metadata to be associated with the GCE VM. e.g. if invocation"
+                            + " context has form_factor=phone, it'll be added to GCE VM as metadata"
+                            + " form_factor=phone.")
+    private List<String> mInvocationAttributeToMetadata = new ArrayList<>();
+
     // END ====================== Options Related to Virtual Devices ======================
 
     // Option related to Remote Device only
@@ -696,5 +705,9 @@ public class TestDeviceOptions {
             return params;
         }
         return Collections.emptyList();
+    }
+
+    public List<String> getInvocationAttributeToMetadata() {
+        return mInvocationAttributeToMetadata;
     }
 }
