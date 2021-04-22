@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.testtype.suite;
 
+import com.android.ddmlib.IDevice;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationException;
@@ -108,7 +109,7 @@ public class ITestSuiteMultiTest {
     }
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
         mMockTargetPrep = EasyMock.createMock(ITargetPreparer.class);
 
         mTestSuite = new TestSuiteMultiDeviceImpl(2, mMockTargetPrep);
@@ -117,10 +118,16 @@ public class ITestSuiteMultiTest {
         // 2 devices and 2 builds
         mMockDevice1 = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(mMockDevice1.getSerialNumber()).andStubReturn("SERIAL1");
+        EasyMock.expect(mMockDevice1.getDeviceDate()).andReturn(0L).anyTimes();
+        EasyMock.expect(mMockDevice1.getIDevice())
+                .andStubReturn(EasyMock.createMock(IDevice.class));
         mMockBuildInfo1 = EasyMock.createMock(IBuildInfo.class);
         EasyMock.expect(mMockBuildInfo1.getRemoteFiles()).andReturn(null).once();
         mMockDevice2 = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(mMockDevice2.getSerialNumber()).andStubReturn("SERIAL2");
+        EasyMock.expect(mMockDevice2.getDeviceDate()).andReturn(0L).anyTimes();
+        EasyMock.expect(mMockDevice2.getIDevice())
+                .andStubReturn(EasyMock.createMock(IDevice.class));
         mMockBuildInfo2 = EasyMock.createMock(IBuildInfo.class);
         mMockLogSaver = EasyMock.createMock(ILogSaver.class);
         mStubMainConfiguration = new Configuration("stub", "stub");
