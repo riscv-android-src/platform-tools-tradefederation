@@ -431,7 +431,7 @@ public class DeviceSetupTest extends TestCase {
     public void testSetup_bluetooth_on() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
-        doCommandsExpectations("service call bluetooth_manager 6");
+        doCommandsExpectations("svc bluetooth enable");
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setBluetooth(BinaryState.ON);
@@ -443,7 +443,7 @@ public class DeviceSetupTest extends TestCase {
     public void testSetup_bluetooth_off() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
-        doCommandsExpectations("service call bluetooth_manager 8");
+        doCommandsExpectations("svc bluetooth disable");
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setBluetooth(BinaryState.OFF);
