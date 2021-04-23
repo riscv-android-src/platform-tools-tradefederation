@@ -48,7 +48,7 @@ public class AggregatePostProcessorTest {
     private static final String STATS_KEY_STDEV = "stdev";
     private static final String STATS_KEY_MEDIAN = "median";
     private static final String STATS_KEY_TOTAL = "total";
-    private static final String STATS_KEY_COUNT = "count";
+    private static final String STATS_KEY_COUNT = "metric-count";
     private static final String STATS_KEY_PERCENTILE_PREFIX = "p";
     // Separator for final upload
     private static final String STATS_KEY_SEPARATOR = "-";
