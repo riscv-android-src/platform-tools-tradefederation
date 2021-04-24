@@ -392,6 +392,12 @@ public class DeviceSetup extends BaseTargetPreparer {
             "Must be used with --local-data-path.")
     protected String mRemoteDataPath = null;
 
+    @Option(
+            name = "optimized-property-setting",
+            description =
+                    "If a property is already set to the desired value, don't reboot the device")
+    protected boolean mOptimizedPropertySetting = false;
+
     // Deprecated options follow
     /**
      * @deprecated use min-external-storage-kb instead.
@@ -727,17 +733,43 @@ public class DeviceSetup extends BaseTargetPreparer {
                     device.getDeviceDescriptor());
         }
 
-        StringBuilder sb = new StringBuilder();
+        // Set persistent props and build a map of all the nonpersistent ones
+        Map<String, String> nonpersistentProps = new HashMap<String, String>();
         for (Map.Entry<String, String> prop : mSetProps.entrySet()) {
             if (prop.getKey().startsWith(PERSIST_PREFIX)) {
                 // TODO: Check that set was successful
                 device.setProperty(prop.getKey(), prop.getValue());
             } else {
-                sb.append(String.format("%s=%s\n", prop.getKey(), prop.getValue()));
+                nonpersistentProps.put(prop.getKey(), prop.getValue());
             }
         }
 
-        if (sb.length() != 0) {
+        // If the reboot optimization is enabled, only set nonpersistent props if
+        // there are changed values from what the device is running.
+        boolean shouldSetProps = true;
+        if (mOptimizedPropertySetting && !nonpersistentProps.isEmpty()) {
+            boolean allPropsAlreadySet = true;
+            for (Map.Entry<String, String> prop : nonpersistentProps.entrySet()) {
+                if (!prop.getValue().equals(device.getProperty(prop.getKey()))) {
+                    allPropsAlreadySet = false;
+                    break;
+                }
+            }
+            if (allPropsAlreadySet) {
+                shouldSetProps = false;
+                CLog.i(
+                        "All properties appear to already be set to desired values, skipping"
+                                + " set stage");
+            }
+        }
+
+        // Set the nonpersistent properties if needed.
+        if (!nonpersistentProps.isEmpty() && shouldSetProps) {
+            StringBuilder sb = new StringBuilder();
+            for (Map.Entry<String, String> prop : nonpersistentProps.entrySet()) {
+                sb.append(String.format("%s=%s\n", prop.getKey(), prop.getValue()));
+            }
+
             if (mRestoreProperties) {
                 mPreviousProperties = device.pullFile("/data/local.prop");
             }
