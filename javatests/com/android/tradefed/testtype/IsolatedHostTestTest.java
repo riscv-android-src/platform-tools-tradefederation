@@ -48,6 +48,7 @@ import java.util.List;
 /** Unit tests for {@link IsolatedHostTest}. */
 public class IsolatedHostTestTest {
 
+    private static final String PACKAGE = "/com/android/tradefed/referencetests";
     private IsolatedHostTest mHostTest;
     private ITestInvocationListener mListener;
     private IBuildInfo mMockBuildInfo;
@@ -65,13 +66,19 @@ public class IsolatedHostTestTest {
      */
     protected File getJarResource(String filename, File parentDir, String name) throws IOException {
         File jarFile = null;
-        try (InputStream jarFileStream = getClass().getResourceAsStream(filename)) {
-            if (jarFileStream == null) {
+        try (InputStream jarFileStream = getClass().getResourceAsStream(filename);
+                InputStream qualifiedPathStream =
+                        getClass().getResourceAsStream(PACKAGE + filename)) {
+            if (jarFileStream == null && qualifiedPathStream == null) {
                 throw new RuntimeException(String.format("Failed to read resource '%s'", filename));
             }
             jarFile = new File(parentDir, name);
             jarFile.createNewFile();
-            FileUtil.writeToFile(jarFileStream, jarFile);
+            if (jarFileStream != null) {
+                FileUtil.writeToFile(jarFileStream, jarFile);
+            } else {
+                FileUtil.writeToFile(qualifiedPathStream, jarFile);
+            }
         }
         return jarFile;
     }
