@@ -848,9 +848,9 @@ public class TestDeviceFuncTest implements IDeviceTest {
     /** Test that {@link TestDevice#getProperty(String)} works after a reboot. */
     @Test
     public void testGetProperty() throws Exception {
-        assertNotNull(getDevice().getProperty(DeviceProperties.BOARD));
+        assertNotNull(getDevice().getProperty(DeviceProperties.VARIANT));
         getDevice().rebootUntilOnline();
-        assertNotNull(getDevice().getProperty(DeviceProperties.BOARD));
+        assertNotNull(getDevice().getProperty(DeviceProperties.VARIANT));
     }
 
     /** Test that {@link TestDevice#getProperty(String)} works for volatile properties. */
