@@ -17,8 +17,6 @@ package com.android.tradefed.presubmit;
 
 import static org.junit.Assert.assertEquals;
 
-import android.platform.test.annotations.RequiresDevice;
-
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner;
@@ -30,7 +28,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 /** A set of tests that are meant to test Tradefed transition of states. */
-@RequiresDevice
 @RunWith(DeviceJUnit4ClassRunner.class)
 public class DeviceStateTransitionFuncTests extends BaseHostJUnit4Test {
 

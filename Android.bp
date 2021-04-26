@@ -114,6 +114,7 @@ java_library_host {
         "junit-params",
         "kxml2-2.3.0",
         "libprotobuf-java-full",
+        // TODO(b/1859290570: Delete platform-test-annotations dep
         "platform-test-annotations",
         "snakeyaml",
         "tf-remote-client",
