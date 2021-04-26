@@ -19,20 +19,22 @@ import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.config.Option;
-import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.config.Option.Importance;
+import com.android.tradefed.config.OptionCopier;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.SubprocessResultsReporter;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.testtype.IAbi;
-import com.android.tradefed.testtype.InstrumentationTest;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFilterReceiver;
+import com.android.tradefed.testtype.InstrumentationTest;
+
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -152,7 +154,7 @@ public class AtestRunner extends BaseTestSuite {
             String moduleFilter = filter.substring(moduleSep + 1);
             HashSet<String> moduleFilters = includeFilters.get(moduleName);
             if (moduleFilters == null) {
-                moduleFilters = new HashSet<String>();
+                moduleFilters = new LinkedHashSet<>();
                 includeFilters.put(moduleName, moduleFilters);
             }
             moduleFilters.add(moduleFilter);
