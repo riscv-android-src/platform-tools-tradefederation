@@ -18,6 +18,8 @@ package com.android.tradefed.referencetests;
 import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
 /**
  * Simple passing class with one test case
@@ -25,6 +27,7 @@ import org.junit.Test;
  * <p>This is so that we can exercise some of the very basic code paths without too many confoudning
  * factors
  */
+@RunWith(JUnit4.class)
 public class SimplePassingTest {
     @Test
     public void test2Plus2() {
