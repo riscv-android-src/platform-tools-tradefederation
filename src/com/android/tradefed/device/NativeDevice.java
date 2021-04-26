@@ -161,7 +161,7 @@ public class NativeDevice implements IManagedTestDevice {
     private static final long ENCRYPTION_WIPE_TIMEOUT_MIN = 20;
 
     /** The maximum system_server start delay in seconds after device boot up */
-    private static final int MAX_SYSTEM_SERVER_DELAY_AFTER_BOOT_UP_SEC = 10;
+    private static final int MAX_SYSTEM_SERVER_DELAY_AFTER_BOOT_UP_SEC = 25;
 
     /** The time in ms to wait before starting logcat for a device */
     private int mLogStartDelay = 5*1000;
