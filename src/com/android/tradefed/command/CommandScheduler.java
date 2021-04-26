@@ -1810,7 +1810,10 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
      */
     @Override
     public synchronized void shutdownOnEmpty() {
-        assertStarted();
+        if (!mStarted) {
+            CLog.w("Scheduler was not started, yet shutdownOnEmpty was called.");
+            return;
+        }
         setHostState(HostState.QUITTING);
         if (!isShuttingDown()) {
             CLog.d("initiating shutdown on empty");
