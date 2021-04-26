@@ -20,13 +20,14 @@ import static org.junit.Assert.assertEquals;
 
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
 import java.util.HashSet;
 import java.util.Set;
 
-/**
- * Unit tests for {@link AbiUtils}
- */
+/** Unit tests for {@link AbiUtils} */
+@RunWith(JUnit4.class)
 public class AbiUtilsTest {
 
     private static final String MODULE_NAME = "ModuleName";
