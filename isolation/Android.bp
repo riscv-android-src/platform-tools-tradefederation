@@ -18,7 +18,9 @@ package {
 
 java_library_host {
     name: "tradefed-isolation",
-    visibility: ["//visibility:private"],
+    visibility: [
+        "//tools/tradefederation/core/test_framework",
+    ],
     defaults: ["tradefed_defaults"],
     srcs: [
         "./**/*.java",
