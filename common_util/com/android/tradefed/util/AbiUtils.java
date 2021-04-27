@@ -42,30 +42,20 @@ public class AbiUtils {
     public static final String BASE_ARCH_MIPS = "mips";
     public static final String ARCH_MIPS64 = BASE_ARCH_MIPS + "64";
 
-    /**
-     * The set of 32Bit ABIs.
-     */
-    private static final Set<String> ABIS_32BIT = new HashSet<String>();
+    /** The set of 32Bit ABIs. */
+    private static final Set<String> ABIS_32BIT = new LinkedHashSet<String>();
 
-    /**
-     * The set of 64Bit ABIs.
-     */
-    private static final Set<String> ABIS_64BIT = new HashSet<String>();
+    /** The set of 64Bit ABIs. */
+    private static final Set<String> ABIS_64BIT = new LinkedHashSet<String>();
 
-    /**
-     * The set of ARM ABIs.
-     */
-    protected static final Set<String> ARM_ABIS = new HashSet<String>();
+    /** The set of ARM ABIs. */
+    protected static final Set<String> ARM_ABIS = new LinkedHashSet<String>();
 
-    /**
-     * The set of Intel ABIs.
-     */
-    private static final Set<String> INTEL_ABIS = new HashSet<String>();
+    /** The set of Intel ABIs. */
+    private static final Set<String> INTEL_ABIS = new LinkedHashSet<String>();
 
-    /**
-     * The set of Mips ABIs.
-     */
-    private static final Set<String> MIPS_ABIS = new HashSet<String>();
+    /** The set of Mips ABIs. */
+    private static final Set<String> MIPS_ABIS = new LinkedHashSet<String>();
 
     /** The set of ABI names which Compatibility supports. */
     protected static final Set<String> ABIS_SUPPORTED_BY_COMPATIBILITY = new LinkedHashSet<>();

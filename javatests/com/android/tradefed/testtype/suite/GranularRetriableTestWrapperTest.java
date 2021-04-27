@@ -65,6 +65,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -217,7 +218,7 @@ public class GranularRetriableTestWrapperTest {
         private Integer mMaxTestCount;
 
         public MultiTestOneRunFakeTest() {
-            mRunTestsMap = new HashMap<String, List<TestDescription>>();
+            mRunTestsMap = new LinkedHashMap<String, List<TestDescription>>();
             mMaxTestCount = 0;
             mAttempts = 0;
         }
