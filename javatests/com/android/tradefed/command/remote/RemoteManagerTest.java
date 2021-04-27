@@ -16,6 +16,7 @@
 package com.android.tradefed.command.remote;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
@@ -78,11 +79,12 @@ public class RemoteManagerTest {
         PrintWriter pw = new PrintWriter(out);
         mRemoteManager.processClientOperations(in, pw);
         pw.flush();
-        assertEquals(
-                "{\"error\":\"Failed to handle remote command: "
-                        + "com.android.tradefed.command.remote.RemoteException: "
-                        + "Value test of type java.lang.String cannot be converted to JSONObject\"}\n",
-                out.toString());
+        assertTrue(
+                out.toString()
+                        .startsWith(
+                                "{\"error\":\"Failed to handle remote command: "
+                                        + "com.android.tradefed.command.remote.RemoteException: "
+                                        + "JSONException during remote operation:"));
     }
 
     /**
