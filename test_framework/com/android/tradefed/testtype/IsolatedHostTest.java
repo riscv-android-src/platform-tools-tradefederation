@@ -794,7 +794,8 @@ public class IsolatedHostTest
         try (InputStream jarFileStream = getClass().getResourceAsStream("/tradefed-isolation.jar");
                 InputStream qualifiedJarStream =
                         getClass()
-                                .getResourceAsStream(QUALIFIED_PATH + "/tradefed-isolation.jar")) {
+                                .getResourceAsStream(
+                                        QUALIFIED_PATH + "/tradefed-isolation_deploy.jar")) {
             if (jarFileStream == null && qualifiedJarStream == null) {
                 throw new RuntimeException("/tradefed-isolation.jar not found.");
             }
