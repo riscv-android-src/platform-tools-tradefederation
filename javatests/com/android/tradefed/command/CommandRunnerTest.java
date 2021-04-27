@@ -82,9 +82,6 @@ public class CommandRunnerTest {
 
     @After
     public void tearDown() {
-        GlobalConfiguration.getInstance()
-                .getCommandScheduler()
-                .setLastInvocationExitCode(ExitCode.NO_ERROR, null);
         FileUtil.deleteFile(mConfig);
         FileUtil.recursiveDelete(mLogDir);
     }
