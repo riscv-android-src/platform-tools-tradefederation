@@ -20,11 +20,21 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.when;
 
 import com.android.tradefed.command.CommandRunner.ExitCode;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.GlobalConfiguration;
+import com.android.tradefed.device.IDeviceManager;
+import com.android.tradefed.device.IDeviceMonitor;
+import com.android.tradefed.device.IDeviceStateMonitor;
 import com.android.tradefed.device.MockDeviceManager;
+import com.android.tradefed.device.StubDevice;
+import com.android.tradefed.device.TestDevice;
+import com.android.tradefed.invoker.IInvocationExecution;
+import com.android.tradefed.invoker.ITestInvocation;
+import com.android.tradefed.invoker.InvocationExecution;
+import com.android.tradefed.invoker.TestInvocation;
 import com.android.tradefed.util.FileUtil;
 
 import org.junit.After;
@@ -32,6 +42,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Answers;
 import org.mockito.Mockito;
 
 import java.io.ByteArrayOutputStream;
@@ -48,7 +59,7 @@ public class CommandRunnerTest {
     private static final String FAKE_CONFIG = "doesnotexit";
     private String mStackTraceOutput = null;
     private ICommandScheduler mMockScheduler;
-
+    private IDeviceManager mMockDeviceManager;
 
     private static final String EMPTY_CONF_CONTENT =
             "<configuration description=\"Empty Config\" />";
@@ -57,6 +68,8 @@ public class CommandRunnerTest {
 
     @Before
     public void setUp() throws Exception {
+        mMockDeviceManager = Mockito.mock(IDeviceManager.class, Answers.RETURNS_SMART_NULLS);
+        mockDeviceManager();
         mStackTraceOutput = null;
         mConfig = FileUtil.createTempFile("empty", ".xml");
         FileUtil.writeToFile(EMPTY_CONF_CONTENT, mConfig);
@@ -67,15 +80,29 @@ public class CommandRunnerTest {
                     protected void initLogging() {}
 
                     @Override
+                    protected IDeviceManager getDeviceManager() {
+                        return mMockDeviceManager;
+                    }
+
+                    @Override
                     protected void cleanUp() {}
 
                     @Override
-                    void initDeviceManager() {
-                        try {
-                            super.initDeviceManager();
-                        } catch (IllegalStateException e) {
-                            // ignore re-init
-                        }
+                    void initDeviceManager() {}
+
+                    @Override
+                    ITestInvocation createRunInstance() {
+                        return new TestInvocation() {
+                            @Override
+                            public IInvocationExecution createInvocationExec(RunMode mode) {
+                                return new InvocationExecution() {
+                                    @Override
+                                    protected String getAdbVersion() {
+                                        return mMockDeviceManager.getAdbVersion();
+                                    }
+                                };
+                            }
+                        };
                     }
                 };
     }
@@ -111,6 +138,16 @@ public class CommandRunnerTest {
             pw.flush();
             mStackTraceOutput = out.toString();
         }
+    }
+
+    private void mockDeviceManager() {
+        when(mMockDeviceManager.allocateDevice(Mockito.any(), Mockito.eq(false)))
+                .thenReturn(
+                        new TestDevice(
+                                new StubDevice("serial"),
+                                Mockito.mock(IDeviceStateMonitor.class),
+                                Mockito.mock(IDeviceMonitor.class)));
+        when(mMockDeviceManager.getAdbVersion()).thenReturn("Version 31.0.2-7263705");
     }
 
     /**
