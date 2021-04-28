@@ -175,6 +175,8 @@ public class TestInvocation implements ITestInvocation {
     private boolean mDelegatedInvocation = false;
     private List<IScheduledInvocationListener> mSchedulerListeners = new ArrayList<>();
     private DeviceUnavailableMonitor mUnavailableMonitor = new DeviceUnavailableMonitor();
+    private ExitCode mExitCode = ExitCode.NO_ERROR;
+    private Throwable mExitStack = null;
 
     /**
      * Display a log message informing the user of a invocation being started.
@@ -1085,8 +1087,8 @@ public class TestInvocation implements ITestInvocation {
      * Helper to set the exit code. Exposed for testing.
      */
     protected void setExitCode(ExitCode code, Throwable stack) {
-        GlobalConfiguration.getInstance().getCommandScheduler()
-                .setLastInvocationExitCode(code, stack);
+        mExitCode = code;
+        mExitStack = stack;
     }
 
     protected void addInvocationMetric(InvocationMetricKey key, long value) {
@@ -1443,5 +1445,13 @@ public class TestInvocation implements ITestInvocation {
             }
         }
         return FileUtil.sizeOfDirectory(workFolder);
+    }
+
+    @Override
+    public ExitInformation getExitInfo() {
+        ExitInformation info = new ExitInformation();
+        info.mExitCode = this.mExitCode;
+        info.mStack = this.mExitStack;
+        return info;
     }
 }
