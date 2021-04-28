@@ -52,6 +52,7 @@ import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.ITestInvocation;
+import com.android.tradefed.invoker.ITestInvocation.ExitInformation;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.log.ILogRegistry.EventType;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -157,6 +158,7 @@ public class CommandSchedulerTest {
     @Before
     public void setUp() throws Exception {
         mMockInvocation = EasyMock.createMock(ITestInvocation.class);
+        EasyMock.expect(mMockInvocation.getExitInfo()).andStubReturn(new ExitInformation());
         mMockManager = new MockDeviceManager(0);
         mMockConfigFactory = EasyMock.createMock(IConfigurationFactory.class);
         mMockKeyStoreClient = EasyMock.createMock(IKeyStoreClient.class);
@@ -821,7 +823,8 @@ public class CommandSchedulerTest {
         mMockManager.setNumDevices(1);
         assertTrue(mMockManager.getQueueOfAvailableDeviceSize() == 1);
         setCreateConfigExpectations(args, 2);
-
+        EasyMock.reset(mMockInvocation);
+        EasyMock.expect(mMockInvocation.getExitInfo()).andReturn(null);
         mMockInvocation.invoke(
                 (IInvocationContext) EasyMock.anyObject(),
                 (IConfiguration) EasyMock.anyObject(),

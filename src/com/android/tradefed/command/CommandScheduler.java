@@ -609,6 +609,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             }
 
             Exception trackDeviceException = null;
+            boolean lastInvocationSet = false;
             try {
                 // Copy the command options invocation attributes to the invocation if it has not
                 // been already done.
@@ -629,17 +630,21 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 CLog.w("Device %s is unresponsive. Reason: %s", e.getSerial(), e.getMessage());
                 trackDeviceException = e;
                 setLastInvocationExitCode(ExitCode.DEVICE_UNRESPONSIVE, e);
+                lastInvocationSet = true;
             } catch (DeviceNotAvailableException e) {
                 CLog.w("Device %s is not available. Reason: %s", e.getSerial(), e.getMessage());
                 trackDeviceException = e;
                 setLastInvocationExitCode(ExitCode.DEVICE_UNAVAILABLE, e);
+                lastInvocationSet = true;
             } catch (FatalHostError e) {
                 CLog.wtf(String.format("Fatal error occurred: %s, shutting down", e.getMessage()),
                         e);
                 setLastInvocationExitCode(ExitCode.FATAL_HOST_ERROR, e);
+                lastInvocationSet = true;
                 shutdown();
             } catch (Throwable e) {
                 setLastInvocationExitCode(ExitCode.THROWABLE_EXCEPTION, e);
+                lastInvocationSet = true;
                 CLog.e(e);
             } finally {
                 mExecutionTimer.cancel();
@@ -664,6 +669,10 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                         CLog.e("Exception caught while calling invocationComplete:");
                         CLog.e(anyException);
                     }
+                }
+                if (!lastInvocationSet && instance.getExitInfo() != null) {
+                    setLastInvocationExitCode(
+                            instance.getExitInfo().mExitCode, instance.getExitInfo().mStack);
                 }
                 mCmd.commandFinished(elapsedTime);
                 logInvocationEndedEvent(
@@ -2442,8 +2451,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         return mLastInvocationThrowable;
     }
 
-    @Override
-    public void setLastInvocationExitCode(ExitCode code, Throwable throwable) {
+    private void setLastInvocationExitCode(ExitCode code, Throwable throwable) {
         mLastInvocationExitCode = code;
         mLastInvocationThrowable = throwable;
     }
