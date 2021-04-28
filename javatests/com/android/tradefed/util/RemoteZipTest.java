@@ -82,7 +82,7 @@ public class RemoteZipTest {
         // Delete it so name is available
         zipFile.delete();
         try {
-            saveTestDataFile(zipFile, -1, 0);
+            saveTestDataFile(zipFile, 0, -1);
             EndCentralDirectoryInfo endCentralDirInfo = new EndCentralDirectoryInfo(zipFile);
             mExpectedEntries =
                     ZipUtil.getZipCentralDirectoryInfos(
