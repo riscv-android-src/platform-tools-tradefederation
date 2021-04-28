@@ -80,14 +80,14 @@ public class AbiUtils {
         ABIS_64BIT.add(ABI_X86_64);
         ABIS_64BIT.add(ABI_MIPS64);
 
-        ARM_ABIS.add(ABI_ARM_V7A);
         ARM_ABIS.add(ABI_ARM_64_V8A);
+        ARM_ABIS.add(ABI_ARM_V7A);
 
-        INTEL_ABIS.add(ABI_X86);
         INTEL_ABIS.add(ABI_X86_64);
+        INTEL_ABIS.add(ABI_X86);
 
-        MIPS_ABIS.add(ABI_MIPS);
         MIPS_ABIS.add(ABI_MIPS64);
+        MIPS_ABIS.add(ABI_MIPS);
 
         ARCH_TO_ABIS.put(BASE_ARCH_ARM, ARM_ABIS);
         ARCH_TO_ABIS.put(ARCH_ARM64, ARM_ABIS);

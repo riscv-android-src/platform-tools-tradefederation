@@ -922,7 +922,7 @@ public class ITestSuiteTest {
         } catch (IllegalArgumentException e) {
             assertEquals(
                     "None of the abi supported by this tests suite build "
-                            + "('[armeabi-v7a, arm64-v8a]')"
+                            + "('[arm64-v8a, armeabi-v7a]')"
                             + " are supported by the device ('[armeabi]').",
                     e.getMessage());
         }
@@ -966,7 +966,7 @@ public class ITestSuiteTest {
         } catch (IllegalArgumentException e) {
             assertEquals(
                     "Your tests suite hasn't been built with abi 'armeabi' support, "
-                            + "this suite currently supports '[armeabi-v7a, arm64-v8a]'.",
+                            + "this suite currently supports '[arm64-v8a, armeabi-v7a]'.",
                     e.getMessage());
         }
         EasyMock.verify(mMockDevice);
@@ -1668,7 +1668,7 @@ public class ITestSuiteTest {
         EasyMock.replay(mMockDevice);
         Set<IAbi> res = mTestSuite.getAbis(mMockDevice);
         assertEquals(1, res.size());
-        assertEquals("armeabi-v7a", res.iterator().next().getName());
+        assertEquals("arm64-v8a", res.iterator().next().getName());
         EasyMock.verify(mMockDevice);
     }
 
