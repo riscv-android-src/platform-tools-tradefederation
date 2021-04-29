@@ -41,8 +41,6 @@ import org.json.JSONObject;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -209,16 +207,6 @@ public class HostGTest extends GTestBase implements IBuildReceiver {
         }
 
         long maxTestTimeMs = getMaxTestTimeMs();
-        // Check and print whether this is a hardlink
-        try {
-            Object o = Files.getAttribute(Paths.get(gtestFile.toURI()), "unix:nlink");
-            if (o != null) {
-                CLog.d("unix:nlink for %s - %s", gtestFile, o);
-            }
-        } catch (IOException e) {
-            CLog.e(e);
-        }
-
         String cmd = getGTestCmdLine(gtestFile.getAbsolutePath(), flags);
         CommandResult testResult =
                 executeHostGTestCommand(gtestFile, cmd, maxTestTimeMs, resultParser, logger);
