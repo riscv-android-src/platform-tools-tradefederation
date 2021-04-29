@@ -955,7 +955,6 @@ public class RemoteAndroidVirtualDeviceTest {
         OptionSetter setter = new OptionSetter(mTestDevice.getOptions());
         setter.setOptionValue("instance-user", instanceUser);
         setter.setOptionValue("use-oxygen", "true");
-        String powerwashCommand = "HOME=/tmp/cf_dir /tmp/cf_dir/bin/powerwash_cvd";
         String avdConnectHost = String.format("%s@127.0.0.1", instanceUser);
         GceAvdInfo gceAvd =
                 new GceAvdInfo(

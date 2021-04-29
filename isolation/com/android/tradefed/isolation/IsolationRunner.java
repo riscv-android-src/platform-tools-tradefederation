@@ -32,7 +32,6 @@ import org.junit.runner.Runner;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.net.ServerSocket;
@@ -68,7 +67,6 @@ public final class IsolationRunner {
         // Set a timeout for hearing something from the host when we start a read.
         mSocket.setSoTimeout(config.getTimeout());
 
-        InputStream input = mSocket.getInputStream();
         OutputStream output = mSocket.getOutputStream();
 
         // Process messages by receiving and looping

@@ -257,7 +257,7 @@ public class CommandRunnerTest {
                 new TestableCommandRunner() {
                     @Override
                     long getCheckDeviceTimeout() {
-                        return 200l;
+                        return 200L;
                     }
 
                     @Override

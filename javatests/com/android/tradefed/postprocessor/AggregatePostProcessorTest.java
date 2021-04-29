@@ -35,9 +35,6 @@ import java.util.Map;
 @RunWith(JUnit4.class)
 public class AggregatePostProcessorTest {
 
-    private static final String TEST_CLASS = "test.class";
-    private static final String TEST_NAME = "test.name";
-
     private static final Integer TEST_ITERATIONS = 3;
 
     // Upload key suffixes for each aggregate metric
@@ -863,7 +860,7 @@ public class AggregatePostProcessorTest {
 
     /** Test that 50 percentile is not reported if the user does not request it. */
     @Test
-    public void testDoesNotReport50PercentileIfNotSpecified() throws ConfigurationException {
+    public void testDoesNotReport50PercentileIfNotSpecified() {
         // List double metrics test: Sample results and expected aggregate metric values.
         final String listDoubleKey = "list_double";
         final ImmutableList<String> listDoubleMetrics =

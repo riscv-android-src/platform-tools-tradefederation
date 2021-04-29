@@ -542,7 +542,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setScreenAlwaysOn(BinaryState.IGNORE);
-        mDeviceSetup.setScreenTimeoutSecs(5l);
+        mDeviceSetup.setScreenTimeoutSecs(5L);
         mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
@@ -1396,7 +1396,7 @@ public class DeviceSetupTest extends TestCase {
     }
 
     private void doCheckExternalStoreSpaceExpectations() throws DeviceNotAvailableException {
-        EasyMock.expect(mMockDevice.getExternalStoreFreeSpace()).andReturn(1000l);
+        EasyMock.expect(mMockDevice.getExternalStoreFreeSpace()).andReturn(1000L);
     }
 
     private void doCommandsExpectations(String... commands)
