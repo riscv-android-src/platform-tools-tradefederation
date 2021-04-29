@@ -107,6 +107,11 @@ public class DeviceBatteryLevelCheckerTest {
         public Integer getBattery() {
             return mBatteryLevel;
         }
+
+        @Override
+        protected boolean supportsShellV2() {
+            return true;
+        }
     }
 
     @Before
