@@ -144,6 +144,7 @@ public class RustBinaryHostTest extends RustTestBase implements IBuildReceiver {
                 FailureDescription failure =
                         FailureDescription.create(
                                 "Could not count the number of tests", FailureStatus.TEST_FAILURE);
+                listener.testRunStarted(file.getName(), 0);
                 listener.testRunFailed(failure);
                 listener.testRunEnded(0, new HashMap<String, Metric>());
                 CLog.e(failure.getErrorMessage());
