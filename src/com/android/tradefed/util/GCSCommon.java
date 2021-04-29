@@ -50,7 +50,8 @@ public abstract class GCSCommon {
         try {
             if (mStorage == null) {
                 credential =
-                        GoogleApiClientUtil.createCredential(scopes, mJsonKeyFile, GCS_JSON_KEY);
+                        GoogleApiClientUtil.createCredential(
+                                scopes, true, mJsonKeyFile, GCS_JSON_KEY);
                 mStorage =
                         new Storage.Builder(
                                         GoogleNetHttpTransport.newTrustedTransport(),

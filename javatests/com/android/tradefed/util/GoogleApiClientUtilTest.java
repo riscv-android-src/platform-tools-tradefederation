@@ -16,6 +16,7 @@
 
 package com.android.tradefed.util;
 
+import com.android.tradefed.auth.ICredentialFactory;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.OptionSetter;
 import com.google.api.client.auth.oauth2.Credential;
@@ -36,6 +37,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /** Unit test for {@link GoogleApiClientUtil}. */
 @RunWith(JUnit4.class)
@@ -47,6 +49,7 @@ public class GoogleApiClientUtilTest {
     private StubGoogleApiClientUtil mUtil;
     private File mKey;
     private File mOldValue;
+    boolean mCredentialFactoryUsed = false;
 
     static class StubGoogleApiClientUtil extends GoogleApiClientUtil {
 
@@ -77,7 +80,7 @@ public class GoogleApiClientUtilTest {
     }
 
     @Before
-    public void setUp() throws IOException {
+    public void setUp() throws Exception {
         mUtil = new StubGoogleApiClientUtil();
         mRoot = FileUtil.createTempDir(GoogleApiClientUtilTest.class.getName());
         mKey = new File(mRoot, "key.json");
@@ -87,6 +90,22 @@ public class GoogleApiClientUtilTest {
                         .getHostOptions()
                         .getServiceAccountJsonKeyFiles()
                         .get(HOST_OPTION_JSON_KEY);
+        GlobalConfiguration.getInstance()
+                .setConfigurationObject(
+                        GlobalConfiguration.CREDENTIAL_FACTORY_TYPE_NAME,
+                        new ICredentialFactory() {
+                            @Override
+                            public Credential createCredential(Collection<String> scopes)
+                                    throws IOException {
+                                mCredentialFactoryUsed = true;
+                                return Mockito.mock(Credential.class);
+                            }
+
+                            @Override
+                            public Map<String, String> getInfo() {
+                                return null;
+                            }
+                        });
     }
 
     @After
@@ -107,6 +126,7 @@ public class GoogleApiClientUtilTest {
         Assert.assertEquals(1, mUtil.mKeyFiles.size());
         Assert.assertEquals(mKey, mUtil.mKeyFiles.get(0));
         Assert.assertFalse(mUtil.mDefaultCredentialUsed);
+        Assert.assertFalse(mCredentialFactoryUsed);
     }
 
     @Test
@@ -122,6 +142,7 @@ public class GoogleApiClientUtilTest {
         Assert.assertEquals(1, mUtil.mKeyFiles.size());
         Assert.assertEquals(mKey, mUtil.mKeyFiles.get(0));
         Assert.assertFalse(mUtil.mDefaultCredentialUsed);
+        Assert.assertFalse(mCredentialFactoryUsed);
     }
 
     @Test
@@ -131,6 +152,7 @@ public class GoogleApiClientUtilTest {
         Assert.assertEquals(1, mUtil.mKeyFiles.size());
         Assert.assertEquals(mKey, mUtil.mKeyFiles.get(0));
         Assert.assertFalse(mUtil.mDefaultCredentialUsed);
+        Assert.assertFalse(mCredentialFactoryUsed);
     }
 
     @Test
@@ -139,5 +161,15 @@ public class GoogleApiClientUtilTest {
         Assert.assertNotNull(credential);
         Assert.assertEquals(0, mUtil.mKeyFiles.size());
         Assert.assertTrue(mUtil.mDefaultCredentialUsed);
+        Assert.assertFalse(mCredentialFactoryUsed);
+    }
+
+    @Test
+    public void testCreateCredential_useCredentialFactory() throws Exception {
+        Credential credential = mUtil.doCreateCredentialFromCredentialFactory(SCOPES);
+        Assert.assertNotNull(credential);
+        Assert.assertEquals(0, mUtil.mKeyFiles.size());
+        Assert.assertFalse(mUtil.mDefaultCredentialUsed);
+        Assert.assertTrue(mCredentialFactoryUsed);
     }
 }
