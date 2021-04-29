@@ -16,6 +16,7 @@
 package com.android.tradefed.sandbox;
 
 import com.android.annotations.VisibleForTesting;
+import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.command.CommandRunner.ExitCode;
 import com.android.tradefed.command.ICommandScheduler;
 import com.android.tradefed.command.ICommandScheduler.IScheduledInvocationListener;
@@ -27,6 +28,7 @@ import com.android.tradefed.device.NoDeviceException;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.proto.InvocationContext.Context;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.SerializationUtil;
@@ -42,6 +44,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+
+import sun.misc.Signal;
+import sun.misc.SignalHandler;
 
 /** Runner associated with a {@link TradefedSandbox} that will allow executing the sandbox. */
 public class TradefedSandboxRunner {
@@ -126,6 +131,18 @@ public class TradefedSandboxRunner {
             initGlobalConfig(new String[] {});
             mScheduler = getCommandScheduler();
             mScheduler.start();
+            SignalHandler handler =
+                    new SignalHandler() {
+                        @Override
+                        public void handle(Signal sig) {
+                            CLog.logAndDisplay(
+                                    LogLevel.INFO,
+                                    String.format(
+                                            "Received signal %s. Shutting down.", sig.getName()));
+                            mScheduler.shutdownHard(false);
+                        }
+                    };
+            Signal.handle(new Signal("TERM"), handler);
             // Wait 2 secs to let device discovery finish
             RunUtil.getDefault().sleep(2000);
             mScheduler.execCommand(
