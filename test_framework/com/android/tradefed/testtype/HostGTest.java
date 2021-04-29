@@ -22,12 +22,14 @@ import com.android.tradefed.build.DeviceBuildInfo;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.error.TestErrorIdentifier;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -225,8 +227,9 @@ public class HostGTest extends GTestBase implements IBuildReceiver {
         // TODO: Switch throwing exceptions to use ITestInvocation.testRunFailed
         switch (testResult.getStatus()) {
             case TIMED_OUT:
-                throw new RuntimeException(
-                        String.format("Command run timed out after %d ms", maxTestTimeMs));
+                throw new HarnessRuntimeException(
+                        String.format("Command run timed out after %d ms", maxTestTimeMs),
+                        TestErrorIdentifier.TEST_BINARY_TIMED_OUT);
             case EXCEPTION:
                 throw new RuntimeException("Command run failed with exception");
             case FAILED:
