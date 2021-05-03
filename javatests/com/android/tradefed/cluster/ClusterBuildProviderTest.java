@@ -15,6 +15,9 @@
  */
 package com.android.tradefed.cluster;
 
+import static org.junit.Assert.assertFalse;
+
+import org.apache.commons.compress.archivers.zip.ZipFile;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -22,13 +25,21 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.mockito.Mockito;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
+
 import com.android.tradefed.build.BuildRetrievalError;
+import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.FuseUtil;
 import com.android.tradefed.util.ZipUtil;
+import com.android.tradefed.util.ZipUtil2;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 /** Unit tests for {@link ClusterBuildProvider}. */
@@ -46,6 +57,7 @@ public class ClusterBuildProviderTest {
     private Map<String, File> mDownloadCache;
     private Map<String, File> mCreatedResources;
     private TestResourceDownloader mSpyDownloader;
+    private FuseUtil mMockFuseUtil;
 
     @Before
     public void setUp() throws IOException {
@@ -62,6 +74,8 @@ public class ClusterBuildProviderTest {
         mDownloadCache = ClusterBuildProvider.sDownloadCache.get();
         mCreatedResources = ClusterBuildProvider.sCreatedResources.get();
         mSpyDownloader = Mockito.spy(new TestResourceDownloader());
+        mMockFuseUtil = Mockito.mock(FuseUtil.class);
+        Mockito.when(mMockFuseUtil.canMountZip()).thenReturn(false);
     }
 
     @After
@@ -82,6 +96,11 @@ public class ClusterBuildProviderTest {
                     @Override
                     TestResourceDownloader createTestResourceDownloader() {
                         return mSpyDownloader;
+                    }
+
+                    @Override
+                    FuseUtil getFuseUtil() {
+                        return mMockFuseUtil;
                     }
                 };
         provider.setRootDir(mRootDir);
@@ -128,10 +147,57 @@ public class ClusterBuildProviderTest {
         Assert.assertEquals(2, mCreatedResources.size());
         File file = new File(mRootDir, ZIP_KEY);
         Assert.assertTrue(file.isFile());
-        Assert.assertFalse(FileUtil.getFileForPath(mRootDir, FILE_NAME_IN_ZIP).isFile());
+        assertFalse(FileUtil.getFileForPath(mRootDir, FILE_NAME_IN_ZIP).isFile());
         Assert.assertTrue(FileUtil.getFileForPath(mRootDir, "dir1", FILE_NAME_IN_ZIP).isFile());
         Assert.assertTrue(FileUtil.getFileForPath(mRootDir, "dir2", FILE_NAME_IN_ZIP).isFile());
         Mockito.verify(mSpyDownloader, Mockito.never()).download(Mockito.any(), Mockito.eq(file));
+    }
+
+    /** Test one provider with different decompress directories when zip mount is supported. */
+    @Test
+    public void testGetBuild_decompressTestResources_withMountZip()
+            throws BuildRetrievalError, IOException {
+        List<File> mountDirs = new ArrayList<>();
+        try {
+            Mockito.when(mMockFuseUtil.canMountZip()).thenReturn(true);
+            Mockito.doAnswer(
+                            new Answer() {
+                                @Override
+                                public Object answer(InvocationOnMock invocation) throws Throwable {
+                                    File zipFile = (File) invocation.getArgument(0);
+                                    File mountDir = (File) invocation.getArgument(1);
+                                    mountDirs.add(mountDir);
+                                    try (ZipFile zip = new ZipFile(zipFile)) {
+                                        ZipUtil2.extractZip(zip, mountDir);
+                                    }
+                                    return null;
+                                }
+                            })
+                    .when(mMockFuseUtil)
+                    .mountZip(Mockito.any(File.class), Mockito.any(File.class));
+            final String url = mResourceFile.toURI().toURL().toString();
+            ClusterBuildProvider provider = createClusterBuildProvider();
+            provider.getTestResources().put(ZIP_KEY, url);
+            provider.getDecompressTestResources().put(RESOURCE_KEY, "dir1");
+            provider.getDecompressTestResources().put(ZIP_KEY, "dir2");
+
+            IBuildInfo buildInfo = provider.getBuild();
+
+            verifyDownloadedResource();
+            Assert.assertEquals(1, mDownloadCache.size());
+            Assert.assertEquals(2, mCreatedResources.size());
+            File file = new File(mRootDir, ZIP_KEY);
+            Assert.assertTrue(file.isFile());
+            assertFalse(FileUtil.getFileForPath(mRootDir, FILE_NAME_IN_ZIP).isFile());
+            Assert.assertTrue(FileUtil.getFileForPath(mRootDir, "dir1", FILE_NAME_IN_ZIP).isFile());
+            Assert.assertTrue(FileUtil.getFileForPath(mRootDir, "dir2", FILE_NAME_IN_ZIP).isFile());
+            Mockito.verify(mSpyDownloader, Mockito.never())
+                    .download(Mockito.any(), Mockito.eq(file));
+        } finally {
+            for (File dir : mountDirs) {
+                FileUtil.recursiveDelete(dir);
+            }
+        }
     }
 
     /** Test decompress the resource outside of working directory. */
@@ -207,6 +273,31 @@ public class ClusterBuildProviderTest {
         } finally {
             FileUtil.deleteFile(sharedResourceFile);
             anotherTest.tearDown();
+        }
+    }
+
+    @Test
+    public void testCleanUp() throws IOException {
+        List<File> zipMounts = new ArrayList<>();
+        try {
+            ClusterBuildInfo buildInfo = new ClusterBuildInfo(mRootDir, "buildId", "buildName");
+            for (int i = 0; i < 10; i++) {
+                File dir = FileUtil.createTempDir("ClusterBuildProvider");
+                buildInfo.addZipMount(dir);
+                zipMounts.add(dir);
+            }
+
+            ClusterBuildProvider provider = createClusterBuildProvider();
+            provider.cleanUp(buildInfo);
+
+            for (File dir : zipMounts) {
+                Mockito.verify(mMockFuseUtil).unmountZip(dir);
+                assertFalse(dir.exists());
+            }
+        } finally {
+            for (File dir : zipMounts) {
+                FileUtil.recursiveDelete(dir);
+            }
         }
     }
 }

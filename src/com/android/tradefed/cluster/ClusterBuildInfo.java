@@ -19,12 +19,35 @@ import com.android.tradefed.build.FolderBuildInfo;
 import com.android.tradefed.build.IBuildInfo;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /** A {@link IBuildInfo} class for builds piped from TFC. */
 public class ClusterBuildInfo extends FolderBuildInfo {
 
+    private List<File> mZipMounts = new ArrayList<>();
+
     public ClusterBuildInfo(File rootDir, String buildId, String buildName) {
         super(buildId, buildName);
         setRootDir(rootDir);
+    }
+
+    /**
+     * Return zip mount points associated with this build info.
+     *
+     * @return a list of zip mount points.
+     */
+    List<File> getZipMounts() {
+        return Collections.unmodifiableList(mZipMounts);
+    }
+
+    /**
+     * Add a zip mount point.
+     *
+     * @param dir a path where a zip file is mounted at.
+     */
+    void addZipMount(File dir) {
+        mZipMounts.add(dir);
     }
 }
