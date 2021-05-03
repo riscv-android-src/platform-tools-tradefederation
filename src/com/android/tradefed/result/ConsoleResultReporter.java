@@ -87,6 +87,11 @@ public class ConsoleResultReporter extends TestResultListener
     }
 
     @Override
+    public void invocationFailed(FailureDescription failure) {
+        print(String.format("Invocation failed: %s\n", failure));
+    }
+
+    @Override
     public void testResult(TestDescription test, TestResult result) {
         mResultCountListener.testResult(test, result);
         if (mSuppressPassedTest && TestStatus.PASSED.equals(result.getStatus())) {
