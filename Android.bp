@@ -53,6 +53,23 @@ java_genrule_host {
      out: ["tradefed-grpc.srcjar"],
 }
 
+java_genrule_host {
+    name: "tf-feature-grpc-gen",
+    srcs: [
+        "proto/feature/tradefed_service.proto",
+    ],
+    tools: [
+        "aprotoc",
+        "protoc-gen-grpc-java-plugin",
+        "soong_zip",
+     ],
+     cmd: "$(location aprotoc) -Iexternal/protobuf/src" +
+        " -Itools/tradefederation/core/proto/feature" +
+        " --plugin=protoc-gen-grpc=$(location protoc-gen-grpc-java-plugin) $(in)" +
+        " --grpc_out=$(genDir) && $(location soong_zip) -o $(out) -C $(genDir) -D $(genDir)",
+     out: ["tradefed-service-grpc.srcjar"],
+}
+
 // Main Target to build tradefed jar
 java_library_host {
     name: "tradefed",
@@ -93,6 +110,7 @@ java_library_host {
         "src/**/*.java",
         "global_configuration/**/*.java",
         ":lab-resource-grpc-gen",
+        ":tf-feature-grpc-gen",
     ],
     static_libs: [
         "tradefed-common-util",

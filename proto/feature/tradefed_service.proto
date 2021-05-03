@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 The Android Open Source Project
+ * Copyright (C) 2021 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,26 +15,33 @@
  */
 syntax = "proto3";
 
-package tradefed.monitoring.server;
+package tradefed.feature.server;
 
-option java_multiple_files = true;
-option java_package = "com.proto.tradefed.monitoring";
+option java_package = "com.proto.tradefed.feature";
 option java_outer_classname = "TradefederationService";
 
+option java_multiple_files = true;
 option java_generic_services = true;
 
-// A service associated with a Tradefed Instance that gives information.
+// A service associated with a Tradefed Instance that allows triggering some features.
 service TradefedInformation {
 
-  rpc getInvocations(GetInvocationsRequest) returns (GetInvocationsResponse) {}
+  rpc triggerFeature(FeatureRequest) returns (FeatureResponse) {}
 }
 
-// A request to get all the currently running invocations
-message GetInvocationsRequest {
-  string request_id = 1;
+// A generic request to trigger a feature
+message FeatureRequest {
+  string feature_name = 1;
 }
 
-// A response that lists all the running invocations by id.
-message GetInvocationsResponse {
-  repeated string invocation_id = 1;
+// A generic response containing the output of the response or an error
+message FeatureResponse {
+  string response = 1;
+
+  ErrorInfo errorInfo = 2;
+}
+
+message ErrorInfo {
+  // An error trace.
+  string error_trace = 1;
 }
