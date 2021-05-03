@@ -72,6 +72,7 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogSaverResultForwarder;
+import com.android.tradefed.result.ReportPassedTests;
 import com.android.tradefed.result.ResultAndLogForwarder;
 import com.android.tradefed.result.error.ErrorIdentifier;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
@@ -840,6 +841,13 @@ public class TestInvocation implements ITestInvocation {
         allListeners.addAll(Arrays.asList(extraListeners));
         allListeners.add(mUnavailableMonitor);
         ITestInvocationListener listener = null;
+        // If it's not a subprocess, report the passed tests.
+        if (config.getCommandOptions().reportPassedTests()
+                && !config.getCommandOptions()
+                        .getInvocationData()
+                        .containsKey(SubprocessTfLauncher.SUBPROCESS_TAG_NAME)) {
+            allListeners.add(new ReportPassedTests());
+        }
 
         // Auto retry feature
         IRetryDecision decision = config.getRetryDecision();
