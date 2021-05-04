@@ -20,8 +20,6 @@
     <!-- <option name="exclude-filter" value="MODULE_NAME PACKAGE_NAME.CLASS_NAME#TEST_NAME" /> Excludes individual test -->
 
     <option name="exclude-filter" value="apache-harmony-jdwp-tests" />
-    <!-- b/181254187: Running over 15secs -->
-    <option name="exclude-filter" value="geotz_data_pipeline_tests com.android.timezone.location.data_pipeline.steps.tzs2polygons_tzs2cellunions.TzS2PolygonsToTzS2CellUnionsTest" />
     <!-- b/181269377 -->
     <option name="exclude-filter" value="layoutlib-create-tests" />
     <option name="exclude-filter" value="layoutlib-tests" />
