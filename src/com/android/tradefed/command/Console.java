@@ -31,6 +31,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.service.TradefedFeatureServer;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.QuotationAwareTokenizer;
@@ -1132,6 +1133,23 @@ public class Console extends Thread {
         mMainArgs = mainArgs;
     }
 
+    private static class TerminateFeatureServer extends Thread {
+        private final TradefedFeatureServer mClient;
+
+        public TerminateFeatureServer(TradefedFeatureServer client) {
+            mClient = client;
+        }
+
+        @Override
+        public void run() {
+            try {
+                mClient.shutdown();
+            } catch (InterruptedException e) {
+                CLog.e(e);
+            }
+        }
+    }
+
     public static void main(final String[] mainArgs) throws InterruptedException,
             ConfigurationException {
         Console console = new Console();
@@ -1157,6 +1175,9 @@ public class Console extends Thread {
         ClearcutClient client = new ClearcutClient();
         Runtime.getRuntime().addShutdownHook(new TerminateClearcutClient(client));
         client.notifyTradefedStartEvent();
+        TradefedFeatureServer server = new TradefedFeatureServer();
+        server.start();
+        Runtime.getRuntime().addShutdownHook(new TerminateFeatureServer(server));
 
         List<String> nonGlobalArgs = GlobalConfiguration.createGlobalConfiguration(args);
         GlobalConfiguration.getInstance().setup();
