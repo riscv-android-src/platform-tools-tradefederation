@@ -18,11 +18,13 @@ package com.android.tradefed.service;
 import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.log.LogUtil.CLog;
 
+import com.proto.tradefed.feature.ErrorInfo;
 import com.proto.tradefed.feature.FeatureRequest;
 import com.proto.tradefed.feature.FeatureResponse;
 import com.proto.tradefed.feature.TradefedInformationGrpc.TradefedInformationImplBase;
 
 import java.io.IOException;
+import java.util.ServiceLoader;
 
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
@@ -54,6 +56,7 @@ public class TradefedFeatureServer extends TradefedInformationImplBase {
     /** Start the grpc server to listen to requests. */
     public void start() {
         try {
+            CLog.d("Starting feature server.");
             mServer.start();
         } catch (IOException e) {
             CLog.w("TradefedFeatureServer already started: %s", e.getMessage());
@@ -63,6 +66,7 @@ public class TradefedFeatureServer extends TradefedInformationImplBase {
     /** Stop the grpc server. */
     public void shutdown() throws InterruptedException {
         if (mServer != null) {
+            CLog.d("Stopping feature server.");
             mServer.shutdown();
             mServer.awaitTermination();
         }
@@ -76,6 +80,19 @@ public class TradefedFeatureServer extends TradefedInformationImplBase {
     }
 
     private FeatureResponse createResponse(FeatureRequest request) {
-        return FeatureResponse.getDefaultInstance();
+        ServiceLoader<IRemoteFeature> serviceLoader = ServiceLoader.load(IRemoteFeature.class);
+        for (IRemoteFeature feature : serviceLoader) {
+            if (feature.getName().equals(request.getName())) {
+                return feature.execute(request);
+            }
+        }
+        return FeatureResponse.newBuilder()
+                .setErrorInfo(
+                        ErrorInfo.newBuilder()
+                                .setErrorTrace(
+                                        String.format(
+                                                "No feature matching the requested one '%s'",
+                                                request.getName())))
+                .build();
     }
 }
