@@ -33,6 +33,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -197,9 +198,12 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
             return errorMsg;
         }
         List<String> crashes = dedupCrash(item.getJavaCrashes());
+        // Invert to report the most recent one first.
+        Collections.reverse(crashes);
         int displayed = Math.min(crashes.size(), MAX_NUMBER_CRASH);
+        errorMsg = String.format("%s\nCrash Messages sorted from most recent:\n", errorMsg);
         for (int i = 0; i < displayed; i++) {
-            errorMsg = String.format("%s\nCrash Message:%s\n", errorMsg, crashes.get(i));
+            errorMsg = String.format("%s%s\n", errorMsg, crashes.get(i));
         }
         return errorMsg;
     }
