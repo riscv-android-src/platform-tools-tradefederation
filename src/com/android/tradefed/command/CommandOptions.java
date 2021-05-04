@@ -239,6 +239,11 @@ public class CommandOptions implements ICommandOptions {
             description = "Whether or not to report the number of test cases per test types.")
     private boolean mCountTestCases = true;
 
+    @Option(
+            name = "report-passed-tests",
+            description = "Whether or not to report the passed tests in a file.")
+    private boolean mReportPassedTests = true;
+
     /**
      * Set the help mode for the config.
      * <p/>
@@ -602,5 +607,11 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public void setReportTestCaseCount(boolean report) {
         mCountTestCases = report;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean reportPassedTests() {
+        return mReportPassedTests;
     }
 }

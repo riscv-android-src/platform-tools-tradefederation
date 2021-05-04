@@ -105,7 +105,6 @@ import com.android.tradefed.device.metric.ClangCodeCoverageCollectorTest;
 import com.android.tradefed.device.metric.DebugHostLogOnFailureCollectorTest;
 import com.android.tradefed.device.metric.DeviceMetricDataTest;
 import com.android.tradefed.device.metric.EmulatorMemoryCpuCapturerTest;
-
 import com.android.tradefed.device.metric.FilePullerDeviceMetricCollectorTest;
 import com.android.tradefed.device.metric.FilePullerLogCollectorTest;
 import com.android.tradefed.device.metric.GcovCodeCoverageCollectorTest;
@@ -187,6 +186,7 @@ import com.android.tradefed.result.LogcatCrashResultForwarderTest;
 import com.android.tradefed.result.MetricsXMLResultReporterTest;
 import com.android.tradefed.result.MultiFailureDescriptionTest;
 import com.android.tradefed.result.PassingTestFileReporterTest;
+import com.android.tradefed.result.ReportPassedTestsTest;
 import com.android.tradefed.result.SnapshotInputStreamSourceTest;
 import com.android.tradefed.result.SubprocessResultsReporterTest;
 import com.android.tradefed.result.TestDescriptionTest;
@@ -663,6 +663,7 @@ import org.junit.runners.Suite.SuiteClasses;
     SubprocessResultsReporterTest.class,
     TestFailureEmailResultReporterTest.class,
     PassingTestFileReporterTest.class,
+    ReportPassedTestsTest.class,
     TestDescriptionTest.class,
     TestResultListenerTest.class,
     TestResultTest.class,
