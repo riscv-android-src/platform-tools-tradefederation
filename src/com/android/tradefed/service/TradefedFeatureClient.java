@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.service;
 
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.StreamUtil;
 
 import com.proto.tradefed.feature.ErrorInfo;
@@ -26,26 +27,28 @@ import com.proto.tradefed.feature.TradefedInformationGrpc.TradefedInformationBlo
 import java.util.Map;
 
 import io.grpc.ManagedChannel;
-import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
 import io.grpc.internal.DnsNameResolverProvider;
+import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder;
 
 /** A grpc client to request feature execution from the server. */
-public class TradefedFeatureClient {
+public class TradefedFeatureClient implements AutoCloseable {
 
     private TradefedInformationBlockingStub mBlockingStub;
+    private ManagedChannel mChannel;
 
     public TradefedFeatureClient() {
-        ManagedChannel channel =
-                ManagedChannelBuilder.forAddress("localhost", TradefedFeatureServer.getPort())
+        mChannel =
+                NettyChannelBuilder.forAddress("localhost", TradefedFeatureServer.getPort())
                         .nameResolverFactory(new DnsNameResolverProvider())
                         .usePlaintext()
                         .build();
-        mBlockingStub = TradefedInformationGrpc.newBlockingStub(channel);
+        mBlockingStub = TradefedInformationGrpc.newBlockingStub(mChannel);
     }
 
     public FeatureResponse triggerFeature(String featureName, Map<String, String> args) {
         try {
+            CLog.d("invoking feature '%s'", featureName);
             return mBlockingStub.triggerFeature(
                     FeatureRequest.newBuilder().setName(featureName).putAllArgs(args).build());
         } catch (StatusRuntimeException e) {
@@ -56,5 +59,10 @@ public class TradefedFeatureClient {
                                     .build())
                     .build();
         }
+    }
+
+    @Override
+    public void close() {
+        mChannel.shutdown();
     }
 }

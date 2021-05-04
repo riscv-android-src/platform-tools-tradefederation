@@ -42,8 +42,8 @@ import com.android.tradefed.error.IHarnessException;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
-import com.android.tradefed.invoker.logger.TfObjectTracker;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
+import com.android.tradefed.invoker.logger.TfObjectTracker;
 import com.android.tradefed.invoker.shard.token.ITokenRequest;
 import com.android.tradefed.invoker.shard.token.TokenProperty;
 import com.android.tradefed.log.ITestLogger;
@@ -58,6 +58,7 @@ import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.result.error.TestErrorIdentifier;
 import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.retry.RetryStrategy;
+import com.android.tradefed.service.TradefedFeatureClient;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.suite.checker.ISystemStatusCheckerReceiver;
 import com.android.tradefed.suite.checker.StatusCheckerResult;
@@ -79,6 +80,7 @@ import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.TimeUtil;
 
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableSet;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
@@ -334,6 +336,11 @@ public abstract class ITestSuite
     )
     private boolean mMergeAttempts = true;
     // end [Options relate to module retry and intra-module retry]
+
+    @Option(
+            name = "filter-previous-passed",
+            description = "Feature flag to test filtering previously passed tests.")
+    private boolean mTestFilterPassed = false;
 
     private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
@@ -701,6 +708,27 @@ public abstract class ITestSuite
                     mDevice.getSerialNumber(),
                     mRunModules.size(),
                     mRunModules);
+        }
+
+        if (mTestFilterPassed) {
+            // Test the query of previous passed test
+            Map<String, String> args = new HashMap<>();
+            String invocationId =
+                    mMainConfiguration
+                            .getCommandOptions()
+                            .getInvocationData()
+                            .getUniqueMap()
+                            .get("invocation_id");
+            if (!Strings.isNullOrEmpty(invocationId)) {
+                args.put("invocation_id", invocationId);
+            }
+            if (!args.isEmpty()) {
+                try (TradefedFeatureClient client = new TradefedFeatureClient()) {
+                    client.triggerFeature("getPreviousPassed", args);
+                } catch (RuntimeException e) {
+                    CLog.e(e);
+                }
+            }
         }
 
         /** Run all the module, make sure to reduce the list to release resources as we go. */
