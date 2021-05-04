@@ -27,6 +27,8 @@ import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.result.error.TestErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 
+import com.google.common.collect.ImmutableList;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -44,11 +46,11 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
     /** Special error message from the instrumentation when something goes wrong on device side. */
     public static final String ERROR_MESSAGE = "Process crashed.";
     public static final String SYSTEM_CRASH_MESSAGE = "System has crashed.";
-    public static final String TIMEOUT_MESSAGES[] = {
-        "Failed to receive adb shell test output",
-        "TimeoutException when running tests",
-        "TestTimedOutException: test timed out after",
-    };
+    public static final List<String> TIMEOUT_MESSAGES =
+            ImmutableList.of(
+                    "Failed to receive adb shell test output",
+                    "TimeoutException when running tests",
+                    "TestTimedOutException: test timed out after");
 
     public static final int MAX_NUMBER_CRASH = 3;
 

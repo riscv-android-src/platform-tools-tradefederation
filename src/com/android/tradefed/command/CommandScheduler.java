@@ -934,11 +934,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         mRunLatch = new CountDownLatch(1);
     }
 
-    /**
-     * Starts the scheduler including setting up of logging, init of {@link DeviceManager} etc
-     */
+    /** Starts the scheduler including setting up of logging, init of {@link DeviceManager} etc */
     @Override
-    public void start() {
+    public synchronized void start() {
         synchronized (this) {
             if (mStarted) {
                 throw new IllegalStateException("scheduler has already been started");

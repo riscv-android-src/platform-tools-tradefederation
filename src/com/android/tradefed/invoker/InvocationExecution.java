@@ -455,7 +455,7 @@ public class InvocationExecution implements IInvocationExecution {
             Throwable exception)
             throws Throwable {
         IInvocationContext context = testInfo.getContext();
-        Throwable deferredThrowable = null;
+        Throwable deferredThrowable;
 
         InvocationMetricLogger.addInvocationMetrics(
                 InvocationMetricKey.TEARDOWN_START, System.currentTimeMillis());

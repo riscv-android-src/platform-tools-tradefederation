@@ -92,13 +92,6 @@ public class IsolatedHostTest
     private Set<String> mClasses = new LinkedHashSet<>();
 
     @Option(
-            name = "method",
-            description =
-                    "The name of the method in the JUnit TestCase to run. " + "eg. \"testFooBar\"",
-            importance = Importance.IF_UNSET)
-    private String mMethodName;
-
-    @Option(
             name = "jar",
             description = "The jars containing the JUnit test class to run.",
             importance = Importance.IF_UNSET)
@@ -608,11 +601,9 @@ public class IsolatedHostTest
      * find our jar.
      */
     private File getJarFile(String jarName, IBuildInfo buildInfo) throws FileNotFoundException {
-        File jarFile = null;
-
         // Check tests dir
         File testDir = buildInfo.getFile(BuildInfoFileKey.TESTDIR_IMAGE);
-        jarFile = searchJarFile(testDir, jarName);
+        File jarFile = searchJarFile(testDir, jarName);
         if (jarFile != null) {
             return jarFile;
         }

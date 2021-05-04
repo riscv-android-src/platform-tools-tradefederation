@@ -876,14 +876,14 @@ public class ITestSuiteTest {
     @Test
     public void testGetRuntimeHint() {
         // default runtime hint is 0, it is only meant to be used for sharding.
-        assertEquals(0l, mTestSuite.getRuntimeHint());
+        assertEquals(0L, mTestSuite.getRuntimeHint());
         mTestSuite = new TestSuiteImpl(5);
         mTestSuite.setConfiguration(mStubMainConfiguration);
         Collection<IRemoteTest> tests = mTestSuite.split(3, mTestInfo);
         for (IRemoteTest test : tests) {
             assertTrue(test instanceof TestSuiteImpl);
             // once sharded modules from the shard start reporting their runtime.
-            assertEquals(60000l, ((TestSuiteImpl) test).getRuntimeHint());
+            assertEquals(60000L, ((TestSuiteImpl) test).getRuntimeHint());
         }
     }
 
