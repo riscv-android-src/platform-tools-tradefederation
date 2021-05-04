@@ -990,18 +990,24 @@ public class TestDeviceTest extends TestCase {
     public void testExecuteFastbootCommand_state() throws Exception {
         final long waitTimeMs = 150;
         // build a fastboot response that will block
-        IAnswer<CommandResult> blockResult = new IAnswer<CommandResult>() {
-            @Override
-            public CommandResult answer() throws Throwable {
-                synchronized(this) {
-                    // first inform this test that fastboot cmd is executing
-                    notifyAll();
-                    // now wait for test to unblock us when its done testing logic
-                    wait(waitTimeMs);
-                }
-                return new CommandResult(CommandStatus.SUCCESS);
-            }
-        };
+        IAnswer<CommandResult> blockResult =
+                new IAnswer<CommandResult>() {
+                    @Override
+                    public CommandResult answer() throws Throwable {
+                        synchronized (this) {
+                            // first inform this test that fastboot cmd is executing
+                            notifyAll();
+                            // now wait for test to unblock us when its done testing logic
+                            long now = System.currentTimeMillis();
+                            long deadline = now + waitTimeMs;
+                            while (now < deadline) {
+                                wait(deadline - now);
+                                now = System.currentTimeMillis();
+                            }
+                        }
+                        return new CommandResult(CommandStatus.SUCCESS);
+                    }
+                };
         EasyMock.expect(mMockRunUtil.runTimedCmd(EasyMock.anyLong(), EasyMock.eq("fastboot"),
                 EasyMock.eq("-s"),EasyMock.eq(MOCK_DEVICE_SERIAL), EasyMock.eq("foo"))).andAnswer(
                         blockResult).times(2);
@@ -4372,9 +4378,8 @@ public class TestDeviceTest extends TestCase {
      * Helper to create the rawImage to test.
      */
     private RawImage prepareRawImage(File rawImageFile) throws Exception {
-        RawImage sRawImage = null;
         String data = FileUtil.readStringFromFile(rawImageFile);
-        sRawImage = new RawImage();
+        RawImage sRawImage = new RawImage();
         sRawImage.alpha_length = 8;
         sRawImage.alpha_offset = 24;
         sRawImage.blue_length = 8;

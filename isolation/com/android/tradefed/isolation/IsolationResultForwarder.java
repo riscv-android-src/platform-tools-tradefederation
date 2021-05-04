@@ -78,7 +78,7 @@ final class IsolationResultForwarder extends RunListener {
                     .build()
                     .writeDelimitedTo(mOutput);
         } catch (Exception e) {
-
+            System.out.println(e);
         }
     }
 

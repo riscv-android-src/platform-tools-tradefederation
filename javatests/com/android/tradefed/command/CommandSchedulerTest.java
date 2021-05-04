@@ -74,7 +74,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.OutputStream;
 import java.io.PrintWriter;
-import java.lang.Thread.UncaughtExceptionHandler;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -86,8 +85,6 @@ import java.util.Map;
 /** Unit tests for {@link CommandScheduler}. */
 @RunWith(JUnit4.class)
 public class CommandSchedulerTest {
-
-    private static final long SHORT_WAIT_MS = 100L;
 
     private CommandScheduler mScheduler;
     private ITestInvocation mMockInvocation;
@@ -397,82 +394,6 @@ public class CommandSchedulerTest {
                 (IConfiguration)EasyMock.anyObject(), (IRescheduler)EasyMock.anyObject(),
                 (ITestInvocationListener)EasyMock.anyObject());
         EasyMock.expectLastCall().times(times);
-    }
-
-    /**
-     * Sets up a object that will notify when the expected number of
-     * {@link ITestInvocation#invoke(IInvocationContext, IConfiguration, IRescheduler,
-     *      ITestInvocationListener[])} calls occurs
-     *
-     * @param times
-     */
-    private Object waitForExpectedInvokeCalls(final int times) throws Throwable {
-        IAnswer<Object> blockResult = new IAnswer<Object>() {
-            private int mCalls = 0;
-            @Override
-            public Object answer() throws Throwable {
-                synchronized(this) {
-                    mCalls++;
-                    if (times == mCalls) {
-                        notifyAll();
-                    }
-                }
-                return null;
-            }
-        };
-        mMockInvocation.invoke((IInvocationContext)EasyMock.anyObject(),
-                (IConfiguration)EasyMock.anyObject(), (IRescheduler)EasyMock.anyObject(),
-                (ITestInvocationListener)EasyMock.anyObject());
-        EasyMock.expectLastCall().andAnswer(blockResult);
-        EasyMock.expectLastCall().andAnswer(blockResult);
-        return blockResult;
-    }
-
-    /** Test {@link CommandScheduler#run()} when one config has been added in a loop */
-    @Test
-    public void testRun_oneConfigLoop() throws Throwable {
-        String[] args = new String[] {"test"};
-        // track if exception occurs on scheduler thread
-        UncaughtExceptionHandler defaultHandler = Thread.getDefaultUncaughtExceptionHandler();
-        try {
-            ExceptionTracker tracker = new ExceptionTracker();
-            Thread.setDefaultUncaughtExceptionHandler(tracker);
-            mMockManager.setNumDevices(1);
-            // config should only be created three times
-            setCreateConfigExpectations(args, 3);
-            mCommandOptions.setLoopMode(true);
-            mCommandOptions.setMinLoopTime(50);
-            Object notifier = waitForExpectedInvokeCalls(2);
-            mMockConfiguration.validateOptions();
-            replayMocks();
-            mScheduler.start();
-            mScheduler.addCommand(args);
-            synchronized (notifier) {
-                notifier.wait(1 * 1000);
-            }
-            mScheduler.shutdown();
-            mScheduler.join();
-            // Wait a little for device to be released.
-            RunUtil.getDefault().sleep(SHORT_WAIT_MS);
-            verifyMocks();
-            assertNull("exception occurred on background thread!", tracker.mThrowable);
-        } finally {
-            Thread.setDefaultUncaughtExceptionHandler(defaultHandler);
-        }
-    }
-
-    class ExceptionTracker implements UncaughtExceptionHandler {
-
-        private Throwable mThrowable = null;
-
-        /**
-         * {@inheritDoc}
-         */
-        @Override
-        public void uncaughtException(Thread t, Throwable e) {
-            e.printStackTrace();
-            mThrowable  = e;
-        }
     }
 
     /**

@@ -743,8 +743,6 @@ public class TestInvocation implements ITestInvocation {
      *
      * @param context the {@link IInvocationContext} of the invocation.
      * @param config the {@link IConfiguration} of this test run.
-     * @param rescheduler the {@link IRescheduler}, for rescheduling portions of the invocation for
-     *     execution on another resource(s)
      * @param listener the {@link ITestInvocation} to report build download failures.
      * @param invocationPath the {@link IInvocationExecution} driving the invocation.
      * @param mode The current {@link RunMode} of the invocation.
@@ -753,7 +751,6 @@ public class TestInvocation implements ITestInvocation {
     private boolean invokeRemoteDynamic(
             IInvocationContext context,
             IConfiguration config,
-            IRescheduler rescheduler,
             ITestInvocationListener listener,
             IInvocationExecution invocationPath,
             RunMode mode) {
@@ -905,8 +902,7 @@ public class TestInvocation implements ITestInvocation {
             getLogRegistry().registerLogger(leveledLogOutput);
             mStatus = "resolving dynamic options";
             boolean resolverSuccess =
-                    invokeRemoteDynamic(
-                            context, config, rescheduler, listener, invocationPath, mode);
+                    invokeRemoteDynamic(context, config, listener, invocationPath, mode);
             if (!resolverSuccess) {
                 return;
             }

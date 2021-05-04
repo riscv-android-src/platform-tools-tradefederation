@@ -306,9 +306,8 @@ public class ShardHelper implements IShardHelper {
             }
 
             IShardableTest shardableTest = (IShardableTest) test;
-            Collection<IRemoteTest> shards = null;
             // Give the shardCount hint to tests if they need it.
-            shards = shardableTest.split(shardCount, testInfo);
+            Collection<IRemoteTest> shards = shardableTest.split(shardCount, testInfo);
             if (shards != null) {
                 shardableTests.addAll(shards);
                 isSharded = true;

@@ -41,7 +41,6 @@ public class ShippingApiLevelModuleControllerTest {
     private IInvocationContext mContext;
     private ITestDevice mMockDevice;
     private IDevice mMockIDevice;
-    private String mApiLevelProp;
 
     private static final String SYSTEM_SHIPPING_API_LEVEL_PROP = "ro.product.first_api_level";
     private static final String VENDOR_SHIPPING_API_LEVEL_PROP = "ro.board.first_api_level";

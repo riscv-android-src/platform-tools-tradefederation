@@ -72,6 +72,7 @@ import com.android.tradefed.util.ZipUtil2;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
+import com.google.errorprone.annotations.FormatMethod;
 
 import org.apache.commons.compress.archivers.zip.ZipFile;
 
@@ -4297,13 +4298,12 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public long getDeviceTimeOffset(Date date) throws DeviceNotAvailableException {
         Long deviceTime = getDeviceDate();
-        long offset = 0;
 
         if (date == null) {
             date = new Date();
         }
 
-        offset = date.getTime() - deviceTime;
+        long offset = date.getTime() - deviceTime;
         CLog.d("Time offset = %d ms", offset);
         return offset;
     }
@@ -5165,6 +5165,7 @@ public class NativeDevice implements IManagedTestDevice {
 
     /** {@inheritDoc} */
     @Override
+    @FormatMethod
     public void logOnDevice(String tag, LogLevel level, String format, Object... args) {
         String message = String.format(format, args);
         try {

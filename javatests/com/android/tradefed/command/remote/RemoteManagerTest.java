@@ -30,6 +30,8 @@ import com.android.tradefed.util.RunUtil;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 import org.mockito.Mockito;
 
 import java.io.BufferedReader;
@@ -43,6 +45,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /** Unit tests for {@link RemoteManager}. */
+@RunWith(JUnit4.class)
 public class RemoteManagerTest {
 
     private static final long SHORT_WAIT_TIME_MS = 200;
