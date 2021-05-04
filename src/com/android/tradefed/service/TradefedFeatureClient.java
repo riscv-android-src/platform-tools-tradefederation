@@ -23,6 +23,8 @@ import com.proto.tradefed.feature.FeatureResponse;
 import com.proto.tradefed.feature.TradefedInformationGrpc;
 import com.proto.tradefed.feature.TradefedInformationGrpc.TradefedInformationBlockingStub;
 
+import java.util.Map;
+
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
@@ -42,10 +44,10 @@ public class TradefedFeatureClient {
         mBlockingStub = TradefedInformationGrpc.newBlockingStub(channel);
     }
 
-    public FeatureResponse triggerFeature(String featureName) {
+    public FeatureResponse triggerFeature(String featureName, Map<String, String> args) {
         try {
             return mBlockingStub.triggerFeature(
-                    FeatureRequest.newBuilder().setFeatureName(featureName).build());
+                    FeatureRequest.newBuilder().setName(featureName).putAllArgs(args).build());
         } catch (StatusRuntimeException e) {
             return FeatureResponse.newBuilder()
                     .setErrorInfo(
