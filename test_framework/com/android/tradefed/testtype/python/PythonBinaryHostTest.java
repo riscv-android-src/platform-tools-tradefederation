@@ -261,8 +261,9 @@ public class PythonBinaryHostTest implements IRemoteTest, ITestFilterReceiver {
         // Set the parent dir on the PATH
         String separator = System.getProperty("path.separator");
         List<String> paths = new ArrayList<>();
-        paths.add(System.getenv("PATH"));
+        // Bundle binaries / dependencies have priorities over existing PATH
         paths.addAll(findAllSubdir(pyFile.getParentFile(), new ArrayList<>()));
+        paths.add(System.getenv("PATH"));
         String path = paths.stream().distinct().collect(Collectors.joining(separator));
         CLog.d("Using updated $PATH: %s", path);
         getRunUtil().setEnvVariablePriority(EnvPriority.SET);
