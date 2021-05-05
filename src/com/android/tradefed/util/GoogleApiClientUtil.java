@@ -190,12 +190,18 @@ public class GoogleApiClientUtil {
     @VisibleForTesting
     Credential doCreateCredentialFromCredentialFactory(Collection<String> scopes)
             throws IOException {
-        if (GlobalConfiguration.getInstance().getCredentialFactory() != null) {
-            return GlobalConfiguration.getInstance()
-                    .getCredentialFactory()
-                    .createCredential(scopes);
+        try {
+            if (GlobalConfiguration.getInstance().getCredentialFactory() != null) {
+                return GlobalConfiguration.getInstance()
+                        .getCredentialFactory()
+                        .createCredential(scopes);
+            }
+            CLog.w("No CredentialFactory configured.");
+        } catch (IllegalStateException e) {
+            System.out.println(
+                    "GlobalConfiguration is not initialized yet,"
+                            + "can not get CredentialFactory.");
         }
-        CLog.w("No CredentialFactory configured.");
         return null;
     }
 
