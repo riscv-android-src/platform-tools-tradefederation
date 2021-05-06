@@ -200,6 +200,8 @@ public class TestInvocationTest {
                         return new Configuration(this.getName(), this.getDescription());
                     }
                 };
+        OptionSetter setter = new OptionSetter(mStubConfiguration.getCommandOptions());
+        setter.setOptionValue("report-passed-tests", "false");
         mStubMultiConfiguration = new Configuration("foo", "bar");
 
         mGlobalConfiguration = EasyMock.createMock(IGlobalConfiguration.class);
