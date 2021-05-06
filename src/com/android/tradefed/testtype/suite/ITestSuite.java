@@ -84,6 +84,7 @@ import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableSet;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
+import com.proto.tradefed.feature.FeatureResponse;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -724,7 +725,8 @@ public abstract class ITestSuite
             }
             if (!args.isEmpty()) {
                 try (TradefedFeatureClient client = new TradefedFeatureClient()) {
-                    client.triggerFeature("getPreviousPassed", args);
+                    FeatureResponse response = client.triggerFeature("getPreviousPassed", args);
+                    CLog.d("FeatureResponse: %s", response);
                 } catch (RuntimeException e) {
                     CLog.e(e);
                 }
