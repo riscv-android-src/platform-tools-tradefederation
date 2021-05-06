@@ -834,17 +834,19 @@ public class TestInvocation implements ITestInvocation {
 
         List<ITestInvocationListener> allListeners =
                 new ArrayList<>(config.getTestInvocationListeners().size() + extraListeners.length);
-        allListeners.addAll(config.getTestInvocationListeners());
-        allListeners.addAll(Arrays.asList(extraListeners));
-        allListeners.add(mUnavailableMonitor);
-        ITestInvocationListener listener = null;
         // If it's not a subprocess, report the passed tests.
+        ReportPassedTests reportPass = null;
         if (config.getCommandOptions().reportPassedTests()
                 && !config.getCommandOptions()
                         .getInvocationData()
                         .containsKey(SubprocessTfLauncher.SUBPROCESS_TAG_NAME)) {
-            allListeners.add(new ReportPassedTests());
+            reportPass = new ReportPassedTests();
+            allListeners.add(reportPass);
         }
+        allListeners.addAll(config.getTestInvocationListeners());
+        allListeners.addAll(Arrays.asList(extraListeners));
+        allListeners.add(mUnavailableMonitor);
+        ITestInvocationListener listener = null;
 
         // Auto retry feature
         IRetryDecision decision = config.getRetryDecision();
@@ -875,6 +877,9 @@ public class TestInvocation implements ITestInvocation {
             listener = new LogSaverResultForwarder(config.getLogSaver(), Arrays.asList(forwarder));
         } else {
             listener = new LogSaverResultForwarder(config.getLogSaver(), allListeners);
+        }
+        if (reportPass != null) {
+            reportPass.setLogger(listener);
         }
 
         RunMode mode = RunMode.REGULAR;

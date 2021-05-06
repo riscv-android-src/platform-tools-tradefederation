@@ -16,6 +16,7 @@
 package com.android.tradefed.result;
 
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
 
@@ -26,6 +27,11 @@ public class ReportPassedTests extends CollectingTestListener {
 
     private static final String PASSED_TEST_LOG = "passed_tests";
     private boolean mInvocationFailed = false;
+    private ITestLogger mLogger;
+
+    public void setLogger(ITestLogger logger) {
+        mLogger = logger;
+    }
 
     @Override
     public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
@@ -51,6 +57,9 @@ public class ReportPassedTests extends CollectingTestListener {
     }
 
     private void createPassedLog() {
+        if (mLogger == null) {
+            return;
+        }
         StringBuilder sb = new StringBuilder();
         // TODO: Support more granular than module level
         for (TestRunResult result : getMergedTestRunResults()) {
@@ -69,7 +78,7 @@ public class ReportPassedTests extends CollectingTestListener {
         }
         try (ByteArrayInputStreamSource source =
                 new ByteArrayInputStreamSource(sb.toString().getBytes())) {
-            testLog(PASSED_TEST_LOG, LogDataType.PASSED_TESTS, source);
+            mLogger.testLog(PASSED_TEST_LOG, LogDataType.PASSED_TESTS, source);
         }
     }
 }
