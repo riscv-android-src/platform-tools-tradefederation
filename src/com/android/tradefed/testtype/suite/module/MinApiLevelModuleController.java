@@ -24,6 +24,7 @@ import com.android.tradefed.log.LogUtil.CLog;
 
 /** Base class for a module controller to not run tests when it below a specified API Level. */
 public class MinApiLevelModuleController extends BaseModuleController {
+    private static final String VNDK_PROP = "ro.vndk.version";
 
     @Option(
             name = "api-level-prop",
@@ -49,7 +50,14 @@ public class MinApiLevelModuleController extends BaseModuleController {
                         CLog.d("Cannot get the API Level.");
                     }
                 } catch (NumberFormatException e) {
-                    CLog.d("Error parsing system property %s: %s", mApiLevelProp, e.getMessage());
+                    if (VNDK_PROP.equals(mApiLevelProp)) {
+                        // If VNDK property has a non integer value, it means current version.
+                        apiLevel = 10000;
+                    } else {
+                        CLog.d(
+                                "Error parsing system property %s: %s",
+                                mApiLevelProp, e.getMessage());
+                    }
                 }
                 if (apiLevel >= mMinApiLevel) {
                     continue;
