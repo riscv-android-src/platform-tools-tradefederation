@@ -518,12 +518,18 @@ public class GceManager {
         if (gceAvd == null || gceAvd.hostAndPort() == null) {
             return null;
         }
+        String adbTool = "./bin/adb";
+        if (options.useOxygen()) {
+            adbTool = "./tools/dynamic_adb_tool";
+            // Make sure the Oxygen device is connected.
+            remoteSshCommandExec(gceAvd, options, runUtil, adbTool, "connect", "localhost:6520");
+        }
         String output =
                 remoteSshCommandExec(
                         gceAvd,
                         options,
                         runUtil,
-                        "./bin/adb",
+                        adbTool,
                         "wait-for-device",
                         "shell",
                         "bugreportz");
@@ -534,7 +540,7 @@ public class GceManager {
         }
         String deviceFilePath = match.group(2);
         String pullOutput =
-                remoteSshCommandExec(gceAvd, options, runUtil, "./bin/adb", "pull", deviceFilePath);
+                remoteSshCommandExec(gceAvd, options, runUtil, adbTool, "pull", deviceFilePath);
         CLog.d(pullOutput);
         String remoteFilePath = "./" + new File(deviceFilePath).getName();
         File localTmpFile = FileUtil.createTempFile("bugreport-ssh", ".zip");
