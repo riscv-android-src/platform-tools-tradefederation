@@ -711,6 +711,7 @@ public abstract class ITestSuite
                     mRunModules);
         }
 
+        List<SuiteTestFilter> previousPassedFilters = new ArrayList<>();
         if (mTestFilterPassed) {
             // Test the query of previous passed test
             Map<String, String> args = new HashMap<>();
@@ -723,10 +724,12 @@ public abstract class ITestSuite
             if (!Strings.isNullOrEmpty(invocationId)) {
                 args.put("invocation_id", invocationId);
             }
+            // TODO: Only do this if it's not the first attempt
             if (!args.isEmpty()) {
                 try (TradefedFeatureClient client = new TradefedFeatureClient()) {
-                    FeatureResponse response = client.triggerFeature("getPreviousPassed", args);
-                    CLog.d("FeatureResponse: %s", response);
+                    FeatureResponse previousPassed = triggerFeature(client, args);
+                    CLog.d("FeatureResponse: %s", previousPassed);
+                    convertResponseToFilter(previousPassed, previousPassedFilters);
                 } catch (RuntimeException e) {
                     CLog.e(e);
                 }
@@ -737,6 +740,10 @@ public abstract class ITestSuite
         try {
             while (!mRunModules.isEmpty()) {
                 ModuleDefinition module = mRunModules.remove(0);
+
+                if (!shouldModuleRun(module, previousPassedFilters)) {
+                    continue;
+                }
                 // Before running the module we ensure it has tests at this point or skip completely
                 // to avoid running SystemCheckers and preparation for nothing.
                 if (module.hasTests()) {
@@ -1529,5 +1536,49 @@ public abstract class ITestSuite
 
     public final void setAbis(Set<IAbi> abis) {
         mAbis.addAll(abis);
+    }
+
+    @VisibleForTesting
+    FeatureResponse triggerFeature(TradefedFeatureClient client, Map<String, String> args) {
+        return client.triggerFeature("getPreviousPassed", args);
+    }
+
+    private void convertResponseToFilter(
+            FeatureResponse previousPassed, List<SuiteTestFilter> previousPassedFilters) {
+        if (previousPassed.hasErrorInfo()) {
+            return;
+        }
+        if (Strings.isNullOrEmpty(previousPassed.getResponse())) {
+            return;
+        }
+        for (String line : previousPassed.getResponse().split("\n")) {
+            if (line.isEmpty()) {
+                continue;
+            }
+            previousPassedFilters.add(SuiteTestFilter.createFrom(line));
+        }
+    }
+
+    private boolean shouldModuleRun(
+            ModuleDefinition module, List<SuiteTestFilter> previousPassedFilter) {
+        if (previousPassedFilter.isEmpty()) {
+            return true;
+        }
+        String moduleId = module.getId();
+        for (SuiteTestFilter filter : previousPassedFilter) {
+            String name = filter.getName();
+            if (filter.getAbi() != null) {
+                name = filter.getAbi() + " " + name;
+            }
+            if (!name.equals(moduleId)) {
+                continue;
+            }
+            if (filter.getTest() == null) {
+                CLog.d("Skipping %s, it previously passed.", moduleId);
+                return false;
+            }
+            // TODO: Handle test method filters
+        }
+        return true;
     }
 }
