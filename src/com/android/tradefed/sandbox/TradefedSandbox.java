@@ -228,7 +228,7 @@ public class TradefedSandbox implements ISandbox {
         try {
             mStdoutFile = FileUtil.createTempFile("stdout_subprocess_", ".log", getWorkFolder());
             mStderrFile = FileUtil.createTempFile("stderr_subprocess_", ".log", getWorkFolder());
-            mSandboxTmpFolder = FileUtil.createTempDir("tradefed-container", getWorkFolder());
+            mSandboxTmpFolder = FileUtil.createTempDir("tf-container", getWorkFolder());
         } catch (IOException e) {
             return e;
         }

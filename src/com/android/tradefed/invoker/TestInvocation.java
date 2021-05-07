@@ -819,7 +819,7 @@ public class TestInvocation implements ITestInvocation {
             info = TestInformation.createModuleTestInfo(sharedTestInfo, context);
         }
         if (info == null) {
-            File mWorkFolder = FileUtil.createTempDir("tradefed-invocation-workfolder");
+            File mWorkFolder = FileUtil.createTempDir("tf-workfolder");
             info =
                     TestInformation.newBuilder()
                             .setInvocationContext(context)
