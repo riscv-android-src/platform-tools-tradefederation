@@ -19,13 +19,15 @@ import static org.junit.Assert.assertEquals;
 
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
 
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mockito;
 
-import java.io.IOException;
 import java.util.Collections;
 
 /** Unit tests for {@link ReportPassedTests}. */
@@ -33,26 +35,29 @@ import java.util.Collections;
 public class ReportPassedTestsTest {
 
     private String mExpectedString;
+    private ITestLogger mLogger;
 
     private ReportPassedTests mReporter =
             new ReportPassedTests() {
                 @Override
-                public void testLog(
-                        String dataName, LogDataType dataType, InputStreamSource dataStream) {
-                    String logged = null;
-                    try {
-                        logged = new String(dataStream.createInputStream().readAllBytes());
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                    assertEquals(mExpectedString, logged);
+                void testLog(String toBeLogged) {
+                    assertEquals(mExpectedString, toBeLogged);
                 }
             };
+
+    @Before
+    public void setUp() {
+        mLogger = Mockito.mock(ITestLogger.class);
+        mReporter.setLogger(mLogger);
+    }
 
     @Test
     public void testReport() {
         mExpectedString = "run-name\nrun-name2\n";
         mReporter.testRunStarted("run-name", 0);
+        TestDescription tid = new TestDescription("class", "testName");
+        mReporter.testStarted(tid);
+        mReporter.testEnded(tid, Collections.emptyMap());
         mReporter.testRunEnded(0L, Collections.emptyMap());
         mReporter.testRunStarted("run-name2", 0);
         mReporter.testRunEnded(0L, Collections.emptyMap());
@@ -74,12 +79,15 @@ public class ReportPassedTestsTest {
 
     @Test
     public void testReport_withTestFailure() {
-        mExpectedString = "run-name2\n";
-        mReporter.testRunStarted("run-name", 1);
-        TestDescription tid = new TestDescription("class", "testName");
-        mReporter.testStarted(tid);
-        mReporter.testFailed(tid, "failed");
-        mReporter.testEnded(tid, Collections.emptyMap());
+        TestDescription testPass = new TestDescription("class", "testName1");
+        mExpectedString = String.format("run-name %s\nrun-name2\n", testPass.toString());
+        mReporter.testRunStarted("run-name", 2);
+        TestDescription testFailed = new TestDescription("class", "testName0");
+        mReporter.testStarted(testFailed);
+        mReporter.testFailed(testFailed, "failed");
+        mReporter.testEnded(testFailed, Collections.emptyMap());
+        mReporter.testStarted(testPass);
+        mReporter.testEnded(testPass, Collections.emptyMap());
         mReporter.testRunEnded(0L, Collections.emptyMap());
         mReporter.testRunStarted("run-name2", 0);
         mReporter.testRunEnded(0L, Collections.emptyMap());

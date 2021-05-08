@@ -15,12 +15,16 @@
  */
 package com.android.tradefed.result;
 
+import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import java.util.HashMap;
+import java.util.Map.Entry;
 
 /** Report in a file possible filters to exclude passed test. */
 public class ReportPassedTests extends CollectingTestListener {
@@ -28,17 +32,37 @@ public class ReportPassedTests extends CollectingTestListener {
     private static final String PASSED_TEST_LOG = "passed_tests";
     private boolean mInvocationFailed = false;
     private ITestLogger mLogger;
+    private boolean mModuleInProgress;
 
     public void setLogger(ITestLogger logger) {
         mLogger = logger;
     }
 
     @Override
+    public void testModuleStarted(IInvocationContext moduleContext) {
+        super.testModuleStarted(moduleContext);
+        mModuleInProgress = true;
+    }
+
+    @Override
     public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
         super.testRunEnded(elapsedTime, runMetrics);
-        if (getCurrentRunResults().hasFailedTests() || getCurrentRunResults().isRunFailure()) {
+        if (!mModuleInProgress) {
+            // Remove right away any run failure they will be excluded
+            if (getCurrentRunResults().isRunFailure()) {
+                clearResultsForName(getCurrentRunResults().getName());
+            }
+        }
+    }
+
+    @Override
+    public void testModuleEnded() {
+        super.testModuleEnded();
+        // Remove right away any run failure they will be excluded
+        if (getCurrentRunResults().isRunFailure()) {
             clearResultsForName(getCurrentRunResults().getName());
         }
+        mModuleInProgress = false;
     }
 
     @Override
@@ -61,24 +85,48 @@ public class ReportPassedTests extends CollectingTestListener {
             return;
         }
         StringBuilder sb = new StringBuilder();
-        // TODO: Support more granular than module level
         for (TestRunResult result : getMergedTestRunResults()) {
             IInvocationContext context = getModuleContextForRunResult(result.getName());
             // If it's a test module
             if (context != null) {
-                sb.append(context.getAttributes().getUniqueMap().get(ModuleDefinition.MODULE_ID));
-                sb.append("\n");
+                sb.append(
+                        createFilters(
+                                result,
+                                context.getAttributes()
+                                        .getUniqueMap()
+                                        .get(ModuleDefinition.MODULE_ID)));
             } else {
-                sb.append(result.getName());
-                sb.append("\n");
+                sb.append(createFilters(result, result.getName()));
             }
         }
         if (sb.length() == 0) {
             return;
         }
+        testLog(sb.toString());
+    }
+
+    @VisibleForTesting
+    void testLog(String toBeLogged) {
         try (ByteArrayInputStreamSource source =
-                new ByteArrayInputStreamSource(sb.toString().getBytes())) {
+                new ByteArrayInputStreamSource(toBeLogged.getBytes())) {
             mLogger.testLog(PASSED_TEST_LOG, LogDataType.PASSED_TESTS, source);
         }
+    }
+
+    private String createFilters(TestRunResult runResult, String baseName) {
+        StringBuilder sb = new StringBuilder();
+        if (!runResult.hasFailedTests()) {
+            sb.append(baseName);
+            sb.append("\n");
+            return sb.toString();
+        }
+        for (Entry<TestDescription, TestResult> res : runResult.getTestResults().entrySet()) {
+            if (TestStatus.FAILURE.equals(res.getValue().getStatus())) {
+                continue;
+            }
+            sb.append(baseName + " " + res.getKey().toString());
+            sb.append("\n");
+        }
+        return sb.toString();
     }
 }
