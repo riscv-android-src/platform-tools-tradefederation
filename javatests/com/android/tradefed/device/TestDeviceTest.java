@@ -5025,12 +5025,13 @@ public class TestDeviceTest extends TestCase {
             boolean res = spy.pushFile(tmpFile, fakeRemotePath);
             EasyMock.verify(mMockIDevice);
             assertFalse(res);
-            verify(spy, times(1))
+            // Tried twice due to retry
+            verify(spy, times(2))
                     .installPackage(Mockito.any(), Mockito.anyBoolean(), Mockito.anyBoolean());
             // Since it fails, requesting the content provider again will re-do setup.
             ContentProviderHandler cp = spy.getContentProvider();
             assertFalse(cp.contentProviderNotFound());
-            verify(spy, times(2))
+            verify(spy, times(3))
                     .installPackage(Mockito.any(), Mockito.anyBoolean(), Mockito.anyBoolean());
             cp.tearDown();
         } finally {
