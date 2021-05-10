@@ -71,6 +71,7 @@ public enum InfraErrorIdentifier implements ErrorIdentifier {
     INTERNAL_CONFIG_ERROR(505_251, FailureStatus.INFRA_FAILURE),
     CLASS_NOT_FOUND(505_252, FailureStatus.CUSTOMER_ISSUE),
     CONFIGURATION_NOT_FOUND(505_253, FailureStatus.CUSTOMER_ISSUE),
+    UNEXPECTED_DEVICE_CONFIGURED(505_254, FailureStatus.CUSTOMER_ISSUE),
 
     UNDETERMINED(510_000, FailureStatus.UNSET);
 
