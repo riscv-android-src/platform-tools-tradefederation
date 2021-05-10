@@ -24,6 +24,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.error.DeviceErrorIdentifier;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -326,9 +327,14 @@ public class FastbootDeviceFlasher implements IDeviceFlasher {
             ITestDevice device, IFlashingResourcesParser resourceParser, String deviceProductType)
             throws TargetSetupError {
         if (!containsIgnoreCase(resourceParser.getRequiredBoards(), deviceProductType)) {
-            throw new TargetSetupError(String.format("Device %s is %s. Expected %s",
-                    device.getSerialNumber(), deviceProductType,
-                    resourceParser.getRequiredBoards()), device.getDeviceDescriptor());
+            throw new TargetSetupError(
+                    String.format(
+                            "Device %s is %s. Expected %s",
+                            device.getSerialNumber(),
+                            deviceProductType,
+                            resourceParser.getRequiredBoards()),
+                    device.getDeviceDescriptor(),
+                    InfraErrorIdentifier.UNEXPECTED_DEVICE_CONFIGURED);
         }
     }
 
