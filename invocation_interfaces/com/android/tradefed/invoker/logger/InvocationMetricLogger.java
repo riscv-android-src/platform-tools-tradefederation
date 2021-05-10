@@ -47,6 +47,14 @@ public class InvocationMetricLogger {
         ADB_ROOT_TIME("adb_root_time", true),
         // Represents how often we enter the "adb root" device routine.
         ADB_ROOT_ROUTINE_COUNT("adb_root_routine_count", true),
+        // Represents the time we spend pulling file from device.
+        PULL_FILE_TIME("pull_file_time_ms", true),
+        // Represents how many times we pulled file from the device.
+        PULL_FILE_COUNT("pull_file_count", true),
+        // Represents the time we spend pushing file from device.
+        PUSH_FILE_TIME("push_file_time_ms", true),
+        // Represents how many times we pushed file from the device.
+        PUSH_FILE_COUNT("push_file_count", true),
         // Track if soft restart is occurring after test module
         SOFT_RESTART_AFTER_MODULE("soft_restart_after_module", true),
 
