@@ -74,6 +74,7 @@ import com.android.tradefed.testtype.IReportNotExecuted;
 import com.android.tradefed.testtype.IRuntimeHintProvider;
 import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.testtype.ITestCollector;
+import com.android.tradefed.testtype.ITestFilterReceiver;
 import com.android.tradefed.util.AbiFormatter;
 import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.MultiMap;
@@ -1577,7 +1578,11 @@ public abstract class ITestSuite
                 CLog.d("Skipping %s, it previously passed.", moduleId);
                 return false;
             }
-            // TODO: Handle test method filters
+            for (IRemoteTest test : module.getTests()) {
+                if (test instanceof ITestFilterReceiver) {
+                    ((ITestFilterReceiver) test).addExcludeFilter(filter.toString());
+                }
+            }
         }
         return true;
     }
