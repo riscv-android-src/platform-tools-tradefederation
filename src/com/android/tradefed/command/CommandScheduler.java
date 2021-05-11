@@ -1603,8 +1603,8 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             CLog.e("'adb devices' output:\n%s", adbOutput);
             throw new NoDeviceException(
                     String.format(
-                            "no devices is available for command: %s\n%s",
-                            Arrays.asList(args), allocationResults.formattedReason()),
+                            "No device match for allocation. Reason: %s.\ncommand: %s",
+                            allocationResults.formattedReason(), Arrays.asList(args)),
                     InfraErrorIdentifier.SCHEDULER_ALLOCATION_ERROR);
         }
     }
