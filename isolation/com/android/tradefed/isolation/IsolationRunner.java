@@ -93,8 +93,8 @@ public final class IsolationRunner {
                                 .setMessage(e.toString())
                                 .build()
                                 .writeDelimitedTo(output);
-                        output.flush();
                     }
+                    output.flush();
                     break;
                 default:
                     System.out.println("Received unrecognized message");
