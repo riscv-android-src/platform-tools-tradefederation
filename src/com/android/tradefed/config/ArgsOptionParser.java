@@ -16,6 +16,7 @@
 package com.android.tradefed.config;
 
 import com.android.ddmlib.Log;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.keystore.DryRunKeyStore;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
@@ -558,11 +559,16 @@ public class ArgsOptionParser extends OptionSetter {
         if (m.matches() && m.groupCount() > 0) {
             IKeyStoreClient c = getKeyStore();
             if (c == null) {
-                throw new ConfigurationException("Key store is null, but we tried to fetch a key");
+                throw new ConfigurationException(
+                        "Key store is null, but we tried to fetch a key",
+                        InfraErrorIdentifier.KEYSTORE_CONFIG_ERROR);
             }
             if (!c.isAvailable()) {
-                throw new ConfigurationException(String.format("Key store '%s' is unavailable, but "
-                        + "we tried to fetch a key", c.getClass()));
+                throw new ConfigurationException(
+                        String.format(
+                                "Key store '%s' is unavailable, but " + "we tried to fetch a key",
+                                c.getClass()),
+                        InfraErrorIdentifier.KEYSTORE_CONFIG_ERROR);
             }
             String key = m.group(1);
             String v = null;
@@ -573,8 +579,9 @@ public class ArgsOptionParser extends OptionSetter {
                 v = c.fetchKey(key);
             }
             if (v == null) {
-                throw new ConfigurationException(String.format(
-                        "Failed to fetch key %s in keystore", key));
+                throw new ConfigurationException(
+                        String.format("Failed to fetch key %s in keystore", key),
+                        InfraErrorIdentifier.KEYSTORE_CONFIG_ERROR);
             }
             return v;
         }

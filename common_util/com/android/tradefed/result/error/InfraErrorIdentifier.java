@@ -72,6 +72,7 @@ public enum InfraErrorIdentifier implements ErrorIdentifier {
     CLASS_NOT_FOUND(505_252, FailureStatus.CUSTOMER_ISSUE),
     CONFIGURATION_NOT_FOUND(505_253, FailureStatus.CUSTOMER_ISSUE),
     UNEXPECTED_DEVICE_CONFIGURED(505_254, FailureStatus.CUSTOMER_ISSUE),
+    KEYSTORE_CONFIG_ERROR(505_255, FailureStatus.DEPENDENCY_ISSUE),
 
     UNDETERMINED(510_000, FailureStatus.UNSET);
 
