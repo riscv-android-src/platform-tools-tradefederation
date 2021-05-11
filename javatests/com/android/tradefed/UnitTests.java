@@ -109,7 +109,6 @@ import com.android.tradefed.device.metric.FilePullerDeviceMetricCollectorTest;
 import com.android.tradefed.device.metric.FilePullerLogCollectorTest;
 import com.android.tradefed.device.metric.GcovCodeCoverageCollectorTest;
 import com.android.tradefed.device.metric.HostStatsdMetricCollectorTest;
-import com.android.tradefed.device.metric.IncidentReportCollectorTest;
 import com.android.tradefed.device.metric.JavaCodeCoverageCollectorTest;
 import com.android.tradefed.device.metric.LogcatOnFailureCollectorTest;
 import com.android.tradefed.device.metric.LogcatTimingMetricCollectorTest;
@@ -562,7 +561,6 @@ import org.junit.runners.Suite.SuiteClasses;
     FilePullerDeviceMetricCollectorTest.class,
     FilePullerLogCollectorTest.class,
     GcovCodeCoverageCollectorTest.class,
-    IncidentReportCollectorTest.class,
     JavaCodeCoverageCollectorTest.class,
     LogcatOnFailureCollectorTest.class,
     LogcatTimingMetricCollectorTest.class,
