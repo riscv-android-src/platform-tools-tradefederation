@@ -105,6 +105,28 @@ public class MergeMultiBuildTargetPreparerTest {
         assertEquals("/orig", mMockInfo2.getFile(EXAMPLE_KEY).getAbsolutePath());
     }
 
+    @Test
+    public void testMergeFiles_collision_enforce() throws Exception {
+        OptionSetter setter = new OptionSetter(mPreparer);
+        setter.setOptionValue("src-device", "device1");
+        setter.setOptionValue("dest-device", "device2");
+        setter.setOptionValue("key-to-copy", EXAMPLE_KEY);
+        setter.setOptionValue("enforce-copy", "true");
+
+        mMockInfo1.setFile(EXAMPLE_KEY, new File("/fake"), "version1");
+        mMockInfo2.setFile(EXAMPLE_KEY, new File("/orig"), "version0");
+
+        assertNotNull(mMockInfo1.getFile(EXAMPLE_KEY));
+        assertNotNull(mMockInfo2.getFile(EXAMPLE_KEY));
+
+        try {
+            mPreparer.setUp(mTestInfo);
+            fail("Should have thrown an exception.");
+        } catch (TargetSetupError expected) {
+            // Expected
+        }
+    }
+
     /** Test that unfound keys are ignored. */
     @Test
     public void testMergeFiles_keyNotFound() throws Exception {
