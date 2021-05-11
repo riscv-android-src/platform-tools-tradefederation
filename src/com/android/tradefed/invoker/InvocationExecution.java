@@ -23,6 +23,7 @@ import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IBuildInfo.BuildInfoProperties;
 import com.android.tradefed.build.IBuildProvider;
+import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.build.IDeviceBuildProvider;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
@@ -37,7 +38,6 @@ import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.invoker.ExecutionFiles.FilesKey;
 import com.android.tradefed.invoker.TestInvocation.Stage;
-import com.android.tradefed.invoker.logger.CurrentInvocation;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.invoker.logger.TfObjectTracker;
@@ -806,44 +806,41 @@ public class InvocationExecution implements IInvocationExecution {
             CLog.d("Skip linking external directory as FileProperty was set.");
             return;
         }
-        File testsDir = info.getFile(BuildInfoFileKey.TESTDIR_IMAGE);
-        if (testsDir == null || !testsDir.exists()) {
-            try {
-                testsDir = FileUtil.createTempDir("tests-dir", CurrentInvocation.getWorkFolder());
-            } catch (IOException e) {
-                CLog.e(e);
-                return;
-            }
-            info.setFile(BuildInfoFileKey.TESTDIR_IMAGE, testsDir, info.getBuildId());
-            testInfo.executionFiles().put(FilesKey.TESTS_DIRECTORY, testsDir);
-        }
-        if (testInfo.executionFiles().get(FilesKey.TARGET_TESTS_DIRECTORY) == null) {
-            File targetTestCases =
-                    handleLinkingExternalDirs(
-                            info,
-                            testsDir,
-                            EnvVariable.ANDROID_TARGET_OUT_TESTCASES,
-                            BuildInfoFileKey.TARGET_LINKED_DIR.getFileKey());
-            if (targetTestCases != null) {
-                testInfo.executionFiles()
-                        .put(FilesKey.TARGET_TESTS_DIRECTORY, targetTestCases, true);
-            }
-        }
-        if (testInfo.executionFiles().get(FilesKey.HOST_TESTS_DIRECTORY) == null) {
-            File hostTestCases =
-                    handleLinkingExternalDirs(
-                            info,
-                            testsDir,
-                            EnvVariable.ANDROID_HOST_OUT_TESTCASES,
-                            BuildInfoFileKey.HOST_LINKED_DIR.getFileKey());
-            if (hostTestCases != null) {
-                testInfo.executionFiles().put(FilesKey.HOST_TESTS_DIRECTORY, hostTestCases, true);
+        // Load environment tests dir.
+        if (info instanceof IDeviceBuildInfo) {
+            // TODO: Use tests directory from TestInformation instead.
+            File testsDir = ((IDeviceBuildInfo) info).getTestsDir();
+            if (testsDir != null && testsDir.exists()) {
+                if (testInfo.executionFiles().get(FilesKey.TARGET_TESTS_DIRECTORY) == null) {
+                    File targetTestCases =
+                            handleLinkingExternalDirs(
+                                    (IDeviceBuildInfo) info,
+                                    testsDir,
+                                    EnvVariable.ANDROID_TARGET_OUT_TESTCASES,
+                                    BuildInfoFileKey.TARGET_LINKED_DIR.getFileKey());
+                    if (targetTestCases != null) {
+                        testInfo.executionFiles()
+                                .put(FilesKey.TARGET_TESTS_DIRECTORY, targetTestCases, true);
+                    }
+                }
+                if (testInfo.executionFiles().get(FilesKey.HOST_TESTS_DIRECTORY) == null) {
+                    File hostTestCases =
+                            handleLinkingExternalDirs(
+                                    (IDeviceBuildInfo) info,
+                                    testsDir,
+                                    EnvVariable.ANDROID_HOST_OUT_TESTCASES,
+                                    BuildInfoFileKey.HOST_LINKED_DIR.getFileKey());
+                    if (hostTestCases != null) {
+                        testInfo.executionFiles()
+                                .put(FilesKey.HOST_TESTS_DIRECTORY, hostTestCases, true);
+                    }
+                }
             }
         }
     }
 
     private File handleLinkingExternalDirs(
-            IBuildInfo info, File testsDir, EnvVariable var, String baseName) {
+            IDeviceBuildInfo info, File testsDir, EnvVariable var, String baseName) {
         File externalDir = getExternalTestCasesDirs(var);
         if (externalDir == null) {
             String path = SystemUtil.ENV_VARIABLE_PATHS_IN_TESTS_DIR.get(var);

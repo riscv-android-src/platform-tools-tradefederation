@@ -100,8 +100,6 @@ import com.android.tradefed.util.SystemUtil.EnvVariable;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
 import com.android.tradefed.util.keystore.StubKeyStoreFactory;
 
-import com.google.common.collect.ImmutableSet;
-
 import org.easymock.Capture;
 import org.easymock.EasyMock;
 import org.junit.Before;
@@ -271,8 +269,7 @@ public class TestInvocationTest {
         EasyMock.expect(mMockBuildInfo.getBuildAttributes()).andStubReturn(EMPTY_MAP);
         EasyMock.expect(mMockBuildInfo.getBuildBranch()).andStubReturn("branch");
         EasyMock.expect(mMockBuildInfo.getBuildFlavor()).andStubReturn("flavor");
-        EasyMock.expect(mMockBuildInfo.getProperties())
-                .andStubReturn(ImmutableSet.of(BuildInfoProperties.DO_NOT_LINK_TESTS_DIR));
+        EasyMock.expect(mMockBuildInfo.getProperties()).andStubReturn(new HashSet<>());
 
         // always expect logger initialization and cleanup calls
         mMockLogRegistry.registerLogger(mMockLogger);
@@ -1722,7 +1719,7 @@ public class TestInvocationTest {
 
         File tmpTestsDir = FileUtil.createTempDir("invocation-tests-dir");
         try {
-            EasyMock.expect(mMockBuildInfo.getFile(BuildInfoFileKey.TESTDIR_IMAGE))
+            EasyMock.expect(((IDeviceBuildInfo) mMockBuildInfo).getTestsDir())
                     .andReturn(tmpTestsDir);
             setupMockSuccessListeners();
             setEarlyDeviceReleaseExpectation();
@@ -1818,7 +1815,7 @@ public class TestInvocationTest {
                     EasyMock.contains(BuildInfoFileKey.TARGET_LINKED_DIR.getFileKey()),
                     EasyMock.anyObject(),
                     EasyMock.eq("v1"));
-            EasyMock.expect(mMockBuildInfo.getFile(BuildInfoFileKey.TESTDIR_IMAGE))
+            EasyMock.expect(((IDeviceBuildInfo) mMockBuildInfo).getTestsDir())
                     .andReturn(tmpTestsDir);
             EasyMock.expect(mMockBuildInfo.getProperties()).andStubReturn(new HashSet<>());
 
