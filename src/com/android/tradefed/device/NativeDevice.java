@@ -1179,39 +1179,57 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public boolean pullFile(final String remoteFilePath, final File localFile)
             throws DeviceNotAvailableException {
+        long startTime = System.currentTimeMillis();
+        InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.PULL_FILE_COUNT, 1);
 
-        if (isSdcardOrEmulated(remoteFilePath)) {
-            ContentProviderHandler handler = getContentProvider();
-            if (handler != null) {
-                return handler.pullFile(remoteFilePath, localFile);
-            }
-        }
-
-        DeviceAction pullAction = new DeviceAction() {
-            @Override
-            public boolean run() throws TimeoutException, IOException, AdbCommandRejectedException,
-                    SyncException {
-                SyncService syncService = null;
-                boolean status = false;
-                try {
-                    syncService = getIDevice().getSyncService();
-                    syncService.pullFile(interpolatePathVariables(remoteFilePath),
-                            localFile.getAbsolutePath(), SyncService.getNullProgressMonitor());
-                    status = true;
-                } catch (SyncException e) {
-                    CLog.w("Failed to pull %s from %s to %s. Message %s", remoteFilePath,
-                            getSerialNumber(), localFile.getAbsolutePath(), e.getMessage());
-                    throw e;
-                } finally {
-                    if (syncService != null) {
-                        syncService.close();
-                    }
+        try {
+            if (isSdcardOrEmulated(remoteFilePath)) {
+                ContentProviderHandler handler = getContentProvider();
+                if (handler != null) {
+                    return handler.pullFile(remoteFilePath, localFile);
                 }
-                return status;
             }
-        };
-        return performDeviceAction(String.format("pull %s to %s", remoteFilePath,
-                localFile.getAbsolutePath()), pullAction, MAX_RETRY_ATTEMPTS);
+
+            DeviceAction pullAction =
+                    new DeviceAction() {
+                        @Override
+                        public boolean run()
+                                throws TimeoutException, IOException, AdbCommandRejectedException,
+                                        SyncException {
+                            SyncService syncService = null;
+                            boolean status = false;
+                            try {
+                                syncService = getIDevice().getSyncService();
+                                syncService.pullFile(
+                                        interpolatePathVariables(remoteFilePath),
+                                        localFile.getAbsolutePath(),
+                                        SyncService.getNullProgressMonitor());
+                                status = true;
+                            } catch (SyncException e) {
+                                CLog.w(
+                                        "Failed to pull %s from %s to %s. Message %s",
+                                        remoteFilePath,
+                                        getSerialNumber(),
+                                        localFile.getAbsolutePath(),
+                                        e.getMessage());
+                                throw e;
+                            } finally {
+                                if (syncService != null) {
+                                    syncService.close();
+                                }
+                            }
+                            return status;
+                        }
+                    };
+            return performDeviceAction(
+                    String.format("pull %s to %s", remoteFilePath, localFile.getAbsolutePath()),
+                    pullAction,
+                    MAX_RETRY_ATTEMPTS);
+        } finally {
+            long totalTime = System.currentTimeMillis() - startTime;
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.PULL_FILE_TIME, totalTime);
+        }
     }
 
     /**
@@ -1288,57 +1306,67 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public boolean pushFile(final File localFile, final String remoteFilePath)
             throws DeviceNotAvailableException {
-        if (isSdcardOrEmulated(remoteFilePath)) {
-            ContentProviderHandler handler = getContentProvider();
-            if (handler != null) {
-                return handler.pushFile(localFile, remoteFilePath);
+        long startTime = System.currentTimeMillis();
+        InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.PUSH_FILE_COUNT, 1);
+        try {
+            if (isSdcardOrEmulated(remoteFilePath)) {
+                ContentProviderHandler handler = getContentProvider();
+                if (handler != null) {
+                    return handler.pushFile(localFile, remoteFilePath);
+                }
             }
-        }
 
-        DeviceAction pushAction =
-                new DeviceAction() {
-                    @Override
-                    public boolean run()
-                            throws TimeoutException, IOException, AdbCommandRejectedException,
-                                    SyncException {
-                        SyncService syncService = null;
-                        boolean status = false;
-                        try {
-                            syncService = getIDevice().getSyncService();
-                            if (syncService == null) {
-                                throw new IOException("SyncService returned null.");
-                            }
-                            syncService.pushFile(
-                                    localFile.getAbsolutePath(),
-                                    interpolatePathVariables(remoteFilePath),
-                                    SyncService.getNullProgressMonitor());
-                            status = true;
-                        } catch (SyncException e) {
-                            CLog.w(
-                                    "Failed to push %s to %s on device %s. Message: '%s'. "
-                                            + "Error code: %s",
-                                    localFile.getAbsolutePath(),
-                                    remoteFilePath,
-                                    getSerialNumber(),
-                                    e.getMessage(),
-                                    e.getErrorCode());
-                            // TODO: check if ddmlib can report a better error
-                            if (SyncError.TRANSFER_PROTOCOL_ERROR.equals(e.getErrorCode())) {
-                                if (e.getMessage().contains("Permission denied")) {
-                                    return false;
+            DeviceAction pushAction =
+                    new DeviceAction() {
+                        @Override
+                        public boolean run()
+                                throws TimeoutException, IOException, AdbCommandRejectedException,
+                                        SyncException {
+                            SyncService syncService = null;
+                            boolean status = false;
+                            try {
+                                syncService = getIDevice().getSyncService();
+                                if (syncService == null) {
+                                    throw new IOException("SyncService returned null.");
+                                }
+                                syncService.pushFile(
+                                        localFile.getAbsolutePath(),
+                                        interpolatePathVariables(remoteFilePath),
+                                        SyncService.getNullProgressMonitor());
+                                status = true;
+                            } catch (SyncException e) {
+                                CLog.w(
+                                        "Failed to push %s to %s on device %s. Message: '%s'. "
+                                                + "Error code: %s",
+                                        localFile.getAbsolutePath(),
+                                        remoteFilePath,
+                                        getSerialNumber(),
+                                        e.getMessage(),
+                                        e.getErrorCode());
+                                // TODO: check if ddmlib can report a better error
+                                if (SyncError.TRANSFER_PROTOCOL_ERROR.equals(e.getErrorCode())) {
+                                    if (e.getMessage().contains("Permission denied")) {
+                                        return false;
+                                    }
+                                }
+                                throw e;
+                            } finally {
+                                if (syncService != null) {
+                                    syncService.close();
                                 }
                             }
-                            throw e;
-                        } finally {
-                            if (syncService != null) {
-                                syncService.close();
-                            }
+                            return status;
                         }
-                        return status;
-                    }
-                };
-        return performDeviceAction(String.format("push %s to %s", localFile.getAbsolutePath(),
-                remoteFilePath), pushAction, MAX_RETRY_ATTEMPTS);
+                    };
+            return performDeviceAction(
+                    String.format("push %s to %s", localFile.getAbsolutePath(), remoteFilePath),
+                    pushAction,
+                    MAX_RETRY_ATTEMPTS);
+        } finally {
+            long totalTime = System.currentTimeMillis() - startTime;
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.PUSH_FILE_TIME, totalTime);
+        }
     }
 
     /**
