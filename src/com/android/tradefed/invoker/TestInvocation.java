@@ -129,6 +129,7 @@ public class TestInvocation implements ITestInvocation {
 
     public static final String TRADEFED_LOG_NAME = "host_log";
     public static final String TRADEFED_END_HOST_LOG = "end_host_log";
+    public static final String TRADEFED_INVOC_COMPLETE_HOST_LOG = "invoc_complete_host_log";
     private static final String TRADEFED_DELEGATED_LOG_NAME = "delegated_parent_log";
     public static final String TRADEFED_CONFIG_NAME = "tradefed-expanded-config";
     /** Suffix used on host_log for the part before sharding occurs. */
@@ -1072,9 +1073,12 @@ public class TestInvocation implements ITestInvocation {
             }
             // save remaining logs contents to global log
             getLogRegistry().dumpToGlobalLog(config.getLogOutput());
-            // Ensure log is unregistered and closed
-            getLogRegistry().unregisterLogger();
-            config.getLogOutput().closeLog();
+            if (!config.getCommandOptions().reportInvocationComplete()) {
+                // Ensure log is unregistered and closed
+                getLogRegistry().unregisterLogger();
+                config.getLogOutput().closeLog();
+            }
+
             config.cleanConfigurationData();
 
             Runtime.getRuntime().removeShutdownHook(cleanUpThread);
@@ -1342,6 +1346,17 @@ public class TestInvocation implements ITestInvocation {
                 endHostLog.closeLog();
                 getLogRegistry().unregisterLogger();
             }
+        }
+        if (!config.getCommandOptions().reportInvocationComplete()) {
+            return;
+        }
+        // Re-init for invocationComplete logs
+        try {
+            endHostLog.init();
+            getLogRegistry().registerLogger(endHostLog);
+        } catch (IOException e) {
+            CLog.e(e);
+            config.getCommandOptions().setReportInvocationComplete(false);
         }
     }
 

@@ -244,6 +244,11 @@ public class CommandOptions implements ICommandOptions {
             description = "Whether or not to report the passed tests in a file.")
     private boolean mReportPassedTests = true;
 
+    @Option(
+            name = "report-invocation-complete-logs",
+            description = "Whether or not to attempt to report the logs until invocationComplete.")
+    private boolean mReportInvocationCompleteLogs = false;
+
     /**
      * Set the help mode for the config.
      * <p/>
@@ -613,5 +618,17 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public boolean reportPassedTests() {
         return mReportPassedTests;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean reportInvocationComplete() {
+        return mReportInvocationCompleteLogs;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setReportInvocationComplete(boolean reportInvocationCompleteLogs) {
+        mReportInvocationCompleteLogs = reportInvocationCompleteLogs;
     }
 }

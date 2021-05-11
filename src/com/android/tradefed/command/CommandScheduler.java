@@ -69,6 +69,7 @@ import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.LogSaverResultForwarder;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.result.error.ErrorIdentifier;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
@@ -673,6 +674,12 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 if (!lastInvocationSet && instance.getExitInfo() != null) {
                     setLastInvocationExitCode(
                             instance.getExitInfo().mExitCode, instance.getExitInfo().mStack);
+                }
+                if (config.getCommandOptions().reportInvocationComplete()) {
+                    LogSaverResultForwarder.reportEndHostLog(
+                            config.getLogSaver(), TestInvocation.TRADEFED_INVOC_COMPLETE_HOST_LOG);
+                    config.getLogOutput().closeLog();
+                    LogRegistry.getLogRegistry().unregisterLogger();
                 }
                 mCmd.commandFinished(elapsedTime);
                 logInvocationEndedEvent(
