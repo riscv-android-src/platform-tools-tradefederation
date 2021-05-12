@@ -51,6 +51,8 @@ public class ReportPassedTests extends CollectingTestListener {
             // Remove right away any run failure they will be excluded
             if (getCurrentRunResults().isRunFailure()) {
                 clearResultsForName(getCurrentRunResults().getName());
+            } else if (mInvocationFailed) {
+                clearResultsForName(getCurrentRunResults().getName());
             }
         }
     }
@@ -60,6 +62,8 @@ public class ReportPassedTests extends CollectingTestListener {
         super.testModuleEnded();
         // Remove right away any run failure they will be excluded
         if (getCurrentRunResults().isRunFailure()) {
+            clearResultsForName(getCurrentRunResults().getName());
+        } else if (mInvocationFailed) {
             clearResultsForName(getCurrentRunResults().getName());
         }
         mModuleInProgress = false;
@@ -74,9 +78,6 @@ public class ReportPassedTests extends CollectingTestListener {
     @Override
     public void invocationEnded(long elapsedTime) {
         super.invocationEnded(elapsedTime);
-        if (mInvocationFailed) {
-            return;
-        }
         createPassedLog();
     }
 

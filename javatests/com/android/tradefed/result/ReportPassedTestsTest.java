@@ -108,6 +108,37 @@ public class ReportPassedTestsTest {
         mReporter.invocationEnded(0L);
     }
 
+    @Test
+    public void testReport_invocationFailed() {
+        mExpectedString = "run-name\n";
+        mReporter.testRunStarted("run-name", 0);
+        TestDescription tid = new TestDescription("class", "testName");
+        mReporter.testStarted(tid);
+        mReporter.testEnded(tid, Collections.emptyMap());
+        mReporter.testRunEnded(0L, Collections.emptyMap());
+        mReporter.testRunStarted("run-name2", 0);
+        mReporter.invocationFailed(FailureDescription.create("invoc failed"));
+        mReporter.testRunEnded(0L, Collections.emptyMap());
+
+        mReporter.invocationEnded(0L);
+    }
+
+    @Test
+    public void testReport_module_invocationFailed() {
+        mExpectedString = "x86 module1\n";
+        mReporter.testModuleStarted(createModule("x86 module1"));
+        mReporter.testRunStarted("run-name", 0);
+        mReporter.testRunEnded(0L, Collections.emptyMap());
+        mReporter.testModuleEnded();
+        mReporter.testModuleStarted(createModule("x86 module2"));
+        mReporter.testRunStarted("run-name2", 0);
+        mReporter.testRunEnded(0L, Collections.emptyMap());
+        mReporter.invocationFailed(FailureDescription.create("invoc failed"));
+        mReporter.testModuleEnded();
+
+        mReporter.invocationEnded(0L);
+    }
+
     private IInvocationContext createModule(String id) {
         IInvocationContext context = new InvocationContext();
         context.addInvocationAttribute(ModuleDefinition.MODULE_ID, id);
