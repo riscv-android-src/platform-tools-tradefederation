@@ -1580,7 +1580,7 @@ public abstract class ITestSuite
             }
             for (IRemoteTest test : module.getTests()) {
                 if (test instanceof ITestFilterReceiver) {
-                    ((ITestFilterReceiver) test).addExcludeFilter(filter.toString());
+                    ((ITestFilterReceiver) test).addExcludeFilter(filter.getTest());
                 }
             }
         }
