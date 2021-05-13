@@ -23,58 +23,70 @@ import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 
 /**
- * Run tests if the device meets both of the following conditions:
+ * Run tests if the device meets the following conditions:
  *
  * <ul>
- *   <li>The device shipped with the {@code min-api-level} or later.
- *   <li>The vendor image implemented the features for the {@code min-api-level} or later.
+ *   <li>If {@code min-api-level} is defined:
+ *       <ul>
+ *         <li>The device shipped with the {@code min-api-level} or later.
+ *       </ul>
+ *   <li>If {@code vsr-min-api-level} is defined:
+ *       <ul>
+ *         <li>The device shipped with the {@code vsr-min-api-level} or later.
+ *         <li>The vendor image implemented the features for the {@code vsr-min-api-level} or later.
+ *       </ul>
  * </ul>
  */
 public class ShippingApiLevelModuleController extends BaseModuleController {
 
     private static final String SYSTEM_SHIPPING_API_LEVEL_PROP = "ro.product.first_api_level";
+    private static final String SYSTEM_API_LEVEL_PROP = "ro.build.version.sdk";
     private static final String VENDOR_SHIPPING_API_LEVEL_PROP = "ro.board.first_api_level";
     private static final String VENDOR_API_LEVEL_PROP = "ro.board.api_level";
     private static final long API_LEVEL_CURRENT = 10000;
 
-    @Option(name = "min-api-level", description = "The minimum api-level on which tests will run.")
+    @Option(
+            name = "min-api-level",
+            description = "The minimum shipping api-level of the device on which tests will run.")
     private Integer mMinApiLevel = 0;
 
+    @Option(
+            name = "vsr-min-api-level",
+            description =
+                    "The minimum api-level on which tests will run. Both the shipping api-level of"
+                        + " the device and the vendor api-level must be greater than or equal to"
+                        + " the vsr-min-api-level to run the tests.")
+    private Integer mVsrMinApiLevel = 0;
+
     /**
-     * Compares the API level from the {@code min-api-level} and decide if the test should run or
-     * not.
+     * Compares the API level from the {@code minApiLevel} and decide if the test should run or not.
      *
      * @param device the {@link ITestDevice}.
-     * @param prop the name of a property that has the API level to compare with the {@code
-     *     min-api-level}.
-     * @return {@code true} if the api level is equal to or greater than the {@code min-api-level}.
+     * @param apiLevelprop the name of a property that has the API level to compare with the {@code
+     *     minApiLevel}.
+     * @param fallbackProp the name of a property that is used when the {@code apiLevelprop} is not
+     *     defined.
+     * @param minApiLevel the minimum api level on which the test will run.
+     * @return {@code true} if the api level is equal to or greater than the {@code minApiLevel}.
      *     Otherwise, {@code false}.
      * @throws DeviceNotAvailableException
      */
-    private boolean shouldRunTestWithApiLevel(ITestDevice device, String prop)
+    private boolean shouldRunTestWithApiLevel(
+            ITestDevice device, String apiLevelprop, String fallbackProp, int minApiLevel)
             throws DeviceNotAvailableException {
+        String prop = apiLevelprop;
         long apiLevel = device.getIntProperty(prop, API_LEVEL_CURRENT);
-        if (apiLevel < mMinApiLevel) {
+        if (apiLevel == API_LEVEL_CURRENT) {
+            prop = fallbackProp;
+            apiLevel = device.getIntProperty(prop, API_LEVEL_CURRENT);
+        }
+        if (apiLevel < minApiLevel) {
             CLog.d(
                     "Skipping module %s because API Level %d from %s is less than %d.",
-                    getModuleName(), apiLevel, prop, mMinApiLevel);
+                    getModuleName(), apiLevel, prop, minApiLevel);
             return false;
         }
         return true;
-    }
-
-    /**
-     * Use VENDOR_API_LEVEL_PROP. If empty, use VENDOR_SHIPPING_API_LEVEL_PROP, instead.
-     *
-     * @param device the {@link ITestDevice}.
-     * @return {@code String}: the property name for the vendor api level
-     * @throws DeviceNotAvailableException
-     */
-    private String getVendorApiLevelProp(ITestDevice device) throws DeviceNotAvailableException {
-        if (device.getProperty(VENDOR_API_LEVEL_PROP) != null) {
-            return VENDOR_API_LEVEL_PROP;
-        }
-        return VENDOR_SHIPPING_API_LEVEL_PROP;
     }
 
     /**
@@ -92,12 +104,33 @@ public class ShippingApiLevelModuleController extends BaseModuleController {
                 continue;
             }
             try {
-                // check system shipping api level
-                if (!shouldRunTestWithApiLevel(device, SYSTEM_SHIPPING_API_LEVEL_PROP)) {
+                // Check system shipping api level against the min-api-level.
+                // The base property to see the shipping api level of the device is the
+                // "ro.product.first_api_level". If it is not defined, the current api level will be
+                // read from the "ro.build.version.sdk"
+                if (!shouldRunTestWithApiLevel(
+                        device,
+                        SYSTEM_SHIPPING_API_LEVEL_PROP,
+                        SYSTEM_API_LEVEL_PROP,
+                        mMinApiLevel)) {
                     return RunStrategy.FULL_MODULE_BYPASS;
                 }
-                // check vendor api level
-                if (!shouldRunTestWithApiLevel(device, getVendorApiLevelProp(device))) {
+                // Check system shipping api level against the vsr-min-api-level.
+                if (!shouldRunTestWithApiLevel(
+                        device,
+                        SYSTEM_SHIPPING_API_LEVEL_PROP,
+                        SYSTEM_API_LEVEL_PROP,
+                        mVsrMinApiLevel)) {
+                    return RunStrategy.FULL_MODULE_BYPASS;
+                }
+                // vsr-min-api-level also requires to check the api level of the vendor
+                // implementation.
+                // If "ro.board.api_level" is not defined, read "ro.board.first_api_level" instead.
+                if (!shouldRunTestWithApiLevel(
+                        device,
+                        VENDOR_API_LEVEL_PROP,
+                        VENDOR_SHIPPING_API_LEVEL_PROP,
+                        mVsrMinApiLevel)) {
                     return RunStrategy.FULL_MODULE_BYPASS;
                 }
             } catch (DeviceNotAvailableException e) {
