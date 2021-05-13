@@ -291,8 +291,6 @@ public class RemoteAndroidVirtualDeviceTest {
         replayMocks(mMockBuildInfo);
         mTestDevice.preInvocationSetup(mMockBuildInfo, null);
         verifyMocks(mMockBuildInfo);
-
-        Mockito.verify(mGceHandler).logStableHostImageInfos(mMockBuildInfo);
     }
 
     /**
