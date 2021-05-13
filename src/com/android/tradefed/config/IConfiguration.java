@@ -29,6 +29,7 @@ import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
+import com.android.tradefed.targetprep.ILabPreparer;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
@@ -68,6 +69,13 @@ public interface IConfiguration {
      * @return the {@link ITargetPreparer}s provided in order in the configuration
      */
     public List<ITargetPreparer> getTargetPreparers();
+
+    /**
+     * Gets the {@link ILabPreparer}s from the configuration.
+     *
+     * @return the {@link ILabPreparer}s provided in order in the configuration
+     */
+    public List<ILabPreparer> getLabPreparers();
 
     /**
      * Gets the {@link IRemoteTest}s to run from the configuration.
@@ -333,6 +341,20 @@ public interface IConfiguration {
      * @param preparers
      */
     public void setTargetPreparers(List<ITargetPreparer> preparers);
+
+    /**
+     * Set the {@link ILabPreparer}, replacing any existing value.
+     *
+     * @param preparer
+     */
+    public void setLabPreparer(ILabPreparer preparer);
+
+    /**
+     * Set the list of {@link ILabPreparer}s, replacing any existing value.
+     *
+     * @param preparers
+     */
+    public void setLabPreparers(List<ILabPreparer> preparers);
 
     /**
      * Set a {@link IDeviceConfiguration}, replacing any existing value.
