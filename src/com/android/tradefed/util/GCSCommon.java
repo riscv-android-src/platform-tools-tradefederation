@@ -16,6 +16,7 @@
 package com.android.tradefed.util;
 
 import com.android.tradefed.host.HostOptions;
+
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
@@ -50,7 +51,8 @@ public abstract class GCSCommon {
         try {
             if (mStorage == null) {
                 credential =
-                        GoogleApiClientUtil.createCredential(scopes, mJsonKeyFile, GCS_JSON_KEY);
+                        GoogleApiClientUtil.createCredential(
+                                scopes, true, mJsonKeyFile, GCS_JSON_KEY);
                 mStorage =
                         new Storage.Builder(
                                         GoogleNetHttpTransport.newTrustedTransport(),
