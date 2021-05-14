@@ -122,11 +122,6 @@ public class NativeDeviceTest {
         IHostOptions getHostOptions() {
             return mHostOptions;
         }
-
-        @Override
-        protected boolean supportsShellV2() {
-            return true;
-        }
     }
 
     @Before
