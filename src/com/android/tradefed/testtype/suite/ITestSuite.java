@@ -357,6 +357,9 @@ public abstract class ITestSuite
     private ModuleDefinition mDirectModule = null;
     private boolean mShouldMakeDynamicModule = true;
 
+    // Store the previous attempts passed tests
+    private List<SuiteTestFilter> mPreviousPassedFilters = null;
+
     // Guice object
     private Injector mInjector;
 
@@ -712,30 +715,7 @@ public abstract class ITestSuite
                     mRunModules);
         }
 
-        List<SuiteTestFilter> previousPassedFilters = new ArrayList<>();
-        if (mTestFilterPassed) {
-            // Test the query of previous passed test
-            Map<String, String> args = new HashMap<>();
-            String invocationId =
-                    mMainConfiguration
-                            .getCommandOptions()
-                            .getInvocationData()
-                            .getUniqueMap()
-                            .get("invocation_id");
-            if (!Strings.isNullOrEmpty(invocationId)) {
-                args.put("invocation_id", invocationId);
-            }
-            // TODO: Only do this if it's not the first attempt
-            if (!args.isEmpty()) {
-                try (TradefedFeatureClient client = new TradefedFeatureClient()) {
-                    FeatureResponse previousPassed = triggerFeature(client, args);
-                    CLog.d("FeatureResponse: %s", previousPassed);
-                    convertResponseToFilter(previousPassed, previousPassedFilters);
-                } catch (RuntimeException e) {
-                    CLog.e(e);
-                }
-            }
-        }
+        List<SuiteTestFilter> previousPassedFilters = getPreviousPassedFilters();
 
         /** Run all the module, make sure to reduce the list to release resources as we go. */
         try {
@@ -1069,6 +1049,7 @@ public abstract class ITestSuite
             // to carry these extra data.
             cleanUpSuiteSetup();
 
+            List<SuiteTestFilter> filters = getPreviousPassedFilters();
             // create an association of one ITestSuite <=> one ModuleDefinition as the smallest
             // execution unit supported.
             List<IRemoteTest> splitTests = new ArrayList<>();
@@ -1077,6 +1058,7 @@ public abstract class ITestSuite
                 OptionCopier.copyOptionsNoThrow(this, suite);
                 suite.mIsSharded = true;
                 suite.mDirectModule = m;
+                suite.mPreviousPassedFilters = filters;
                 splitTests.add(suite);
             }
             // return the list of ITestSuite with their ModuleDefinition assigned
@@ -1585,5 +1567,40 @@ public abstract class ITestSuite
             }
         }
         return true;
+    }
+
+    private List<SuiteTestFilter> getPreviousPassedFilters() {
+        List<SuiteTestFilter> previousPassedFilters = new ArrayList<>();
+        if (!mTestFilterPassed) {
+            return previousPassedFilters;
+        }
+        if (mPreviousPassedFilters != null) {
+            return mPreviousPassedFilters;
+        }
+        mPreviousPassedFilters = new ArrayList<>();
+        // Test the query of previous passed test
+        Map<String, String> args = new HashMap<>();
+        String invocationId =
+                mMainConfiguration
+                        .getCommandOptions()
+                        .getInvocationData()
+                        .getUniqueMap()
+                        .get("invocation_id");
+        if (!Strings.isNullOrEmpty(invocationId)) {
+            args.put("invocation_id", invocationId);
+        }
+        // TODO: Only do this if it's not the first attempt
+        if (args.isEmpty()) {
+            return mPreviousPassedFilters;
+        }
+        try (TradefedFeatureClient client = new TradefedFeatureClient()) {
+            FeatureResponse previousPassed = triggerFeature(client, args);
+            CLog.d("FeatureResponse: %s", previousPassed);
+            convertResponseToFilter(previousPassed, previousPassedFilters);
+        } catch (RuntimeException e) {
+            CLog.e(e);
+        }
+        mPreviousPassedFilters.addAll(previousPassedFilters);
+        return mPreviousPassedFilters;
     }
 }
