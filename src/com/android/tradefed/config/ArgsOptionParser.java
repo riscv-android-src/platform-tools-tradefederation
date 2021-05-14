@@ -25,8 +25,10 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -143,6 +145,13 @@ public class ArgsOptionParser extends OptionSetter {
 
     /** the amount to indent an option field's description when displaying help */
     private static final int OPTION_DESCRIPTION_INDENT = 25;
+
+    private Set<String> inopOptions = new HashSet<>();
+
+    /** Returns the set of options that did not change any default values. */
+    public Set<String> getInopOptions() {
+        return inopOptions;
+    }
 
     /**
      * Creates a {@link ArgsOptionParser} for a collection of objects.
@@ -362,7 +371,10 @@ public class ArgsOptionParser extends OptionSetter {
         }
 
         value = getKeyStoreValueIfNeeded(value, getTypeForOption(name));
-        setOptionValue(name, key, value);
+        List<FieldDef> modifiedField = setOptionValue(name, key, value);
+        if (modifiedField.isEmpty()) {
+            inopOptions.add(name);
+        }
     }
 
     // Given boolean options a and b, and non-boolean option f, we want to allow:
@@ -389,7 +401,10 @@ public class ArgsOptionParser extends OptionSetter {
                 }
             }
             value = getKeyStoreValueIfNeeded(value, getTypeForOption(name));
-            setOptionValue(name, value);
+            List<FieldDef> modifiedField = setOptionValue(name, value);
+            if (modifiedField.isEmpty()) {
+                inopOptions.add(name);
+            }
         }
     }
 

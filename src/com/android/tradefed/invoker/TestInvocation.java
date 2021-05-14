@@ -94,6 +94,7 @@ import com.android.tradefed.util.TimeUtil;
 import com.android.tradefed.util.executor.ParallelDeviceExecutor;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Joiner;
 
 import java.io.File;
 import java.io.IOException;
@@ -798,6 +799,10 @@ public class TestInvocation implements ITestInvocation {
             IRescheduler rescheduler,
             ITestInvocationListener... extraListeners)
             throws DeviceNotAvailableException, Throwable {
+        if (!config.getInopOptions().isEmpty()) {
+            context.addInvocationAttribute(
+                    "inop-options", Joiner.on(",").join(config.getInopOptions()));
+        }
         InvocationMetricLogger.addInvocationMetrics(
                 InvocationMetricKey.INVOCATION_START, System.currentTimeMillis());
         // Handle the automated reporting
