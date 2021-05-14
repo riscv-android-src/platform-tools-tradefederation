@@ -713,7 +713,8 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
                     String.format(
                             "Failed to stage train on device %s. Cmd is: %s. Error log: %s.",
                             device.getSerialNumber(), installCmd.toString(), log),
-                    device.getDeviceDescriptor());
+                    device.getDeviceDescriptor(),
+                    DeviceErrorIdentifier.FAIL_ACTIVATE_APEX);
         }
     }
 
