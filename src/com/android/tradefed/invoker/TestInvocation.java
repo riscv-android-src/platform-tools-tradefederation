@@ -1350,6 +1350,10 @@ public class TestInvocation implements ITestInvocation {
         if (!config.getCommandOptions().reportInvocationComplete()) {
             return;
         }
+        if (config.getCommandOptions().getInvocationData().containsKey("subprocess")) {
+            config.getCommandOptions().setReportInvocationComplete(false);
+            return;
+        }
         // Re-init for invocationComplete logs
         try {
             endHostLog.init();

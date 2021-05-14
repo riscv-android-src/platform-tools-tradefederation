@@ -116,6 +116,7 @@ public abstract class BasePostProcessor implements IPostProcessor {
         mForwarder.invocationEnded(elapsedTime);
     }
 
+    /** Use this method to log a file from the PostProcessor implementation. */
     @Override
     public final void testLog(String dataName, LogDataType dataType, InputStreamSource dataStream) {
         mForwarder.testLog(dataName, dataType, dataStream);
