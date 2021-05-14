@@ -137,11 +137,6 @@ public class TestDeviceTest extends TestCase {
         public boolean isAdbTcp() {
             return false;
         }
-
-        @Override
-        protected boolean supportsShellV2() {
-            return true;
-        }
     }
 
     /**
@@ -617,11 +612,6 @@ public class TestDeviceTest extends TestCase {
                     @Override
                     void doReboot(RebootMode rebootMode, @Nullable final String reason)
                             throws DeviceNotAvailableException, UnsupportedOperationException {}
-
-                    @Override
-                    protected boolean supportsShellV2() {
-                        return true;
-                    }
                 };
         mTestDevice.setRecovery(mMockRecovery);
         final String testCommand = "simple command";
@@ -689,11 +679,6 @@ public class TestDeviceTest extends TestCase {
                     @Override
                     void doReboot(RebootMode rebootMode, @Nullable final String reason)
                             throws DeviceNotAvailableException, UnsupportedOperationException {}
-
-                    @Override
-                    protected boolean supportsShellV2() {
-                        return true;
-                    }
                 };
         mTestDevice.setRecovery(mMockRecovery);
         final String testCommand = "simple command";
@@ -744,11 +729,6 @@ public class TestDeviceTest extends TestCase {
                     @Override
                     void doReboot(RebootMode rebootMode, @Nullable final String reason)
                             throws DeviceNotAvailableException, UnsupportedOperationException {}
-
-                    @Override
-                    protected boolean supportsShellV2() {
-                        return true;
-                    }
                 };
         mTestDevice.setRecovery(mMockRecovery);
         final String testCommand = "simple command";
