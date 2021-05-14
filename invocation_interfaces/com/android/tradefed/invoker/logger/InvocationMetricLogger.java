@@ -57,6 +57,11 @@ public class InvocationMetricLogger {
         PUSH_FILE_COUNT("push_file_count", true),
         // Track if soft restart is occurring after test module
         SOFT_RESTART_AFTER_MODULE("soft_restart_after_module", true),
+        CLOUD_DEVICE_PROJECT("cloud_device_project", false),
+        CLOUD_DEVICE_MACHINE_TYPE("cloud_device_machine_type", false),
+        CLOUD_DEVICE_ZONE("cloud_device_zone", false),
+        CLOUD_DEVICE_STABLE_HOST_IMAGE("stable_host_image_name", false),
+        CLOUD_DEVICE_STABLE_HOST_IMAGE_PROJECT("stable_host_image_project", false),
 
         SHUTDOWN_HARD_LATENCY("shutdown_hard_latency_ms", false),
         DEVICE_COUNT("device_count", false),

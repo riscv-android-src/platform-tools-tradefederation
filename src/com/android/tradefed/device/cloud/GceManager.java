@@ -21,6 +21,8 @@ import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.device.cloud.AcloudConfigParser.AcloudKeys;
 import com.android.tradefed.device.cloud.GceAvdInfo.GceStatus;
 import com.android.tradefed.error.HarnessRuntimeException;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
@@ -244,6 +246,7 @@ public class GceManager {
                     mDeviceDescriptor,
                     InfraErrorIdentifier.FAIL_TO_CREATE_FILE);
         } finally {
+            logCloudDeviceMetadata();
             FileUtil.deleteFile(reportFile);
         }
     }
@@ -747,25 +750,36 @@ public class GceManager {
         }
     }
 
-    /** Log the information related to the stable host image used. */
-    public void logStableHostImageInfos(IBuildInfo build) {
+    /** Log the information related to the acloud config. */
+    private void logCloudDeviceMetadata() {
         AcloudConfigParser config = AcloudConfigParser.parseConfig(getAvdConfigFile());
         if (config == null) {
             CLog.e("Failed to parse our acloud config.");
             return;
         }
-        if (build == null) {
-            return;
-        }
         if (config.getValueForKey(AcloudKeys.STABLE_HOST_IMAGE_NAME) != null) {
-            build.addBuildAttribute(
-                    AcloudKeys.STABLE_HOST_IMAGE_NAME.toString(),
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.CLOUD_DEVICE_STABLE_HOST_IMAGE,
                     config.getValueForKey(AcloudKeys.STABLE_HOST_IMAGE_NAME));
         }
         if (config.getValueForKey(AcloudKeys.STABLE_HOST_IMAGE_PROJECT) != null) {
-            build.addBuildAttribute(
-                    AcloudKeys.STABLE_HOST_IMAGE_PROJECT.toString(),
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.CLOUD_DEVICE_STABLE_HOST_IMAGE_PROJECT,
                     config.getValueForKey(AcloudKeys.STABLE_HOST_IMAGE_PROJECT));
+        }
+        if (config.getValueForKey(AcloudKeys.PROJECT) != null) {
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.CLOUD_DEVICE_PROJECT,
+                    config.getValueForKey(AcloudKeys.PROJECT));
+        }
+        if (config.getValueForKey(AcloudKeys.ZONE) != null) {
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.CLOUD_DEVICE_ZONE, config.getValueForKey(AcloudKeys.ZONE));
+        }
+        if (config.getValueForKey(AcloudKeys.MACHINE_TYPE) != null) {
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.CLOUD_DEVICE_MACHINE_TYPE,
+                    config.getValueForKey(AcloudKeys.MACHINE_TYPE));
         }
     }
 

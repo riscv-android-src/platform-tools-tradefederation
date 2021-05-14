@@ -101,7 +101,6 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
             mTunnelInitFailed = null;
             // We create a brand new GceManager each time to ensure clean state.
             mGceHandler = new GceManager(getDeviceDescriptor(), getOptions(), info);
-            getGceHandler().logStableHostImageInfos(info);
             setFastbootEnabled(false);
 
             // Launch GCE helper script.
