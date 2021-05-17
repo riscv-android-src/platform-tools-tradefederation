@@ -1452,7 +1452,10 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 }
             }
         } catch (IOException e) {
-            throw new ConfigurationException("Failed to read file " + cmdFile.getAbsolutePath(), e);
+            throw new ConfigurationException(
+                    "Failed to read file " + cmdFile.getAbsolutePath(),
+                    e,
+                    InfraErrorIdentifier.CONFIGURATION_NOT_FOUND);
         }
     }
 
