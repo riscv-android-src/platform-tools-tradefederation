@@ -512,7 +512,7 @@ public class TestInvocation implements ITestInvocation {
      * @param defaultStatus The status to use by default if the exception is not a {@link
      *     IHarnessException}.
      */
-    private FailureDescription createFailureFromException(
+    public static FailureDescription createFailureFromException(
             Throwable exception, FailureStatus defaultStatus) {
         ErrorIdentifier id = null;
         if (exception instanceof IHarnessException) {

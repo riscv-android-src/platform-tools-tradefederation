@@ -28,9 +28,15 @@ import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.config.proxy.AutomatedReporters;
 import com.android.tradefed.device.IDeviceManager;
+import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInvocation;
 import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.FailureDescription;
+import com.android.tradefed.result.proto.FileProtoResultReporter;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.service.TradefedFeatureServer;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.FileUtil;
@@ -430,7 +436,23 @@ public class Console extends Thread {
                 printLine("shutdownOnCmdFileError is enabled, stopping TF");
                 mScheduler.shutdown();
             }
+            reportProtoResults(e);
         }
+    }
+
+    private void reportProtoResults(Exception e) {
+        String protoRes = System.getenv(AutomatedReporters.PROTO_REPORTING_FILE);
+        if (protoRes == null || new File(protoRes).exists()) {
+            return;
+        }
+        FileProtoResultReporter reporter = new FileProtoResultReporter();
+        reporter.setOutputFile(new File(protoRes));
+        reporter.setDelimitedOutput(false);
+        reporter.invocationStarted(new InvocationContext());
+        FailureDescription failure =
+                TestInvocation.createFailureFromException(e, FailureStatus.INFRA_FAILURE);
+        reporter.invocationFailed(failure);
+        reporter.invocationEnded(0L);
     }
 
     /**
