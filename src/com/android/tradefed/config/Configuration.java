@@ -116,6 +116,9 @@ public class Configuration implements IConfiguration {
     // original command line used to create this given configuration.
     private String[] mCommandLine;
 
+    // Track options that had no effect
+    private Set<String> mInopOptions = new HashSet<>();
+
     // used to track the files that where dynamically downloaded
     private Set<File> mRemoteFiles = new HashSet<>();
 
@@ -1124,7 +1127,9 @@ public class Configuration implements IConfiguration {
             parser.setKeyStore(keyStoreClient);
         }
         try {
-            return parser.parse(listArgs);
+            List<String> leftOver = parser.parse(listArgs);
+            mInopOptions.addAll(parser.getInopOptions());
+            return leftOver;
         } catch (ConfigurationException e) {
             Matcher m = CONFIG_EXCEPTION_PATTERN.matcher(e.getMessage());
             if (!m.matches()) {
@@ -1300,6 +1305,12 @@ public class Configuration implements IConfiguration {
     @Override
     public Set<File> getFilesToClean() {
         return mRemoteFiles;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Set<String> getInopOptions() {
+        return mInopOptions;
     }
 
     /**
