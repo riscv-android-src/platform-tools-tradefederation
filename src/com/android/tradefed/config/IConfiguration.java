@@ -554,6 +554,9 @@ public interface IConfiguration {
     /** Get the list of files that will be cleaned during {@link #cleanConfigurationData()} */
     public Set<File> getFilesToClean();
 
+    /** Get the option names that did not change any values */
+    public Set<String> getInopOptions();
+
     /**
      * Sets the command line used to create this {@link IConfiguration}.
      * This stores the whole command line, including the configuration name,

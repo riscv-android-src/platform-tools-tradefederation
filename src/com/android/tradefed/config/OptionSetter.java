@@ -539,7 +539,12 @@ public class OptionSetter {
                 }
                 OptionUpdateRule rule = option.updateRule();
                 if (rule.shouldUpdate(optionName, optionSource, field, value)) {
-                    field.set(optionSource, value);
+                    Object curValue = field.get(optionSource);
+                    if (value == null || value.equals(curValue)) {
+                        fieldWasSet = false;
+                    } else {
+                        field.set(optionSource, value);
+                    }
                 } else {
                     fieldWasSet = false;
                 }
