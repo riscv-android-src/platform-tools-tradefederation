@@ -51,8 +51,12 @@ public class ReportPassedTests extends CollectingTestListener {
             // Remove right away any run failure they will be excluded
             if (getCurrentRunResults().isRunFailure()) {
                 clearResultsForName(getCurrentRunResults().getName());
+                // Clear the failure for aggregation
+                getCurrentRunResults().resetRunFailure();
             } else if (mInvocationFailed) {
                 clearResultsForName(getCurrentRunResults().getName());
+                // Clear the failure for aggregation
+                getCurrentRunResults().resetRunFailure();
             }
         }
     }
@@ -63,8 +67,12 @@ public class ReportPassedTests extends CollectingTestListener {
         // Remove right away any run failure they will be excluded
         if (getCurrentRunResults().isRunFailure()) {
             clearResultsForName(getCurrentRunResults().getName());
+            // Clear the failure for aggregation
+            getCurrentRunResults().resetRunFailure();
         } else if (mInvocationFailed) {
             clearResultsForName(getCurrentRunResults().getName());
+            // Clear the failure for aggregation
+            getCurrentRunResults().resetRunFailure();
         }
         mModuleInProgress = false;
     }
