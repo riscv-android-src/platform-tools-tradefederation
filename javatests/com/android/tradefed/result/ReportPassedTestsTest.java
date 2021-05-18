@@ -78,6 +78,16 @@ public class ReportPassedTestsTest {
     }
 
     @Test
+    public void testReport_singleRunFailure() {
+        mExpectedString = "";
+        mReporter.testRunStarted("run-name", 20);
+        mReporter.testRunFailed("test run failed");
+        mReporter.testRunEnded(0L, Collections.emptyMap());
+
+        mReporter.invocationEnded(0L);
+    }
+
+    @Test
     public void testReport_withTestFailure() {
         TestDescription testPass = new TestDescription("class", "testName1");
         mExpectedString = String.format("run-name %s\nrun-name2\n", testPass.toString());
@@ -104,6 +114,18 @@ public class ReportPassedTestsTest {
         mReporter.testModuleEnded();
         mReporter.testRunStarted("run-name2", 0);
         mReporter.testRunEnded(0L, Collections.emptyMap());
+
+        mReporter.invocationEnded(0L);
+    }
+
+    @Test
+    public void testReport_singleModuleFailure() {
+        mExpectedString = "";
+        mReporter.testModuleStarted(createModule("x86 module1"));
+        mReporter.testRunStarted("run-name", 20);
+        mReporter.testRunFailed("test run failed");
+        mReporter.testRunEnded(0L, Collections.emptyMap());
+        mReporter.testModuleEnded();
 
         mReporter.invocationEnded(0L);
     }
