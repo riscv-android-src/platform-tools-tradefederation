@@ -19,6 +19,7 @@ package com.android.tradefed.config;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.command.ICommandOptions;
+import com.android.tradefed.config.filter.GlobalTestFilter;
 import com.android.tradefed.device.IDeviceRecovery;
 import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.device.TestDeviceOptions;
@@ -165,6 +166,9 @@ public interface IConfiguration {
      * @return the {@link CoverageOptions} provided in the configuration.
      */
     public CoverageOptions getCoverageOptions();
+
+    /** Gets the {@link GlobalTestFilter} for the invocation. */
+    public GlobalTestFilter getGlobalFilters();
 
     /**
      * Generic interface to get the configuration object with the given type name.

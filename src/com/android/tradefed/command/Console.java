@@ -1203,6 +1203,7 @@ public class Console extends Thread {
 
         List<String> nonGlobalArgs = GlobalConfiguration.createGlobalConfiguration(args);
         GlobalConfiguration.getInstance().setup();
+        GlobalConfiguration.getInstance().setTradefedFeatureServer(server);
         console.setArgs(nonGlobalArgs);
         console.setCommandScheduler(GlobalConfiguration.getInstance().getCommandScheduler());
         console.setKeyStoreFactory(GlobalConfiguration.getInstance().getKeyStoreFactory());

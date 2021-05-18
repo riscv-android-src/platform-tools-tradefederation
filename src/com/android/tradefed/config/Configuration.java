@@ -21,6 +21,7 @@ import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.command.ICommandOptions;
 import com.android.tradefed.config.OptionSetter.FieldDef;
+import com.android.tradefed.config.filter.GlobalTestFilter;
 import com.android.tradefed.config.proxy.TradefedDelegator;
 import com.android.tradefed.device.IDeviceRecovery;
 import com.android.tradefed.device.IDeviceSelection;
@@ -99,6 +100,7 @@ public class Configuration implements IConfiguration {
     public static final String SANBOX_OPTIONS_TYPE_NAME = "sandbox_options";
     public static final String RETRY_DECISION_TYPE_NAME = "retry_decision";
     public static final String COVERAGE_OPTIONS_TYPE_NAME = "coverage";
+    public static final String GLOBAL_FILTERS_TYPE_NAME = "global_filters";
 
     private static Map<String, ObjTypeInfo> sObjTypeMap = null;
     private static Set<String> sMultiDeviceSupportedTag = null;
@@ -188,6 +190,8 @@ public class Configuration implements IConfiguration {
             sObjTypeMap.put(RETRY_DECISION_TYPE_NAME, new ObjTypeInfo(IRetryDecision.class, false));
             sObjTypeMap.put(
                     COVERAGE_OPTIONS_TYPE_NAME, new ObjTypeInfo(CoverageOptions.class, false));
+            sObjTypeMap.put(
+                    GLOBAL_FILTERS_TYPE_NAME, new ObjTypeInfo(GlobalTestFilter.class, false));
         }
         return sObjTypeMap;
     }
@@ -245,6 +249,7 @@ public class Configuration implements IConfiguration {
         setCoverageOptions(new CoverageOptions());
         setConfigurationObjectNoThrow(SANBOX_OPTIONS_TYPE_NAME, new SandboxOptions());
         setConfigurationObjectNoThrow(RETRY_DECISION_TYPE_NAME, new BaseRetryDecision());
+        setConfigurationObjectNoThrow(GLOBAL_FILTERS_TYPE_NAME, new GlobalTestFilter());
     }
 
     /**
@@ -481,6 +486,13 @@ public class Configuration implements IConfiguration {
     @Override
     public CoverageOptions getCoverageOptions() {
         return (CoverageOptions) getConfigurationObject(COVERAGE_OPTIONS_TYPE_NAME);
+    }
+
+    /** {@inheritDoc} */
+    @SuppressWarnings("unchecked")
+    @Override
+    public GlobalTestFilter getGlobalFilters() {
+        return (GlobalTestFilter) getConfigurationObject(GLOBAL_FILTERS_TYPE_NAME);
     }
 
     /**

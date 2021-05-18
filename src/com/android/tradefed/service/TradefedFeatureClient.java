@@ -46,23 +46,54 @@ public class TradefedFeatureClient implements AutoCloseable {
         mBlockingStub = TradefedInformationGrpc.newBlockingStub(mChannel);
     }
 
+    /**
+     * Request a feature to the main server to execute and return the response.
+     *
+     * @param featureName The name of the feature to trigger.
+     * @param args The args to invoke the feature.
+     * @return A {@link FeatureResponse}.
+     */
     public FeatureResponse triggerFeature(String featureName, Map<String, String> args) {
+        return triggerFeature(
+                featureName, System.getenv(TradefedFeatureServer.SERVER_REFERENCE), args);
+    }
+
+    /**
+     * Request a feature to the main server to execute and return the response.
+     *
+     * @param featureName The name of the feature to trigger.
+     * @param args The args to invoke the feature.
+     * @return A {@link FeatureResponse}.
+     */
+    public FeatureResponse triggerFeature(
+            String featureName, String invocationReference, Map<String, String> args) {
+        FeatureResponse response;
         try {
             CLog.d("invoking feature '%s'", featureName);
-            return mBlockingStub.triggerFeature(
-                    FeatureRequest.newBuilder().setName(featureName).putAllArgs(args).build());
+            response =
+                    mBlockingStub.triggerFeature(
+                            FeatureRequest.newBuilder()
+                                    .setName(featureName)
+                                    .putAllArgs(args)
+                                    .setReferenceId(invocationReference)
+                                    .build());
         } catch (StatusRuntimeException e) {
-            return FeatureResponse.newBuilder()
-                    .setErrorInfo(
-                            ErrorInfo.newBuilder()
-                                    .setErrorTrace(StreamUtil.getStackTrace(e))
-                                    .build())
-                    .build();
+            response =
+                    FeatureResponse.newBuilder()
+                            .setErrorInfo(
+                                    ErrorInfo.newBuilder()
+                                            .setErrorTrace(StreamUtil.getStackTrace(e))
+                                            .build())
+                            .build();
         }
+        CLog.d("Feature name: %s. response: %s", featureName, response);
+        return response;
     }
 
     @Override
     public void close() {
-        mChannel.shutdown();
+        if (mChannel != null) {
+            mChannel.shutdown();
+        }
     }
 }
