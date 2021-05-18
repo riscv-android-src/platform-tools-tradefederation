@@ -40,6 +40,7 @@ import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.sandbox.SandboxOptions;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.targetprep.ITargetPreparer;
+import com.android.tradefed.targetprep.ILabPreparer;
 import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.StubTest;
@@ -79,6 +80,7 @@ public class Configuration implements IConfiguration {
     // type names for built in configuration objects
     public static final String BUILD_PROVIDER_TYPE_NAME = "build_provider";
     public static final String TARGET_PREPARER_TYPE_NAME = "target_preparer";
+    public static final String LAB_PREPARER_TYPE_NAME = "lab_preparer";
     // Variation of Multi_target_preparer that runs BEFORE each device target_preparer.
     public static final String MULTI_PRE_TARGET_PREPARER_TYPE_NAME = "multi_pre_target_preparer";
     public static final String MULTI_PREPARER_TYPE_NAME = "multi_target_preparer";
@@ -154,6 +156,7 @@ public class Configuration implements IConfiguration {
             sObjTypeMap.put(BUILD_PROVIDER_TYPE_NAME, new ObjTypeInfo(IBuildProvider.class, false));
             sObjTypeMap.put(TARGET_PREPARER_TYPE_NAME,
                     new ObjTypeInfo(ITargetPreparer.class, true));
+            sObjTypeMap.put(LAB_PREPARER_TYPE_NAME, new ObjTypeInfo(ILabPreparer.class, true));
             sObjTypeMap.put(
                     MULTI_PRE_TARGET_PREPARER_TYPE_NAME,
                     new ObjTypeInfo(IMultiTargetPreparer.class, true));
@@ -236,6 +239,7 @@ public class Configuration implements IConfiguration {
         setTestInvocationListener(new TextResultReporter());
         // Init an empty list of target_preparers
         setConfigurationObjectListNoThrow(TARGET_PREPARER_TYPE_NAME, new ArrayList<>());
+        setConfigurationObjectListNoThrow(LAB_PREPARER_TYPE_NAME, new ArrayList<>());
         setMultiPreTargetPreparers(new ArrayList<>());
         setMultiTargetPreparers(new ArrayList<>());
         setSystemStatusCheckers(new ArrayList<ISystemStatusChecker>());
@@ -316,6 +320,16 @@ public class Configuration implements IConfiguration {
         notAllowedInMultiMode("getTargetPreparers");
         return ((List<IDeviceConfiguration>)getConfigurationObjectList(DEVICE_NAME))
                 .get(0).getTargetPreparers();
+    }
+
+    /** {@inheritDoc} */
+    @SuppressWarnings("unchecked")
+    @Override
+    public List<ILabPreparer> getLabPreparers() {
+        notAllowedInMultiMode("getLabPreparers");
+        return ((List<IDeviceConfiguration>) getConfigurationObjectList(DEVICE_NAME))
+                .get(0)
+                .getLabPreparers();
     }
 
     /**
@@ -959,6 +973,23 @@ public class Configuration implements IConfiguration {
         }
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public void setLabPreparer(ILabPreparer preparer) {
+        notAllowedInMultiMode("setLabPreparer");
+        addToDefaultDeviceConfig(preparer);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setLabPreparers(List<ILabPreparer> preparers) {
+        notAllowedInMultiMode("setLabPreparers");
+        getDeviceConfigByName(ConfigurationDef.DEFAULT_DEVICE_NAME).getLabPreparers().clear();
+        for (ILabPreparer prep : preparers) {
+            addToDefaultDeviceConfig(prep);
+        }
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -1385,6 +1416,15 @@ public class Configuration implements IConfiguration {
                             printDeprecatedOptions,
                             printUnchangedOptions);
                 }
+                for (ILabPreparer preparer : deviceConfig.getLabPreparers()) {
+                    ConfigurationUtil.dumpClassToXml(
+                            serializer,
+                            TARGET_PREPARER_TYPE_NAME,
+                            preparer,
+                            excludeFilters,
+                            printDeprecatedOptions,
+                            printUnchangedOptions);
+                }
                 ConfigurationUtil.dumpClassToXml(
                         serializer,
                         DEVICE_RECOVERY_TYPE_NAME,
@@ -1418,6 +1458,15 @@ public class Configuration implements IConfiguration {
                     printDeprecatedOptions,
                     printUnchangedOptions);
             for (ITargetPreparer preparer : getTargetPreparers()) {
+                ConfigurationUtil.dumpClassToXml(
+                        serializer,
+                        TARGET_PREPARER_TYPE_NAME,
+                        preparer,
+                        excludeFilters,
+                        printDeprecatedOptions,
+                        printUnchangedOptions);
+            }
+            for (ILabPreparer preparer : getLabPreparers()) {
                 ConfigurationUtil.dumpClassToXml(
                         serializer,
                         TARGET_PREPARER_TYPE_NAME,

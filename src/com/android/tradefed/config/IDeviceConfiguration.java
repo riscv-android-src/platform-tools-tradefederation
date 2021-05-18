@@ -19,6 +19,7 @@ import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.device.IDeviceRecovery;
 import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.device.TestDeviceOptions;
+import com.android.tradefed.targetprep.ILabPreparer;
 import com.android.tradefed.targetprep.ITargetPreparer;
 
 import java.util.List;
@@ -84,6 +85,9 @@ public interface IDeviceConfiguration {
      * Return a list of {@link ITargetPreparer} that the device configuration holder has.
      */
     public List<ITargetPreparer> getTargetPreparers();
+
+    /** Return a list of {@link ILabPreparer} that the device configuration holder has. */
+    public List<ILabPreparer> getLabPreparers();
 
     /**
      * Return {@link IDeviceRecovery} that the device configuration holder has.
