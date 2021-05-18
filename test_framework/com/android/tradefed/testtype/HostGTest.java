@@ -122,12 +122,7 @@ public class HostGTest extends GTestBase implements IBuildReceiver {
         // command output will just be ignored.
         CommandResult result = null;
         File stdout = null;
-        File gtestTmpDir = null;
         try {
-            // Create a tempdir for the gtest, avoid an overly long path as they can used for
-            // socket which are limited to 104 chars.
-            gtestTmpDir = FileUtil.createNamedTempDir(gtestFile.getName());
-            runUtil.setEnvVariable("TMPDIR", gtestTmpDir.getAbsolutePath());
             stdout =
                     FileUtil.createTempFile(
                             String.format("%s-output", gtestFile.getName()), ".txt");
@@ -163,7 +158,6 @@ public class HostGTest extends GTestBase implements IBuildReceiver {
                 }
             }
             FileUtil.deleteFile(stdout);
-            FileUtil.deleteFile(gtestTmpDir);
         }
         return result;
     }
