@@ -604,7 +604,7 @@ public class TestInvocationTest {
         setEarlyDeviceReleaseExpectation();
         setupNormalInvoke(test);
         EasyMock.replay(mockRescheduler);
-        mTestInvocation.notifyInvocationStopped("Stopped");
+        mTestInvocation.notifyInvocationStopped("Stopped", InfraErrorIdentifier.INVOCATION_TIMEOUT);
         mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
         assertTrue(
                 mStubInvocationMetadata
