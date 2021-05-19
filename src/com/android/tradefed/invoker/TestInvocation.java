@@ -728,6 +728,14 @@ public class TestInvocation implements ITestInvocation {
             buildException = e;
         }
         setExitCode(ExitCode.NO_BUILD, buildException);
+        // If somehow we don't have builds
+        if (testInfo.getBuildInfo() == null) {
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.BACKFILL_BUILD_INFO, "true");
+            IBuildInfo info = backFillBuildInfoForReporting(config.getCommandLine());
+            testInfo.getContext()
+                    .addDeviceBuildInfo(testInfo.getContext().getDeviceConfigNames().get(0), info);
+        }
         // Report an empty invocation, so this error is sent to listeners
         startInvocation(config, testInfo.getContext(), listener);
         reportFailure(
