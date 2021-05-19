@@ -16,6 +16,8 @@
 package com.android.tradefed.service;
 
 import com.android.annotations.VisibleForTesting;
+import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.log.LogUtil.CLog;
 
 import com.proto.tradefed.feature.ErrorInfo;
@@ -24,7 +26,10 @@ import com.proto.tradefed.feature.FeatureResponse;
 import com.proto.tradefed.feature.TradefedInformationGrpc.TradefedInformationImplBase;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.ServiceLoader;
+import java.util.UUID;
 
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
@@ -33,9 +38,14 @@ import io.grpc.stub.StreamObserver;
 /** A server that responds to requests for triggering features. */
 public class TradefedFeatureServer extends TradefedInformationImplBase {
 
+    public static final String SERVER_REFERENCE = "SERVER_REFERENCE";
+
     private static final int DEFAULT_PORT = 8889;
     private static final String TF_SERVICE_PORT = "TF_SERVICE_PORT";
+
     private Server mServer;
+
+    private Map<String, IConfiguration> mRegisteredInvocation = new HashMap<>();
 
     /** Returns the port used by the server. */
     public static int getPort() {
@@ -79,11 +89,39 @@ public class TradefedFeatureServer extends TradefedInformationImplBase {
         responseObserver.onCompleted();
     }
 
+    /** Register an invocation with a unique reference that can be queried */
+    public String registerInvocation(IConfiguration config) {
+        String referenceId = UUID.randomUUID().toString();
+        mRegisteredInvocation.put(referenceId, config);
+        config.getConfigurationDescription().addMetadata(SERVER_REFERENCE, referenceId);
+        return referenceId;
+    }
+
+    /** Unregister an invocation by its configuration. */
+    public void unregisterInvocation(IConfiguration reference) {
+        mRegisteredInvocation.remove(
+                reference
+                        .getConfigurationDescription()
+                        .getAllMetaData()
+                        .getUniqueMap()
+                        .get(SERVER_REFERENCE));
+    }
+
     private FeatureResponse createResponse(FeatureRequest request) {
         ServiceLoader<IRemoteFeature> serviceLoader = ServiceLoader.load(IRemoteFeature.class);
         for (IRemoteFeature feature : serviceLoader) {
             if (feature.getName().equals(request.getName())) {
-                return feature.execute(request);
+                if (feature instanceof IConfigurationReceiver) {
+                    ((IConfigurationReceiver) feature)
+                            .setConfiguration(mRegisteredInvocation.get(request.getReferenceId()));
+                }
+                try {
+                    return feature.execute(request);
+                } finally {
+                    if (feature instanceof IConfigurationReceiver) {
+                        ((IConfigurationReceiver) feature).setConfiguration(null);
+                    }
+                }
             }
         }
         return FeatureResponse.newBuilder()

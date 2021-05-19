@@ -75,6 +75,8 @@ public class TradefedSandboxTest {
         mMockConfig = EasyMock.createMock(IConfiguration.class);
         EasyMock.expect(mMockConfig.getConfigurationObject(Configuration.SANBOX_OPTIONS_TYPE_NAME))
                 .andStubReturn(new SandboxOptions());
+        EasyMock.expect(mMockConfig.getConfigurationDescription())
+                .andStubReturn(new ConfigurationDescriptor());
         mMockContext = new InvocationContext();
         mMockContext.setConfigurationDescriptor(new ConfigurationDescriptor());
 
