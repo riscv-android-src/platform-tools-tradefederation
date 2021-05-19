@@ -62,7 +62,6 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -935,11 +934,20 @@ public class InstrumentationTest
             mRunner.addInstrumentationArg("listener", ArrayUtil.join(",", mExtraDeviceListener));
         }
 
+        InstrumentationListener instrumentationListener =
+                new InstrumentationListener(getDevice(), testsToRun, listener);
+        instrumentationListener.setDisableDuplicateCheck(mDisableDuplicateCheck);
+        if (mEnableSoftRestartCheck) {
+            instrumentationListener.setOriginalSystemServer(
+                    getDevice().getProcessByName("system_server"));
+        }
+        instrumentationListener.setReportUnexecutedTests(mReportUnexecuted);
+
         if (testsToRun == null) {
             // Failed to collect the tests or collection is off. Just try to run them all.
-            runInstrumentationTests(testInfo, mRunner, listener);
+            runInstrumentationTests(testInfo, mRunner, instrumentationListener);
         } else if (!testsToRun.isEmpty()) {
-            runWithRerun(testInfo, listener, testsToRun);
+            runWithRerun(testInfo, listener, instrumentationListener, testsToRun);
         } else {
             CLog.i("No tests expected for %s, skipping", mPackageName);
         }
@@ -950,22 +958,13 @@ public class InstrumentationTest
             IRemoteAndroidTestRunner runner,
             ITestInvocationListener... receivers)
             throws DeviceNotAvailableException {
-        InstrumentationListener instrumentationListener =
-                new InstrumentationListener(getDevice(), new HashSet<>(), receivers);
-        instrumentationListener.setDisableDuplicateCheck(mDisableDuplicateCheck);
-        if (mEnableSoftRestartCheck) {
-            instrumentationListener.setOriginalSystemServer(
-                    getDevice().getProcessByName("system_server"));
-        }
-        instrumentationListener.setReportUnexecutedTests(mReportUnexecuted);
-
         if (testInfo != null && testInfo.properties().containsKey(RUN_TESTS_AS_USER_KEY)) {
             return mDevice.runInstrumentationTestsAsUser(
                     runner,
                     Integer.parseInt(testInfo.properties().get(RUN_TESTS_AS_USER_KEY)),
-                    instrumentationListener);
+                    receivers);
         }
-        return mDevice.runInstrumentationTests(runner, instrumentationListener);
+        return mDevice.runInstrumentationTests(runner, receivers);
     }
 
     /**
@@ -995,19 +994,12 @@ public class InstrumentationTest
     private void runWithRerun(
             TestInformation testInfo,
             final ITestInvocationListener listener,
+            final InstrumentationListener instrumentationListener,
             Collection<TestDescription> expectedTests)
             throws DeviceNotAvailableException {
         CollectingTestListener testTracker = new CollectingTestListener();
-        // Our dedicated listener that allows to perform checks for the harness and collect
-        // the appropriate data.
-        InstrumentationListener instrumentationListener =
-                new InstrumentationListener(getDevice(), expectedTests, listener, testTracker);
-        instrumentationListener.setDisableDuplicateCheck(mDisableDuplicateCheck);
-        if (mEnableSoftRestartCheck) {
-            instrumentationListener.setOriginalSystemServer(
-                    getDevice().getProcessByName("system_server"));
-        }
-        instrumentationListener.setReportUnexecutedTests(mReportUnexecuted);
+        instrumentationListener.addListener(testTracker);
+
         runInstrumentationTests(testInfo, mRunner, instrumentationListener);
         TestRunResult testRun = testTracker.getCurrentRunResults();
         if (testRun.isRunFailure() || !testRun.getCompletedTests().containsAll(expectedTests)) {
