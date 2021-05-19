@@ -1595,7 +1595,6 @@ public abstract class ITestSuite
         }
         try (TradefedFeatureClient client = new TradefedFeatureClient()) {
             FeatureResponse previousPassed = triggerFeature(client, args);
-            CLog.d("FeatureResponse: %s", previousPassed);
             convertResponseToFilter(previousPassed, previousPassedFilters);
         } catch (RuntimeException e) {
             CLog.e(e);

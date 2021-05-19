@@ -56,6 +56,7 @@ import com.android.tradefed.invoker.ITestInvocation.ExitInformation;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.log.ILogRegistry.EventType;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.service.TradefedFeatureServer;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.keystore.DryRunKeyStore;
@@ -114,6 +115,11 @@ public class CommandSchedulerTest {
         @Override
         protected IConfigurationFactory getConfigFactory() {
             return mMockConfigFactory;
+        }
+
+        @Override
+        protected TradefedFeatureServer getFeatureServer() {
+            return null;
         }
 
         @Override

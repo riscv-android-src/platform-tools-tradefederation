@@ -42,6 +42,7 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.proto.StreamProtoReceiver;
 import com.android.tradefed.result.proto.StreamProtoResultReporter;
 import com.android.tradefed.sandbox.SandboxConfigDump.DumpCmd;
+import com.android.tradefed.service.TradefedFeatureServer;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -237,12 +238,22 @@ public class TradefedSandbox implements ISandbox {
         mRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
         mRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
         mRunUtil.unsetEnvVariable(AutomatedReporters.PROTO_REPORTING_PORT);
+
         if (getSandboxOptions(config).shouldEnableDebugThread()) {
             mRunUtil.setEnvVariable(TradefedSandboxRunner.DEBUG_THREAD_KEY, "true");
         }
         for (Entry<String, String> envEntry :
                 getSandboxOptions(config).getEnvVariables().entrySet()) {
             mRunUtil.setEnvVariable(envEntry.getKey(), envEntry.getValue());
+        }
+        if (config.getConfigurationDescription().getMetaData(TradefedFeatureServer.SERVER_REFERENCE)
+                != null) {
+            mRunUtil.setEnvVariable(
+                    TradefedFeatureServer.SERVER_REFERENCE,
+                    config.getConfigurationDescription()
+                            .getAllMetaData()
+                            .getUniqueMap()
+                            .get(TradefedFeatureServer.SERVER_REFERENCE));
         }
 
         try {

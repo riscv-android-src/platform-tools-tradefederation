@@ -75,6 +75,7 @@ import com.android.tradefed.result.error.ErrorIdentifier;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.result.suite.SuiteResultReporter;
 import com.android.tradefed.sandbox.ISandbox;
+import com.android.tradefed.service.TradefedFeatureServer;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.suite.retry.RetryRescheduler;
 import com.android.tradefed.util.ArrayUtil;
@@ -681,6 +682,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                     config.getLogOutput().closeLog();
                     LogRegistry.getLogRegistry().unregisterLogger();
                 }
+                if (getFeatureServer() != null) {
+                    getFeatureServer().unregisterInvocation(config);
+                }
                 mCmd.commandFinished(elapsedTime);
                 logInvocationEndedEvent(
                         mCmd.getCommandTracker().getId(), elapsedTime, mInvocationContext);
@@ -1017,6 +1021,10 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
      */
     protected IConfigurationFactory getConfigFactory() {
         return ConfigurationFactory.getInstance();
+    }
+
+    protected TradefedFeatureServer getFeatureServer() {
+        return GlobalConfiguration.getInstance().getFeatureServer();
     }
 
     /**
@@ -1738,6 +1746,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         // Name invocation with first device serial
         final String invocationName = String.format("Invocation-%s",
                 context.getSerials().get(0));
+        if (getFeatureServer() != null) {
+            getFeatureServer().registerInvocation(cmd.getConfiguration());
+        }
         InvocationThread invocationThread = new InvocationThread(invocationName, context, cmd,
                 listeners);
         // Link context and command

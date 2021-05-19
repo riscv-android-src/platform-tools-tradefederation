@@ -30,6 +30,7 @@ import com.android.tradefed.invoker.shard.IShardHelper;
 import com.android.tradefed.log.ITerribleFailureHandler;
 import com.android.tradefed.monitoring.collector.IResourceMetricCollector;
 import com.android.tradefed.sandbox.ISandboxFactory;
+import com.android.tradefed.service.TradefedFeatureServer;
 import com.android.tradefed.util.hostmetric.IHostMonitor;
 import com.android.tradefed.util.keystore.IKeyStoreFactory;
 
@@ -229,6 +230,9 @@ public interface IGlobalConfiguration {
     /** Returns the {@link IShardHelper} that defines the way to shard a configuration. */
     public IShardHelper getShardingStrategy();
 
+    /** Returns the {@link TradefedFeatureServer} or null if undefined. */
+    public TradefedFeatureServer getFeatureServer();
+
     /**
      * Set the {@link IHostOptions}, replacing any existing values.
      *
@@ -277,6 +281,9 @@ public interface IGlobalConfiguration {
 
     /** Sets the {@link IResourceMetricCollector}. */
     public void setResourceMetricCollector(IResourceMetricCollector collector);
+
+    /** Sets the {@link TradefedFeatureServer}. */
+    public void setTradefedFeatureServer(TradefedFeatureServer server);
 
     /**
      * Generic method to set the config object with the given name, replacing any existing value.
