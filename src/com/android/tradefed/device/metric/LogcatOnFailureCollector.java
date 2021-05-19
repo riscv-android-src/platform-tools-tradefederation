@@ -101,25 +101,18 @@ public class LogcatOnFailureCollector extends BaseDeviceMetricCollector {
 
     private void collectAndLog(TestDescription test) {
         for (ITestDevice device : getRealDevices()) {
-            if (!shouldCollect(device)) {
-                continue;
-            }
+            boolean isDeviceOnline = isDeviceOnline(device);
             ILogcatReceiver receiver = mLogcatReceivers.get(device);
             // Receiver is only initialized above API 19, if not supported, we use a legacy command
             if (receiver == null) {
-                CollectingByteOutputReceiver outputReceiver = new CollectingByteOutputReceiver();
-                try {
-                    device.executeShellCommand(LOGCAT_COLLECT_CMD_LEGACY, outputReceiver);
-                    saveLogcatSource(
-                            test,
-                            new ByteArrayInputStreamSource(outputReceiver.getOutput()),
-                            device.getSerialNumber());
-                } catch (DeviceNotAvailableException e) {
-                    CLog.e(e);
+                if (isDeviceOnline) {
+                    legacyCollection(device, test);
+                } else {
+                    CLog.w("Skip legacy LogcatOnFailureCollector device is offline.");
                 }
                 continue;
             }
-            // If supported get the logcat buffer
+            // If supported get the logcat buffer, even if device is offline to get the buffer
             saveLogcatSource(
                     test,
                     receiver.getLogcatData(MAX_LOGAT_SIZE_BYTES, mOffset.get(device)),
@@ -152,6 +145,19 @@ public class LogcatOnFailureCollector extends BaseDeviceMetricCollector {
         }
     }
 
+    private void legacyCollection(ITestDevice device, TestDescription test) {
+        CollectingByteOutputReceiver outputReceiver = new CollectingByteOutputReceiver();
+        try {
+            device.executeShellCommand(LOGCAT_COLLECT_CMD_LEGACY, outputReceiver);
+            saveLogcatSource(
+                    test,
+                    new ByteArrayInputStreamSource(outputReceiver.getOutput()),
+                    device.getSerialNumber());
+        } catch (DeviceNotAvailableException e) {
+            CLog.e(e);
+        }
+    }
+
     private void saveLogcatSource(TestDescription test, InputStreamSource source, String serial) {
         try (InputStreamSource logcatSource = source) {
             String name = String.format(NAME_FORMAT, test.toString(), serial);
@@ -159,10 +165,9 @@ public class LogcatOnFailureCollector extends BaseDeviceMetricCollector {
         }
     }
 
-    private boolean shouldCollect(ITestDevice device) {
+    private boolean isDeviceOnline(ITestDevice device) {
         TestDeviceState state = device.getDeviceState();
         if (!TestDeviceState.ONLINE.equals(state)) {
-            CLog.d("Skip LogcatOnFailureCollector device is in state '%s'", state);
             return false;
         }
         return true;
