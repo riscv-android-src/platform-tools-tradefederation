@@ -38,6 +38,7 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.monitoring.collector.IResourceMetricCollector;
 import com.android.tradefed.sandbox.ISandboxFactory;
 import com.android.tradefed.sandbox.TradefedSandboxFactory;
+import com.android.tradefed.service.TradefedFeatureServer;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.MultiMap;
@@ -83,6 +84,7 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     public static final String SANDBOX_FACTORY_TYPE_NAME = "sandbox_factory";
     public static final String RESOURCE_METRIC_COLLECTOR_TYPE_NAME = "resource_metric_collector";
     public static final String CREDENTIAL_FACTORY_TYPE_NAME = "credential_factory";
+    public static final String TF_FEATURE_SERVER_NAME = "tf_feature_server";
 
     public static final String GLOBAL_CONFIG_VARIABLE = "TF_GLOBAL_CONFIG";
     public static final String GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE =
@@ -630,6 +632,25 @@ public class GlobalConfiguration implements IGlobalConfiguration {
     @Override
     public void setResourceMetricCollector(IResourceMetricCollector collector) {
         setConfigurationObjectNoThrow(RESOURCE_METRIC_COLLECTOR_TYPE_NAME, collector);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setTradefedFeatureServer(TradefedFeatureServer server) {
+        setConfigurationObjectNoThrow(TF_FEATURE_SERVER_NAME, server);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public TradefedFeatureServer getFeatureServer() {
+        List<?> configObjects = getConfigurationObjectList(TF_FEATURE_SERVER_NAME);
+        if (configObjects == null) {
+            return null;
+        }
+        if (configObjects.size() != 1) {
+            return null;
+        }
+        return (TradefedFeatureServer) configObjects.get(0);
     }
 
     /** {@inheritDoc} */

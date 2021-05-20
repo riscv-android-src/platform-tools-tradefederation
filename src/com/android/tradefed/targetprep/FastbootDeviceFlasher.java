@@ -24,12 +24,16 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.error.DeviceErrorIdentifier;
+import com.android.tradefed.result.error.ErrorIdentifier;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.ZipUtil2;
+
+import com.google.common.annotations.VisibleForTesting;
 
 import org.apache.commons.compress.archivers.zip.ZipFile;
 
@@ -326,9 +330,14 @@ public class FastbootDeviceFlasher implements IDeviceFlasher {
             ITestDevice device, IFlashingResourcesParser resourceParser, String deviceProductType)
             throws TargetSetupError {
         if (!containsIgnoreCase(resourceParser.getRequiredBoards(), deviceProductType)) {
-            throw new TargetSetupError(String.format("Device %s is %s. Expected %s",
-                    device.getSerialNumber(), deviceProductType,
-                    resourceParser.getRequiredBoards()), device.getDeviceDescriptor());
+            throw new TargetSetupError(
+                    String.format(
+                            "Device %s is %s. Expected %s",
+                            device.getSerialNumber(),
+                            deviceProductType,
+                            resourceParser.getRequiredBoards()),
+                    device.getDeviceDescriptor(),
+                    InfraErrorIdentifier.UNEXPECTED_DEVICE_CONFIGURED);
         }
     }
 
@@ -376,8 +385,8 @@ public class FastbootDeviceFlasher implements IDeviceFlasher {
 
     /**
      * If needed, flash the bootloader image on device.
-     * <p/>
-     * Will only flash bootloader if current version on device != required version.
+     *
+     * <p>Will only flash bootloader if current version on device != required version.
      *
      * @param device the {@link ITestDevice} to flash
      * @param deviceBuild the {@link IDeviceBuildInfo} that contains the bootloader image to flash
@@ -821,16 +830,24 @@ public class FastbootDeviceFlasher implements IDeviceFlasher {
      * @return the stderr output from command if non-empty. Otherwise returns the stdout
      * @throws TargetSetupError
      */
-    private String handleFastbootResult(ITestDevice device, CommandResult result, String... cmdArgs)
+    @VisibleForTesting
+    String handleFastbootResult(ITestDevice device, CommandResult result, String... cmdArgs)
             throws TargetSetupError {
         CLog.v("fastboot stdout: " + result.getStdout());
         CLog.v("fastboot stderr: " + result.getStderr());
         mFbCmdStatus = result.getStatus();
-        if (result.getStderr().contains("FAILED")) {
+        ErrorIdentifier errorIdentifier = null;
+        if (result.getStderr().contains("failed to create temporary file")) {
+            errorIdentifier = InfraErrorIdentifier.NO_DISK_SPACE;
+            mFbCmdStatus = CommandStatus.FAILED;
+        } else if (result.getStderr().contains("FAILED")) {
             // if output contains "FAILED", just override to failure
             mFbCmdStatus = CommandStatus.FAILED;
         }
         if (mFbCmdStatus != CommandStatus.SUCCESS) {
+            if (errorIdentifier == null) {
+                errorIdentifier = DeviceErrorIdentifier.ERROR_AFTER_FLASHING;
+            }
             throw new TargetSetupError(
                     String.format(
                             "fastboot command %s failed in device %s. stdout: %s, stderr: %s",
@@ -839,7 +856,7 @@ public class FastbootDeviceFlasher implements IDeviceFlasher {
                             result.getStdout(),
                             result.getStderr()),
                     device.getDeviceDescriptor(),
-                    DeviceErrorIdentifier.ERROR_AFTER_FLASHING);
+                    errorIdentifier);
         }
         if (result.getStderr().length() > 0) {
             return result.getStderr();

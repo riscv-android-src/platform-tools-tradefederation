@@ -23,6 +23,7 @@ import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.device.WaitDeviceRecovery;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.targetprep.ILabPreparer;
 import com.android.tradefed.targetprep.ITargetPreparer;
 
 import java.util.ArrayList;
@@ -41,6 +42,7 @@ public class DeviceConfigurationHolder implements IDeviceConfiguration {
 
     private IBuildProvider mBuildProvider = new StubBuildProvider();
     private List<ITargetPreparer> mListTargetPreparer = new ArrayList<>();
+    private List<ILabPreparer> mListLabPreparer = new ArrayList<>();
     private IDeviceRecovery mDeviceRecovery = new WaitDeviceRecovery();
     private IDeviceSelection mDeviceSelection = new DeviceSelectionOptions();
     private TestDeviceOptions mTestDeviceOption = new TestDeviceOptions();
@@ -81,6 +83,12 @@ public class DeviceConfigurationHolder implements IDeviceConfiguration {
     public void addSpecificConfig(Object config) throws ConfigurationException {
         if (config instanceof IBuildProvider) {
             mBuildProvider = (IBuildProvider) config;
+        } else if (config instanceof ILabPreparer) {
+            if (isFake()) {
+                throw new ConfigurationException(
+                        "cannot specify a lab_preparer for a isFake=true device.");
+            }
+            mListLabPreparer.add((ILabPreparer) config);
         } else if (config instanceof ITargetPreparer){
             if (isFake()) {
                 throw new ConfigurationException(
@@ -111,6 +119,8 @@ public class DeviceConfigurationHolder implements IDeviceConfiguration {
             mDeviceSelection = null;
         } else if (Configuration.DEVICE_OPTIONS_TYPE_NAME.equals(type)) {
             mTestDeviceOption = null;
+        } else if (Configuration.LAB_PREPARER_TYPE_NAME.equals(type)) {
+            mListLabPreparer.clear();
         } else {
             throw new ConfigurationException(
                     String.format("'%s' type is not supported by DeviceConfigurationHolder", type));
@@ -149,6 +159,8 @@ public class DeviceConfigurationHolder implements IDeviceConfiguration {
                 return Arrays.asList(mBuildProvider);
             case Configuration.TARGET_PREPARER_TYPE_NAME:
                 return new ArrayList<>(mListTargetPreparer);
+            case Configuration.LAB_PREPARER_TYPE_NAME:
+                return new ArrayList<>(mListLabPreparer);
             case Configuration.DEVICE_RECOVERY_TYPE_NAME:
                 return Arrays.asList(mDeviceRecovery);
             case Configuration.DEVICE_REQUIREMENTS_TYPE_NAME:
@@ -174,6 +186,12 @@ public class DeviceConfigurationHolder implements IDeviceConfiguration {
     @Override
     public List<ITargetPreparer> getTargetPreparers() {
         return mListTargetPreparer;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public List<ILabPreparer> getLabPreparers() {
+        return mListLabPreparer;
     }
 
     /**

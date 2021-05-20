@@ -47,6 +47,7 @@ import com.android.tradefed.command.CommandOptionsTest;
 import com.android.tradefed.command.CommandRunnerTest;
 import com.android.tradefed.command.CommandSchedulerTest;
 import com.android.tradefed.command.ConsoleTest;
+import com.android.tradefed.command.console.ConfigCompletorTest;
 import com.android.tradefed.command.remote.RemoteManagerTest;
 import com.android.tradefed.command.remote.RemoteOperationTest;
 import com.android.tradefed.config.ArgsOptionParserTest;
@@ -103,12 +104,11 @@ import com.android.tradefed.device.metric.BugreportzOnFailureCollectorTest;
 import com.android.tradefed.device.metric.ClangCodeCoverageCollectorTest;
 import com.android.tradefed.device.metric.DebugHostLogOnFailureCollectorTest;
 import com.android.tradefed.device.metric.DeviceMetricDataTest;
-import com.android.tradefed.device.metric.EmulatorMemoryCpuCollectorTest;
+import com.android.tradefed.device.metric.EmulatorMemoryCpuCapturerTest;
 import com.android.tradefed.device.metric.FilePullerDeviceMetricCollectorTest;
 import com.android.tradefed.device.metric.FilePullerLogCollectorTest;
 import com.android.tradefed.device.metric.GcovCodeCoverageCollectorTest;
 import com.android.tradefed.device.metric.HostStatsdMetricCollectorTest;
-import com.android.tradefed.device.metric.IncidentReportCollectorTest;
 import com.android.tradefed.device.metric.JavaCodeCoverageCollectorTest;
 import com.android.tradefed.device.metric.LogcatOnFailureCollectorTest;
 import com.android.tradefed.device.metric.LogcatTimingMetricCollectorTest;
@@ -185,6 +185,7 @@ import com.android.tradefed.result.LogcatCrashResultForwarderTest;
 import com.android.tradefed.result.MetricsXMLResultReporterTest;
 import com.android.tradefed.result.MultiFailureDescriptionTest;
 import com.android.tradefed.result.PassingTestFileReporterTest;
+import com.android.tradefed.result.ReportPassedTestsTest;
 import com.android.tradefed.result.SnapshotInputStreamSourceTest;
 import com.android.tradefed.result.SubprocessResultsReporterTest;
 import com.android.tradefed.result.TestDescriptionTest;
@@ -356,13 +357,13 @@ import com.android.tradefed.util.BundletoolUtilTest;
 import com.android.tradefed.util.ByteArrayListTest;
 import com.android.tradefed.util.ClassPathScannerTest;
 import com.android.tradefed.util.ConditionPriorityBlockingQueueTest;
-import com.android.tradefed.util.ConfigCompletorTest;
 import com.android.tradefed.util.DirectedGraphTest;
 import com.android.tradefed.util.EmailTest;
 import com.android.tradefed.util.FakeTestsZipFolderTest;
 import com.android.tradefed.util.FileIdleMonitorTest;
 import com.android.tradefed.util.FileUtilTest;
 import com.android.tradefed.util.FixedByteArrayOutputStreamTest;
+import com.android.tradefed.util.FuseUtilTest;
 import com.android.tradefed.util.GCSFileDownloaderTest;
 import com.android.tradefed.util.GoogleApiClientUtilTest;
 import com.android.tradefed.util.HprofAllocSiteParserTest;
@@ -475,6 +476,9 @@ import org.junit.runners.Suite.SuiteClasses;
     CommandSchedulerTest.class,
     ConsoleTest.class,
 
+    // command.console
+    ConfigCompletorTest.class,
+
     // command.remote
     RemoteManagerTest.class,
     RemoteOperationTest.class,
@@ -553,11 +557,10 @@ import org.junit.runners.Suite.SuiteClasses;
     ClangCodeCoverageCollectorTest.class,
     DebugHostLogOnFailureCollectorTest.class,
     DeviceMetricDataTest.class,
-    EmulatorMemoryCpuCollectorTest.class,
+    EmulatorMemoryCpuCapturerTest.class,
     FilePullerDeviceMetricCollectorTest.class,
     FilePullerLogCollectorTest.class,
     GcovCodeCoverageCollectorTest.class,
-    IncidentReportCollectorTest.class,
     JavaCodeCoverageCollectorTest.class,
     LogcatOnFailureCollectorTest.class,
     LogcatTimingMetricCollectorTest.class,
@@ -659,6 +662,7 @@ import org.junit.runners.Suite.SuiteClasses;
     SubprocessResultsReporterTest.class,
     TestFailureEmailResultReporterTest.class,
     PassingTestFileReporterTest.class,
+    ReportPassedTestsTest.class,
     TestDescriptionTest.class,
     TestResultListenerTest.class,
     TestResultTest.class,
@@ -874,13 +878,13 @@ import org.junit.runners.Suite.SuiteClasses;
     ByteArrayListTest.class,
     ClassPathScannerTest.class,
     ConditionPriorityBlockingQueueTest.class,
-    ConfigCompletorTest.class,
     DirectedGraphTest.class,
     EmailTest.class,
     FakeTestsZipFolderTest.class,
     FileIdleMonitorTest.class,
     FileUtilTest.class,
     FixedByteArrayOutputStreamTest.class,
+    FuseUtilTest.class,
     GCSFileDownloaderTest.class,
     GoogleApiClientUtilTest.class,
     HprofAllocSiteParserTest.class,

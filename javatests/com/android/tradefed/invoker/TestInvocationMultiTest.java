@@ -55,6 +55,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 
 /** Unit tests for {@link TestInvocation} for multi device invocation. */
@@ -91,6 +92,7 @@ public class TestInvocationMultiTest {
         EasyMock.expect(mMockConfig.getConfigurationObject(ShardHelper.LAST_SHARD_DETECTOR))
                 .andReturn(null);
         EasyMock.expect(mMockConfig.getConfigurationObject("DELEGATE")).andStubReturn(null);
+        EasyMock.expect(mMockConfig.getInopOptions()).andStubReturn(new HashSet<>());
         mMockRescheduler = EasyMock.createMock(IRescheduler.class);
         mMockTestListener = EasyMock.createMock(ITestInvocationListener.class);
         mMockLogSaver = EasyMock.createMock(ILogSaver.class);
@@ -179,7 +181,7 @@ public class TestInvocationMultiTest {
                 .times(2);
         EasyMock.expect(mMockConfig.getLogSaver()).andReturn(mMockLogSaver);
         EasyMock.expect(mMockConfig.getLogOutput()).andStubReturn(mMockLogger);
-        EasyMock.expect(mMockConfig.getConfigurationDescription()).andReturn(mConfigDesc);
+        EasyMock.expect(mMockConfig.getConfigurationDescription()).andReturn(mConfigDesc).times(2);
         mMockLogger.init();
         EasyMock.expectLastCall().times(2);
         EasyMock.expect(mMockLogger.getLog())
@@ -291,7 +293,7 @@ public class TestInvocationMultiTest {
                 .times(2);
         EasyMock.expect(mMockConfig.getLogSaver()).andReturn(mMockLogSaver);
         EasyMock.expect(mMockConfig.getLogOutput()).andStubReturn(mMockLogger);
-        EasyMock.expect(mMockConfig.getConfigurationDescription()).andReturn(mConfigDesc);
+        EasyMock.expect(mMockConfig.getConfigurationDescription()).andReturn(mConfigDesc).times(2);
         mMockLogger.init();
         EasyMock.expectLastCall().times(2);
         EasyMock.expect(mMockLogger.getLog())
@@ -383,7 +385,7 @@ public class TestInvocationMultiTest {
                 .times(2);
         EasyMock.expect(mMockConfig.getLogSaver()).andReturn(mMockLogSaver);
         EasyMock.expect(mMockConfig.getLogOutput()).andStubReturn(mMockLogger);
-        EasyMock.expect(mMockConfig.getConfigurationDescription()).andReturn(mConfigDesc);
+        EasyMock.expect(mMockConfig.getConfigurationDescription()).andReturn(mConfigDesc).times(2);
         mMockLogger.init();
         EasyMock.expectLastCall().times(2);
         EasyMock.expect(mMockLogger.getLog())
@@ -483,7 +485,7 @@ public class TestInvocationMultiTest {
                 .times(2);
         EasyMock.expect(mMockConfig.getLogSaver()).andReturn(mMockLogSaver);
         EasyMock.expect(mMockConfig.getLogOutput()).andStubReturn(mMockLogger);
-        EasyMock.expect(mMockConfig.getConfigurationDescription()).andReturn(mConfigDesc);
+        EasyMock.expect(mMockConfig.getConfigurationDescription()).andReturn(mConfigDesc).times(2);
         mMockLogger.init();
         EasyMock.expectLastCall().times(2);
         EasyMock.expect(mMockLogger.getLog())

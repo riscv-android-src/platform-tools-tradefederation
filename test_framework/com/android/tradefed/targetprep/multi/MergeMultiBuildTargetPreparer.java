@@ -23,6 +23,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.TargetSetupError;
 
@@ -58,6 +59,9 @@ public final class MergeMultiBuildTargetPreparer extends BaseMultiTargetPreparer
     @Option(name = "key-to-copy", description = "The name of the files that needs to be moved.")
     private Set<String> mKeysToMove = new HashSet<>();
 
+    @Option(name = "enforce-copy", description = "Throw if a copy of key fails.")
+    private boolean mEnforceCopy = false;
+
     @Override
     public void setUp(TestInformation testInfo)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
@@ -84,8 +88,20 @@ public final class MergeMultiBuildTargetPreparer extends BaseMultiTargetPreparer
         for (String key : mKeysToMove) {
             VersionedFile toBeMoved = providerInfo.getVersionedFile(key);
             if (toBeMoved == null) {
-                CLog.w("Key '%s' did not match any files, ignoring.", key);
+                String error = String.format("Key '%s' did not match any files, ignoring.", key);
+                CLog.w(error);
+                if (mEnforceCopy) {
+                    throw new TargetSetupError(
+                            error, InfraErrorIdentifier.CONFIGURED_ARTIFACT_NOT_FOUND);
+                }
                 continue;
+            }
+            if (mEnforceCopy && receiverInfo.getFile(key) != null) {
+                throw new TargetSetupError(
+                        String.format(
+                                "Failed to copy key '%s' it already exists in receiver info '%s'",
+                                key, mReceiver),
+                        InfraErrorIdentifier.OPTION_CONFIGURATION_ERROR);
             }
             receiverInfo.setFile(key, toBeMoved.getFile(), toBeMoved.getVersion());
         }

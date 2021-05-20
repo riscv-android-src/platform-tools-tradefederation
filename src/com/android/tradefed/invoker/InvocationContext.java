@@ -416,7 +416,9 @@ public class InvocationContext implements IInvocationContext {
         }
         contextBuilder.addAllMetadata(metadatas);
         // Configuration Description
-        contextBuilder.setConfigurationDescription(mConfigurationDescriptor.toProto());
+        if (mConfigurationDescriptor != null) {
+            contextBuilder.setConfigurationDescription(mConfigurationDescriptor.toProto());
+        }
         // Module Context if it exists
         if (mModuleContext != null) {
             contextBuilder.setModuleContext(mModuleContext.toProto());

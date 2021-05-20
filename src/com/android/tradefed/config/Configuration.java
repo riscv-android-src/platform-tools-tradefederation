@@ -21,6 +21,7 @@ import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.command.ICommandOptions;
 import com.android.tradefed.config.OptionSetter.FieldDef;
+import com.android.tradefed.config.filter.GlobalTestFilter;
 import com.android.tradefed.config.proxy.TradefedDelegator;
 import com.android.tradefed.device.IDeviceRecovery;
 import com.android.tradefed.device.IDeviceSelection;
@@ -40,6 +41,7 @@ import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.sandbox.SandboxOptions;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.targetprep.ITargetPreparer;
+import com.android.tradefed.targetprep.ILabPreparer;
 import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.StubTest;
@@ -79,6 +81,7 @@ public class Configuration implements IConfiguration {
     // type names for built in configuration objects
     public static final String BUILD_PROVIDER_TYPE_NAME = "build_provider";
     public static final String TARGET_PREPARER_TYPE_NAME = "target_preparer";
+    public static final String LAB_PREPARER_TYPE_NAME = "lab_preparer";
     // Variation of Multi_target_preparer that runs BEFORE each device target_preparer.
     public static final String MULTI_PRE_TARGET_PREPARER_TYPE_NAME = "multi_pre_target_preparer";
     public static final String MULTI_PREPARER_TYPE_NAME = "multi_target_preparer";
@@ -99,6 +102,7 @@ public class Configuration implements IConfiguration {
     public static final String SANBOX_OPTIONS_TYPE_NAME = "sandbox_options";
     public static final String RETRY_DECISION_TYPE_NAME = "retry_decision";
     public static final String COVERAGE_OPTIONS_TYPE_NAME = "coverage";
+    public static final String GLOBAL_FILTERS_TYPE_NAME = "global_filters";
 
     private static Map<String, ObjTypeInfo> sObjTypeMap = null;
     private static Set<String> sMultiDeviceSupportedTag = null;
@@ -115,6 +119,9 @@ public class Configuration implements IConfiguration {
     private final String mDescription;
     // original command line used to create this given configuration.
     private String[] mCommandLine;
+
+    // Track options that had no effect
+    private Set<String> mInopOptions = new HashSet<>();
 
     // used to track the files that where dynamically downloaded
     private Set<File> mRemoteFiles = new HashSet<>();
@@ -151,6 +158,7 @@ public class Configuration implements IConfiguration {
             sObjTypeMap.put(BUILD_PROVIDER_TYPE_NAME, new ObjTypeInfo(IBuildProvider.class, false));
             sObjTypeMap.put(TARGET_PREPARER_TYPE_NAME,
                     new ObjTypeInfo(ITargetPreparer.class, true));
+            sObjTypeMap.put(LAB_PREPARER_TYPE_NAME, new ObjTypeInfo(ILabPreparer.class, true));
             sObjTypeMap.put(
                     MULTI_PRE_TARGET_PREPARER_TYPE_NAME,
                     new ObjTypeInfo(IMultiTargetPreparer.class, true));
@@ -185,6 +193,8 @@ public class Configuration implements IConfiguration {
             sObjTypeMap.put(RETRY_DECISION_TYPE_NAME, new ObjTypeInfo(IRetryDecision.class, false));
             sObjTypeMap.put(
                     COVERAGE_OPTIONS_TYPE_NAME, new ObjTypeInfo(CoverageOptions.class, false));
+            sObjTypeMap.put(
+                    GLOBAL_FILTERS_TYPE_NAME, new ObjTypeInfo(GlobalTestFilter.class, false));
         }
         return sObjTypeMap;
     }
@@ -233,6 +243,7 @@ public class Configuration implements IConfiguration {
         setTestInvocationListener(new TextResultReporter());
         // Init an empty list of target_preparers
         setConfigurationObjectListNoThrow(TARGET_PREPARER_TYPE_NAME, new ArrayList<>());
+        setConfigurationObjectListNoThrow(LAB_PREPARER_TYPE_NAME, new ArrayList<>());
         setMultiPreTargetPreparers(new ArrayList<>());
         setMultiTargetPreparers(new ArrayList<>());
         setSystemStatusCheckers(new ArrayList<ISystemStatusChecker>());
@@ -242,6 +253,7 @@ public class Configuration implements IConfiguration {
         setCoverageOptions(new CoverageOptions());
         setConfigurationObjectNoThrow(SANBOX_OPTIONS_TYPE_NAME, new SandboxOptions());
         setConfigurationObjectNoThrow(RETRY_DECISION_TYPE_NAME, new BaseRetryDecision());
+        setConfigurationObjectNoThrow(GLOBAL_FILTERS_TYPE_NAME, new GlobalTestFilter());
     }
 
     /**
@@ -313,6 +325,16 @@ public class Configuration implements IConfiguration {
         notAllowedInMultiMode("getTargetPreparers");
         return ((List<IDeviceConfiguration>)getConfigurationObjectList(DEVICE_NAME))
                 .get(0).getTargetPreparers();
+    }
+
+    /** {@inheritDoc} */
+    @SuppressWarnings("unchecked")
+    @Override
+    public List<ILabPreparer> getLabPreparers() {
+        notAllowedInMultiMode("getLabPreparers");
+        return ((List<IDeviceConfiguration>) getConfigurationObjectList(DEVICE_NAME))
+                .get(0)
+                .getLabPreparers();
     }
 
     /**
@@ -478,6 +500,13 @@ public class Configuration implements IConfiguration {
     @Override
     public CoverageOptions getCoverageOptions() {
         return (CoverageOptions) getConfigurationObject(COVERAGE_OPTIONS_TYPE_NAME);
+    }
+
+    /** {@inheritDoc} */
+    @SuppressWarnings("unchecked")
+    @Override
+    public GlobalTestFilter getGlobalFilters() {
+        return (GlobalTestFilter) getConfigurationObject(GLOBAL_FILTERS_TYPE_NAME);
     }
 
     /**
@@ -956,6 +985,23 @@ public class Configuration implements IConfiguration {
         }
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public void setLabPreparer(ILabPreparer preparer) {
+        notAllowedInMultiMode("setLabPreparer");
+        addToDefaultDeviceConfig(preparer);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setLabPreparers(List<ILabPreparer> preparers) {
+        notAllowedInMultiMode("setLabPreparers");
+        getDeviceConfigByName(ConfigurationDef.DEFAULT_DEVICE_NAME).getLabPreparers().clear();
+        for (ILabPreparer prep : preparers) {
+            addToDefaultDeviceConfig(prep);
+        }
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -1124,7 +1170,9 @@ public class Configuration implements IConfiguration {
             parser.setKeyStore(keyStoreClient);
         }
         try {
-            return parser.parse(listArgs);
+            List<String> leftOver = parser.parse(listArgs);
+            mInopOptions.addAll(parser.getInopOptions());
+            return leftOver;
         } catch (ConfigurationException e) {
             Matcher m = CONFIG_EXCEPTION_PATTERN.matcher(e.getMessage());
             if (!m.matches()) {
@@ -1302,6 +1350,12 @@ public class Configuration implements IConfiguration {
         return mRemoteFiles;
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public Set<String> getInopOptions() {
+        return mInopOptions;
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -1374,6 +1428,15 @@ public class Configuration implements IConfiguration {
                             printDeprecatedOptions,
                             printUnchangedOptions);
                 }
+                for (ILabPreparer preparer : deviceConfig.getLabPreparers()) {
+                    ConfigurationUtil.dumpClassToXml(
+                            serializer,
+                            TARGET_PREPARER_TYPE_NAME,
+                            preparer,
+                            excludeFilters,
+                            printDeprecatedOptions,
+                            printUnchangedOptions);
+                }
                 ConfigurationUtil.dumpClassToXml(
                         serializer,
                         DEVICE_RECOVERY_TYPE_NAME,
@@ -1407,6 +1470,15 @@ public class Configuration implements IConfiguration {
                     printDeprecatedOptions,
                     printUnchangedOptions);
             for (ITargetPreparer preparer : getTargetPreparers()) {
+                ConfigurationUtil.dumpClassToXml(
+                        serializer,
+                        TARGET_PREPARER_TYPE_NAME,
+                        preparer,
+                        excludeFilters,
+                        printDeprecatedOptions,
+                        printUnchangedOptions);
+            }
+            for (ILabPreparer preparer : getLabPreparers()) {
                 ConfigurationUtil.dumpClassToXml(
                         serializer,
                         TARGET_PREPARER_TYPE_NAME,

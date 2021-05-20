@@ -414,15 +414,9 @@ public class FileDownloadCache {
                     "Creating hardlink '%s' to '%s'",
                     hardlinkFile.getAbsolutePath(), cachedFile.getAbsolutePath());
             if (cachedFile.isDirectory()) {
-                FileUtil.recursiveHardlink(
-                        cachedFile, hardlinkFile, false, BuildInfo.FULL_COPY_FILES);
+                FileUtil.recursiveHardlink(cachedFile, hardlinkFile, false);
             } else {
-                if (BuildInfo.FULL_COPY_FILES.contains(cachedFile.getName())) {
-                    CLog.d("Doing full copy for %s", cachedFile);
-                    FileUtil.copyFile(cachedFile, hardlinkFile);
-                } else {
-                    FileUtil.hardlinkFile(cachedFile, hardlinkFile);
-                }
+                FileUtil.hardlinkFile(cachedFile, hardlinkFile);
             }
             return hardlinkFile;
         } catch (IOException e) {

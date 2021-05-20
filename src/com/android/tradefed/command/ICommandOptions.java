@@ -220,6 +220,18 @@ public interface ICommandOptions {
     /** Set whether or not to report test cases count per test types. */
     public void setReportTestCaseCount(boolean report);
 
+    /** Whether or not to report passed test cases. */
+    public boolean reportPassedTests();
+
+    /** Whether or not to filters previous passed test cases from previous attempt. */
+    public boolean filterPreviousPassedTests();
+
+    /** whether or not to report the logs until invocationComplete. */
+    public boolean reportInvocationComplete();
+
+    /** Set whether or not to report the logs until invocationComplete */
+    public void setReportInvocationComplete(boolean reportInvocationCompleteLogs);
+
     /**
      * Returns the maximum number of times to scheduled the command. Has no effect if isLoopMode is
      * false.

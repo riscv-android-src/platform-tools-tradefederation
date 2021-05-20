@@ -16,8 +16,8 @@
 package com.android.tradefed.contentprovider;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import com.android.tradefed.device.contentprovider.ContentProviderHandler;
 import com.android.tradefed.testtype.DeviceJUnit4ClassRunner;
@@ -133,7 +133,9 @@ public class ContentProviderTest extends BaseHostJUnit4Test {
         mHandler.pushFile(tmpFile, "/sdcard/" + tmpFile.getName());
         mToBeDeleted.add("/sdcard/" + tmpFile.getName());
 
-        File tmpPullFile = new File("fileToPullTo.txt");
+        File tmpPullFile = FileUtil.createTempFile("fileToPullTo", ".txt");
+        // Delete the placeholder, it should be recreated when pulling.
+        FileUtil.deleteFile(tmpPullFile);
         // Local file does not exist before we pull the content from the device.
         assertFalse(tmpPullFile.exists());
 

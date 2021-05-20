@@ -213,6 +213,9 @@ public class LogFileSaver {
     public File saveLogDataRaw(String dataName, String ext, InputStream dataStream)
             throws IOException {
         final String saneDataName = sanitizeFilename(dataName);
+        if (mInvLogDir != null && !mInvLogDir.exists()) {
+            mInvLogDir.mkdirs();
+        }
         // add underscore to end of data name to make generated name more readable
         File logFile = FileUtil.createTempFile(saneDataName + "_", "." + ext,
                 mInvLogDir);

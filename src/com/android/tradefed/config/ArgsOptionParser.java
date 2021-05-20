@@ -16,6 +16,7 @@
 package com.android.tradefed.config;
 
 import com.android.ddmlib.Log;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.keystore.DryRunKeyStore;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
@@ -24,8 +25,10 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -142,6 +145,13 @@ public class ArgsOptionParser extends OptionSetter {
 
     /** the amount to indent an option field's description when displaying help */
     private static final int OPTION_DESCRIPTION_INDENT = 25;
+
+    private Set<String> inopOptions = new HashSet<>();
+
+    /** Returns the set of options that did not change any default values. */
+    public Set<String> getInopOptions() {
+        return inopOptions;
+    }
 
     /**
      * Creates a {@link ArgsOptionParser} for a collection of objects.
@@ -361,7 +371,10 @@ public class ArgsOptionParser extends OptionSetter {
         }
 
         value = getKeyStoreValueIfNeeded(value, getTypeForOption(name));
-        setOptionValue(name, key, value);
+        List<FieldDef> modifiedField = setOptionValue(name, key, value);
+        if (modifiedField.isEmpty()) {
+            inopOptions.add(name);
+        }
     }
 
     // Given boolean options a and b, and non-boolean option f, we want to allow:
@@ -388,7 +401,10 @@ public class ArgsOptionParser extends OptionSetter {
                 }
             }
             value = getKeyStoreValueIfNeeded(value, getTypeForOption(name));
-            setOptionValue(name, value);
+            List<FieldDef> modifiedField = setOptionValue(name, value);
+            if (modifiedField.isEmpty()) {
+                inopOptions.add(name);
+            }
         }
     }
 
@@ -558,11 +574,16 @@ public class ArgsOptionParser extends OptionSetter {
         if (m.matches() && m.groupCount() > 0) {
             IKeyStoreClient c = getKeyStore();
             if (c == null) {
-                throw new ConfigurationException("Key store is null, but we tried to fetch a key");
+                throw new ConfigurationException(
+                        "Key store is null, but we tried to fetch a key",
+                        InfraErrorIdentifier.KEYSTORE_CONFIG_ERROR);
             }
             if (!c.isAvailable()) {
-                throw new ConfigurationException(String.format("Key store '%s' is unavailable, but "
-                        + "we tried to fetch a key", c.getClass()));
+                throw new ConfigurationException(
+                        String.format(
+                                "Key store '%s' is unavailable, but " + "we tried to fetch a key",
+                                c.getClass()),
+                        InfraErrorIdentifier.KEYSTORE_CONFIG_ERROR);
             }
             String key = m.group(1);
             String v = null;
@@ -573,8 +594,9 @@ public class ArgsOptionParser extends OptionSetter {
                 v = c.fetchKey(key);
             }
             if (v == null) {
-                throw new ConfigurationException(String.format(
-                        "Failed to fetch key %s in keystore", key));
+                throw new ConfigurationException(
+                        String.format("Failed to fetch key %s in keystore", key),
+                        InfraErrorIdentifier.KEYSTORE_CONFIG_ERROR);
             }
             return v;
         }

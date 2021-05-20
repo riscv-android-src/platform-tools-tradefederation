@@ -52,6 +52,7 @@ public enum InfraErrorIdentifier implements ErrorIdentifier {
     WIFI_FAILED_CONNECT(501_001, FailureStatus.DEPENDENCY_ISSUE),
     GOOGLE_ACCOUNT_SETUP_FAILED(501_002, FailureStatus.DEPENDENCY_ISSUE),
     NO_WIFI(501_003, FailureStatus.DEPENDENCY_ISSUE),
+    NO_DISK_SPACE(501_004, FailureStatus.DEPENDENCY_ISSUE),
 
     // 502_000 - 502_100: Test issues detected by infra
     EXPECTED_TESTS_MISMATCH(502_000, FailureStatus.TEST_FAILURE),
@@ -71,6 +72,8 @@ public enum InfraErrorIdentifier implements ErrorIdentifier {
     INTERNAL_CONFIG_ERROR(505_251, FailureStatus.INFRA_FAILURE),
     CLASS_NOT_FOUND(505_252, FailureStatus.CUSTOMER_ISSUE),
     CONFIGURATION_NOT_FOUND(505_253, FailureStatus.CUSTOMER_ISSUE),
+    UNEXPECTED_DEVICE_CONFIGURED(505_254, FailureStatus.CUSTOMER_ISSUE),
+    KEYSTORE_CONFIG_ERROR(505_255, FailureStatus.DEPENDENCY_ISSUE),
 
     UNDETERMINED(510_000, FailureStatus.UNSET);
 

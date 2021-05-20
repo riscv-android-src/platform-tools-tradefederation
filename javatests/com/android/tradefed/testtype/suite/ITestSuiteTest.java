@@ -65,6 +65,7 @@ import com.android.tradefed.result.error.TestErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.retry.BaseRetryDecision;
 import com.android.tradefed.retry.IRetryDecision;
+import com.android.tradefed.service.TradefedFeatureClient;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.suite.checker.KeyguardStatusChecker;
 import com.android.tradefed.suite.checker.StatusCheckerResult;
@@ -83,6 +84,7 @@ import com.android.tradefed.util.MultiMap;
 
 import com.google.inject.Guice;
 import com.google.inject.Injector;
+import com.proto.tradefed.feature.FeatureResponse;
 
 import org.easymock.Capture;
 import org.easymock.EasyMock;
@@ -127,6 +129,8 @@ public class ITestSuiteTest {
     private ILogSaver mMockLogSaver;
     private BaseTargetPreparer mMockPreparer;
 
+    private FeatureResponse.Builder mResponseBuilder;
+
     // Guice scope and objects for testing
     private InvocationScope mScope;
     private Injector mInjector;
@@ -137,6 +141,7 @@ public class ITestSuiteTest {
     public static class TestSuiteImpl extends ITestSuite {
         private int mNumTests = 1;
         private ITargetPreparer mPreparer;
+        private FeatureResponse.Builder mResponseBuilder;
 
         public TestSuiteImpl() {
             this(1);
@@ -149,6 +154,17 @@ public class ITestSuiteTest {
         public TestSuiteImpl(int numTests, ITargetPreparer preparer) {
             mNumTests = numTests;
             mPreparer = preparer;
+        }
+
+        public TestSuiteImpl(
+                int numTests, ITargetPreparer preparer, FeatureResponse.Builder response) {
+            this(numTests, preparer);
+            mResponseBuilder = response;
+        }
+
+        @Override
+        FeatureResponse triggerFeature(TradefedFeatureClient client, Map<String, String> args) {
+            return mResponseBuilder.build();
         }
 
         @Override
@@ -288,7 +304,7 @@ public class ITestSuiteTest {
     }
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
         // Start with the Guice scope setup
         mScope = new InvocationScope();
         mScope.enter();
@@ -296,12 +312,14 @@ public class ITestSuiteTest {
         mInjector = Guice.createInjector(mInvocationScope);
 
         mMockPreparer = Mockito.mock(BaseTargetPreparer.class);
-
-        mTestSuite = new TestSuiteImpl(1, mMockPreparer);
+        mResponseBuilder = FeatureResponse.newBuilder();
+        mTestSuite = new TestSuiteImpl(1, mMockPreparer, mResponseBuilder);
+        mTestSuite.setSystemStatusChecker(new ArrayList<>());
         mMockListener = EasyMock.createMock(ITestInvocationListener.class);
         mMockDevice = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("SERIAL");
         EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(EasyMock.createMock(IDevice.class));
+        EasyMock.expect(mMockDevice.getDeviceDate()).andReturn(0L).anyTimes();
         mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
         EasyMock.expect(mMockBuildInfo.getRemoteFiles()).andReturn(null).once();
         mMockSysChecker = EasyMock.createMock(ISystemStatusChecker.class);
@@ -875,14 +893,14 @@ public class ITestSuiteTest {
     @Test
     public void testGetRuntimeHint() {
         // default runtime hint is 0, it is only meant to be used for sharding.
-        assertEquals(0l, mTestSuite.getRuntimeHint());
+        assertEquals(0L, mTestSuite.getRuntimeHint());
         mTestSuite = new TestSuiteImpl(5);
         mTestSuite.setConfiguration(mStubMainConfiguration);
         Collection<IRemoteTest> tests = mTestSuite.split(3, mTestInfo);
         for (IRemoteTest test : tests) {
             assertTrue(test instanceof TestSuiteImpl);
             // once sharded modules from the shard start reporting their runtime.
-            assertEquals(60000l, ((TestSuiteImpl) test).getRuntimeHint());
+            assertEquals(60000L, ((TestSuiteImpl) test).getRuntimeHint());
         }
     }
 
@@ -921,7 +939,7 @@ public class ITestSuiteTest {
         } catch (IllegalArgumentException e) {
             assertEquals(
                     "None of the abi supported by this tests suite build "
-                            + "('[armeabi-v7a, arm64-v8a]')"
+                            + "('[arm64-v8a, armeabi-v7a]')"
                             + " are supported by the device ('[armeabi]').",
                     e.getMessage());
         }
@@ -965,7 +983,7 @@ public class ITestSuiteTest {
         } catch (IllegalArgumentException e) {
             assertEquals(
                     "Your tests suite hasn't been built with abi 'armeabi' support, "
-                            + "this suite currently supports '[armeabi-v7a, arm64-v8a]'.",
+                            + "this suite currently supports '[arm64-v8a, armeabi-v7a]'.",
                     e.getMessage());
         }
         EasyMock.verify(mMockDevice);
@@ -1667,7 +1685,7 @@ public class ITestSuiteTest {
         EasyMock.replay(mMockDevice);
         Set<IAbi> res = mTestSuite.getAbis(mMockDevice);
         assertEquals(1, res.size());
-        assertEquals("armeabi-v7a", res.iterator().next().getName());
+        assertEquals("arm64-v8a", res.iterator().next().getName());
         EasyMock.verify(mMockDevice);
     }
 
@@ -1884,5 +1902,21 @@ public class ITestSuiteTest {
         EasyMock.replay(mMockListener);
         mTestSuite.reportNotExecuted(mMockListener, "Injected message");
         EasyMock.verify(mMockListener);
+    }
+
+    /** Test when a module is filtered by the previous tests. */
+    @Test
+    public void testRun_previousPassedTest() throws Exception {
+        Mockito.reset(mMockPreparer);
+        OptionSetter invokData = new OptionSetter(mStubMainConfiguration.getCommandOptions());
+        invokData.setOptionValue("invocation-data", "invocation_id", "I8888");
+        invokData.setOptionValue("filter-previous-passed", "true");
+        mResponseBuilder.setResponse("test");
+
+        mContext.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
+
+        replayMocks();
+        mTestSuite.run(mTestInfo, mMockListener);
+        verifyMocks();
     }
 }

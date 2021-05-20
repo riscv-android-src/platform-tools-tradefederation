@@ -352,7 +352,7 @@ public class InvocationExecution implements IInvocationExecution {
             if (device instanceof ITestLoggerReceiver) {
                 ((ITestLoggerReceiver) context.getDevice(deviceName)).setTestLogger(logger);
             }
-            device.preInvocationSetup(context.getBuildInfo(deviceName));
+            device.preInvocationSetup(context.getBuildInfo(deviceName), context.getAttributes());
         }
     }
 
@@ -455,7 +455,7 @@ public class InvocationExecution implements IInvocationExecution {
             Throwable exception)
             throws Throwable {
         IInvocationContext context = testInfo.getContext();
-        Throwable deferredThrowable = null;
+        Throwable deferredThrowable;
 
         InvocationMetricLogger.addInvocationMetrics(
                 InvocationMetricKey.TEARDOWN_START, System.currentTimeMillis());

@@ -416,7 +416,7 @@ public class LocalAndroidVirtualDeviceTest {
         mLocalAvd.setTestLogger(testLogger);
         mLocalAvd.currentRunUtil = acloudCreateRunUtil;
         mLocalAvd.expectToConnect = true;
-        mLocalAvd.preInvocationSetup(mMockBuildInfo);
+        mLocalAvd.preInvocationSetup(mMockBuildInfo, null);
 
         Assert.assertEquals(ONLINE_SERIAL_NUMBER, mLocalAvd.getIDevice().getSerialNumber());
 
@@ -473,7 +473,7 @@ public class LocalAndroidVirtualDeviceTest {
         mLocalAvd.setTestLogger(testLogger);
         mLocalAvd.currentRunUtil = acloudCreateRunUtil;
         mLocalAvd.expectToConnect = true;
-        mLocalAvd.preInvocationSetup(mMockBuildInfo);
+        mLocalAvd.preInvocationSetup(mMockBuildInfo, null);
 
         Assert.assertEquals(ONLINE_SERIAL_NUMBER, mLocalAvd.getIDevice().getSerialNumber());
 
@@ -532,7 +532,7 @@ public class LocalAndroidVirtualDeviceTest {
         mLocalAvd.setTestLogger(testLogger);
         mLocalAvd.currentRunUtil = acloudCreateRunUtil;
         try {
-            mLocalAvd.preInvocationSetup(mMockBuildInfo);
+            mLocalAvd.preInvocationSetup(mMockBuildInfo, null);
             Assert.fail("TargetSetupError is not thrown");
         } catch (TargetSetupError e) {
             expectedException = e;
@@ -585,7 +585,7 @@ public class LocalAndroidVirtualDeviceTest {
         mLocalAvd.setTestLogger(testLogger);
         mLocalAvd.currentRunUtil = acloudCreateRunUtil;
         try {
-            mLocalAvd.preInvocationSetup(mMockBuildInfo);
+            mLocalAvd.preInvocationSetup(mMockBuildInfo, null);
             Assert.fail("TargetSetupError is not thrown");
         } catch (TargetSetupError e) {
             expectedException = e;
