@@ -339,11 +339,6 @@ public abstract class ITestSuite
     private boolean mMergeAttempts = true;
     // end [Options relate to module retry and intra-module retry]
 
-    @Option(
-            name = "filter-previous-passed",
-            description = "Feature flag to test filtering previously passed tests.")
-    private boolean mTestFilterPassed = false;
-
     private ITestDevice mDevice;
     private IBuildInfo mBuildInfo;
     private List<ISystemStatusChecker> mSystemStatusCheckers;
@@ -1571,7 +1566,10 @@ public abstract class ITestSuite
 
     private List<SuiteTestFilter> getPreviousPassedFilters() {
         List<SuiteTestFilter> previousPassedFilters = new ArrayList<>();
-        if (!mTestFilterPassed) {
+        if (mMainConfiguration == null) {
+            return previousPassedFilters;
+        }
+        if (!mMainConfiguration.getCommandOptions().filterPreviousPassedTests()) {
             return previousPassedFilters;
         }
         if (mPreviousPassedFilters != null) {

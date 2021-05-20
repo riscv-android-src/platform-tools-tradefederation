@@ -245,6 +245,11 @@ public class CommandOptions implements ICommandOptions {
     private boolean mReportPassedTests = true;
 
     @Option(
+            name = "filter-previous-passed",
+            description = "Feature flag to test filtering previously passed tests.")
+    private boolean mTestFilterPassed = false;
+
+    @Option(
             name = "report-invocation-complete-logs",
             description = "Whether or not to attempt to report the logs until invocationComplete.")
     private boolean mReportInvocationCompleteLogs = false;
@@ -618,6 +623,12 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public boolean reportPassedTests() {
         return mReportPassedTests;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean filterPreviousPassedTests() {
+        return mTestFilterPassed;
     }
 
     /** {@inheritDoc} */
