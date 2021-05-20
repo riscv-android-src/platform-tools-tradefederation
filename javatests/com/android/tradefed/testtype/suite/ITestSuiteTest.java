@@ -1908,10 +1908,9 @@ public class ITestSuiteTest {
     @Test
     public void testRun_previousPassedTest() throws Exception {
         Mockito.reset(mMockPreparer);
-        OptionSetter setter = new OptionSetter(mTestSuite);
-        setter.setOptionValue("filter-previous-passed", "true");
         OptionSetter invokData = new OptionSetter(mStubMainConfiguration.getCommandOptions());
         invokData.setOptionValue("invocation-data", "invocation_id", "I8888");
+        invokData.setOptionValue("filter-previous-passed", "true");
         mResponseBuilder.setResponse("test");
 
         mContext.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
