@@ -15,8 +15,6 @@
  */
 package com.android.tradefed.testtype.suite.params;
 
-import android.platform.test.annotations.SystemUserOnly;
-
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.targetprep.CreateUserPreparer;
@@ -58,7 +56,7 @@ public class SecondaryUserHandler implements IModuleParameter {
                 // clearing/reset of the annotations.
                 Set<String> excludeAnnotations = new HashSet<>(filterTest.getExcludeAnnotations());
                 // Prevent system user only tests from running
-                excludeAnnotations.add(SystemUserOnly.class.getCanonicalName());
+                excludeAnnotations.add("android.platform.test.annotations.SystemUserOnly");
                 // Reset the annotations of the tests
                 filterTest.clearExcludeAnnotations();
                 filterTest.addAllExcludeAnnotation(excludeAnnotations);

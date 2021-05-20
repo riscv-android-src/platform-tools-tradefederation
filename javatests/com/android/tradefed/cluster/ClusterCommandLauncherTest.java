@@ -55,6 +55,8 @@ public class ClusterCommandLauncherTest {
 
     private static final String DEVICE_SERIAL = "device_serial";
     private static final String COMMAND = "host";
+    private static final String EMPTY_CONF_CONTENT =
+            "<configuration description=\"Empty Config\" />";
 
     private IRunUtil mMockRunUtil;
     private SubprocessTestResultsParser mMockSubprocessTestResultsParser;
@@ -113,18 +115,16 @@ public class ClusterCommandLauncherTest {
         mInvocationContext.addAllocatedDevice("bar", mMockTestDevice);
         final File tfJar = new File(mRootDir, "foo.jar");
         tfJar.createNewFile();
-
+        final File extraJar = new File(mTfPath, "extra.jar");
+        extraJar.createNewFile();
         final String tfPathValue =
                 String.format(
                         "${TF_WORK_DIR}/%s:${TF_WORK_DIR}/%s:${TF_WORK_DIR}/%s",
                         tfJar.getName(), mTfPath.getName(), mTfLibDir.getName());
         final List<String> jars = new ArrayList<>();
         jars.add(tfJar.getAbsolutePath());
-        jars.add(String.format("%s/", mTfPath));
-        jars.add(String.format("%s/*", mTfPath));
-        jars.add(String.format("%s/", mTfLibDir));
-        jars.add(String.format("%s/*", mTfLibDir));
-        final String classPath = ArrayUtil.join(":", jars);
+        jars.add(extraJar.getAbsolutePath());
+        final String classpath = ArrayUtil.join(":", jars);
         mOptionSetter.setOptionValue("cluster:jvm-option", "-Xmx1g");
         mOptionSetter.setOptionValue("cluster:env-var", "TF_PATH", tfPathValue);
         mOptionSetter.setOptionValue("cluster:java-property", "FOO", "${TF_WORK_DIR}/foo");
@@ -163,7 +163,7 @@ public class ClusterCommandLauncherTest {
                                 new String[] {
                                     SystemUtil.getRunningJavaBinaryPath().getAbsolutePath(),
                                     "-cp",
-                                    classPath,
+                                    classpath,
                                     "-Xmx1g",
                                     "-DFOO=" + mRootDir.getAbsolutePath() + "/foo",
                                     "com.android.tradefed.command.CommandRunner",
@@ -179,10 +179,12 @@ public class ClusterCommandLauncherTest {
     public void testRun_withSetupScripts()
             throws DeviceNotAvailableException, ConfigurationException, IOException {
         mInvocationContext.addAllocatedDevice("foo", mMockTestDevice);
+        final File tfJar = new File(mTfPath, "foo.jar");
+        tfJar.createNewFile();
+        final String classpath = tfJar.getAbsolutePath();
         File scriptFile = new File(mRootDir, "script.py");
         scriptFile.createNewFile();
         scriptFile.setExecutable(false);
-        final String classpath = String.format("%s/:%s/*", mTfPath, mTfPath);
         mOptionSetter.setOptionValue("cluster:env-var", "TF_PATH", mTfPath.getAbsolutePath());
         mOptionSetter.setOptionValue("cluster:env-var", "FOO", "foo");
         mOptionSetter.setOptionValue("cluster:env-var", "BAR", "bar");
@@ -256,55 +258,52 @@ public class ClusterCommandLauncherTest {
                                 .getCodeSource()
                                 .getLocation()
                                 .getPath());
-        String classpath;
-        if (tfPath.isDirectory()) {
-            classpath =
-                    String.format("%s/:%s/*", tfPath.getAbsolutePath(), tfPath.getAbsolutePath());
-        } else {
-            classpath = tfPath.getAbsolutePath();
+        File config = FileUtil.createTempFile("empty", ".xml");
+        FileUtil.writeToFile(EMPTY_CONF_CONTENT, config);
+        try {
+            mOptionSetter.setOptionValue("cluster:env-var", "TF_PATH", tfPath.getAbsolutePath());
+            mOptionSetter.setOptionValue("cluster:command-line", config.getAbsolutePath());
+            mOptionSetter.setOptionValue("cluster:use-subprocess-reporting", "true");
+            when(mMockSubprocessTestResultsParser.getSocketServerPort()).thenReturn(123);
+            Mockito.when(
+                            mLauncher.createSubprocessTestResultsParser(
+                                    Mockito.any(), Mockito.anyBoolean(), Mockito.any()))
+                    .thenReturn(mMockSubprocessTestResultsParser);
+            final CommandResult mockCommandResult = new CommandResult(CommandStatus.SUCCESS);
+            when(mMockRunUtil.runTimedCmdWithInput(
+                            Mockito.anyLong(),
+                            Mockito.isNull(),
+                            Mockito.<File>any(),
+                            Mockito.<File>any(),
+                            Mockito.<String[]>any()))
+                    .thenReturn(mockCommandResult);
+            Mockito.when(mLauncher.getRunUtil()).thenReturn(mMockRunUtil);
+
+            mLauncher.run(mMockTestInformation, mMockListener);
+
+            String subprocessJar =
+                    FileUtil.findFile(mRootDir, "subprocess-results-reporter.jar")
+                            .getAbsolutePath();
+            Mockito.verify(mMockRunUtil, Mockito.times(2)).setWorkingDir(mRootDir);
+            Mockito.verify(mMockRunUtil).unsetEnvVariable("TF_GLOBAL_CONFIG");
+            Mockito.verify(mMockRunUtil).setEnvVariable("TF_WORK_DIR", mRootDir.getAbsolutePath());
+            Mockito.verify(mMockRunUtil).setEnvVariable("TF_PATH", tfPath.getAbsolutePath());
+            Mockito.verify(mMockRunUtil).unsetEnvVariable("TF_GLOBAL_CONFIG");
+            Mockito.verify(mMockRunUtil)
+                    .runTimedCmdWithInput(
+                            Mockito.eq(10000L),
+                            Mockito.isNull(),
+                            Mockito.<File>any(),
+                            Mockito.<File>any(),
+                            Mockito.eq(SystemUtil.getRunningJavaBinaryPath().getAbsolutePath()),
+                            Mockito.eq("-cp"),
+                            Mockito.contains(subprocessJar),
+                            Mockito.eq("com.android.tradefed.command.CommandRunner"),
+                            Mockito.eq(config.getAbsolutePath()),
+                            Mockito.eq("--serial"),
+                            Mockito.eq(DEVICE_SERIAL));
+        } finally {
+            FileUtil.deleteFile(config);
         }
-        mOptionSetter.setOptionValue("cluster:env-var", "TF_PATH", tfPath.getAbsolutePath());
-        mOptionSetter.setOptionValue("cluster:command-line", COMMAND);
-        mOptionSetter.setOptionValue("cluster:use-subprocess-reporting", "true");
-        when(mMockSubprocessTestResultsParser.getSocketServerPort()).thenReturn(123);
-        Mockito.when(
-                        mLauncher.createSubprocessTestResultsParser(
-                                Mockito.any(), Mockito.anyBoolean(), Mockito.any()))
-                .thenReturn(mMockSubprocessTestResultsParser);
-        final CommandResult mockCommandResult = new CommandResult(CommandStatus.SUCCESS);
-        when(mMockRunUtil.runTimedCmdWithInput(
-                        Mockito.anyLong(),
-                        Mockito.isNull(),
-                        Mockito.<File>any(),
-                        Mockito.<File>any(),
-                        Mockito.<String[]>any()))
-                .thenReturn(mockCommandResult);
-        Mockito.when(mLauncher.getRunUtil()).thenReturn(mMockRunUtil);
-
-        mLauncher.run(mMockTestInformation, mMockListener);
-
-        String subprocessJar =
-                FileUtil.findFile(mRootDir, "subprocess-results-reporter.jar").getAbsolutePath();
-        Mockito.verify(mMockRunUtil, Mockito.times(2)).setWorkingDir(mRootDir);
-        Mockito.verify(mMockRunUtil).unsetEnvVariable("TF_GLOBAL_CONFIG");
-        Mockito.verify(mMockRunUtil).setEnvVariable("TF_WORK_DIR", mRootDir.getAbsolutePath());
-        Mockito.verify(mMockRunUtil).setEnvVariable("TF_PATH", tfPath.getAbsolutePath());
-        Mockito.verify(mMockRunUtil).unsetEnvVariable("TF_GLOBAL_CONFIG");
-        Mockito.verify(mMockRunUtil)
-                .runTimedCmdWithInput(
-                        Mockito.eq(10000L),
-                        Mockito.isNull(),
-                        Mockito.<File>any(),
-                        Mockito.<File>any(),
-                        asMatchers(
-                                new String[] {
-                                    SystemUtil.getRunningJavaBinaryPath().getAbsolutePath(),
-                                    "-cp",
-                                    subprocessJar + ":" + classpath,
-                                    "com.android.tradefed.command.CommandRunner",
-                                    COMMAND,
-                                    "--serial",
-                                    DEVICE_SERIAL,
-                                }));
     }
 }

@@ -19,70 +19,44 @@ package com.android.tradefed.device.metric;
 import com.android.tradefed.device.IManagedTestDevice;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil;
-import com.android.tradefed.metrics.proto.MetricMeasurement;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.RunUtil;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Iterables;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- * A {@link IMetricCollector} that collects emulator cpu and mempry usage data on test run start and
- * end.
- */
-public class EmulatorMemoryCpuCollector extends BaseDeviceMetricCollector {
+public class EmulatorMemoryCpuCapturer {
+
     private static final Pattern PSS_PATTERN = Pattern.compile("Pss:\\s+(\\d+)");
+    private final long mPid;
 
-    @Override
-    public void onTestRunStart(DeviceMetricData runData) {
-        runData.addMetric("initial_memory_pss", buildMemoryMetric(getPssMemory(getEmulatorPid())));
-        runData.addMetric("initial_cpu_usage", buildCpuMetric(getCpuUsage(getEmulatorPid())));
-    }
-
-    @Override
-    public void onTestRunEnd(
-            DeviceMetricData runData,
-            final Map<String, MetricMeasurement.Metric> currentRunMetrics) {
-        runData.addMetric("end_memory_pss", buildMemoryMetric(getPssMemory(getEmulatorPid())));
-        runData.addMetric("overall_cpu_usage", buildCpuMetric(getCpuUsage(getEmulatorPid())));
-    }
-
-    private static MetricMeasurement.Metric.Builder buildMemoryMetric(long memory) {
-        MetricMeasurement.Metric.Builder metricBuilder = MetricMeasurement.Metric.newBuilder();
-        metricBuilder.getMeasurementsBuilder().setSingleInt(memory);
-        return metricBuilder.setType(MetricMeasurement.DataType.RAW);
-    }
-
-    private static MetricMeasurement.Metric.Builder buildCpuMetric(float cpu) {
-        MetricMeasurement.Metric.Builder metricBuilder = MetricMeasurement.Metric.newBuilder();
-        metricBuilder.getMeasurementsBuilder().setSingleDouble(cpu);
-        return metricBuilder.setType(MetricMeasurement.DataType.RAW);
-    }
-
-    private long getEmulatorPid() {
-        ITestDevice testDevice = Iterables.getOnlyElement(this.getDevices());
-        IManagedTestDevice managedTestDevice = (IManagedTestDevice) testDevice;
+    public EmulatorMemoryCpuCapturer(ITestDevice device) {
+        IManagedTestDevice managedTestDevice = (IManagedTestDevice) device;
         Preconditions.checkArgument(
                 managedTestDevice.getIDevice().isEmulator(),
                 String.format(
                         "device %s is not an emulator",
                         managedTestDevice.getIDevice().getSerialNumber()));
-        return managedTestDevice.getEmulatorProcess().pid();
+        mPid = managedTestDevice.getEmulatorProcess().pid();
     }
 
-    static long getPssMemory(long pid) {
+    @VisibleForTesting
+    EmulatorMemoryCpuCapturer(long pid) {
+        mPid = pid;
+    }
+
+    public long getPssMemory() {
         try {
-            String s = FileUtil.readStringFromFile(new File(String.format("/proc/%d/smaps", pid)));
+            String s = FileUtil.readStringFromFile(new File(String.format("/proc/%d/smaps", mPid)));
             return parsePssMemory(s);
         } catch (IOException e) {
             LogUtil.CLog.e("Failed to read /proc/x/smaps", e);
@@ -101,10 +75,10 @@ public class EmulatorMemoryCpuCollector extends BaseDeviceMetricCollector {
         return allPss.stream().mapToInt(Integer::intValue).sum();
     }
 
-    static float getCpuUsage(long pid) {
+    public float getCpuUsage() {
         CommandResult result =
                 RunUtil.getDefault()
-                        .runTimedCmd(2000, "ps", "-o", "%cpu", "-p", Long.toString(pid));
+                        .runTimedCmd(2000, "ps", "-o", "%cpu", "-p", Long.toString(mPid));
         if (result.getStatus() == CommandStatus.SUCCESS) {
             return parseCpuUsage(result.getStdout());
         } else {

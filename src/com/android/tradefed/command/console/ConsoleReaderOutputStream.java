@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.tradefed.log;
+package com.android.tradefed.command.console;
 
 import jline.ConsoleReader;
 

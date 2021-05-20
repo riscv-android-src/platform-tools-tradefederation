@@ -95,6 +95,7 @@ import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.testtype.StubTest;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.SystemUtil.EnvVariable;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
 import com.android.tradefed.util.keystore.StubKeyStoreFactory;
@@ -185,6 +186,7 @@ public class TestInvocationTest {
         }
     }
 
+    @SuppressWarnings("unchecked")
     @Before
     public void setUp() throws Exception {
         mStubConfiguration =
@@ -196,6 +198,8 @@ public class TestInvocationTest {
                         return new Configuration(this.getName(), this.getDescription());
                     }
                 };
+        OptionSetter setter = new OptionSetter(mStubConfiguration.getCommandOptions());
+        setter.setOptionValue("report-passed-tests", "false");
         mStubMultiConfiguration = new Configuration("foo", "bar");
 
         mGlobalConfiguration = EasyMock.createMock(IGlobalConfiguration.class);
@@ -248,7 +252,8 @@ public class TestInvocationTest {
         EasyMock.expect(mMockDevice.getDeviceState()).andStubReturn(TestDeviceState.NOT_AVAILABLE);
         mMockDevice.setRecoveryMode(RecoveryMode.AVAILABLE);
         mMockDevice.setRecovery(mMockRecovery);
-        mMockDevice.preInvocationSetup((IBuildInfo) EasyMock.anyObject());
+        mMockDevice.preInvocationSetup(
+                (IBuildInfo) EasyMock.anyObject(), (MultiMap<String, String>) EasyMock.anyObject());
         EasyMock.expectLastCall().anyTimes();
         mFakeDescriptor =
                 new DeviceDescriptor(
@@ -599,7 +604,7 @@ public class TestInvocationTest {
         setEarlyDeviceReleaseExpectation();
         setupNormalInvoke(test);
         EasyMock.replay(mockRescheduler);
-        mTestInvocation.notifyInvocationStopped("Stopped");
+        mTestInvocation.notifyInvocationStopped("Stopped", InfraErrorIdentifier.INVOCATION_TIMEOUT);
         mTestInvocation.invoke(mStubInvocationMetadata, mStubConfiguration, mockRescheduler);
         assertTrue(
                 mStubInvocationMetadata
@@ -831,15 +836,15 @@ public class TestInvocationTest {
         logSaverListener.setLogSaver(mMockLogSaver);
         logSaverListener.invocationStarted(mStubInvocationMetadata);
         logSaverListener.testLog(
-                EasyMock.startsWith(CONFIG_LOG_NAME),
+                EasyMock.contains(CONFIG_LOG_NAME),
                 EasyMock.eq(LogDataType.HARNESS_CONFIG),
                 (InputStreamSource) EasyMock.anyObject());
         logSaverListener.testLogSaved(
-                EasyMock.startsWith(CONFIG_LOG_NAME),
+                EasyMock.contains(CONFIG_LOG_NAME),
                 EasyMock.eq(LogDataType.HARNESS_CONFIG),
                 (InputStreamSource) EasyMock.anyObject(),
                 (LogFile) EasyMock.anyObject());
-        logSaverListener.logAssociation(EasyMock.startsWith(CONFIG_LOG_NAME), EasyMock.anyObject());
+        logSaverListener.logAssociation(EasyMock.contains(CONFIG_LOG_NAME), EasyMock.anyObject());
         logSaverListener.testLog(
                 EasyMock.startsWith(LOGCAT_NAME_SETUP),
                 EasyMock.eq(LogDataType.LOGCAT),
@@ -1133,16 +1138,16 @@ public class TestInvocationTest {
         EasyMock.expect(mMockSummaryListener.getSummary()).andReturn(null);
 
         mMockTestListener.testLog(
-                EasyMock.startsWith(CONFIG_LOG_NAME),
+                EasyMock.contains(CONFIG_LOG_NAME),
                 EasyMock.eq(LogDataType.HARNESS_CONFIG),
                 (InputStreamSource) EasyMock.anyObject());
         mMockSummaryListener.testLog(
-                EasyMock.startsWith(CONFIG_LOG_NAME),
+                EasyMock.contains(CONFIG_LOG_NAME),
                 EasyMock.eq(LogDataType.HARNESS_CONFIG),
                 (InputStreamSource) EasyMock.anyObject());
         EasyMock.expect(
                         mMockLogSaver.saveLogData(
-                                EasyMock.startsWith(CONFIG_LOG_NAME),
+                                EasyMock.contains(CONFIG_LOG_NAME),
                                 EasyMock.eq(LogDataType.HARNESS_CONFIG),
                                 (InputStream) EasyMock.anyObject()))
                 .andReturn(new LogFile(PATH, URL, LogDataType.TEXT));

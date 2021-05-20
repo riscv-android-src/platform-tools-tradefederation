@@ -317,12 +317,6 @@ public interface ICommandScheduler {
      */
     public Throwable getLastInvocationThrowable();
 
-    /**
-     * Helper method, when running inside a {@link CommandRunner} context, set an exit error code
-     * and a stack trace that can be returned.
-     */
-    public void setLastInvocationExitCode(ExitCode code, Throwable stack);
-
     /** Returns the number of Commands in ready state in the queue. */
     public int getReadyCommandCount();
 

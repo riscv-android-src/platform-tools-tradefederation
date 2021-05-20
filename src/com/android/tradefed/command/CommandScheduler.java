@@ -69,11 +69,13 @@ import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.LogSaverResultForwarder;
 import com.android.tradefed.result.ResultForwarder;
 import com.android.tradefed.result.error.ErrorIdentifier;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.result.suite.SuiteResultReporter;
 import com.android.tradefed.sandbox.ISandbox;
+import com.android.tradefed.service.TradefedFeatureServer;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.suite.retry.RetryRescheduler;
 import com.android.tradefed.util.ArrayUtil;
@@ -609,6 +611,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             }
 
             Exception trackDeviceException = null;
+            boolean lastInvocationSet = false;
             try {
                 // Copy the command options invocation attributes to the invocation if it has not
                 // been already done.
@@ -629,17 +632,21 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 CLog.w("Device %s is unresponsive. Reason: %s", e.getSerial(), e.getMessage());
                 trackDeviceException = e;
                 setLastInvocationExitCode(ExitCode.DEVICE_UNRESPONSIVE, e);
+                lastInvocationSet = true;
             } catch (DeviceNotAvailableException e) {
                 CLog.w("Device %s is not available. Reason: %s", e.getSerial(), e.getMessage());
                 trackDeviceException = e;
                 setLastInvocationExitCode(ExitCode.DEVICE_UNAVAILABLE, e);
+                lastInvocationSet = true;
             } catch (FatalHostError e) {
                 CLog.wtf(String.format("Fatal error occurred: %s, shutting down", e.getMessage()),
                         e);
                 setLastInvocationExitCode(ExitCode.FATAL_HOST_ERROR, e);
+                lastInvocationSet = true;
                 shutdown();
             } catch (Throwable e) {
                 setLastInvocationExitCode(ExitCode.THROWABLE_EXCEPTION, e);
+                lastInvocationSet = true;
                 CLog.e(e);
             } finally {
                 mExecutionTimer.cancel();
@@ -664,6 +671,19 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                         CLog.e("Exception caught while calling invocationComplete:");
                         CLog.e(anyException);
                     }
+                }
+                if (!lastInvocationSet && instance.getExitInfo() != null) {
+                    setLastInvocationExitCode(
+                            instance.getExitInfo().mExitCode, instance.getExitInfo().mStack);
+                }
+                if (config.getCommandOptions().reportInvocationComplete()) {
+                    LogSaverResultForwarder.reportEndHostLog(
+                            config.getLogSaver(), TestInvocation.TRADEFED_INVOC_COMPLETE_HOST_LOG);
+                    config.getLogOutput().closeLog();
+                    LogRegistry.getLogRegistry().unregisterLogger();
+                }
+                if (getFeatureServer() != null) {
+                    getFeatureServer().unregisterInvocation(config);
                 }
                 mCmd.commandFinished(elapsedTime);
                 logInvocationEndedEvent(
@@ -737,7 +757,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
          * invocations.
          */
         public void stopInvocation(String message, ErrorIdentifier errorId) {
-            getInvocation().notifyInvocationStopped(message);
+            getInvocation().notifyInvocationStopped(message, errorId);
             for (ITestDevice device : mInvocationContext.getDevices()) {
                 if (TestDeviceState.ONLINE.equals(device.getDeviceState())) {
                     // Kill all running processes on device.
@@ -925,11 +945,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         mRunLatch = new CountDownLatch(1);
     }
 
-    /**
-     * Starts the scheduler including setting up of logging, init of {@link DeviceManager} etc
-     */
+    /** Starts the scheduler including setting up of logging, init of {@link DeviceManager} etc */
     @Override
-    public void start() {
+    public synchronized void start() {
         synchronized (this) {
             if (mStarted) {
                 throw new IllegalStateException("scheduler has already been started");
@@ -1003,6 +1021,10 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
      */
     protected IConfigurationFactory getConfigFactory() {
         return ConfigurationFactory.getInstance();
+    }
+
+    protected TradefedFeatureServer getFeatureServer() {
+        return GlobalConfiguration.getInstance().getFeatureServer();
     }
 
     /**
@@ -1438,7 +1460,10 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
                 }
             }
         } catch (IOException e) {
-            throw new ConfigurationException("Failed to read file " + cmdFile.getAbsolutePath(), e);
+            throw new ConfigurationException(
+                    "Failed to read file " + cmdFile.getAbsolutePath(),
+                    e,
+                    InfraErrorIdentifier.CONFIGURATION_NOT_FOUND);
         }
     }
 
@@ -1596,8 +1621,8 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             CLog.e("'adb devices' output:\n%s", adbOutput);
             throw new NoDeviceException(
                     String.format(
-                            "no devices is available for command: %s\n%s",
-                            Arrays.asList(args), allocationResults.formattedReason()),
+                            "No device match for allocation. Reason: %s.\ncommand: %s",
+                            allocationResults.formattedReason(), Arrays.asList(args)),
                     InfraErrorIdentifier.SCHEDULER_ALLOCATION_ERROR);
         }
     }
@@ -1721,6 +1746,9 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         // Name invocation with first device serial
         final String invocationName = String.format("Invocation-%s",
                 context.getSerials().get(0));
+        if (getFeatureServer() != null) {
+            getFeatureServer().registerInvocation(cmd.getConfiguration());
+        }
         InvocationThread invocationThread = new InvocationThread(invocationName, context, cmd,
                 listeners);
         // Link context and command
@@ -1810,7 +1838,10 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
      */
     @Override
     public synchronized void shutdownOnEmpty() {
-        assertStarted();
+        if (!mStarted) {
+            CLog.w("Scheduler was not started, yet shutdownOnEmpty was called.");
+            return;
+        }
         setHostState(HostState.QUITTING);
         if (!isShuttingDown()) {
             CLog.d("initiating shutdown on empty");
@@ -2439,8 +2470,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         return mLastInvocationThrowable;
     }
 
-    @Override
-    public void setLastInvocationExitCode(ExitCode code, Throwable throwable) {
+    private void setLastInvocationExitCode(ExitCode code, Throwable throwable) {
         mLastInvocationExitCode = code;
         mLastInvocationThrowable = throwable;
     }

@@ -23,6 +23,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
@@ -123,7 +124,8 @@ public class DynamicSystemPreparer extends BaseTargetPreparer {
                 throw new TargetSetupError(
                         String.format(
                                 "Failed to push %s to %s", systemImageGZ.getName(), DEST_PATH),
-                        device.getDeviceDescriptor());
+                        device.getDeviceDescriptor(),
+                        DeviceErrorIdentifier.FAIL_PUSH_FILE);
             }
             device.setProperty("persist.sys.fflag.override.settings_dynamic_system", "true");
 
@@ -145,7 +147,8 @@ public class DynamicSystemPreparer extends BaseTargetPreparer {
             if (!device.waitForDeviceNotAvailable(DSU_MAX_WAIT_SEC * 1000)) {
                 throw new TargetSetupError(
                         "Timed out waiting for DSU installation to complete and reboot",
-                        device.getDeviceDescriptor());
+                        device.getDeviceDescriptor(),
+                        DeviceErrorIdentifier.DEVICE_UNEXPECTED_RESPONSE);
             }
 
             // If installing user build by DSU, the device will boot up without user debug mode.

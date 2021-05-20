@@ -92,6 +92,7 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Container for the test run configuration. This class is an helper to prepare and run the tests.
@@ -146,10 +147,10 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
     private boolean mIsFailedModule = false;
 
     // Tracking of preparers performance
-    private long mElapsedPreparation = 0l;
-    private long mElapsedTearDown = 0l;
+    private long mElapsedPreparation = 0L;
+    private long mElapsedTearDown = 0L;
 
-    private long mStartTestTime = 0l;
+    private long mStartTestTime = 0L;
     private Long mStartModuleRunDate = null;
 
     // Tracking of retry performance
@@ -384,7 +385,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
 
         CLog.logAndDisplay(LogLevel.DEBUG, "Running module %s", getId());
         // Exception generated during setUp or run of the tests
-        Throwable preparationException = null;
+        Throwable preparationException;
         DeviceNotAvailableException runException = null;
         // Resolve dynamic files except for the IRemoteTest ones
         preparationException = invokeRemoteDynamic(moduleInfo.getDevice(), mModuleConfiguration);
@@ -544,6 +545,8 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 Throwable exception = (runException != null) ? runException : preparationException;
                 // Tear down
                 runTearDown(moduleInfo, exception);
+                // Verify device did not crash
+                checkEndModuleDevice(moduleInfo);
             } catch (DeviceNotAvailableException dnae) {
                 CLog.e(
                         "Module %s failed during tearDown with: %s",
@@ -663,7 +666,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
             List<TestRunResult> listResults,
             Integer attempt,
             RuntimeException tearDownException) {
-        long elapsedTime = 0l;
+        long elapsedTime = 0L;
         HashMap<String, Metric> metricsProto = new HashMap<>();
         if (attempt != null) {
             long startTime =
@@ -961,6 +964,31 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         }
     }
 
+    /** Verify that the device did not crash after the module. */
+    private void checkEndModuleDevice(TestInformation testInfo) throws DeviceNotAvailableException {
+        for (ITestDevice device : testInfo.getDevices()) {
+            if (device.getIDevice() instanceof StubDevice) {
+                continue;
+            }
+            long deviceDate = device.getDeviceDate();
+            if (deviceDate == 0L) {
+                continue;
+            }
+            boolean restarted =
+                    device.deviceSoftRestartedSince(deviceDate - 5000L, TimeUnit.MILLISECONDS);
+            if (restarted) {
+                CLog.e("Detected a soft-restart after module %s", mId);
+                InvocationMetricLogger.addInvocationMetrics(
+                        InvocationMetricKey.SOFT_RESTART_AFTER_MODULE, 1);
+                device.waitForDeviceAvailable();
+                // TODO: Enable actually failing module for reporting
+                /*throw new HarnessRuntimeException(
+                String.format("Device '%s' crashed after running %s.", device.getSerialNumber(), mId),
+                DeviceErrorIdentifier.DEVICE_CRASHED);*/
+            }
+        }
+    }
+
     /** Returns the current time. */
     private long getCurrentTime() {
         return System.currentTimeMillis();
@@ -1010,7 +1038,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
 
     /** Returns the approximate time to run all the tests in the module. */
     public long getRuntimeHint() {
-        long hint = 0l;
+        long hint = 0L;
         for (IRemoteTest test : mTests) {
             if (test instanceof IRuntimeHintProvider) {
                 hint += ((IRuntimeHintProvider) test).getRuntimeHint();

@@ -42,30 +42,20 @@ public class AbiUtils {
     public static final String BASE_ARCH_MIPS = "mips";
     public static final String ARCH_MIPS64 = BASE_ARCH_MIPS + "64";
 
-    /**
-     * The set of 32Bit ABIs.
-     */
-    private static final Set<String> ABIS_32BIT = new HashSet<String>();
+    /** The set of 32Bit ABIs. */
+    private static final Set<String> ABIS_32BIT = new LinkedHashSet<String>();
 
-    /**
-     * The set of 64Bit ABIs.
-     */
-    private static final Set<String> ABIS_64BIT = new HashSet<String>();
+    /** The set of 64Bit ABIs. */
+    private static final Set<String> ABIS_64BIT = new LinkedHashSet<String>();
 
-    /**
-     * The set of ARM ABIs.
-     */
-    protected static final Set<String> ARM_ABIS = new HashSet<String>();
+    /** The set of ARM ABIs. */
+    protected static final Set<String> ARM_ABIS = new LinkedHashSet<String>();
 
-    /**
-     * The set of Intel ABIs.
-     */
-    private static final Set<String> INTEL_ABIS = new HashSet<String>();
+    /** The set of Intel ABIs. */
+    private static final Set<String> INTEL_ABIS = new LinkedHashSet<String>();
 
-    /**
-     * The set of Mips ABIs.
-     */
-    private static final Set<String> MIPS_ABIS = new HashSet<String>();
+    /** The set of Mips ABIs. */
+    private static final Set<String> MIPS_ABIS = new LinkedHashSet<String>();
 
     /** The set of ABI names which Compatibility supports. */
     protected static final Set<String> ABIS_SUPPORTED_BY_COMPATIBILITY = new LinkedHashSet<>();
@@ -90,14 +80,14 @@ public class AbiUtils {
         ABIS_64BIT.add(ABI_X86_64);
         ABIS_64BIT.add(ABI_MIPS64);
 
-        ARM_ABIS.add(ABI_ARM_V7A);
         ARM_ABIS.add(ABI_ARM_64_V8A);
+        ARM_ABIS.add(ABI_ARM_V7A);
 
-        INTEL_ABIS.add(ABI_X86);
         INTEL_ABIS.add(ABI_X86_64);
+        INTEL_ABIS.add(ABI_X86);
 
-        MIPS_ABIS.add(ABI_MIPS);
         MIPS_ABIS.add(ABI_MIPS64);
+        MIPS_ABIS.add(ABI_MIPS);
 
         ARCH_TO_ABIS.put(BASE_ARCH_ARM, ARM_ABIS);
         ARCH_TO_ABIS.put(ARCH_ARM64, ARM_ABIS);
@@ -271,6 +261,9 @@ public class AbiUtils {
      */
     public static Set<String> parseAbiListFromProperty(String abiListProp) {
         Set<String> abiSet = new HashSet<>();
+        if (abiListProp == null) {
+            return abiSet;
+        }
         String[] abiList = abiListProp.split(",");
         for (String abi : abiList) {
             String trimmedAbi = abi.trim();

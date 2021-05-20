@@ -95,7 +95,7 @@ public class TestDeviceUserFuncTest implements IDeviceTest {
 
             assertTrue(mTestDevice.isUserRunning(userId));
 
-            mTestDevice.stopUser(userId);
+            mTestDevice.stopUser(userId, true, false);
 
             assertFalse(mTestDevice.isUserRunning(userId));
         } finally {

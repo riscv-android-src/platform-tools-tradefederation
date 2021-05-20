@@ -187,11 +187,14 @@ public class ShardHelper implements IShardHelper {
                 }
             }
         }
-        // clean up original builds
-        for (String deviceName : context.getDeviceConfigNames()) {
-            config.getDeviceConfigByName(deviceName)
-                    .getBuildProvider()
-                    .cleanUp(context.getBuildInfo(deviceName));
+        // If we are sharding inside sandbox, don't clean, let the parent do it.
+        if (!config.getConfigurationDescription().shouldUseSandbox()) {
+            // clean up original builds
+            for (String deviceName : context.getDeviceConfigNames()) {
+                config.getDeviceConfigByName(deviceName)
+                        .getBuildProvider()
+                        .cleanUp(context.getBuildInfo(deviceName));
+            }
         }
         return true;
     }
@@ -303,9 +306,8 @@ public class ShardHelper implements IShardHelper {
             }
 
             IShardableTest shardableTest = (IShardableTest) test;
-            Collection<IRemoteTest> shards = null;
             // Give the shardCount hint to tests if they need it.
-            shards = shardableTest.split(shardCount, testInfo);
+            Collection<IRemoteTest> shards = shardableTest.split(shardCount, testInfo);
             if (shards != null) {
                 shardableTests.addAll(shards);
                 isSharded = true;

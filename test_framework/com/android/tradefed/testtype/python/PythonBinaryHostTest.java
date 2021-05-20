@@ -194,8 +194,8 @@ public class PythonBinaryHostTest implements IRemoteTest, ITestFilterReceiver {
         if (testDir == null || !testDir.exists()) {
             testDir = mTestInfo.executionFiles().get(FilesKey.TESTS_DIRECTORY);
         }
+        List<String> ldLibraryPath = new ArrayList<>();
         if (testDir != null && testDir.exists()) {
-            List<String> ldLibraryPath = new ArrayList<>();
             List<String> libPaths =
                     Arrays.asList("lib", "lib64", "host/testcases/lib", "host/testcases/lib64");
             for (String path : libPaths) {
@@ -216,8 +216,16 @@ public class PythonBinaryHostTest implements IRemoteTest, ITestFilterReceiver {
                         pyFile.getAbsolutePath());
                 continue;
             }
+            // Complete the LD_LIBRARY_PATH with possible libs
+            String path = mLdLibraryPath;
+            List<String> paths = findAllSubdir(pyFile.getParentFile(), ldLibraryPath);
+            if (mLdLibraryPath != null) {
+                paths.add(0, mLdLibraryPath);
+            }
+            mLdLibraryPath = Joiner.on(":").join(paths);
             pyFile.setExecutable(true);
             runSinglePythonFile(listener, testInfo, pyFile);
+            mLdLibraryPath = path;
         }
     }
 
@@ -253,8 +261,9 @@ public class PythonBinaryHostTest implements IRemoteTest, ITestFilterReceiver {
         // Set the parent dir on the PATH
         String separator = System.getProperty("path.separator");
         List<String> paths = new ArrayList<>();
+        // Bundle binaries / dependencies have priorities over existing PATH
+        paths.addAll(findAllSubdir(pyFile.getParentFile(), new ArrayList<>()));
         paths.add(System.getenv("PATH"));
-        paths.add(pyFile.getParentFile().getAbsolutePath());
         String path = paths.stream().distinct().collect(Collectors.joining(separator));
         CLog.d("Using updated $PATH: %s", path);
         getRunUtil().setEnvVariablePriority(EnvPriority.SET);
@@ -409,6 +418,22 @@ public class PythonBinaryHostTest implements IRemoteTest, ITestFilterReceiver {
     @VisibleForTesting
     String getAdbPath() {
         return GlobalConfiguration.getDeviceManagerInstance().getAdbPath();
+    }
+
+    private List<String> findAllSubdir(File parentDir, List<String> knownPaths) {
+        List<String> subDir = new ArrayList<>();
+        subDir.add(parentDir.getAbsolutePath());
+        if (parentDir.listFiles() == null) {
+            return subDir;
+        }
+        for (File child : parentDir.listFiles()) {
+            if (child != null
+                    && child.isDirectory()
+                    && !knownPaths.contains(child.getAbsolutePath())) {
+                subDir.addAll(findAllSubdir(child, knownPaths));
+            }
+        }
+        return subDir;
     }
 
     private void reportFailure(

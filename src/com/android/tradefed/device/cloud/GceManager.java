@@ -21,6 +21,8 @@ import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.device.cloud.AcloudConfigParser.AcloudKeys;
 import com.android.tradefed.device.cloud.GceAvdInfo.GceStatus;
 import com.android.tradefed.error.HarnessRuntimeException;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
@@ -35,6 +37,7 @@ import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.GoogleApiClientUtil;
 import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.RunUtil;
 
 import com.google.api.client.auth.oauth2.Credential;
@@ -143,16 +146,21 @@ public class GceManager {
     }
 
     public GceAvdInfo startGce() throws TargetSetupError {
-        return startGce(null);
+        return startGce(null, null);
     }
 
     /**
      * Attempt to start a gce instance
      *
+     * @param ipDevice the initial IP of the GCE instance to run AVD in, <code>null</code> if not
+     *     applicable
+     * @param attributes attributes associated with current invocation, used for passing applicable
+     *     information down to the GCE instance to be added as VM metadata
      * @return a {@link GceAvdInfo} describing the GCE instance. Could be a BOOT_FAIL instance.
      * @throws TargetSetupError
      */
-    public GceAvdInfo startGce(String ipDevice) throws TargetSetupError {
+    public GceAvdInfo startGce(String ipDevice, MultiMap<String, String> attributes)
+            throws TargetSetupError {
         mGceAvdInfo = null;
         // For debugging purposes bypass.
         if (mGceHost != null && mGceInstanceName != null) {
@@ -167,7 +175,7 @@ public class GceManager {
         File reportFile = null;
         try {
             reportFile = FileUtil.createTempFile("gce_avd_driver", ".json");
-            List<String> gceArgs = buildGceCmd(reportFile, mBuildInfo, ipDevice);
+            List<String> gceArgs = buildGceCmd(reportFile, mBuildInfo, ipDevice, attributes);
 
             long driverTimeoutMs = getTestDeviceOptions().getGceCmdTimeout();
             if (!getTestDeviceOptions().allowGceCmdTimeoutOverride()) {
@@ -238,6 +246,7 @@ public class GceManager {
                     mDeviceDescriptor,
                     InfraErrorIdentifier.FAIL_TO_CREATE_FILE);
         } finally {
+            logCloudDeviceMetadata();
             FileUtil.deleteFile(reportFile);
         }
     }
@@ -260,7 +269,8 @@ public class GceManager {
     }
 
     /** Build and return the command to launch GCE. Exposed for testing. */
-    protected List<String> buildGceCmd(File reportFile, IBuildInfo b, String ipDevice) {
+    protected List<String> buildGceCmd(
+            File reportFile, IBuildInfo b, String ipDevice, MultiMap<String, String> attributes) {
         File avdDriverFile = getTestDeviceOptions().getAvdDriverBinary();
         if (!avdDriverFile.exists()) {
             throw new HarnessRuntimeException(
@@ -311,6 +321,17 @@ public class GceManager {
             gceArgs.add(b.getBuildBranch());
             gceArgs.add("--build-id");
             gceArgs.add(b.getBuildId());
+        }
+
+        // process any info in the invocation context that should be passed onto GCE driver
+        // as meta data to be associated with the VM instance
+        if (attributes != null) {
+            for (String key : getTestDeviceOptions().getInvocationAttributeToMetadata()) {
+                for (String value : attributes.get(key)) {
+                    gceArgs.add("--gce-metadata");
+                    gceArgs.add(String.format("%s:%s", key, value));
+                }
+            }
         }
 
         // Add additional args passed by gce-driver-param.
@@ -500,12 +521,18 @@ public class GceManager {
         if (gceAvd == null || gceAvd.hostAndPort() == null) {
             return null;
         }
+        String adbTool = "./bin/adb";
+        if (options.useOxygen()) {
+            adbTool = "./tools/dynamic_adb_tool";
+            // Make sure the Oxygen device is connected.
+            remoteSshCommandExec(gceAvd, options, runUtil, adbTool, "connect", "localhost:6520");
+        }
         String output =
                 remoteSshCommandExec(
                         gceAvd,
                         options,
                         runUtil,
-                        "./bin/adb",
+                        adbTool,
                         "wait-for-device",
                         "shell",
                         "bugreportz");
@@ -516,7 +543,7 @@ public class GceManager {
         }
         String deviceFilePath = match.group(2);
         String pullOutput =
-                remoteSshCommandExec(gceAvd, options, runUtil, "./bin/adb", "pull", deviceFilePath);
+                remoteSshCommandExec(gceAvd, options, runUtil, adbTool, "pull", deviceFilePath);
         CLog.d(pullOutput);
         String remoteFilePath = "./" + new File(deviceFilePath).getName();
         File localTmpFile = FileUtil.createTempFile("bugreport-ssh", ".zip");
@@ -723,25 +750,36 @@ public class GceManager {
         }
     }
 
-    /** Log the information related to the stable host image used. */
-    public void logStableHostImageInfos(IBuildInfo build) {
+    /** Log the information related to the acloud config. */
+    private void logCloudDeviceMetadata() {
         AcloudConfigParser config = AcloudConfigParser.parseConfig(getAvdConfigFile());
         if (config == null) {
             CLog.e("Failed to parse our acloud config.");
             return;
         }
-        if (build == null) {
-            return;
-        }
         if (config.getValueForKey(AcloudKeys.STABLE_HOST_IMAGE_NAME) != null) {
-            build.addBuildAttribute(
-                    AcloudKeys.STABLE_HOST_IMAGE_NAME.toString(),
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.CLOUD_DEVICE_STABLE_HOST_IMAGE,
                     config.getValueForKey(AcloudKeys.STABLE_HOST_IMAGE_NAME));
         }
         if (config.getValueForKey(AcloudKeys.STABLE_HOST_IMAGE_PROJECT) != null) {
-            build.addBuildAttribute(
-                    AcloudKeys.STABLE_HOST_IMAGE_PROJECT.toString(),
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.CLOUD_DEVICE_STABLE_HOST_IMAGE_PROJECT,
                     config.getValueForKey(AcloudKeys.STABLE_HOST_IMAGE_PROJECT));
+        }
+        if (config.getValueForKey(AcloudKeys.PROJECT) != null) {
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.CLOUD_DEVICE_PROJECT,
+                    config.getValueForKey(AcloudKeys.PROJECT));
+        }
+        if (config.getValueForKey(AcloudKeys.ZONE) != null) {
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.CLOUD_DEVICE_ZONE, config.getValueForKey(AcloudKeys.ZONE));
+        }
+        if (config.getValueForKey(AcloudKeys.MACHINE_TYPE) != null) {
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.CLOUD_DEVICE_MACHINE_TYPE,
+                    config.getValueForKey(AcloudKeys.MACHINE_TYPE));
         }
     }
 

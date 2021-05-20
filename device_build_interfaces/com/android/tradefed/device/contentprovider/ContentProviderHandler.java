@@ -228,20 +228,17 @@ public class ContentProviderHandler {
             CLog.w("'%s' is not a file but a directory, can't use #pushFile on it.", fileToPush);
             return false;
         }
-        String contentUri = createEscapedContentUri(deviceFilePath);
-        String pushCommand =
-                String.format(
-                        "content write --user %d --uri %s", mDevice.getCurrentUser(), contentUri);
-        CommandResult pushResult = mDevice.executeShellV2Command(pushCommand, fileToPush);
 
-        if (isSuccessful(pushResult)) {
-            return true;
+        boolean res = pushFileInternal(fileToPush, deviceFilePath);
+        if (!res && mReportNotFound) {
+            // Re-run setup to ensure we have the content provider installed
+            boolean installed = setUp();
+            if (!installed) {
+                return false;
+            }
+            res = pushFileInternal(fileToPush, deviceFilePath);
         }
-
-        CLog.e(
-                "Failed to push a file '%s' at %s using content provider. Error: '%s'",
-                fileToPush, deviceFilePath, pushResult.getStderr());
-        return false;
+        return res;
     }
 
     /**
@@ -436,5 +433,23 @@ public class ContentProviderHandler {
         } finally {
             StreamUtil.close(localFileStream);
         }
+    }
+
+    private boolean pushFileInternal(File fileToPush, String deviceFilePath)
+            throws DeviceNotAvailableException {
+        String contentUri = createEscapedContentUri(deviceFilePath);
+        String pushCommand =
+                String.format(
+                        "content write --user %d --uri %s", mDevice.getCurrentUser(), contentUri);
+        CommandResult pushResult = mDevice.executeShellV2Command(pushCommand, fileToPush);
+
+        if (isSuccessful(pushResult)) {
+            return true;
+        }
+
+        CLog.e(
+                "Failed to push a file '%s' at %s using content provider. Error: '%s'",
+                fileToPush, deviceFilePath, pushResult.getStderr());
+        return false;
     }
 }

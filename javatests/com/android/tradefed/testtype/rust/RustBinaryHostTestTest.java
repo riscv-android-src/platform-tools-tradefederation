@@ -276,6 +276,7 @@ public class RustBinaryHostTestTest {
                                     EasyMock.eq(binary.getAbsolutePath()),
                                     EasyMock.eq("--list")))
                     .andReturn(listRes);
+            mMockListener.testRunStarted(binary.getName(), 0);
             mMockListener.testRunFailed((FailureDescription) EasyMock.anyObject());
             mockTestRunEnded();
             callReplayRunVerify();

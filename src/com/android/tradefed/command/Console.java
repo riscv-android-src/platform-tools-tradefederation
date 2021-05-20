@@ -19,18 +19,26 @@ package com.android.tradefed.command;
 import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.clearcut.ClearcutClient;
 import com.android.tradefed.clearcut.TerminateClearcutClient;
+import com.android.tradefed.command.CommandRunner.ExitCode;
+import com.android.tradefed.command.console.ConfigCompletor;
+import com.android.tradefed.command.console.ConsoleReaderOutputStream;
 import com.android.tradefed.config.ArgsOptionParser;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.config.proxy.AutomatedReporters;
 import com.android.tradefed.device.IDeviceManager;
-import com.android.tradefed.log.ConsoleReaderOutputStream;
+import com.android.tradefed.invoker.InvocationContext;
+import com.android.tradefed.invoker.TestInvocation;
 import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.FailureDescription;
+import com.android.tradefed.result.proto.FileProtoResultReporter;
+import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
+import com.android.tradefed.service.TradefedFeatureServer;
 import com.android.tradefed.util.ArrayUtil;
-import com.android.tradefed.util.ConfigCompletor;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.RegexTrie;
@@ -428,7 +436,23 @@ public class Console extends Thread {
                 printLine("shutdownOnCmdFileError is enabled, stopping TF");
                 mScheduler.shutdown();
             }
+            reportProtoResults(e);
         }
+    }
+
+    private void reportProtoResults(Exception e) {
+        String protoRes = System.getenv(AutomatedReporters.PROTO_REPORTING_FILE);
+        if (protoRes == null || new File(protoRes).exists()) {
+            return;
+        }
+        FileProtoResultReporter reporter = new FileProtoResultReporter();
+        reporter.setOutputFile(new File(protoRes));
+        reporter.setDelimitedOutput(false);
+        reporter.invocationStarted(new InvocationContext());
+        FailureDescription failure =
+                TestInvocation.createFailureFromException(e, FailureStatus.INFRA_FAILURE);
+        reporter.invocationFailed(failure);
+        reporter.invocationEnded(0L);
     }
 
     /**
@@ -1131,10 +1155,35 @@ public class Console extends Thread {
         mMainArgs = mainArgs;
     }
 
+    private static class TerminateFeatureServer extends Thread {
+        private final TradefedFeatureServer mClient;
+
+        public TerminateFeatureServer(TradefedFeatureServer client) {
+            mClient = client;
+        }
+
+        @Override
+        public void run() {
+            try {
+                mClient.shutdown();
+            } catch (InterruptedException e) {
+                CLog.e(e);
+            }
+        }
+    }
+
     public static void main(final String[] mainArgs) throws InterruptedException,
             ConfigurationException {
         Console console = new Console();
-        startConsole(console, mainArgs);
+        try {
+            startConsole(console, mainArgs);
+        } catch (ConfigurationException e) {
+            e.printStackTrace();
+            System.exit(ExitCode.CONFIG_EXCEPTION.getCodeValue());
+        } catch (InterruptedException interrupt) {
+            interrupt.printStackTrace();
+            System.exit(ExitCode.THROWABLE_EXCEPTION.getCodeValue());
+        }
     }
 
     /**
@@ -1148,9 +1197,13 @@ public class Console extends Thread {
         ClearcutClient client = new ClearcutClient();
         Runtime.getRuntime().addShutdownHook(new TerminateClearcutClient(client));
         client.notifyTradefedStartEvent();
+        TradefedFeatureServer server = new TradefedFeatureServer();
+        server.start();
+        Runtime.getRuntime().addShutdownHook(new TerminateFeatureServer(server));
 
         List<String> nonGlobalArgs = GlobalConfiguration.createGlobalConfiguration(args);
         GlobalConfiguration.getInstance().setup();
+        GlobalConfiguration.getInstance().setTradefedFeatureServer(server);
         console.setArgs(nonGlobalArgs);
         console.setCommandScheduler(GlobalConfiguration.getInstance().getCommandScheduler());
         console.setKeyStoreFactory(GlobalConfiguration.getInstance().getKeyStoreFactory());

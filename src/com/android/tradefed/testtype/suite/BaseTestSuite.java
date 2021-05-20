@@ -42,7 +42,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -216,8 +215,8 @@ public class BaseTestSuite extends ITestSuite {
     private boolean mIgnoreNonPreloadedMainlineModule = false;
 
     private SuiteModuleLoader mModuleRepo;
-    private Map<String, List<SuiteTestFilter>> mIncludeFiltersParsed = new HashMap<>();
-    private Map<String, List<SuiteTestFilter>> mExcludeFiltersParsed = new HashMap<>();
+    private Map<String, List<SuiteTestFilter>> mIncludeFiltersParsed = new LinkedHashMap<>();
+    private Map<String, List<SuiteTestFilter>> mExcludeFiltersParsed = new LinkedHashMap<>();
     private List<File> mConfigPaths = new ArrayList<>();
 
     /** {@inheritDoc} */

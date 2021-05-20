@@ -19,6 +19,7 @@ package com.android.tradefed.config;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.command.ICommandOptions;
+import com.android.tradefed.config.filter.GlobalTestFilter;
 import com.android.tradefed.device.IDeviceRecovery;
 import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.device.TestDeviceOptions;
@@ -29,6 +30,7 @@ import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
+import com.android.tradefed.targetprep.ILabPreparer;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
@@ -68,6 +70,13 @@ public interface IConfiguration {
      * @return the {@link ITargetPreparer}s provided in order in the configuration
      */
     public List<ITargetPreparer> getTargetPreparers();
+
+    /**
+     * Gets the {@link ILabPreparer}s from the configuration.
+     *
+     * @return the {@link ILabPreparer}s provided in order in the configuration
+     */
+    public List<ILabPreparer> getLabPreparers();
 
     /**
      * Gets the {@link IRemoteTest}s to run from the configuration.
@@ -165,6 +174,9 @@ public interface IConfiguration {
      * @return the {@link CoverageOptions} provided in the configuration.
      */
     public CoverageOptions getCoverageOptions();
+
+    /** Gets the {@link GlobalTestFilter} for the invocation. */
+    public GlobalTestFilter getGlobalFilters();
 
     /**
      * Generic interface to get the configuration object with the given type name.
@@ -333,6 +345,20 @@ public interface IConfiguration {
      * @param preparers
      */
     public void setTargetPreparers(List<ITargetPreparer> preparers);
+
+    /**
+     * Set the {@link ILabPreparer}, replacing any existing value.
+     *
+     * @param preparer
+     */
+    public void setLabPreparer(ILabPreparer preparer);
+
+    /**
+     * Set the list of {@link ILabPreparer}s, replacing any existing value.
+     *
+     * @param preparers
+     */
+    public void setLabPreparers(List<ILabPreparer> preparers);
 
     /**
      * Set a {@link IDeviceConfiguration}, replacing any existing value.
@@ -553,6 +579,9 @@ public interface IConfiguration {
 
     /** Get the list of files that will be cleaned during {@link #cleanConfigurationData()} */
     public Set<File> getFilesToClean();
+
+    /** Get the option names that did not change any values */
+    public Set<String> getInopOptions();
 
     /**
      * Sets the command line used to create this {@link IConfiguration}.

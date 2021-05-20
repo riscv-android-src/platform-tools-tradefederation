@@ -71,7 +71,6 @@ public class ConfigurationFactoryTest extends TestCase {
 
     static {
         JAR_TO_CHECK.add("tradefed-contrib.jar");
-        JAR_TO_CHECK.add("tf-contrib-tests.jar");
         JAR_TO_CHECK.add("google-tradefed-contrib.jar");
     }
 

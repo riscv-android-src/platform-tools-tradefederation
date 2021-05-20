@@ -32,6 +32,7 @@ public class InvocationMetricLogger {
         SETUP("setup_time_ms", true),
         SHARDING_DEVICE_SETUP_TIME("remote_device_sharding_setup_ms", true),
         AUTO_RETRY_TIME("auto_retry_time_ms", true),
+        BACKFILL_BUILD_INFO("backfill_build_info", false),
         STAGE_TESTS_TIME("stage_tests_time_ms", true),
         STAGE_TESTS_BYTES("stage_tests_bytes", true),
         STAGE_TESTS_INDIVIDUAL_DOWNLOADS("stage_tests_individual_downloads", true),
@@ -47,6 +48,21 @@ public class InvocationMetricLogger {
         ADB_ROOT_TIME("adb_root_time", true),
         // Represents how often we enter the "adb root" device routine.
         ADB_ROOT_ROUTINE_COUNT("adb_root_routine_count", true),
+        // Represents the time we spend pulling file from device.
+        PULL_FILE_TIME("pull_file_time_ms", true),
+        // Represents how many times we pulled file from the device.
+        PULL_FILE_COUNT("pull_file_count", true),
+        // Represents the time we spend pushing file from device.
+        PUSH_FILE_TIME("push_file_time_ms", true),
+        // Represents how many times we pushed file from the device.
+        PUSH_FILE_COUNT("push_file_count", true),
+        // Track if soft restart is occurring after test module
+        SOFT_RESTART_AFTER_MODULE("soft_restart_after_module", true),
+        CLOUD_DEVICE_PROJECT("cloud_device_project", false),
+        CLOUD_DEVICE_MACHINE_TYPE("cloud_device_machine_type", false),
+        CLOUD_DEVICE_ZONE("cloud_device_zone", false),
+        CLOUD_DEVICE_STABLE_HOST_IMAGE("stable_host_image_name", false),
+        CLOUD_DEVICE_STABLE_HOST_IMAGE_PROJECT("stable_host_image_project", false),
 
         SHUTDOWN_HARD_LATENCY("shutdown_hard_latency_ms", false),
         DEVICE_COUNT("device_count", false),

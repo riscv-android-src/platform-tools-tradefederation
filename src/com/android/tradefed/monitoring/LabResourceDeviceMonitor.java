@@ -25,6 +25,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceAllocationState;
 import com.android.tradefed.device.IDeviceMonitor;
+import com.android.tradefed.device.TestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.monitoring.collector.IResourceMetricCollector;
 
@@ -93,13 +94,6 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
     private ScheduledExecutorService mMetricizeExecutor;
     // The ExecutorService executes the collector functions in every metricize operation.
     private ExecutorService mCollectionExecutor;
-
-    @Option(
-            name = "metricize-op-timeout",
-            description =
-                    "The maximum wait time in milliseconds for every resource metric collector to"
-                            + " get metrics.")
-    private long mMetricizeTimeoutMs = 1000;
 
     @Option(
             name = "metricize-cycle-sec",
@@ -327,7 +321,8 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
             Future<Collection<Resource>> future = null;
             try {
                 future = mCollectionExecutor.submit(collector::getHostResourceMetrics);
-                builder.addAllResource(future.get(mMetricizeTimeoutMs, TimeUnit.MILLISECONDS));
+                builder.addAllResource(
+                        future.get(collector.getHostMetricizeTimeoutMs(), TimeUnit.MILLISECONDS));
             } catch (InterruptedException
                     | ExecutionException
                     | TimeoutException
@@ -372,6 +367,10 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
                                                 Metric.newBuilder()
                                                         .setTag(descriptor.getState().name())
                                                         .setValue(FIXED_METRIC_VALUE)));
+        // Continue to collect resource metrics if the device is a full stack android device.
+        if (!descriptor.getDeviceClass().equals(TestDevice.class.getSimpleName())) {
+            return builder.build();
+        }
         for (IResourceMetricCollector collector : collectors) {
             Future<Collection<Resource>> future = null;
             try {
@@ -381,7 +380,8 @@ public class LabResourceDeviceMonitor extends LabResourceServiceGrpc.LabResource
                                         collector.getDeviceResourceMetrics(
                                                 descriptor,
                                                 GlobalConfiguration.getDeviceManagerInstance()));
-                builder.addAllResource(future.get(mMetricizeTimeoutMs, TimeUnit.MILLISECONDS));
+                builder.addAllResource(
+                        future.get(collector.getDeviceMetricizeTimeoutMs(), TimeUnit.MILLISECONDS));
             } catch (InterruptedException
                     | ExecutionException
                     | TimeoutException

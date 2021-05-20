@@ -27,10 +27,13 @@ import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.result.error.TestErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 
+import com.google.common.collect.ImmutableList;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -44,11 +47,11 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
     /** Special error message from the instrumentation when something goes wrong on device side. */
     public static final String ERROR_MESSAGE = "Process crashed.";
     public static final String SYSTEM_CRASH_MESSAGE = "System has crashed.";
-    public static final String TIMEOUT_MESSAGES[] = {
-        "Failed to receive adb shell test output",
-        "TimeoutException when running tests",
-        "TestTimedOutException: test timed out after",
-    };
+    public static final List<String> TIMEOUT_MESSAGES =
+            ImmutableList.of(
+                    "Failed to receive adb shell test output",
+                    "TimeoutException when running tests",
+                    "TestTimedOutException: test timed out after");
 
     public static final int MAX_NUMBER_CRASH = 3;
 
@@ -79,6 +82,10 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
 
     @Override
     public void testFailed(TestDescription test, FailureDescription failure) {
+        if (FailureStatus.NOT_EXECUTED.equals(failure.getFailureStatus())) {
+            super.testFailed(test, failure);
+            return;
+        }
         // If the test case was detected as crashing the instrumentation, we add the crash to it.
         String trace = extractCrashAndAddToMessage(failure.getErrorMessage(), mStartTime);
         if (isCrash(failure.getErrorMessage())) {
@@ -191,9 +198,12 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
             return errorMsg;
         }
         List<String> crashes = dedupCrash(item.getJavaCrashes());
+        // Invert to report the most recent one first.
+        Collections.reverse(crashes);
         int displayed = Math.min(crashes.size(), MAX_NUMBER_CRASH);
+        errorMsg = String.format("%s\nCrash Messages sorted from most recent:\n", errorMsg);
         for (int i = 0; i < displayed; i++) {
-            errorMsg = String.format("%s\nCrash Message:%s\n", errorMsg, crashes.get(i));
+            errorMsg = String.format("%s%s\n", errorMsg, crashes.get(i));
         }
         return errorMsg;
     }

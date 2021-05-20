@@ -18,8 +18,6 @@ package com.android.tradefed.testtype.suite.params;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import android.platform.test.annotations.SystemUserOnly;
-
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.targetprep.CreateUserPreparer;
@@ -53,7 +51,7 @@ public class SecondaryUserHandlerTest {
         // User zero is filtered
         assertEquals(1, test.getExcludeAnnotations().size());
         assertEquals(
-                SystemUserOnly.class.getCanonicalName(),
+                "android.platform.test.annotations.SystemUserOnly",
                 test.getExcludeAnnotations().iterator().next());
     }
 

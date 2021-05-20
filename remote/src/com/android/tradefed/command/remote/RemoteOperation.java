@@ -105,7 +105,8 @@ abstract class RemoteOperation<T> {
             }
             return rc;
         } catch (JSONException e) {
-            throw new RemoteException(e);
+            throw new RemoteException(
+                    String.format("JSONException during remote operation: %s", e.getMessage()), e);
         }
     }
 
