@@ -32,6 +32,7 @@ public class InvocationMetricLogger {
         SETUP("setup_time_ms", true),
         SHARDING_DEVICE_SETUP_TIME("remote_device_sharding_setup_ms", true),
         AUTO_RETRY_TIME("auto_retry_time_ms", true),
+        BACKFILL_BUILD_INFO("backfill_build_info", false),
         STAGE_TESTS_TIME("stage_tests_time_ms", true),
         STAGE_TESTS_BYTES("stage_tests_bytes", true),
         STAGE_TESTS_INDIVIDUAL_DOWNLOADS("stage_tests_individual_downloads", true),
