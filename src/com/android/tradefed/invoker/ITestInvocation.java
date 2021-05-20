@@ -20,6 +20,7 @@ import com.android.tradefed.command.CommandRunner.ExitCode;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.error.ErrorIdentifier;
 
 /**
  * Handles one TradeFederation test invocation.
@@ -47,7 +48,7 @@ public interface ITestInvocation {
      *
      * @param message The message associated with stopping the invocation
      */
-    public default void notifyInvocationStopped(String message) {}
+    public default void notifyInvocationStopped(String message, ErrorIdentifier errorId) {}
 
     /** The exit information of the given invocation. */
     public default ExitInformation getExitInfo() {
