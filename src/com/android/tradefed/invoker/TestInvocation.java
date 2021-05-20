@@ -172,6 +172,7 @@ public class TestInvocation implements ITestInvocation {
 
     private String mStatus = "(not invoked)";
     private String mStopCause = null;
+    private ErrorIdentifier mStopErrorId = null;
     private Long mStopRequestTime = null;
     private boolean mTestStarted = false;
     private boolean mInvocationFailed = false;
@@ -417,12 +418,13 @@ public class TestInvocation implements ITestInvocation {
                                     "Invocation was interrupted due to: %s, results will be "
                                             + "affected.",
                                     mStopCause);
+                    if (mStopErrorId == null) {
+                        mStopErrorId = InfraErrorIdentifier.INVOCATION_CANCELLED;
+                    }
                     FailureDescription failure =
-                            FailureDescription.create(message, FailureStatus.CANCELLED);
-                    failure.setErrorIdentifier(InfraErrorIdentifier.INVOCATION_CANCELLED);
-                    failure.setCause(
-                            new HarnessRuntimeException(
-                                    message, InfraErrorIdentifier.INVOCATION_CANCELLED));
+                            FailureDescription.create(message)
+                                    .setErrorIdentifier(mStopErrorId)
+                                    .setCause(new HarnessRuntimeException(message, mStopErrorId));
                     reportFailure(failure, listener);
                     PrettyPrintDelimiter.printStageDelimiter(message);
                     if (mStopRequestTime != null) {
@@ -1123,8 +1125,9 @@ public class TestInvocation implements ITestInvocation {
     }
 
     @Override
-    public void notifyInvocationStopped(String message) {
+    public void notifyInvocationStopped(String message, ErrorIdentifier errorId) {
         mStopCause = message;
+        mStopErrorId = errorId;
         if (mStopRequestTime == null) {
             mStopRequestTime = System.currentTimeMillis();
         }
