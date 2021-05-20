@@ -1013,6 +1013,9 @@ public class TestInvocation implements ITestInvocation {
                     }
                 }
 
+                // Apply global filters before sharding so they are taken into account.
+                config.getGlobalFilters().setUpFilters(config);
+
                 try {
                     sharding = invocationPath.shardConfig(config, info, rescheduler, listener);
                 } catch (RuntimeException unexpected) {
