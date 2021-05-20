@@ -523,12 +523,9 @@ public class TestInvocation implements ITestInvocation {
             message = "No error message";
         }
         FailureDescription failure =
-                CurrentInvocation.createFailure(message, id)
-                        .setCause(exception)
-                        .setFailureStatus(defaultStatus);
-        if (id != null) {
-            failure.setErrorIdentifier(id);
-            failure.setFailureStatus(id.status());
+                CurrentInvocation.createFailure(message, id).setCause(exception);
+        if (id == null) {
+            failure.setFailureStatus(defaultStatus);
         }
         return failure;
     }
