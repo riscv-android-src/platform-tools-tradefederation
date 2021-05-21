@@ -874,6 +874,7 @@ public class TestInvocation implements ITestInvocation {
                 && !RetryStrategy.NO_RETRY.equals(decision.getRetryStrategy())) {
             CLog.d("Auto-retry enabled, using the ResultAggregator to handle multiple retries.");
             aggregator = new ResultAggregator(allListeners, decision.getRetryStrategy());
+            aggregator.setUpdatedReporting(decision.useUpdatedReporting());
             allListeners = Arrays.asList(aggregator);
         }
 

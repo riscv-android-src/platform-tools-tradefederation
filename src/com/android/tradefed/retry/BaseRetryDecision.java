@@ -97,6 +97,11 @@ public class BaseRetryDecision implements IRetryDecision {
                             + "SuiteTestFilter.")
     private Set<String> mSkipRetryingList = new HashSet<>();
 
+    @Option(
+            name = "updated-retry-reporting",
+            description = "Feature flag to use the updated retry reporting strategy.")
+    private boolean mUpdatedReporting = false;
+
     private IInvocationContext mContext;
 
     private IRemoteTest mCurrentlyConsideredTest;
@@ -229,6 +234,12 @@ public class BaseRetryDecision implements IRetryDecision {
             }
         }
         return failedTestCases;
+    }
+
+    /** Returns true if we should use the updated reporting. */
+    @Override
+    public boolean useUpdatedReporting() {
+        return mUpdatedReporting;
     }
 
     private static Set<TestDescription> getPassedTestCases(List<TestRunResult> previousResults) {
