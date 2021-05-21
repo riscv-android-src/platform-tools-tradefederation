@@ -849,7 +849,8 @@ public class TestInvocation implements ITestInvocation {
                 new ArrayList<>(config.getTestInvocationListeners().size() + extraListeners.length);
         // If it's not a subprocess, report the passed tests.
         ReportPassedTests reportPass = null;
-        if (config.getCommandOptions().reportPassedTests()
+        if (config.getConfigurationObject(TradefedDelegator.DELEGATE_OBJECT) == null
+                && config.getCommandOptions().reportPassedTests()
                 && !config.getCommandOptions()
                         .getInvocationData()
                         .containsKey(SubprocessTfLauncher.SUBPROCESS_TAG_NAME)) {
