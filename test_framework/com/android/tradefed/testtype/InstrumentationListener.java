@@ -93,7 +93,7 @@ final class InstrumentationListener extends LogcatCrashResultForwarder {
     public void testRunStarted(String runName, int testCount) {
         runLevelError = null;
         // In case of crash, run will attempt to report with 0
-        if (testCount == 0 && !mExpectedTests.isEmpty()) {
+        if (testCount == 0 && mExpectedTests != null && !mExpectedTests.isEmpty()) {
             CLog.e("Run reported 0 tests while we collected %s", mExpectedTests.size());
             super.testRunStarted(runName, mExpectedTests.size());
         } else {
