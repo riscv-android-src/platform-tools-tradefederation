@@ -344,9 +344,12 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
 
     @Override
     public void recoverDevice() throws DeviceNotAvailableException {
-        if (getGceSshMonitor() == null && mTunnelInitFailed != null) {
-            // We threw before but was not reported, so throw the root cause here.
-            throw mTunnelInitFailed;
+        if (getGceSshMonitor() == null) {
+            if (mTunnelInitFailed != null) {
+                // We threw before but was not reported, so throw the root cause here.
+                throw mTunnelInitFailed;
+            }
+            waitForTunnelOnline(WAIT_FOR_TUNNEL_ONLINE);
         }
         long startTime = System.currentTimeMillis();
         try {
