@@ -371,6 +371,9 @@ public class GceManager {
         }
         // Do not pass flags --logcat_file and --serial_log_file to collect logcat and serial logs.
 
+        if (getTestDeviceOptions().useOxygen()) {
+            gceArgs.add("--oxygen");
+        }
         return gceArgs;
     }
 
