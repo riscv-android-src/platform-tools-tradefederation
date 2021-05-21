@@ -244,12 +244,24 @@ public class AndroidJUnitTest extends InstrumentationTest
         mIncludeTestFile = testFile;
     }
 
+    /** {@inheritDoc} */
+    @Override
+    public File getIncludeTestFile() {
+        return mIncludeTestFile;
+    }
+
     /**
      * {@inheritDoc}
      */
     @Override
     public void setExcludeTestFile(File testFile) {
         mExcludeTestFile = testFile;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public File getExcludeTestFile() {
+        return mExcludeTestFile;
     }
 
     /**
