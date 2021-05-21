@@ -74,9 +74,11 @@ import com.android.tradefed.testtype.IReportNotExecuted;
 import com.android.tradefed.testtype.IRuntimeHintProvider;
 import com.android.tradefed.testtype.IShardableTest;
 import com.android.tradefed.testtype.ITestCollector;
+import com.android.tradefed.testtype.ITestFileFilterReceiver;
 import com.android.tradefed.testtype.ITestFilterReceiver;
 import com.android.tradefed.util.AbiFormatter;
 import com.android.tradefed.util.AbiUtils;
+import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.TimeUtil;
@@ -1556,7 +1558,16 @@ public abstract class ITestSuite
                 return false;
             }
             for (IRemoteTest test : module.getTests()) {
-                if (test instanceof ITestFilterReceiver) {
+                if (test instanceof ITestFileFilterReceiver
+                        && ((ITestFileFilterReceiver) test).getExcludeTestFile() != null) {
+                    File excludeFilterFile = ((ITestFileFilterReceiver) test).getExcludeTestFile();
+                    try {
+                        FileUtil.writeToFile(filter.getTest(), excludeFilterFile, true);
+                    } catch (IOException e) {
+                        CLog.e(e);
+                        continue;
+                    }
+                } else if (test instanceof ITestFilterReceiver) {
                     ((ITestFilterReceiver) test).addExcludeFilter(filter.getTest());
                 }
             }
