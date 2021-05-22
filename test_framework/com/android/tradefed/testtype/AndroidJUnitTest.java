@@ -27,7 +27,9 @@ import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FailureDescription;
+import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.ListInstrumentationParser;
@@ -473,6 +475,9 @@ public class AndroidJUnitTest extends InstrumentationTest
         } catch (DeviceNotAvailableException e) {
             reportEarlyFailure(listener, e.getMessage());
             throw e;
+        }
+        try (FileInputStreamSource source = new FileInputStreamSource(testFile)) {
+            listener.testLog("filter-" + testFile.getName(), LogDataType.TEXT, source);
         }
     }
 
