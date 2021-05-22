@@ -102,6 +102,11 @@ public class BaseRetryDecision implements IRetryDecision {
             description = "Feature flag to use the updated retry reporting strategy.")
     private boolean mUpdatedReporting = false;
 
+    @Option(
+            name = "updated-filtering",
+            description = "Feature flag to use the updated filtering logic.")
+    private boolean mUpdatedFiltering = false;
+
     private IInvocationContext mContext;
 
     private IRemoteTest mCurrentlyConsideredTest;
@@ -310,7 +315,18 @@ public class BaseRetryDecision implements IRetryDecision {
             CLog.d("Skipping retry since there was a non-retriable failure.");
             return false;
         }
-        if (!runFailures.isEmpty()) {
+        if (mUpdatedFiltering && mUpdatedReporting) {
+            CLog.d("Using updated filtering logic.");
+            Map<TestDescription, TestResult> previousFailedTests =
+                    getFailedTestCases(previousResults);
+            if (runFailures.isEmpty() && previousFailedTests.isEmpty()) {
+                CLog.d("No test run or test case failures. No need to retry.");
+                return false;
+            }
+            Set<TestDescription> previouslyPassedTests = getPassedTestCases(previousResults);
+            excludePassedTests(test, previouslyPassedTests);
+            return true;
+        } else if (!runFailures.isEmpty()) {
             if (shouldFullRerun(runFailures)) {
                 List<String> names =
                         runFailures.stream().map(e -> e.getName()).collect(Collectors.toList());
