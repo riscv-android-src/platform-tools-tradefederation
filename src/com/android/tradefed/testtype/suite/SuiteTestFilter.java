@@ -23,6 +23,7 @@ import java.util.regex.Pattern;
 /** Represents a filter for including and excluding tests. */
 public class SuiteTestFilter {
 
+    private final Integer mShardIndex;
     private final String mAbi;
     private final String mName;
     private final String mTest;
@@ -46,6 +47,7 @@ public class SuiteTestFilter {
             throw new IllegalArgumentException("Filter was empty");
         }
         String[] parts = filter.split(" ");
+        Integer shardIndex = null;
         String abi = null, name = null, test = null;
         // Either:
         // <name>
@@ -56,8 +58,12 @@ public class SuiteTestFilter {
             name = parts[0];
         } else {
             int index = 0;
-            if (AbiUtils.isAbiSupportedByCompatibility(parts[0])) {
-                abi = parts[0];
+            if (parts[index].startsWith("shard_")) {
+                shardIndex = Integer.parseInt(parts[index].substring("shard_".length()));
+                index++;
+            }
+            if (AbiUtils.isAbiSupportedByCompatibility(parts[index])) {
+                abi = parts[index];
                 index++;
             }
             name = parts[index];
@@ -67,7 +73,7 @@ public class SuiteTestFilter {
                 test = parts[index];
             }
         }
-        return new SuiteTestFilter(abi, name, test);
+        return new SuiteTestFilter(shardIndex, abi, name, test);
     }
 
     /**
@@ -78,6 +84,18 @@ public class SuiteTestFilter {
      * @param test The test's identifier eg <package>.<class>#<method>
      */
     public SuiteTestFilter(String abi, String name, String test) {
+        this(null, abi, name, test);
+    }
+
+    /**
+     * Creates a new {@link SuiteTestFilter} from the given parts.
+     *
+     * @param abi The ABI must be supported {@link AbiUtils#isAbiSupportedByCompatibility(String)}
+     * @param name The module's name
+     * @param test The test's identifier eg <package>.<class>#<method>
+     */
+    public SuiteTestFilter(Integer shardIndex, String abi, String name, String test) {
+        mShardIndex = shardIndex;
         mAbi = abi;
         mName = name;
         mTest = test;
@@ -96,6 +114,10 @@ public class SuiteTestFilter {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
+        if (mShardIndex != null) {
+            sb.append(mShardIndex.toString());
+            sb.append(" ");
+        }
         if (mAbi != null) {
             sb.append(mAbi.trim());
             sb.append(" ");
@@ -108,6 +130,11 @@ public class SuiteTestFilter {
             sb.append(mTest.trim());
         }
         return sb.toString();
+    }
+
+    /** Returns the shard index of the test, or null if not specified. */
+    public Integer getShardIndex() {
+        return mShardIndex;
     }
 
     /** @return the abi of this filter, or null if not specified. */
