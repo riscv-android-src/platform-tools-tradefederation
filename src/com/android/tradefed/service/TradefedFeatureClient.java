@@ -65,18 +65,19 @@ public class TradefedFeatureClient implements AutoCloseable {
      * @param args The args to invoke the feature.
      * @return A {@link FeatureResponse}.
      */
-    public FeatureResponse triggerFeature(
+    private FeatureResponse triggerFeature(
             String featureName, String invocationReference, Map<String, String> args) {
         FeatureResponse response;
         try {
             CLog.d("invoking feature '%s'", featureName);
-            response =
-                    mBlockingStub.triggerFeature(
-                            FeatureRequest.newBuilder()
-                                    .setName(featureName)
-                                    .putAllArgs(args)
-                                    .setReferenceId(invocationReference)
-                                    .build());
+            FeatureRequest.Builder request =
+                    FeatureRequest.newBuilder().setName(featureName).putAllArgs(args);
+            if (invocationReference != null) {
+                request.setReferenceId(invocationReference);
+            } else {
+                CLog.w("Reference id is null.");
+            }
+            response = mBlockingStub.triggerFeature(request.build());
         } catch (StatusRuntimeException e) {
             response =
                     FeatureResponse.newBuilder()
