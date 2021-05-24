@@ -19,10 +19,14 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import com.android.tradefed.device.metric.BaseDeviceMetricCollector;
+import com.android.tradefed.device.metric.DeviceMetricData;
+import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement.DataType;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.ILogSaver;
+import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogFile;
@@ -41,7 +45,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 import java.io.IOException;
-import java.lang.StringBuilder;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -50,9 +53,21 @@ import java.util.Map;
 /** Unit tests for {@link BasePostProcessor}. */
 @RunWith(JUnit4.class)
 public class BasePostProcessorTest {
+    private static final String RUN_NAME = "test.run";
+    private static final TestDescription TEST_DESCRIPTION = new TestDescription("class", "method");
 
     private class TestablePostProcessor extends BasePostProcessor {
+        public static final String DATA_NAME_PREFIX = "testable-post-processor-";
+        public static final String TEST_DATA_NAME = DATA_NAME_PREFIX + "test-data-name";
+        public static final String RUN_DATA_NAME = DATA_NAME_PREFIX + "run-data-name";
+        public static final String ALL_DATA_NAME = DATA_NAME_PREFIX + "all-data-name";
         public static final String FILE_PREFIX = "file-";
+
+        private boolean mSavesFile = false;
+
+        public void setSavesFile() {
+            mSavesFile = true;
+        }
 
         @Override
         public Map<String, Metric.Builder> processTestMetricsAndLogs(
@@ -79,6 +94,12 @@ public class BasePostProcessorTest {
                         TfMetricProtoUtil.stringToMetric(testLogs.get(dataName).getPath())
                                 .toBuilder());
             }
+            if (mSavesFile) {
+                testLog(
+                        TEST_DATA_NAME,
+                        LogDataType.TEXT,
+                        new ByteArrayInputStreamSource(TEST_DATA_NAME.getBytes()));
+            }
             return newMap;
         }
 
@@ -104,6 +125,12 @@ public class BasePostProcessorTest {
                         FILE_PREFIX + dataName,
                         TfMetricProtoUtil.stringToMetric(runLogs.get(dataName).getPath())
                                 .toBuilder());
+            }
+            if (mSavesFile) {
+                testLog(
+                        RUN_DATA_NAME,
+                        LogDataType.TEXT,
+                        new ByteArrayInputStreamSource(RUN_DATA_NAME.getBytes()));
             }
             return newMap;
         }
@@ -138,7 +165,38 @@ public class BasePostProcessorTest {
                                     .toBuilder());
                 }
             }
+            if (mSavesFile) {
+                testLog(
+                        ALL_DATA_NAME,
+                        LogDataType.TEXT,
+                        new ByteArrayInputStreamSource(ALL_DATA_NAME.getBytes()));
+            }
             return newMap;
+        }
+    }
+
+    /** A metric collector that logs a file; used to test file-logging behavior. */
+    private class FileLoggingMetricCollector extends BaseDeviceMetricCollector {
+        public static final String DATA_NAME_PREFIX = "metric-collector-";
+        public static final String TEST_DATA_NAME = DATA_NAME_PREFIX + "test-data-name";
+        public static final String RUN_DATA_NAME = DATA_NAME_PREFIX + "run-data-name";
+
+        @Override
+        public void onTestEnd(
+                DeviceMetricData testData, final Map<String, Metric> currentTestCaseMetrics) {
+            testLog(
+                    TEST_DATA_NAME,
+                    LogDataType.TEXT,
+                    new ByteArrayInputStreamSource(TEST_DATA_NAME.getBytes()));
+        }
+
+        @Override
+        public void onTestRunEnd(
+                DeviceMetricData runData, final Map<String, Metric> currentRunMetrics) {
+            testLog(
+                    RUN_DATA_NAME,
+                    LogDataType.TEXT,
+                    new ByteArrayInputStreamSource(RUN_DATA_NAME.getBytes()));
         }
     }
 
@@ -154,8 +212,8 @@ public class BasePostProcessorTest {
     private static final String RUN_DATA_NAME_2 = "run-log-2";
     private static final LogFile RUN_LOG_2 = new LogFile("run-log-path-2", "url", LogDataType.TEXT);
 
-    private BasePostProcessor mProcessor;
-    private ITestInvocationListener mMockListener;
+    private TestablePostProcessor mProcessor;
+    private ILogSaverListener mMockListener;
 
     // A mocked ILogSaver instance to simulate log saving events, used along with an acutal instance
     // of LogSaverResultForwarder to generate logAssociation() callbacks upon calls to testLog().
@@ -164,7 +222,6 @@ public class BasePostProcessorTest {
     @Before
     public void setUp() throws IOException {
         mProcessor = new TestablePostProcessor();
-        mMockListener = EasyMock.createMock(ITestInvocationListener.class);
 
         mMockLogSaver = EasyMock.createMock(ILogSaver.class);
         EasyMock.expect(
@@ -191,6 +248,10 @@ public class BasePostProcessorTest {
                                 EasyMock.anyObject(),
                                 EasyMock.anyObject()))
                 .andStubReturn(RUN_LOG_2);
+
+        // A nice mock is used here as this test involves more complex interactions with the
+        // listener but only cares about a subset of it.
+        mMockListener = EasyMock.createNiceMock(ILogSaverListener.class);
     }
 
     /** Test that the run-level post processing metrics are found in the final callback. */
@@ -221,19 +282,15 @@ public class BasePostProcessorTest {
     /** Test that metrics from run logs are found in the final callback. */
     @Test
     public void testRunLogsPostProcessing_processRunLogs() {
-        // A nice mock is used here as this test involves more complex interactions with the
-        // listener but only cares about a subset of it.
-        mMockListener = EasyMock.createNiceMock(ITestInvocationListener.class);
-        // A LogSaverResultForwarder is used here so that testLog() calls generate logAssocation()
-        // callbacks.
-        LogSaverResultForwarder listener =
-                new LogSaverResultForwarder(
-                        mMockLogSaver, Arrays.asList(mProcessor.init(mMockListener)));
-
         Capture<HashMap<String, Metric>> capture = new Capture<>();
         mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.capture(capture));
 
         EasyMock.replay(mMockListener, mMockLogSaver);
+        // A LogSaverResultForwarder is used here so that testLog() calls generate logAssociation()
+        // callbacks.
+        LogSaverResultForwarder listener =
+                new LogSaverResultForwarder(
+                        mMockLogSaver, Arrays.asList(mProcessor.init(mMockListener)));
         listener.testRunStarted("test-run", 0, 0, 0L);
         listener.testLog(
                 RUN_DATA_NAME_1,
@@ -255,15 +312,6 @@ public class BasePostProcessorTest {
     /** Test that only run logs are processed in post processing. */
     @Test
     public void testRunLevelPostProcessing_processRunLogsOnly() {
-        // A nice mock is used here as this test involves more complex interactions with the
-        // listener but only cares about a subset of it.
-        mMockListener = EasyMock.createNiceMock(ITestInvocationListener.class);
-        // A LogSaverResultForwarder is used here so that testLog() calls generate logAssocation()
-        // callbacks.
-        LogSaverResultForwarder listener =
-                new LogSaverResultForwarder(
-                        mMockLogSaver, Arrays.asList(mProcessor.init(mMockListener)));
-
         TestDescription test1 = new TestDescription("class", "test1");
         TestDescription test2 = new TestDescription("class", "test2");
 
@@ -271,6 +319,11 @@ public class BasePostProcessorTest {
         mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.capture(capture));
 
         EasyMock.replay(mMockListener, mMockLogSaver);
+        // A LogSaverResultForwarder is used here so that testLog() calls generate logAssociation()
+        // callbacks.
+        LogSaverResultForwarder listener =
+                new LogSaverResultForwarder(
+                        mMockLogSaver, Arrays.asList(mProcessor.init(mMockListener)));
         // Simulate two tests that log one file each, with run-level logs in-between and after.
         listener.testRunStarted("test-run", 2, 0, 0L);
         listener.testStarted(test1);
@@ -336,15 +389,6 @@ public class BasePostProcessorTest {
     /** Test that the post processor processed test logs. */
     @Test
     public void testPerTestLogPostProcessing_processTestLogs() {
-        // A nice mock is used here as this test involves more complex interactions with the
-        // listener but only cares about a subset of it.
-        mMockListener = EasyMock.createNiceMock(ITestInvocationListener.class);
-        // A LogSaverResultForwarder is used here so that testLog() calls generate logAssocation()
-        // callbacks.
-        LogSaverResultForwarder listener =
-                new LogSaverResultForwarder(
-                        mMockLogSaver, Arrays.asList(mProcessor.init(mMockListener)));
-
         TestDescription test = new TestDescription("class", "test");
 
         Capture<HashMap<String, Metric>> capture = new Capture<>();
@@ -352,6 +396,11 @@ public class BasePostProcessorTest {
                 EasyMock.anyObject(), EasyMock.anyLong(), EasyMock.capture(capture));
 
         EasyMock.replay(mMockListener, mMockLogSaver);
+        // A LogSaverResultForwarder is used here so that testLog() calls generate logAssociation()
+        // callbacks.
+        LogSaverResultForwarder listener =
+                new LogSaverResultForwarder(
+                        mMockLogSaver, Arrays.asList(mProcessor.init(mMockListener)));
         // Simulate a run with two test logs.
         listener.testStarted(test);
         listener.testLog(
@@ -388,15 +437,6 @@ public class BasePostProcessorTest {
     /** Test that the post processor only exposes the test logs to the per-test processing. */
     @Test
     public void testPerTestLogPostProcessing_processTestLogsOnly() {
-        // A nice mock is used here as this test involves more complex interactions with the
-        // listener but only cares about a subset of it.
-        mMockListener = EasyMock.createNiceMock(ITestInvocationListener.class);
-        // A LogSaverResultForwarder is used here so that testLog() calls generate logAssocation()
-        // callbacks.
-        LogSaverResultForwarder listener =
-                new LogSaverResultForwarder(
-                        mMockLogSaver, Arrays.asList(mProcessor.init(mMockListener)));
-
         TestDescription test = new TestDescription("class", "test");
 
         Capture<HashMap<String, Metric>> capture = new Capture<>();
@@ -404,6 +444,11 @@ public class BasePostProcessorTest {
                 EasyMock.anyObject(), EasyMock.anyLong(), EasyMock.capture(capture));
 
         EasyMock.replay(mMockListener, mMockLogSaver);
+        // A LogSaverResultForwarder is used here so that testLog() calls generate logAssociation()
+        // callbacks.
+        LogSaverResultForwarder listener =
+                new LogSaverResultForwarder(
+                        mMockLogSaver, Arrays.asList(mProcessor.init(mMockListener)));
         // Simulate a run with one test log and one run log.
         listener.testStarted(test);
         listener.testLog(
@@ -431,13 +476,6 @@ public class BasePostProcessorTest {
      */
     @Test
     public void testPerTestPostProcessing_logToTestAssociation() {
-        // A nice mock is used here as this test involves more complex interactions with the
-        // listener but only cares about a subset of it.
-        mMockListener = EasyMock.createNiceMock(ITestInvocationListener.class);
-        LogSaverResultForwarder listener =
-                new LogSaverResultForwarder(
-                        mMockLogSaver, Arrays.asList(mProcessor.init(mMockListener)));
-
         TestDescription test1 = new TestDescription("class", "test1");
         TestDescription test2 = new TestDescription("class", "test2");
 
@@ -449,6 +487,9 @@ public class BasePostProcessorTest {
                 EasyMock.anyObject(), EasyMock.anyLong(), EasyMock.capture(capture));
 
         EasyMock.replay(mMockListener, mMockLogSaver);
+        LogSaverResultForwarder listener =
+                new LogSaverResultForwarder(
+                        mMockLogSaver, Arrays.asList(mProcessor.init(mMockListener)));
         // Simulate two tests that log one file each.
         listener.testStarted(test1);
         listener.testLog(
@@ -545,13 +586,6 @@ public class BasePostProcessorTest {
     /** Test that the all the test logs are processed when processing across tests. */
     @Test
     public void testAllTestLogsPostProcessing() {
-        // A nice mock is used here as this test involves more complex interactions with the
-        // listener but only cares about a subset of it.
-        mMockListener = EasyMock.createNiceMock(ITestInvocationListener.class);
-        LogSaverResultForwarder listener =
-                new LogSaverResultForwarder(
-                        mMockLogSaver, Arrays.asList(mProcessor.init(mMockListener)));
-
         TestDescription test1 = new TestDescription("class", "test1");
         TestDescription test2 = new TestDescription("class", "test2");
 
@@ -559,6 +593,9 @@ public class BasePostProcessorTest {
         mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.capture(capture));
 
         EasyMock.replay(mMockListener, mMockLogSaver);
+        LogSaverResultForwarder listener =
+                new LogSaverResultForwarder(
+                        mMockLogSaver, Arrays.asList(mProcessor.init(mMockListener)));
         // Simulate a run with two tests that log one file each.
         listener.testRunStarted("test-run", 2, 0, 0L);
         listener.testStarted(test1);
@@ -609,13 +646,6 @@ public class BasePostProcessorTest {
     /** Test that during each test run the post processor only access logs from the current run. */
     @Test
     public void testLogPostProcessingInMultipleRuns() {
-        // A nice mock is used here as this test involves more complex interactions with the
-        // listener but only cares about a subset of it.
-        mMockListener = EasyMock.createNiceMock(ITestInvocationListener.class);
-        LogSaverResultForwarder listener =
-                new LogSaverResultForwarder(
-                        mMockLogSaver, Arrays.asList(mProcessor.init(mMockListener)));
-
         TestDescription test = new TestDescription("class", "test");
         String runName = "test-run";
 
@@ -631,6 +661,9 @@ public class BasePostProcessorTest {
         mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.capture(runMetricsCapture));
 
         EasyMock.replay(mMockListener, mMockLogSaver);
+        LogSaverResultForwarder listener =
+                new LogSaverResultForwarder(
+                        mMockLogSaver, Arrays.asList(mProcessor.init(mMockListener)));
         // Simulate a test run with two runs and one test each.
         // Run 1.
         listener.testRunStarted(runName, 1, 0, 0L);
@@ -720,5 +753,332 @@ public class BasePostProcessorTest {
                                         e.getKey().contains(TestablePostProcessor.FILE_PREFIX)
                                                 && e.getKey().contains(test.toString())
                                                 && e.getKey().contains(TEST_DATA_NAME_2)));
+    }
+
+    @Test
+    public void testLogsFilesFromPostProcessing() throws IOException {
+        mProcessor.setSavesFile();
+        Capture<String> savedLogsCapture = new Capture<>(CaptureType.ALL);
+        captureSavedFiles(mMockLogSaver, savedLogsCapture);
+
+        EasyMock.replay(mMockLogSaver, mMockListener);
+        LogSaverResultForwarder listener =
+                new LogSaverResultForwarder(
+                        mMockLogSaver, Arrays.asList(mProcessor.init(mMockListener)));
+        listener.testRunStarted(RUN_NAME, 1);
+        listener.testStarted(TEST_DESCRIPTION);
+        listener.testEnded(TEST_DESCRIPTION, new HashMap<String, Metric>());
+        listener.testRunEnded(0L, new HashMap<String, Metric>());
+        EasyMock.verify(mMockLogSaver);
+
+        List<String> savedDataNames = savedLogsCapture.getValues();
+        assertEquals(
+                1,
+                savedDataNames.stream()
+                        .filter(s -> s.contains(TestablePostProcessor.TEST_DATA_NAME))
+                        .count());
+        assertEquals(
+                1,
+                savedDataNames.stream()
+                        .filter(s -> s.contains(TestablePostProcessor.RUN_DATA_NAME))
+                        .count());
+        assertEquals(
+                1,
+                savedDataNames.stream()
+                        .filter(s -> s.contains(TestablePostProcessor.ALL_DATA_NAME))
+                        .count());
+    }
+
+    @Test
+    public void testNoDoubleLoggingFilesFromOutsideLogSaverForwarder() throws IOException {
+        mProcessor.setSavesFile();
+        Capture<String> savedLogsCapture = new Capture<>(CaptureType.ALL);
+        captureSavedFiles(mMockLogSaver, savedLogsCapture);
+
+        EasyMock.replay(mMockLogSaver, mMockListener);
+        // Create a metric collector that wraps around a LogSaverResultForwarder; we expect that
+        // files saved from the metric collector will only be saved once.
+        LogSaverResultForwarder forwarder =
+                new LogSaverResultForwarder(
+                        mMockLogSaver, Arrays.asList(mProcessor.init(mMockListener)));
+        FileLoggingMetricCollector listener = new FileLoggingMetricCollector();
+        listener.init(new InvocationContext(), forwarder);
+        listener.testRunStarted(RUN_NAME, 1);
+        listener.testStarted(TEST_DESCRIPTION);
+        listener.testEnded(TEST_DESCRIPTION, new HashMap<String, Metric>());
+        listener.testRunEnded(0L, new HashMap<String, Metric>());
+        EasyMock.verify(mMockLogSaver);
+
+        List<String> savedDataNames = savedLogsCapture.getValues();
+        // Check that files from the metric collector are only saved once.
+        Map<String, Integer> metricCollectorFileCounts = new HashMap<>();
+        for (String dataName : savedDataNames) {
+            // We need to use startsWith here because post processors appends test description to
+            // to the saved data names.
+            if (dataName.startsWith(FileLoggingMetricCollector.TEST_DATA_NAME)) {
+                metricCollectorFileCounts.put(
+                        FileLoggingMetricCollector.TEST_DATA_NAME,
+                        metricCollectorFileCounts.getOrDefault(dataName, 0) + 1);
+            }
+            if (dataName.startsWith(FileLoggingMetricCollector.RUN_DATA_NAME)) {
+                metricCollectorFileCounts.put(
+                        FileLoggingMetricCollector.RUN_DATA_NAME,
+                        metricCollectorFileCounts.getOrDefault(dataName, 0) + 1);
+            }
+        }
+        assertFalse(metricCollectorFileCounts.isEmpty());
+        assertTrue(metricCollectorFileCounts.values().stream().allMatch(v -> v == 1));
+        // Check that saving files from the post processor is still active.
+        assertTrue(
+                savedDataNames.stream()
+                        .anyMatch(s -> s.contains(TestablePostProcessor.DATA_NAME_PREFIX)));
+    }
+
+    @Test
+    public void testNoDoubleLoggingFilesToSubsequentPostProcessors() throws IOException {
+        mProcessor.setSavesFile();
+        Capture<String> savedLogsCapture = new Capture<>(CaptureType.ALL);
+        captureSavedFiles(mMockLogSaver, savedLogsCapture);
+
+        String innerProcessorDataName = "inner-post-processor-data-name";
+        BasePostProcessor innerProcessor =
+                new BasePostProcessor() {
+                    @Override
+                    public Map<String, Metric.Builder> processRunMetricsAndLogs(
+                            HashMap<String, Metric> rawMetrics, Map<String, LogFile> runLogs) {
+                        testLog(
+                                innerProcessorDataName,
+                                LogDataType.TEXT,
+                                new ByteArrayInputStreamSource(innerProcessorDataName.getBytes()));
+                        return new HashMap<String, Metric.Builder>();
+                    }
+                };
+
+        EasyMock.replay(mMockLogSaver, mMockListener);
+        // Let the post processor under test wrap around the inner post processor.
+        LogSaverResultForwarder listener =
+                new LogSaverResultForwarder(
+                        mMockLogSaver,
+                        Arrays.asList(mProcessor.init(innerProcessor.init(mMockListener))));
+        listener.testRunStarted(RUN_NAME, 1);
+        listener.testStarted(TEST_DESCRIPTION);
+        listener.testEnded(TEST_DESCRIPTION, new HashMap<String, Metric>());
+        listener.testRunEnded(0L, new HashMap<String, Metric>());
+        EasyMock.verify(mMockLogSaver);
+
+        List<String> savedDataNames = savedLogsCapture.getValues();
+        // Check that files from the post processor under test are only saved once.
+        Map<String, Integer> outerPostProcessorFileCounts = new HashMap<>();
+        for (String dataName : savedDataNames) {
+            if (dataName.startsWith(TestablePostProcessor.DATA_NAME_PREFIX)) {
+                outerPostProcessorFileCounts.put(
+                        dataName, outerPostProcessorFileCounts.getOrDefault(dataName, 0) + 1);
+            }
+        }
+        assertFalse(outerPostProcessorFileCounts.isEmpty());
+        assertTrue(outerPostProcessorFileCounts.values().stream().allMatch(v -> v == 1));
+        // Check that saving file from the inner post processor is still active.
+        assertTrue(savedDataNames.stream().anyMatch(s -> s.contains(innerProcessorDataName)));
+    }
+
+    @Test
+    public void testNoAssociatingNewlyLoggedFileWithinSelf() throws IOException {
+        mProcessor.setSavesFile();
+        expectAnyFiles(mMockLogSaver);
+
+        // Capture the run metrics. The file logged from the test within the post processor should
+        // not be processed by ProcessAllTestMetricsAndLogs() and result in run metrics, as the post
+        // processor itself should not track it in logAssociation(), but only forward it.
+        Capture<HashMap<String, Metric>> runMetricsCapture = new Capture<>(CaptureType.ALL);
+        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.capture(runMetricsCapture));
+
+        EasyMock.replay(mMockLogSaver, mMockListener);
+        LogSaverResultForwarder listener =
+                new LogSaverResultForwarder(
+                        mMockLogSaver, Arrays.asList(mProcessor.init(mMockListener)));
+        listener.testRunStarted(RUN_NAME, 1);
+        listener.testStarted(TEST_DESCRIPTION);
+        listener.testEnded(TEST_DESCRIPTION, new HashMap<String, Metric>());
+        listener.testRunEnded(0L, new HashMap<String, Metric>());
+        EasyMock.verify(mMockLogSaver, mMockListener);
+
+        Map<String, Metric> runMetrics = runMetricsCapture.getValue();
+        assertFalse(
+                runMetrics.keySet().stream()
+                        .anyMatch(s -> s.contains(TestablePostProcessor.TEST_DATA_NAME)));
+    }
+
+    @Test
+    public void testLogsFromPostProcessorsAreForwarded() throws IOException {
+        mProcessor.setSavesFile();
+        expectAnyFiles(mMockLogSaver);
+
+        Capture<String> testLogCapture = new Capture<>(CaptureType.ALL);
+        Capture<String> logAssociationCapture = new Capture<>(CaptureType.ALL);
+        Capture<String> logSavedCapture = new Capture<>(CaptureType.ALL);
+        mMockListener.testLog(
+                EasyMock.capture(testLogCapture), EasyMock.anyObject(), EasyMock.anyObject());
+        EasyMock.expectLastCall().anyTimes();
+        mMockListener.logAssociation(EasyMock.capture(logAssociationCapture), EasyMock.anyObject());
+        EasyMock.expectLastCall().anyTimes();
+        mMockListener.testLogSaved(
+                EasyMock.capture(logSavedCapture),
+                EasyMock.anyObject(),
+                EasyMock.anyObject(),
+                EasyMock.anyObject());
+        EasyMock.expectLastCall().anyTimes();
+
+        EasyMock.replay(mMockLogSaver, mMockListener);
+        LogSaverResultForwarder listener =
+                new LogSaverResultForwarder(
+                        mMockLogSaver, Arrays.asList(mProcessor.init(mMockListener)));
+        listener.testRunStarted(RUN_NAME, 1);
+        listener.testStarted(TEST_DESCRIPTION);
+        listener.testEnded(TEST_DESCRIPTION, new HashMap<String, Metric>());
+        listener.testRunEnded(0L, new HashMap<String, Metric>());
+        EasyMock.verify(mMockLogSaver, mMockListener);
+
+        assertEquals(
+                3,
+                testLogCapture.getValues().stream()
+                        .filter(s -> s.startsWith(TestablePostProcessor.DATA_NAME_PREFIX))
+                        .count());
+        assertEquals(
+                3,
+                logAssociationCapture.getValues().stream()
+                        .filter(s -> s.startsWith(TestablePostProcessor.DATA_NAME_PREFIX))
+                        .count());
+        assertEquals(
+                3,
+                logSavedCapture.getValues().stream()
+                        .filter(s -> s.startsWith(TestablePostProcessor.DATA_NAME_PREFIX))
+                        .count());
+    }
+
+    @Test
+    public void testLogsFromPostProcessorsAreOnlyForwardedWhenNoLogSaverIsSet() throws IOException {
+        mProcessor.setSavesFile();
+
+        Capture<String> testLogCapture = new Capture<>(CaptureType.ALL);
+        Capture<String> logAssociationCapture = new Capture<>(CaptureType.ALL);
+        Capture<String> logSavedCapture = new Capture<>(CaptureType.ALL);
+        mMockListener.testLog(
+                EasyMock.capture(testLogCapture), EasyMock.anyObject(), EasyMock.anyObject());
+        EasyMock.expectLastCall().anyTimes();
+        mMockListener.logAssociation(EasyMock.capture(logAssociationCapture), EasyMock.anyObject());
+        EasyMock.expectLastCall().anyTimes();
+        mMockListener.testLogSaved(
+                EasyMock.capture(logSavedCapture),
+                EasyMock.anyObject(),
+                EasyMock.anyObject(),
+                EasyMock.anyObject());
+        EasyMock.expectLastCall().anyTimes();
+
+        EasyMock.replay(mMockLogSaver, mMockListener);
+        mProcessor.init(mMockListener);
+        mProcessor.testRunStarted(RUN_NAME, 1);
+        mProcessor.testStarted(TEST_DESCRIPTION);
+        mProcessor.testEnded(TEST_DESCRIPTION, new HashMap<String, Metric>());
+        mProcessor.testRunEnded(0L, new HashMap<String, Metric>());
+        EasyMock.verify(mMockLogSaver, mMockListener);
+
+        // The testLog() call should have been forwarded.
+        assertEquals(
+                3,
+                testLogCapture.getValues().stream()
+                        .filter(s -> s.startsWith(TestablePostProcessor.DATA_NAME_PREFIX))
+                        .count());
+        // There should not be logAssociation() or testLogSaved() from the post processor since no
+        // file is actually logged.
+        assertEquals(
+                0,
+                logAssociationCapture.getValues().stream()
+                        .filter(s -> s.startsWith(TestablePostProcessor.DATA_NAME_PREFIX))
+                        .count());
+        assertEquals(
+                0,
+                logSavedCapture.getValues().stream()
+                        .filter(s -> s.startsWith(TestablePostProcessor.DATA_NAME_PREFIX))
+                        .count());
+    }
+
+    @Test
+    public void testLogsFromOutsidePostProcessorsAreForwarded() throws IOException {
+        mProcessor.setSavesFile();
+        expectAnyFiles(mMockLogSaver);
+
+        Capture<String> testLogCapture = new Capture<>(CaptureType.ALL);
+        Capture<String> logAssociationCapture = new Capture<>(CaptureType.ALL);
+        Capture<String> logSavedCapture = new Capture<>(CaptureType.ALL);
+        mMockListener.testLog(
+                EasyMock.capture(testLogCapture), EasyMock.anyObject(), EasyMock.anyObject());
+        EasyMock.expectLastCall().anyTimes();
+        mMockListener.logAssociation(EasyMock.capture(logAssociationCapture), EasyMock.anyObject());
+        EasyMock.expectLastCall().anyTimes();
+        mMockListener.testLogSaved(
+                EasyMock.capture(logSavedCapture),
+                EasyMock.anyObject(),
+                EasyMock.anyObject(),
+                EasyMock.anyObject());
+        EasyMock.expectLastCall().anyTimes();
+
+        EasyMock.replay(mMockLogSaver, mMockListener);
+        // Create a metric collector that wraps around a LogSaverResultForwarder; we expect that
+        // files saved from the metric collector will only be saved once.
+        LogSaverResultForwarder forwarder =
+                new LogSaverResultForwarder(
+                        mMockLogSaver, Arrays.asList(mProcessor.init(mMockListener)));
+        FileLoggingMetricCollector listener = new FileLoggingMetricCollector();
+        listener.init(new InvocationContext(), forwarder);
+        listener.testRunStarted(RUN_NAME, 1);
+        listener.testStarted(TEST_DESCRIPTION);
+        listener.testEnded(TEST_DESCRIPTION, new HashMap<String, Metric>());
+        listener.testRunEnded(0L, new HashMap<String, Metric>());
+        EasyMock.verify(mMockLogSaver);
+
+        assertEquals(
+                2,
+                testLogCapture.getValues().stream()
+                        .filter(s -> s.startsWith(FileLoggingMetricCollector.DATA_NAME_PREFIX))
+                        .count());
+        assertEquals(
+                2,
+                logAssociationCapture.getValues().stream()
+                        .filter(s -> s.startsWith(FileLoggingMetricCollector.DATA_NAME_PREFIX))
+                        .count());
+        assertEquals(
+                2,
+                logSavedCapture.getValues().stream()
+                        .filter(s -> s.startsWith(FileLoggingMetricCollector.DATA_NAME_PREFIX))
+                        .count());
+    }
+
+    private void expectAnyFiles(ILogSaver mockSaver) throws IOException {
+        EasyMock.expect(
+                        mMockLogSaver.saveLogData(
+                                EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject()))
+                .andAnswer(
+                        () ->
+                                new LogFile(
+                                        (String) EasyMock.getCurrentArguments()[0],
+                                        "url",
+                                        LogDataType.TEXT))
+                .anyTimes();
+    }
+
+    private void captureSavedFiles(ILogSaver mockSaver, Capture<String> capture)
+            throws IOException {
+        EasyMock.expect(
+                        mMockLogSaver.saveLogData(
+                                EasyMock.capture(capture),
+                                EasyMock.anyObject(),
+                                EasyMock.anyObject()))
+                .andAnswer(
+                        () ->
+                                new LogFile(
+                                        (String) EasyMock.getCurrentArguments()[0],
+                                        "url",
+                                        LogDataType.TEXT))
+                .anyTimes();
     }
 }
