@@ -445,8 +445,11 @@ public class TestInvocation implements ITestInvocation {
                     InvocationMetricLogger.addInvocationMetrics(
                             InvocationMetricKey.TEAR_DOWN_DISK_USAGE, size);
                 }
-                InvocationMetricLogger.addInvocationMetrics(
-                        InvocationMetricKey.INVOCATION_END, System.currentTimeMillis());
+                // Only log Invocation ended in parent
+                if (!isSubprocess(config)) {
+                    InvocationMetricLogger.addInvocationMetrics(
+                            InvocationMetricKey.INVOCATION_END, System.currentTimeMillis());
+                }
                 elapsedTime = System.currentTimeMillis() - startTime;
                 reportInvocationEnded(config, context, listener, elapsedTime);
             } finally {
@@ -810,8 +813,11 @@ public class TestInvocation implements ITestInvocation {
             context.addInvocationAttribute(
                     "inop-options", Joiner.on(",").join(config.getInopOptions()));
         }
-        InvocationMetricLogger.addInvocationMetrics(
-                InvocationMetricKey.INVOCATION_START, System.currentTimeMillis());
+        // Only log invocation_start in parent
+        if (!isSubprocess(config)) {
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.INVOCATION_START, System.currentTimeMillis());
+        }
         // Handle the automated reporting
         applyAutomatedReporters(config);
 
@@ -851,9 +857,7 @@ public class TestInvocation implements ITestInvocation {
         ReportPassedTests reportPass = null;
         if (config.getConfigurationObject(TradefedDelegator.DELEGATE_OBJECT) == null
                 && config.getCommandOptions().reportPassedTests()
-                && !config.getCommandOptions()
-                        .getInvocationData()
-                        .containsKey(SubprocessTfLauncher.SUBPROCESS_TAG_NAME)) {
+                && !isSubprocess(config)) {
             reportPass = new ReportPassedTests();
             allListeners.add(reportPass);
         }
@@ -1476,9 +1480,7 @@ public class TestInvocation implements ITestInvocation {
             return null;
         }
         // Only measure in parent process
-        if (config.getCommandOptions()
-                .getInvocationData()
-                .containsKey(SubprocessTfLauncher.SUBPROCESS_TAG_NAME)) {
+        if (isSubprocess(config)) {
             CLog.d("Skip measuring size since we are in subprocess");
             return null;
         }
@@ -1499,5 +1501,15 @@ public class TestInvocation implements ITestInvocation {
         info.mExitCode = this.mExitCode;
         info.mStack = this.mExitStack;
         return info;
+    }
+
+    /** Returns true if the invocation is currently within a subprocess scope. */
+    private boolean isSubprocess(IConfiguration config) {
+        if (System.getenv(DelegatedInvocationExecution.DELEGATED_MODE_VAR) != null) {
+            return true;
+        }
+        return config.getCommandOptions()
+                .getInvocationData()
+                .containsKey(SubprocessTfLauncher.SUBPROCESS_TAG_NAME);
     }
 }
