@@ -201,9 +201,11 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
         // Invert to report the most recent one first.
         Collections.reverse(crashes);
         int displayed = Math.min(crashes.size(), MAX_NUMBER_CRASH);
-        errorMsg = String.format("%s\nCrash Messages sorted from most recent:\n", errorMsg);
-        for (int i = 0; i < displayed; i++) {
-            errorMsg = String.format("%s%s\n", errorMsg, crashes.get(i));
+        if (!crashes.isEmpty()) {
+            errorMsg = String.format("%s\nCrash Messages sorted from most recent:\n", errorMsg);
+            for (int i = 0; i < displayed; i++) {
+                errorMsg = String.format("%s%s\n", errorMsg, crashes.get(i));
+            }
         }
         return errorMsg;
     }
