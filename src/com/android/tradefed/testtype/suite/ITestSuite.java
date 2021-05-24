@@ -1562,7 +1562,7 @@ public abstract class ITestSuite
                         && ((ITestFileFilterReceiver) test).getExcludeTestFile() != null) {
                     File excludeFilterFile = ((ITestFileFilterReceiver) test).getExcludeTestFile();
                     try {
-                        FileUtil.writeToFile(filter.getTest(), excludeFilterFile, true);
+                        FileUtil.writeToFile(filter.getTest() + "\n", excludeFilterFile, true);
                     } catch (IOException e) {
                         CLog.e(e);
                         continue;
