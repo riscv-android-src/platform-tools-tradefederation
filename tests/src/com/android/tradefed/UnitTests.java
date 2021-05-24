@@ -110,6 +110,7 @@ import com.android.tradefed.device.metric.GraphicsStatsMetricCollectorTest;
 import com.android.tradefed.device.metric.HostStatsdMetricCollectorTest;
 import com.android.tradefed.device.metric.IncidentReportCollectorTest;
 import com.android.tradefed.device.metric.IonHeapInfoMetricCollectorTest;
+import com.android.tradefed.device.metric.JavaCodeCoverageCollectorTest;
 import com.android.tradefed.device.metric.LogcatOnFailureCollectorTest;
 import com.android.tradefed.device.metric.LogcatTimingMetricCollectorTest;
 import com.android.tradefed.device.metric.MemInfoMetricCollectorTest;
@@ -282,7 +283,6 @@ import com.android.tradefed.testtype.InstrumentationFileTestTest;
 import com.android.tradefed.testtype.InstrumentationSerialTestTest;
 import com.android.tradefed.testtype.InstrumentationTestTest;
 import com.android.tradefed.testtype.JarHostTestTest;
-import com.android.tradefed.testtype.JavaCodeCoverageListenerTest;
 import com.android.tradefed.testtype.NativeBenchmarkTestParserTest;
 import com.android.tradefed.testtype.NativeBenchmarkTestTest;
 import com.android.tradefed.testtype.NativeStressTestParserTest;
@@ -547,6 +547,7 @@ import org.junit.runners.Suite.SuiteClasses;
     GraphicsStatsMetricCollectorTest.class,
     IncidentReportCollectorTest.class,
     IonHeapInfoMetricCollectorTest.class,
+    JavaCodeCoverageCollectorTest.class,
     LogcatOnFailureCollectorTest.class,
     LogcatTimingMetricCollectorTest.class,
     MemInfoMetricCollectorTest.class,
@@ -778,7 +779,6 @@ import org.junit.runners.Suite.SuiteClasses;
     InstrumentationFileTestTest.class,
     InstrumentationTestTest.class,
     JarHostTestTest.class,
-    JavaCodeCoverageListenerTest.class,
     NativeBenchmarkTestParserTest.class,
     NativeBenchmarkTestTest.class,
     NativeStressTestParserTest.class,
