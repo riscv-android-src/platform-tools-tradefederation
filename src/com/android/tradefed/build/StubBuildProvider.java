@@ -47,7 +47,7 @@ public class StubBuildProvider implements IBuildProvider {
     private String mBuildFlavor = null;
 
     @Option(name = "build-os", description = "build os name to supply.")
-    private String mBuildOs = null;
+    private String mBuildOs = "linux";
 
     @Option(name="build-attribute", description="build attributes to supply.")
     private Map<String, String> mBuildAttributes = new HashMap<String,String>();
