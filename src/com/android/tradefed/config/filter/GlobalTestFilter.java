@@ -15,8 +15,13 @@
  */
 package com.android.tradefed.config.filter;
 
+import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.Option;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.service.TradefedFeatureClient;
+import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.ITestFilterReceiver;
+import com.android.tradefed.testtype.suite.BaseTestSuite;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.proto.tradefed.feature.FeatureResponse;
@@ -26,7 +31,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 /** Filter options applied to the invocation. */
@@ -35,20 +39,27 @@ public final class GlobalTestFilter {
     public static final String INCLUDE_FILTER_OPTION = "include-filter";
     public static final String EXCLUDE_FILTER_OPTION = "exclude-filter";
 
-    // TODO: Allow the option to be specified
-    /*@Option(
-    name = INCLUDE_FILTER_OPTION,
-    description =
-    "Filters applied to the invocation. Format: [abi] [module-name] [test-class][#method-name]")*/
+    @Option(
+            name = INCLUDE_FILTER_OPTION,
+            description =
+                    "Filters applied to the invocation. Format: [abi] [module-name]"
+                            + " [test-class][#method-name]")
     private Set<String> mIncludeFilters = new LinkedHashSet<>();
 
-    /*@Option(
-    name = EXCLUDE_FILTER_OPTION,
-    description =
-            "Filters applied to the invocation. Format: [abi] [module-name] [test-class][#method-name]")*/
+    @Option(
+            name = EXCLUDE_FILTER_OPTION,
+            description =
+                    "Filters applied to the invocation. Format: [abi] [module-name]"
+                            + " [test-class][#method-name]")
     private Set<String> mExcludeFilters = new LinkedHashSet<>();
 
+    @Option(
+            name = "disable-global-filters",
+            description = "Feature flag to enable the global filters")
+    private boolean mDisable = true;
+
     private TradefedFeatureClient mClient;
+    private boolean mSetupDone = false;
 
     public GlobalTestFilter() {}
 
@@ -67,16 +78,53 @@ public final class GlobalTestFilter {
         return new LinkedHashSet<>(mExcludeFilters);
     }
 
+    /** Initialize the global filters by passing them to the tests. */
+    public void setUpFilters(IConfiguration config) {
+        if (mDisable) {
+            CLog.d("Global filters are disabled.");
+            return;
+        }
+        if (mSetupDone) {
+            CLog.d("Global filters already set.");
+            return;
+        }
+        CLog.d("Setting up global filters");
+        // If it's a subprocess, fetch filters
+        if (config.getCommandOptions().getInvocationData().containsKey("subprocess")) {
+            populateGlobalFilters();
+        }
+        // Apply filters
+        for (IRemoteTest test : config.getTests()) {
+            if (test instanceof BaseTestSuite) {
+                ((BaseTestSuite) test).setIncludeFilter(mIncludeFilters);
+                ((BaseTestSuite) test).setExcludeFilter(mExcludeFilters);
+            } else if (test instanceof ITestFilterReceiver) {
+                ITestFilterReceiver filterableTest = (ITestFilterReceiver) test;
+                Set<String> includeFilters =
+                        new LinkedHashSet<>(filterableTest.getIncludeFilters());
+                includeFilters.addAll(mIncludeFilters);
+                filterableTest.clearIncludeFilters();
+                filterableTest.addAllIncludeFilters(includeFilters);
+
+                Set<String> excludeFilters =
+                        new LinkedHashSet<>(filterableTest.getExcludeFilters());
+                excludeFilters.addAll(mExcludeFilters);
+                filterableTest.clearExcludeFilters();
+                filterableTest.addAllExcludeFilters(excludeFilters);
+            }
+        }
+        mSetupDone = true;
+    }
+
     /** Fetch and populate global filters if needed. */
-    public void populateGlobalFilters(String invocationId) {
+    private void populateGlobalFilters() {
         if (mClient == null) {
             mClient = new TradefedFeatureClient();
         }
         try {
-            Map<String, String> args = new HashMap<>();
-            args.put("invocation_id", invocationId);
             FeatureResponse globalFilters =
-                    mClient.triggerFeature(GlobalFilterGetter.GLOBAL_FILTER_GETTER, args);
+                    mClient.triggerFeature(
+                            GlobalFilterGetter.GLOBAL_FILTER_GETTER, new HashMap<>());
             if (globalFilters.hasMultiPartResponse()) {
                 for (PartResponse rep :
                         globalFilters.getMultiPartResponse().getResponsePartList()) {

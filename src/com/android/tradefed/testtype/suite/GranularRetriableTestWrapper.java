@@ -413,8 +413,12 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
     }
 
     private FailureDescription createFromException(Throwable exception) {
+        String message =
+                (exception.getMessage() == null)
+                        ? String.format("No error message reported for: %s", exception)
+                        : exception.getMessage();
         FailureDescription failure =
-                CurrentInvocation.createFailure(exception.getMessage(), null).setCause(exception);
+                CurrentInvocation.createFailure(message, null).setCause(exception);
         if (exception instanceof IHarnessException) {
             ErrorIdentifier id = ((IHarnessException) exception).getErrorId();
             failure.setErrorIdentifier(id);

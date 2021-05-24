@@ -849,7 +849,8 @@ public class TestInvocation implements ITestInvocation {
                 new ArrayList<>(config.getTestInvocationListeners().size() + extraListeners.length);
         // If it's not a subprocess, report the passed tests.
         ReportPassedTests reportPass = null;
-        if (config.getCommandOptions().reportPassedTests()
+        if (config.getConfigurationObject(TradefedDelegator.DELEGATE_OBJECT) == null
+                && config.getCommandOptions().reportPassedTests()
                 && !config.getCommandOptions()
                         .getInvocationData()
                         .containsKey(SubprocessTfLauncher.SUBPROCESS_TAG_NAME)) {
@@ -874,6 +875,7 @@ public class TestInvocation implements ITestInvocation {
                 && !RetryStrategy.NO_RETRY.equals(decision.getRetryStrategy())) {
             CLog.d("Auto-retry enabled, using the ResultAggregator to handle multiple retries.");
             aggregator = new ResultAggregator(allListeners, decision.getRetryStrategy());
+            aggregator.setUpdatedReporting(decision.useUpdatedReporting());
             allListeners = Arrays.asList(aggregator);
         }
 
@@ -1012,6 +1014,9 @@ public class TestInvocation implements ITestInvocation {
                         return;
                     }
                 }
+
+                // Apply global filters before sharding so they are taken into account.
+                config.getGlobalFilters().setUpFilters(config);
 
                 try {
                     sharding = invocationPath.shardConfig(config, info, rescheduler, listener);
