@@ -1544,6 +1544,18 @@ public abstract class ITestSuite
         if (previousPassedFilter.isEmpty()) {
             return true;
         }
+        boolean filterShards =
+                previousPassedFilter.removeIf(
+                        f ->
+                                f.getShardIndex() != null
+                                        && !f.getShardIndex()
+                                                .equals(
+                                                        mMainConfiguration
+                                                                .getCommandOptions()
+                                                                .getShardIndex()));
+        if (filterShards) {
+            CLog.d("Remaining filter for the shard: %s", previousPassedFilter);
+        }
         String moduleId = module.getId();
         for (SuiteTestFilter filter : previousPassedFilter) {
             String name = filter.getName();

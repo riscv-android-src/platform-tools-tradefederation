@@ -16,6 +16,8 @@
 package com.android.tradefed.result;
 
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
+import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -27,15 +29,23 @@ import java.util.HashMap;
 import java.util.Map.Entry;
 
 /** Report in a file possible filters to exclude passed test. */
-public class ReportPassedTests extends CollectingTestListener {
+public class ReportPassedTests extends CollectingTestListener implements IConfigurationReceiver {
 
     private static final String PASSED_TEST_LOG = "passed_tests";
     private boolean mInvocationFailed = false;
     private ITestLogger mLogger;
     private boolean mModuleInProgress;
+    private Integer mShardIndex;
 
     public void setLogger(ITestLogger logger) {
         mLogger = logger;
+    }
+
+    @Override
+    public void setConfiguration(IConfiguration configuration) {
+        if (configuration.getCommandOptions().getShardIndex() != null) {
+            mShardIndex = configuration.getCommandOptions().getShardIndex();
+        }
     }
 
     @Override
@@ -123,6 +133,9 @@ public class ReportPassedTests extends CollectingTestListener {
     }
 
     private String createFilters(TestRunResult runResult, String baseName) {
+        if (mShardIndex != null) {
+            baseName = "shard_" + mShardIndex + " " + baseName;
+        }
         StringBuilder sb = new StringBuilder();
         if (!runResult.hasFailedTests()) {
             sb.append(baseName);

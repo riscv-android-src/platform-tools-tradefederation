@@ -855,6 +855,7 @@ public class TestInvocation implements ITestInvocation {
                         .getInvocationData()
                         .containsKey(SubprocessTfLauncher.SUBPROCESS_TAG_NAME)) {
             reportPass = new ReportPassedTests();
+            reportPass.setConfiguration(config);
             allListeners.add(reportPass);
         }
         allListeners.addAll(config.getTestInvocationListeners());
