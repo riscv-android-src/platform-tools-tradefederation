@@ -962,6 +962,8 @@ public class TestInvocation implements ITestInvocation {
                     invokeFetchBuild(info, config, rescheduler, listener, invocationPath);
             long end = System.currentTimeMillis();
             InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.FETCH_BUILD_END, end);
+            InvocationMetricLogger.addInvocationPairMetrics(
+                    InvocationMetricKey.FETCH_BUILD_PAIR, start, end);
             long fetchBuildDuration = end - start;
             InvocationMetricLogger.addInvocationMetrics(
                     InvocationMetricKey.FETCH_BUILD, fetchBuildDuration);
