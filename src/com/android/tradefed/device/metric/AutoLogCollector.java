@@ -22,6 +22,7 @@ public enum AutoLogCollector {
     BUGREPORTZ_ON_FAILURE(BugreportzOnFailureCollector.class),
     CLANG_COVERAGE(ClangCodeCoverageCollector.class),
     HOSTLOG_ON_FAILURE(DebugHostLogOnFailureCollector.class),
+    JAVA_COVERAGE(JavaCodeCoverageCollector.class),
     LOGCAT_ON_FAILURE(LogcatOnFailureCollector.class),
     SCREENSHOT_ON_FAILURE(ScreenshotOnFailureCollector.class);
 
