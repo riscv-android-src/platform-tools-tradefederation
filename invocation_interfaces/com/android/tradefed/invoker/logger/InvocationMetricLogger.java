@@ -98,6 +98,9 @@ public class InvocationMetricLogger {
         SETUP_START("tf_setup_start_timestamp", false),
         SETUP_END("tf_setup_end_timestamp", false),
         SETUP_PAIR("tf_setup_pair_timestamp", true),
+        // Don't aggregate test pair, latest report wins because it's the closest to
+        // the execution like in a subprocess.
+        TEST_PAIR("tf_test_pair_timestamp", false),
         // TODO: Delete start/end timestamp in favor of pair.
         TEARDOWN_START("tf_teardown_start_timestamp", false),
         TEARDOWN_END("tf_teardown_end_timestamp", false),

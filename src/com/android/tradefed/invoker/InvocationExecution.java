@@ -577,6 +577,7 @@ public class InvocationExecution implements IInvocationExecution {
                 new UnexecutedTestReporterThread(listener, remainingTests);
         Runtime.getRuntime().addShutdownHook(reporterThread);
         TestInvocation.printStageDelimiter(Stage.TEST, false);
+        long start = System.currentTimeMillis();
         try {
             for (IRemoteTest test : config.getTests()) {
                 TfObjectTracker.countWithParents(test.getClass());
@@ -660,8 +661,13 @@ public class InvocationExecution implements IInvocationExecution {
             TestInvocation.printStageDelimiter(Stage.TEST, true);
             // TODO: Look if this can be improved to DeviceNotAvailableException too.
             Runtime.getRuntime().removeShutdownHook(reporterThread);
+            // Only log if it was no already logged to keep the value closest to execution
+            if (!InvocationMetricLogger.getInvocationMetrics()
+                    .containsKey(InvocationMetricKey.TEST_PAIR.toString())) {
+                InvocationMetricLogger.addInvocationPairMetrics(
+                        InvocationMetricKey.TEST_PAIR, start, System.currentTimeMillis());
+            }
         }
-
     }
 
     @Override
