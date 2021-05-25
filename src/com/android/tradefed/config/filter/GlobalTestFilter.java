@@ -17,6 +17,7 @@ package com.android.tradefed.config.filter;
 
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.Option;
+import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.service.TradefedFeatureClient;
 import com.android.tradefed.testtype.IRemoteTest;
@@ -34,6 +35,7 @@ import java.util.List;
 import java.util.Set;
 
 /** Filter options applied to the invocation. */
+@OptionClass(alias = "global-filters")
 public final class GlobalTestFilter {
 
     public static final String INCLUDE_FILTER_OPTION = "include-filter";
