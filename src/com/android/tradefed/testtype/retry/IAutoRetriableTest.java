@@ -16,7 +16,6 @@
 package com.android.tradefed.testtype.retry;
 
 import com.android.tradefed.device.DeviceNotAvailableException;
-import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.testtype.IRemoteTest;
@@ -48,16 +47,5 @@ public interface IAutoRetriableTest extends IRemoteTest {
             throws DeviceNotAvailableException {
         // No retry by default
         return false;
-    }
-
-    /**
-     * Recovery attempt on the device to get it a better state before next retry. Will only be
-     * triggered if {@link #shouldRetry(int, List)} returns true.
-     *
-     * @param devices The list of {@link ITestDevice} to apply recovery on.
-     * @param attemptJustExecuted The number of the attempt that we just ran.
-     */
-    public default void recoverStateOfDevices(List<ITestDevice> devices, int attemptJustExecuted) {
-        // Do nothing by default
     }
 }
