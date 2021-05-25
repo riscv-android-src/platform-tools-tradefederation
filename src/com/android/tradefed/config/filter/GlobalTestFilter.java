@@ -100,20 +100,23 @@ public final class GlobalTestFilter {
                 ((BaseTestSuite) test).setExcludeFilter(mExcludeFilters);
             } else if (test instanceof ITestFilterReceiver) {
                 ITestFilterReceiver filterableTest = (ITestFilterReceiver) test;
-                Set<String> includeFilters =
-                        new LinkedHashSet<>(filterableTest.getIncludeFilters());
-                includeFilters.addAll(mIncludeFilters);
-                filterableTest.clearIncludeFilters();
-                filterableTest.addAllIncludeFilters(includeFilters);
-
-                Set<String> excludeFilters =
-                        new LinkedHashSet<>(filterableTest.getExcludeFilters());
-                excludeFilters.addAll(mExcludeFilters);
-                filterableTest.clearExcludeFilters();
-                filterableTest.addAllExcludeFilters(excludeFilters);
+                applyFiltersToTest(filterableTest);
             }
         }
         mSetupDone = true;
+    }
+
+    /** Apply the global filters to the test. */
+    public void applyFiltersToTest(ITestFilterReceiver filterableTest) {
+        Set<String> includeFilters = new LinkedHashSet<>(filterableTest.getIncludeFilters());
+        includeFilters.addAll(mIncludeFilters);
+        filterableTest.clearIncludeFilters();
+        filterableTest.addAllIncludeFilters(includeFilters);
+
+        Set<String> excludeFilters = new LinkedHashSet<>(filterableTest.getExcludeFilters());
+        excludeFilters.addAll(mExcludeFilters);
+        filterableTest.clearExcludeFilters();
+        filterableTest.addAllExcludeFilters(excludeFilters);
     }
 
     /** Fetch and populate global filters if needed. */
