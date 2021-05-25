@@ -53,6 +53,7 @@ import org.mockito.junit.MockitoRule;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -219,8 +220,8 @@ public class ClusterCommandConfigBuilderTest {
     @Test
     public void testBuild_testResources()
             throws IOException, ConfigurationException, JSONException {
-        mTestResources.add(new TestResource("N1", "U1", true, "D1"));
-        mTestContext.addTestResource(new TestResource("N2", "U2", false, null));
+        mTestResources.add(new TestResource("N1", "U1", true, "D1", false, Arrays.asList("F1")));
+        mTestContext.addTestResource(new TestResource("N2", "U2"));
 
         builder.build();
         // test resources from both sources were injected
