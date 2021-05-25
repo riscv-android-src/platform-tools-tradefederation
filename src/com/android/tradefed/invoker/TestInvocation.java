@@ -934,8 +934,13 @@ public class TestInvocation implements ITestInvocation {
             }
             getLogRegistry().registerLogger(leveledLogOutput);
             mStatus = "resolving dynamic options";
+            long startDynamic = System.currentTimeMillis();
             boolean resolverSuccess =
                     invokeRemoteDynamic(context, config, listener, invocationPath, mode);
+            InvocationMetricLogger.addInvocationPairMetrics(
+                    InvocationMetricKey.DYNAMIC_FILE_RESOLVER_PAIR,
+                    startDynamic,
+                    System.currentTimeMillis());
             if (!resolverSuccess) {
                 return;
             }
