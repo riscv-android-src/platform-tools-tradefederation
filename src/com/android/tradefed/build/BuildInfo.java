@@ -184,6 +184,9 @@ public class BuildInfo implements IBuildInfo {
      */
     @Override
     public void addBuildAttribute(String attributeName, String attributeValue) {
+        if (attributeValue == null) {
+            attributeValue = "";
+        }
         mBuildAttributes.put(attributeName, attributeValue);
     }
 

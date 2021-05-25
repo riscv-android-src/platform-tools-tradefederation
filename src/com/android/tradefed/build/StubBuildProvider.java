@@ -90,7 +90,9 @@ public class StubBuildProvider implements IBuildProvider {
         if (!STANDARD_PLATFORMS.contains(mBuildOs)) {
             buildTarget += "_" + mBuildOs;
         }
-        stubBuild.addBuildAttribute("build_target", buildTarget);
+        if (buildTarget != null) {
+            stubBuild.addBuildAttribute("build_target", buildTarget);
+        }
 
         for (Map.Entry<String, String> attributeEntry : mBuildAttributes.entrySet()) {
             stubBuild.addBuildAttribute(attributeEntry.getKey(), attributeEntry.getValue());
