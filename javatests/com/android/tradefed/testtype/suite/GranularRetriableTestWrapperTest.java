@@ -994,6 +994,8 @@ public class GranularRetriableTestWrapperTest {
     /** Test to reset device at the last intra-module retry failed due to reset failure. */
     @Test
     public void testIntraModuleRun_resetFailed_powerwashFailure() throws Exception {
+        ModuleDefinition module = Mockito.mock(ModuleDefinition.class);
+        Mockito.when(module.getModuleInvocationContext()).thenReturn(mModuleInvocationContext);
         IRetryDecision decision = new BaseRetryDecision();
         OptionSetter setter = new OptionSetter(decision);
         setter.setOptionValue("reset-at-last-retry", "true");
@@ -1009,7 +1011,9 @@ public class GranularRetriableTestWrapperTest {
 
         test.setDevice(device);
         mModuleInvocationContext.addAllocatedDevice("default-device1", device);
-        GranularRetriableTestWrapper granularTestWrapper = createGranularTestWrapper(test, 3);
+
+        GranularRetriableTestWrapper granularTestWrapper =
+                createGranularTestWrapper(test, 3, new ArrayList<>(), module);
         granularTestWrapper.setRetryDecision(decision);
 
         try {
