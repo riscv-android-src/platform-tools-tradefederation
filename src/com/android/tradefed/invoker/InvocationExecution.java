@@ -292,6 +292,8 @@ public class InvocationExecution implements IInvocationExecution {
             // Setup timing metric. It does not include flashing time on boot tests.
             long end = System.currentTimeMillis();
             InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.SETUP_END, end);
+            InvocationMetricLogger.addInvocationPairMetrics(
+                    InvocationMetricKey.SETUP_PAIR, start, end);
             long setupDuration = end - start;
             InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.SETUP, setupDuration);
             CLog.d("Setup duration: %s'", TimeUtil.formatElapsedTime(setupDuration));
@@ -456,9 +458,8 @@ public class InvocationExecution implements IInvocationExecution {
             throws Throwable {
         IInvocationContext context = testInfo.getContext();
         Throwable deferredThrowable;
-
-        InvocationMetricLogger.addInvocationMetrics(
-                InvocationMetricKey.TEARDOWN_START, System.currentTimeMillis());
+        long start = System.currentTimeMillis();
+        InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.TEARDOWN_START, start);
 
         List<IMultiTargetPreparer> multiPreparers = config.getMultiTargetPreparers();
         deferredThrowable =
@@ -538,8 +539,9 @@ public class InvocationExecution implements IInvocationExecution {
         // Collect adb logs.
         logHostAdb(config, logger);
 
-        InvocationMetricLogger.addInvocationMetrics(
-                InvocationMetricKey.TEARDOWN_END, System.currentTimeMillis());
+        long end = System.currentTimeMillis();
+        InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.TEARDOWN_END, end);
+        InvocationMetricLogger.addInvocationPairMetrics(InvocationMetricKey.SETUP_PAIR, start, end);
 
         if (deferredThrowable != null) {
             throw deferredThrowable;
