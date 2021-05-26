@@ -20,6 +20,7 @@ import com.android.tradefed.device.metric.AutoLogCollector;
 import com.android.tradefed.util.UniqueMultiMap;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -237,4 +238,7 @@ public interface ICommandOptions {
      * false.
      */
     public long getMaxLoopCount();
+
+    /** List of tags used for reporting related to the invocation. */
+    public List<String> reportingTags();
 }
