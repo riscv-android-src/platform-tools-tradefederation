@@ -17,6 +17,7 @@ package com.android.tradefed.result;
 
 import com.android.loganalysis.item.JavaCrashItem;
 import com.android.loganalysis.item.LogcatItem;
+import com.android.loganalysis.item.NativeCrashItem;
 import com.android.loganalysis.parser.LogcatParser;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
@@ -122,7 +123,7 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
         // be raised for the same reason.
         String errorMessage = error.getErrorMessage();
         if (mLogcatItem != null) {
-            errorMessage = addJavaCrashToString(mLogcatItem, errorMessage);
+            errorMessage = addCrashesToString(mLogcatItem, errorMessage);
             mLogcatItem = null;
         } else {
             errorMessage = extractCrashAndAddToMessage(errorMessage, mLastStartTime);
@@ -150,7 +151,7 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
     private String extractCrashAndAddToMessage(String errorMessage, Long startTime) {
         if (isCrash(errorMessage) && startTime != null) {
             mLogcatItem = extractLogcat(mDevice, startTime);
-            errorMessage = addJavaCrashToString(mLogcatItem, errorMessage);
+            errorMessage = addCrashesToString(mLogcatItem, errorMessage);
         }
         return errorMessage;
     }
@@ -192,29 +193,54 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
         return null;
     }
 
-    /** Append the Java crash information to the failure message. */
-    private String addJavaCrashToString(LogcatItem item, String errorMsg) {
+    /** Append the crashes information to the failure message. */
+    private String addCrashesToString(LogcatItem item, String errorMsg) {
         if (item == null) {
             return errorMsg;
         }
-        List<String> crashes = dedupCrash(item.getJavaCrashes());
+        List<String> javaCrashes = dedupJavaCrash(item.getJavaCrashes());
         // Invert to report the most recent one first.
-        Collections.reverse(crashes);
-        int displayed = Math.min(crashes.size(), MAX_NUMBER_CRASH);
-        if (!crashes.isEmpty()) {
-            errorMsg = String.format("%s\nCrash Messages sorted from most recent:\n", errorMsg);
+        Collections.reverse(javaCrashes);
+        int displayed = Math.min(javaCrashes.size(), MAX_NUMBER_CRASH);
+        if (!javaCrashes.isEmpty()) {
+            errorMsg =
+                    String.format("%s\nJava Crash Messages sorted from most recent:\n", errorMsg);
             for (int i = 0; i < displayed; i++) {
-                errorMsg = String.format("%s%s\n", errorMsg, crashes.get(i));
+                errorMsg = String.format("%s%s\n", errorMsg, javaCrashes.get(i));
+            }
+        }
+
+        List<String> nativeCrashes = dedupNativeCrash(item.getNativeCrashes());
+        // Invert to report the most recent one first.
+        Collections.reverse(nativeCrashes);
+        displayed = Math.min(nativeCrashes.size(), MAX_NUMBER_CRASH);
+        if (!nativeCrashes.isEmpty()) {
+            errorMsg =
+                    String.format("%s\nNative Crash Messages sorted from most recent:\n", errorMsg);
+            for (int i = 0; i < displayed; i++) {
+                errorMsg = String.format("%s%s\n", errorMsg, nativeCrashes.get(i));
             }
         }
         return errorMsg;
     }
 
     /** Remove identical crash from the list of errors. */
-    private List<String> dedupCrash(List<JavaCrashItem> origList) {
+    private List<String> dedupJavaCrash(List<JavaCrashItem> origList) {
         LinkedHashSet<String> dedupList = new LinkedHashSet<>();
         for (JavaCrashItem item : origList) {
             dedupList.add(String.format("%s\n%s", item.getMessage(), item.getStack()));
+        }
+        return new ArrayList<>(dedupList);
+    }
+
+    /** Remove identical crash from the list of errors. */
+    private List<String> dedupNativeCrash(List<NativeCrashItem> origList) {
+        LinkedHashSet<String> dedupList = new LinkedHashSet<>();
+        for (NativeCrashItem item : origList) {
+            dedupList.add(
+                    String.format(
+                            "fingerprint: %s\napp: %s\n%s",
+                            item.getFingerprint(), item.getApp(), item.getStack()));
         }
         return new ArrayList<>(dedupList);
     }
