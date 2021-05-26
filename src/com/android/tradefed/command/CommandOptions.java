@@ -24,8 +24,10 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.UniqueMultiMap;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -641,5 +643,17 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public void setReportInvocationComplete(boolean reportInvocationCompleteLogs) {
         mReportInvocationCompleteLogs = reportInvocationCompleteLogs;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public List<String> reportingTags() {
+        List<String> tags = new ArrayList<>();
+        // Convert a few of the enabled features into easily consumable tag that can be displayed
+        // to see if a feature is enabled.
+        if (filterPreviousPassedTests()) {
+            tags.add("incremental_retry");
+        }
+        return tags;
     }
 }
