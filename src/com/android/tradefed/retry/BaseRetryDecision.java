@@ -179,7 +179,7 @@ public class BaseRetryDecision implements IRetryDecision {
 
         // TODO(b/179206516): Skip known failure list in class/method Level.
         // Currently, only support skip list in module level.
-        if (isInSkipList(module)) {
+        if (module != null && isInSkipList(module)) {
             CLog.d("Skip retrying known failure test of %s", module.getId());
             return false;
         }
@@ -200,7 +200,7 @@ public class BaseRetryDecision implements IRetryDecision {
             IAutoRetriableTest autoRetryTest = (IAutoRetriableTest) test;
             boolean shouldRetry = autoRetryTest.shouldRetry(attemptJustExecuted, previousResults);
             if (shouldRetry) {
-                autoRetryTest.recoverStateOfDevices(getDevices(), attemptJustExecuted);
+                recoverStateOfDevices(getDevices(), attemptJustExecuted, module);
             }
             return shouldRetry;
         } else {
@@ -262,25 +262,24 @@ public class BaseRetryDecision implements IRetryDecision {
     }
 
     private boolean isInSkipList(ModuleDefinition module) {
-        if (module != null) {
-            String moduleId = module.getId();
-            if (moduleId != null) {
-                SuiteTestFilter moduleIdFilter = SuiteTestFilter.createFrom(moduleId);
-                String abi = moduleIdFilter.getAbi();
-                String name = moduleIdFilter.getName();
-                for (String skipTest : mSkipRetryingList) {
-                    SuiteTestFilter skipRetryingFilter = SuiteTestFilter.createFrom(skipTest);
-                    String skipAbi = skipRetryingFilter.getAbi();
-                    String skipName = skipRetryingFilter.getName();
-                    if (abi != null
-                            && skipAbi != null
-                            && name != null
-                            && skipName != null
-                            && abi.equals(skipAbi)
-                            && name.equals(skipName)) {
-                        return true;
-                    }
-                }
+        String moduleId = module.getId();
+        if (moduleId == null) {
+            return false;
+        }
+        SuiteTestFilter moduleIdFilter = SuiteTestFilter.createFrom(moduleId);
+        String abi = moduleIdFilter.getAbi();
+        String name = moduleIdFilter.getName();
+        for (String skipTest : mSkipRetryingList) {
+            SuiteTestFilter skipRetryingFilter = SuiteTestFilter.createFrom(skipTest);
+            String skipAbi = skipRetryingFilter.getAbi();
+            String skipName = skipRetryingFilter.getName();
+            if (abi != null
+                    && skipAbi != null
+                    && name != null
+                    && skipName != null
+                    && abi.equals(skipAbi)
+                    && name.equals(skipName)) {
+                return true;
             }
         }
         return false;
@@ -432,7 +431,8 @@ public class BaseRetryDecision implements IRetryDecision {
             List<ITestDevice> devices, int lastAttempt, ModuleDefinition module)
             throws DeviceNotAvailableException {
         if (lastAttempt == (mMaxRetryAttempts - 2)) {
-            if (mResetAtLastRetry) {
+            // Reset only works for suite right now
+            if (mResetAtLastRetry && module != null) {
                 resetDevice(module, devices);
             } else if (mRebootAtLastRetry) {
                 for (ITestDevice device : devices) {

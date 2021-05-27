@@ -16,26 +16,41 @@
 package com.android.tradefed.result;
 
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
+import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.ITestLogger;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Joiner;
 
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.Map.Entry;
+import java.util.Set;
 
 /** Report in a file possible filters to exclude passed test. */
-public class ReportPassedTests extends CollectingTestListener {
+public class ReportPassedTests extends CollectingTestListener implements IConfigurationReceiver {
 
     private static final String PASSED_TEST_LOG = "passed_tests";
     private boolean mInvocationFailed = false;
     private ITestLogger mLogger;
     private boolean mModuleInProgress;
+    private Integer mShardIndex;
+    private Set<String> mExtraTestCases = new LinkedHashSet<>();
 
     public void setLogger(ITestLogger logger) {
         mLogger = logger;
+    }
+
+    @Override
+    public void setConfiguration(IConfiguration configuration) {
+        if (configuration.getCommandOptions().getShardIndex() != null) {
+            mShardIndex = configuration.getCommandOptions().getShardIndex();
+        }
     }
 
     @Override
@@ -50,10 +65,12 @@ public class ReportPassedTests extends CollectingTestListener {
         if (!mModuleInProgress) {
             // Remove right away any run failure they will be excluded
             if (getCurrentRunResults().isRunFailure()) {
+                gatherPassedTests(getCurrentRunResults(), getBaseName(getCurrentRunResults()));
                 clearResultsForName(getCurrentRunResults().getName());
                 // Clear the failure for aggregation
                 getCurrentRunResults().resetRunFailure();
             } else if (mInvocationFailed) {
+                gatherPassedTests(getCurrentRunResults(), getBaseName(getCurrentRunResults()));
                 clearResultsForName(getCurrentRunResults().getName());
                 // Clear the failure for aggregation
                 getCurrentRunResults().resetRunFailure();
@@ -66,10 +83,12 @@ public class ReportPassedTests extends CollectingTestListener {
         super.testModuleEnded();
         // Remove right away any run failure they will be excluded
         if (getCurrentRunResults().isRunFailure()) {
+            gatherPassedTests(getCurrentRunResults(), getBaseName(getCurrentRunResults()));
             clearResultsForName(getCurrentRunResults().getName());
             // Clear the failure for aggregation
             getCurrentRunResults().resetRunFailure();
         } else if (mInvocationFailed) {
+            gatherPassedTests(getCurrentRunResults(), getBaseName(getCurrentRunResults()));
             clearResultsForName(getCurrentRunResults().getName());
             // Clear the failure for aggregation
             getCurrentRunResults().resetRunFailure();
@@ -95,20 +114,14 @@ public class ReportPassedTests extends CollectingTestListener {
         }
         StringBuilder sb = new StringBuilder();
         for (TestRunResult result : getMergedTestRunResults()) {
-            IInvocationContext context = getModuleContextForRunResult(result.getName());
-            // If it's a test module
-            if (context != null) {
-                sb.append(
-                        createFilters(
-                                result,
-                                context.getAttributes()
-                                        .getUniqueMap()
-                                        .get(ModuleDefinition.MODULE_ID)));
-            } else {
-                sb.append(createFilters(result, result.getName()));
-            }
+            sb.append(createFilters(result, getBaseName(result)));
+        }
+        if (!mExtraTestCases.isEmpty()) {
+            sb.append(Joiner.on("\n").join(mExtraTestCases));
+            mExtraTestCases.clear();
         }
         if (sb.length() == 0) {
+            CLog.d("No new filter for passed_test");
             return;
         }
         testLog(sb.toString());
@@ -122,7 +135,20 @@ public class ReportPassedTests extends CollectingTestListener {
         }
     }
 
+    private String getBaseName(TestRunResult runResult) {
+        IInvocationContext context = getModuleContextForRunResult(runResult.getName());
+        // If it's a test module
+        if (context != null) {
+            return context.getAttributes().getUniqueMap().get(ModuleDefinition.MODULE_ID);
+        } else {
+            return runResult.getName();
+        }
+    }
+
     private String createFilters(TestRunResult runResult, String baseName) {
+        if (mShardIndex != null) {
+            baseName = "shard_" + mShardIndex + " " + baseName;
+        }
         StringBuilder sb = new StringBuilder();
         if (!runResult.hasFailedTests()) {
             sb.append(baseName);
@@ -137,5 +163,20 @@ public class ReportPassedTests extends CollectingTestListener {
             sb.append("\n");
         }
         return sb.toString();
+    }
+
+    private void gatherPassedTests(TestRunResult runResult, String baseName) {
+        if (mShardIndex != null) {
+            baseName = "shard_" + mShardIndex + " " + baseName;
+        }
+        StringBuilder sb = new StringBuilder();
+        for (TestDescription test : runResult.getPassedTests()) {
+            sb.append(baseName + " " + test.toString());
+            sb.append("\n");
+        }
+        if (sb.length() == 0L) {
+            return;
+        }
+        mExtraTestCases.add(sb.toString());
     }
 }

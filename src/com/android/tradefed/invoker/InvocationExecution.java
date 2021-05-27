@@ -292,6 +292,8 @@ public class InvocationExecution implements IInvocationExecution {
             // Setup timing metric. It does not include flashing time on boot tests.
             long end = System.currentTimeMillis();
             InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.SETUP_END, end);
+            InvocationMetricLogger.addInvocationPairMetrics(
+                    InvocationMetricKey.SETUP_PAIR, start, end);
             long setupDuration = end - start;
             InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.SETUP, setupDuration);
             CLog.d("Setup duration: %s'", TimeUtil.formatElapsedTime(setupDuration));
@@ -456,9 +458,8 @@ public class InvocationExecution implements IInvocationExecution {
             throws Throwable {
         IInvocationContext context = testInfo.getContext();
         Throwable deferredThrowable;
-
-        InvocationMetricLogger.addInvocationMetrics(
-                InvocationMetricKey.TEARDOWN_START, System.currentTimeMillis());
+        long start = System.currentTimeMillis();
+        InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.TEARDOWN_START, start);
 
         List<IMultiTargetPreparer> multiPreparers = config.getMultiTargetPreparers();
         deferredThrowable =
@@ -538,8 +539,9 @@ public class InvocationExecution implements IInvocationExecution {
         // Collect adb logs.
         logHostAdb(config, logger);
 
-        InvocationMetricLogger.addInvocationMetrics(
-                InvocationMetricKey.TEARDOWN_END, System.currentTimeMillis());
+        long end = System.currentTimeMillis();
+        InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.TEARDOWN_END, end);
+        InvocationMetricLogger.addInvocationPairMetrics(InvocationMetricKey.SETUP_PAIR, start, end);
 
         if (deferredThrowable != null) {
             throw deferredThrowable;
@@ -575,6 +577,7 @@ public class InvocationExecution implements IInvocationExecution {
                 new UnexecutedTestReporterThread(listener, remainingTests);
         Runtime.getRuntime().addShutdownHook(reporterThread);
         TestInvocation.printStageDelimiter(Stage.TEST, false);
+        long start = System.currentTimeMillis();
         try {
             for (IRemoteTest test : config.getTests()) {
                 TfObjectTracker.countWithParents(test.getClass());
@@ -658,8 +661,13 @@ public class InvocationExecution implements IInvocationExecution {
             TestInvocation.printStageDelimiter(Stage.TEST, true);
             // TODO: Look if this can be improved to DeviceNotAvailableException too.
             Runtime.getRuntime().removeShutdownHook(reporterThread);
+            // Only log if it was no already logged to keep the value closest to execution
+            if (!InvocationMetricLogger.getInvocationMetrics()
+                    .containsKey(InvocationMetricKey.TEST_PAIR.toString())) {
+                InvocationMetricLogger.addInvocationPairMetrics(
+                        InvocationMetricKey.TEST_PAIR, start, System.currentTimeMillis());
+            }
         }
-
     }
 
     @Override

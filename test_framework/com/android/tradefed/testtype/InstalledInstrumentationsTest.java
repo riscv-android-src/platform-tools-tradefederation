@@ -413,6 +413,9 @@ public class InstalledInstrumentationsTest
             throws DeviceNotAvailableException {
         while (!mTests.isEmpty()) {
             InstrumentationTest test = mTests.get(0);
+            if (test instanceof ITestFilterReceiver) {
+                mConfiguration.getGlobalFilters().applyFiltersToTest((ITestFilterReceiver) test);
+            }
 
             CLog.d("Running test %s on %s", test.getPackageName(), getDevice().getSerialNumber());
 

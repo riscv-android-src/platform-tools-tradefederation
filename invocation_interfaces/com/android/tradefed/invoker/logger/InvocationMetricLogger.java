@@ -88,12 +88,24 @@ public class InvocationMetricLogger {
         NONPERSISTENT_DEVICE_PROPERTIES("nonpersistent_device_properties", true),
         PERSISTENT_DEVICE_PROPERTIES("persistent_device_properties", true),
         INVOCATION_START("tf_invocation_start_timestamp", false),
+
+        DYNAMIC_FILE_RESOLVER_PAIR("tf_dynamic_resolver_pair_timestamp", true),
+        // TODO: Delete start/end timestamp in favor of pair.
         FETCH_BUILD_START("tf_fetch_build_start_timestamp", false),
         FETCH_BUILD_END("tf_fetch_build_end_timestamp", false),
+        FETCH_BUILD_PAIR("tf_fetch_build_pair_timestamp", true),
+        // TODO: Delete start/end timestamp in favor of pair.
         SETUP_START("tf_setup_start_timestamp", false),
         SETUP_END("tf_setup_end_timestamp", false),
+        SETUP_PAIR("tf_setup_pair_timestamp", true),
+        // Don't aggregate test pair, latest report wins because it's the closest to
+        // the execution like in a subprocess.
+        TEST_PAIR("tf_test_pair_timestamp", false),
+        // TODO: Delete start/end timestamp in favor of pair.
         TEARDOWN_START("tf_teardown_start_timestamp", false),
         TEARDOWN_END("tf_teardown_end_timestamp", false),
+        TEARDOWN_PAIR("tf_teardown_pair_timestamp", false),
+
         INVOCATION_END("tf_invocation_end_timestamp", false);
 
         private final String mKeyName;
@@ -205,6 +217,24 @@ public class InvocationMetricLogger {
      * @param value The value of the invocation metric.
      */
     public static void addInvocationMetrics(InvocationMetricKey key, String value) {
+        if (key.shouldAdd()) {
+            String existingVal = getInvocationMetrics().get(key.toString());
+            if (existingVal != null) {
+                value = String.format("%s,%s", existingVal, value);
+            }
+        }
+        addInvocationMetrics(key.toString(), value);
+    }
+
+    /**
+     * Add a pair of value associated with the same key. Usually used for timestamp start and end.
+     *
+     * @param key The key under which the invocation metric will be tracked.
+     * @param start The start value of the invocation metric.
+     * @param end The end value of the invocation metric.
+     */
+    public static void addInvocationPairMetrics(InvocationMetricKey key, long start, long end) {
+        String value = start + ":" + end;
         if (key.shouldAdd()) {
             String existingVal = getInvocationMetrics().get(key.toString());
             if (existingVal != null) {

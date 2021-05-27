@@ -67,6 +67,7 @@ import com.android.tradefed.invoker.shard.ParentShardReplicate;
 import com.android.tradefed.log.ILogRegistry.EventType;
 import com.android.tradefed.log.LogRegistry;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.ConsoleResultReporter;
 import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogSaverResultForwarder;
@@ -1364,6 +1365,7 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
     private void setDelegateLevelReporting(IConfiguration config) {
         List<ITestInvocationListener> delegateReporters = new ArrayList<>();
         // For debugging in the console, add a printer
+        delegateReporters.add(new ConsoleResultReporter());
         delegateReporters.add(new SuiteResultReporter());
         try {
             Class<?> objectClass =
