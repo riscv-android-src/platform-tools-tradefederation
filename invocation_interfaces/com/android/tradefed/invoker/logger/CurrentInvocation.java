@@ -59,6 +59,7 @@ public class CurrentInvocation {
         public Map<InvocationInfo, File> mInvocationInfoFiles = new HashMap<>();
         public ExecutionFiles mExecutionFiles;
         public ActionInProgress mActionInProgress = ActionInProgress.UNSET;
+        public boolean mIsModuleIsolated = true;
     }
 
     /**
@@ -167,6 +168,28 @@ public class CurrentInvocation {
                 return null;
             }
             return mPerGroupInfo.get(group).mActionInProgress;
+        }
+    }
+
+    /** Returns whether the current suite module executed was isolated or not. */
+    public static boolean isModuleIsolated() {
+        ThreadGroup group = Thread.currentThread().getThreadGroup();
+        synchronized (mPerGroupInfo) {
+            if (mPerGroupInfo.get(group) == null) {
+                return false;
+            }
+            return mPerGroupInfo.get(group).mIsModuleIsolated;
+        }
+    }
+
+    /** Update whether the suite module is isolated or not. */
+    public static void setModuleIsolated(boolean isolated) {
+        ThreadGroup group = Thread.currentThread().getThreadGroup();
+        synchronized (mPerGroupInfo) {
+            if (mPerGroupInfo.get(group) == null) {
+                mPerGroupInfo.put(group, new InternalInvocationTracking());
+            }
+            mPerGroupInfo.get(group).mIsModuleIsolated = isolated;
         }
     }
 
