@@ -41,6 +41,7 @@ import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.error.IHarnessException;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.TestInformation;
+import com.android.tradefed.invoker.logger.CurrentInvocation;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.invoker.logger.TfObjectTracker;
@@ -743,6 +744,10 @@ public abstract class ITestSuite
                 TestInformation moduleInfo =
                         TestInformation.createModuleTestInfo(
                                 testInfo, module.getModuleInvocationContext());
+                if (CurrentInvocation.isModuleIsolated()) {
+                    module.getModuleInvocationContext()
+                            .addInvocationAttribute(ModuleDefinition.MODULE_ISOLATED, "true");
+                }
                 try {
                     runSingleModule(module, moduleInfo, listener, moduleListeners, failureListener);
                 } finally {
@@ -752,6 +757,8 @@ public abstract class ITestSuite
                     // execution
                     listener.testModuleEnded();
                     mModuleInProgress = null;
+                    // Following modules will not be isolated if no action is taken
+                    CurrentInvocation.setModuleIsolated(false);
                 }
                 // Module isolation routine
                 moduleIsolation(mContext, listener);
@@ -1544,6 +1551,18 @@ public abstract class ITestSuite
         if (previousPassedFilter.isEmpty()) {
             return true;
         }
+        boolean filterShards =
+                previousPassedFilter.removeIf(
+                        f ->
+                                f.getShardIndex() != null
+                                        && !f.getShardIndex()
+                                                .equals(
+                                                        mMainConfiguration
+                                                                .getCommandOptions()
+                                                                .getShardIndex()));
+        if (filterShards) {
+            CLog.d("Remaining filter for the shard: %s", previousPassedFilter);
+        }
         String moduleId = module.getId();
         for (SuiteTestFilter filter : previousPassedFilter) {
             String name = filter.getName();
@@ -1562,7 +1581,7 @@ public abstract class ITestSuite
                         && ((ITestFileFilterReceiver) test).getExcludeTestFile() != null) {
                     File excludeFilterFile = ((ITestFileFilterReceiver) test).getExcludeTestFile();
                     try {
-                        FileUtil.writeToFile(filter.getTest(), excludeFilterFile, true);
+                        FileUtil.writeToFile(filter.getTest() + "\n", excludeFilterFile, true);
                     } catch (IOException e) {
                         CLog.e(e);
                         continue;

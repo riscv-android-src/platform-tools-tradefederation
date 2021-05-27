@@ -56,6 +56,9 @@ import java.util.List;
 /** {@link InvocationExecution} which delegate the execution to another Tradefed binary. */
 public class DelegatedInvocationExecution extends InvocationExecution {
 
+    /** If present the invocation is executing within a delegated mode */
+    public static final String DELEGATED_MODE_VAR = "DELEGATED_MODE";
+
     /** Timeout to wait for the events received from subprocess to finish being processed. */
     private static final long EVENT_THREAD_JOIN_TIMEOUT_MS = 30 * 1000;
 
@@ -205,6 +208,8 @@ public class DelegatedInvocationExecution extends InvocationExecution {
         runUtil.setEnvVariable(
                 GlobalConfiguration.GLOBAL_CONFIG_VARIABLE, mGlobalConfig.getAbsolutePath());
         runUtil.setEnvVariable(AutomatedReporters.PROTO_REPORTING_PORT, Integer.toString(port));
+        // Set a variable to detect delegated mode
+        runUtil.setEnvVariable(DELEGATED_MODE_VAR, "1");
         return runUtil;
     }
 

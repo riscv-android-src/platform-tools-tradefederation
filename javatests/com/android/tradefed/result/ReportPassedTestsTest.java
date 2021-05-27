@@ -16,6 +16,8 @@
 package com.android.tradefed.result;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
@@ -35,12 +37,14 @@ import java.util.Collections;
 public class ReportPassedTestsTest {
 
     private String mExpectedString;
+    private boolean mTestLogCalled = false;
     private ITestLogger mLogger;
 
     private ReportPassedTests mReporter =
             new ReportPassedTests() {
                 @Override
                 void testLog(String toBeLogged) {
+                    mTestLogCalled = true;
                     assertEquals(mExpectedString, toBeLogged);
                 }
             };
@@ -63,6 +67,7 @@ public class ReportPassedTestsTest {
         mReporter.testRunEnded(0L, Collections.emptyMap());
 
         mReporter.invocationEnded(0L);
+        assertTrue(mTestLogCalled);
     }
 
     @Test
@@ -75,6 +80,7 @@ public class ReportPassedTestsTest {
         mReporter.testRunEnded(0L, Collections.emptyMap());
 
         mReporter.invocationEnded(0L);
+        assertTrue(mTestLogCalled);
     }
 
     @Test
@@ -85,6 +91,7 @@ public class ReportPassedTestsTest {
         mReporter.testRunEnded(0L, Collections.emptyMap());
 
         mReporter.invocationEnded(0L);
+        assertFalse(mTestLogCalled);
     }
 
     @Test
@@ -103,6 +110,32 @@ public class ReportPassedTestsTest {
         mReporter.testRunEnded(0L, Collections.emptyMap());
 
         mReporter.invocationEnded(0L);
+        assertTrue(mTestLogCalled);
+    }
+
+    @Test
+    public void testReport_runFailure_withPassedTestCases() {
+        TestDescription tid = new TestDescription("class", "testName");
+        TestDescription tid2 = new TestDescription("class", "testName2");
+        TestDescription failed = new TestDescription("class", "testName3");
+        TestDescription assum = new TestDescription("class", "testName4");
+        mExpectedString = "run-name class#testName\nrun-name class#testName2\n";
+        mReporter.testRunStarted("run-name", 20);
+        mReporter.testStarted(tid);
+        mReporter.testEnded(tid, Collections.emptyMap());
+        mReporter.testStarted(tid2);
+        mReporter.testEnded(tid2, Collections.emptyMap());
+        mReporter.testStarted(failed);
+        mReporter.testFailed(failed, "failed");
+        mReporter.testEnded(failed, Collections.emptyMap());
+        mReporter.testStarted(assum);
+        mReporter.testAssumptionFailure(assum, "assum fail");
+        mReporter.testEnded(assum, Collections.emptyMap());
+        mReporter.testRunFailed("test run failed");
+        mReporter.testRunEnded(0L, Collections.emptyMap());
+
+        mReporter.invocationEnded(0L);
+        assertTrue(mTestLogCalled);
     }
 
     @Test
@@ -116,6 +149,7 @@ public class ReportPassedTestsTest {
         mReporter.testRunEnded(0L, Collections.emptyMap());
 
         mReporter.invocationEnded(0L);
+        assertTrue(mTestLogCalled);
     }
 
     @Test
@@ -128,6 +162,34 @@ public class ReportPassedTestsTest {
         mReporter.testModuleEnded();
 
         mReporter.invocationEnded(0L);
+        assertFalse(mTestLogCalled);
+    }
+
+    @Test
+    public void testReport_moduleFailure_withPassedTestCases() {
+        TestDescription tid = new TestDescription("class", "testName");
+        TestDescription tid2 = new TestDescription("class", "testName2");
+        TestDescription failed = new TestDescription("class", "testName3");
+        TestDescription assum = new TestDescription("class", "testName4");
+        mExpectedString = "x86 module1 class#testName\nx86 module1 class#testName2\n";
+        mReporter.testModuleStarted(createModule("x86 module1"));
+        mReporter.testRunStarted("run-name", 20);
+        mReporter.testStarted(tid);
+        mReporter.testEnded(tid, Collections.emptyMap());
+        mReporter.testStarted(tid2);
+        mReporter.testEnded(tid2, Collections.emptyMap());
+        mReporter.testStarted(failed);
+        mReporter.testFailed(failed, "failed");
+        mReporter.testEnded(failed, Collections.emptyMap());
+        mReporter.testStarted(assum);
+        mReporter.testAssumptionFailure(assum, "assum fail");
+        mReporter.testEnded(assum, Collections.emptyMap());
+        mReporter.testRunFailed("test run failed");
+        mReporter.testRunEnded(0L, Collections.emptyMap());
+        mReporter.testModuleEnded();
+
+        mReporter.invocationEnded(0L);
+        assertTrue(mTestLogCalled);
     }
 
     @Test
@@ -143,6 +205,7 @@ public class ReportPassedTestsTest {
         mReporter.testRunEnded(0L, Collections.emptyMap());
 
         mReporter.invocationEnded(0L);
+        assertTrue(mTestLogCalled);
     }
 
     @Test
@@ -159,6 +222,7 @@ public class ReportPassedTestsTest {
         mReporter.testModuleEnded();
 
         mReporter.invocationEnded(0L);
+        assertTrue(mTestLogCalled);
     }
 
     private IInvocationContext createModule(String id) {
