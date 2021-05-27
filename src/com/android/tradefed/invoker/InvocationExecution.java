@@ -38,9 +38,11 @@ import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.invoker.ExecutionFiles.FilesKey;
 import com.android.tradefed.invoker.TestInvocation.Stage;
+import com.android.tradefed.invoker.logger.CurrentInvocation;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.invoker.logger.TfObjectTracker;
+import com.android.tradefed.invoker.logger.CurrentInvocation.IsolationGrade;
 import com.android.tradefed.invoker.shard.IShardHelper;
 import com.android.tradefed.invoker.shard.TestsPoolPoller;
 import com.android.tradefed.log.ITestLogger;
@@ -616,7 +618,13 @@ public class InvocationExecution implements IInvocationExecution {
                 ModuleListener mainGranularRunListener = new ModuleListener(null);
                 RetryLogSaverResultForwarder runListener =
                         initializeListeners(config, listener, mainGranularRunListener);
-                runTest(config, info, runListener, test);
+                mainGranularRunListener.setAttemptIsolation(
+                        CurrentInvocation.runCurrentIsolation());
+                try {
+                    runTest(config, info, runListener, test);
+                } finally {
+                    CurrentInvocation.setRunIsolation(IsolationGrade.NOT_ISOLATED);
+                }
                 remainingTests.remove(test);
                 runListener.incrementAttempt();
 
@@ -625,25 +633,36 @@ public class InvocationExecution implements IInvocationExecution {
                         test, 0, mainGranularRunListener.getTestRunForAttempts(0))) {
                     continue;
                 }
-
+                // Avoid rechecking the shouldRetry below the first time as it could retrigger
+                // reboot.
+                boolean firstCheck = true;
                 long startTime = System.currentTimeMillis();
                 try {
                     PrettyPrintDelimiter.printStageDelimiter("Starting auto-retry");
                     for (int attemptNumber = 1;
                             attemptNumber < decision.getMaxRetryCount();
                             attemptNumber++) {
-                        boolean retry =
-                                decision.shouldRetry(
-                                        test,
-                                        attemptNumber - 1,
-                                        mainGranularRunListener.getTestRunForAttempts(
-                                                attemptNumber - 1));
-                        if (!retry) {
-                            continue;
+                        if (!firstCheck) {
+                            boolean retry =
+                                    decision.shouldRetry(
+                                            test,
+                                            attemptNumber - 1,
+                                            mainGranularRunListener.getTestRunForAttempts(
+                                                    attemptNumber - 1));
+                            if (!retry) {
+                                continue;
+                            }
                         }
+                        firstCheck = false;
                         CLog.d("auto-retry attempt number '%s'", attemptNumber);
-                        // Run the tests again
-                        runTest(config, info, runListener, test);
+                        mainGranularRunListener.setAttemptIsolation(
+                                CurrentInvocation.runCurrentIsolation());
+                        try {
+                            // Run the tests again
+                            runTest(config, info, runListener, test);
+                        } finally {
+                            CurrentInvocation.setRunIsolation(IsolationGrade.NOT_ISOLATED);
+                        }
                         runListener.incrementAttempt();
                     }
                     // Feed the last attempt if we reached here.

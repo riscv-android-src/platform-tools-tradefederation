@@ -42,6 +42,7 @@ import com.android.tradefed.error.IHarnessException;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.invoker.logger.CurrentInvocation;
+import com.android.tradefed.invoker.logger.CurrentInvocation.IsolationGrade;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.invoker.logger.TfObjectTracker;
@@ -744,9 +745,12 @@ public abstract class ITestSuite
                 TestInformation moduleInfo =
                         TestInformation.createModuleTestInfo(
                                 testInfo, module.getModuleInvocationContext());
-                if (CurrentInvocation.isModuleIsolated()) {
+                if (!IsolationGrade.NOT_ISOLATED.equals(
+                        CurrentInvocation.moduleCurrentIsolation())) {
                     module.getModuleInvocationContext()
-                            .addInvocationAttribute(ModuleDefinition.MODULE_ISOLATED, "true");
+                            .addInvocationAttribute(
+                                    ModuleDefinition.MODULE_ISOLATED,
+                                    CurrentInvocation.moduleCurrentIsolation().toString());
                 }
                 try {
                     runSingleModule(module, moduleInfo, listener, moduleListeners, failureListener);
@@ -758,7 +762,7 @@ public abstract class ITestSuite
                     listener.testModuleEnded();
                     mModuleInProgress = null;
                     // Following modules will not be isolated if no action is taken
-                    CurrentInvocation.setModuleIsolated(false);
+                    CurrentInvocation.setModuleIsolation(IsolationGrade.NOT_ISOLATED);
                 }
                 // Module isolation routine
                 moduleIsolation(mContext, listener);
