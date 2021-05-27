@@ -17,7 +17,6 @@ package com.android.tradefed.result;
 
 import com.android.tradefed.config.Option;
 import com.android.tradefed.invoker.IInvocationContext;
-import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.retry.ISupportGranularResults;
@@ -262,8 +261,6 @@ public class SubprocessResultsReporter
         }
 
         Map<String, String> metrics = mContext.getAttributes().getUniqueMap();
-        // All the invocation level metrics collected
-        metrics.putAll(InvocationMetricLogger.getInvocationMetrics());
         InvocationEndedEventInfo eventEnd = new InvocationEndedEventInfo(metrics);
         printEvent(SubprocessTestResultsParser.StatusKeys.INVOCATION_ENDED, eventEnd);
         // Upon invocation ended, trigger the end of the socket when the process finishes
