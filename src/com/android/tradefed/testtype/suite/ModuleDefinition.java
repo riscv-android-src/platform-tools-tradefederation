@@ -112,6 +112,8 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
      * will usually be a combination of MODULE_ABI + MODULE_NAME.
      */
     public static final String MODULE_ID = "module-id";
+    /** This property is set to true if the module was running on a freshly prepared device. */
+    public static final String MODULE_ISOLATED = "module-isolated";
 
     public static final String MODULE_CONTROLLER = "module_controller";
 
