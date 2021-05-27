@@ -541,7 +541,8 @@ public class InvocationExecution implements IInvocationExecution {
 
         long end = System.currentTimeMillis();
         InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.TEARDOWN_END, end);
-        InvocationMetricLogger.addInvocationPairMetrics(InvocationMetricKey.SETUP_PAIR, start, end);
+        InvocationMetricLogger.addInvocationPairMetrics(
+                InvocationMetricKey.TEARDOWN_PAIR, start, end);
 
         if (deferredThrowable != null) {
             throw deferredThrowable;
