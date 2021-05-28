@@ -17,6 +17,7 @@ package com.android.tradefed.testtype.suite;
 
 import com.android.ddmlib.Log.LogLevel;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
+import com.android.tradefed.invoker.logger.CurrentInvocation.IsolationGrade;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.CollectingTestListener;
@@ -29,6 +30,7 @@ import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.LogSaverResultForwarder;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import java.util.HashMap;
 
@@ -47,12 +49,19 @@ public class ModuleListener extends CollectingTestListener {
     private boolean mCollectTestsOnly = false;
     /** Track runs in progress for logging purpose */
     private boolean mRunInProgress = false;
+    /** Track if we are within an isolated run or not */
+    private IsolationGrade mAttemptIsolation = IsolationGrade.NOT_ISOLATED;
 
     /** Constructor. */
     public ModuleListener(ITestInvocationListener listener) {
         mMainListener = listener;
         mRunInProgress = false;
         setIsAggregrateMetrics(true);
+    }
+
+    /** Sets whether or not the attempt should be reported as isolated. */
+    public void setAttemptIsolation(IsolationGrade isolation) {
+        mAttemptIsolation = isolation;
     }
 
     /** Sets whether or not we are only collecting the tests. */
@@ -103,6 +112,14 @@ public class ModuleListener extends CollectingTestListener {
     @Override
     public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
         CLog.d("ModuleListener.testRunEnded(%s)", elapsedTime);
+
+        if (!IsolationGrade.NOT_ISOLATED.equals(mAttemptIsolation)) {
+            runMetrics.put(
+                    "run-isolated", TfMetricProtoUtil.stringToMetric(mAttemptIsolation.toString()));
+            // In case something was off, reset isolation.
+            mAttemptIsolation = IsolationGrade.NOT_ISOLATED;
+        }
+
         super.testRunEnded(elapsedTime, runMetrics);
         mRunInProgress = false;
     }
