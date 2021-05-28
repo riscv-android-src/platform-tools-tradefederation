@@ -22,7 +22,9 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.cloud.RemoteAndroidVirtualDevice;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.logger.CurrentInvocation;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.CurrentInvocation.IsolationGrade;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.TestDescription;
@@ -437,8 +439,9 @@ public class BaseRetryDecision implements IRetryDecision {
             } else if (mRebootAtLastRetry) {
                 for (ITestDevice device : devices) {
                     device.reboot();
-                    continue;
                 }
+                CurrentInvocation.setModuleIsolation(IsolationGrade.REBOOT_ISOLATED);
+                CurrentInvocation.setRunIsolation(IsolationGrade.REBOOT_ISOLATED);
             }
         }
     }
@@ -458,6 +461,8 @@ public class BaseRetryDecision implements IRetryDecision {
             try {
                 success = ((RemoteAndroidVirtualDevice) device).powerwashGce();
                 deviceResetCount++;
+                CurrentInvocation.setModuleIsolation(IsolationGrade.FULLY_ISOLATED);
+                CurrentInvocation.setRunIsolation(IsolationGrade.FULLY_ISOLATED);
             } catch (TargetSetupError e) {
                 CLog.e(e);
                 throw new DeviceNotAvailableException(
