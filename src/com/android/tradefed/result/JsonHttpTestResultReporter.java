@@ -37,6 +37,7 @@ import java.net.URL;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -92,6 +93,11 @@ public class JsonHttpTestResultReporter extends CollectingTestListener {
     @Option(name = "include-device-details", description = "Enabling this flag will parse"
             + " additional device details such as device name, sdk version and build id.")
     private boolean mDeviceDetails = false;
+
+    @Option(
+            name = "additional-key-value-pairs",
+            description = "Map of additional key/value pairs to be added to the results.")
+    private Map<String, String> mAdditionalKeyValuePairs = new LinkedHashMap<>();
 
     private boolean mHasInvocationFailures = false;
     private IInvocationContext mInvocationContext = null;
@@ -258,6 +264,12 @@ public class JsonHttpTestResultReporter extends CollectingTestListener {
         if(mDeviceDetails) {
             result.put(KEY_DEVICE_NAME, mDeviceName);
             result.put(KEY_SDK_RELEASE_NAME, mSdkBuildId);
+        }
+
+        if (!mAdditionalKeyValuePairs.isEmpty()) {
+            for (Map.Entry<String, String> pair : mAdditionalKeyValuePairs.entrySet()) {
+                result.put(pair.getKey(), pair.getValue());
+            }
         }
 
         return result;
