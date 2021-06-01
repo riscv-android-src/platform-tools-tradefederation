@@ -737,6 +737,14 @@ public abstract class ITestSuite
                     module.getModuleInvocationContext()
                             .addDeviceBuildInfo(deviceName, mContext.getBuildInfo(deviceName));
                 }
+                // Add isolation status before module start for reporting
+                if (!IsolationGrade.NOT_ISOLATED.equals(
+                        CurrentInvocation.moduleCurrentIsolation())) {
+                    module.getModuleInvocationContext()
+                            .addInvocationAttribute(
+                                    ModuleDefinition.MODULE_ISOLATED,
+                                    CurrentInvocation.moduleCurrentIsolation().toString());
+                }
                 listener.testModuleStarted(module.getModuleInvocationContext());
                 mModuleInProgress = module;
                 // Trigger module start on module level listener too
@@ -745,13 +753,6 @@ public abstract class ITestSuite
                 TestInformation moduleInfo =
                         TestInformation.createModuleTestInfo(
                                 testInfo, module.getModuleInvocationContext());
-                if (!IsolationGrade.NOT_ISOLATED.equals(
-                        CurrentInvocation.moduleCurrentIsolation())) {
-                    module.getModuleInvocationContext()
-                            .addInvocationAttribute(
-                                    ModuleDefinition.MODULE_ISOLATED,
-                                    CurrentInvocation.moduleCurrentIsolation().toString());
-                }
                 try {
                     runSingleModule(module, moduleInfo, listener, moduleListeners, failureListener);
                 } finally {
