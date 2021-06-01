@@ -80,6 +80,7 @@ import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.retry.ResultAggregator;
 import com.android.tradefed.retry.RetryStrategy;
+import com.android.tradefed.service.TradefedFeatureServer;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.DeviceFailedToBootError;
 import com.android.tradefed.targetprep.TargetSetupError;
@@ -812,6 +813,14 @@ public class TestInvocation implements ITestInvocation {
         if (!config.getInopOptions().isEmpty()) {
             context.addInvocationAttribute(
                     "inop-options", Joiner.on(",").join(config.getInopOptions()));
+        }
+        // Carry the reference of the server so it can be used within the same process.
+        if (config.getConfigurationDescription().getAllMetaData().getUniqueMap()
+                .containsKey(TradefedFeatureServer.SERVER_REFERENCE)) {
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.SERVER_REFERENCE,
+                    config.getConfigurationDescription().getAllMetaData().getUniqueMap()
+                        .get(TradefedFeatureServer.SERVER_REFERENCE));
         }
         // Only log invocation_start in parent
         if (!isSubprocess(config)) {
