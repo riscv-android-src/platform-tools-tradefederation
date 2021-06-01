@@ -47,6 +47,7 @@ public class JsonHttpTestResultReporterTest {
     // Corresponds to the option name in JsonHttpTestResultReporter.
     private static final String SKIP_FAILED_RUNS_OPTION = "skip-failed-runs";
     private static final String COLLECT_DEVICE_DETAILS_OPTION = "include-device-details";
+    private static final String ADDITIONAL_KEY_VALUE_PAIRS_OPTION = "additional-key-value-pairs";
 
     // Corresponds to the KEY_METRICS field in JsonHttpTestResultReporter.
     private static final String JSON_METRIC_KEY = "metrics";
@@ -151,6 +152,19 @@ public class JsonHttpTestResultReporterTest {
         mReporter.invocationStarted(mContext);
         injectTestRun(mReporter, "run1", "test", "metric1", 0, true);
         mReporter.invocationEnded(0);
+    }
+
+    /** Test for parsing additional device details when collect device details is enabled. */
+    @Test
+    public void testAdditionalKeyValuePairs() throws ConfigurationException, JSONException {
+        OptionSetter optionSetter = new OptionSetter(mReporter);
+        optionSetter.setOptionValue(ADDITIONAL_KEY_VALUE_PAIRS_OPTION, "key1", "value1");
+        mReporter.invocationStarted(mContext);
+        injectTestRun(mReporter, "run1", "test", "metric1", 0, true);
+        mReporter.invocationEnded(0);
+        ArgumentCaptor<JSONObject> jsonCaptor = ArgumentCaptor.forClass(JSONObject.class);
+        verify(mReporter).postResults(jsonCaptor.capture());
+        Assert.assertTrue(jsonCaptor.getValue().getString("key1").equals("value1"));
     }
 
     /**

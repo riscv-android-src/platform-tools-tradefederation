@@ -360,6 +360,10 @@ public class BuildInfo implements IBuildInfo {
      */
     @Override
     public void setFile(String name, File file, String version) {
+        if (file == null) {
+            CLog.w("Tried to add to build info file name '%s' which is null.", name);
+            return;
+        }
         if (!mVersionedFileMap.containsKey(name)) {
             mVersionedFileMap.put(name, new VersionedFile(file, version));
         }
