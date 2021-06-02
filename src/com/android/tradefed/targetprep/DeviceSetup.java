@@ -730,7 +730,8 @@ public class DeviceSetup extends BaseTargetPreparer {
                             "Cannot set system props %s on %s without adb root. Setting "
                                     + "'force-skip-system-props' or 'enable-root' to avoid error",
                             mSetProps.toString(), device.getSerialNumber()),
-                    device.getDeviceDescriptor());
+                    device.getDeviceDescriptor(),
+                    InfraErrorIdentifier.OPTION_CONFIGURATION_ERROR);
         }
 
         // Set persistent props and build a map of all the nonpersistent ones
