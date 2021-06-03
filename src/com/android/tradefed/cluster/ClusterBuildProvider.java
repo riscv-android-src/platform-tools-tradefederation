@@ -28,12 +28,14 @@ import com.android.tradefed.util.FuseUtil;
 import com.android.tradefed.util.TarUtil;
 import com.android.tradefed.util.ZipUtil2;
 import org.apache.commons.compress.archivers.zip.ZipFile;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.TreeMap;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 /** A {@link IBuildProvider} to download TFC test resources. */
@@ -47,25 +49,15 @@ public class ClusterBuildProvider implements IBuildProvider {
 
     @Option(
             name = "test-resource",
-            description = "Mapping from test resource name to URL",
+            description = "A list of JSON-serialized test resource objects",
             mandatory = true)
-    private Map<String, String> mTestResources = new TreeMap<>();
-
-    @Option(
-            name = "decompress-test-resource",
-            description =
-                    "Mapping from test resource name to the subdirectory where the "
-                            + "resource is decompressed")
-    private Map<String, String> mDecompressTestResources = new TreeMap<>();
+    private List<String> mTestResources = new ArrayList<>();
 
     @Option(name = "build-id", description = "Build ID")
     private String mBuildId = IBuildInfo.UNKNOWN_BUILD_ID;
 
     @Option(name = "build-target", description = "Build target name")
     private String mBuildTarget = "stub";
-
-    @Option(name = "mount-zip", description = "Mount zip if system supports it.")
-    private boolean mMountZip = true;
 
     // The keys are the URLs; the values are the downloaded files shared among all build providers
     // in the invocation.
@@ -89,6 +81,20 @@ public class ClusterBuildProvider implements IBuildProvider {
                 }
             };
 
+    private List<TestResource> parseTestResources() {
+        final List<TestResource> objs = new ArrayList<>();
+        for (final String s : mTestResources) {
+            try {
+                final JSONObject json = new JSONObject(s);
+                final TestResource obj = TestResource.fromJson(json);
+                objs.add(obj);
+            } catch (JSONException e) {
+                throw new RuntimeException("Failed to parse a test resource option: " + s, e);
+            }
+        }
+        return objs;
+    }
+
     @Override
     public IBuildInfo getBuild() throws BuildRetrievalError {
         mRootDir.mkdirs();
@@ -97,19 +103,18 @@ public class ClusterBuildProvider implements IBuildProvider {
         final ConcurrentHashMap<String, File> cache = sDownloadCache.get();
         final ConcurrentHashMap<String, File> createdResources = sCreatedResources.get();
 
-        for (final Entry<String, String> entry : mTestResources.entrySet()) {
-            final String resourceName = entry.getKey();
-            String decompressDir = mDecompressTestResources.get(resourceName);
+        final List<TestResource> testResources = parseTestResources();
+        for (TestResource resource : testResources) {
             // For backward compatibility.
-            if (decompressDir == null && resourceName.endsWith(".zip")) {
-                decompressDir = new File(resourceName).getParent();
-                if (decompressDir == null) {
-                    decompressDir = "";
-                }
+            if (resource.getName().endsWith(".zip") && !resource.getDecompress()) {
+                resource =
+                        new TestResource(
+                                resource.getName(),
+                                resource.getUrl(),
+                                true,
+                                new File(resource.getName()).getParent(),
+                                resource.mountZip());
             }
-            final TestResource resource =
-                    new TestResource(
-                            resourceName, entry.getValue(), decompressDir != null, decompressDir);
             // Validate the paths before the file operations.
             final File resourceFile = resource.getFile(mRootDir);
             validateTestResourceFile(resourceFile);
@@ -206,7 +211,7 @@ public class ClusterBuildProvider implements IBuildProvider {
                     if (resource.getDecompress()) {
                         final File dir = resource.getDecompressDir(mRootDir);
                         try {
-                            decompressArchive(source, dir, buildInfo);
+                            decompressArchive(source, dir, resource.mountZip(), buildInfo);
                         } catch (IOException e) {
                             throw new UncheckedIOException(e);
                         }
@@ -227,7 +232,8 @@ public class ClusterBuildProvider implements IBuildProvider {
      * <p>If zip mounting is enabled and supported, it will mount a zip and recursively symlink to a
      * target directory.
      */
-    private void decompressArchive(File archive, File destDir, ClusterBuildInfo buildInfo)
+    private void decompressArchive(
+            File archive, File destDir, boolean mountZip, ClusterBuildInfo buildInfo)
             throws IOException {
         if (!destDir.exists()) {
             if (!destDir.mkdirs()) {
@@ -246,7 +252,7 @@ public class ClusterBuildProvider implements IBuildProvider {
             return;
         }
 
-        if (mMountZip) {
+        if (mountZip) {
             FuseUtil fuseUtil = getFuseUtil();
             if (fuseUtil.canMountZip()) {
                 File mountDir = FileUtil.createTempDir("ClusterBuildProviderZipMount");
@@ -295,12 +301,12 @@ public class ClusterBuildProvider implements IBuildProvider {
     }
 
     @VisibleForTesting
-    Map<String, String> getTestResources() {
-        return mTestResources;
+    void addTestResource(TestResource resource) throws JSONException {
+        mTestResources.add(resource.toJson().toString());
     }
 
     @VisibleForTesting
-    Map<String, String> getDecompressTestResources() {
-        return mDecompressTestResources;
+    List<TestResource> getTestResources() {
+        return parseTestResources();
     }
 }

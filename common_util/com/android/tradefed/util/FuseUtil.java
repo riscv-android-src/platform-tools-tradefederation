@@ -48,8 +48,13 @@ public class FuseUtil {
      */
     public boolean canMountZip() {
         if (sCanMountZip == null) {
-            CommandResult res = getRunUtil().runTimedCmd(FUSE_ZIP_TIMEOUT_MILLIS, "fuse-zip", "-h");
-            sCanMountZip = res.getStatus().equals(CommandStatus.SUCCESS);
+            CommandResult res =
+                    getRunUtil().runTimedCmd(FUSE_ZIP_TIMEOUT_MILLIS, "test", "/dev/fuse");
+            CommandResult res2 =
+                    getRunUtil().runTimedCmd(FUSE_ZIP_TIMEOUT_MILLIS, "fuse-zip", "-h");
+            sCanMountZip =
+                    res.getStatus().equals(CommandStatus.SUCCESS)
+                            && res2.getStatus().equals(CommandStatus.SUCCESS);
         }
         return sCanMountZip.booleanValue();
     }
