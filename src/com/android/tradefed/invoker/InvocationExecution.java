@@ -611,7 +611,12 @@ public class InvocationExecution implements IInvocationExecution {
                         // If test doesn't support auto-retry
                         || (!(test instanceof ITestFilterReceiver)
                                 && !(test instanceof IAutoRetriableTest))) {
-                    runTest(config, info, listener, test);
+                    try {
+                        runTest(config, info, listener, test);
+                    } finally {
+                        CurrentInvocation.setRunIsolation(IsolationGrade.NOT_ISOLATED);
+                        CurrentInvocation.setModuleIsolation(IsolationGrade.NOT_ISOLATED);
+                    }
                     remainingTests.remove(test);
                     continue;
                 }
@@ -625,6 +630,7 @@ public class InvocationExecution implements IInvocationExecution {
                     runTest(config, info, runListener, test);
                 } finally {
                     CurrentInvocation.setRunIsolation(IsolationGrade.NOT_ISOLATED);
+                    CurrentInvocation.setModuleIsolation(IsolationGrade.NOT_ISOLATED);
                 }
                 remainingTests.remove(test);
                 runListener.incrementAttempt();
@@ -663,6 +669,7 @@ public class InvocationExecution implements IInvocationExecution {
                             runTest(config, info, runListener, test);
                         } finally {
                             CurrentInvocation.setRunIsolation(IsolationGrade.NOT_ISOLATED);
+                            CurrentInvocation.setModuleIsolation(IsolationGrade.NOT_ISOLATED);
                         }
                         runListener.incrementAttempt();
                     }
