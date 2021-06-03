@@ -102,7 +102,7 @@ public class BaseRetryDecision implements IRetryDecision {
     @Option(
             name = "updated-retry-reporting",
             description = "Feature flag to use the updated retry reporting strategy.")
-    private boolean mUpdatedReporting = false;
+    private boolean mUpdatedReporting = true;
 
     @Option(
             name = "updated-filtering",
