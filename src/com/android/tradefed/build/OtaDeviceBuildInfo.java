@@ -140,7 +140,7 @@ public class OtaDeviceBuildInfo extends DeviceBuildInfo {
      */
     @Override
     public Collection<VersionedFile> getFiles() {
-        Collection<VersionedFile> combinedFiles = getFiles();
+        Collection<VersionedFile> combinedFiles = super.getFiles();
         combinedFiles.addAll(mOtaBuild.getFiles());
         return combinedFiles;
     }
