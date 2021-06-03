@@ -24,6 +24,7 @@ public enum LogcatEventType {
     PATCH_COMPLETE,
     UPDATE_VERIFIER_COMPLETE,
     D2O_COMPLETE,
+    INSTALL_PROGRESS_UPDATE,
     UPDATE_COMPLETE,
     // error found in logcat output
     ERROR,
