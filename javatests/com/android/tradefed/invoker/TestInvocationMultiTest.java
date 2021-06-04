@@ -181,7 +181,7 @@ public class TestInvocationMultiTest {
                 .times(2);
         EasyMock.expect(mMockConfig.getLogSaver()).andReturn(mMockLogSaver);
         EasyMock.expect(mMockConfig.getLogOutput()).andStubReturn(mMockLogger);
-        EasyMock.expect(mMockConfig.getConfigurationDescription()).andReturn(mConfigDesc).times(2);
+        EasyMock.expect(mMockConfig.getConfigurationDescription()).andReturn(mConfigDesc).times(3);
         mMockLogger.init();
         EasyMock.expectLastCall().times(2);
         EasyMock.expect(mMockLogger.getLog())
@@ -293,7 +293,7 @@ public class TestInvocationMultiTest {
                 .times(2);
         EasyMock.expect(mMockConfig.getLogSaver()).andReturn(mMockLogSaver);
         EasyMock.expect(mMockConfig.getLogOutput()).andStubReturn(mMockLogger);
-        EasyMock.expect(mMockConfig.getConfigurationDescription()).andReturn(mConfigDesc).times(2);
+        EasyMock.expect(mMockConfig.getConfigurationDescription()).andReturn(mConfigDesc).times(3);
         mMockLogger.init();
         EasyMock.expectLastCall().times(2);
         EasyMock.expect(mMockLogger.getLog())
@@ -385,7 +385,7 @@ public class TestInvocationMultiTest {
                 .times(2);
         EasyMock.expect(mMockConfig.getLogSaver()).andReturn(mMockLogSaver);
         EasyMock.expect(mMockConfig.getLogOutput()).andStubReturn(mMockLogger);
-        EasyMock.expect(mMockConfig.getConfigurationDescription()).andReturn(mConfigDesc).times(2);
+        EasyMock.expect(mMockConfig.getConfigurationDescription()).andReturn(mConfigDesc).times(3);
         mMockLogger.init();
         EasyMock.expectLastCall().times(2);
         EasyMock.expect(mMockLogger.getLog())
@@ -485,7 +485,7 @@ public class TestInvocationMultiTest {
                 .times(2);
         EasyMock.expect(mMockConfig.getLogSaver()).andReturn(mMockLogSaver);
         EasyMock.expect(mMockConfig.getLogOutput()).andStubReturn(mMockLogger);
-        EasyMock.expect(mMockConfig.getConfigurationDescription()).andReturn(mConfigDesc).times(2);
+        EasyMock.expect(mMockConfig.getConfigurationDescription()).andReturn(mConfigDesc).times(3);
         mMockLogger.init();
         EasyMock.expectLastCall().times(2);
         EasyMock.expect(mMockLogger.getLog())

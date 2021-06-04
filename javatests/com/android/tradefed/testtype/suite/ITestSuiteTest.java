@@ -163,7 +163,8 @@ public class ITestSuiteTest {
         }
 
         @Override
-        FeatureResponse triggerFeature(TradefedFeatureClient client, Map<String, String> args) {
+        FeatureResponse triggerFeature(
+                TradefedFeatureClient client, String featureName, Map<String, String> args) {
             return mResponseBuilder.build();
         }
 
