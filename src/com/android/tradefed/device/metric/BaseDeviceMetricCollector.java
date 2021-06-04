@@ -25,9 +25,12 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FailureDescription;
+import com.android.tradefed.result.ILogSaver;
+import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
@@ -382,6 +385,37 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
     @Override
     public final void testIgnored(TestDescription test) {
         mForwarder.testIgnored(test);
+    }
+
+    /**
+     * Do not use inside metric collector implementation. This is pure forwarding.
+     */
+    @Override
+    public final void setLogSaver(ILogSaver logSaver) {
+        if (mForwarder instanceof ILogSaverListener) {
+            ((ILogSaverListener) mForwarder).setLogSaver(logSaver);
+        }
+    }
+
+    /**
+     * Do not use inside metric collector implementation. This is pure forwarding.
+     */
+    @Override
+    public final void logAssociation(String dataName, LogFile logFile) {
+        if (mForwarder instanceof ILogSaverListener) {
+            ((ILogSaverListener) mForwarder).logAssociation(dataName, logFile);
+        }
+    }
+
+    /**
+     * Do not use inside metric collector implementation. This is pure forwarding.
+     */
+    @Override
+    public final void testLogSaved(String dataName, LogDataType dataType,
+            InputStreamSource dataStream, LogFile logFile) {
+        if (mForwarder instanceof ILogSaverListener) {
+            ((ILogSaverListener) mForwarder).testLogSaved(dataName, dataType, dataStream, logFile);
+        }
     }
 
     /** {@inheritDoc} */
