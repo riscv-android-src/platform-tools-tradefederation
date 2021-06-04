@@ -46,7 +46,7 @@ public class SuiteTestFilter {
         if (filter.isEmpty()) {
             throw new IllegalArgumentException("Filter was empty");
         }
-        String[] parts = filter.split(" ");
+        String[] parts = filter.split(" +");
         Integer shardIndex = null;
         String abi = null, name = null, test = null;
         // Either:
@@ -68,7 +68,7 @@ public class SuiteTestFilter {
             }
             name = parts[index];
             index++;
-            parts = filter.split(" ", index + 1);
+            parts = filter.split(" +", index + 1);
             if (parts.length > index) {
                 test = parts[index];
             }
