@@ -1,1 +1,2 @@
 com.android.tradefed.config.filter.GlobalFilterGetter
+com.android.tradefed.config.filter.CommandOptionsGetter

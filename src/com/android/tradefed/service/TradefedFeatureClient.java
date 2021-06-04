@@ -15,6 +15,8 @@
  */
 package com.android.tradefed.service;
 
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.StreamUtil;
 
@@ -74,6 +76,9 @@ public class TradefedFeatureClient implements AutoCloseable {
                     FeatureRequest.newBuilder().setName(featureName).putAllArgs(args);
             if (invocationReference != null) {
                 request.setReferenceId(invocationReference);
+            } else if (InvocationMetricLogger.getInvocationMetrics().containsKey(InvocationMetricKey.SERVER_REFERENCE.toString())) {
+                CLog.d("Using reference id from metrics.");
+                request.setReferenceId(InvocationMetricLogger.getInvocationMetrics().get(InvocationMetricKey.SERVER_REFERENCE.toString()));
             } else {
                 CLog.w("Reference id is null.");
             }

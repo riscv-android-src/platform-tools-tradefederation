@@ -28,6 +28,7 @@ import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionCopier;
+import com.android.tradefed.config.filter.CommandOptionsGetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceProperties;
 import com.android.tradefed.device.ITestDevice;
@@ -1531,8 +1532,9 @@ public abstract class ITestSuite
     }
 
     @VisibleForTesting
-    FeatureResponse triggerFeature(TradefedFeatureClient client, Map<String, String> args) {
-        return client.triggerFeature("getPreviousPassed", args);
+    FeatureResponse triggerFeature(
+            TradefedFeatureClient client, String featureName, Map<String, String> args) {
+        return client.triggerFeature(featureName, args);
     }
 
     private void convertResponseToFilter(
@@ -1604,11 +1606,22 @@ public abstract class ITestSuite
         if (mMainConfiguration == null) {
             return previousPassedFilters;
         }
-        if (!mMainConfiguration.getCommandOptions().filterPreviousPassedTests()) {
-            return previousPassedFilters;
-        }
         if (mPreviousPassedFilters != null) {
             return mPreviousPassedFilters;
+        }
+        if (!mMainConfiguration.getCommandOptions().filterPreviousPassedTests()) {
+            // Match the option from the parent if needed
+            try (TradefedFeatureClient client = new TradefedFeatureClient()) {
+                Map<String, String> args = new HashMap<>();
+                args.put(CommandOptionsGetter.OPTION_NAME, "filter-previous-passed");
+                FeatureResponse rep = triggerFeature(client, CommandOptionsGetter.COMMAND_OPTIONS_GETTER, args);
+                if (!"true".equals(rep.getResponse())) {
+                    return previousPassedFilters;
+                }
+            } catch (RuntimeException e) {
+                CLog.e(e);
+                return previousPassedFilters;
+            }
         }
         mPreviousPassedFilters = new ArrayList<>();
         // Test the query of previous passed test
@@ -1627,7 +1640,7 @@ public abstract class ITestSuite
             return mPreviousPassedFilters;
         }
         try (TradefedFeatureClient client = new TradefedFeatureClient()) {
-            FeatureResponse previousPassed = triggerFeature(client, args);
+            FeatureResponse previousPassed = triggerFeature(client, "getPreviousPassed", args);
             convertResponseToFilter(previousPassed, previousPassedFilters);
         } catch (RuntimeException e) {
             CLog.e(e);
