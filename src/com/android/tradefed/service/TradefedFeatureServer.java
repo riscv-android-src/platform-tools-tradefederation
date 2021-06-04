@@ -116,7 +116,18 @@ public class TradefedFeatureServer extends TradefedInformationImplBase {
                             .setConfiguration(mRegisteredInvocation.get(request.getReferenceId()));
                 }
                 try {
-                    return feature.execute(request);
+                    FeatureResponse rep = feature.execute(request);
+                    if (rep == null) {
+                        return FeatureResponse.newBuilder()
+                                .setErrorInfo(
+                                        ErrorInfo.newBuilder()
+                                                .setErrorTrace(
+                                                        String.format(
+                                                                "Feature '%s' returned null response.",
+                                                                request.getName())))
+                                .build();
+                    }
+                    return rep;
                 } finally {
                     if (feature instanceof IConfigurationReceiver) {
                         ((IConfigurationReceiver) feature).setConfiguration(null);
