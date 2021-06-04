@@ -80,6 +80,8 @@ public class ResultAggregator extends CollectingTestListener {
     // In some configuration of non-module retry, all attempts of runs might not be adjacent. We
     // track that a special handling needs to be applied for this case.
     private boolean mUnorderedRetry = true;
+    // Track whether run start was called for a module.
+    private boolean mRunStartCalled = false;
     // Stores the results from non-module test runs until they are ready to be replayed.
     private final Map<String, List<TestRunResult>> mPureRunResultForAgg = new LinkedHashMap<>();
 
@@ -205,6 +207,7 @@ public class ResultAggregator extends CollectingTestListener {
     @Override
     public void testModuleStarted(IInvocationContext moduleContext) {
         mUnorderedRetry = false;
+        mRunStartCalled = false;
         if (!mPureRunResultForAgg.isEmpty()) {
             for (String name : mPureRunResultForAgg.keySet()) {
                 forwardTestRunResults(mPureRunResultForAgg.get(name), mAggregatedForwarder);
@@ -242,6 +245,7 @@ public class ResultAggregator extends CollectingTestListener {
 
     @Override
     public void testRunStarted(String name, int testCount, int attemptNumber, long startTime) {
+        mRunStartCalled = true;
         // Due to retries happening after several other testRunStart, we need to wait before making
         // the forwarding.
         if (!mUnorderedRetry) {
@@ -394,35 +398,42 @@ public class ResultAggregator extends CollectingTestListener {
         // We still forward the testModuleEnd to the detailed reporters
         mDetailedForwarder.testModuleEnded();
 
-        List<TestRunResult> mergedResults = getMergedTestRunResults();
-        Set<String> resultNames = new HashSet<>();
-        int expectedTestCount = 0;
-        for (TestRunResult result : mergedResults) {
-            expectedTestCount += result.getExpectedTestCount();
-            resultNames.add(result.getName());
-        }
-        // Forward all the results aggregated
-        mAggregatedForwarder.testRunStarted(
-                getCurrentRunResults().getName(),
-                expectedTestCount,
-                /* Attempt*/ 0,
-                /* Start Time */ getCurrentRunResults().getStartTime());
-        for (TestRunResult runResult : mergedResults) {
-            forwardTestResults(runResult.getTestResults(), mAggregatedForwarder);
-            if (runResult.isRunFailure()) {
-                mAggregatedForwarder.testRunFailed(runResult.getRunFailureDescription());
+        // Only show run results if there was a run.
+        if (mRunStartCalled) {
+            List<TestRunResult> mergedResults = getMergedTestRunResults();
+            Set<String> resultNames = new HashSet<>();
+            int expectedTestCount = 0;
+            for (TestRunResult result : mergedResults) {
+                expectedTestCount += result.getExpectedTestCount();
+                resultNames.add(result.getName());
             }
-            // Provide a strong association of the run to its logs.
-            for (String key : runResult.getRunLoggedFiles().keySet()) {
-                for (LogFile logFile : runResult.getRunLoggedFiles().get(key)) {
-                    mAggregatedForwarder.logAssociation(key, logFile);
+            // Forward all the results aggregated
+            mAggregatedForwarder.testRunStarted(
+                    getCurrentRunResults().getName(),
+                    expectedTestCount,
+                    /* Attempt*/ 0,
+                    /* Start Time */ getCurrentRunResults().getStartTime());
+            for (TestRunResult runResult : mergedResults) {
+                forwardTestResults(runResult.getTestResults(), mAggregatedForwarder);
+                if (runResult.isRunFailure()) {
+                    mAggregatedForwarder.testRunFailed(runResult.getRunFailureDescription());
+                }
+                // Provide a strong association of the run to its logs.
+                for (String key : runResult.getRunLoggedFiles().keySet()) {
+                    for (LogFile logFile : runResult.getRunLoggedFiles().get(key)) {
+                        mAggregatedForwarder.logAssociation(key, logFile);
+                    }
                 }
             }
+    
+            mAggregatedForwarder.testRunEnded(
+                    getCurrentRunResults().getElapsedTime(),
+                    getCurrentRunResults().getRunProtoMetrics());
+            // Ensure we don't carry results from one module to another.
+            for (String name : resultNames) {
+                clearResultsForName(name);
+            }
         }
-
-        mAggregatedForwarder.testRunEnded(
-                getCurrentRunResults().getElapsedTime(),
-                getCurrentRunResults().getRunProtoMetrics());
         // Log all the module only logs
         for (String key : getModuleLogFiles().keySet()) {
             for (LogFile log : getModuleLogFiles().get(key)) {
@@ -431,10 +442,6 @@ public class ResultAggregator extends CollectingTestListener {
         }
         clearModuleLogFiles();
         mAggregatedForwarder.testModuleEnded();
-        // Ensure we don't carry results from one module to another.
-        for (String name : resultNames) {
-            clearResultsForName(name);
-        }
         mUnorderedRetry = true;
     }
 
