@@ -18,6 +18,8 @@ package com.android.tradefed.invoker.sandbox;
 import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.config.Configuration;
+import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
@@ -33,21 +35,21 @@ import com.android.tradefed.invoker.TestInvocation.Stage;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.sandbox.SandboxInvocationRunner;
+import com.android.tradefed.sandbox.SandboxOptions;
 import com.android.tradefed.targetprep.BuildError;
-import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.RunUtil;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Version of {@link InvocationExecution} for the parent invocation special actions when running a
  * sandbox.
  */
 public class ParentSandboxInvocationExecution extends InvocationExecution {
+
+    private IConfiguration mParentPreparerConfig = null;
 
     @Override
     public boolean fetchBuild(
@@ -66,20 +68,16 @@ public class ParentSandboxInvocationExecution extends InvocationExecution {
         return super.fetchBuild(testInfo, config, rescheduler, listener);
     }
 
-    /** {@inheritDoc} */
     @Override
-    protected List<ITargetPreparer> getPreparersToRun(IConfiguration config, String deviceName) {
-        List<ITargetPreparer> preparersToRun = new ArrayList<>();
-        preparersToRun.addAll(config.getDeviceConfigByName(deviceName).getLabPreparers());
-        return preparersToRun;
-    }
-
-    @Override
-    public void doSetup(TestInformation testInfo, IConfiguration config, ITestLogger listener)
+    public void doSetup(TestInformation testInfo, IConfiguration config, ITestLogger logger)
             throws TargetSetupError, BuildError, DeviceNotAvailableException {
-        // TODO address the situation where multi-target preparers are configured
-        // (they will be run by both the parent and sandbox if configured)
-        super.doSetup(testInfo, config, listener);
+        // Skip
+        mParentPreparerConfig = getParentTargetConfig(config);
+        if (mParentPreparerConfig == null) {
+            return;
+        }
+        CLog.d("Using %s to run in the parent setup.", SandboxOptions.PARENT_PREPARER_CONFIG);
+        super.doSetup(testInfo, mParentPreparerConfig, logger);
     }
 
     @Override
@@ -89,14 +87,27 @@ public class ParentSandboxInvocationExecution extends InvocationExecution {
             ITestLogger logger,
             Throwable exception)
             throws Throwable {
-        // TODO address the situation where multi-target preparers are configured
-        // (they will be run by both the parent and sandbox if configured)
-        super.doTeardown(testInfo, config, logger, exception);
+        // Skip
+        // If we are the parent invocation of the sandbox, setUp has been skipped since it's
+        // done in the sandbox, so tearDown should be skipped.
+        mParentPreparerConfig = getParentTargetConfig(config);
+        if (mParentPreparerConfig == null) {
+            // Log the host adb in the parent sandbox
+            logHostAdb(config, logger);
+            return;
+        }
+        CLog.d("Using %s to run in the parent tear down.", SandboxOptions.PARENT_PREPARER_CONFIG);
+        super.doTeardown(testInfo, mParentPreparerConfig, logger, exception);
     }
 
     @Override
     public void doCleanUp(IInvocationContext context, IConfiguration config, Throwable exception) {
-        super.doCleanUp(context, config, exception);
+        // Skip
+        if (mParentPreparerConfig == null) {
+            return;
+        }
+        CLog.d("Using %s to run in the parent clean up.", SandboxOptions.PARENT_PREPARER_CONFIG);
+        super.doCleanUp(context, mParentPreparerConfig, exception);
     }
 
     @Override
@@ -138,7 +149,7 @@ public class ParentSandboxInvocationExecution extends InvocationExecution {
     @Override
     public void reportLogs(ITestDevice device, ITestLogger logger, Stage stage) {
         // If it's not a major error we do not report it if no setup or teardown ran.
-        if (!Stage.ERROR.equals(stage)) {
+        if (mParentPreparerConfig == null || !Stage.ERROR.equals(stage)) {
             return;
         }
         super.reportLogs(device, logger, stage);
@@ -163,4 +174,28 @@ public class ParentSandboxInvocationExecution extends InvocationExecution {
         return SandboxInvocationRunner.prepareAndRun(info, config, listener);
     }
 
+    private IConfiguration getParentTargetConfig(IConfiguration config) throws TargetSetupError {
+        if (mParentPreparerConfig != null) {
+            return mParentPreparerConfig;
+        }
+        SandboxOptions options =
+                (SandboxOptions)
+                        config.getConfigurationObject(Configuration.SANBOX_OPTIONS_TYPE_NAME);
+        if (options != null && options.getParentPreparerConfig() != null) {
+            try {
+                return getFactory()
+                        .createConfigurationFromArgs(
+                                new String[] {options.getParentPreparerConfig()});
+            } catch (ConfigurationException e) {
+                String message =
+                        String.format(
+                                "Check your --%s option: %s",
+                                SandboxOptions.PARENT_PREPARER_CONFIG, e.getMessage());
+                CLog.e(message);
+                CLog.e(e);
+                throw new TargetSetupError(message, e, InfraErrorIdentifier.UNDETERMINED);
+            }
+        }
+        return null;
+    }
 }
