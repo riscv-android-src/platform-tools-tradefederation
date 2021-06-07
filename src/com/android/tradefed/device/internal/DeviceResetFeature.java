@@ -15,18 +15,28 @@
  */
 package com.android.tradefed.device.internal;
 
+import com.android.tradefed.config.ConfigurationDef;
+import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IConfigurationReceiver;
+import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.service.IRemoteFeature;
+import com.android.tradefed.targetprep.ITargetPreparer;
+import com.android.tradefed.util.SerializationUtil;
 
 import com.proto.tradefed.feature.ErrorInfo;
 import com.proto.tradefed.feature.FeatureRequest;
 import com.proto.tradefed.feature.FeatureResponse;
 
+import java.io.IOException;
+
 /**
  * Server side implementation of device reset.
  */
-public class DeviceResetFeature implements IRemoteFeature {
+public class DeviceResetFeature implements IRemoteFeature, IConfigurationReceiver {
 
     public static final String DEVICE_RESET_FEATURE_NAME = "resetDevice";
+
+    private IConfiguration mConfig;
 
     @Override
     public String getName() {
@@ -34,11 +44,31 @@ public class DeviceResetFeature implements IRemoteFeature {
     }
 
     @Override
+    public void setConfiguration(IConfiguration configuration) {
+        mConfig = configuration;
+    }
+
+    @Override
     public FeatureResponse execute(FeatureRequest request) {
         FeatureResponse.Builder responseBuilder = FeatureResponse.newBuilder();
-        responseBuilder.setErrorInfo(ErrorInfo.newBuilder().setErrorTrace(
-                "Feature not implemented yet."));
-        // TODO: Implementation
+        // TODO: Support multi-device
+        String deviceName = ConfigurationDef.DEFAULT_DEVICE_NAME;
+        IDeviceConfiguration configHolder = mConfig.getDeviceConfigByName(deviceName);
+        try {
+            // TODO: trigger reset if needed.
+            for (ITargetPreparer preparer : configHolder.getTargetPreparers()) {
+                // TODO: Actually get TestInformation
+                preparer.setUp(null);
+            }
+        } catch (Exception e) {
+            String error = "Failed to setup after reset device.";
+            try {
+                error = SerializationUtil.serializeToString(e);
+            } catch (RuntimeException | IOException serializationError) {
+                // Ignore
+            }
+            responseBuilder.setErrorInfo(ErrorInfo.newBuilder().setErrorTrace(error));
+        }
         return responseBuilder.build();
     }
 
