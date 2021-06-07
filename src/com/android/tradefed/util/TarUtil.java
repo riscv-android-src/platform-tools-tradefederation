@@ -35,8 +35,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
@@ -65,8 +69,7 @@ public class TarUtil {
     }
 
     /**
-     * Untar a tar file into a directory.
-     * tar.gz file need to up {@link #unGzip(File, File)} first.
+     * Untar a tar file into a directory. tar.gz file needs to be {@link #unGzip(File, File)} first.
      *
      * @param inputFile The tar file to extract
      * @param outputDir the directory where to put the extracted files.
@@ -75,6 +78,51 @@ public class TarUtil {
      * @throws IOException
      */
     public static List<File> unTar(final File inputFile, final File outputDir)
+            throws FileNotFoundException, IOException {
+        return unTar(inputFile, outputDir, entryName -> true);
+    }
+
+    /**
+     * Untar a tar file into a directory. tar.gz file needs to be {@link #unGzip(File, File)} first.
+     *
+     * @param inputFile The tar file to extract
+     * @param outputDir the directory where to put the extracted files.
+     * @param fileNames the files to be extracted from the tar.
+     * @return The list of {@link File} untarred.
+     * @throws FileNotFoundException
+     * @throws IOException
+     */
+    public static List<File> unTar(
+            final File inputFile, final File outputDir, Collection<String> fileNames)
+            throws FileNotFoundException, IOException {
+        HashSet<String> fileNameSet = new HashSet<>(fileNames);
+        List<File> untarredFiles =
+                unTar(inputFile, outputDir, (entryName) -> fileNameSet.contains(entryName));
+        if (untarredFiles.size() != fileNameSet.size()) {
+            HashSet<File> untarredFileSet = new HashSet<File>(untarredFiles);
+            String missingFileNames =
+                    fileNameSet.stream()
+                            .filter(name -> !untarredFileSet.contains(new File(outputDir, name)))
+                            .collect(Collectors.joining(" "));
+            throw new IOException(
+                    String.format("Couldn't find files in %s: %s", inputFile, missingFileNames));
+        }
+        return untarredFiles;
+    }
+
+    /**
+     * Untar a tar file into a directory. tar.gz file needs to be {@link #unGzip(File, File)} first.
+     *
+     * @param inputFile The tar file to extract
+     * @param outputDir the directory where to put the extracted files.
+     * @param shouldExtract a function that takes an entry name as input and returns whether the
+     *     entry should be extracted.
+     * @return The list of {@link File} untarred.
+     * @throws FileNotFoundException
+     * @throws IOException
+     */
+    private static List<File> unTar(
+            final File inputFile, final File outputDir, Predicate<String> shouldExtract)
             throws FileNotFoundException, IOException {
         CLog.i(String.format("Untaring %s to dir %s.", inputFile.getAbsolutePath(),
                 outputDir.getAbsolutePath()));
@@ -86,6 +134,9 @@ public class TarUtil {
                     new ArchiveStreamFactory().createArchiveInputStream("tar", is);
             TarArchiveEntry entry = null;
             while ((entry = (TarArchiveEntry)debInputStream.getNextEntry()) != null) {
+                if (!shouldExtract.test(entry.getName())) {
+                    continue;
+                }
                 final File outputFile = new File(outputDir, entry.getName());
                 if (entry.isDirectory()) {
                     CLog.i(String.format("Attempting to write output directory %s.",
