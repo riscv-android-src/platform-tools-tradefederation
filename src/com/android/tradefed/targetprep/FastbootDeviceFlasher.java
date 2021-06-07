@@ -934,6 +934,8 @@ public class FastbootDeviceFlasher implements IDeviceFlasher {
     protected void flashRamdiskIfNeeded(ITestDevice device, IDeviceBuildInfo deviceBuild)
             throws TargetSetupError, DeviceNotAvailableException {
         if (mShouldFlashRamdisk) {
+            // Flash ramdisk in bootloader
+            device.rebootIntoBootloader();
             executeLongFastbootCmd(
                     device,
                     "flash",
