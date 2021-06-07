@@ -29,12 +29,23 @@ public class TestResource {
     private final String mUrl;
     private final boolean mDecompress;
     private final String mDecompressDir;
+    private final boolean mMountZip;
+
+    TestResource(String name, String url) {
+        this(name, url, false, null, false);
+    }
 
     TestResource(String name, String url, boolean decompress, String decompressDir) {
+        this(name, url, decompress, decompressDir, false);
+    }
+
+    TestResource(
+            String name, String url, boolean decompress, String decompressDir, boolean mountZip) {
         mName = name;
         mUrl = url;
         mDecompress = decompress;
-        mDecompressDir = decompressDir != null ? decompressDir : "";
+        mDecompressDir = decompressDir;
+        mMountZip = mountZip;
     }
 
     public String getName() {
@@ -58,7 +69,14 @@ public class TestResource {
     }
 
     public File getDecompressDir(File parentDir) {
+        if (mDecompressDir == null) {
+            return parentDir;
+        }
         return new File(parentDir, mDecompressDir);
+    }
+
+    public boolean mountZip() {
+        return mMountZip;
     }
 
     public JSONObject toJson() throws JSONException {
@@ -67,6 +85,7 @@ public class TestResource {
         json.put("url", mUrl);
         json.put("decompress", mDecompress);
         json.put("decompress_dir", mDecompressDir);
+        json.put("mount_zip", mMountZip);
         return json;
     }
 
@@ -75,7 +94,8 @@ public class TestResource {
                 json.optString("name"),
                 json.optString("url"),
                 json.optBoolean("decompress"),
-                json.optString("decompress_dir"));
+                json.optString("decompress_dir"),
+                json.optBoolean("mount_zip"));
     }
 
     public static List<TestResource> fromJsonArray(JSONArray jsonArray) throws JSONException {
