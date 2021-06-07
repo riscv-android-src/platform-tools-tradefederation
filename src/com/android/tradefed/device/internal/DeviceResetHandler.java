@@ -18,11 +18,16 @@ package com.android.tradefed.device.internal;
 import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.error.HarnessRuntimeException;
+import com.android.tradefed.error.IHarnessException;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.service.TradefedFeatureClient;
+import com.android.tradefed.util.SerializationUtil;
 
 import com.proto.tradefed.feature.FeatureResponse;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -61,7 +66,25 @@ public class DeviceResetHandler {
             mClient.close();
         }
         if (response.hasErrorInfo()) {
-            // TODO: Handle DNAE
+            String trace = response.getErrorInfo().getErrorTrace();
+            // Handle if it's an exception error.
+            Object o = null;
+            try {
+                o = SerializationUtil.deserialize(trace);
+            } catch (IOException | RuntimeException e) {
+                CLog.e(e);
+            }
+            if (o instanceof DeviceNotAvailableException) {
+                throw (DeviceNotAvailableException) o;
+            } else if (o instanceof IHarnessException) {
+                IHarnessException exception = (IHarnessException) o;
+                throw new HarnessRuntimeException("Exception while resetting the device.", exception);
+            } else if (o instanceof Exception) {
+                throw new HarnessRuntimeException(
+                        "Exception while resetting the device.",
+                        (Exception) o, InfraErrorIdentifier.UNDETERMINED);
+            }
+
             CLog.e("Reset failed: %s", response.getErrorInfo().getErrorTrace());
             return false;
         }
