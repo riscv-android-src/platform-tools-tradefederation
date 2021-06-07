@@ -18,6 +18,7 @@ package com.android.tradefed.cluster;
 import static org.junit.Assert.assertFalse;
 
 import org.apache.commons.compress.archivers.zip.ZipFile;
+import org.json.JSONException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -104,7 +105,6 @@ public class ClusterBuildProviderTest {
                     }
                 };
         provider.setRootDir(mRootDir);
-        provider.getTestResources().put(RESOURCE_KEY, mResourceUrl);
         return provider;
     }
 
@@ -117,9 +117,11 @@ public class ClusterBuildProviderTest {
 
     /** Test one provider with two identical URLs. */
     @Test
-    public void testGetBuild_multipleTestResources() throws BuildRetrievalError, IOException {
+    public void testGetBuild_multipleTestResources()
+            throws BuildRetrievalError, IOException, JSONException {
         ClusterBuildProvider provider = createClusterBuildProvider();
-        provider.getTestResources().put(ZIP_KEY, mResourceUrl);
+        provider.addTestResource(new TestResource(RESOURCE_KEY, mResourceUrl, false, null, false));
+        provider.addTestResource(new TestResource(ZIP_KEY, mResourceUrl, false, null, false));
         provider.getBuild();
 
         verifyDownloadedResource();
@@ -134,12 +136,12 @@ public class ClusterBuildProviderTest {
 
     /** Test one provider with different decompress directories. */
     @Test
-    public void testGetBuild_decompressTestResources() throws BuildRetrievalError, IOException {
+    public void testGetBuild_decompressTestResources()
+            throws BuildRetrievalError, IOException, JSONException {
         final String url = mResourceFile.toURI().toURL().toString();
         ClusterBuildProvider provider = createClusterBuildProvider();
-        provider.getTestResources().put(ZIP_KEY, url);
-        provider.getDecompressTestResources().put(RESOURCE_KEY, "dir1");
-        provider.getDecompressTestResources().put(ZIP_KEY, "dir2");
+        provider.addTestResource(new TestResource(RESOURCE_KEY, mResourceUrl, true, "dir1", false));
+        provider.addTestResource(new TestResource(ZIP_KEY, url, true, "dir2", false));
         provider.getBuild();
 
         verifyDownloadedResource();
@@ -156,7 +158,7 @@ public class ClusterBuildProviderTest {
     /** Test one provider with different decompress directories when zip mount is supported. */
     @Test
     public void testGetBuild_decompressTestResources_withMountZip()
-            throws BuildRetrievalError, IOException {
+            throws BuildRetrievalError, IOException, JSONException {
         List<File> mountDirs = new ArrayList<>();
         try {
             Mockito.when(mMockFuseUtil.canMountZip()).thenReturn(true);
@@ -177,9 +179,8 @@ public class ClusterBuildProviderTest {
                     .mountZip(Mockito.any(File.class), Mockito.any(File.class));
             final String url = mResourceFile.toURI().toURL().toString();
             ClusterBuildProvider provider = createClusterBuildProvider();
-            provider.getTestResources().put(ZIP_KEY, url);
-            provider.getDecompressTestResources().put(RESOURCE_KEY, "dir1");
-            provider.getDecompressTestResources().put(ZIP_KEY, "dir2");
+            provider.addTestResource(new TestResource(RESOURCE_KEY, url));
+            provider.addTestResource(new TestResource(ZIP_KEY, url, true, "dir", true));
 
             IBuildInfo buildInfo = provider.getBuild();
 
@@ -189,8 +190,7 @@ public class ClusterBuildProviderTest {
             File file = new File(mRootDir, ZIP_KEY);
             Assert.assertTrue(file.isFile());
             assertFalse(FileUtil.getFileForPath(mRootDir, FILE_NAME_IN_ZIP).isFile());
-            Assert.assertTrue(FileUtil.getFileForPath(mRootDir, "dir1", FILE_NAME_IN_ZIP).isFile());
-            Assert.assertTrue(FileUtil.getFileForPath(mRootDir, "dir2", FILE_NAME_IN_ZIP).isFile());
+            Assert.assertTrue(FileUtil.getFileForPath(mRootDir, "dir", FILE_NAME_IN_ZIP).isFile());
             Mockito.verify(mSpyDownloader, Mockito.never())
                     .download(Mockito.any(), Mockito.eq(file));
         } finally {
@@ -202,17 +202,22 @@ public class ClusterBuildProviderTest {
 
     /** Test decompress the resource outside of working directory. */
     @Test(expected = BuildRetrievalError.class)
-    public void testGetBuild_invalidDecompressDirectory() throws BuildRetrievalError {
+    public void testGetBuild_invalidDecompressDirectory()
+            throws BuildRetrievalError, JSONException {
         ClusterBuildProvider provider = createClusterBuildProvider();
-        provider.getDecompressTestResources().put(RESOURCE_KEY, "../out");
+        provider.addTestResource(
+                new TestResource(RESOURCE_KEY, mResourceUrl, true, "../out", false));
         provider.getBuild();
     }
 
     /** Test two providers downloading from the same URL. */
     @Test
-    public void testGetBuild_multipleBuildProviders() throws BuildRetrievalError, IOException {
+    public void testGetBuild_multipleBuildProviders()
+            throws BuildRetrievalError, IOException, JSONException {
         ClusterBuildProvider provider1 = createClusterBuildProvider();
+        provider1.addTestResource(new TestResource(RESOURCE_KEY, mResourceUrl, false, null, false));
         ClusterBuildProvider provider2 = createClusterBuildProvider();
+        provider2.addTestResource(new TestResource(RESOURCE_KEY, mResourceUrl, false, null, false));
         provider1.getBuild();
         provider2.getBuild();
 
@@ -222,10 +227,17 @@ public class ClusterBuildProviderTest {
     }
 
     /** Test {@link ClusterBuildProvider#getBuild()} in an invocation thread. */
-    private void testGetBuild(File extraResourceFile) throws BuildRetrievalError, IOException {
+    private void testGetBuild(File extraResourceFile)
+            throws BuildRetrievalError, IOException, JSONException {
         ClusterBuildProvider provider = createClusterBuildProvider();
-        provider.getTestResources()
-                .put(EXTRA_RESOURCE_KEY, extraResourceFile.toURI().toURL().toString());
+        provider.addTestResource(new TestResource(RESOURCE_KEY, mResourceUrl, false, null, false));
+        provider.addTestResource(
+                new TestResource(
+                        EXTRA_RESOURCE_KEY,
+                        extraResourceFile.toURI().toURL().toString(),
+                        false,
+                        null,
+                        false));
         provider.getBuild();
 
         verifyDownloadedResource();
@@ -239,7 +251,7 @@ public class ClusterBuildProviderTest {
     /** Test two invocation threads downloading twice from the same URL. */
     @Test
     public void testGetBuild_multipleInvocations()
-            throws BuildRetrievalError, IOException, InterruptedException {
+            throws BuildRetrievalError, IOException, InterruptedException, JSONException {
         File sharedResourceFile = FileUtil.createTempFile("SharedTestResource", ".txt");
         ClusterBuildProviderTest anotherTest = new ClusterBuildProviderTest();
         try {
