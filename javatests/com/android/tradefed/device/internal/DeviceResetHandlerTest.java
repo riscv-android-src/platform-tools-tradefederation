@@ -24,6 +24,8 @@ import static org.mockito.Mockito.when;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.error.HarnessRuntimeException;
+import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.service.TradefedFeatureClient;
 import com.android.tradefed.util.SerializationUtil;
 
@@ -44,13 +46,15 @@ import org.mockito.MockitoAnnotations;
 public class DeviceResetHandlerTest {
 
     private DeviceResetHandler mHandler;
+    private IInvocationContext mContext;
     @Mock TradefedFeatureClient mMockClient;
     @Mock ITestDevice mMockDevice;
 
     @Before
     public void setUp() {
         MockitoAnnotations.initMocks(this);
-        mHandler = new DeviceResetHandler(mMockClient);
+        mContext = new InvocationContext();
+        mHandler = new DeviceResetHandler(mMockClient, mContext);
     }
 
     @Test
