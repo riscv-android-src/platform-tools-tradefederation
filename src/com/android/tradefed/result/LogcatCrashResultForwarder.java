@@ -48,6 +48,7 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
     /** Special error message from the instrumentation when something goes wrong on device side. */
     public static final String ERROR_MESSAGE = "Process crashed.";
     public static final String SYSTEM_CRASH_MESSAGE = "System has crashed.";
+    public static final String INCOMPLETE_MESSAGE = "Test run failed to complete";
     public static final List<String> TIMEOUT_MESSAGES =
             ImmutableList.of(
                     "Failed to receive adb shell test output",
@@ -128,7 +129,7 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
         } else {
             errorMessage = extractCrashAndAddToMessage(errorMessage, mLastStartTime);
         }
-        error.setErrorMessage(errorMessage);
+        error.setErrorMessage(errorMessage.trim());
         if (isCrash(errorMessage)) {
             error.setErrorIdentifier(DeviceErrorIdentifier.INSTRUMENTATION_CRASH);
         }
@@ -157,7 +158,9 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
     }
 
     private boolean isCrash(String errorMessage) {
-        return errorMessage.contains(ERROR_MESSAGE) || errorMessage.contains(SYSTEM_CRASH_MESSAGE);
+        return errorMessage.contains(ERROR_MESSAGE)
+                || errorMessage.contains(SYSTEM_CRASH_MESSAGE)
+                || errorMessage.contains(INCOMPLETE_MESSAGE);
     }
 
     private boolean isTimeout(String errorMessage) {
@@ -177,6 +180,9 @@ public class LogcatCrashResultForwarder extends ResultForwarder {
      */
     private LogcatItem extractLogcat(ITestDevice device, long startTime) {
         try (InputStreamSource logSource = device.getLogcatSince(startTime)) {
+            if (logSource == null) {
+                return null;
+            }
             if (logSource.size() == 0L) {
                 return null;
             }

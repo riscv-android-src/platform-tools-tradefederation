@@ -224,7 +224,7 @@ public class LogcatCrashResultForwarderTest {
                                         + "\nJava Crash Messages sorted from most recent:\ntest"
                                         + "\njava.lang.Exception: test\n"
                                         + "\tat class.method1(Class.java:1)\n"
-                                        + "\tat class.method2(Class.java:2)\n"));
+                                        + "\tat class.method2(Class.java:2)"));
     }
 
     /** Test that test-timeout tests have failure status TIMED_OUT. */
