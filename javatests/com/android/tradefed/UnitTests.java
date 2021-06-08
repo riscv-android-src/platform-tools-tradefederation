@@ -97,6 +97,7 @@ import com.android.tradefed.device.cloud.RemoteAndroidVirtualDeviceTest;
 import com.android.tradefed.device.cloud.RemoteFileUtilTest;
 import com.android.tradefed.device.contentprovider.ContentProviderHandlerTest;
 import com.android.tradefed.device.helper.TelephonyHelperTest;
+import com.android.tradefed.device.internal.DeviceResetFeatureTest;
 import com.android.tradefed.device.internal.DeviceResetHandlerTest;
 import com.android.tradefed.device.metric.AtraceCollectorTest;
 import com.android.tradefed.device.metric.AtraceRunMetricCollectorTest;
@@ -555,6 +556,7 @@ import org.junit.runners.Suite.SuiteClasses;
     TelephonyHelperTest.class,
 
     // device.internal
+    DeviceResetFeatureTest.class,
     DeviceResetHandlerTest.class,
 
     // device.metric
