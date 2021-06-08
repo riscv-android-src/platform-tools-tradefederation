@@ -18,7 +18,9 @@ package com.android.tradefed.service;
 import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.testtype.ITestInformationReceiver;
 
 import com.proto.tradefed.feature.ErrorInfo;
 import com.proto.tradefed.feature.FeatureRequest;
@@ -39,6 +41,7 @@ import io.grpc.stub.StreamObserver;
 public class TradefedFeatureServer extends TradefedInformationImplBase {
 
     public static final String SERVER_REFERENCE = "SERVER_REFERENCE";
+    public static final String TEST_INFORMATION_OBJECT = "TEST_INFORMATION";
 
     private static final int DEFAULT_PORT = 8889;
     private static final String TF_SERVICE_PORT = "TF_SERVICE_PORT";
@@ -114,6 +117,15 @@ public class TradefedFeatureServer extends TradefedInformationImplBase {
                 if (feature instanceof IConfigurationReceiver) {
                     ((IConfigurationReceiver) feature)
                             .setConfiguration(mRegisteredInvocation.get(request.getReferenceId()));
+                }
+                if (feature instanceof ITestInformationReceiver) {
+                    if (mRegisteredInvocation.get(request.getReferenceId()) != null) {
+                        ((ITestInformationReceiver) feature)
+                                .setTestInformation(
+                                        (TestInformation) mRegisteredInvocation
+                                            .get(request.getReferenceId())
+                                            .getConfigurationObject(TEST_INFORMATION_OBJECT));
+                    }
                 }
                 try {
                     FeatureResponse rep = feature.execute(request);

@@ -15,12 +15,13 @@
  */
 package com.android.tradefed.device.internal;
 
-import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.IDeviceConfiguration;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.service.IRemoteFeature;
 import com.android.tradefed.targetprep.ITargetPreparer;
+import com.android.tradefed.testtype.ITestInformationReceiver;
 import com.android.tradefed.util.SerializationUtil;
 
 import com.proto.tradefed.feature.ErrorInfo;
@@ -32,11 +33,13 @@ import java.io.IOException;
 /**
  * Server side implementation of device reset.
  */
-public class DeviceResetFeature implements IRemoteFeature, IConfigurationReceiver {
+public class DeviceResetFeature implements IRemoteFeature, IConfigurationReceiver, ITestInformationReceiver {
 
     public static final String DEVICE_RESET_FEATURE_NAME = "resetDevice";
+    public static final String DEVICE_NAME = "device_name";
 
     private IConfiguration mConfig;
+    private TestInformation mTestInformation;
 
     @Override
     public String getName() {
@@ -49,16 +52,37 @@ public class DeviceResetFeature implements IRemoteFeature, IConfigurationReceive
     }
 
     @Override
+    public void setTestInformation(TestInformation testInformation) {
+        mTestInformation = testInformation;
+    }
+
+    @Override
+    public TestInformation getTestInformation() {
+        return mTestInformation;
+    }
+
+    @Override
     public FeatureResponse execute(FeatureRequest request) {
         FeatureResponse.Builder responseBuilder = FeatureResponse.newBuilder();
-        // TODO: Support multi-device
-        String deviceName = ConfigurationDef.DEFAULT_DEVICE_NAME;
+        String deviceName = request.getArgsMap().get(DEVICE_NAME);
+        if (deviceName == null) {
+            responseBuilder.setErrorInfo(
+                    ErrorInfo.newBuilder().setErrorTrace("No device_name args specified."));
+            return responseBuilder.build();
+        }
         IDeviceConfiguration configHolder = mConfig.getDeviceConfigByName(deviceName);
+        int index = 0;
+        for (IDeviceConfiguration deviceConfig : mConfig.getDeviceConfig()) {
+            if (deviceConfig == configHolder) {
+                break;
+            }
+            index++;
+        }
         try {
             // TODO: trigger reset if needed.
+            mTestInformation.setActiveDeviceIndex(index);
             for (ITargetPreparer preparer : configHolder.getTargetPreparers()) {
-                // TODO: Actually get TestInformation
-                preparer.setUp(null);
+                preparer.setUp(mTestInformation);
             }
         } catch (Exception e) {
             String error = "Failed to setup after reset device.";
@@ -68,6 +92,8 @@ public class DeviceResetFeature implements IRemoteFeature, IConfigurationReceive
                 // Ignore
             }
             responseBuilder.setErrorInfo(ErrorInfo.newBuilder().setErrorTrace(error));
+        } finally {
+            mTestInformation.setActiveDeviceIndex(0);
         }
         return responseBuilder.build();
     }

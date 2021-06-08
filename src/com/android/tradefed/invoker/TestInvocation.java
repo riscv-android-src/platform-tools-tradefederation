@@ -854,6 +854,8 @@ public class TestInvocation implements ITestInvocation {
                             .setDependenciesFolder(mWorkFolder)
                             .build();
         }
+        // Register the test info to the configuration to be usable.
+        config.setConfigurationObject(TradefedFeatureServer.TEST_INFORMATION_OBJECT, info);
         CurrentInvocation.addInvocationInfo(InvocationInfo.WORK_FOLDER, info.dependenciesFolder());
 
         CleanUpInvocationFiles cleanUpThread = new CleanUpInvocationFiles(info, config);

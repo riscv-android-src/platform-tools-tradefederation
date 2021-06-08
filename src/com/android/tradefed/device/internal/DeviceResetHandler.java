@@ -20,6 +20,7 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.error.IHarnessException;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.service.TradefedFeatureClient;
@@ -38,14 +39,16 @@ import java.util.Map;
 public class DeviceResetHandler {
 
     private final TradefedFeatureClient mClient;
-
-    public DeviceResetHandler() {
-        this(new TradefedFeatureClient());
+    private final IInvocationContext mContext;
+    
+    public DeviceResetHandler(IInvocationContext context) {
+        this(new TradefedFeatureClient(), context);
     }
 
     @VisibleForTesting
-    DeviceResetHandler(TradefedFeatureClient client) {
+    DeviceResetHandler(TradefedFeatureClient client, IInvocationContext context) {
         mClient = client;
+        mContext = context;
     }
 
     /**
@@ -61,6 +64,7 @@ public class DeviceResetHandler {
             Map<String, String> args = new HashMap<>();
             // Reference the device to be reset by its serial which should be unique
             args.put("serial", device.getSerialNumber());
+            args.put(DeviceResetFeature.DEVICE_NAME, mContext.getDeviceName(device));
             response = mClient.triggerFeature(DeviceResetFeature.DEVICE_RESET_FEATURE_NAME, args);
         } finally {
             mClient.close();
