@@ -243,4 +243,20 @@ public class FlashingResourcesParserTest extends TestCase {
         assertEquals("efgh", parser.getRequiredImageVersion("version-bootloader", "gamma"));
         assertNull(parser.getRequiredImageVersion("version-baseband"));
     }
+
+    /**
+     * Test {@link FlashingResourcesParser#getRequiredImageVersion(String, String)} to make sure it
+     * returns null when the AndroidInfo file is empty.
+     */
+    public void testGetRequiredImageVersion_emptyAndroidInfo() throws Exception {
+        final String validInfoData = "";
+        BufferedReader reader = new BufferedReader(new StringReader(validInfoData));
+        IFlashingResourcesParser parser = new FlashingResourcesParser(reader);
+        assertNull(parser.getRequiredImageVersion("version-bootloader"));
+        assertNull(parser.getRequiredImageVersion("version-bootloader", "alpha"));
+        assertNull(parser.getRequiredImageVersion("version-bootloader", null));
+        assertNull(parser.getRequiredImageVersion("version-baseband"));
+        assertNull(parser.getRequiredImageVersion("version-baseband", "alpha"));
+        assertNull(parser.getRequiredImageVersion("version-baseband", null));
+    }
 }
