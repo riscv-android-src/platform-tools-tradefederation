@@ -17,11 +17,15 @@ package com.android.tradefed.device.internal;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
+import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.service.TradefedFeatureClient;
+import com.android.tradefed.util.SerializationUtil;
 
 import com.proto.tradefed.feature.ErrorInfo;
 import com.proto.tradefed.feature.FeatureResponse;
@@ -64,5 +68,36 @@ public class DeviceResetHandlerTest {
         when(mMockClient.triggerFeature(any(), any())).thenReturn(responseBuilder.build());
 
         assertFalse(mHandler.resetDevice(mMockDevice));
+    }
+
+    @Test
+    public void testReset_dnae() throws Exception {
+        DeviceNotAvailableException e = new DeviceNotAvailableException("dnae", "serial");
+        FeatureResponse.Builder responseBuilder = FeatureResponse.newBuilder();
+        responseBuilder.setErrorInfo(ErrorInfo.newBuilder().setErrorTrace(SerializationUtil.serializeToString(e)));
+        when(mMockClient.triggerFeature(any(), any())).thenReturn(responseBuilder.build());
+
+        try {
+            mHandler.resetDevice(mMockDevice);
+            fail("Should have thrown an exception");
+        } catch (DeviceNotAvailableException expected) {
+            // Expected
+        }
+    }
+
+    @Test
+    public void testReset_runtime() throws Exception {
+        Exception e = new RuntimeException("runtime");
+        FeatureResponse.Builder responseBuilder = FeatureResponse.newBuilder();
+        responseBuilder.setErrorInfo(ErrorInfo.newBuilder().setErrorTrace(SerializationUtil.serializeToString(e)));
+        when(mMockClient.triggerFeature(any(), any())).thenReturn(responseBuilder.build());
+
+        try {
+            mHandler.resetDevice(mMockDevice);
+            fail("Should have thrown an exception");
+        } catch (HarnessRuntimeException expected) {
+            // Expected
+            assertTrue(expected.getCause() instanceof RuntimeException);
+        }
     }
 }
