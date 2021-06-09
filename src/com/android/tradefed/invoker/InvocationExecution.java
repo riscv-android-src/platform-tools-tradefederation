@@ -348,6 +348,10 @@ public class InvocationExecution implements IInvocationExecution {
     public void runDevicePreInvocationSetup(
             IInvocationContext context, IConfiguration config, ITestLogger logger)
             throws DeviceNotAvailableException, TargetSetupError {
+        if (config.getCommandOptions().shouldDisableInvocationSetupAndTeardown()) {
+            CLog.i("--disable-invocation-setup-and-teardown, skipping pre-invocation setup.");
+            return;
+        }
         customizeDevicePreInvocation(config, context);
         for (String deviceName : context.getDeviceConfigNames()) {
             ITestDevice device = context.getDevice(deviceName);
@@ -375,6 +379,10 @@ public class InvocationExecution implements IInvocationExecution {
     public void runDevicePostInvocationTearDown(
             IInvocationContext context, IConfiguration config, Throwable exception) {
         // Extra tear down step for the device
+        if (config.getCommandOptions().shouldDisableInvocationSetupAndTeardown()) {
+            CLog.i("--disable-invocation-setup-and-teardown, skipping post-invocation teardown.");
+            return;
+        }
         for (String deviceName : context.getDeviceConfigNames()) {
             ITestDevice device = context.getDevice(deviceName);
             device.postInvocationTearDown(exception);
