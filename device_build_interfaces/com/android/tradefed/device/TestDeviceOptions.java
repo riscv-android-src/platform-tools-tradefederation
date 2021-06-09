@@ -666,10 +666,9 @@ public class TestDeviceOptions {
             case CHEEPS:
             case GCE:
             case REMOTE_AVD:
-                return "create";
             case CUTTLEFISH:
             case REMOTE_NESTED_AVD:
-                return "create_cf";
+                return "create";
             case EMULATOR:
                 return "create_gf";
         }
