@@ -18,7 +18,10 @@ package com.android.tradefed.device.internal;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.IDeviceConfiguration;
+import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.cloud.RemoteAndroidVirtualDevice;
 import com.android.tradefed.invoker.TestInformation;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.service.IRemoteFeature;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.testtype.ITestInformationReceiver;
@@ -79,8 +82,17 @@ public class DeviceResetFeature implements IRemoteFeature, IConfigurationReceive
             index++;
         }
         try {
-            // TODO: trigger reset if needed.
             mTestInformation.setActiveDeviceIndex(index);
+            if (mTestInformation.getDevice() instanceof RemoteAndroidVirtualDevice) {
+                boolean res = ((RemoteAndroidVirtualDevice) mTestInformation.getDevice()).powerwashGce();
+                if (!res) {
+                    throw new DeviceNotAvailableException(
+                            String.format("Failed to powerwash device: %s",
+                                    mTestInformation.getDevice().getSerialNumber()),
+                            mTestInformation.getDevice().getSerialNumber(),
+                            DeviceErrorIdentifier.DEVICE_FAILED_TO_RESET);
+                }
+            }
             for (ITargetPreparer preparer : configHolder.getTargetPreparers()) {
                 preparer.setUp(mTestInformation);
             }
