@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.testtype;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doReturn;
@@ -44,6 +45,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.Inet4Address;
 import java.net.ServerSocket;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
@@ -88,7 +90,13 @@ public class IsolatedHostTestTest {
 
     @Before
     public void setUp() throws Exception {
-        mHostTest = new IsolatedHostTest();
+        mHostTest =
+                new IsolatedHostTest() {
+                    @Override
+                    String getEnvironment(String key) {
+                        return null;
+                    }
+                };
         mListener = EasyMock.createMock(ITestInvocationListener.class);
         mMockBuildInfo = Mockito.mock(IBuildInfo.class);
         mMockServer = Mockito.mock(ServerSocket.class);
@@ -472,5 +480,20 @@ public class IsolatedHostTestTest {
         EasyMock.replay(mListener);
         mHostTest.run(testInfo, mListener);
         EasyMock.verify(mListener);
+    }
+
+    @Test
+    public void testCompileLdLibraryPath() throws Exception {
+        setUpSimpleMockJarTest("SimplePassingTest.jar");
+        List<String> paths = new ArrayList<>();
+        File lib = new File(mMockTestDir, "lib");
+        lib.mkdir();
+        paths.add(lib.getAbsolutePath());
+        File lib64 = new File(mMockTestDir, "lib64");
+        lib64.mkdir();
+        paths.add(lib64.getAbsolutePath());
+        final String expectedLdLibraryPath = String.join(java.io.File.pathSeparator, paths);
+        final String ldLibraryPath = mHostTest.compileLdLibraryPath();
+        assertEquals(expectedLdLibraryPath, ldLibraryPath);
     }
 }
