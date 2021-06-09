@@ -1204,13 +1204,20 @@ public class Console extends Thread {
         ClearcutClient client = new ClearcutClient();
         Runtime.getRuntime().addShutdownHook(new TerminateClearcutClient(client));
         client.notifyTradefedStartEvent();
-        TradefedFeatureServer server = new TradefedFeatureServer();
-        server.start();
-        Runtime.getRuntime().addShutdownHook(new TerminateFeatureServer(server));
+        TradefedFeatureServer server = null;
+        try {
+            server = new TradefedFeatureServer();
+            server.start();
+            Runtime.getRuntime().addShutdownHook(new TerminateFeatureServer(server));
+        } catch (RuntimeException e) {
+            System.out.println(String.format("Error starting feature server: %s", e));
+        }
 
         List<String> nonGlobalArgs = GlobalConfiguration.createGlobalConfiguration(args);
         GlobalConfiguration.getInstance().setup();
-        GlobalConfiguration.getInstance().setTradefedFeatureServer(server);
+        if (server != null) {
+            GlobalConfiguration.getInstance().setTradefedFeatureServer(server);
+        }
         console.setArgs(nonGlobalArgs);
         console.setCommandScheduler(GlobalConfiguration.getInstance().getCommandScheduler());
         console.setKeyStoreFactory(GlobalConfiguration.getInstance().getKeyStoreFactory());
