@@ -442,7 +442,14 @@ public class Console extends Thread {
 
     private void reportProtoResults(Exception e) {
         String protoRes = System.getenv(AutomatedReporters.PROTO_REPORTING_FILE);
-        if (protoRes == null || new File(protoRes).exists()) {
+        if (protoRes == null) {
+            printLine(
+                    String.format("No %s specified to output results",
+                            AutomatedReporters.PROTO_REPORTING_FILE));
+            return;
+        }
+        if (new File(protoRes).exists()) {
+            printLine(String.format("File %s already exists", protoRes));
             return;
         }
         FileProtoResultReporter reporter = new FileProtoResultReporter();
