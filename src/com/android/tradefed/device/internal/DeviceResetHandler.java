@@ -18,9 +18,12 @@ package com.android.tradefed.device.internal;
 import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.error.IHarnessException;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.logger.CurrentInvocation;
+import com.android.tradefed.invoker.logger.CurrentInvocation.IsolationGrade;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.service.TradefedFeatureClient;
@@ -59,6 +62,10 @@ public class DeviceResetHandler {
      * @throws DeviceNotAvailableException
      */
     public boolean resetDevice(ITestDevice device) throws DeviceNotAvailableException {
+        if (device.getIDevice() instanceof StubDevice) {
+            CLog.d("Device '%s' is a stub device. skipping reset.", device.getSerialNumber());
+            return true;
+        }
         FeatureResponse response;
         try {
             Map<String, String> args = new HashMap<>();
@@ -92,6 +99,8 @@ public class DeviceResetHandler {
             CLog.e("Reset failed: %s", response.getErrorInfo().getErrorTrace());
             return false;
         }
+        CurrentInvocation.setModuleIsolation(IsolationGrade.FULLY_ISOLATED);
+        CurrentInvocation.setRunIsolation(IsolationGrade.FULLY_ISOLATED);
         return true;
     }
 }
