@@ -24,6 +24,9 @@ import static org.mockito.Mockito.verify;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.targetprep.ITargetPreparer;
@@ -49,6 +52,7 @@ public class DeviceResetFeatureTest {
     private IConfiguration mConfiguration;
     private TestInformation mTestInformation;
     private @Mock ITargetPreparer mMockPreparer;
+    private @Mock ITestDevice mMockDevice;
 
     @Before
     public void setUp() {
@@ -58,7 +62,9 @@ public class DeviceResetFeatureTest {
         mConfiguration.setTargetPreparer(mMockPreparer);
 
         mFeature.setConfiguration(mConfiguration);
-        mTestInformation = TestInformation.newBuilder().build();
+        IInvocationContext context = new InvocationContext();
+        context.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
+        mTestInformation = TestInformation.newBuilder().setInvocationContext(context).build();
         mFeature.setTestInformation(mTestInformation);
     }
 
