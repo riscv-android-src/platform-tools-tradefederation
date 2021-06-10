@@ -24,6 +24,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.never;
 
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
@@ -50,6 +51,7 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.sandbox.ISandbox;
+import com.android.tradefed.targetprep.ILabPreparer;
 import com.android.tradefed.targetprep.ITargetCleaner;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
@@ -78,6 +80,7 @@ public class SandboxedInvocationExecutionTest {
     @Mock ITestInvocationListener mMockListener;
     @Mock ILogSaver mMockLogSaver;
     @Mock TestBuildProviderInterface mMockProvider;
+    @Mock ILabPreparer mMockLabPreparer;
     @Mock ITargetPreparer mMockPreparer;
     @Mock ITargetCleaner mMockCleaner;
     @Mock ITestDevice mMockDevice;
@@ -448,5 +451,32 @@ public class SandboxedInvocationExecutionTest {
         } finally {
             FileUtil.recursiveDelete(testsDir);
         }
+    }
+
+    /** Basic test to ensure lab preparers are not executed in the sandbox child process */
+    @Test
+    public void testSandboxInvocation_labPreparer() throws Throwable {
+        // Setup as a sandbox invocation
+        ConfigurationDescriptor descriptor = new ConfigurationDescriptor();
+        descriptor.setSandboxed(true);
+        mConfig.setConfigurationObject(
+                Configuration.CONFIGURATION_DESCRIPTION_TYPE_NAME, descriptor);
+        mConfig.setLogSaver(mMockLogSaver);
+        mConfig.setBuildProvider(mMockProvider);
+        mConfig.setLabPreparer(mMockLabPreparer);
+
+        doReturn(new LogFile("file", "url", LogDataType.TEXT))
+                .when(mMockLogSaver)
+                .saveLogData(any(), any(), any());
+
+        mInvocation.invoke(mContext, mConfig, mMockRescheduler, mMockListener);
+
+        // Ensure that in sandbox we don't download again.
+        Mockito.verify(mMockProvider, times(0)).getBuild();
+        // Ensure that the context is still set.
+        Mockito.verify(mMockProvider, times(1)).setInvocationContext(mContext);
+
+        Mockito.verify(mMockLabPreparer, never()).setUp(Mockito.any());
+        Mockito.verify(mMockLabPreparer, never()).tearDown(Mockito.any(), Mockito.any());
     }
 }

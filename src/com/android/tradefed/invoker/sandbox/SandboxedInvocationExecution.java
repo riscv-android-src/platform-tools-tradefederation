@@ -32,9 +32,12 @@ import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Special sandbox execution of the invocation: This is the InvocationExection for when we are
@@ -78,6 +81,14 @@ public class SandboxedInvocationExecution extends InvocationExecution {
     @Override
     public void cleanUpBuilds(IInvocationContext context, IConfiguration config) {
         // Don't clean the build info in subprocess. Let the parents do it.
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    protected List<ITargetPreparer> getPreparersToRun(IConfiguration config, String deviceName) {
+        List<ITargetPreparer> preparersToRun = new ArrayList<>();
+        preparersToRun.addAll(config.getDeviceConfigByName(deviceName).getTargetPreparers());
+        return preparersToRun;
     }
 
     /**
