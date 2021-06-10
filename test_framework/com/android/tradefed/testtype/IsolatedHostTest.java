@@ -194,6 +194,11 @@ public class IsolatedHostTest
             CLog.v(String.join(" ", cmdArgs));
             RunUtil runner = new RunUtil();
 
+            String ldLibraryPath = this.compileLdLibraryPath();
+            if (ldLibraryPath != null) {
+                runner.setEnvVariable("LD_LIBRARY_PATH", ldLibraryPath);
+            }
+
             // Note the below chooses a working directory based on the jar that happens to
             // be first in the list of configured jars.  The baked-in assumption is that
             // all configured jars are in the same parent directory, otherwise the behavior
@@ -396,6 +401,58 @@ public class IsolatedHostTest
         String jarClasspath = String.join(java.io.File.pathSeparator, paths);
 
         return jarClasspath;
+    }
+
+    @VisibleForTesting
+    String getEnvironment(String key) {
+        return System.getenv(key);
+    }
+
+    /**
+     * Return LD_LIBRARY_PATH for tests that require native library.
+     *
+     * @return a string specifying the colon separated library path.
+     */
+    @VisibleForTesting
+    protected String compileLdLibraryPath() {
+        if (mClasspathOverride != null) {
+            return null;
+        }
+        File testDir = findTestDirectory();
+        List<String> paths = new ArrayList<>();
+
+        for (String jar : mJars) {
+            File f = FileUtil.findFile(testDir, jar);
+            if (f == null || !f.exists()) {
+                continue;
+            }
+            String libs[] = {"lib", "lib64"};
+            for (String lib : libs) {
+                File libFile = new File(f.getParentFile().getAbsolutePath(), lib);
+                // If the test module has no lib directory packaged, we assume the test does not
+                // require any external native library.
+                if (!libFile.exists()) {
+                    continue;
+                }
+                paths.add(libFile.getAbsolutePath());
+                // Include `testcases` directory for running tests based on test zip.
+                libFile = new File(f.getParentFile().getParentFile().getAbsolutePath(), lib);
+                if (libFile.exists()) {
+                    paths.add(libFile.getAbsolutePath());
+                }
+                // Include ANDROID_HOST_OUT/lib to support local case.
+                if (getEnvironment("ANDROID_HOST_OUT") != null) {
+                    libFile = new File(getEnvironment("ANDROID_HOST_OUT"), lib);
+                    if (libFile.exists()) {
+                        paths.add(libFile.getAbsolutePath());
+                    }
+                }
+            }
+        }
+        if (paths.isEmpty()) {
+            return null;
+        }
+        return String.join(java.io.File.pathSeparator, paths);
     }
 
     private List<String> compileRobolectricOptions() {
