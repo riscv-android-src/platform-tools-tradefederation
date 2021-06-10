@@ -21,6 +21,7 @@ import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.testtype.ITestInformationReceiver;
+import com.android.tradefed.util.StreamUtil;
 
 import com.proto.tradefed.feature.ErrorInfo;
 import com.proto.tradefed.feature.FeatureRequest;
@@ -88,7 +89,18 @@ public class TradefedFeatureServer extends TradefedInformationImplBase {
     @Override
     public void triggerFeature(
             FeatureRequest request, StreamObserver<FeatureResponse> responseObserver) {
-        responseObserver.onNext(createResponse(request));
+        FeatureResponse response;
+        try {
+            response = createResponse(request);
+        } catch (RuntimeException exception) {
+            response = FeatureResponse.newBuilder()
+                .setErrorInfo(
+                    ErrorInfo.newBuilder()
+                            .setErrorTrace(StreamUtil.getStackTrace(exception)))
+                    .build();
+        }
+        responseObserver.onNext(response);
+
         responseObserver.onCompleted();
     }
 
