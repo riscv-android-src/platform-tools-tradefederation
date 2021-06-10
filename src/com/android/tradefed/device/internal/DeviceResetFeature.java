@@ -94,6 +94,9 @@ public class DeviceResetFeature implements IRemoteFeature, IConfigurationReceive
                 }
             }
             for (ITargetPreparer preparer : configHolder.getTargetPreparers()) {
+                if (preparer.isDisabled()) {
+                    continue;
+                }
                 preparer.setUp(mTestInformation);
             }
         } catch (Exception e) {
