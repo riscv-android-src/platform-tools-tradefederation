@@ -18,6 +18,7 @@ package com.android.tradefed.device.internal;
 import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.NativeDevice;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.error.IHarnessException;
@@ -69,8 +70,6 @@ public class DeviceResetHandler {
         FeatureResponse response;
         try {
             Map<String, String> args = new HashMap<>();
-            // Reference the device to be reset by its serial which should be unique
-            args.put("serial", device.getSerialNumber());
             args.put(DeviceResetFeature.DEVICE_NAME, mContext.getDeviceName(device));
             response = mClient.triggerFeature(DeviceResetFeature.DEVICE_RESET_FEATURE_NAME, args);
         } finally {
@@ -98,6 +97,9 @@ public class DeviceResetHandler {
 
             CLog.e("Reset failed: %s", response.getErrorInfo().getErrorTrace());
             return false;
+        }
+        if (device instanceof NativeDevice) {
+            ((NativeDevice) device).resetContentProviderSetup();
         }
         CurrentInvocation.setModuleIsolation(IsolationGrade.FULLY_ISOLATED);
         CurrentInvocation.setRunIsolation(IsolationGrade.FULLY_ISOLATED);

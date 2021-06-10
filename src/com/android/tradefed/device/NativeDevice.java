@@ -5301,7 +5301,7 @@ public class NativeDevice implements IManagedTestDevice {
     }
 
     /** Reset the flag for content provider setup in order to trigger it again. */
-    protected void resetContentProviderSetup() {
+    public void resetContentProviderSetup() {
         mShouldSkipContentProviderSetup = false;
     }
 
