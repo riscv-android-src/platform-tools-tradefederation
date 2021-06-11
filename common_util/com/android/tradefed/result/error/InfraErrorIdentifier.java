@@ -46,7 +46,7 @@ public enum InfraErrorIdentifier implements ErrorIdentifier {
     ARTIFACT_UNSUPPORTED_PATH(500_502, FailureStatus.INFRA_FAILURE),
     ARTIFACT_DOWNLOAD_ERROR(500_503, FailureStatus.DEPENDENCY_ISSUE),
     GCS_ERROR(500_504, FailureStatus.DEPENDENCY_ISSUE),
-    ANDROID_PARTNER_SERVER_ERROR(500_505, FailureStatus.INFRA_FAILURE),
+    ANDROID_PARTNER_SERVER_ERROR(500_505, FailureStatus.DEPENDENCY_ISSUE),
 
     // 501_001 - 501_500: environment issues: For example: lab wifi
     WIFI_FAILED_CONNECT(501_001, FailureStatus.DEPENDENCY_ISSUE),
