@@ -18,10 +18,13 @@ package com.android.tradefed.invoker.sandbox;
 import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
+import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
+import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.DeviceSelectionOptions;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.device.cloud.GceManager;
@@ -34,6 +37,7 @@ import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.sandbox.SandboxInvocationRunner;
+import com.android.tradefed.sandbox.SandboxOptions;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.TargetSetupError;
@@ -104,18 +108,28 @@ public class ParentSandboxInvocationExecution extends InvocationExecution {
     public void runDevicePreInvocationSetup(
             IInvocationContext context, IConfiguration config, ITestLogger logger)
             throws DeviceNotAvailableException, TargetSetupError {
-        // Stub this function in any parent processes because this step should currently only be
-        // done in the sandbox process.
-        return;
+        if (shouldRunDeviceSpecificSetup(config)) {
+            super.runDevicePreInvocationSetup(context, config, logger);
+            for (IDeviceConfiguration deviceConfig : config.getDeviceConfig()) {
+                if (deviceConfig.getDeviceRequirements().gceDeviceRequested()) {
+                    // Turn off the gce-device option and force the serial instead to use the
+                    // started virtual device.
+                    ((DeviceSelectionOptions) deviceConfig
+                            .getDeviceRequirements()).setGceDeviceRequested(false);
+                    deviceConfig.getDeviceRequirements().setSerial(
+                            context.getDevice(deviceConfig.getDeviceName()).getSerialNumber());
+                }
+            }
+        }
     }
 
     /** {@inheritDoc} */
     @Override
     public void runDevicePostInvocationTearDown(
             IInvocationContext context, IConfiguration config, Throwable exception) {
-        // Stub this function in any parent processes because this step should currently only be
-        // done in the sandbox process.
-        return;
+        if (shouldRunDeviceSpecificSetup(config)) {
+            super.runDevicePostInvocationTearDown(context, config, exception);
+        }
     }
 
     @Override
@@ -182,4 +196,16 @@ public class ParentSandboxInvocationExecution extends InvocationExecution {
         return SandboxInvocationRunner.prepareAndRun(info, config, listener);
     }
 
+    /**
+     * Whether or not to run the device pre invocation setup or not.
+     */
+    private boolean shouldRunDeviceSpecificSetup(IConfiguration config) {
+        SandboxOptions options =
+                (SandboxOptions)
+                        config.getConfigurationObject(Configuration.SANBOX_OPTIONS_TYPE_NAME);
+        if (options != null && options.startAvdInParent()) {
+            return true;
+        }
+        return false;
+    }
 }
