@@ -16,6 +16,8 @@
 package com.android.tradefed.retry;
 
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
+import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
@@ -35,6 +37,7 @@ import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFilterReceiver;
+import com.android.tradefed.testtype.SubprocessTfLauncher;
 import com.android.tradefed.testtype.retry.IAutoRetriableTest;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
 import com.android.tradefed.testtype.suite.SuiteTestFilter;
@@ -53,7 +56,7 @@ import java.util.stream.Collectors;
  * Base implementation of {@link IRetryDecision}. Base implementation only take local signals into
  * account.
  */
-public class BaseRetryDecision implements IRetryDecision {
+public class BaseRetryDecision implements IRetryDecision, IConfigurationReceiver {
 
     private static final int ABORT_MAX_FAILURES = 75;
 
@@ -117,6 +120,7 @@ public class BaseRetryDecision implements IRetryDecision {
     private boolean mUpdatedFiltering = false;
 
     private IInvocationContext mContext;
+    private IConfiguration mConfiguration;
 
     private IRemoteTest mCurrentlyConsideredTest;
     private Set<TestDescription> mPreviouslyFailing;
@@ -148,6 +152,11 @@ public class BaseRetryDecision implements IRetryDecision {
     @Override
     public void setInvocationContext(IInvocationContext context) {
         mContext = context;
+    }
+
+    @Override
+    public void setConfiguration(IConfiguration configuration) {
+        mConfiguration = configuration;
     }
 
     @Override
@@ -447,7 +456,10 @@ public class BaseRetryDecision implements IRetryDecision {
             CurrentInvocation.setRunIsolation(IsolationGrade.REBOOT_ISOLATED);
         } else if (IsolationGrade.FULLY_ISOLATED.equals(mRetryIsolationGrade)) {
             isolateRetry(devices);
-            reSetupModule(module, false);
+            // Rerun suite level preparer if we are inside a subprocess
+            reSetupModule(module, mConfiguration.getCommandOptions()
+                    .getInvocationData()
+                    .containsKey(SubprocessTfLauncher.SUBPROCESS_TAG_NAME));
         } else if (lastAttempt == (mMaxRetryAttempts - 2)) {
             // Reset only works for suite right now
             if (mResetAtLastRetry && module != null) {
