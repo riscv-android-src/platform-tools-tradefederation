@@ -455,6 +455,17 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
         return mGceSshMonitor;
     }
 
+    /**
+     * Override the internal {@link com.android.tradefed.device.cloud.GceSshTunnelMonitor} of the
+     * device.
+     */
+    // TODO(b/190657509): Remove this API once boot test is refactored to use
+    // preInvocationSetup and postInvocationTeardown.
+    public void setGceSshMonitor(GceSshTunnelMonitor gceSshMonitor) {
+        CLog.i("Overriding internal GCE SSH monitor.");
+        mGceSshMonitor = gceSshMonitor;
+    }
+
     /** Returns the current system time. Exposed for testing. */
     protected long getCurrentTime() {
         return System.currentTimeMillis();
