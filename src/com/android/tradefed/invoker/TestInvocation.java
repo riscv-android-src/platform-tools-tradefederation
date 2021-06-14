@@ -245,9 +245,7 @@ public class TestInvocation implements ITestInvocation {
             logDeviceBatteryLevel(context, "initial");
             // Run the preInvocationSetup on devices.
             if (!devicePreSetupDone) {
-                if (!config.getCommandOptions().shouldUseSandboxing()) {
-                    invocationPath.runDevicePreInvocationSetup(context, config, listener);
-                }
+                invocationPath.runDevicePreInvocationSetup(context, config, listener);
             }
             // Then run the regular setup and run
             prepareAndRun(config, testInfo, invocationPath, listener);
