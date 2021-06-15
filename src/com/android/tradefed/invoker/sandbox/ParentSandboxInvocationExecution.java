@@ -24,7 +24,6 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
-import com.android.tradefed.device.DeviceSelectionOptions;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.device.cloud.GceManager;
@@ -42,6 +41,7 @@ import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.QuotationAwareTokenizer;
 import com.android.tradefed.util.RunUtil;
 
 import java.util.ArrayList;
@@ -110,16 +110,22 @@ public class ParentSandboxInvocationExecution extends InvocationExecution {
             throws DeviceNotAvailableException, TargetSetupError {
         if (shouldRunDeviceSpecificSetup(config)) {
             super.runDevicePreInvocationSetup(context, config, logger);
-            for (IDeviceConfiguration deviceConfig : config.getDeviceConfig()) {
-                if (deviceConfig.getDeviceRequirements().gceDeviceRequested()) {
-                    // Turn off the gce-device option and force the serial instead to use the
-                    // started virtual device.
-                    ((DeviceSelectionOptions) deviceConfig
-                            .getDeviceRequirements()).setGceDeviceRequested(false);
-                    deviceConfig.getDeviceRequirements().setSerial(
-                            context.getDevice(deviceConfig.getDeviceName()).getSerialNumber());
+            String commandLine = config.getCommandLine();
+            if (config.getDeviceConfig().size() > 1) {
+                for (IDeviceConfiguration deviceConfig : config.getDeviceConfig()) {
+                    if (deviceConfig.getDeviceRequirements().gceDeviceRequested()) {
+                        commandLine += String.format(" --{%s}no-gce-device --{%s}serial %s",
+                                deviceConfig.getDeviceName(),
+                                deviceConfig.getDeviceName(),
+                                context.getDevice(deviceConfig.getDeviceName()).getSerialNumber());
+                    }
                 }
+            } else {
+                commandLine += String.format(" --no-gce-device --serial %s",
+                        context.getDevice(config.getDeviceConfig()
+                                .get(0).getDeviceName()).getSerialNumber());
             }
+            config.setCommandLine(QuotationAwareTokenizer.tokenizeLine(commandLine, false));
         }
     }
 
