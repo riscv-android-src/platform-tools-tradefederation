@@ -111,19 +111,17 @@ public class ParentSandboxInvocationExecution extends InvocationExecution {
         if (shouldRunDeviceSpecificSetup(config)) {
             super.runDevicePreInvocationSetup(context, config, logger);
             String commandLine = config.getCommandLine();
-            if (config.getDeviceConfig().size() > 1) {
-                for (IDeviceConfiguration deviceConfig : config.getDeviceConfig()) {
-                    if (deviceConfig.getDeviceRequirements().gceDeviceRequested()) {
-                        commandLine += String.format(" --{%s}no-gce-device --{%s}serial %s",
-                                deviceConfig.getDeviceName(),
-                                deviceConfig.getDeviceName(),
-                                context.getDevice(deviceConfig.getDeviceName()).getSerialNumber());
-                    }
+            for (IDeviceConfiguration deviceConfig : config.getDeviceConfig()) {
+                if (deviceConfig.getDeviceRequirements().gceDeviceRequested()) {
+                    // Turn off the gce-device option and force the serial instead to use the
+                    // started virtual device.
+                    String deviceName = (config.getDeviceConfig().size() > 1) ?
+                            String.format("{%s}", deviceConfig.getDeviceName()) : "";
+                    commandLine += String.format(" --%sno-gce-device --%sserial %s",
+                            deviceName,
+                            deviceName,
+                            context.getDevice(deviceConfig.getDeviceName()).getSerialNumber());
                 }
-            } else {
-                commandLine += String.format(" --no-gce-device --serial %s",
-                        context.getDevice(config.getDeviceConfig()
-                                .get(0).getDeviceName()).getSerialNumber());
             }
             config.setCommandLine(QuotationAwareTokenizer.tokenizeLine(commandLine, false));
         }

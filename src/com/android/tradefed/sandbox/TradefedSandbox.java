@@ -364,6 +364,7 @@ public class TradefedSandbox implements ISandbox {
             }
             String[] args =
                     QuotationAwareTokenizer.tokenizeLine(commandLine, /* No Logging */ false);
+
             mGlobalConfig = dumpGlobalConfig(config, new HashSet<>());
             try (InputStreamSource source = new FileInputStreamSource(mGlobalConfig)) {
                 listener.testLog("sandbox-global-config", LogDataType.HARNESS_CONFIG, source);
@@ -372,7 +373,6 @@ public class TradefedSandbox implements ISandbox {
             if (config.getCommandOptions().shouldUseSandboxTestMode()) {
                 mode = DumpCmd.TEST_MODE;
             }
-
             try {
                 mSerializedConfiguration =
                         SandboxConfigUtil.dumpConfigForVersion(
