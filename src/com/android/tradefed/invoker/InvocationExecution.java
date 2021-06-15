@@ -39,10 +39,10 @@ import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.invoker.ExecutionFiles.FilesKey;
 import com.android.tradefed.invoker.TestInvocation.Stage;
 import com.android.tradefed.invoker.logger.CurrentInvocation;
+import com.android.tradefed.invoker.logger.CurrentInvocation.IsolationGrade;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.invoker.logger.TfObjectTracker;
-import com.android.tradefed.invoker.logger.CurrentInvocation.IsolationGrade;
 import com.android.tradefed.invoker.shard.IShardHelper;
 import com.android.tradefed.invoker.shard.TestsPoolPoller;
 import com.android.tradefed.log.ITestLogger;
@@ -376,6 +376,7 @@ public class InvocationExecution implements IInvocationExecution {
             CLog.i("--disable-invocation-setup-and-teardown, skipping pre-invocation setup.");
             return;
         }
+        long start = System.currentTimeMillis();
         customizeDevicePreInvocation(config, context);
         for (String deviceName : context.getDeviceConfigNames()) {
             ITestDevice device = context.getDevice(deviceName);
@@ -386,6 +387,9 @@ public class InvocationExecution implements IInvocationExecution {
             }
             device.preInvocationSetup(context.getBuildInfo(deviceName), context.getAttributes());
         }
+        // Also report device pre invocation into setup
+        InvocationMetricLogger.addInvocationPairMetrics(
+                InvocationMetricKey.SETUP_PAIR, start, System.currentTimeMillis());
     }
 
     /**
@@ -407,10 +411,14 @@ public class InvocationExecution implements IInvocationExecution {
             CLog.i("--disable-invocation-setup-and-teardown, skipping post-invocation teardown.");
             return;
         }
+        long start = System.currentTimeMillis();
         for (String deviceName : context.getDeviceConfigNames()) {
             ITestDevice device = context.getDevice(deviceName);
             device.postInvocationTearDown(exception);
         }
+        // Also report device post invocation into teardown
+        InvocationMetricLogger.addInvocationPairMetrics(
+                InvocationMetricKey.TEARDOWN_PAIR, start, System.currentTimeMillis());
     }
 
     /** Runs the {@link IMultiTargetPreparer} specified. */
