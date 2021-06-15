@@ -23,6 +23,7 @@ import com.android.tradefed.config.OptionSetter;
 
 import com.proto.tradefed.feature.FeatureRequest;
 import com.proto.tradefed.feature.FeatureResponse;
+import com.proto.tradefed.feature.PartResponse;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -62,5 +63,24 @@ public class CommandOptionsGetterTest {
                 .putArgs(CommandOptionsGetter.OPTION_NAME, "filter-previous-passed").build());
 
         assertEquals("true", response.getResponse());
+    }
+
+    @Test
+    public void getCommandOptionsValue_multiValue() throws Exception {
+        OptionSetter setter = new OptionSetter(mConfiguration.getCommandOptions());
+        setter.setOptionValue("filter-previous-passed", "true");
+        setter.setOptionValue("test-tag", "mytag");
+        FeatureResponse response = mGetter.execute(FeatureRequest.newBuilder()
+                .setName(CommandOptionsGetter.COMMAND_OPTIONS_GETTER)
+                .putArgs(CommandOptionsGetter.OPTION_NAME, "filter-previous-passed,test-tag")
+                .build());
+
+        PartResponse part1 = response.getMultiPartResponse().getResponsePart(0);
+        assertEquals("filter-previous-passed", part1.getKey());
+        assertEquals("true", part1.getValue());
+
+        PartResponse part2 = response.getMultiPartResponse().getResponsePart(1);
+        assertEquals("test-tag", part2.getKey());
+        assertEquals("mytag", part2.getValue());
     }
 }
