@@ -251,8 +251,7 @@ public class ClusterLogSaverTest {
         Mockito.verify(mMockTestOutputUploader).uploadFile(fooHtmlOutputFile, null);
         Mockito.verify(mMockTestOutputUploader).uploadFile(fooCtxOutputFile, null);
         TestContext expTextContext = new TestContext();
-        expTextContext.addTestResource(
-                new TestResource("context/foo.ctx", testOutputUrl, false, ""));
+        expTextContext.addTestResource(new TestResource("context/foo.ctx", testOutputUrl));
         expTextContext.setCommandLine(retryCommandLine);
         Mockito.verify(mMockClusterClient)
                 .updateTestContext(REQUEST_ID, COMMAND_ID, expTextContext);

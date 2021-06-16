@@ -1127,8 +1127,9 @@ public class ClusterCommandSchedulerTest {
 
     private List<TestResource> createMockTestResources() {
         List<TestResource> testResources = new ArrayList<TestResource>();
-        testResources.add(new TestResource("name1", "url2", false, ""));
-        testResources.add(new TestResource("name2", "url2", true, "dir2"));
+        testResources.add(new TestResource("name1", "url2"));
+        testResources.add(
+                new TestResource("name2", "url2", true, "dir2", false, Arrays.asList("file2")));
         return testResources;
     }
 
@@ -1160,6 +1161,7 @@ public class ClusterCommandSchedulerTest {
                 assertEquals(r.getDecompress(), pr.getDecompress());
                 assertEquals(r.getDecompressDir(), pr.getDecompressDir());
                 assertEquals(r.mountZip(), pr.mountZip());
+                assertEquals(r.getDecompressFiles(), pr.getDecompressFiles());
             }
         }
 
