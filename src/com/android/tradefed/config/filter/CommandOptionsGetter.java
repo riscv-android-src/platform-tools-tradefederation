@@ -25,9 +25,14 @@ import com.android.tradefed.service.IRemoteFeature;
 import com.proto.tradefed.feature.ErrorInfo;
 import com.proto.tradefed.feature.FeatureRequest;
 import com.proto.tradefed.feature.FeatureResponse;
+import com.proto.tradefed.feature.MultiPartResponse;
+import com.proto.tradefed.feature.PartResponse;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 
 /**
  * Service implementation that returns the command options value of a given invocation.
@@ -63,23 +68,45 @@ public class CommandOptionsGetter implements IRemoteFeature, IConfigurationRecei
                     ErrorInfo.newBuilder().setErrorTrace("No option_name specified in the args."));
             return responseBuilder.build();
         }
+        List<String> optionsToFill = new ArrayList<>(Arrays.asList(request.getArgsMap()
+                .get(OPTION_NAME).split(",")));
         ICommandOptions commandOptions = mConfig.getCommandOptions();
-        Collection<Field> allFields = OptionSetter.getOptionFieldsForClass(
-                commandOptions.getClass());
-        for (Field field : allFields) {
-            final Option option = field.getAnnotation(Option.class);
-            if (option.name().equals(request.getArgsMap().get(OPTION_NAME))) {
-                Object fieldValue = OptionSetter.getFieldValue(field, commandOptions);
-                if (fieldValue != null) {
-                    responseBuilder.setResponse(fieldValue.toString());
-                    return responseBuilder.build();
-                }
-            }
+
+        List<PartResponse> partResponses = findOptionsForObject(commandOptions, optionsToFill);
+        if (partResponses.size() == 1) {
+            responseBuilder.setResponse(partResponses.get(0).getValue());
+        } else {
+            responseBuilder.setMultiPartResponse(MultiPartResponse.newBuilder()
+                    .addAllResponsePart(partResponses));
         }
+
         responseBuilder.setErrorInfo(
                 ErrorInfo.newBuilder().setErrorTrace(
                         String.format("No option or not value set for '%s'",
                                 request.getArgsMap().get(OPTION_NAME))));
         return responseBuilder.build();
+    }
+
+    private List<PartResponse> findOptionsForObject(Object objectForFields,
+                List<String> optionsToResolve) {
+        List<PartResponse> responses = new ArrayList<>();
+        Collection<Field> allFields = OptionSetter.getOptionFieldsForClass(
+                objectForFields.getClass());
+        for (String toResolve : optionsToResolve) {
+            for (Field field : allFields) {
+                final Option option = field.getAnnotation(Option.class);
+                if (option.name().equals(toResolve)) {
+                    Object fieldValue = OptionSetter.getFieldValue(field, objectForFields);
+                    if (fieldValue != null) {
+                        responses.add(PartResponse.newBuilder()
+                                .setKey(toResolve).setValue(fieldValue.toString())
+                                .build());
+                        continue;
+                    }
+                }
+            }
+
+        }
+        return responses;
     }
 }
