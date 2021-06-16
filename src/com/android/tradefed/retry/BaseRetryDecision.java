@@ -449,17 +449,31 @@ public class BaseRetryDecision implements IRetryDecision, IConfigurationReceiver
             List<ITestDevice> devices, int lastAttempt, ModuleDefinition module)
             throws DeviceNotAvailableException {
         if (IsolationGrade.REBOOT_ISOLATED.equals(mRetryIsolationGrade)) {
-            for (ITestDevice device : devices) {
-                device.reboot();
+            long start = System.currentTimeMillis();
+            try {
+                for (ITestDevice device : devices) {
+                    device.reboot();
+                }
+                CurrentInvocation.setModuleIsolation(IsolationGrade.REBOOT_ISOLATED);
+                CurrentInvocation.setRunIsolation(IsolationGrade.REBOOT_ISOLATED);
+            } finally {
+                InvocationMetricLogger.addInvocationPairMetrics(
+                        InvocationMetricKey.REBOOT_RETRY_ISOLATION_PAIR,
+                        start, System.currentTimeMillis());
             }
-            CurrentInvocation.setModuleIsolation(IsolationGrade.REBOOT_ISOLATED);
-            CurrentInvocation.setRunIsolation(IsolationGrade.REBOOT_ISOLATED);
         } else if (IsolationGrade.FULLY_ISOLATED.equals(mRetryIsolationGrade)) {
-            isolateRetry(devices);
-            // Rerun suite level preparer if we are inside a subprocess
-            reSetupModule(module, mConfiguration.getCommandOptions()
-                    .getInvocationData()
-                    .containsKey(SubprocessTfLauncher.SUBPROCESS_TAG_NAME));
+            long start = System.currentTimeMillis();
+            try {
+                isolateRetry(devices);
+                // Rerun suite level preparer if we are inside a subprocess
+                reSetupModule(module, mConfiguration.getCommandOptions()
+                        .getInvocationData()
+                        .containsKey(SubprocessTfLauncher.SUBPROCESS_TAG_NAME));
+            } finally {
+                InvocationMetricLogger.addInvocationPairMetrics(
+                        InvocationMetricKey.RESET_RETRY_ISOLATION_PAIR,
+                        start, System.currentTimeMillis());
+            }
         } else if (lastAttempt == (mMaxRetryAttempts - 2)) {
             // Reset only works for suite right now
             if (mResetAtLastRetry && module != null) {

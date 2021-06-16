@@ -57,6 +57,10 @@ public class InvocationMetricLogger {
         PUSH_FILE_TIME("push_file_time_ms", true),
         // Represents how many times we pushed file from the device.
         PUSH_FILE_COUNT("push_file_count", true),
+        // Capture the time spent isolating a retry with reset
+        RESET_RETRY_ISOLATION_PAIR("reset_isolation_timestamp_pair", true),
+        // Capture the time spent isolating a retry with reboot
+        REBOOT_RETRY_ISOLATION_PAIR("reboot_isolation_timestamp_pair", true),
         // Track if soft restart is occurring after test module
         SOFT_RESTART_AFTER_MODULE("soft_restart_after_module", true),
         CLOUD_DEVICE_PROJECT("cloud_device_project", false),
