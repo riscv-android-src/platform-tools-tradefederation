@@ -158,6 +158,10 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
         // Does nothing
     }
 
+    public void onTestRunFailed(DeviceMetricData testData, FailureDescription failure) {
+        // Does nothing
+    }
+
     @Override
     public void onTestRunEnd(
             DeviceMetricData runData, final Map<String, Metric> currentRunMetrics) {
@@ -258,11 +262,23 @@ public class BaseDeviceMetricCollector implements IMetricCollector {
 
     @Override
     public final void testRunFailed(String errorMessage) {
+        try {
+            onTestRunFailed(mRunData, FailureDescription.create(errorMessage));
+        } catch (Throwable t) {
+            // Prevent exception from messing up the status reporting.
+            CLog.e(t);
+        }
         mForwarder.testRunFailed(errorMessage);
     }
 
     @Override
     public final void testRunFailed(FailureDescription failure) {
+        try {
+            onTestRunFailed(mRunData, failure);
+        } catch (Throwable t) {
+            // Prevent exception from messing up the status reporting.
+            CLog.e(t);
+        }
         mForwarder.testRunFailed(failure);
     }
 
