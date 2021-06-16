@@ -107,7 +107,11 @@ public class InvocationMetricLogger {
         TEARDOWN_END("tf_teardown_end_timestamp", false),
         TEARDOWN_PAIR("tf_teardown_pair_timestamp", false),
 
-        INVOCATION_END("tf_invocation_end_timestamp", false);
+        INVOCATION_END("tf_invocation_end_timestamp", false),
+
+        MODULE_SETUP_PAIR("tf_module_setup_pair_timestamp", true),
+        MODULE_TEARDOWN_PAIR("tf_module_teardown_pair_timestamp", true),
+        ;
 
         private final String mKeyName;
         // Whether or not to add the value when the key is added again.
