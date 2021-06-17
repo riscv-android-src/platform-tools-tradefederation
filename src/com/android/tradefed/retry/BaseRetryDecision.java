@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.retry;
 
+import com.android.annotations.VisibleForTesting;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
@@ -263,6 +264,11 @@ public class BaseRetryDecision implements IRetryDecision, IConfigurationReceiver
     @Override
     public boolean useUpdatedReporting() {
         return mUpdatedReporting;
+    }
+
+    @VisibleForTesting
+    public IsolationGrade getIsolationGrade() {
+        return mRetryIsolationGrade;
     }
 
     private static Set<TestDescription> getPassedTestCases(List<TestRunResult> previousResults) {
