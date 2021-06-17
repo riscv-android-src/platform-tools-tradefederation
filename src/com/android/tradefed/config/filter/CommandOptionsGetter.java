@@ -20,6 +20,7 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionSetter;
+import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.service.IRemoteFeature;
 
 import com.proto.tradefed.feature.ErrorInfo;
@@ -70,9 +71,15 @@ public class CommandOptionsGetter implements IRemoteFeature, IConfigurationRecei
         }
         List<String> optionsToFill = new ArrayList<>(Arrays.asList(request.getArgsMap()
                 .get(OPTION_NAME).split(",")));
+        // Capture options of CommandOptions & RetryDecision
         ICommandOptions commandOptions = mConfig.getCommandOptions();
+        IRetryDecision retryOptions = mConfig.getRetryDecision();
+        List<Object> optionObjects = Arrays.asList(commandOptions, retryOptions);
 
-        List<PartResponse> partResponses = findOptionsForObject(commandOptions, optionsToFill);
+        List<PartResponse> partResponses = new ArrayList<>();
+        for (Object o : optionObjects) {
+            partResponses.addAll(findOptionsForObject(o, optionsToFill));
+        }
         if (partResponses.size() == 1) {
             responseBuilder.setResponse(partResponses.get(0).getValue());
         } else {
