@@ -39,6 +39,7 @@ public class ReportPassedTests extends CollectingTestListener implements IConfig
     private boolean mInvocationFailed = false;
     private ITestLogger mLogger;
     private boolean mModuleInProgress;
+    private IInvocationContext mContextForEmptyModule;
     private Integer mShardIndex;
     private Set<String> mExtraTestCases = new LinkedHashSet<>();
 
@@ -57,10 +58,12 @@ public class ReportPassedTests extends CollectingTestListener implements IConfig
     public void testModuleStarted(IInvocationContext moduleContext) {
         super.testModuleStarted(moduleContext);
         mModuleInProgress = true;
+        mContextForEmptyModule = moduleContext;
     }
 
     @Override
     public void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
+        mContextForEmptyModule = null;
         super.testRunEnded(elapsedTime, runMetrics);
         if (!mModuleInProgress) {
             // Remove right away any run failure they will be excluded
@@ -80,6 +83,16 @@ public class ReportPassedTests extends CollectingTestListener implements IConfig
 
     @Override
     public void testModuleEnded() {
+        if (mContextForEmptyModule != null) {
+            // If the module was empty
+            String moduleId = mContextForEmptyModule.getAttributes()
+                    .getUniqueMap().get(ModuleDefinition.MODULE_ID);
+            if (moduleId != null) {
+                super.testRunStarted(moduleId, 0);
+                super.testRunEnded(0L, new HashMap<String, Metric>());
+            }
+            mContextForEmptyModule = null;
+        }
         super.testModuleEnded();
         // Remove right away any run failure they will be excluded
         if (getCurrentRunResults().isRunFailure()) {
