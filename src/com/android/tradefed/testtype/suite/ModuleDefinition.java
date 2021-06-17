@@ -392,6 +392,7 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         // Resolve dynamic files except for the IRemoteTest ones
         preparationException = invokeRemoteDynamic(moduleInfo.getDevice(), mModuleConfiguration);
 
+        long start = System.currentTimeMillis();
         if (preparationException == null) {
             mInternalTargetPreparerConfiguration =
                     new Configuration("tmp-download", "tmp-download");
@@ -422,6 +423,8 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         if (preparationException == null) {
             preparationException = runPreparation(false);
         }
+        InvocationMetricLogger.addInvocationPairMetrics(
+              InvocationMetricKey.MODULE_SETUP_PAIR, start, System.currentTimeMillis());
 
         // Run the tests
         try {
@@ -562,6 +565,9 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
                 if (failureListener != null) {
                     failureListener.join();
                 }
+                InvocationMetricLogger
+                        .addInvocationPairMetrics(InvocationMetricKey.MODULE_TEARDOWN_PAIR,
+                                cleanStartTime, getCurrentTime());
                 mElapsedTearDown = getCurrentTime() - cleanStartTime;
                 // finalize results
                 if (preparationException == null) {
