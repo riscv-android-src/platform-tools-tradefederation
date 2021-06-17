@@ -105,6 +105,8 @@ public class InvocationMetricLogger {
         SETUP_START("tf_setup_start_timestamp", false),
         SETUP_END("tf_setup_end_timestamp", false),
         SETUP_PAIR("tf_setup_pair_timestamp", true),
+        FLASHING_PERMIT_LATENCY("flashing_permit_latency_ms", true),
+        DOWNLOAD_PERMIT_LATENCY("download_permit_latency_ms", true),
         // Don't aggregate test pair, latest report wins because it's the closest to
         // the execution like in a subprocess.
         TEST_PAIR("tf_test_pair_timestamp", false),
