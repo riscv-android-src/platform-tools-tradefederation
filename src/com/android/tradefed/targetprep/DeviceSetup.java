@@ -485,6 +485,10 @@ public class DeviceSetup extends BaseTargetPreparer {
             CLog.d("boot failure: skipping teardown");
             return;
         }
+        if (e instanceof DeviceNotAvailableException) {
+            CLog.d("device not available: skipping teardown");
+            return;
+        }
         if (!TestDeviceState.ONLINE.equals(device.getDeviceState())) {
             CLog.d("device offline: skipping teardown");
             return;
