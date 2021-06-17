@@ -36,6 +36,7 @@ import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.HashMap;
+import java.util.Set;
 import java.util.StringJoiner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -228,17 +229,32 @@ public class ContentProviderHandler {
             CLog.w("'%s' is not a file but a directory, can't use #pushFile on it.", fileToPush);
             return false;
         }
-
-        boolean res = pushFileInternal(fileToPush, deviceFilePath);
+        Integer currentUser = mDevice.getCurrentUser();
+        boolean res = pushFileInternal(fileToPush, deviceFilePath, currentUser);
         if (!res && mReportNotFound) {
             // Re-run setup to ensure we have the content provider installed
             boolean installed = setUp();
             if (!installed) {
                 return false;
             }
-            res = pushFileInternal(fileToPush, deviceFilePath);
+            res = pushFileInternal(fileToPush, deviceFilePath, currentUser);
         }
         return res;
+    }
+
+    /**
+     * Content provider callback that push a dir to the URI location.
+     *
+     * @param localFileDir The directory to push
+     * @param deviceFilePath The on device location
+     * @param excludedDirectories Directories not included in the push.
+     * @return True if successful
+     * @throws DeviceNotAvailableException
+     */
+    public boolean pushDir(File localFileDir, String deviceFilePath,
+                           Set<String> excludedDirectories) throws DeviceNotAvailableException {
+        return pushDirInternal(
+                localFileDir, deviceFilePath, excludedDirectories, mDevice.getCurrentUser());
     }
 
     /**
@@ -435,12 +451,15 @@ public class ContentProviderHandler {
         }
     }
 
-    private boolean pushFileInternal(File fileToPush, String deviceFilePath)
+    private boolean pushFileInternal(File fileToPush, String deviceFilePath, Integer currentUser)
             throws DeviceNotAvailableException {
+        if (currentUser == null) {
+            currentUser = mDevice.getCurrentUser();
+        }
         String contentUri = createEscapedContentUri(deviceFilePath);
         String pushCommand =
                 String.format(
-                        "content write --user %d --uri %s", mDevice.getCurrentUser(), contentUri);
+                        "content write --user %d --uri %s", currentUser, contentUri);
         CommandResult pushResult = mDevice.executeShellV2Command(pushCommand, fileToPush);
 
         if (isSuccessful(pushResult)) {
@@ -451,5 +470,39 @@ public class ContentProviderHandler {
                 "Failed to push a file '%s' at %s using content provider. Error: '%s'",
                 fileToPush, deviceFilePath, pushResult.getStderr());
         return false;
+    }
+
+    private boolean pushDirInternal(File localFileDir, String deviceFilePath,
+            Set<String> excludedDirectories, Integer currentUser)
+            throws DeviceNotAvailableException {
+        File[] childFiles = localFileDir.listFiles();
+        if (childFiles == null) {
+            CLog.e("Could not read files in %s", localFileDir.getAbsolutePath());
+            return false;
+        }
+        if (currentUser == null) {
+            currentUser = mDevice.getCurrentUser();
+        }
+        for (File childFile : childFiles) {
+            String remotePath = String.format("%s/%s", deviceFilePath, childFile.getName());
+            if (childFile.isDirectory()) {
+                // If we encounter a filtered directory do not push it.
+                if (excludedDirectories.contains(childFile.getName())) {
+                    CLog.d(
+                            "%s directory was not pushed because it was filtered.",
+                            childFile.getAbsolutePath());
+                    continue;
+                }
+                mDevice.executeShellCommand(String.format("mkdir -p \"%s\"", remotePath));
+                if (!pushDirInternal(childFile, remotePath, excludedDirectories, currentUser)) {
+                    return false;
+                }
+            } else if (childFile.isFile()) {
+                if (!pushFileInternal(childFile, remotePath, currentUser)) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 }
