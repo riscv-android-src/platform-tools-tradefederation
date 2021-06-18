@@ -58,6 +58,8 @@ public class RunOnWorkProfileTargetPreparer extends BaseTargetPreparer
 
     private IConfiguration mConfiguration;
 
+    private int userIdToDelete = -1;
+
     @Option(
             name = TEST_PACKAGE_NAME_OPTION,
             description =
@@ -83,10 +85,7 @@ public class RunOnWorkProfileTargetPreparer extends BaseTargetPreparer
 
         int workProfileId = getWorkProfileId(testInfo.getDevice());
 
-        if (workProfileId != -1) {
-            // There is already a work profile - so we don't want to remove it
-            setDisableTearDown(true);
-        } else {
+        if (workProfileId == -1) {
             if (!assumeTrue(
                     canCreateAdditionalUsers(testInfo.getDevice(), 1),
                     "Device cannot support additional users",
@@ -95,7 +94,10 @@ public class RunOnWorkProfileTargetPreparer extends BaseTargetPreparer
             }
 
             workProfileId = createWorkProfile(testInfo.getDevice());
+            userIdToDelete = workProfileId;
         }
+
+        testInfo.getDevice().startUser(workProfileId, /* waitFlag= */ true);
 
         for (String pkg : mTestPackages) {
             testInfo.getDevice()
@@ -122,15 +124,15 @@ public class RunOnWorkProfileTargetPreparer extends BaseTargetPreparer
                 device.executeShellCommand(
                         "pm create-user --profileOf " + parentProfile + " --managed work");
         final int profileId = Integer.parseInt(createUserOutput.split(" id ")[1].trim());
-        device.executeShellCommand("am start-user -w " + profileId);
         return profileId;
     }
 
     @Override
     public void tearDown(TestInformation testInfo, Throwable e) throws DeviceNotAvailableException {
-        int workProfileId = Integer.parseInt(testInfo.properties().get(RUN_TESTS_AS_USER_KEY));
         testInfo.properties().remove(RUN_TESTS_AS_USER_KEY);
-        testInfo.getDevice().removeUser(workProfileId);
+        if (userIdToDelete != -1) {
+            testInfo.getDevice().removeUser(userIdToDelete);
+        }
     }
 
     private boolean requireFeatures(ITestDevice device, String... features)

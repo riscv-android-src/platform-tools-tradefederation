@@ -79,14 +79,13 @@ public class RunOnWorkProfileTargetPreparerTest {
     @Test
     public void setUp_createsAndStartsWorkProfile() throws Exception {
         String expectedCreateUserCommand = "pm create-user --profileOf 0 --managed work";
-        String expectedStartUserCommand = "am start-user -w 10";
         when(mTestInfo.getDevice().executeShellCommand(expectedCreateUserCommand))
                 .thenReturn(CREATED_USER_10_MESSAGE);
 
         mPreparer.setUp(mTestInfo);
 
         verify(mTestInfo.getDevice()).executeShellCommand(expectedCreateUserCommand);
-        verify(mTestInfo.getDevice()).executeShellCommand(expectedStartUserCommand);
+        verify(mTestInfo.getDevice()).startUser(10, /* waitFlag= */ true);
     }
 
     @Test
@@ -179,7 +178,7 @@ public class RunOnWorkProfileTargetPreparerTest {
     }
 
     @Test
-    public void setUp_workProfileAlreadyExists_disablesTearDown() throws Exception {
+    public void tearDown_workProfileAlreadyExists_doesNotRemoveWorkProfile() throws Exception {
         Map<Integer, UserInfo> userInfos = new HashMap<>();
         userInfos.put(
                 11,
@@ -189,11 +188,11 @@ public class RunOnWorkProfileTargetPreparerTest {
                         /* flag= */ UserInfo.FLAG_MANAGED_PROFILE,
                         /* isRunning= */ true));
         when(mTestInfo.getDevice().getUserInfos()).thenReturn(userInfos);
-        mOptionSetter.setOptionValue("disable-tear-down", "false");
-
         mPreparer.setUp(mTestInfo);
 
-        assertThat(mPreparer.isTearDownDisabled()).isTrue();
+        mPreparer.tearDown(mTestInfo, /* throwable= */ null);
+
+        verify(mTestInfo.getDevice(), never()).removeUser(10);
     }
 
     @Test
@@ -210,7 +209,10 @@ public class RunOnWorkProfileTargetPreparerTest {
 
     @Test
     public void tearDown_removesWorkUser() throws Exception {
-        when(mTestInfo.properties().get(RUN_TESTS_AS_USER_KEY)).thenReturn("10");
+        String expectedCreateUserCommand = "pm create-user --profileOf 0 --managed work";
+        when(mTestInfo.getDevice().executeShellCommand(expectedCreateUserCommand))
+                .thenReturn(CREATED_USER_10_MESSAGE);
+        mPreparer.setUp(mTestInfo);
 
         mPreparer.tearDown(mTestInfo, /* throwable= */ null);
 
