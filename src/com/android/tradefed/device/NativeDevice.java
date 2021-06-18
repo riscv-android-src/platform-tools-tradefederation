@@ -1668,6 +1668,12 @@ public class NativeDevice implements IManagedTestDevice {
             CLog.e("Could not read files in %s", localFileDir.getAbsolutePath());
             return false;
         }
+        if (isSdcardOrEmulated(deviceFilePath)) {
+            ContentProviderHandler handler = getContentProvider();
+            if (handler != null) {
+                return handler.pushDir(localFileDir, deviceFilePath, excludedDirectories);
+            }
+        }
         for (File childFile : childFiles) {
             String remotePath = String.format("%s/%s", deviceFilePath, childFile.getName());
             if (childFile.isDirectory()) {
