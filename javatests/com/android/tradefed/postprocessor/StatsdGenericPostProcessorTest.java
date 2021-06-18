@@ -16,6 +16,12 @@
 package com.android.tradefed.postprocessor;
 
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.argThat;
+import static org.mockito.Mockito.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.MockitoAnnotations.initMocks;
 
 import com.android.os.AtomsProto.Atom;
@@ -28,10 +34,16 @@ import com.android.os.StatsLog.StatsLogReport;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.ByteArrayInputStreamSource;
+import com.android.tradefed.result.ILogSaver;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.TestDescription;
+
+import com.google.common.io.CharStreams;
+import com.google.protobuf.TextFormat;
+import com.google.protobuf.util.JsonFormat;
 
 import org.junit.Before;
 import org.junit.Rule;
@@ -39,10 +51,12 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.ArgumentMatcher;
 import org.mockito.Mock;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -55,11 +69,13 @@ public class StatsdGenericPostProcessorTest {
     @Rule public TemporaryFolder testDir = new TemporaryFolder();
 
     @Mock private ITestInvocationListener mListener;
+    @Mock private ILogSaver mLogSaver;
     private StatsdGenericPostProcessor mProcessor;
     private OptionSetter mOptionSetter;
 
     // Mirrors the option in the post processor.
     private static final String PREFIX_OPTION = "statsd-report-data-prefix";
+    private static final String OUTPUT_PROTO_OPTION = "output-statsd-report-proto";
 
     private static final String APP_STARTUP_FILENAME = "app-startup.pb";
     private static final String APP_CRASH_FILENAME = "app-crash.pb";
@@ -68,6 +84,11 @@ public class StatsdGenericPostProcessorTest {
     private static final String REPORT_PREFIX_APP_START = "app-start";
     private static final String REPORT_PREFIX_APP_CRASH = "app-crash";
     private static final String REPORT_PREFIX_BAD = "bad";
+
+    private static final ConfigMetricsReportList APP_STARTUP_REPORT =
+            generateReportListProto(generateAppStartupData());
+    private static final ConfigMetricsReportList APP_CRASH_REPORT =
+            generateReportListProto(generateAppCrashData());
 
     // A few constants that stand in for metric values, to increase readability of the assertions.
     private static final long APP_START_NANOS = 7;
@@ -86,14 +107,10 @@ public class StatsdGenericPostProcessorTest {
         mOptionSetter = new OptionSetter(mProcessor);
 
         mAppStartupReportFile = testDir.newFile(APP_STARTUP_FILENAME);
-        Files.write(
-                mAppStartupReportFile.toPath(),
-                generateReportListProto(generateAppStartupData()).toByteArray());
+        Files.write(mAppStartupReportFile.toPath(), APP_STARTUP_REPORT.toByteArray());
 
         mAppCrashReportFile = testDir.newFile(APP_CRASH_FILENAME);
-        Files.write(
-                mAppCrashReportFile.toPath(),
-                generateReportListProto(generateAppCrashData()).toByteArray());
+        Files.write(mAppCrashReportFile.toPath(), APP_CRASH_REPORT.toByteArray());
 
         mBadReportFile = testDir.newFile(BAD_REPORT_FILENAME);
         Files.write(mBadReportFile.toPath(), "not a report".getBytes());
@@ -136,6 +153,29 @@ public class StatsdGenericPostProcessorTest {
         assertMetricsContain(
                 parsedMetrics, APP_START_PACKAGE, Arrays.asList("app_start_occurred", "pkg_name"));
         assertMetricsContain(parsedMetrics, "COLD", Arrays.asList("app_start_occurred", "type"));
+    }
+
+    @Test
+    public void testLogsProtosFromTestsWithTestDescriptionIfConfigured()
+            throws ConfigurationException {
+        mOptionSetter.setOptionValue(PREFIX_OPTION, REPORT_PREFIX_APP_START);
+        mOptionSetter.setOptionValue(OUTPUT_PROTO_OPTION, LogDataType.TEXTPB.toString());
+        Map<String, LogFile> testLogs = new HashMap<>();
+        TestDescription description = new TestDescription("class", "test");
+        testLogs.put(
+                REPORT_PREFIX_APP_START + "-report",
+                new LogFile(mAppStartupReportFile.getAbsolutePath(), "some.url", LogDataType.PB));
+        mProcessor.processTestMetricsAndLogs(description, new HashMap<>(), testLogs);
+        String expectedTextPb = TextFormat.printToString(APP_STARTUP_REPORT);
+
+        verify(mListener, times(1))
+                .testLog(
+                        argThat(
+                                dataName ->
+                                        dataName.contains(REPORT_PREFIX_APP_START)
+                                                && dataName.contains(description.toString())),
+                        eq(LogDataType.TEXTPB),
+                        argThat(contentMatches(expectedTextPb)));
     }
 
     // Tests from this point on will test on run metrics only, as the above tests have verified that
@@ -453,6 +493,94 @@ public class StatsdGenericPostProcessorTest {
                 parsedMetrics, Arrays.asList(StatsdGenericPostProcessor.METRIC_SEP + "strings"));
     }
 
+    @Test
+    public void testNoOutputtingProtosIfNotSpecified() throws ConfigurationException {
+        mOptionSetter.setOptionValue(PREFIX_OPTION, REPORT_PREFIX_APP_START);
+        Map<String, LogFile> runLogs = new HashMap<>();
+        runLogs.put(
+                REPORT_PREFIX_APP_START + "-report",
+                new LogFile(mAppStartupReportFile.getAbsolutePath(), "some.url", LogDataType.PB));
+        mProcessor.processRunMetricsAndLogs(new HashMap<>(), runLogs);
+        // There should not be logging of the statsd proto in any form.
+        verify(mListener, never()).testLog(any(String.class), eq(LogDataType.TEXTPB), any());
+        verify(mListener, never()).testLog(any(String.class), eq(LogDataType.JSON), any());
+    }
+
+    @Test
+    public void testReportsReadableProtoFormatsIfSpecified()
+            throws ConfigurationException, IOException {
+        mOptionSetter.setOptionValue(PREFIX_OPTION, REPORT_PREFIX_APP_START);
+        mOptionSetter.setOptionValue(OUTPUT_PROTO_OPTION, LogDataType.TEXTPB.toString());
+        mOptionSetter.setOptionValue(OUTPUT_PROTO_OPTION, LogDataType.JSON.toString());
+        Map<String, LogFile> runLogs = new HashMap<>();
+        runLogs.put(
+                REPORT_PREFIX_APP_START + "-report",
+                new LogFile(mAppStartupReportFile.getAbsolutePath(), "some.url", LogDataType.PB));
+        mProcessor.processRunMetricsAndLogs(new HashMap<>(), runLogs);
+        String expectedTextPb = TextFormat.printToString(APP_STARTUP_REPORT);
+        String expectedJson = JsonFormat.printer().print(APP_STARTUP_REPORT);
+
+        verify(mListener, times(1))
+                .testLog(
+                        argThat(
+                                dataName ->
+                                        dataName.contains(REPORT_PREFIX_APP_START)
+                                                && dataName.contains("TestRun")),
+                        eq(LogDataType.TEXTPB),
+                        argThat(contentMatches(expectedTextPb)));
+        verify(mListener, times(1))
+                .testLog(
+                        argThat(
+                                dataName ->
+                                        dataName.contains(REPORT_PREFIX_APP_START)
+                                                && dataName.contains("TestRun")),
+                        eq(LogDataType.JSON),
+                        argThat(contentMatches(expectedJson)));
+    }
+
+    @Test
+    public void testReportingProtoIgnoresUnsupportedFormats() throws ConfigurationException {
+        mOptionSetter.setOptionValue(PREFIX_OPTION, REPORT_PREFIX_APP_START);
+        mOptionSetter.setOptionValue(OUTPUT_PROTO_OPTION, LogDataType.PNG.toString());
+        mOptionSetter.setOptionValue(OUTPUT_PROTO_OPTION, LogDataType.JSON.toString());
+        Map<String, LogFile> runLogs = new HashMap<>();
+        runLogs.put(
+                REPORT_PREFIX_APP_START + "-report",
+                new LogFile(mAppStartupReportFile.getAbsolutePath(), "some.url", LogDataType.PB));
+        mProcessor.processRunMetricsAndLogs(new HashMap<>(), runLogs);
+
+        // JSON should be logged, but PNG should be ignored.
+        verify(mListener, times(1))
+                .testLog(
+                        argThat(
+                                dataName ->
+                                        dataName.contains(REPORT_PREFIX_APP_START)
+                                                && dataName.contains("TestRun")),
+                        any(LogDataType.class),
+                        any(ByteArrayInputStreamSource.class));
+        verify(mListener, never())
+                .testLog(
+                        argThat(
+                                dataName ->
+                                        dataName.contains(REPORT_PREFIX_APP_START)
+                                                && dataName.contains("TestRun")),
+                        eq(LogDataType.PNG),
+                        any(ByteArrayInputStreamSource.class));
+    }
+
+    private ArgumentMatcher<ByteArrayInputStreamSource> contentMatches(String expectedContent) {
+        return byteStreamSource -> {
+            String content = null;
+            try (InputStreamReader reader =
+                    new InputStreamReader(byteStreamSource.createInputStream())) {
+                content = CharStreams.toString(reader);
+            } catch (IOException e) {
+                // Do nothing; fileContent won't be set, and the test will fail.
+            }
+            return expectedContent.equals(content);
+        };
+    }
+
     /** Assert that metrics contain a key with a set of components and a corresponding value. */
     private void assertMetricsContain(
             Map<String, Metric.Builder> metrics, Object value, List<String> keyComponents) {
@@ -486,7 +614,7 @@ public class StatsdGenericPostProcessorTest {
     }
 
     /** Generates an app startup event for testing purposes. */
-    private EventMetricData generateAppStartupData() {
+    private static EventMetricData generateAppStartupData() {
         return EventMetricData.newBuilder()
                 .setElapsedTimestampNanos(APP_START_NANOS)
                 .setAtom(
@@ -500,7 +628,7 @@ public class StatsdGenericPostProcessorTest {
     }
 
     /** Generates an app crash event for testing purposes. */
-    private EventMetricData generateAppCrashData() {
+    private static EventMetricData generateAppCrashData() {
         return EventMetricData.newBuilder()
                 .setElapsedTimestampNanos(APP_CRASH_NANOS)
                 .setAtom(
@@ -514,7 +642,7 @@ public class StatsdGenericPostProcessorTest {
     }
 
     /** Wrap an {@link EventMetricData} message in a ConfigMetricsReportList. */
-    private ConfigMetricsReportList generateReportListProto(EventMetricData metrics) {
+    private static ConfigMetricsReportList generateReportListProto(EventMetricData metrics) {
         return ConfigMetricsReportList.newBuilder()
                 .addReports(
                         ConfigMetricsReport.newBuilder()
@@ -524,7 +652,7 @@ public class StatsdGenericPostProcessorTest {
     }
 
     /** Generates a {@link StatsLogReport} from an {@link EventMetricData} instance. */
-    private StatsLogReport generateStatsLogReport(EventMetricData data) {
+    private static StatsLogReport generateStatsLogReport(EventMetricData data) {
         return StatsLogReport.newBuilder()
                 .setEventMetrics(StatsLogReport.EventMetricDataWrapper.newBuilder().addData(data))
                 .build();
