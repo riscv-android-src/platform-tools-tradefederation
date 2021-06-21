@@ -164,6 +164,7 @@ import com.android.tradefed.monitoring.collector.ResourceMetricUtilTest;
 import com.android.tradefed.postprocessor.AggregatePostProcessorTest;
 import com.android.tradefed.postprocessor.AveragePostProcessorTest;
 import com.android.tradefed.postprocessor.BasePostProcessorTest;
+import com.android.tradefed.postprocessor.MetricFilePostProcessorTest;
 import com.android.tradefed.postprocessor.PerfettoGenericPostProcessorTest;
 import com.android.tradefed.postprocessor.StatsdBeforeAfterGaugeMetricPostProcessorTest;
 import com.android.tradefed.postprocessor.StatsdEventMetricPostProcessorTest;
@@ -378,6 +379,7 @@ import com.android.tradefed.util.KeyguardControllerStateTest;
 import com.android.tradefed.util.ListInstrumentationParserTest;
 import com.android.tradefed.util.LocalRunInstructionBuilderTest;
 import com.android.tradefed.util.LogcatEventParserTest;
+import com.android.tradefed.util.MetricUtilityTest;
 import com.android.tradefed.util.MultiMapTest;
 import com.android.tradefed.util.NativeCodeCoverageFlusherTest;
 import com.android.tradefed.util.PairTest;
@@ -645,6 +647,7 @@ import org.junit.runners.Suite.SuiteClasses;
     AggregatePostProcessorTest.class,
     AveragePostProcessorTest.class,
     BasePostProcessorTest.class,
+    MetricFilePostProcessorTest.class,
     PerfettoGenericPostProcessorTest.class,
     StatsdBeforeAfterGaugeMetricPostProcessorTest.class,
     StatsdEventMetricPostProcessorTest.class,
@@ -908,6 +911,7 @@ import org.junit.runners.Suite.SuiteClasses;
     LegacySubprocessResultsReporterTest.class,
     ListInstrumentationParserTest.class,
     LogcatEventParserTest.class,
+    MetricUtilityTest.class,
     MultiMapTest.class,
     MergedZipEntryCollectionTest.class,
     NativeCodeCoverageFlusherTest.class,
