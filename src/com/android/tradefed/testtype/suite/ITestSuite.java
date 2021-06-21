@@ -1626,19 +1626,22 @@ public abstract class ITestSuite
         mPreviousPassedFilters = new ArrayList<>();
         // Test the query of previous passed test
         Map<String, String> args = new HashMap<>();
-        String invocationId =
-                mMainConfiguration
-                        .getCommandOptions()
-                        .getInvocationData()
-                        .getUniqueMap()
-                        .get("invocation_id");
+        Map<String, String> invocationData = mMainConfiguration
+                .getCommandOptions()
+                .getInvocationData()
+                .getUniqueMap();
+        String invocationId = invocationData.get("invocation_id");
         if (!Strings.isNullOrEmpty(invocationId)) {
             args.put("invocation_id", invocationId);
         }
-        // TODO: Only do this if it's not the first attempt
         if (args.isEmpty()) {
             return mPreviousPassedFilters;
         }
+        String attempt = invocationData.get("attempt_index");
+        if ("0".equals(attempt)) {
+            return mPreviousPassedFilters;
+        }
+
         try (TradefedFeatureClient client = new TradefedFeatureClient()) {
             FeatureResponse previousPassed = triggerFeature(client, "getPreviousPassed", args);
             convertResponseToFilter(previousPassed, previousPassedFilters);

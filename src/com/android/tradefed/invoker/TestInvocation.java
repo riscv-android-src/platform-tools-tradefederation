@@ -28,6 +28,7 @@ import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.filter.OptionFetcher;
 import com.android.tradefed.config.proxy.AutomatedReporters;
 import com.android.tradefed.config.proxy.TradefedDelegator;
 import com.android.tradefed.device.DeviceManager;
@@ -821,9 +822,15 @@ public class TestInvocation implements ITestInvocation {
                         .get(TradefedFeatureServer.SERVER_REFERENCE));
         }
         // Only log invocation_start in parent
-        if (!isSubprocess(config)) {
+        boolean isSuprocess = isSubprocess(config);
+        if (!isSuprocess) {
             InvocationMetricLogger.addInvocationMetrics(
                     InvocationMetricKey.INVOCATION_START, System.currentTimeMillis());
+        } else {
+            // Get options from the parent process
+            try (OptionFetcher fetchOtpions = new OptionFetcher()) {
+                fetchOtpions.fetchParentOptions(config);
+            }
         }
         // Handle the automated reporting
         applyAutomatedReporters(config);
@@ -1521,7 +1528,7 @@ public class TestInvocation implements ITestInvocation {
     }
 
     /** Returns true if the invocation is currently within a subprocess scope. */
-    private boolean isSubprocess(IConfiguration config) {
+    public static boolean isSubprocess(IConfiguration config) {
         if (System.getenv(DelegatedInvocationExecution.DELEGATED_MODE_VAR) != null) {
             return true;
         }

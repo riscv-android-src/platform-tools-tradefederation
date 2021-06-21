@@ -18,10 +18,9 @@ package com.android.tradefed.config.filter;
 import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
-import com.android.tradefed.invoker.DelegatedInvocationExecution;
+import com.android.tradefed.invoker.TestInvocation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.service.TradefedFeatureClient;
-import com.android.tradefed.testtype.SubprocessTfLauncher;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableSet;
@@ -35,7 +34,7 @@ import java.util.Set;
 /**
  * Helper to get the test options from the parent process.
  */
-public class OptionFetcher {
+public class OptionFetcher implements AutoCloseable {
 
     /**
      * Set of options that should align with the parent process.
@@ -61,7 +60,8 @@ public class OptionFetcher {
      * Fill some options from the child if it's a subprocess by matching the parent values.
      */
     public void fetchParentOptions(IConfiguration config) {
-        if (!isSubprocess(config)) {
+        // Skip if this is not a subprocess
+        if (!TestInvocation.isSubprocess(config)) {
             return;
         }
         try {
@@ -75,6 +75,7 @@ public class OptionFetcher {
             }
             if (rep.hasMultiPartResponse()) {
                 for (PartResponse part : rep.getMultiPartResponse().getResponsePartList()) {
+                    CLog.d("Fetched: %s=%s from parent.", part.getKey(), part.getValue());
                     try {
                         config.injectOptionValue(part.getKey(), part.getValue());
                     } catch (ConfigurationException e) {
@@ -84,18 +85,13 @@ public class OptionFetcher {
             }
         } catch (RuntimeException e) {
             CLog.e(e);
-        } finally {
-            mClient.close();
         }
     }
 
-    private boolean isSubprocess(IConfiguration config) {
-        // TODO: Dedup with TestInvocation class
-        if (System.getenv(DelegatedInvocationExecution.DELEGATED_MODE_VAR) != null) {
-            return true;
+    @Override
+    public void close() throws Exception {
+        if (mClient != null) {
+            mClient.close();
         }
-        return config.getCommandOptions()
-                .getInvocationData()
-                .containsKey(SubprocessTfLauncher.SUBPROCESS_TAG_NAME);
     }
 }
