@@ -19,6 +19,7 @@ import com.android.os.StatsLog.ConfigMetricsReportList;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.DataType;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.LogDataType;
@@ -257,5 +258,13 @@ public class StatsdGenericPostProcessor extends BasePostProcessor {
             }
         }
         return convertedMetrics;
+    }
+
+    /**
+     * Set the metric type to RAW metric.
+     */
+    @Override
+    protected DataType getMetricType() {
+        return DataType.RAW;
     }
 }

@@ -33,6 +33,7 @@ import com.android.os.StatsLog.EventMetricData;
 import com.android.os.StatsLog.StatsLogReport;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.OptionSetter;
+import com.android.tradefed.metrics.proto.MetricMeasurement.DataType;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ByteArrayInputStreamSource;
 import com.android.tradefed.result.ILogSaver;
@@ -579,6 +580,14 @@ public class StatsdGenericPostProcessorTest {
             }
             return expectedContent.equals(content);
         };
+    }
+
+    /**
+     * Test the default metric type is set to RAW.
+     */
+    @Test
+    public void testMetricTypeIsRaw() {
+        assertTrue(mProcessor.getMetricType().equals(DataType.RAW));
     }
 
     /** Assert that metrics contain a key with a set of components and a corresponding value. */

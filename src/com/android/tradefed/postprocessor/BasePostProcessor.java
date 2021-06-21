@@ -63,6 +63,8 @@ public abstract class BasePostProcessor implements IPostProcessor {
     // forwarding behavior.
     private boolean mIsPostProcessing = false;
 
+    private String mRunName;
+
     /** {@inheritDoc} */
     @Override
     public abstract Map<String, Metric.Builder> processRunMetricsAndLogs(
@@ -160,11 +162,13 @@ public abstract class BasePostProcessor implements IPostProcessor {
     /** Test run callbacks */
     @Override
     public final void testRunStarted(String runName, int testCount) {
+        mRunName = runName;
         mForwarder.testRunStarted(runName, testCount);
     }
 
     @Override
     public final void testRunStarted(String runName, int testCount, int attemptNumber) {
+        mRunName = runName;
         mForwarder.testRunStarted(runName, testCount, attemptNumber);
     }
 
@@ -396,5 +400,13 @@ public abstract class BasePostProcessor implements IPostProcessor {
      */
     protected DataType getMetricType() {
         return DataType.PROCESSED;
+    }
+
+    /*
+     * TODO: b/191168103 Remove this method after run name dependency is removed from metric file
+     * post processor.
+     */
+    protected String getRunName() {
+        return mRunName;
     }
 }
