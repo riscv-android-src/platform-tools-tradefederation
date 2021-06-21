@@ -42,7 +42,8 @@ public class OptionFetcher {
      */
     private static final Set<String> OPTION_TO_FETCH = ImmutableSet.of(
             "filter-previous-passed",
-            "retry-isolation-grade"
+            "retry-isolation-grade",
+            "updated-filtering"
             );
 
     private TradefedFeatureClient mClient;
