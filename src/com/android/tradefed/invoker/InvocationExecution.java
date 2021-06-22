@@ -29,6 +29,7 @@ import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.IDeviceConfiguration;
+import com.android.tradefed.config.filter.GetPreviousPassedHelper;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.metric.AutoLogCollector;
@@ -648,6 +649,11 @@ public class InvocationExecution implements IInvocationExecution {
         TestInvocation.printStageDelimiter(Stage.TEST, false);
         long start = System.currentTimeMillis();
         try {
+            GetPreviousPassedHelper previousPassHelper = new GetPreviousPassedHelper();
+            // Add new exclude filters to global filters
+            Set<String> previousPassedFilters = previousPassHelper.getPreviousPassedFilters(config);
+            // TODO: Ensure global filters are cloned for local sharding
+            config.getGlobalFilters().addPreviousPassedTests(previousPassedFilters);
             for (IRemoteTest test : config.getTests()) {
                 TfObjectTracker.countWithParents(test.getClass());
                 // For compatibility of those receivers, they are assumed to be single device alloc.
@@ -668,6 +674,10 @@ public class InvocationExecution implements IInvocationExecution {
                 updateAutoCollectors(config);
 
                 IRetryDecision decision = config.getRetryDecision();
+                // For non-suite apply the filters
+                if (test instanceof ITestFilterReceiver && !(test instanceof ITestSuite)) {
+                    config.getGlobalFilters().applyFiltersToTest((ITestFilterReceiver) test);
+                }
                 // Handle the no-retry use case
                 if (!decision.isAutoRetryEnabled()
                         || RetryStrategy.NO_RETRY.equals(decision.getRetryStrategy())
