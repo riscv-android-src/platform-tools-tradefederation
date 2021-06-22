@@ -32,6 +32,7 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.result.proto.StreamProtoReceiver;
+import com.android.tradefed.service.TradefedFeatureServer;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.CommandResult;
@@ -148,7 +149,7 @@ public class DelegatedInvocationExecution extends InvocationExecution {
             mStderrFile = FileUtil.createTempFile("stderr_delegate_", ".log", mTmpDelegatedDir);
             mStderr = new FileOutputStream(mStderrFile);
             mStdout = new FileOutputStream(mStdoutFile);
-            IRunUtil runUtil = createRunUtil(receiver.getSocketServerPort());
+            IRunUtil runUtil = createRunUtil(receiver.getSocketServerPort(), config);
             CommandResult result = null;
             RuntimeException runtimeException = null;
             CLog.d("Command line: %s", commandLine);
@@ -198,7 +199,7 @@ public class DelegatedInvocationExecution extends InvocationExecution {
         FileUtil.deleteFile(mGlobalConfig);
     }
 
-    private IRunUtil createRunUtil(int port) throws IOException {
+    private IRunUtil createRunUtil(int port, IConfiguration config) throws IOException {
         IRunUtil runUtil = new RunUtil();
         // Handle the global configs for the subprocess
         runUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
@@ -210,6 +211,16 @@ public class DelegatedInvocationExecution extends InvocationExecution {
         runUtil.setEnvVariable(AutomatedReporters.PROTO_REPORTING_PORT, Integer.toString(port));
         // Set a variable to detect delegated mode
         runUtil.setEnvVariable(DELEGATED_MODE_VAR, "1");
+        // Pass the server reference for child to use.
+        if (config.getConfigurationDescription().getMetaData(TradefedFeatureServer.SERVER_REFERENCE)
+                != null) {
+            runUtil.setEnvVariable(
+                    TradefedFeatureServer.SERVER_REFERENCE,
+                    config.getConfigurationDescription()
+                            .getAllMetaData()
+                            .getUniqueMap()
+                            .get(TradefedFeatureServer.SERVER_REFERENCE));
+        }
         return runUtil;
     }
 
