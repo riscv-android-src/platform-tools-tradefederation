@@ -67,13 +67,10 @@ public class ReportPassedTests extends CollectingTestListener implements IConfig
         super.testRunEnded(elapsedTime, runMetrics);
         if (!mModuleInProgress) {
             // Remove right away any run failure they will be excluded
-            if (getCurrentRunResults().isRunFailure()) {
-                gatherPassedTests(getCurrentRunResults(), getBaseName(getCurrentRunResults()));
-                clearResultsForName(getCurrentRunResults().getName());
-                // Clear the failure for aggregation
-                getCurrentRunResults().resetRunFailure();
-            } else if (mInvocationFailed) {
-                gatherPassedTests(getCurrentRunResults(), getBaseName(getCurrentRunResults()));
+            if (getCurrentRunResults().isRunFailure() || mInvocationFailed) {
+                gatherPassedTests(
+                        getCurrentRunResults(),
+                        getBaseName(getCurrentRunResults()), mInvocationFailed);
                 clearResultsForName(getCurrentRunResults().getName());
                 // Clear the failure for aggregation
                 getCurrentRunResults().resetRunFailure();
@@ -95,13 +92,9 @@ public class ReportPassedTests extends CollectingTestListener implements IConfig
         }
         super.testModuleEnded();
         // Remove right away any run failure they will be excluded
-        if (getCurrentRunResults().isRunFailure()) {
-            gatherPassedTests(getCurrentRunResults(), getBaseName(getCurrentRunResults()));
-            clearResultsForName(getCurrentRunResults().getName());
-            // Clear the failure for aggregation
-            getCurrentRunResults().resetRunFailure();
-        } else if (mInvocationFailed) {
-            gatherPassedTests(getCurrentRunResults(), getBaseName(getCurrentRunResults()));
+        if (getCurrentRunResults().isRunFailure() || mInvocationFailed) {
+            gatherPassedTests(
+                    getCurrentRunResults(), getBaseName(getCurrentRunResults()), mInvocationFailed);
             clearResultsForName(getCurrentRunResults().getName());
             // Clear the failure for aggregation
             getCurrentRunResults().resetRunFailure();
@@ -127,7 +120,7 @@ public class ReportPassedTests extends CollectingTestListener implements IConfig
         }
         StringBuilder sb = new StringBuilder();
         for (TestRunResult result : getMergedTestRunResults()) {
-            sb.append(createFilters(result, getBaseName(result)));
+            sb.append(createFilters(result, getBaseName(result), false));
         }
         if (!mExtraTestCases.isEmpty()) {
             sb.append(Joiner.on("\n").join(mExtraTestCases));
@@ -158,35 +151,58 @@ public class ReportPassedTests extends CollectingTestListener implements IConfig
         }
     }
 
-    private String createFilters(TestRunResult runResult, String baseName) {
+    private String createFilters(
+            TestRunResult runResult, String baseName, boolean invocationFailure) {
         if (mShardIndex != null) {
             baseName = "shard_" + mShardIndex + " " + baseName;
         }
         StringBuilder sb = new StringBuilder();
-        if (!runResult.hasFailedTests()) {
+        if (!runResult.hasFailedTests() && !runResult.isRunFailure() && !invocationFailure) {
             sb.append(baseName);
             sb.append("\n");
             return sb.toString();
         }
+        String currentClass = null;
+        boolean hasFailure = false;
+        StringBuilder classFilters = new StringBuilder();
         for (Entry<TestDescription, TestResult> res : runResult.getTestResults().entrySet()) {
+            if (!res.getKey().getClassName().equals(currentClass)) {
+                if (currentClass != null) {
+                    if (hasFailure) {
+                        sb.append(classFilters.toString());
+                    } else {
+                        sb.append(baseName + " " + currentClass + "\n");
+                    }
+                    classFilters = new StringBuilder();
+                }
+
+                currentClass = res.getKey().getClassName();
+                hasFailure = false;
+            }
             if (TestStatus.FAILURE.equals(res.getValue().getStatus())) {
+                hasFailure = true;
                 continue;
             }
-            sb.append(baseName + " " + res.getKey().toString());
-            sb.append("\n");
+            classFilters.append(baseName + " " + res.getKey().toString());
+            classFilters.append("\n");
+        }
+        if (currentClass != null) {
+            if (hasFailure) {
+                sb.append(classFilters.toString());
+            } else {
+                sb.append(baseName + " " + currentClass + "\n");
+            }
         }
         return sb.toString();
     }
 
-    private void gatherPassedTests(TestRunResult runResult, String baseName) {
+    private void gatherPassedTests(
+            TestRunResult runResult, String baseName, boolean invocationFailure) {
         if (mShardIndex != null) {
             baseName = "shard_" + mShardIndex + " " + baseName;
         }
         StringBuilder sb = new StringBuilder();
-        for (TestDescription test : runResult.getPassedTests()) {
-            sb.append(baseName + " " + test.toString());
-            sb.append("\n");
-        }
+        sb.append(createFilters(runResult, baseName, invocationFailure));
         if (sb.length() == 0L) {
             return;
         }

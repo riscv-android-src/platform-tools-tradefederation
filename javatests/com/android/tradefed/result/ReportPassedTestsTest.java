@@ -97,9 +97,9 @@ public class ReportPassedTestsTest {
     @Test
     public void testReport_withTestFailure() {
         TestDescription testPass = new TestDescription("class", "testName1");
+        TestDescription testFailed = new TestDescription("class", "testName0");
         mExpectedString = String.format("run-name %s\nrun-name2\n", testPass.toString());
         mReporter.testRunStarted("run-name", 2);
-        TestDescription testFailed = new TestDescription("class", "testName0");
         mReporter.testStarted(testFailed);
         mReporter.testFailed(testFailed, "failed");
         mReporter.testEnded(testFailed, Collections.emptyMap());
@@ -119,7 +119,7 @@ public class ReportPassedTestsTest {
         TestDescription tid2 = new TestDescription("class", "testName2");
         TestDescription failed = new TestDescription("class", "testName3");
         TestDescription assum = new TestDescription("class", "testName4");
-        mExpectedString = "run-name class#testName\nrun-name class#testName2\n";
+        mExpectedString = "run-name class#testName\nrun-name class#testName2\nrun-name class#testName4\n";
         mReporter.testRunStarted("run-name", 20);
         mReporter.testStarted(tid);
         mReporter.testEnded(tid, Collections.emptyMap());
@@ -171,7 +171,7 @@ public class ReportPassedTestsTest {
         TestDescription tid2 = new TestDescription("class", "testName2");
         TestDescription failed = new TestDescription("class", "testName3");
         TestDescription assum = new TestDescription("class", "testName4");
-        mExpectedString = "x86 module1 class#testName\nx86 module1 class#testName2\n";
+        mExpectedString = "x86 module1 class#testName\nx86 module1 class#testName2\nx86 module1 class#testName4\n";
         mReporter.testModuleStarted(createModule("x86 module1"));
         mReporter.testRunStarted("run-name", 20);
         mReporter.testStarted(tid);
@@ -234,6 +234,83 @@ public class ReportPassedTestsTest {
         mReporter.testModuleEnded();
         // Second empty module
         mReporter.testModuleStarted(createModule("x86_64 module1"));
+        mReporter.testModuleEnded();
+
+        mReporter.invocationEnded(0L);
+        assertTrue(mTestLogCalled);
+    }
+
+    @Test
+    public void testReport_module_parameterization() {
+        TestDescription class1Test1 = new TestDescription("class1", "testName1[param]");
+        TestDescription class1Test2 = new TestDescription("class1", "testName2[param2]");
+        TestDescription class2Test1 = new TestDescription("class2", "testName1[param1]");
+        TestDescription class2Test2 = new TestDescription("class2", "testName2[param2]");
+        mExpectedString = "x86 module1 class1\nx86 module1 class2#testName2[param2]\n";
+        mReporter.testModuleStarted(createModule("x86 module1"));
+        mReporter.testRunStarted("run-name", 20);
+        mReporter.testStarted(class1Test1);
+        mReporter.testEnded(class1Test1, Collections.emptyMap());
+        mReporter.testStarted(class1Test2);
+        mReporter.testEnded(class1Test2, Collections.emptyMap());
+        mReporter.testStarted(class2Test1);
+        mReporter.testFailed(class2Test1, "failed");
+        mReporter.testEnded(class2Test1, Collections.emptyMap());
+        mReporter.testStarted(class2Test2);
+        mReporter.testEnded(class2Test2, Collections.emptyMap());
+        mReporter.testRunEnded(0L, Collections.emptyMap());
+        mReporter.testModuleEnded();
+
+        mReporter.invocationEnded(0L);
+        assertTrue(mTestLogCalled);
+    }
+
+    @Test
+    public void testReport_module_parameterization_firstFail() {
+        TestDescription class1Test1 = new TestDescription("class1", "testName1[param]");
+        TestDescription class1Test2 = new TestDescription("class1", "testName2[param2]");
+        TestDescription class2Test1 = new TestDescription("class2", "testName1[param1]");
+        TestDescription class2Test2 = new TestDescription("class2", "testName2[param2]");
+        mExpectedString = "x86 module1 class1#testName2[param2]\nx86 module1 class2\n";
+        mReporter.testModuleStarted(createModule("x86 module1"));
+        mReporter.testRunStarted("run-name", 20);
+        mReporter.testStarted(class1Test1);
+        mReporter.testFailed(class1Test1, "failed");
+        mReporter.testEnded(class1Test1, Collections.emptyMap());
+        mReporter.testStarted(class1Test2);
+        mReporter.testEnded(class1Test2, Collections.emptyMap());
+        mReporter.testStarted(class2Test1);
+
+        mReporter.testEnded(class2Test1, Collections.emptyMap());
+        mReporter.testStarted(class2Test2);
+        mReporter.testEnded(class2Test2, Collections.emptyMap());
+        mReporter.testRunEnded(0L, Collections.emptyMap());
+        mReporter.testModuleEnded();
+
+        mReporter.invocationEnded(0L);
+        assertTrue(mTestLogCalled);
+    }
+
+    @Test
+    public void testReport_moduleFailed_parameterization() {
+        TestDescription class1Test1 = new TestDescription("class1", "testName1[param]");
+        TestDescription class1Test2 = new TestDescription("class1", "testName2[param2]");
+        TestDescription class2Test1 = new TestDescription("class2", "testName1[param1]");
+        TestDescription class2Test2 = new TestDescription("class2", "testName2[param2]");
+        mExpectedString = "x86 module1 class1\nx86 module1 class2#testName2[param2]\n";
+        mReporter.testModuleStarted(createModule("x86 module1"));
+        mReporter.testRunStarted("run-name", 20);
+        mReporter.testStarted(class1Test1);
+        mReporter.testEnded(class1Test1, Collections.emptyMap());
+        mReporter.testStarted(class1Test2);
+        mReporter.testEnded(class1Test2, Collections.emptyMap());
+        mReporter.testStarted(class2Test1);
+        mReporter.testFailed(class2Test1, "failed");
+        mReporter.testEnded(class2Test1, Collections.emptyMap());
+        mReporter.testStarted(class2Test2);
+        mReporter.testEnded(class2Test2, Collections.emptyMap());
+        mReporter.testRunFailed("test run failed");
+        mReporter.testRunEnded(0L, Collections.emptyMap());
         mReporter.testModuleEnded();
 
         mReporter.invocationEnded(0L);
