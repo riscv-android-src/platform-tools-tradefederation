@@ -80,17 +80,17 @@ public class CommandOptionsGetter implements IRemoteFeature, IConfigurationRecei
         for (Object o : optionObjects) {
             partResponses.addAll(findOptionsForObject(o, optionsToFill));
         }
-        if (partResponses.size() == 1) {
+        if (partResponses.isEmpty()) {
+            responseBuilder.setErrorInfo(
+                    ErrorInfo.newBuilder().setErrorTrace(
+                            String.format("No option or not value set for '%s'",
+                                    request.getArgsMap().get(OPTION_NAME))));
+        } else if (partResponses.size() == 1) {
             responseBuilder.setResponse(partResponses.get(0).getValue());
         } else {
             responseBuilder.setMultiPartResponse(MultiPartResponse.newBuilder()
                     .addAllResponsePart(partResponses));
         }
-
-        responseBuilder.setErrorInfo(
-                ErrorInfo.newBuilder().setErrorTrace(
-                        String.format("No option or not value set for '%s'",
-                                request.getArgsMap().get(OPTION_NAME))));
         return responseBuilder.build();
     }
 
