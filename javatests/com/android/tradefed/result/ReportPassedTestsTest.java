@@ -119,7 +119,8 @@ public class ReportPassedTestsTest {
         TestDescription tid2 = new TestDescription("class", "testName2");
         TestDescription failed = new TestDescription("class", "testName3");
         TestDescription assum = new TestDescription("class", "testName4");
-        mExpectedString = "run-name class#testName\nrun-name class#testName2\n";
+        mExpectedString = "run-name class#testName\nrun-name class#testName2\n"
+                + "run-name class#testName4\n";
         mReporter.testRunStarted("run-name", 20);
         mReporter.testStarted(tid);
         mReporter.testEnded(tid, Collections.emptyMap());
@@ -171,7 +172,8 @@ public class ReportPassedTestsTest {
         TestDescription tid2 = new TestDescription("class", "testName2");
         TestDescription failed = new TestDescription("class", "testName3");
         TestDescription assum = new TestDescription("class", "testName4");
-        mExpectedString = "x86 module1 class#testName\nx86 module1 class#testName2\n";
+        mExpectedString = "x86 module1 class#testName\nx86 module1 class#testName2\n"
+                + "x86 module1 class#testName4\n";
         mReporter.testModuleStarted(createModule("x86 module1"));
         mReporter.testRunStarted("run-name", 20);
         mReporter.testStarted(tid);
