@@ -133,7 +133,11 @@ public class RustBinaryTest extends RustTestBase implements IDeviceTest, IConfig
             return false;
         } else {
             CLog.d("To run rust test %s on %s", root, testDevice.getSerialNumber());
-            runTest(testDevice, listener, createParser(listener, new File(root).getName()), root);
+            runTest(
+                    testDevice,
+                    listener,
+                    createParser(listener, new File(root).getName(), mIsBenchmark),
+                    root);
             return true;
         }
     }
@@ -160,6 +164,13 @@ public class RustBinaryTest extends RustTestBase implements IDeviceTest, IConfig
             cmd += " " + String.join(" ", mTestOptions);
         }
 
+        // Pass parameter to criterion to run benchmark. Parameter is required when listing tests.
+        // TODO(qtr): Explore using CRITERION_HOME for setting criterion output. Right now it's
+        // going to be put in the working directory (which is next to binary due to cd above).
+        if (mIsBenchmark) {
+            cmd += " --bench --color never";
+        }
+
         // Rust binary does not support multiple inclusion filters,
         // so we run the test once for each include filter.
         List<String> includeFilters = getListOfIncludeFilters();
@@ -171,7 +182,7 @@ public class RustBinaryTest extends RustTestBase implements IDeviceTest, IConfig
             String newCmd = addFiltersToCommand(cmd, filter);
             try {
                 String[] testList = testDevice.executeShellCommand(newCmd + " --list").split("\n");
-                collectTestLines(testList, foundTests);
+                collectTestLines(testList, foundTests, mIsBenchmark);
             } catch (DeviceNotAvailableException e) {
                 CLog.e("Could not retrieve tests list from device: %s", e.getMessage());
                 throw e;

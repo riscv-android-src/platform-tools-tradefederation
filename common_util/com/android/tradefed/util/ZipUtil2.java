@@ -52,6 +52,21 @@ public class ZipUtil2 {
     }
 
     /**
+     * Utility method to extract a zip entry to a file.
+     *
+     * @param zipFile the {@link ZipFile} to extract
+     * @param entry the {@link ZipArchiveEntry} to extract
+     * @param destFile the {@link File} to extract to
+     * @return whether the Unix permissions are set
+     * @throws IOException if failed to extract file
+     */
+    private static boolean extractZipEntry(ZipFile zipFile, ZipArchiveEntry entry, File destFile)
+            throws IOException {
+        FileUtil.writeToFile(zipFile.getInputStream(entry), destFile);
+        return applyUnixModeIfNecessary(entry, destFile);
+    }
+
+    /**
      * Utility method to extract entire contents of zip file into given directory
      *
      * @param zipFile the {@link ZipFile} to extract
@@ -72,8 +87,7 @@ public class ZipUtil2 {
                 }
                 continue;
             } else {
-                FileUtil.writeToFile(zipFile.getInputStream(entry), childFile);
-                if (!applyUnixModeIfNecessary(entry, childFile)) {
+                if (!extractZipEntry(zipFile, entry, childFile)) {
                     noPermissions.add(entry.getName());
                 }
             }
@@ -101,6 +115,25 @@ public class ZipUtil2 {
     }
 
     /**
+     * Utility method to extract one specific file from zip file
+     *
+     * @param zipFile the {@link ZipFile} to extract
+     * @param filePath the file path in the zip
+     * @param destFile the {@link File} to extract to
+     * @return whether the file is found and extracted
+     * @throws IOException if failed to extract file
+     */
+    public static boolean extractFileFromZip(ZipFile zipFile, String filePath, File destFile)
+            throws IOException {
+        ZipArchiveEntry entry = zipFile.getEntry(filePath);
+        if (entry == null) {
+            return false;
+        }
+        extractZipEntry(zipFile, entry, destFile);
+        return true;
+    }
+
+    /**
      * Utility method to extract one specific file from zip file into a tmp file
      *
      * @param zipFile the {@link ZipFile} to extract
@@ -113,10 +146,8 @@ public class ZipUtil2 {
         if (entry == null) {
             return null;
         }
-        File createdFile = FileUtil.createTempFile("extracted",
-                FileUtil.getExtension(filePath));
-        FileUtil.writeToFile(zipFile.getInputStream(entry), createdFile);
-        applyUnixModeIfNecessary(entry, createdFile);
+        File createdFile = FileUtil.createTempFile("extracted", FileUtil.getExtension(filePath));
+        extractZipEntry(zipFile, entry, createdFile);
         return createdFile;
     }
 

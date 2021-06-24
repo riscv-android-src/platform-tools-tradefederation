@@ -16,6 +16,7 @@
 package com.android.tradefed.command.remote;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
@@ -29,6 +30,8 @@ import com.android.tradefed.util.RunUtil;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 import org.mockito.Mockito;
 
 import java.io.BufferedReader;
@@ -42,6 +45,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /** Unit tests for {@link RemoteManager}. */
+@RunWith(JUnit4.class)
 public class RemoteManagerTest {
 
     private static final long SHORT_WAIT_TIME_MS = 200;
@@ -78,11 +82,12 @@ public class RemoteManagerTest {
         PrintWriter pw = new PrintWriter(out);
         mRemoteManager.processClientOperations(in, pw);
         pw.flush();
-        assertEquals(
-                "{\"error\":\"Failed to handle remote command: "
-                        + "com.android.tradefed.command.remote.RemoteException: "
-                        + "Value test of type java.lang.String cannot be converted to JSONObject\"}\n",
-                out.toString());
+        assertTrue(
+                out.toString()
+                        .startsWith(
+                                "{\"error\":\"Failed to handle remote command: "
+                                        + "com.android.tradefed.command.remote.RemoteException: "
+                                        + "JSONException during remote operation:"));
     }
 
     /**

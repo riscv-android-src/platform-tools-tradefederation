@@ -16,9 +16,9 @@
 
 package com.android.tradefed.targetprep;
 
-import static com.android.tradefed.targetprep.RunOnSecondaryUserTargetPreparer.RUN_TESTS_AS_USER_KEY;
 import static com.android.tradefed.targetprep.RunOnSecondaryUserTargetPreparer.SKIP_TESTS_REASON_KEY;
 import static com.android.tradefed.targetprep.RunOnSecondaryUserTargetPreparer.TEST_PACKAGE_NAME_OPTION;
+import static com.android.tradefed.targetprep.RunOnSecondaryUserTargetPreparer.RUN_TESTS_AS_USER_KEY;
 
 import static com.google.common.truth.Truth.assertThat;
 
@@ -40,6 +40,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.mockito.Answers;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
@@ -49,8 +50,6 @@ import java.util.Map;
 
 @RunWith(JUnit4.class)
 public class RunOnSecondaryUserTargetPreparerTest {
-
-    private static final String CREATED_USER_2_MESSAGE = "Created user id 2";
 
     @Rule public final MockitoRule mockito = MockitoJUnit.rule();
 
@@ -77,16 +76,15 @@ public class RunOnSecondaryUserTargetPreparerTest {
     }
 
     @Test
-    public void setUp_createsAndStartsSecondaryUser() throws Exception {
-        String expectedCreateUserCommand = "pm create-user secondary";
-        String expectedStartUserCommand = "am start-user -w 2";
-        when(mTestInfo.getDevice().executeShellCommand(expectedCreateUserCommand))
-                .thenReturn(CREATED_USER_2_MESSAGE);
+    public void setUp_createsStartsAndSwitchesToSecondaryUser() throws Exception {
+        when(mTestInfo.getDevice().createUser(any())).thenReturn(2);
+        when(mTestInfo.getDevice().getCurrentUser()).thenReturn(0);
 
         mPreparer.setUp(mTestInfo);
 
-        verify(mTestInfo.getDevice()).executeShellCommand(expectedCreateUserCommand);
-        verify(mTestInfo.getDevice()).executeShellCommand(expectedStartUserCommand);
+        verify(mTestInfo.getDevice()).createUser("secondary");
+        verify(mTestInfo.getDevice()).startUser(2, /* waitFlag= */ true);
+        verify(mTestInfo.getDevice()).switchUser(2);
     }
 
     @Test
@@ -97,7 +95,49 @@ public class RunOnSecondaryUserTargetPreparerTest {
 
         mPreparer.setUp(mTestInfo);
 
-        verify(mTestInfo.getDevice(), never()).executeShellCommand(any());
+        verify(mTestInfo.getDevice(), never()).createUser(any());
+    }
+
+    @Test
+    public void setUp_secondaryUserAlreadyExists_startsAndSwitchesToSecondaryUser()
+            throws Exception {
+        Map<Integer, UserInfo> userInfos = new HashMap<>();
+        userInfos.put(2, new UserInfo(2, "secondary", /* flag= */ 0, /* isRunning= */ true));
+        when(mTestInfo.getDevice().getUserInfos()).thenReturn(userInfos);
+        when(mTestInfo.getDevice().getCurrentUser()).thenReturn(0);
+
+        mPreparer.setUp(mTestInfo);
+
+        verify(mTestInfo.getDevice()).startUser(2, /* waitFlag= */ true);
+        verify(mTestInfo.getDevice()).switchUser(2);
+    }
+
+    @Test
+    public void tearDown_switchesBackToInitialUser() throws Exception {
+        when(mTestInfo.getDevice().createUser(any())).thenReturn(2);
+        when(mTestInfo.getDevice().getCurrentUser()).thenReturn(0);
+        mPreparer.setUp(mTestInfo);
+        Mockito.reset(mTestInfo);
+        when(mTestInfo.getDevice().getCurrentUser()).thenReturn(2);
+
+        mPreparer.tearDown(mTestInfo, /* throwable= */ null);
+
+        verify(mTestInfo.getDevice()).switchUser(0);
+    }
+
+    @Test
+    public void tearDown_secondaryUserAlreadyExists_switchesBackToInitialUser() throws Exception {
+        Map<Integer, UserInfo> userInfos = new HashMap<>();
+        userInfos.put(2, new UserInfo(2, "secondary", /* flag= */ 0, /* isRunning= */ true));
+        when(mTestInfo.getDevice().getUserInfos()).thenReturn(userInfos);
+        when(mTestInfo.getDevice().getCurrentUser()).thenReturn(0);
+        mPreparer.setUp(mTestInfo);
+        Mockito.reset(mTestInfo);
+        when(mTestInfo.getDevice().getCurrentUser()).thenReturn(2);
+
+        mPreparer.tearDown(mTestInfo, /* throwable= */ null);
+
+        verify(mTestInfo.getDevice()).switchUser(0);
     }
 
     @Test
@@ -113,9 +153,7 @@ public class RunOnSecondaryUserTargetPreparerTest {
 
     @Test
     public void setUp_setsRunTestsAsUser() throws Exception {
-        String expectedCreateUserCommand = "pm create-user secondary";
-        when(mTestInfo.getDevice().executeShellCommand(expectedCreateUserCommand))
-                .thenReturn(CREATED_USER_2_MESSAGE);
+        when(mTestInfo.getDevice().createUser(any())).thenReturn(2);
 
         mPreparer.setUp(mTestInfo);
 
@@ -138,9 +176,7 @@ public class RunOnSecondaryUserTargetPreparerTest {
 
     @Test
     public void setUp_installsPackagesInSecondaryUser() throws Exception {
-        String expectedCreateUserCommand = "pm create-user secondary";
-        when(mTestInfo.getDevice().executeShellCommand(expectedCreateUserCommand))
-                .thenReturn(CREATED_USER_2_MESSAGE);
+        when(mTestInfo.getDevice().createUser(any())).thenReturn(2);
         mOptionSetter.setOptionValue(
                 RunOnSecondaryUserTargetPreparer.TEST_PACKAGE_NAME_OPTION,
                 "com.android.testpackage");
@@ -152,22 +188,21 @@ public class RunOnSecondaryUserTargetPreparerTest {
     }
 
     @Test
-    public void setUp_secondaryUserAlreadyExists_disablesTearDown() throws Exception {
+    public void setUp_secondaryUserAlreadyExists_doesNotRemoveSecondaryUser() throws Exception {
         Map<Integer, UserInfo> userInfos = new HashMap<>();
         userInfos.put(3, new UserInfo(3, "secondary", /* flag= */ 0, /* isRunning= */ true));
         when(mTestInfo.getDevice().getUserInfos()).thenReturn(userInfos);
         mOptionSetter.setOptionValue("disable-tear-down", "false");
-
         mPreparer.setUp(mTestInfo);
 
-        assertThat(mPreparer.isTearDownDisabled()).isTrue();
+        mPreparer.tearDown(mTestInfo, /* throwable= */ null);
+
+        verify(mTestInfo.getDevice(), never()).removeUser(3);
     }
 
     @Test
     public void setUp_doesNotDisableTearDown() throws Exception {
-        String expectedCreateUserCommand = "pm create-user secondary";
-        when(mTestInfo.getDevice().executeShellCommand(expectedCreateUserCommand))
-                .thenReturn(CREATED_USER_2_MESSAGE);
+        when(mTestInfo.getDevice().createUser(any())).thenReturn(2);
         mOptionSetter.setOptionValue("disable-tear-down", "false");
 
         mPreparer.setUp(mTestInfo);
@@ -177,7 +212,8 @@ public class RunOnSecondaryUserTargetPreparerTest {
 
     @Test
     public void tearDown_removesSecondaryUser() throws Exception {
-        when(mTestInfo.properties().get(RUN_TESTS_AS_USER_KEY)).thenReturn("2");
+        when(mTestInfo.getDevice().createUser(any())).thenReturn(2);
+        mPreparer.setUp(mTestInfo);
 
         mPreparer.tearDown(mTestInfo, /* throwable= */ null);
 

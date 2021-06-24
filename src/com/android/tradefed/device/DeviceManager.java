@@ -713,11 +713,8 @@ public class DeviceManager implements IDeviceManager {
                 // stop emulator output log
                 device.stopEmulatorOutput();
                 // emulator killed - return a stub device
-                // TODO: this is a bit of a hack. Consider having DeviceManager inject a StubDevice
-                // when deviceDisconnected event is received
-                ideviceToReturn = new EmulatorDevice(ideviceToReturn.getSerialNumber());
+                ideviceToReturn = device.getIDevice();
                 deviceState = FreeDeviceState.AVAILABLE;
-                managedDevice.setIDevice(ideviceToReturn);
             } catch (DeviceNotAvailableException e) {
                 CLog.e(e);
                 deviceState = FreeDeviceState.UNAVAILABLE;
@@ -869,25 +866,33 @@ public class DeviceManager implements IDeviceManager {
      */
     @Override
     public void killEmulator(ITestDevice device) throws DeviceNotAvailableException {
-        device.executeAdbCommand("emu", "kill");
+        try {
+            device.executeAdbCommand("emu", "kill");
 
-        // check and wait for device to become not avail
-        device.waitForDeviceNotAvailable(10 * 1000);
-        // lets ensure process is killed too - fall through
+            // check and wait for device to become not avail
+            device.waitForDeviceNotAvailable(10 * 1000);
+            // lets ensure process is killed too - fall through
 
-        // lets try killing the process
-        Process emulatorProcess = ((IManagedTestDevice) device).getEmulatorProcess();
-        if (emulatorProcess != null) {
-            emulatorProcess.destroy();
-            if (emulatorProcess.isAlive()) {
-                CLog.w("Emulator process still running after destroy for %s",
-                        device.getSerialNumber());
-                forceKillProcess(emulatorProcess, device.getSerialNumber());
+            // lets try killing the process
+            Process emulatorProcess = ((IManagedTestDevice) device).getEmulatorProcess();
+            if (emulatorProcess != null) {
+                emulatorProcess.destroy();
+                if (emulatorProcess.isAlive()) {
+                    CLog.w(
+                            "Emulator process still running after destroy for %s",
+                            device.getSerialNumber());
+                    forceKillProcess(emulatorProcess, device.getSerialNumber());
+                }
             }
-        }
-        if (!device.waitForDeviceNotAvailable(20 * 1000)) {
-            throw new DeviceNotAvailableException(String.format("Failed to kill emulator %s",
-                    device.getSerialNumber()), device.getSerialNumber());
+            if (!device.waitForDeviceNotAvailable(20 * 1000)) {
+                throw new DeviceNotAvailableException(
+                        String.format("Failed to kill emulator %s", device.getSerialNumber()),
+                        device.getSerialNumber());
+            }
+        } finally {
+            // TODO: a more robust solution might be to have the DeviceManager
+            //  do this when deviceDisconnected event is received
+            ((IManagedTestDevice) device).setIDevice(new EmulatorDevice(device.getSerialNumber()));
         }
     }
 

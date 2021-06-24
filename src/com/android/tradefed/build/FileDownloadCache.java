@@ -19,6 +19,8 @@ import com.android.ddmlib.Log;
 import com.android.tradefed.command.FatalHostError;
 import com.android.tradefed.invoker.logger.CurrentInvocation;
 import com.android.tradefed.invoker.logger.CurrentInvocation.InvocationInfo;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.FileUtil;
@@ -397,6 +399,8 @@ public class FileDownloadCache {
             throws BuildRetrievalError {
         Log.d(LOG_TAG, String.format("Downloading %s to cache", remotePath));
         downloader.downloadFile(remotePath, cachedFile);
+        InvocationMetricLogger.addInvocationMetrics(
+                InvocationMetricKey.ARTIFACTS_DOWNLOAD_SIZE, cachedFile.length());
     }
 
     @VisibleForTesting
@@ -414,15 +418,9 @@ public class FileDownloadCache {
                     "Creating hardlink '%s' to '%s'",
                     hardlinkFile.getAbsolutePath(), cachedFile.getAbsolutePath());
             if (cachedFile.isDirectory()) {
-                FileUtil.recursiveHardlink(
-                        cachedFile, hardlinkFile, false, BuildInfo.FULL_COPY_FILES);
+                FileUtil.recursiveHardlink(cachedFile, hardlinkFile, false);
             } else {
-                if (BuildInfo.FULL_COPY_FILES.contains(cachedFile.getName())) {
-                    CLog.d("Doing full copy for %s", cachedFile);
-                    FileUtil.copyFile(cachedFile, hardlinkFile);
-                } else {
-                    FileUtil.hardlinkFile(cachedFile, hardlinkFile);
-                }
+                FileUtil.hardlinkFile(cachedFile, hardlinkFile);
             }
             return hardlinkFile;
         } catch (IOException e) {

@@ -42,6 +42,7 @@ import com.android.tradefed.util.AdbUtils;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.util.IRunUtil.EnvPriority;
 import com.android.tradefed.util.RunUtil;
 
 import com.google.common.base.Joiner;
@@ -60,6 +61,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  * Host test meant to run a python binary file from the Android Build system (Soong)
@@ -73,8 +75,6 @@ public class PythonBinaryHostTest implements IRemoteTest, ITestFilterReceiver {
 
     protected static final String ANDROID_SERIAL_VAR = "ANDROID_SERIAL";
     protected static final String LD_LIBRARY_PATH = "LD_LIBRARY_PATH";
-    protected static final String PATH_VAR = "PATH";
-    protected static final long PATH_TIMEOUT_MS = 60000L;
 
     @VisibleForTesting static final String USE_TEST_OUTPUT_FILE_OPTION = "use-test-output-file";
     static final String TEST_OUTPUT_FILE_FLAG = "test-output-file";
@@ -194,8 +194,8 @@ public class PythonBinaryHostTest implements IRemoteTest, ITestFilterReceiver {
         if (testDir == null || !testDir.exists()) {
             testDir = mTestInfo.executionFiles().get(FilesKey.TESTS_DIRECTORY);
         }
+        List<String> ldLibraryPath = new ArrayList<>();
         if (testDir != null && testDir.exists()) {
-            List<String> ldLibraryPath = new ArrayList<>();
             List<String> libPaths =
                     Arrays.asList("lib", "lib64", "host/testcases/lib", "host/testcases/lib64");
             for (String path : libPaths) {
@@ -216,8 +216,16 @@ public class PythonBinaryHostTest implements IRemoteTest, ITestFilterReceiver {
                         pyFile.getAbsolutePath());
                 continue;
             }
+            // Complete the LD_LIBRARY_PATH with possible libs
+            String path = mLdLibraryPath;
+            List<String> paths = findAllSubdir(pyFile.getParentFile(), ldLibraryPath);
+            if (mLdLibraryPath != null) {
+                paths.add(0, mLdLibraryPath);
+            }
+            mLdLibraryPath = Joiner.on(":").join(paths);
             pyFile.setExecutable(true);
             runSinglePythonFile(listener, testInfo, pyFile);
+            mLdLibraryPath = path;
         }
     }
 
@@ -250,6 +258,17 @@ public class PythonBinaryHostTest implements IRemoteTest, ITestFilterReceiver {
         }
         // Set the process working dir as the directory of the main binary
         getRunUtil().setWorkingDir(pyFile.getParentFile());
+        // Set the parent dir on the PATH
+        String separator = System.getProperty("path.separator");
+        List<String> paths = new ArrayList<>();
+        // Bundle binaries / dependencies have priorities over existing PATH
+        paths.addAll(findAllSubdir(pyFile.getParentFile(), new ArrayList<>()));
+        paths.add(System.getenv("PATH"));
+        String path = paths.stream().distinct().collect(Collectors.joining(separator));
+        CLog.d("Using updated $PATH: %s", path);
+        getRunUtil().setEnvVariablePriority(EnvPriority.SET);
+        getRunUtil().setEnvVariable("PATH", path);
+
         if (mLdLibraryPath != null) {
             getRunUtil().setEnvVariable(LD_LIBRARY_PATH, mLdLibraryPath);
         }
@@ -399,6 +418,22 @@ public class PythonBinaryHostTest implements IRemoteTest, ITestFilterReceiver {
     @VisibleForTesting
     String getAdbPath() {
         return GlobalConfiguration.getDeviceManagerInstance().getAdbPath();
+    }
+
+    private List<String> findAllSubdir(File parentDir, List<String> knownPaths) {
+        List<String> subDir = new ArrayList<>();
+        subDir.add(parentDir.getAbsolutePath());
+        if (parentDir.listFiles() == null) {
+            return subDir;
+        }
+        for (File child : parentDir.listFiles()) {
+            if (child != null
+                    && child.isDirectory()
+                    && !knownPaths.contains(child.getAbsolutePath())) {
+                subDir.addAll(findAllSubdir(child, knownPaths));
+            }
+        }
+        return subDir;
     }
 
     private void reportFailure(

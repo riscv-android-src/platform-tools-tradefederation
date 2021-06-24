@@ -103,6 +103,8 @@ import java.util.Stack;
 import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /** Unit tests for {@link ClusterCommandScheduler}. */
 @RunWith(JUnit4.class)
@@ -1125,8 +1127,9 @@ public class ClusterCommandSchedulerTest {
 
     private List<TestResource> createMockTestResources() {
         List<TestResource> testResources = new ArrayList<TestResource>();
-        testResources.add(new TestResource("name1", "url2", false, ""));
-        testResources.add(new TestResource("name2", "url2", true, "dir2"));
+        testResources.add(new TestResource("name1", "url2"));
+        testResources.add(
+                new TestResource("name2", "url2", true, "dir2", false, Arrays.asList("file2")));
         return testResources;
     }
 
@@ -1147,17 +1150,18 @@ public class ClusterCommandSchedulerTest {
 
             ClusterBuildProvider buildProvider =
                     (ClusterBuildProvider) deviceConfig.getBuildProvider();
-            assertEquals(testResources.size(), buildProvider.getTestResources().size());
+            List<TestResource> providerTestResources = buildProvider.getTestResources();
+            assertEquals(testResources.size(), providerTestResources.size());
+            Map<String, TestResource> providerTestResourceMap =
+                    providerTestResources.stream()
+                            .collect(Collectors.toMap(TestResource::getName, Function.identity()));
             for (TestResource r : testResources) {
-                assertEquals(r.getUrl(), buildProvider.getTestResources().get(r.getName()));
-                assertEquals(
-                        r.getDecompress(),
-                        buildProvider.getDecompressTestResources().containsKey(r.getName()));
-                if (r.getDecompress()) {
-                    assertEquals(
-                            r.getDecompressDir(),
-                            buildProvider.getDecompressTestResources().get(r.getName()));
-                }
+                TestResource pr = providerTestResourceMap.get(r.getName());
+                assertEquals(r.getUrl(), pr.getUrl());
+                assertEquals(r.getDecompress(), pr.getDecompress());
+                assertEquals(r.getDecompressDir(), pr.getDecompressDir());
+                assertEquals(r.mountZip(), pr.mountZip());
+                assertEquals(r.getDecompressFiles(), pr.getDecompressFiles());
             }
         }
 

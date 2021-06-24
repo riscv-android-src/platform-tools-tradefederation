@@ -431,7 +431,7 @@ public class DeviceSetupTest extends TestCase {
     public void testSetup_bluetooth_on() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
-        doCommandsExpectations("service call bluetooth_manager 6");
+        doCommandsExpectations("svc bluetooth enable");
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setBluetooth(BinaryState.ON);
@@ -443,7 +443,7 @@ public class DeviceSetupTest extends TestCase {
     public void testSetup_bluetooth_off() throws Exception {
         doSetupExpectations();
         doCheckExternalStoreSpaceExpectations();
-        doCommandsExpectations("service call bluetooth_manager 8");
+        doCommandsExpectations("svc bluetooth disable");
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setBluetooth(BinaryState.OFF);
@@ -542,7 +542,7 @@ public class DeviceSetupTest extends TestCase {
         EasyMock.replay(mMockDevice);
 
         mDeviceSetup.setScreenAlwaysOn(BinaryState.IGNORE);
-        mDeviceSetup.setScreenTimeoutSecs(5l);
+        mDeviceSetup.setScreenTimeoutSecs(5L);
         mDeviceSetup.setUp(mTestInfo);
 
         EasyMock.verify(mMockDevice);
@@ -1279,6 +1279,25 @@ public class DeviceSetupTest extends TestCase {
         }
     }
 
+    public void testSetup_rootDisabled_withOptimizedPropSetting() throws Exception {
+        doSetupExpectations(
+                true /* screenOn */,
+                true /* root enabled */,
+                true /* root response */,
+                true /* test harness */,
+                DEFAULT_API_LEVEL,
+                false,
+                new Capture<>());
+        doCheckExternalStoreSpaceExpectations();
+        EasyMock.expect(mMockDevice.getProperty("fooProperty")).andReturn("1").anyTimes();
+        EasyMock.replay(mMockDevice);
+        OptionSetter setter = new OptionSetter(mDeviceSetup);
+        setter.setOptionValue("optimized-property-setting", "true");
+        setter.setOptionValue("set-property", "fooProperty", "1");
+        mDeviceSetup.setUp(mTestInfo);
+        EasyMock.verify(mMockDevice);
+    }
+
     /** Set EasyMock expectations for a normal setup call */
     private void doSetupExpectations() throws DeviceNotAvailableException, ConfigurationException {
         doSetupExpectations(
@@ -1340,6 +1359,26 @@ public class DeviceSetupTest extends TestCase {
             int apiLevel,
             Capture<String> setPropCapture)
             throws DeviceNotAvailableException, ConfigurationException {
+        doSetupExpectations(
+                screenOn,
+                adbRootEnabled,
+                adbRootResponse,
+                testHarness,
+                apiLevel,
+                true, // Almost all the time we expect local prop push
+                setPropCapture);
+    }
+
+    /** Set EasyMock expectations for a normal setup call */
+    private void doSetupExpectations(
+            boolean screenOn,
+            boolean adbRootEnabled,
+            boolean adbRootResponse,
+            boolean testHarness,
+            int apiLevel,
+            boolean localPropPush,
+            Capture<String> setPropCapture)
+            throws DeviceNotAvailableException, ConfigurationException {
         TestDeviceOptions options = new TestDeviceOptions();
         OptionSetter setter = new OptionSetter(options);
         setter.setOptionValue("enable-root", Boolean.toString(adbRootEnabled));
@@ -1350,7 +1389,7 @@ public class DeviceSetupTest extends TestCase {
 
         EasyMock.expect(mMockDevice.clearErrorDialogs()).andReturn(Boolean.TRUE);
         EasyMock.expect(mMockDevice.getApiLevel()).andReturn(apiLevel);
-        if (adbRootResponse) {
+        if (adbRootResponse && localPropPush) {
             // expect push of local.prop file to change system properties
             EasyMock.expect(
                             mMockDevice.pushString(
@@ -1366,6 +1405,8 @@ public class DeviceSetupTest extends TestCase {
         if (screenOn) {
             EasyMock.expect(mMockDevice.executeShellCommand("svc power stayon true")).andReturn("");
             EasyMock.expect(mMockDevice.executeShellCommand("input keyevent 82")).andReturn("");
+            EasyMock.expect(mMockDevice.hasFeature("android.hardware.type.watch"))
+                    .andStubReturn(false);
             EasyMock.expect(mMockDevice.executeShellCommand("input keyevent 3")).andReturn("");
         }
         if (testHarness) {
@@ -1396,7 +1437,7 @@ public class DeviceSetupTest extends TestCase {
     }
 
     private void doCheckExternalStoreSpaceExpectations() throws DeviceNotAvailableException {
-        EasyMock.expect(mMockDevice.getExternalStoreFreeSpace()).andReturn(1000l);
+        EasyMock.expect(mMockDevice.getExternalStoreFreeSpace()).andReturn(1000L);
     }
 
     private void doCommandsExpectations(String... commands)

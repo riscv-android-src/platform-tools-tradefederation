@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.util;
 
+import com.android.tradefed.auth.ICredentialFactory;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.host.HostOptions;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -107,6 +108,44 @@ public class GoogleApiClientUtil {
                 .doCreateCredential(scopes, primaryKeyFile, hostOptionKeyFileName, backupKeyFiles);
     }
 
+    /**
+     * Try to create credential with different key files or from local host.
+     *
+     * <p>1. Use {@link ICredentialFactory} if useCredentialFactory is true and a {@link
+     * ICredentialFactory} is configured. If primaryKeyFile is set, try to use it to create
+     * credential. 2. Try to get corresponding key files from {@link HostOptions}. 3. Try to use
+     * backup key files. 4. Use local default credential.
+     *
+     * @param scopes scopes for the credential.
+     * @param useCredentialFactory use credential factory if it's configured.
+     * @param primaryKeyFile the primary json key file; it can be null.
+     * @param hostOptionKeyFileName {@link HostOptions}'service-account-json-key-file option's key;
+     *     it can be null.
+     * @param backupKeyFiles backup key files.
+     * @return a {@link Credential}
+     * @throws IOException
+     * @throws GeneralSecurityException
+     */
+    public static Credential createCredential(
+            Collection<String> scopes,
+            Boolean useCredentialFactory,
+            File primaryKeyFile,
+            String hostOptionKeyFileName,
+            File... backupKeyFiles)
+            throws IOException, GeneralSecurityException {
+        Credential credential = null;
+        if (useCredentialFactory) {
+            credential = getInstance().doCreateCredentialFromCredentialFactory(scopes);
+            // TODO(b/186766552): Throw exception once all hosts configured CredentialFactory.
+            if (credential != null) {
+                return credential;
+            }
+            CLog.i("No CredentialFactory configured, fallback to key files.");
+        }
+        return getInstance()
+                .doCreateCredential(scopes, primaryKeyFile, hostOptionKeyFileName, backupKeyFiles);
+    }
+
     @VisibleForTesting
     Credential doCreateCredential(
             Collection<String> scopes,
@@ -146,6 +185,24 @@ public class GoogleApiClientUtil {
             }
         }
         return doCreateDefaultCredential(scopes);
+    }
+
+    @VisibleForTesting
+    Credential doCreateCredentialFromCredentialFactory(Collection<String> scopes)
+            throws IOException {
+        try {
+            if (GlobalConfiguration.getInstance().getCredentialFactory() != null) {
+                return GlobalConfiguration.getInstance()
+                        .getCredentialFactory()
+                        .createCredential(scopes);
+            }
+            CLog.w("No CredentialFactory configured.");
+        } catch (IllegalStateException e) {
+            System.out.println(
+                    "GlobalConfiguration is not initialized yet,"
+                            + "can not get CredentialFactory.");
+        }
+        return null;
     }
 
     @VisibleForTesting

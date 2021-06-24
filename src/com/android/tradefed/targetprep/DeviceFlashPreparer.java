@@ -27,10 +27,14 @@ import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.NullDevice;
+import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.host.IHostOptions;
 import com.android.tradefed.invoker.TestInformation;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.error.DeviceErrorIdentifier;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.targetprep.IDeviceFlasher.UserDataFlashOption;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.IRunUtil;
@@ -201,8 +205,9 @@ public abstract class DeviceFlashPreparer extends BaseTargetPreparer {
         }
         IDeviceBuildInfo deviceBuild = (IDeviceBuildInfo) buildInfo;
         if (mShouldFlashRamdisk && deviceBuild.getRamdiskFile() == null) {
-            throw new IllegalArgumentException(
-                    "ramdisk flashing enabled but no ramdisk file was found in build info");
+            throw new HarnessRuntimeException(
+                    "ramdisk flashing enabled but no ramdisk file was found in build info",
+                    InfraErrorIdentifier.CONFIGURED_ARTIFACT_NOT_FOUND);
         }
         // don't allow interruptions during flashing operations.
         getRunUtil().allowInterrupt(false);
@@ -223,6 +228,8 @@ public abstract class DeviceFlashPreparer extends BaseTargetPreparer {
                 CLog.v(
                         "Flashing permit obtained after %ds",
                         TimeUnit.MILLISECONDS.toSeconds(queueTime));
+                InvocationMetricLogger.addInvocationMetrics(
+                        InvocationMetricKey.FLASHING_PERMIT_LATENCY, queueTime);
 
                 flasher.overrideDeviceOptions(device);
                 flasher.setUserDataFlashOption(mUserDataFlashOption);

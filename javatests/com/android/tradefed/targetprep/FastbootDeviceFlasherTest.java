@@ -24,6 +24,8 @@ import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.TestDeviceState;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.targetprep.IDeviceFlasher.UserDataFlashOption;
 import com.android.tradefed.util.ArrayUtil;
 import com.android.tradefed.util.CommandResult;
@@ -620,6 +622,7 @@ public class FastbootDeviceFlasherTest {
                                     EasyMock.eq("update"),
                                     EasyMock.eq(deviceImage.getAbsolutePath())))
                     .andReturn(res);
+            mMockDevice.rebootIntoBootloader();
             EasyMock.expect(
                             mMockDevice.executeLongFastbootCommand(
                                     EasyMock.eq("flash"),
@@ -660,6 +663,7 @@ public class FastbootDeviceFlasherTest {
             EasyMock.expect(mockBuild.getBuildFlavor()).andReturn(buildFlavor);
             mMockDevice.rebootUntilOnline();
             EasyMock.expectLastCall();
+            mMockDevice.rebootIntoBootloader();
             CommandResult res = new CommandResult(CommandStatus.SUCCESS);
             res.setStderr("flashing");
             EasyMock.expect(
@@ -746,6 +750,57 @@ public class FastbootDeviceFlasherTest {
             }
         } finally {
             FileUtil.deleteFile(deviceImage);
+        }
+    }
+
+    /**
+     * Test {@link FastbootDeviceFlasher#handleFastbootResult(ITestDevice, CommandResult,
+     * String...)}.
+     */
+    @Test
+    public void testHandleFastbootResult() throws Exception {
+        CommandResult res = new CommandResult(CommandStatus.SUCCESS);
+        res.setStderr("");
+        res.setStdout("");
+        assertEquals("", mFlasher.handleFastbootResult(mMockDevice, res, "update"));
+    }
+
+    /**
+     * Test {@link FastbootDeviceFlasher#handleFastbootResult(ITestDevice, CommandResult,
+     * String...)} when fastboot failed.
+     */
+    @Test
+    public void testHandleFastbootResult_fastbootFailed() throws Exception {
+        CommandResult res = new CommandResult(CommandStatus.SUCCESS);
+        res.setStderr("FAILED to flash device.");
+        res.setStdout("");
+        EasyMock.replay(mMockDevice);
+        try {
+            mFlasher.handleFastbootResult(mMockDevice, res, "update");
+            fail("Expected TargetSetupError not thrown.");
+        } catch (TargetSetupError e) {
+            assertEquals(DeviceErrorIdentifier.ERROR_AFTER_FLASHING, e.getErrorId());
+        }
+    }
+
+    /**
+     * Test {@link FastbootDeviceFlasher#handleFastbootResult(ITestDevice, CommandResult,
+     * String...)} when no disk space.
+     */
+    @Test
+    public void testHandleFastbootResult_noDiskSpace() throws Exception {
+        CommandResult res = new CommandResult(CommandStatus.FAILED);
+        res.setStderr(
+                "fastboot: error: failed to create temporary file for"
+                    + " /fastboot-ramdisk/fastboot_userdata_AxRPjp with template boot.img: No such"
+                    + " file or directory");
+        res.setStdout("");
+        EasyMock.replay(mMockDevice);
+        try {
+            mFlasher.handleFastbootResult(mMockDevice, res, "update");
+            fail("Expected TargetSetupError not thrown.");
+        } catch (TargetSetupError e) {
+            assertEquals(InfraErrorIdentifier.NO_DISK_SPACE, e.getErrorId());
         }
     }
 

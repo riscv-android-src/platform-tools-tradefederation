@@ -15,6 +15,9 @@
  */
 package com.android.tradefed.testtype.suite.params;
 
+import com.android.tradefed.testtype.suite.params.multiuser.RunOnSecondaryUserParameterHandler;
+import com.android.tradefed.testtype.suite.params.multiuser.RunOnWorkProfileParameterHandler;
+
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -31,11 +34,21 @@ public class ModuleParametersHelper {
 
         sHandlerMap.put(ModuleParameters.MULTI_ABI, new NegativeHandler());
         sHandlerMap.put(ModuleParameters.NOT_MULTI_ABI, new NotMultiAbiHandler());
+
+        sHandlerMap.put(
+                ModuleParameters.RUN_ON_WORK_PROFILE, new RunOnWorkProfileParameterHandler());
+        sHandlerMap.put(
+                ModuleParameters.RUN_ON_SECONDARY_USER, new RunOnSecondaryUserParameterHandler());
     }
 
     private static Map<ModuleParameters, Set<ModuleParameters>> sGroupMap = new HashMap<>();
 
     static {
+        sGroupMap.put(
+                ModuleParameters.MULTIUSER,
+                Set.of(
+                        ModuleParameters.RUN_ON_WORK_PROFILE,
+                        ModuleParameters.RUN_ON_SECONDARY_USER));
     }
 
     /**

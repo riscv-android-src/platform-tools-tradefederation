@@ -38,6 +38,7 @@ import com.google.common.annotations.VisibleForTesting;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -393,7 +394,9 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
      */
     private String executeFastbootCmd(ITestDevice device, String... cmdArgs)
             throws DeviceNotAvailableException, TargetSetupError {
-        CLog.i("Execute fastboot command %s on %s", cmdArgs, device.getSerialNumber());
+        CLog.i(
+                "Execute fastboot command %s on %s",
+                Arrays.toString(cmdArgs), device.getSerialNumber());
         CommandResult result = device.executeLongFastbootCommand(cmdArgs);
         CLog.v("fastboot stdout: " + result.getStdout());
         CLog.v("fastboot stderr: " + result.getStderr());
@@ -407,7 +410,7 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
             throw new TargetSetupError(
                     String.format(
                             "fastboot command %s failed in device %s. stdout: %s, stderr: %s",
-                            cmdArgs,
+                            Arrays.toString(cmdArgs),
                             device.getSerialNumber(),
                             result.getStdout(),
                             result.getStderr()),

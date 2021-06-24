@@ -35,8 +35,18 @@ public interface ITestFileFilterReceiver {
      */
     void setIncludeTestFile(File testFile);
 
+    /** Returns the file containing the included tests. */
+    default File getIncludeTestFile() {
+        return null;
+    }
+
     /**
      * Sets the test file of excludes. Does not ensure that testFile exists or is a file.
      */
     void setExcludeTestFile(File testFile);
+
+    /** Returns the file containing the excluded tests. */
+    default File getExcludeTestFile() {
+        return null;
+    }
 }

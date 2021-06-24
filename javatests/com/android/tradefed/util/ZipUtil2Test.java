@@ -70,7 +70,25 @@ public class ZipUtil2Test {
     }
 
     @Test
-    public void testExtractFileFromZip() throws Exception {
+    public void testExtractFileFromZip() throws IOException {
+        final File destFile = createTempFile("testExtractFileFromZip", ".out");
+        final File zip = getTestDataFile("permission-test");
+        final String fileName = "rwxr-x--x";
+        ZipFile zipFile = null;
+        try {
+            zipFile = new ZipFile(zip);
+            boolean extracted = ZipUtil2.extractFileFromZip(zipFile, "NOT_EXIST", destFile);
+            Assert.assertFalse(extracted);
+            extracted = ZipUtil2.extractFileFromZip(zipFile, fileName, destFile);
+            Assert.assertTrue(extracted);
+            verifyFilePermission(destFile, fileName);
+        } finally {
+            ZipFile.closeQuietly(zipFile);
+        }
+    }
+
+    @Test
+    public void testExtractFileFromZipToTemp() throws Exception {
         final File zip = getTestDataFile("permission-test");
         final String fileName = "rwxr-x--x";
         ZipFile zipFile = null;

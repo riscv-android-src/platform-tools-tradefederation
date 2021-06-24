@@ -126,8 +126,8 @@ public class DeviceSetup extends BaseTargetPreparer {
     @Option(name = "bluetooth",
             description = "Turn bluetooth on or off")
     protected BinaryState mBluetooth = BinaryState.IGNORE;
-    // ON:  service call bluetooth_manager 6
-    // OFF: service call bluetooth_manager 8
+    // ON:  svc bluetooth enable
+    // OFF: svc bluetooth disable
 
     @Option(name = "nfc",
             description = "Turn nfc on or off")
@@ -392,6 +392,12 @@ public class DeviceSetup extends BaseTargetPreparer {
             "Must be used with --local-data-path.")
     protected String mRemoteDataPath = null;
 
+    @Option(
+            name = "optimized-property-setting",
+            description =
+                    "If a property is already set to the desired value, don't reboot the device")
+    protected boolean mOptimizedPropertySetting = false;
+
     // Deprecated options follow
     /**
      * @deprecated use min-external-storage-kb instead.
@@ -477,6 +483,10 @@ public class DeviceSetup extends BaseTargetPreparer {
 
         if (e instanceof DeviceFailedToBootError) {
             CLog.d("boot failure: skipping teardown");
+            return;
+        }
+        if (e instanceof DeviceNotAvailableException) {
+            CLog.d("device not available: skipping teardown");
             return;
         }
         if (!TestDeviceState.ONLINE.equals(device.getDeviceState())) {
@@ -595,7 +605,7 @@ public class DeviceSetup extends BaseTargetPreparer {
                 "ifconfig eth0 up", "ifconfig eth0 down");
 
         setCommandForBinaryState(mBluetooth, mRunCommandAfterSettings,
-                "service call bluetooth_manager 6", "service call bluetooth_manager 8");
+                "svc bluetooth enable", "svc bluetooth disable");
 
         setCommandForBinaryState(mNfc, mRunCommandAfterSettings,
                 "svc nfc enable", "svc nfc disable");
@@ -727,17 +737,43 @@ public class DeviceSetup extends BaseTargetPreparer {
                     device.getDeviceDescriptor());
         }
 
-        StringBuilder sb = new StringBuilder();
+        // Set persistent props and build a map of all the nonpersistent ones
+        Map<String, String> nonpersistentProps = new HashMap<String, String>();
         for (Map.Entry<String, String> prop : mSetProps.entrySet()) {
             if (prop.getKey().startsWith(PERSIST_PREFIX)) {
                 // TODO: Check that set was successful
                 device.setProperty(prop.getKey(), prop.getValue());
             } else {
-                sb.append(String.format("%s=%s\n", prop.getKey(), prop.getValue()));
+                nonpersistentProps.put(prop.getKey(), prop.getValue());
             }
         }
 
-        if (sb.length() != 0) {
+        // If the reboot optimization is enabled, only set nonpersistent props if
+        // there are changed values from what the device is running.
+        boolean shouldSetProps = true;
+        if (mOptimizedPropertySetting && !nonpersistentProps.isEmpty()) {
+            boolean allPropsAlreadySet = true;
+            for (Map.Entry<String, String> prop : nonpersistentProps.entrySet()) {
+                if (!prop.getValue().equals(device.getProperty(prop.getKey()))) {
+                    allPropsAlreadySet = false;
+                    break;
+                }
+            }
+            if (allPropsAlreadySet) {
+                shouldSetProps = false;
+                CLog.i(
+                        "All properties appear to already be set to desired values, skipping"
+                                + " set stage");
+            }
+        }
+
+        // Set the nonpersistent properties if needed.
+        if (!nonpersistentProps.isEmpty() && shouldSetProps) {
+            StringBuilder sb = new StringBuilder();
+            for (Map.Entry<String, String> prop : nonpersistentProps.entrySet()) {
+                sb.append(String.format("%s=%s\n", prop.getKey(), prop.getValue()));
+            }
+
             if (mRestoreProperties) {
                 mPreviousProperties = device.pullFile("/data/local.prop");
             }
@@ -793,7 +829,11 @@ public class DeviceSetup extends BaseTargetPreparer {
                 device.executeShellCommand("input keyevent 82");
                 // send HOME press in case keyguard was already dismissed, so we bring device back
                 // to home screen
-                device.executeShellCommand("input keyevent 3");
+                // No need for this on Wear OS, since that causes the launcher to show
+                // instead of the home screen
+                if (!device.hasFeature("android.hardware.type.watch")) {
+                    device.executeShellCommand("input keyevent 3");
+                }
                 break;
             case OFF:
                 CLog.d("Setting screen always on to false");

@@ -124,7 +124,7 @@ public class AtestRunnerTest {
         List<IRemoteTest> tests = config.getTests();
         assertEquals(1, tests.size());
         UiAutomatorTest test = (UiAutomatorTest) tests.get(0);
-        List<String> classFilters = new ArrayList<String>();
+        List<String> classFilters = new ArrayList<>();
         classFilters.add(classA);
         classFilters.add(classB + "#" + method1);
         assertEquals(classFilters, test.getClassNames());

@@ -84,6 +84,21 @@ public class MinApiLevelModuleControllerTest {
         EasyMock.verify(mMockDevice);
     }
 
+    /** Test when ro.vndk.version returns a string code name */
+    @Test
+    public void testVndkVersionHasStringCodeName()
+            throws DeviceNotAvailableException, ConfigurationException {
+        mApiLevelProp = "ro.vndk.version";
+        EasyMock.expect(mMockDevice.getIDevice()).andReturn(mMockIDevice);
+        EasyMock.expect(mMockDevice.getProperty(mApiLevelProp)).andReturn("S");
+        EasyMock.replay(mMockDevice);
+        OptionSetter setter = new OptionSetter(mController);
+        setter.setOptionValue("api-level-prop", mApiLevelProp);
+        setter.setOptionValue("min-api-level", "31");
+        assertEquals(RunStrategy.RUN, mController.shouldRunModule(mContext));
+        EasyMock.verify(mMockDevice);
+    }
+
     /** Test Api Level cannot be found in the Device */
     @Test
     public void testDeviceApiLevelNotFound()

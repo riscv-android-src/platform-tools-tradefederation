@@ -26,11 +26,11 @@ import com.android.tradefed.device.TestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
+import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
-import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.util.IRunUtil;
@@ -96,6 +96,11 @@ public class DeviceBatteryLevelCheckerTest {
             if (command.equals(bugreport)) {
                 receiver.addOutput(bugreport.getBytes(), 0, bugreport.length());
             }
+        }
+
+        @Override
+        public boolean logBugreport(String dataName, ITestLogger listener) {
+            return mFakeTestDevice.logBugreport(dataName, listener);
         }
 
         @Override
@@ -184,16 +189,16 @@ public class DeviceBatteryLevelCheckerTest {
                 .andStubReturn("");
         EasyMock.expect(mFakeTestDevice.executeShellCommand(
                 "settings put system screen_off_timeout 1000")).andStubReturn("");
+        EasyMock.expect(
+                        mFakeTestDevice.logBugreport(
+                                EasyMock.eq("low-charging-speed-bugreport"), EasyMock.anyObject()))
+                .andReturn(true);
         mMockListener.testRunStarted("BatteryCharging", 2);
         mMockListener.testStarted(mTestDescription);
         mMockListener.testEnded(mTestDescription, new HashMap<String, Metric>());
         mMockListener.testStarted(mTestDescription2);
         mMockListener.testFailed(
                 EasyMock.eq(mTestDescription2), EasyMock.<FailureDescription>anyObject());
-        mMockListener.testLog(
-                EasyMock.eq("low-charging-speed-bugreport"),
-                EasyMock.eq(LogDataType.BUGREPORT),
-                EasyMock.anyObject());
         mMockListener.testEnded(mTestDescription2, new HashMap<String, Metric>());
         mMockListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());

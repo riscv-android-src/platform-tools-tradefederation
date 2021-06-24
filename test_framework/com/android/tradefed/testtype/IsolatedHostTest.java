@@ -24,6 +24,7 @@ import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.invoker.TestInformation;
+import com.android.tradefed.invoker.logger.CurrentInvocation;
 import com.android.tradefed.isolation.FilterSpec;
 import com.android.tradefed.isolation.JUnitEvent;
 import com.android.tradefed.isolation.RunnerMessage;
@@ -53,8 +54,6 @@ import java.lang.ProcessBuilder.Redirect;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -91,13 +90,6 @@ public class IsolatedHostTest
                             + " \"com.android.foo.Bar\". This field can be repeated.",
             importance = Importance.IF_UNSET)
     private Set<String> mClasses = new LinkedHashSet<>();
-
-    @Option(
-            name = "method",
-            description =
-                    "The name of the method in the JUnit TestCase to run. " + "eg. \"testFooBar\"",
-            importance = Importance.IF_UNSET)
-    private String mMethodName;
 
     @Option(
             name = "jar",
@@ -169,6 +161,7 @@ public class IsolatedHostTest
             description = TestTimeoutEnforcer.TEST_CASE_TIMEOUT_DESCRIPTION)
     private Duration mTestCaseTimeout = Duration.ofSeconds(0L);
 
+    private static final String QUALIFIED_PATH = "/com/android/tradefed/isolation";
     private IBuildInfo mBuildInfo;
     private Set<String> mIncludeFilters = new HashSet<>();
     private Set<String> mExcludeFilters = new HashSet<>();
@@ -183,6 +176,7 @@ public class IsolatedHostTest
 
     private File mCoverageDestination;
     private File mAgent;
+    private File mIsolationJar;
 
     /** {@inheritDoc} */
     @Override
@@ -200,11 +194,16 @@ public class IsolatedHostTest
             CLog.v(String.join(" ", cmdArgs));
             RunUtil runner = new RunUtil();
 
+            String ldLibraryPath = this.compileLdLibraryPath();
+            if (ldLibraryPath != null) {
+                runner.setEnvVariable("LD_LIBRARY_PATH", ldLibraryPath);
+            }
+
             // Note the below chooses a working directory based on the jar that happens to
             // be first in the list of configured jars.  The baked-in assumption is that
             // all configured jars are in the same parent directory, otherwise the behavior
             // here is non-deterministic.
-            mWorkDir = this.findJarDirectory();
+            mWorkDir = findJarDirectory();
             runner.setWorkingDir(mWorkDir);
             CLog.v("Using PWD: %s", mWorkDir.getAbsolutePath());
 
@@ -257,6 +256,7 @@ public class IsolatedHostTest
                 listener.testRunEnded(0L, new HashMap<String, Metric>());
             }
         } finally {
+            FileUtil.deleteFile(mIsolationJar);
             FileUtil.deleteFile(mAgent);
             mAgent = null;
             if (mCoverageDestination != null && mCoverageDestination.length() > 0) {
@@ -366,34 +366,10 @@ public class IsolatedHostTest
         List<String> paths = new ArrayList<>();
         File testDir = findTestDirectory();
 
-        // This is a relatively hacky way to get around the fact that we don't have a consistent
-        // way to locate tradefed related jars in all environments, so instead we dyn link to that
-        // jar, and sniff where it is located.  It is very important that IsolationRunner does not
-        // end up in the main tradefed.jar while this is in place.
         try {
-
-            URI tradefedJarPath =
-                    IsolatedHostTest.class
-                            .getProtectionDomain()
-                            .getCodeSource()
-                            .getLocation()
-                            .toURI();
-
-            File tradefedJar = new File(tradefedJarPath);
-
-            if (tradefedJar == null || !tradefedJar.exists()) {
-                throw new RuntimeException("tradefed.jar not found or does not exist.");
-            }
-
-            File isolationJar =
-                    FileUtil.findFile(tradefedJar.getParentFile(), "tradefed-isolation.jar");
-
-            if (isolationJar == null || !isolationJar.exists()) {
-                throw new RuntimeException("tradefed-isolation.jar not found or does not exist.");
-            }
-
+            File isolationJar = getIsolationJar(CurrentInvocation.getWorkFolder());
             paths.add(isolationJar.getAbsolutePath());
-        } catch (URISyntaxException e) {
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
 
@@ -425,6 +401,58 @@ public class IsolatedHostTest
         String jarClasspath = String.join(java.io.File.pathSeparator, paths);
 
         return jarClasspath;
+    }
+
+    @VisibleForTesting
+    String getEnvironment(String key) {
+        return System.getenv(key);
+    }
+
+    /**
+     * Return LD_LIBRARY_PATH for tests that require native library.
+     *
+     * @return a string specifying the colon separated library path.
+     */
+    @VisibleForTesting
+    protected String compileLdLibraryPath() {
+        if (mClasspathOverride != null) {
+            return null;
+        }
+        File testDir = findTestDirectory();
+        List<String> paths = new ArrayList<>();
+
+        for (String jar : mJars) {
+            File f = FileUtil.findFile(testDir, jar);
+            if (f == null || !f.exists()) {
+                continue;
+            }
+            String libs[] = {"lib", "lib64"};
+            for (String lib : libs) {
+                File libFile = new File(f.getParentFile().getAbsolutePath(), lib);
+                // If the test module has no lib directory packaged, we assume the test does not
+                // require any external native library.
+                if (!libFile.exists()) {
+                    continue;
+                }
+                paths.add(libFile.getAbsolutePath());
+                // Include `testcases` directory for running tests based on test zip.
+                libFile = new File(f.getParentFile().getParentFile().getAbsolutePath(), lib);
+                if (libFile.exists()) {
+                    paths.add(libFile.getAbsolutePath());
+                }
+                // Include ANDROID_HOST_OUT/lib to support local case.
+                if (getEnvironment("ANDROID_HOST_OUT") != null) {
+                    libFile = new File(getEnvironment("ANDROID_HOST_OUT"), lib);
+                    if (libFile.exists()) {
+                        paths.add(libFile.getAbsolutePath());
+                    }
+                }
+            }
+        }
+        if (paths.isEmpty()) {
+            return null;
+        }
+        return String.join(java.io.File.pathSeparator, paths);
     }
 
     private List<String> compileRobolectricOptions() {
@@ -630,11 +658,9 @@ public class IsolatedHostTest
      * find our jar.
      */
     private File getJarFile(String jarName, IBuildInfo buildInfo) throws FileNotFoundException {
-        File jarFile = null;
-
         // Check tests dir
         File testDir = buildInfo.getFile(BuildInfoFileKey.TESTDIR_IMAGE);
-        jarFile = searchJarFile(testDir, jarName);
+        File jarFile = searchJarFile(testDir, jarName);
         if (jarFile != null) {
             return jarFile;
         }
@@ -810,5 +836,24 @@ public class IsolatedHostTest
         File jacocoAgent = FileUtil.createTempFile("jacocoagent", ".jar");
         FileUtil.writeToFile(jacocoAgentStream, jacocoAgent);
         return jacocoAgent;
+    }
+
+    private File getIsolationJar(File workDir) throws IOException {
+        try (InputStream jarFileStream = getClass().getResourceAsStream("/tradefed-isolation.jar");
+                InputStream qualifiedJarStream =
+                        getClass()
+                                .getResourceAsStream(
+                                        QUALIFIED_PATH + "/tradefed-isolation_deploy.jar")) {
+            if (jarFileStream == null && qualifiedJarStream == null) {
+                throw new RuntimeException("/tradefed-isolation.jar not found.");
+            }
+            mIsolationJar = FileUtil.createTempFile("tradefed-isolation", ".jar", workDir);
+            if (qualifiedJarStream != null) {
+                FileUtil.writeToFile(qualifiedJarStream, mIsolationJar);
+            } else {
+                FileUtil.writeToFile(jarFileStream, mIsolationJar);
+            }
+            return mIsolationJar;
+        }
     }
 }

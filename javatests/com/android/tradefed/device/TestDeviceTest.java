@@ -970,18 +970,24 @@ public class TestDeviceTest extends TestCase {
     public void testExecuteFastbootCommand_state() throws Exception {
         final long waitTimeMs = 150;
         // build a fastboot response that will block
-        IAnswer<CommandResult> blockResult = new IAnswer<CommandResult>() {
-            @Override
-            public CommandResult answer() throws Throwable {
-                synchronized(this) {
-                    // first inform this test that fastboot cmd is executing
-                    notifyAll();
-                    // now wait for test to unblock us when its done testing logic
-                    wait(waitTimeMs);
-                }
-                return new CommandResult(CommandStatus.SUCCESS);
-            }
-        };
+        IAnswer<CommandResult> blockResult =
+                new IAnswer<CommandResult>() {
+                    @Override
+                    public CommandResult answer() throws Throwable {
+                        synchronized (this) {
+                            // first inform this test that fastboot cmd is executing
+                            notifyAll();
+                            // now wait for test to unblock us when its done testing logic
+                            long now = System.currentTimeMillis();
+                            long deadline = now + waitTimeMs;
+                            while (now < deadline) {
+                                wait(deadline - now);
+                                now = System.currentTimeMillis();
+                            }
+                        }
+                        return new CommandResult(CommandStatus.SUCCESS);
+                    }
+                };
         EasyMock.expect(mMockRunUtil.runTimedCmd(EasyMock.anyLong(), EasyMock.eq("fastboot"),
                 EasyMock.eq("-s"),EasyMock.eq(MOCK_DEVICE_SERIAL), EasyMock.eq("foo"))).andAnswer(
                         blockResult).times(2);
@@ -4009,7 +4015,9 @@ public class TestDeviceTest extends TestCase {
         assertFalse(mTestDevice.hasFeature("feature:com.google.android.feature"));
         assertFalse(mTestDevice.hasFeature("com.google.android.feature.GOOGLE_BUILD_ORG"));
         assertFalse(mTestDevice.hasFeature("com.google.android.feature.GOOGLE_BUILD"));
-        assertTrue(mTestDevice.hasFeature("feature:com.google.android.feature.GOOGLE_BUILD_VERSIONED"));
+        assertTrue(
+                mTestDevice.hasFeature(
+                        "feature:com.google.android.feature.GOOGLE_BUILD_VERSIONED"));
     }
 
     /**
@@ -4350,9 +4358,8 @@ public class TestDeviceTest extends TestCase {
      * Helper to create the rawImage to test.
      */
     private RawImage prepareRawImage(File rawImageFile) throws Exception {
-        RawImage sRawImage = null;
         String data = FileUtil.readStringFromFile(rawImageFile);
-        sRawImage = new RawImage();
+        RawImage sRawImage = new RawImage();
         sRawImage.alpha_length = 8;
         sRawImage.alpha_offset = 24;
         sRawImage.blue_length = 8;
@@ -4389,11 +4396,11 @@ public class TestDeviceTest extends TestCase {
             Assert.assertEquals(3000, testImage.data.length);
             byte[] result = mTestDevice.compressRawImage(testImage, "PNG", true);
             // Size after compressing can vary a bit depending of the JDK
-            if (result.length != 107 && result.length != 117) {
+            if (result.length != 107 && result.length != 117 && result.length != 139) {
                 fail(
                         String.format(
                                 "Should have compress the length as expected, got %s, "
-                                        + "expected 107 or 117",
+                                        + "expected 107, 117 or 139",
                                 result.length));
             }
 
@@ -4998,12 +5005,13 @@ public class TestDeviceTest extends TestCase {
             boolean res = spy.pushFile(tmpFile, fakeRemotePath);
             EasyMock.verify(mMockIDevice);
             assertFalse(res);
-            verify(spy, times(1))
+            // Tried twice due to retry
+            verify(spy, times(2))
                     .installPackage(Mockito.any(), Mockito.anyBoolean(), Mockito.anyBoolean());
             // Since it fails, requesting the content provider again will re-do setup.
             ContentProviderHandler cp = spy.getContentProvider();
             assertFalse(cp.contentProviderNotFound());
-            verify(spy, times(2))
+            verify(spy, times(3))
                     .installPackage(Mockito.any(), Mockito.anyBoolean(), Mockito.anyBoolean());
             cp.tearDown();
         } finally {

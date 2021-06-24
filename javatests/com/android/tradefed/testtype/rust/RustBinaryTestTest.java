@@ -20,6 +20,7 @@ import static org.junit.Assert.fail;
 import com.android.ddmlib.FileListingService;
 import com.android.ddmlib.IShellOutputReceiver;
 import com.android.tradefed.config.Configuration;
+import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
@@ -49,6 +50,7 @@ public class RustBinaryTestTest {
     private RustBinaryTest mRustBinaryTest;
     private TestInformation mTestInfo;
     private Configuration mConfiguration;
+    private OptionSetter mOptionsSetter;
     private CoverageOptions mCoverageOptions;
     private OptionSetter mCoverageOptionsSetter;
 
@@ -65,7 +67,7 @@ public class RustBinaryTestTest {
                 new RustBinaryTest() {
                     @Override
                     IShellOutputReceiver createParser(
-                            ITestInvocationListener listener, String runName) {
+                            ITestInvocationListener listener, String runName, boolean isBenchmark) {
                         return mMockReceiver;
                     }
                 };
@@ -73,6 +75,7 @@ public class RustBinaryTestTest {
         InvocationContext context = new InvocationContext();
         context.addAllocatedDevice("device", mMockITestDevice);
         mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
+        mOptionsSetter = new OptionSetter(mRustBinaryTest);
 
         // Set up the coverage options
         mConfiguration = new Configuration("", "");
@@ -101,6 +104,10 @@ public class RustBinaryTestTest {
         return RustBinaryHostTestTest.runListOutput(tests);
     }
 
+    private String runListBenchmarksOutput(int numTests) {
+        return RustBinaryHostTestTest.runListBenchmarksOutput(numTests);
+    }
+
     /** Add mocked Call "path --list" to count the number of tests. */
     private void mockCountTests(String path, String result) throws DeviceNotAvailableException {
         mockCountTests(path, result, "");
@@ -116,6 +123,15 @@ public class RustBinaryTestTest {
             cmd += " " + flags;
         }
         EasyMock.expect(mMockITestDevice.executeShellCommand(cmd + " --list")).andReturn(result);
+    }
+
+    /** Add mocked Call "path --list --bench" to count the number of tests. */
+    private void mockCountBenchmarks(String path, String result)
+            throws DeviceNotAvailableException {
+        EasyMock.expect(
+                        mMockITestDevice.executeShellCommand(
+                                EasyMock.contains(path + " --bench --color never --list")))
+                .andReturn(result);
     }
 
     /** Add mocked call to testRunStarted. */
@@ -417,6 +433,40 @@ public class RustBinaryTestTest {
         mockCountTests(testPath1, runListOutput(42), "--option");
         mockTestRunStarted("test1", 42);
         mockShellCommand(testPath1 + " --option");
+        mockTestRunEnded();
+        callReplayRunVerify();
+    }
+
+    /** Test the benchmark run for a couple tests */
+    @Test
+    public void testRun_benchmark() throws ConfigurationException, DeviceNotAvailableException {
+        final String testPath = RustBinaryTest.DEFAULT_TEST_PATH;
+        final String test1 = "test1";
+        final String test2 = "test2";
+        final String testPath1 = String.format("%s/%s", testPath, test1);
+        final String testPath2 = String.format("%s/%s", testPath, test2);
+        final String[] files = new String[] {test1, test2};
+
+        mOptionsSetter.setOptionValue("is-benchmark", "true");
+
+        // Find files
+        MockFileUtil.setMockDirContents(mMockITestDevice, testPath, test1, test2);
+        EasyMock.expect(mMockITestDevice.doesFileExist(testPath)).andReturn(true);
+        EasyMock.expect(mMockITestDevice.isDirectory(testPath)).andReturn(true);
+        EasyMock.expect(mMockITestDevice.getChildren(testPath)).andReturn(files);
+        EasyMock.expect(mMockITestDevice.isDirectory(testPath1)).andReturn(false);
+        EasyMock.expect(mMockITestDevice.isExecutable(testPath1)).andReturn(true);
+        EasyMock.expect(mMockITestDevice.isDirectory(testPath2)).andReturn(false);
+        EasyMock.expect(mMockITestDevice.isExecutable(testPath2)).andReturn(true);
+
+        mockCountBenchmarks(testPath1, runListBenchmarksOutput(3));
+        mockTestRunStarted("test1", 3);
+        mockShellCommand(test1);
+        mockTestRunEnded();
+
+        mockCountBenchmarks(testPath2, runListBenchmarksOutput(7));
+        mockTestRunStarted("test2", 7);
+        mockShellCommand(test2);
         mockTestRunEnded();
         callReplayRunVerify();
     }

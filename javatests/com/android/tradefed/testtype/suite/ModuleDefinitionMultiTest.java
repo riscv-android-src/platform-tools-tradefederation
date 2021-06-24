@@ -15,6 +15,7 @@
  */
 package com.android.tradefed.testtype.suite;
 
+import com.android.ddmlib.IDevice;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationDef;
@@ -65,7 +66,7 @@ public class ModuleDefinitionMultiTest {
     private IConfiguration mMultiDeviceConfiguration;
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
         mMultiDeviceConfiguration = new Configuration("name", "description");
         List<IDeviceConfiguration> deviceConfigList = new ArrayList<>();
         deviceConfigList.add(new DeviceConfigurationHolder(DEVICE_NAME_1));
@@ -73,7 +74,11 @@ public class ModuleDefinitionMultiTest {
         mMultiDeviceConfiguration.setDeviceConfigList(deviceConfigList);
 
         mDevice1 = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(mDevice1.getDeviceDate()).andReturn(0L).anyTimes();
+        EasyMock.expect(mDevice1.getIDevice()).andStubReturn(EasyMock.createMock(IDevice.class));
         mDevice2 = EasyMock.createMock(ITestDevice.class);
+        EasyMock.expect(mDevice2.getDeviceDate()).andReturn(0L).anyTimes();
+        EasyMock.expect(mDevice2.getIDevice()).andStubReturn(EasyMock.createMock(IDevice.class));
         mBuildInfo1 = EasyMock.createMock(IBuildInfo.class);
         mBuildInfo2 = EasyMock.createMock(IBuildInfo.class);
 

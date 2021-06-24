@@ -32,6 +32,8 @@ import static org.junit.Assert.fail;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
 
+import com.android.incfs.install.IncrementalInstallSession;
+import com.android.incfs.install.IncrementalInstallSession.Builder;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.config.ConfigurationException;
@@ -74,7 +76,9 @@ public class TestAppInstallSetupTest {
     private static final String SERIAL = "SERIAL";
     private static final String PACKAGE_NAME = "PACKAGE_NAME";
     private static final String APK_NAME = "fakeApk.apk";
+    private static final String APK_NAME_SIGNATURE = "fakeApk.apk.idsig";
     private File fakeApk;
+    private File fakeApkSignature;
     private File fakeApk2;
     private File mFakeBuildApk;
     private AaptParser mMockAaptParser;
@@ -82,6 +86,8 @@ public class TestAppInstallSetupTest {
     private TestInformation mTestInfo;
     private IDeviceBuildInfo mMockBuildInfo;
     private ITestDevice mMockTestDevice;
+    private IncrementalInstallSession.Builder mMockIncrementalInstallSessionBuilder;
+    private IncrementalInstallSession mMockIncrementalInstallSession;
     private File mTestDir;
     private File mBuildTestDir;
     private File mTemporaryFolder;
@@ -95,8 +101,11 @@ public class TestAppInstallSetupTest {
         mTemporaryFolder = FileUtil.createTempDir("TestAppInstallSetupTest-tmp");
         // fake hierarchy of directory and files
         fakeApk = FileUtil.createTempFile("fakeApk", ".apk", mTestDir);
+        fakeApkSignature = FileUtil.createTempFile("fakeApk", ".apk.idsig", mTestDir);
         FileUtil.copyFile(fakeApk, new File(mTestDir, APK_NAME));
+        FileUtil.copyFile(fakeApkSignature, new File(mTestDir, APK_NAME_SIGNATURE));
         fakeApk = new File(mTestDir, APK_NAME);
+        fakeApkSignature = new File(mTestDir, APK_NAME_SIGNATURE);
         fakeApk2 = FileUtil.createTempFile("fakeApk", ".apk", mTestDir);
 
         mFakeBuildApk = FileUtil.createTempFile("fakeApk", ".apk", mBuildTestDir);
@@ -137,6 +146,9 @@ public class TestAppInstallSetupTest {
         mMockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
         mMockAaptParser = Mockito.mock(AaptParser.class);
         mMockTestDevice = EasyMock.createMock(ITestDevice.class);
+        mMockIncrementalInstallSessionBuilder =
+                Mockito.mock(IncrementalInstallSession.Builder.class);
+        mMockIncrementalInstallSession = Mockito.mock(IncrementalInstallSession.class);
         EasyMock.expect(mMockTestDevice.getSerialNumber()).andStubReturn(SERIAL);
         EasyMock.expect(mMockTestDevice.getDeviceDescriptor()).andStubReturn(null);
         EasyMock.expect(mMockTestDevice.isAppEnumerationSupported()).andStubReturn(false);
@@ -331,6 +343,169 @@ public class TestAppInstallSetupTest {
         mPrep.setForceQueryable(false);
         mPrep.setUp(mTestInfo);
         EasyMock.verify(mMockBuildInfo, mMockTestDevice);
+    }
+
+    /**
+     * Tests that the APKs to be installed will be added to the IncrementalInstallSession Builder
+     * object if the "incremental" option is true.
+     */
+    @Test
+    public void testSetup_installIncrementalAddPackages() throws Exception {
+        mPrep =
+                new TestAppInstallSetup() {
+                    @Override
+                    protected String parsePackageName(
+                            File testAppFile, DeviceDescriptor deviceDescriptor) {
+                        return PACKAGE_NAME;
+                    }
+
+                    @Override
+                    protected File getLocalPathForFilename(
+                            TestInformation testInfo, String apkFileName) throws TargetSetupError {
+                        if (fakeApk != null && apkFileName.equals(fakeApk.getName())) {
+                            return fakeApk;
+                        }
+                        if (fakeApk2 != null && apkFileName.equals(fakeApk2.getName())) {
+                            return fakeApk2;
+                        }
+                        return null;
+                    }
+
+                    @Override
+                    protected Builder getIncrementalInstallSessionBuilder() {
+                        return mMockIncrementalInstallSessionBuilder;
+                    }
+
+                    @Override
+                    protected void installPackageIncrementally(Builder builder)
+                            throws TargetSetupError {
+                        try {
+                            incrementalInstallSession =
+                                    mMockIncrementalInstallSessionBuilder.build();
+                        } catch (IOException e) {
+                            throw new TargetSetupError(
+                                    String.format("Failed to start incremental install session."),
+                                    e);
+                        }
+                    }
+                };
+
+        OptionSetter setter = new OptionSetter(mPrep);
+        setter.setOptionValue("incremental", "true");
+        setter.setOptionValue("test-file-name", APK_NAME);
+
+        EasyMock.replay(mMockTestDevice, mMockBuildInfo);
+        mPrep.setUp(mTestInfo);
+        EasyMock.verify(mMockTestDevice, mMockBuildInfo);
+        Mockito.verify(mMockIncrementalInstallSessionBuilder)
+                .addApk(fakeApk.toPath(), fakeApkSignature.toPath());
+    }
+
+    /**
+     * Test {@link TestAppInstallSetup#setUp(TestInformation)} with a missing v4 signature file
+     * under incremental installation. TargetSetupError expected.
+     */
+    @Test
+    public void testSetup_installIncrementalMissingSignature() throws Exception {
+        final String failure = "Unable to retrieve v4 signature for file:";
+        fakeApkSignature.delete(); // APK cannot be read.
+        mPrep =
+                new TestAppInstallSetup() {
+                    @Override
+                    protected String parsePackageName(
+                            File testAppFile, DeviceDescriptor deviceDescriptor) {
+                        return PACKAGE_NAME;
+                    }
+
+                    @Override
+                    protected File getLocalPathForFilename(
+                            TestInformation testInfo, String apkFileName) throws TargetSetupError {
+                        if (fakeApk != null && apkFileName.equals(fakeApk.getName())) {
+                            return fakeApk;
+                        }
+                        if (fakeApk2 != null && apkFileName.equals(fakeApk2.getName())) {
+                            return fakeApk2;
+                        }
+                        return null;
+                    }
+
+                    @Override
+                    protected void installPackageIncrementally(Builder builder)
+                            throws TargetSetupError {
+                        try {
+                            incrementalInstallSession =
+                                    mMockIncrementalInstallSessionBuilder.build();
+                        } catch (IOException e) {
+                            throw new TargetSetupError(
+                                    String.format("Failed to start incremental install session."),
+                                    e);
+                        }
+                    }
+                };
+
+        OptionSetter setter = new OptionSetter(mPrep);
+        setter.setOptionValue("incremental", "true");
+        setter.setOptionValue("test-file-name", APK_NAME);
+
+        EasyMock.replay(mMockTestDevice, mMockBuildInfo);
+        try {
+            mPrep.setUp(mTestInfo);
+            fail("Expected TargetSetupError");
+        } catch (TargetSetupError e) {
+            assertThat(e).hasMessageThat().contains(APK_NAME);
+            assertThat(e).hasMessageThat().contains(failure);
+        }
+        EasyMock.verify(mMockTestDevice, mMockBuildInfo);
+    }
+
+    /**
+     * Tests that the IncrementalInstallSession is built after Builder object is configured under
+     * the incremental installation option.
+     */
+    @Test
+    public void testSetup_installIncrementalSessionIsBuilt() throws Exception {
+        mPrep =
+                new TestAppInstallSetup() {
+                    @Override
+                    protected String parsePackageName(
+                            File testAppFile, DeviceDescriptor deviceDescriptor) {
+                        return PACKAGE_NAME;
+                    }
+
+                    @Override
+                    protected File getLocalPathForFilename(
+                            TestInformation testInfo, String apkFileName) throws TargetSetupError {
+                        if (fakeApk != null && apkFileName.equals(fakeApk.getName())) {
+                            return fakeApk;
+                        }
+                        if (fakeApk2 != null && apkFileName.equals(fakeApk2.getName())) {
+                            return fakeApk2;
+                        }
+                        return null;
+                    }
+
+                    @Override
+                    protected void installPackageIncrementally(Builder builder)
+                            throws TargetSetupError {
+                        try {
+                            incrementalInstallSession =
+                                    mMockIncrementalInstallSessionBuilder.build();
+                        } catch (IOException e) {
+                            throw new TargetSetupError(
+                                    String.format("Failed to start incremental install session."),
+                                    e);
+                        }
+                    }
+                };
+
+        OptionSetter setter = new OptionSetter(mPrep);
+        setter.setOptionValue("incremental", "true");
+        setter.setOptionValue("test-file-name", APK_NAME);
+
+        EasyMock.replay(mMockTestDevice, mMockBuildInfo);
+        mPrep.setUp(mTestInfo);
+        EasyMock.verify(mMockTestDevice, mMockBuildInfo);
+        Mockito.verify(mMockIncrementalInstallSessionBuilder).build();
     }
 
     @Test

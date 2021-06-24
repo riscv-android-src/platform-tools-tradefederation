@@ -30,6 +30,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -38,6 +39,7 @@ import java.util.List;
 public class TarUtilTest {
 
     private static final String EMMA_METADATA_RESOURCE_PATH = "/testdata/LOG.tar.gz";
+    private static final String TAR_ENTRY_NAME = "TEST.log";
     private File mWorkDir;
 
     @Before
@@ -102,6 +104,41 @@ public class TarUtilTest {
             Assert.assertTrue(testFile.exists());
             List<File> untaredList = TarUtil.unTar(testFile, mWorkDir);
             Assert.assertEquals(2, untaredList.size());
+        } finally {
+            FileUtil.deleteFile(logTarGzFile);
+        }
+    }
+
+    /** Test that {TarUtil#unTar(File, File, Collection<String>)} can untar properly a tar file. */
+    @Test
+    public void testUnTar_withFileNames() throws IOException {
+        InputStream logTarGz = getClass().getResourceAsStream(EMMA_METADATA_RESOURCE_PATH);
+        File logTarGzFile = FileUtil.createTempFile("log_tarutil_test", ".tar.gz");
+        try {
+            FileUtil.writeToFile(logTarGz, logTarGzFile);
+            File testFile = TarUtil.unGzip(logTarGzFile, mWorkDir);
+            Assert.assertTrue(testFile.exists());
+            List<File> untaredList =
+                    TarUtil.unTar(testFile, mWorkDir, Arrays.asList(TAR_ENTRY_NAME));
+            Assert.assertEquals(Arrays.asList(new File(mWorkDir, TAR_ENTRY_NAME)), untaredList);
+        } finally {
+            FileUtil.deleteFile(logTarGzFile);
+        }
+    }
+
+    /** Test that {TarUtil#unTar(File, File, Collection<String>)} can untar properly a tar file. */
+    @Test
+    public void testUnTar_withFileNamesNotFound() throws IOException {
+        InputStream logTarGz = getClass().getResourceAsStream(EMMA_METADATA_RESOURCE_PATH);
+        File logTarGzFile = FileUtil.createTempFile("log_tarutil_test", ".tar.gz");
+        try {
+            FileUtil.writeToFile(logTarGz, logTarGzFile);
+            File testFile = TarUtil.unGzip(logTarGzFile, mWorkDir);
+            Assert.assertTrue(testFile.exists());
+            TarUtil.unTar(testFile, mWorkDir, Arrays.asList("NOT_EXIST"));
+            Assert.fail("Expect unTar to throw an exception.");
+        } catch (IOException e) {
+            Assert.assertTrue(e.getMessage().endsWith("NOT_EXIST"));
         } finally {
             FileUtil.deleteFile(logTarGzFile);
         }

@@ -23,6 +23,7 @@ import static org.mockito.MockitoAnnotations.initMocks;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.DataType;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.postprocessor.PerfettoGenericPostProcessor.METRIC_FILE_FORMAT;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -447,6 +448,14 @@ public class PerfettoGenericPostProcessorTest {
         if (null != metricProtoFile) {
             metricProtoFile.delete();
         }
+    }
+
+    /**
+     * Test the default metric type is set to RAW.
+     */
+    @Test
+    public void testMetricTypeIsRaw() {
+        assertTrue(mProcessor.getMetricType().equals(DataType.RAW));
     }
 
     /**

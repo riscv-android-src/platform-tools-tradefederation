@@ -156,14 +156,14 @@ public class SandboxConfigDump {
                 config.dumpXml(
                         pw,
                         new ArrayList<>(VERSIONED_ELEMENTS),
-                        true, /* Don't print unchanged options */
-                        false);
+                        true,
+                        /* Don't print unchanged options */ false);
             } else if (DumpCmd.STRICT_TEST.equals(cmd)) {
                 config.dumpXml(
                         pw,
                         new ArrayList<>(NON_TEST_ELEMENTS),
-                        true, /* Don't print unchanged options */
-                        true);
+                        true,
+                        /* Don't print unchanged options */ false);
             } else {
                 // FULL_XML in that case.
                 config.dumpXml(pw);

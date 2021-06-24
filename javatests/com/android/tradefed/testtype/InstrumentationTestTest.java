@@ -439,7 +439,9 @@ public class InstrumentationTestTest {
         inOrder.verify(mMockListener).testEnded(eq(TEST1), anyLong(), eq(EMPTY_STRING_MAP));
         FailureDescription error1 =
                 FailureDescription.create(
-                        "Test run failed to complete", FailureStatus.TEST_FAILURE);
+                        "Detected device offline causing instrumentation error: Test run failed to"
+                                + " complete",
+                        FailureStatus.TEST_FAILURE);
         error1.setDebugHelpMessage("The following tests didn't run: [Test#test2]");
         inOrder.verify(mMockListener).testRunFailed(error1);
         inOrder.verify(mMockListener).testRunEnded(1, EMPTY_STRING_MAP);

@@ -33,6 +33,7 @@ import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.TestDeviceOptions;
+import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.host.IHostOptions;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
@@ -190,8 +191,8 @@ public class DeviceFlashPreparerTest {
         try {
             EasyMock.replay(mMockDevice);
             mDeviceFlashPreparer.setUp(mTestInfo);
-            fail("IllegalArgumentException not thrown");
-        } catch (IllegalArgumentException e) {
+            fail("HarnessRuntimeException not thrown");
+        } catch (HarnessRuntimeException e) {
             // expected
         }
         EasyMock.verify(mMockDevice);

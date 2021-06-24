@@ -20,6 +20,7 @@ import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.proxy.AutomatedReporters;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.ErrorIdentifier;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.sandbox.SandboxConfigDump.DumpCmd;
 import com.android.tradefed.util.CommandResult;
@@ -113,8 +114,11 @@ public class SandboxConfigUtil {
                     String.format(" Timed out after %s.", TimeUtil.formatElapsedTime(DUMP_TIMEOUT));
         }
         errorMessage += String.format(" stderr: %s", result.getStderr());
-        throw new SandboxConfigurationException(
-                errorMessage, InfraErrorIdentifier.INTERNAL_CONFIG_ERROR);
+        ErrorIdentifier error = InfraErrorIdentifier.INTERNAL_CONFIG_ERROR;
+        if (result.getStderr().contains(InfraErrorIdentifier.KEYSTORE_CONFIG_ERROR.name())) {
+            error = InfraErrorIdentifier.KEYSTORE_CONFIG_ERROR;
+        }
+        throw new SandboxConfigurationException(errorMessage, error);
     }
 
     /**

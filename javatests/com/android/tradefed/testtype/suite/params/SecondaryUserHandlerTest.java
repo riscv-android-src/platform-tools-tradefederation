@@ -18,12 +18,9 @@ package com.android.tradefed.testtype.suite.params;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import android.platform.test.annotations.SystemUserOnly;
-
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.targetprep.CreateUserPreparer;
-import com.android.tradefed.testtype.suite.params.InstantAppHandlerTest.TestFilterable;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -47,14 +44,15 @@ public class SecondaryUserHandlerTest {
     @Test
     public void testApplySetup() {
         TestFilterable test = new TestFilterable();
-        assertEquals(0, test.mReceivedFiltered.size());
+        assertEquals(0, test.getExcludeAnnotations().size());
         mModuleConfig.setTest(test);
         mHandler.applySetup(mModuleConfig);
 
         // User zero is filtered
-        assertEquals(1, test.mReceivedFiltered.size());
+        assertEquals(1, test.getExcludeAnnotations().size());
         assertEquals(
-                SystemUserOnly.class.getCanonicalName(), test.mReceivedFiltered.iterator().next());
+                "android.platform.test.annotations.SystemUserOnly",
+                test.getExcludeAnnotations().iterator().next());
     }
 
     /**
