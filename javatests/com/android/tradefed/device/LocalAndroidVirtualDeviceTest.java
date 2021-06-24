@@ -48,6 +48,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.zip.GZIPOutputStream;
 
 /** Unit tests for {@link LocalAndroidVirtualDevice}. */
@@ -138,6 +140,7 @@ public class LocalAndroidVirtualDeviceTest {
     private File mAcloud;
     private File mImageZip;
     private File mHostPackageTarGzip;
+    private File mBootImageZip;
     private File mSystemImageZip;
     private File mOtaToolsZip;
 
@@ -153,6 +156,7 @@ public class LocalAndroidVirtualDeviceTest {
         mImageZip = ZipUtil.createZip(new ArrayList<File>());
         mHostPackageTarGzip = FileUtil.createTempFile("cvd-host_package", ".tar.gz");
         createHostPackage(mHostPackageTarGzip);
+        mBootImageZip = null;
         mSystemImageZip = null;
         mOtaToolsZip = null;
 
@@ -167,6 +171,8 @@ public class LocalAndroidVirtualDeviceTest {
                                 switch ((String) EasyMock.getCurrentArguments()[0]) {
                                     case "cvd-host_package.tar.gz":
                                         return mHostPackageTarGzip;
+                                    case "boot-img.zip":
+                                        return mBootImageZip;
                                     case "system-img.zip":
                                         return mSystemImageZip;
                                     case "otatools.zip":
@@ -195,9 +201,11 @@ public class LocalAndroidVirtualDeviceTest {
         options.getGceDriverParams().add("-test");
     }
 
-    private void setUpSystemImageZip() throws IOException {
-        mSystemImageZip = ZipUtil.createZip(new ArrayList<File>());
-        mOtaToolsZip = ZipUtil.createZip(new ArrayList<File>());
+    private void setUpExtraZips() throws IOException {
+        ArrayList<File> empty = new ArrayList<File>();
+        mBootImageZip = ZipUtil.createZip(empty);
+        mSystemImageZip = ZipUtil.createZip(empty);
+        mOtaToolsZip = ZipUtil.createZip(empty);
     }
 
     @After
@@ -210,11 +218,13 @@ public class LocalAndroidVirtualDeviceTest {
         FileUtil.deleteFile(mAcloud);
         FileUtil.deleteFile(mImageZip);
         FileUtil.deleteFile(mHostPackageTarGzip);
+        FileUtil.deleteFile(mBootImageZip);
         FileUtil.deleteFile(mSystemImageZip);
         FileUtil.deleteFile(mOtaToolsZip);
         mAcloud = null;
         mImageZip = null;
         mHostPackageTarGzip = null;
+        mBootImageZip = null;
         mSystemImageZip = null;
         mOtaToolsZip = null;
     }
@@ -290,12 +300,13 @@ public class LocalAndroidVirtualDeviceTest {
         return runUtil;
     }
 
-    private IRunUtil mockAcloudCreateWithSystemImageDir(
+    private IRunUtil mockAcloudCreateWithExtraDirs(
             IAnswer<CommandResult> answer,
             Capture<String> reportFile,
             Capture<String> hostPackageDir,
             Capture<String> imageDir,
             Capture<String> instanceDir,
+            Capture<String> bootImageDir,
             Capture<String> systemImageDir,
             Capture<String> otaToolsDir) {
         IRunUtil runUtil = EasyMock.createMock(IRunUtil.class);
@@ -318,6 +329,8 @@ public class LocalAndroidVirtualDeviceTest {
                                 EasyMock.eq("--no-autoconnect"),
                                 EasyMock.eq("--yes"),
                                 EasyMock.eq("--skip-pre-run-check"),
+                                EasyMock.eq("--local-boot-image"),
+                                EasyMock.capture(bootImageDir),
                                 EasyMock.eq("--local-system-image"),
                                 EasyMock.capture(systemImageDir),
                                 EasyMock.eq("--local-tool"),
@@ -388,23 +401,33 @@ public class LocalAndroidVirtualDeviceTest {
     @Test
     public void testPreinvocationSetupSuccess()
             throws DeviceNotAvailableException, IOException, TargetSetupError {
-        setUpSystemImageZip();
+        setUpExtraZips();
 
         Capture<String> reportFile = new Capture<String>();
         Capture<String> hostPackageDir = new Capture<String>();
         Capture<String> imageDir = new Capture<String>();
         Capture<String> instanceDir = new Capture<String>();
+        Capture<String> bootImageDir = new Capture<String>();
         Capture<String> systemImageDir = new Capture<String>();
         Capture<String> otaToolsDir = new Capture<String>();
         IRunUtil acloudCreateRunUtil =
-                mockAcloudCreateWithSystemImageDir(
+                mockAcloudCreateWithExtraDirs(
                         writeToReportFile(CommandStatus.SUCCESS, SUCCESS_REPORT_STRING),
                         reportFile,
                         hostPackageDir,
                         imageDir,
                         instanceDir,
+                        bootImageDir,
                         systemImageDir,
                         otaToolsDir);
+        // Map the names shown in error message to the captured arguments.
+        Map<String, Capture<String>> captureDirs = new HashMap<>();
+        captureDirs.put("hostPackageDir", hostPackageDir);
+        captureDirs.put("imageDir", imageDir);
+        captureDirs.put("instanceDir", instanceDir);
+        captureDirs.put("bootImageDir", bootImageDir);
+        captureDirs.put("systemImageDir", systemImageDir);
+        captureDirs.put("otaToolsDir", otaToolsDir);
 
         IRunUtil acloudDeleteRunUtil = mockAcloudDelete(CommandStatus.SUCCESS);
 
@@ -421,15 +444,13 @@ public class LocalAndroidVirtualDeviceTest {
         Assert.assertEquals(ONLINE_SERIAL_NUMBER, mLocalAvd.getIDevice().getSerialNumber());
 
         EasyMock.verify(acloudCreateRunUtil);
-        File capturedHostPackageDir = new File(hostPackageDir.getValue());
-        File capturedImageDir = new File(imageDir.getValue());
-        File capturedInstanceDir = new File(instanceDir.getValue());
-        Assert.assertTrue(capturedHostPackageDir.isDirectory());
-        Assert.assertTrue(capturedImageDir.isDirectory());
-        Assert.assertTrue(capturedInstanceDir.isDirectory());
+        for (Map.Entry<String, Capture<String>> entry : captureDirs.entrySet()) {
+            File capturedDir = new File(entry.getValue().getValue());
+            Assert.assertTrue(entry.getKey() + " is not a directory.", capturedDir.isDirectory());
+        }
 
         // Create the logs and configuration that the local AVD object expects.
-        File runtimeDir = new File(capturedInstanceDir, "cuttlefish_runtime");
+        File runtimeDir = new File(instanceDir.getValue(), "cuttlefish_runtime");
         Assert.assertTrue(runtimeDir.mkdirs());
         createEmptyFiles(
                 runtimeDir, "kernel.log", "logcat", "launcher.log", "cuttlefish_config.json");
@@ -443,9 +464,10 @@ public class LocalAndroidVirtualDeviceTest {
 
         EasyMock.verify(acloudDeleteRunUtil, testLogger);
         Assert.assertFalse(new File(reportFile.getValue()).exists());
-        Assert.assertFalse(capturedHostPackageDir.exists());
-        Assert.assertFalse(capturedImageDir.exists());
-        Assert.assertFalse(capturedInstanceDir.exists());
+        for (Map.Entry<String, Capture<String>> entry : captureDirs.entrySet()) {
+            File capturedDir = new File(entry.getValue().getValue());
+            Assert.assertFalse(entry.getKey() + " is not deleted.", capturedDir.exists());
+        }
     }
 
     /** Test shutting down the device during the invocation. */
