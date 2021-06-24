@@ -1659,6 +1659,18 @@ public class NativeDevice implements IManagedTestDevice {
     public boolean pushDir(
             File localFileDir, String deviceFilePath, Set<String> excludedDirectories)
             throws DeviceNotAvailableException {
+        if (isSdcardOrEmulated(deviceFilePath)) {
+            ContentProviderHandler handler = getContentProvider();
+            if (handler != null) {
+                return handler.pushDir(localFileDir, deviceFilePath, excludedDirectories);
+            }
+        }
+        return pushDirInternal(localFileDir, deviceFilePath, excludedDirectories);
+    }
+
+    private boolean pushDirInternal(
+            File localFileDir, String deviceFilePath, Set<String> excludedDirectories)
+            throws DeviceNotAvailableException {
         if (!localFileDir.isDirectory()) {
             CLog.e("file %s is not a directory", localFileDir.getAbsolutePath());
             return false;
@@ -1667,12 +1679,6 @@ public class NativeDevice implements IManagedTestDevice {
         if (childFiles == null) {
             CLog.e("Could not read files in %s", localFileDir.getAbsolutePath());
             return false;
-        }
-        if (isSdcardOrEmulated(deviceFilePath)) {
-            ContentProviderHandler handler = getContentProvider();
-            if (handler != null) {
-                return handler.pushDir(localFileDir, deviceFilePath, excludedDirectories);
-            }
         }
         for (File childFile : childFiles) {
             String remotePath = String.format("%s/%s", deviceFilePath, childFile.getName());
@@ -1685,7 +1691,7 @@ public class NativeDevice implements IManagedTestDevice {
                     continue;
                 }
                 executeShellCommand(String.format("mkdir -p \"%s\"", remotePath));
-                if (!pushDir(childFile, remotePath, excludedDirectories)) {
+                if (!pushDirInternal(childFile, remotePath, excludedDirectories)) {
                     return false;
                 }
             } else if (childFile.isFile()) {

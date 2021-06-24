@@ -205,6 +205,7 @@ public class ModuleDefinitionTest {
         private int mRepeatedRun;
         private int mFailedTest;
         private Set<String> mIncludeFilters;
+        private Set<String> mExcludeFilters;
 
         public MultiRunTestObject(
                 String baseRunName, int numTest, int repeatedRun, int failedTest) {
@@ -213,6 +214,7 @@ public class ModuleDefinitionTest {
             mRepeatedRun = repeatedRun;
             mFailedTest = failedTest;
             mIncludeFilters = new LinkedHashSet<>();
+            mExcludeFilters = new LinkedHashSet<>();
         }
 
         @Override
@@ -221,14 +223,18 @@ public class ModuleDefinitionTest {
             // The runner generates several set of different runs.
             for (int j = 0; j < mRepeatedRun; j++) {
                 String runName = mBaseRunName + j;
-                if (mIncludeFilters.isEmpty()) {
+                if (mIncludeFilters.isEmpty() && mExcludeFilters.isEmpty()) {
                     listener.testRunStarted(runName, mNumTest);
                 } else {
-                    listener.testRunStarted(runName, mIncludeFilters.size() / mRepeatedRun);
+                    int size = (mNumTest * mRepeatedRun) - mExcludeFilters.size();
+                    listener.testRunStarted(runName, size / mRepeatedRun);
                 }
                 for (int i = 0; i < mNumTest - mFailedTest; i++) {
                     // TODO: Store the list of expected test cases to verify against it.
                     TestDescription test = new TestDescription(runName + "class", "test" + i);
+                    if (mExcludeFilters.contains(test.toString())) {
+                        continue;
+                    }
                     if (!mIncludeFilters.isEmpty() && !mIncludeFilters.contains(test.toString())) {
                         continue;
                     }
@@ -237,6 +243,9 @@ public class ModuleDefinitionTest {
                 }
                 for (int i = 0; i < mFailedTest; i++) {
                     TestDescription test = new TestDescription(runName + "class", "fail" + i);
+                    if (mExcludeFilters.contains(test.toString())) {
+                        continue;
+                    }
                     if (!mIncludeFilters.isEmpty() && !mIncludeFilters.contains(test.toString())) {
                         continue;
                     }
@@ -261,10 +270,14 @@ public class ModuleDefinitionTest {
         }
 
         @Override
-        public void addExcludeFilter(String filter) {}
+        public void addExcludeFilter(String filter) {
+            mExcludeFilters.add(filter);
+        }
 
         @Override
-        public void addAllExcludeFilters(Set<String> filters) {}
+        public void addAllExcludeFilters(Set<String> filters) {
+            mExcludeFilters.addAll(filters);
+        }
 
         @Override
         public Set<String> getIncludeFilters() {

@@ -118,7 +118,7 @@ public class BaseRetryDecision implements IRetryDecision, IConfigurationReceiver
     @Option(
             name = "updated-filtering",
             description = "Feature flag to use the updated filtering logic.")
-    private boolean mUpdatedFiltering = false;
+    private boolean mUpdatedFiltering = true;
 
     private IInvocationContext mContext;
     private IConfiguration mConfiguration;
@@ -348,6 +348,7 @@ public class BaseRetryDecision implements IRetryDecision, IConfigurationReceiver
             }
             Set<TestDescription> previouslyPassedTests = getPassedTestCases(previousResults);
             excludePassedTests(test, previouslyPassedTests);
+            excludeNonRetriableFailure(test, previousFailedTests);
             return true;
         } else if (!runFailures.isEmpty()) {
             if (shouldFullRerun(runFailures)) {
@@ -437,6 +438,19 @@ public class BaseRetryDecision implements IRetryDecision, IConfigurationReceiver
         for (TestDescription testCase : passedTests) {
             String filter = String.format("%s#%s", testCase.getClassName(), testCase.getTestName());
             test.addExcludeFilter(filter);
+        }
+    }
+
+    private void excludeNonRetriableFailure(
+          ITestFilterReceiver test, Map<TestDescription, TestResult> previousFailedTests) {
+        for (Entry<TestDescription, TestResult> testCaseEntry : previousFailedTests.entrySet()) {
+            TestDescription testCase = testCaseEntry.getKey();
+            if (!testCaseEntry.getValue().getFailure().isRetriable()) {
+                // If a test case failure is not retriable, exclude it from the filters.
+                String filter =
+                        String.format("%s#%s", testCase.getClassName(), testCase.getTestName());
+                test.addExcludeFilter(filter);
+            }
         }
     }
 
