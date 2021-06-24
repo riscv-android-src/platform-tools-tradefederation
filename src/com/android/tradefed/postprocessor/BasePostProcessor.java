@@ -33,6 +33,7 @@ import com.android.tradefed.util.proto.TfMetricProtoUtil;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.ListMultimap;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -41,8 +42,6 @@ import java.util.Map.Entry;
 /**
  * The base {@link IPostProcessor} that every implementation should extend. Ensure that the post
  * processing methods are called before the final result reporters.
- *
- * <p>TODO: expand to file post-processing too if needed.
  */
 public abstract class BasePostProcessor implements IPostProcessor {
 
@@ -53,9 +52,18 @@ public abstract class BasePostProcessor implements IPostProcessor {
     private ArrayListMultimap<String, Metric> storedTestMetrics = ArrayListMultimap.create();
     private Map<TestDescription, Map<String, LogFile>> mTestLogs = new LinkedHashMap<>();
     private Map<String, LogFile> mRunLogs = new HashMap<>();
+
     // Keeps track of the current test; takes null value when the post processor is not in the scope
     // of any test (i.e. before the first test, in-between tests and after the last test).
     private TestDescription mCurrentTest = null;
+
+    private ILogSaver mLogSaver = null;
+
+    // Marks whether the post processor is actively post processing, which changes some event
+    // forwarding behavior.
+    private boolean mIsPostProcessing = false;
+
+    private String mRunName;
 
     /** {@inheritDoc} */
     @Override
@@ -116,8 +124,28 @@ public abstract class BasePostProcessor implements IPostProcessor {
         mForwarder.invocationEnded(elapsedTime);
     }
 
+    /** Use this method to log a file from the PostProcessor implementation. */
     @Override
     public final void testLog(String dataName, LogDataType dataType, InputStreamSource dataStream) {
+        // If currently post processing, the file should be saved; otherwise, the file should have
+        // been logged elsewhere and this call only needs to be forwarded.
+        if (mIsPostProcessing) {
+            CLog.i("Saving file with data name %s in post processor.", dataName);
+            if (mLogSaver != null) {
+                try {
+                    LogFile log =
+                            mLogSaver.saveLogData(
+                                    dataName, dataType, dataStream.createInputStream());
+                    testLogSaved(dataName, dataType, dataStream, log);
+                    logAssociation(dataName, log);
+                } catch (IOException e) {
+                    CLog.e("Failed to save log file %s.", dataName);
+                    CLog.e(e);
+                }
+            } else {
+                CLog.e("Attempting to save log in post processor when its log saver is not set.");
+            }
+        }
         mForwarder.testLog(dataName, dataType, dataStream);
     }
 
@@ -134,11 +162,13 @@ public abstract class BasePostProcessor implements IPostProcessor {
     /** Test run callbacks */
     @Override
     public final void testRunStarted(String runName, int testCount) {
+        mRunName = runName;
         mForwarder.testRunStarted(runName, testCount);
     }
 
     @Override
     public final void testRunStarted(String runName, int testCount, int attemptNumber) {
+        mRunName = runName;
         mForwarder.testRunStarted(runName, testCount, attemptNumber);
     }
 
@@ -164,6 +194,7 @@ public abstract class BasePostProcessor implements IPostProcessor {
 
     @Override
     public final void testRunEnded(long elapsedTime, HashMap<String, Metric> runMetrics) {
+        mIsPostProcessing = true;
         try {
             HashMap<String, Metric> rawValues = getRawMetricsOnly(runMetrics);
             // Add post-processed run metrics.
@@ -184,6 +215,7 @@ public abstract class BasePostProcessor implements IPostProcessor {
             mTestLogs.clear();
             mRunLogs.clear();
         }
+        mIsPostProcessing = false;
         mForwarder.testRunEnded(elapsedTime, runMetrics);
     }
 
@@ -201,7 +233,6 @@ public abstract class BasePostProcessor implements IPostProcessor {
         } else {
             mTestLogs.put(test, new HashMap<String, LogFile>());
         }
-
         mForwarder.testStarted(test, startTime);
     }
 
@@ -234,7 +265,7 @@ public abstract class BasePostProcessor implements IPostProcessor {
     @Override
     public final void testEnded(
             TestDescription test, long endTime, HashMap<String, Metric> testMetrics) {
-        mCurrentTest = null;
+        mIsPostProcessing = true;
         try {
             HashMap<String, Metric> rawValues = getRawMetricsOnly(testMetrics);
             // Store the raw metrics from the test in storedTestMetrics for potential aggregation.
@@ -268,6 +299,8 @@ public abstract class BasePostProcessor implements IPostProcessor {
             // Prevent exception from messing up the status reporting.
             CLog.e(e);
         }
+        mIsPostProcessing = false;
+        mCurrentTest = null;
         mForwarder.testEnded(test, endTime, testMetrics);
     }
 
@@ -288,6 +321,7 @@ public abstract class BasePostProcessor implements IPostProcessor {
 
     @Override
     public final void setLogSaver(ILogSaver logSaver) {
+        mLogSaver = logSaver;
         if (mForwarder instanceof ILogSaverListener) {
             ((ILogSaverListener) mForwarder).setLogSaver(logSaver);
         }
@@ -309,11 +343,14 @@ public abstract class BasePostProcessor implements IPostProcessor {
      */
     @Override
     public final void logAssociation(String dataName, LogFile logFile) {
-        // mCurrentTest is null only outside the scope of a test.
-        if (mCurrentTest != null) {
-            mTestLogs.get(mCurrentTest).put(dataName, logFile);
-        } else {
-            mRunLogs.put(dataName, logFile);
+        // Only associate files created outside of the current post processor.
+        if (!mIsPostProcessing) {
+            // mCurrentTest is null only outside the scope of a test.
+            if (mCurrentTest != null) {
+                mTestLogs.get(mCurrentTest).put(dataName, logFile);
+            } else {
+                mRunLogs.put(dataName, logFile);
+            }
         }
 
         if (mForwarder instanceof ILogSaverListener) {
@@ -363,5 +400,13 @@ public abstract class BasePostProcessor implements IPostProcessor {
      */
     protected DataType getMetricType() {
         return DataType.PROCESSED;
+    }
+
+    /*
+     * TODO: b/191168103 Remove this method after run name dependency is removed from metric file
+     * post processor.
+     */
+    protected String getRunName() {
+        return mRunName;
     }
 }

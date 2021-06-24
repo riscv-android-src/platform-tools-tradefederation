@@ -22,6 +22,9 @@ java_library_host {
     srcs: [
         "com/**/*.java",
     ],
+    java_resources: [
+        ":tradefed-isolation",
+    ],
     static_libs: [
         "diffutils-prebuilt-jar",
         "longevity-host-lib",

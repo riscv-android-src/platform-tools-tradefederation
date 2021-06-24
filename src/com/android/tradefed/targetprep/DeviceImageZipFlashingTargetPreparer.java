@@ -20,6 +20,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
@@ -103,9 +104,10 @@ public class DeviceImageZipFlashingTargetPreparer extends DeviceUpdateTargetPrep
             if (!flashingScript.exists()) {
                 throw new TargetSetupError(
                         String.format(
-                                "Flashing script \"%s\" not found inside " + "the device image zip",
+                                "Flashing script \"%s\" not found inside the device image zip",
                                 mFlashingScript),
-                        device.getDeviceDescriptor());
+                        device.getDeviceDescriptor(),
+                        InfraErrorIdentifier.CONFIGURED_ARTIFACT_NOT_FOUND);
             }
             IRunUtil runUtil = new RunUtil();
             runUtil.setEnvVariable(ANDROID_SERIAL_ENV, device.getSerialNumber());

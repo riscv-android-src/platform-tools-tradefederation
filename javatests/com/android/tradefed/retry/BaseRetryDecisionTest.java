@@ -18,9 +18,15 @@ package com.android.tradefed.retry;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import com.android.ddmlib.IDevice;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -30,6 +36,7 @@ import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFilterReceiver;
+import com.android.tradefed.testtype.InstalledInstrumentationsTest;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
 
 import org.junit.Before;
@@ -49,6 +56,8 @@ public class BaseRetryDecisionTest {
 
     private BaseRetryDecision mRetryDecision;
     private TestFilterableClass mTestClass;
+    private InstalledInstrumentationsTest mAutoRetriableClass;
+    private ITestDevice mMockDevice;
 
     private class TestFilterableClass implements IRemoteTest, ITestFilterReceiver {
 
@@ -104,9 +113,14 @@ public class BaseRetryDecisionTest {
 
     @Before
     public void setUp() throws Exception {
+        mMockDevice = Mockito.mock(ITestDevice.class);
+        mAutoRetriableClass = new InstalledInstrumentationsTest();
         mTestClass = new TestFilterableClass();
         mRetryDecision = new BaseRetryDecision();
-        mRetryDecision.setInvocationContext(new InvocationContext());
+
+        IInvocationContext context = new InvocationContext();
+        context.addAllocatedDevice("default", mMockDevice);
+        mRetryDecision.setInvocationContext(context);
         OptionSetter setter = new OptionSetter(mRetryDecision);
         setter.setOptionValue("max-testcase-run-count", "3");
         setter.setOptionValue("retry-strategy", "RETRY_ANY_FAILURE");
@@ -277,6 +291,24 @@ public class BaseRetryDecisionTest {
         result.testRunEnded(500, new HashMap<String, Metric>());
         boolean res = mRetryDecision.shouldRetry(mTestClass, 0, Arrays.asList(result));
         assertFalse(res);
+    }
+
+    @Test
+    public void testShouldRetry_autoRetriable() throws Exception {
+        OptionSetter setter = new OptionSetter(mRetryDecision);
+        setter.setOptionValue("reboot-at-last-retry", "true");
+        when(mMockDevice.getIDevice()).thenReturn(Mockito.mock(IDevice.class));
+
+        TestRunResult result = createResult(null, FailureDescription.create("failure2"));
+        boolean res = mRetryDecision.shouldRetry(mAutoRetriableClass, 0, Arrays.asList(result));
+        assertTrue(res);
+        // No reboot on first retry.
+        verify(mMockDevice, never()).reboot();
+
+        res = mRetryDecision.shouldRetry(mAutoRetriableClass, 1, Arrays.asList(result));
+        assertTrue(res);
+        // Reboot on last retry.
+        verify(mMockDevice).reboot();
     }
 
     private TestRunResult createResult(FailureDescription failure1, FailureDescription failure2) {

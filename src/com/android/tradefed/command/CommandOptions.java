@@ -24,8 +24,10 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.util.UniqueMultiMap;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -238,6 +240,26 @@ public class CommandOptions implements ICommandOptions {
             name = "report-counted-test-cases",
             description = "Whether or not to report the number of test cases per test types.")
     private boolean mCountTestCases = true;
+
+    @Option(
+            name = "report-passed-tests",
+            description = "Whether or not to report the passed tests in a file.")
+    private boolean mReportPassedTests = true;
+
+    @Option(
+            name = "filter-previous-passed",
+            description = "Feature flag to test filtering previously passed tests.")
+    private boolean mTestFilterPassed = false;
+
+    @Option(
+            name = "report-invocation-complete-logs",
+            description = "Whether or not to attempt to report the logs until invocationComplete.")
+    private boolean mReportInvocationCompleteLogs = false;
+
+    @Option(
+            name = "disable-invocation-setup-and-teardown",
+            description = "Disable the pre-invocation setup and post-invocation teardown phases.")
+    private boolean mDisableInvocationSetupAndTeardown = false;
 
     /**
      * Set the help mode for the config.
@@ -602,5 +624,47 @@ public class CommandOptions implements ICommandOptions {
     @Override
     public void setReportTestCaseCount(boolean report) {
         mCountTestCases = report;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean reportPassedTests() {
+        return mReportPassedTests;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean filterPreviousPassedTests() {
+        return mTestFilterPassed;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean reportInvocationComplete() {
+        return mReportInvocationCompleteLogs;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void setReportInvocationComplete(boolean reportInvocationCompleteLogs) {
+        mReportInvocationCompleteLogs = reportInvocationCompleteLogs;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public List<String> reportingTags() {
+        List<String> tags = new ArrayList<>();
+        // Convert a few of the enabled features into easily consumable tag that can be displayed
+        // to see if a feature is enabled.
+        if (filterPreviousPassedTests()) {
+            tags.add("incremental_retry");
+        }
+        return tags;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean shouldDisableInvocationSetupAndTeardown() {
+        return mDisableInvocationSetupAndTeardown;
     }
 }

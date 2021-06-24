@@ -41,6 +41,9 @@ public interface IRetryDecision {
     /** The maximum number of attempts during auto-retry. */
     public int getMaxRetryCount();
 
+    /** Returns true if we should use the updated reporting. */
+    public boolean useUpdatedReporting();
+
     /** Set the current invocation context. */
     public void setInvocationContext(IInvocationContext context);
 

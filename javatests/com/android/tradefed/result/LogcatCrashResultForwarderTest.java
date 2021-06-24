@@ -112,8 +112,9 @@ public class LogcatCrashResultForwarderTest {
                         .getValue()
                         .getErrorMessage()
                         .contains(
-                                "instrumentation failed. reason: 'Process crashed.'"
-                                        + "\nCrash Message:Runtime"));
+                                "instrumentation failed. reason: 'Process crashed.'\n"
+                                        + "Java Crash Messages sorted from most recent:\n"
+                                        + "Runtime"));
         assertTrue(
                 FailureStatus.SYSTEM_UNDER_TEST_CRASHED.equals(
                         captured_1.getValue().getFailureStatus()));
@@ -121,7 +122,10 @@ public class LogcatCrashResultForwarderTest {
                 captured_2
                         .getValue()
                         .getErrorMessage()
-                        .contains("Something went wrong.\nCrash Message:Runtime"));
+                        .contains(
+                                "Something went wrong.\n"
+                                        + "Java Crash Messages sorted from most recent:\n"
+                                        + "Runtime"));
     }
 
     /**
@@ -167,8 +171,9 @@ public class LogcatCrashResultForwarderTest {
                 captured.getValue()
                         .getErrorMessage()
                         .contains(
-                                "instrumentation failed. reason: 'Process crashed.'"
-                                        + "\nCrash Message:Runtime"));
+                                "instrumentation failed. reason: 'Process crashed.'\n"
+                                        + "Java Crash Messages sorted from most recent:\n"
+                                        + "Runtime"));
     }
 
     /**
@@ -216,9 +221,10 @@ public class LogcatCrashResultForwarderTest {
                         .getErrorMessage()
                         .contains(
                                 "instrumentation failed. reason: 'Process crashed.'"
-                                        + "\nCrash Message:test\njava.lang.Exception: test\n"
+                                        + "\nJava Crash Messages sorted from most recent:\ntest"
+                                        + "\njava.lang.Exception: test\n"
                                         + "\tat class.method1(Class.java:1)\n"
-                                        + "\tat class.method2(Class.java:2)\n"));
+                                        + "\tat class.method2(Class.java:2)"));
     }
 
     /** Test that test-timeout tests have failure status TIMED_OUT. */

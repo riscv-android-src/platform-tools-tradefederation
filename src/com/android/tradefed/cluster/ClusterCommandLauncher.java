@@ -45,11 +45,12 @@ import com.android.tradefed.util.StringEscapeUtils;
 import com.android.tradefed.util.StringUtil;
 import com.android.tradefed.util.SubprocessEventHelper.InvocationFailedEventInfo;
 import com.android.tradefed.util.SubprocessTestResultsParser;
-import com.android.tradefed.util.SystemUtil;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -58,6 +59,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * A {@link IRemoteTest} class to launch a command from TFC via a subprocess TF. FIXME: this needs
@@ -292,9 +295,16 @@ public class ClusterCommandLauncher
             if (jarFile.isFile()) {
                 jars.add(jarFile.getAbsolutePath());
             } else {
-                // Add a folder path to the classpath to handle class file directories.
-                jars.add(jarFile.getAbsolutePath() + "/");
-                jars.add(new File(path, "*").getAbsolutePath());
+                try (Stream<Path> walk = Files.walk(jarFile.toPath())) {
+                    List<String> result =
+                            walk.map(p -> p.toString())
+                                    .filter(f -> f.toLowerCase().endsWith(".jar"))
+                                    .collect(Collectors.toList());
+                    jars.addAll(result);
+                } catch (IOException e) {
+                    throw new RuntimeException(
+                            String.format("failed to find jars from %s", jarFile), e);
+                }
             }
         }
         if (jars.isEmpty()) {
@@ -307,7 +317,9 @@ public class ClusterCommandLauncher
     private List<String> buildJavaCommandArgs(String classpath, String tfCommandLine) {
         // Build a command line to invoke a TF process.
         final List<String> cmdArgs = new ArrayList<>();
-        cmdArgs.add(SystemUtil.getRunningJavaBinaryPath().getAbsolutePath());
+        final String javaHome = getEnvVar("JAVA_HOME", System.getProperty("java.home"));
+        final String javaPath = String.format("%s/bin/java", javaHome);
+        cmdArgs.add(javaPath);
         cmdArgs.add("-cp");
         cmdArgs.add(classpath);
         cmdArgs.addAll(mJvmOptions);

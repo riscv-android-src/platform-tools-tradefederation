@@ -47,6 +47,7 @@ import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.StreamUtil;
+import com.android.tradefed.util.IRunUtil.EnvPriority;
 
 import com.google.common.io.CharStreams;
 
@@ -83,6 +84,7 @@ public final class PythonBinaryHostTestTest {
     private File mFakeAdb;
     private File mPythonBinary;
     private File mOutputFile;
+    private File mModuleDir;
 
     @Before
     public void setUp() throws Exception {
@@ -110,8 +112,11 @@ public final class PythonBinaryHostTestTest {
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("SERIAL");
         mMockRunUtil.setEnvVariable(PythonBinaryHostTest.ANDROID_SERIAL_VAR, "SERIAL");
         mMockRunUtil.setWorkingDir(EasyMock.anyObject());
+        mMockRunUtil.setEnvVariablePriority(EnvPriority.SET);
+        mMockRunUtil.setEnvVariable(EasyMock.eq("PATH"), EasyMock.anyObject());
 
-        mPythonBinary = FileUtil.createTempFile("python-dir", "");
+        mModuleDir = FileUtil.createTempDir("python-module");
+        mPythonBinary = FileUtil.createTempFile("python-dir", "", mModuleDir);
         mTestInfo.executionFiles().put(FilesKey.HOST_TESTS_DIRECTORY, new File("/path-not-exist"));
     }
 
@@ -120,6 +125,7 @@ public final class PythonBinaryHostTestTest {
         FileUtil.deleteFile(mFakeAdb);
         FileUtil.deleteFile(mPythonBinary);
         FileUtil.deleteFile(mOutputFile);
+        FileUtil.recursiveDelete(mModuleDir);
     }
 
     /** Test that when running a python binary the output is parsed to obtain results. */
@@ -130,7 +136,7 @@ public final class PythonBinaryHostTestTest {
         try {
             OptionSetter setter = new OptionSetter(mTest);
             setter.setOptionValue("python-binaries", mPythonBinary.getAbsolutePath());
-
+            mMockRunUtil.setEnvVariable(EasyMock.eq("LD_LIBRARY_PATH"), EasyMock.anyObject());
             expectedAdbPath(mFakeAdb);
 
             CommandResult res = new CommandResult();
@@ -184,7 +190,7 @@ public final class PythonBinaryHostTestTest {
             OptionSetter setter = new OptionSetter(mTest);
             setter.setOptionValue("python-binaries", mPythonBinary.getAbsolutePath());
             mTest.addIncludeFilter("test1");
-
+            mMockRunUtil.setEnvVariable(EasyMock.eq("LD_LIBRARY_PATH"), EasyMock.anyObject());
             expectedAdbPath(mFakeAdb);
 
             CommandResult res = new CommandResult();
@@ -231,7 +237,7 @@ public final class PythonBinaryHostTestTest {
             OptionSetter setter = new OptionSetter(mTest);
             setter.setOptionValue("python-binaries", mPythonBinary.getAbsolutePath());
             mTest.addIncludeFilter("__main__.Class1#test_1");
-
+            mMockRunUtil.setEnvVariable(EasyMock.eq("LD_LIBRARY_PATH"), EasyMock.anyObject());
             expectedAdbPath(mFakeAdb);
 
             CommandResult res = new CommandResult();
@@ -305,7 +311,7 @@ public final class PythonBinaryHostTestTest {
             OptionSetter setter = new OptionSetter(mTest);
             setter.setOptionValue("python-binaries", mPythonBinary.getAbsolutePath());
             mTest.addExcludeFilter("__main__.Class1#test_1");
-
+            mMockRunUtil.setEnvVariable(EasyMock.eq("LD_LIBRARY_PATH"), EasyMock.anyObject());
             expectedAdbPath(mFakeAdb);
 
             CommandResult res = new CommandResult();
@@ -381,7 +387,7 @@ public final class PythonBinaryHostTestTest {
         try {
             OptionSetter setter = new OptionSetter(mTest);
             setter.setOptionValue("python-binaries", mPythonBinary.getAbsolutePath());
-
+            mMockRunUtil.setEnvVariable(EasyMock.eq("LD_LIBRARY_PATH"), EasyMock.anyObject());
             expectedAdbPath(new File("/test/adb"));
 
             CommandResult res = new CommandResult();
@@ -439,7 +445,11 @@ public final class PythonBinaryHostTestTest {
             setter.setOptionValue("python-binaries", binary.getAbsolutePath());
             mMockRunUtil.setEnvVariable(
                     PythonBinaryHostTest.LD_LIBRARY_PATH,
-                    lib.getAbsolutePath() + ":" + lib64.getAbsolutePath());
+                    lib.getAbsolutePath()
+                            + ":"
+                            + lib64.getAbsolutePath()
+                            + ":"
+                            + hostTestsDir.getAbsolutePath());
             expectedAdbPath(mFakeAdb);
 
             CommandResult res = new CommandResult();
@@ -497,7 +507,11 @@ public final class PythonBinaryHostTestTest {
             setter.setOptionValue("python-binaries", binary.getAbsolutePath());
             mMockRunUtil.setEnvVariable(
                     PythonBinaryHostTest.LD_LIBRARY_PATH,
-                    lib.getAbsolutePath() + ":" + lib64.getAbsolutePath());
+                    lib.getAbsolutePath()
+                            + ":"
+                            + lib64.getAbsolutePath()
+                            + ":"
+                            + testsDir.getAbsolutePath());
             expectedAdbPath(mFakeAdb);
 
             CommandResult res = new CommandResult();
@@ -546,7 +560,7 @@ public final class PythonBinaryHostTestTest {
         try {
             OptionSetter setter = new OptionSetter(mTest);
             setter.setOptionValue("python-binaries", mPythonBinary.getAbsolutePath());
-
+            mMockRunUtil.setEnvVariable(EasyMock.eq("LD_LIBRARY_PATH"), EasyMock.anyObject());
             expectedAdbPath(mFakeAdb);
 
             CommandResult res = new CommandResult();
@@ -607,7 +621,7 @@ public final class PythonBinaryHostTestTest {
         try {
             OptionSetter setter = new OptionSetter(mTest);
             setter.setOptionValue("python-binaries", mPythonBinary.getAbsolutePath());
-
+            mMockRunUtil.setEnvVariable(EasyMock.eq("LD_LIBRARY_PATH"), EasyMock.anyObject());
             expectedAdbPath(mFakeAdb);
 
             CommandResult res = new CommandResult();
@@ -648,6 +662,7 @@ public final class PythonBinaryHostTestTest {
 
     @Test
     public void testRun_useTestOutputFileOptionSet_parsesSubprocessOutputFile() throws Exception {
+        mMockRunUtil.setEnvVariable(EasyMock.eq("LD_LIBRARY_PATH"), EasyMock.anyObject());
         mMockListener = EasyMock.createNiceMock(ITestInvocationListener.class);
         mOutputFile = readInFile(PYTHON_OUTPUT_FILE_1);
         newDefaultOptionSetter(mTest).setOptionValue(USE_TEST_OUTPUT_FILE_OPTION, "true");
@@ -664,6 +679,7 @@ public final class PythonBinaryHostTestTest {
 
     @Test
     public void testRun_useTestOutputFileOptionSet_parsesUnitTestOutputFile() throws Exception {
+        mMockRunUtil.setEnvVariable(EasyMock.eq("LD_LIBRARY_PATH"), EasyMock.anyObject());
         mMockListener = EasyMock.createNiceMock(ITestInvocationListener.class);
         newDefaultOptionSetter(mTest).setOptionValue(USE_TEST_OUTPUT_FILE_OPTION, "true");
         expectRunThatWritesTestOutputFile(
@@ -684,6 +700,7 @@ public final class PythonBinaryHostTestTest {
 
     @Test
     public void testRun_useTestOutputFileOptionSet_logsErrorOutput() throws Exception {
+        mMockRunUtil.setEnvVariable(EasyMock.eq("LD_LIBRARY_PATH"), EasyMock.anyObject());
         mMockListener = EasyMock.createNiceMock(ITestInvocationListener.class);
         String errorOutput = "NOT TEST OUTPUT";
         newDefaultOptionSetter(mTest).setOptionValue(USE_TEST_OUTPUT_FILE_OPTION, "true");
@@ -701,6 +718,7 @@ public final class PythonBinaryHostTestTest {
 
     @Test
     public void testRun_useTestOutputFileOptionSet_logsTestOutput() throws Exception {
+        mMockRunUtil.setEnvVariable(EasyMock.eq("LD_LIBRARY_PATH"), EasyMock.anyObject());
         mMockListener = EasyMock.createNiceMock(ITestInvocationListener.class);
         String testOutput = "TEST_RUN_STARTED {\"testCount\": 5, \"runName\": \"TestSuite\"}";
         newDefaultOptionSetter(mTest).setOptionValue(USE_TEST_OUTPUT_FILE_OPTION, "true");
@@ -721,6 +739,7 @@ public final class PythonBinaryHostTestTest {
 
     @Test
     public void testRun_useTestOutputFileOptionSet_failureMessageContainsHints() throws Exception {
+        mMockRunUtil.setEnvVariable(EasyMock.eq("LD_LIBRARY_PATH"), EasyMock.anyObject());
         mMockListener = EasyMock.createNiceMock(ITestInvocationListener.class);
         newDefaultOptionSetter(mTest).setOptionValue(USE_TEST_OUTPUT_FILE_OPTION, "true");
         expectRunThatWritesTestOutputFile(
@@ -785,22 +804,14 @@ public final class PythonBinaryHostTestTest {
         CommandResult pathRes = new CommandResult();
         pathRes.setStatus(CommandStatus.SUCCESS);
         pathRes.setStdout("bin/");
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                PythonBinaryHostTest.PATH_TIMEOUT_MS,
-                                "/bin/bash",
-                                "-c",
-                                "echo $PATH"))
+        EasyMock.expect(mMockRunUtil.runTimedCmd(60000L, "/bin/bash", "-c", "echo $PATH"))
                 .andReturn(pathRes);
         mMockRunUtil.setEnvVariable("PATH", String.format("%s:bin/", adbPath.getParent()));
 
         CommandResult versionRes = new CommandResult();
         versionRes.setStatus(CommandStatus.SUCCESS);
         versionRes.setStdout("bin/");
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                PythonBinaryHostTest.PATH_TIMEOUT_MS, "adb", "version"))
-                .andReturn(versionRes);
+        EasyMock.expect(mMockRunUtil.runTimedCmd(60000L, "adb", "version")).andReturn(versionRes);
     }
 
     private static InputStreamSource inputStreamSourceContainsText(String text) {

@@ -29,6 +29,7 @@ import com.android.tradefed.error.IHarnessException;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.invoker.logger.CurrentInvocation;
+import com.android.tradefed.invoker.logger.CurrentInvocation.IsolationGrade;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ILogSaver;
@@ -314,6 +315,7 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
     /** The workflow for each individual {@link IRemoteTest} run. */
     private final void intraModuleRun(TestInformation testInfo, ITestInvocationListener runListener)
             throws DeviceNotAvailableException {
+        mMainGranularRunListener.setAttemptIsolation(CurrentInvocation.runCurrentIsolation());
         try {
             List<IMetricCollector> clonedCollectors = cloneCollectors(mRunMetricCollectors);
             if (mTest instanceof IMetricCollectorReceiver) {
@@ -370,6 +372,8 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
             throw dnae;
         } finally {
             mRetryAttemptForwarder.incrementAttempt();
+            // After one run, do not consider follow up isolated without action.
+            CurrentInvocation.setRunIsolation(IsolationGrade.NOT_ISOLATED);
         }
     }
 
@@ -413,8 +417,12 @@ public class GranularRetriableTestWrapper implements IRemoteTest, ITestCollector
     }
 
     private FailureDescription createFromException(Throwable exception) {
+        String message =
+                (exception.getMessage() == null)
+                        ? String.format("No error message reported for: %s", exception)
+                        : exception.getMessage();
         FailureDescription failure =
-                CurrentInvocation.createFailure(exception.getMessage(), null).setCause(exception);
+                CurrentInvocation.createFailure(message, null).setCause(exception);
         if (exception instanceof IHarnessException) {
             ErrorIdentifier id = ((IHarnessException) exception).getErrorId();
             failure.setErrorIdentifier(id);

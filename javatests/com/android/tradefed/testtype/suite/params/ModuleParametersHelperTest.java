@@ -27,14 +27,32 @@ import java.util.Set;
 @RunWith(JUnit4.class)
 public class ModuleParametersHelperTest {
 
-    /** Check that each values in {@link ModuleParameters} has a handler associated. */
+    /**
+     * Check that each value in {@link ModuleParameters} which is not a group parameter has a
+     * handler associated.
+     */
     @Test
     public void testHandlersExists() {
         for (ModuleParameters param : ModuleParameters.values()) {
+            if (isGroupParameter(param)) {
+                continue;
+            }
+
             IModuleParameter handler =
-                    ModuleParametersHelper.getParameterHandler(param, /* Include optional */ true);
+                    ModuleParametersHelper.getParameterHandler(param, /* withOptional= */ true);
             assertNotNull(handler);
         }
+    }
+
+    private boolean isGroupParameter(ModuleParameters param) {
+        Set<ModuleParameters> resolvedParams =
+                ModuleParametersHelper.resolveParam(param, /* withOptional= */ true);
+
+        if (resolvedParams.size() != 1) {
+            return true;
+        }
+
+        return resolvedParams.iterator().next() != param;
     }
 
     @Test
@@ -48,6 +66,16 @@ public class ModuleParametersHelperTest {
     }
 
     @Test
+    public void resolveParam_groupParam_returnsSetOfMultipleParams() {
+        Set<ModuleParameters> resolvedParams =
+                ModuleParametersHelper.resolveParam(
+                        ModuleParameters.MULTIUSER, /* withOptional= */ true);
+
+        assertNotEquals(resolvedParams.size(), 1);
+        assertFalse(resolvedParams.contains(ModuleParameters.MULTIUSER));
+    }
+
+    @Test
     public void resolveParamString_notGroupParam_returnsSetOfSameParam() {
         Set<ModuleParameters> resolvedParams =
                 ModuleParametersHelper.resolveParam(
@@ -55,5 +83,15 @@ public class ModuleParametersHelperTest {
 
         assertEquals(resolvedParams.size(), 1);
         assertEquals(resolvedParams.iterator().next(), ModuleParameters.INSTANT_APP);
+    }
+
+    @Test
+    public void resolveParamString_groupParam_returnsSetOfMultipleParams() {
+        Set<ModuleParameters> resolvedParams =
+                ModuleParametersHelper.resolveParam(
+                        ModuleParameters.MULTIUSER.toString(), /* withOptional= */ true);
+
+        assertNotEquals(resolvedParams.size(), 1);
+        assertFalse(resolvedParams.contains(ModuleParameters.MULTIUSER));
     }
 }

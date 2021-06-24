@@ -17,6 +17,7 @@ package com.android.tradefed.util;
 
 import com.android.tradefed.result.InputStreamSource;
 
+import com.google.common.base.Preconditions;
 import com.google.common.io.ByteStreams;
 
 import java.io.BufferedInputStream;
@@ -213,8 +214,8 @@ public class StreamUtil {
     public static void copyStreams(
             InputStream inStream, OutputStream outStream, long offset, long size)
             throws IOException {
-        assert offset >= 0 : "offset must be greater or equal to zero.";
-        assert size != 0 : "size cannot be zero.";
+        Preconditions.checkArgument(offset >= 0, "offset must be greater or equal to zero.");
+        Preconditions.checkArgument(size != 0, "size cannot be zero.");
         inStream.skip(offset);
         byte[] buf = new byte[BUF_SIZE];
         long totalRetrievedSize = 0;

@@ -39,6 +39,7 @@ public enum LogDataType {
     CLANG_COVERAGE("profdata", "text/plain", false, false), // LLVM indexed profile data
     PB("pb", "application/octet-stream", true, false), // Binary proto file
     TEXTPB("textproto", "text/plain", false, true), // Text proto file
+    JSON("json", "application/json", false, true),
     PERFETTO(
             "perfetto-trace",
             "application/octet-stream",
@@ -70,6 +71,7 @@ public enum LogDataType {
     HARNESS_STD_LOG("txt", "text/plain", false, true),
     HARNESS_CONFIG("xml", "text/xml", false, true),
     ADB_HOST_LOG("txt", "text/plain", false, true),
+    PASSED_TESTS("txt", "text/plain", false, true),
     /* Unknown file type */
     UNKNOWN("dat", "text/plain", false, false);
 

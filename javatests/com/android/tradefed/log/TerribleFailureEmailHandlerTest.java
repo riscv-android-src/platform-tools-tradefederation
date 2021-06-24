@@ -145,8 +145,8 @@ public class TerribleFailureEmailHandlerTest extends TestCase {
         String sender = "alerter@email.address.com";
         String destA = "a@email.address.com";
         String destB = "b@email.address.com";
-        destinations.add(destB);
         destinations.add(destA);
+        destinations.add(destB);
 
         mWtfEmailHandler.setSender(sender);
         mWtfEmailHandler.addDestination(destA);

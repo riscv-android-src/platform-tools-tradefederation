@@ -258,7 +258,7 @@ public class GceAvdInfo {
     static InfraErrorIdentifier determineAcloudErrorType(String errorType) {
         InfraErrorIdentifier identifier;
         if (errorType == null || errorType.isEmpty()) {
-            return null;
+            return InfraErrorIdentifier.ACLOUD_UNRECOGNIZED_ERROR_TYPE;
         }
         try {
             identifier = InfraErrorIdentifier.valueOf(errorType);

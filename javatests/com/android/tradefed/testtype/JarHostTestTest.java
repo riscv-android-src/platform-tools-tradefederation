@@ -62,6 +62,7 @@ import java.util.Map;
 @RunWith(JUnit4.class)
 public class JarHostTestTest {
 
+    private static final String QUALIFIED_PATH = "/com/android/tradefed/referencetests";
     private static final String TEST_JAR1 = "/MultipleClassesTest.jar";
     private static final String TEST_JAR2 = "/OnePassingOneFailingTest.jar";
     private HostTest mTest;
@@ -99,6 +100,9 @@ public class JarHostTestTest {
      */
     protected File getJarResource(String filename, File parentDir) throws IOException {
         InputStream jarFileStream = getClass().getResourceAsStream(filename);
+        if (jarFileStream == null) {
+            jarFileStream = getClass().getResourceAsStream(QUALIFIED_PATH + filename);
+        }
         File jarFile = FileUtil.createTempFile("test", ".jar", parentDir);
         FileUtil.writeToFile(jarFileStream, jarFile);
         return jarFile;

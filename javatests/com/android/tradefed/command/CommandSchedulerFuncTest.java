@@ -42,6 +42,7 @@ import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.ITestInvocation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.result.error.ErrorIdentifier;
 import com.android.tradefed.util.RunInterruptedException;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
@@ -261,7 +262,7 @@ public class CommandSchedulerFuncTest {
         }
 
         @Override
-        public void notifyInvocationStopped(String message) {
+        public void notifyInvocationStopped(String message, ErrorIdentifier errorId) {
             printedStop = true;
         }
     }

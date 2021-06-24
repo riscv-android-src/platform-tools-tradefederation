@@ -43,6 +43,7 @@ import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
+import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.StreamUtil;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -91,21 +92,20 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
 
     /** {@inheritDoc} */
     @Override
-    public void preInvocationSetup(IBuildInfo info)
+    public void preInvocationSetup(IBuildInfo info, MultiMap<String, String> attributes)
             throws TargetSetupError, DeviceNotAvailableException {
-        super.preInvocationSetup(info);
+        super.preInvocationSetup(info, attributes);
         try {
             mGceAvd = null;
             mGceSshMonitor = null;
             mTunnelInitFailed = null;
             // We create a brand new GceManager each time to ensure clean state.
             mGceHandler = new GceManager(getDeviceDescriptor(), getOptions(), info);
-            getGceHandler().logStableHostImageInfos(info);
             setFastbootEnabled(false);
 
             // Launch GCE helper script.
             long startTime = getCurrentTime();
-            launchGce(info);
+            launchGce(info, attributes);
             long remainingTime = getOptions().getGceCmdTimeout() - (getCurrentTime() - startTime);
             if (remainingTime < 0) {
                 throw new DeviceNotAvailableException(
@@ -254,11 +254,12 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
     }
 
     /** Launch the actual gce device based on the build info. */
-    protected void launchGce(IBuildInfo buildInfo) throws TargetSetupError {
+    protected void launchGce(IBuildInfo buildInfo, MultiMap<String, String> attributes)
+            throws TargetSetupError {
         TargetSetupError exception = null;
         for (int attempt = 0; attempt < getOptions().getGceMaxAttempt(); attempt++) {
             try {
-                mGceAvd = getGceHandler().startGce(getInitialIp());
+                mGceAvd = getGceHandler().startGce(getInitialIp(), attributes);
                 if (mGceAvd != null) break;
             } catch (TargetSetupError tse) {
                 CLog.w(
@@ -343,9 +344,12 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
 
     @Override
     public void recoverDevice() throws DeviceNotAvailableException {
-        if (getGceSshMonitor() == null && mTunnelInitFailed != null) {
-            // We threw before but was not reported, so throw the root cause here.
-            throw mTunnelInitFailed;
+        if (getGceSshMonitor() == null) {
+            if (mTunnelInitFailed != null) {
+                // We threw before but was not reported, so throw the root cause here.
+                throw mTunnelInitFailed;
+            }
+            waitForTunnelOnline(WAIT_FOR_TUNNEL_ONLINE);
         }
         long startTime = System.currentTimeMillis();
         try {
@@ -451,6 +455,17 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
         return mGceSshMonitor;
     }
 
+    /**
+     * Override the internal {@link com.android.tradefed.device.cloud.GceSshTunnelMonitor} of the
+     * device.
+     */
+    // TODO(b/190657509): Remove this API once boot test is refactored to use
+    // preInvocationSetup and postInvocationTeardown.
+    public void setGceSshMonitor(GceSshTunnelMonitor gceSshMonitor) {
+        CLog.i("Overriding internal GCE SSH monitor.");
+        mGceSshMonitor = gceSshMonitor;
+    }
+
     /** Returns the current system time. Exposed for testing. */
     protected long getCurrentTime() {
         return System.currentTimeMillis();
@@ -491,6 +506,24 @@ public class RemoteAndroidVirtualDevice extends RemoteAndroidDevice implements I
         }
         String username = this.getOptions().getInstanceUser();
         String powerwashCommand = String.format("/home/%s/bin/powerwash_cvd", username);
+        if (this.getOptions().useOxygen()) {
+            // TODO(dshi): Simplify the logic after Oxygen creates symlink of the tmp dir.
+            CommandResult result =
+                    GceManager.remoteSshCommandExecution(
+                            mGceAvd,
+                            this.getOptions(),
+                            getRunUtil(),
+                            10000L,
+                            "toybox find /tmp -name powerwash_cvd".split(" "));
+            if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
+                CLog.e("Failed to locate powerwash_cvd: %s", result.getStderr());
+                return false;
+            }
+            String powerwashPath = result.getStdout();
+            // Remove tailing `/bin/powerwash_cvd`
+            String tmpDir = powerwashPath.substring(0, powerwashPath.length() - 18);
+            powerwashCommand = String.format("HOME=%s %s", tmpDir, powerwashPath);
+        }
         CommandResult powerwashRes =
                 GceManager.remoteSshCommandExecution(
                         mGceAvd,

@@ -25,6 +25,7 @@ import com.android.ddmlib.IDevice;
 import com.android.ddmlib.IDevice.DeviceState;
 import com.android.tradefed.util.RunUtil;
 
+import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 
 import org.easymock.EasyMock;
@@ -33,7 +34,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
@@ -264,14 +264,15 @@ public class DeviceStateMonitorTest {
     /** Test {@link DeviceStateMonitor#waitForBootComplete(long)} when boot is already complete. */
     @Test
     public void testWaitForBootComplete() throws Exception {
-        IDevice mFakeDevice = new StubDevice("serial") {
-            @Override
-            public Future<String> getSystemProperty(String name) {
-                SettableFuture<String> f = SettableFuture.create();
-                f.set("1");
-                return f;
-            }
-        };
+        IDevice mFakeDevice =
+                new StubDevice("serial") {
+                    @Override
+                    public ListenableFuture<String> getSystemProperty(String name) {
+                        SettableFuture<String> f = SettableFuture.create();
+                        f.set("1");
+                        return f;
+                    }
+                };
         mMonitor = new DeviceStateMonitor(mMockMgr, mFakeDevice, true);
         boolean res = mMonitor.waitForBootComplete(WAIT_TIMEOUT_NOT_REACHED_MS);
         assertTrue(res);
@@ -283,14 +284,15 @@ public class DeviceStateMonitorTest {
     @Test
     public void testWaitForBoot_becomeComplete() throws Exception {
         mStubValue = "0";
-        IDevice mFakeDevice = new StubDevice("serial") {
-            @Override
-            public Future<String> getSystemProperty(String name) {
-                SettableFuture<String> f = SettableFuture.create();
-                f.set(mStubValue);
-                return f;
-            }
-        };
+        IDevice mFakeDevice =
+                new StubDevice("serial") {
+                    @Override
+                    public ListenableFuture<String> getSystemProperty(String name) {
+                        SettableFuture<String> f = SettableFuture.create();
+                        f.set(mStubValue);
+                        return f;
+                    }
+                };
         mMonitor = new DeviceStateMonitor(mMockMgr, mFakeDevice, true) {
             @Override
             protected long getCheckPollTime() {
@@ -315,14 +317,15 @@ public class DeviceStateMonitorTest {
     @Test
     public void testWaitForBoot_timeout() throws Exception {
         mStubValue = "0";
-        IDevice mFakeDevice = new StubDevice("serial") {
-            @Override
-            public Future<String> getSystemProperty(String name) {
-                SettableFuture<String> f = SettableFuture.create();
-                f.set(mStubValue);
-                return f;
-            }
-        };
+        IDevice mFakeDevice =
+                new StubDevice("serial") {
+                    @Override
+                    public ListenableFuture<String> getSystemProperty(String name) {
+                        SettableFuture<String> f = SettableFuture.create();
+                        f.set(mStubValue);
+                        return f;
+                    }
+                };
         mMonitor = new DeviceStateMonitor(mMockMgr, mFakeDevice, true) {
             @Override
             protected long getCheckPollTime() {

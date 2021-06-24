@@ -19,6 +19,7 @@ import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.IDisableable;
@@ -38,7 +39,7 @@ import java.util.Map;
  * places. If an internal state really must be used, then it should be cleaned on {@link
  * #init(IInvocationContext, ITestInvocationListener)}.
  */
-public interface IMetricCollector extends ITestInvocationListener, IDisableable {
+public interface IMetricCollector extends ILogSaverListener, IDisableable {
 
     /**
      * Initialization of the collector with the current context and where to forward results. Will

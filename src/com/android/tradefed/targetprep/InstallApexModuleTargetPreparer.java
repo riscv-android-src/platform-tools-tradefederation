@@ -192,7 +192,8 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
                     String.format(
                             "Failed to retrieve activated apex on device %s. Empty set returned.",
                             device.getSerialNumber()),
-                    device.getDeviceDescriptor());
+                    device.getDeviceDescriptor(),
+                    DeviceErrorIdentifier.DEVICE_UNEXPECTED_RESPONSE);
         } else {
             CLog.i("Activated apex packages list after module/train installation:");
             for (ApexInfo info : activatedApexes) {
@@ -712,7 +713,8 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
                     String.format(
                             "Failed to stage train on device %s. Cmd is: %s. Error log: %s.",
                             device.getSerialNumber(), installCmd.toString(), log),
-                    device.getDeviceDescriptor());
+                    device.getDeviceDescriptor(),
+                    DeviceErrorIdentifier.FAIL_ACTIVATE_APEX);
         }
     }
 

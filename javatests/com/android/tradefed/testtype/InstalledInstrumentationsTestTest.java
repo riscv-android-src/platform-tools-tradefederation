@@ -20,6 +20,8 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import com.android.tradefed.config.ArgsOptionParser;
+import com.android.tradefed.config.Configuration;
+import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.metric.BaseDeviceMetricCollector;
@@ -61,15 +63,18 @@ public class InstalledInstrumentationsTestTest {
     private List<MockInstrumentationTest> mMockInstrumentationTests;
     private InstalledInstrumentationsTest mInstalledInstrTest;
     private TestInformation mTestInfo;
+    private IConfiguration mConfiguration;
 
     @Before
     public void setUp() throws Exception {
+        mConfiguration = new Configuration("name", "description");
         mMockTestDevice = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(mMockTestDevice.getSerialNumber()).andStubReturn("foo");
         mMockListener = EasyMock.createMock(ITestInvocationListener.class);
         mMockInstrumentationTests = new ArrayList<MockInstrumentationTest>();
         mInstalledInstrTest = createInstalledInstrumentationsTest();
         mInstalledInstrTest.setDevice(mMockTestDevice);
+        mInstalledInstrTest.setConfiguration(mConfiguration);
         IInvocationContext context = new InvocationContext();
         mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
     }
@@ -231,10 +236,12 @@ public class InstalledInstrumentationsTestTest {
         shard0.setDevice(mMockTestDevice);
         shard0.setShardIndex(0);
         shard0.setTotalShards(2);
+        shard0.setConfiguration(mConfiguration);
         InstalledInstrumentationsTest shard1 = createInstalledInstrumentationsTest();
         shard1.setDevice(mMockTestDevice);
         shard1.setShardIndex(1);
         shard1.setTotalShards(2);
+        shard1.setConfiguration(mConfiguration);
 
         // Run tests in first shard. There should be only two tests run: a test shard, and a
         // nonshardable test.

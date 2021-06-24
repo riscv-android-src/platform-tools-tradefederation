@@ -133,6 +133,7 @@ public class PerfettoGenericPostProcessor extends BasePostProcessor {
             isTimeVal = true)
     private long mDecompressTimeoutMs = TimeUnit.MINUTES.toMillis(20);
 
+    @Deprecated
     @Option(
             name = "processed-metric",
             description =
@@ -600,11 +601,10 @@ public class PerfettoGenericPostProcessor extends BasePostProcessor {
     }
 
     /**
-     * Set the metric type based on flag.
+     * Set the metric type to RAW metric.
      */
     @Override
     protected DataType getMetricType() {
-        return mProcessedMetric ? DataType.PROCESSED : DataType.RAW;
+        return DataType.RAW;
     }
 }
-

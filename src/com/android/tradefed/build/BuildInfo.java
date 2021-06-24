@@ -75,10 +75,6 @@ public class BuildInfo implements IBuildInfo {
                 BuildInfoFileKey.TARGET_LINKED_DIR.getFileKey(),
             };
 
-    /** These files will be fully copied instead of hardlink. */
-    public static final Set<String> FULL_COPY_FILES =
-            new HashSet<>(Arrays.asList("libunwindstack_unit_test", "libunwindstack.so"));
-
     /**
      * Creates a {@link BuildInfo} using default attribute values.
      */
@@ -188,6 +184,9 @@ public class BuildInfo implements IBuildInfo {
      */
     @Override
     public void addBuildAttribute(String attributeName, String attributeValue) {
+        if (attributeValue == null) {
+            attributeValue = "";
+        }
         mBuildAttributes.put(attributeName, attributeValue);
     }
 
@@ -228,18 +227,13 @@ public class BuildInfo implements IBuildInfo {
             File copyFile;
             if (origFile.isDirectory()) {
                 copyFile = FileUtil.createTempDir(fileEntry.getKey());
-                FileUtil.recursiveHardlink(origFile, copyFile, false, FULL_COPY_FILES);
+                FileUtil.recursiveHardlink(origFile, copyFile, false);
             } else {
                 // Only using createTempFile to create a unique dest filename
                 copyFile = FileUtil.createTempFile(fileEntry.getKey(),
                         FileUtil.getExtension(origFile.getName()));
                 copyFile.delete();
-                if (FULL_COPY_FILES.contains(origFile.getName())) {
-                    CLog.d("Doing full copy for %s", origFile);
-                    FileUtil.copyFile(origFile, copyFile);
-                } else {
-                    FileUtil.hardlinkFile(origFile, copyFile);
-                }
+                FileUtil.hardlinkFile(origFile, copyFile);
             }
             setFile(fileEntry.getKey(), copyFile, fileEntry.getValue().getVersion());
         }
@@ -366,6 +360,10 @@ public class BuildInfo implements IBuildInfo {
      */
     @Override
     public void setFile(String name, File file, String version) {
+        if (file == null) {
+            CLog.w("Tried to add to build info file name '%s' which is null.", name);
+            return;
+        }
         if (!mVersionedFileMap.containsKey(name)) {
             mVersionedFileMap.put(name, new VersionedFile(file, version));
         }
@@ -639,8 +637,10 @@ public class BuildInfo implements IBuildInfo {
             // Restore the original type of build info.
             try {
                 buildInfo =
-                        (BuildInfo)
-                                Class.forName(buildClass).getDeclaredConstructor().newInstance();
+                        Class.forName(buildClass)
+                                .asSubclass(BuildInfo.class)
+                                .getDeclaredConstructor()
+                                .newInstance();
             } catch (InstantiationException
                     | IllegalAccessException
                     | ClassNotFoundException
@@ -662,8 +662,8 @@ public class BuildInfo implements IBuildInfo {
             buildInfo.setBuildBranch(protoBuild.getBranch());
         }
         // Attributes
-        for (String key : protoBuild.getAttributes().keySet()) {
-            buildInfo.addBuildAttribute(key, protoBuild.getAttributes().get(key));
+        for (String key : protoBuild.getAttributesMap().keySet()) {
+            buildInfo.addBuildAttribute(key, protoBuild.getAttributesMap().get(key));
         }
         // Versioned File
         for (KeyBuildFilePair filePair : protoBuild.getVersionedFileList()) {

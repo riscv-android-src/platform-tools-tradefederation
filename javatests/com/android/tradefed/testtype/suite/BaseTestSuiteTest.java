@@ -159,10 +159,8 @@ public class BaseTestSuiteTest {
         try {
             OptionSetter setter = new OptionSetter(mRunner);
             setter.setOptionValue("enable-parameterized-modules", "true");
-            // The Gesture module has a parameter "instant".
             setter.setOptionValue("module", "Gesture");
             mRunner.setupFilters(tmpDir);
-            assertEquals(2, mRunner.getIncludeFilter().size());
             assertThat(
                     mRunner.getIncludeFilter(),
                     hasItem(
