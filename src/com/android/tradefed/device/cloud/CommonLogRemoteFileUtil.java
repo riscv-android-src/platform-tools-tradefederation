@@ -46,7 +46,9 @@ public class CommonLogRemoteFileUtil {
     public static final String TOMBSTONES_ZIP_NAME = "tombstones-zip";
 
     /** The directory where to find emulator logs from Oxygen service. */
-    public static final String OXYGEN_LOG_DIR = "/tmp/device_launcher/";
+    public static final String OXYGEN_EMULATOR_LOG_DIR = "/tmp/device_launcher/";
+    /** The directory where to find Oxygen device runtime logs. */
+    public static final String OXYGEN_RUNTIME_LOG_DIR = "/tmp/cfbase/3/cuttlefish_runtime/";
 
     public static final List<KnownLogFileEntry> OXYGEN_LOG_FILES = new ArrayList<>();
 
@@ -93,10 +95,16 @@ public class CommonLogRemoteFileUtil {
 
         OXYGEN_LOG_FILES.add(
                 new KnownLogFileEntry(
-                        OXYGEN_LOG_DIR + "emulator_stderr.txt", null, LogDataType.TEXT));
+                        OXYGEN_EMULATOR_LOG_DIR + "emulator_stderr.txt", null, LogDataType.TEXT));
         OXYGEN_LOG_FILES.add(
                 new KnownLogFileEntry(
-                        OXYGEN_LOG_DIR + "emulator_stdout.txt", null, LogDataType.TEXT));
+                        OXYGEN_EMULATOR_LOG_DIR + "emulator_stdout.txt", null, LogDataType.TEXT));
+        OXYGEN_LOG_FILES.add(
+                new KnownLogFileEntry(
+                        OXYGEN_RUNTIME_LOG_DIR + "launcher.log", null, LogDataType.TEXT));
+        OXYGEN_LOG_FILES.add(
+                new KnownLogFileEntry(
+                        OXYGEN_RUNTIME_LOG_DIR + "kernel.log", null, LogDataType.TEXT));
     }
 
     /** A representation of a known log entry for remote devices. */
