@@ -61,6 +61,7 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
     // The build info key of the cuttlefish tools.
     private static final String CVD_HOST_PACKAGE_NAME = "cvd-host_package.tar.gz";
     // The optional build info keys for mixing images.
+    private static final String BOOT_IMAGE_ZIP_NAME = "boot-img.zip";
     private static final String SYSTEM_IMAGE_ZIP_NAME = "system-img.zip";
     private static final String OTA_TOOLS_ZIP_NAME = "otatools.zip";
 
@@ -72,6 +73,7 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
     private File mImageDir = null;
     private File mInstanceDir = null;
     private File mHostPackageDir = null;
+    private File mBootImageDir = null;
     private File mSystemImageDir = null;
     private File mOtaToolsDir = null;
     private List<File> mTempDirs = new ArrayList<File>();
@@ -152,12 +154,13 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
                         "Skip deleting the temporary directories.\n"
                                 + "Address: %s\nName: %s\n"
                                 + "Host package: %s\nImage: %s\nInstance: %s\n"
-                                + "System image: %s\nOTA tools: %s",
+                                + "Boot image: %s\nSystem image: %s\nOTA tools: %s",
                         hostAndPort,
                         instanceName,
                         mHostPackageDir,
                         mImageDir,
                         mInstanceDir,
+                        mBootImageDir,
                         mSystemImageDir,
                         mOtaToolsDir);
                 resetTempDirAttributes();
@@ -283,6 +286,7 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
                         InfraErrorIdentifier.CONFIGURED_ARTIFACT_NOT_FOUND);
             }
             mImageDir = findDeviceImages(info);
+            mBootImageDir = findAndExtractFile(info, BOOT_IMAGE_ZIP_NAME);
             mSystemImageDir = findAndExtractFile(info, SYSTEM_IMAGE_ZIP_NAME);
             mOtaToolsDir = findAndExtractFile(info, OTA_TOOLS_ZIP_NAME);
             mInstanceDir = createTempDir();
@@ -302,6 +306,7 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
         mImageDir = null;
         mInstanceDir = null;
         mHostPackageDir = null;
+        mBootImageDir = null;
         mSystemImageDir = null;
         mOtaToolsDir = null;
     }
@@ -339,7 +344,11 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
         setFastbootEnabled(false);
     }
 
-    private void addSystemImageDirToAcloudCommand(List<String> command) {
+    private void addExtraDirsToAcloudCommand(List<String> command) {
+        if (mBootImageDir != null) {
+            command.add("--local-boot-image");
+            command.add(mBootImageDir.getAbsolutePath());
+        }
         if (mSystemImageDir != null) {
             command.add("--local-system-image");
             command.add(mSystemImageDir.getAbsolutePath());
@@ -416,7 +425,7 @@ public class LocalAndroidVirtualDevice extends RemoteAndroidDevice implements IT
                                 "--no-autoconnect",
                                 "--yes",
                                 "--skip-pre-run-check"));
-        addSystemImageDirToAcloudCommand(command);
+        addExtraDirsToAcloudCommand(command);
         addLogLevelToAcloudCommand(command, logLevel);
         command.addAll(args);
 

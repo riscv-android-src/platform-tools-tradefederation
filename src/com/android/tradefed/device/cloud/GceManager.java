@@ -49,6 +49,7 @@ import com.google.api.services.compute.Compute.Instances.GetSerialPortOutput;
 import com.google.api.services.compute.ComputeScopes;
 import com.google.api.services.compute.model.SerialPortOutput;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Strings;
 import com.google.common.net.HostAndPort;
 
 import java.io.File;
@@ -79,6 +80,8 @@ public class GceManager {
     private String mGceInstanceName = null;
     private String mGceHost = null;
     private GceAvdInfo mGceAvdInfo = null;
+
+    private boolean mSkipSerialLogCollection = false;
 
     /**
      * Ctor
@@ -171,6 +174,10 @@ public class GceManager {
                                     .withDefaultPort(mDeviceOptions.getRemoteAdbPort()));
             return mGceAvdInfo;
         }
+
+        // If ipDevice is specified, skip collecting serial log as the host may not be GCE instance
+        mSkipSerialLogCollection = !Strings.isNullOrEmpty(ipDevice);
+
         // Add extra args.
         File reportFile = null;
         try {
@@ -737,6 +744,10 @@ public class GceManager {
      * @param logger The {@link ITestLogger} where to log the serial log.
      */
     public void logSerialOutput(GceAvdInfo infos, ITestLogger logger) {
+        if (mSkipSerialLogCollection) {
+            CLog.d("Serial log collection is skipped");
+            return;
+        }
         String output =
                 GceManager.getInstanceSerialLog(
                         infos,
