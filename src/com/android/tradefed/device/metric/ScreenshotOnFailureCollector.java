@@ -17,6 +17,7 @@ package com.android.tradefed.device.metric;
 
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.InputStreamSource;
@@ -34,6 +35,8 @@ public class ScreenshotOnFailureCollector extends BaseDeviceMetricCollector {
             if (!shouldCollect(device)) {
                 continue;
             }
+            RecoveryMode mode = device.getRecoveryMode();
+            device.setRecoveryMode(RecoveryMode.NONE);
             try (InputStreamSource screenSource = device.getScreenshot()) {
                 super.testLog(
                         String.format(NAME_FORMAT, test.toString(), device.getSerialNumber()),
@@ -43,6 +46,8 @@ public class ScreenshotOnFailureCollector extends BaseDeviceMetricCollector {
                 CLog.e(
                         "Device %s became unavailable while capturing screenshot, %s",
                         device.getSerialNumber(), e.toString());
+            } finally {
+                device.setRecoveryMode(mode);
             }
         }
     }
