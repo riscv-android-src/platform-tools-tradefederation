@@ -29,6 +29,8 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.ITestFileFilterReceiver;
+import com.android.tradefed.testtype.ITestFilterReceiver;
 import com.android.tradefed.testtype.suite.params.IModuleParameter;
 import com.android.tradefed.testtype.suite.params.ModuleParameters;
 import com.android.tradefed.testtype.suite.params.ModuleParametersHelper;
@@ -44,6 +46,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -218,6 +221,7 @@ public class BaseTestSuite extends ITestSuite {
     private Map<String, List<SuiteTestFilter>> mIncludeFiltersParsed = new LinkedHashMap<>();
     private Map<String, List<SuiteTestFilter>> mExcludeFiltersParsed = new LinkedHashMap<>();
     private List<File> mConfigPaths = new ArrayList<>();
+    private Set<IAbi> mAbis = new LinkedHashSet<>();
 
     /** {@inheritDoc} */
     @Override
@@ -225,7 +229,7 @@ public class BaseTestSuite extends ITestSuite {
         try {
             File testsDir = getTestsDir();
             setupFilters(testsDir);
-            Set<IAbi> abis = getAbis(getDevice());
+            mAbis = getAbis(getDevice());
 
             if (mReverseExcludeFilters) {
                 if (mExcludeFilters.isEmpty()) {
@@ -237,8 +241,8 @@ public class BaseTestSuite extends ITestSuite {
             }
 
             // Create and populate the filters here
-            SuiteModuleLoader.addFilters(mIncludeFilters, mIncludeFiltersParsed, abis);
-            SuiteModuleLoader.addFilters(mExcludeFilters, mExcludeFiltersParsed, abis);
+            SuiteModuleLoader.addFilters(mIncludeFilters, mIncludeFiltersParsed, mAbis);
+            SuiteModuleLoader.addFilters(mExcludeFilters, mExcludeFiltersParsed, mAbis);
 
             String includeFilter = mIncludeFiltersParsed.toString();
             if (mIncludeFiltersParsed.size() > MAX_FILTER_DISPLAY) {
@@ -289,7 +293,7 @@ public class BaseTestSuite extends ITestSuite {
             CLog.d(
                     "Initializing ModuleRepo\nABIs:%s\n"
                             + "Test Args:%s\nModule Args:%s\nIncludes:%s\nExcludes:%s",
-                    abis, mTestArgs, mModuleArgs, includeFilter, excludeFilter);
+                            mAbis, mTestArgs, mModuleArgs, includeFilter, excludeFilter);
 
             mModuleRepo =
                     createModuleLoader(
@@ -338,7 +342,7 @@ public class BaseTestSuite extends ITestSuite {
             testsDirectories.add(testsDir);
             // Actual loading of the configurations.
             LinkedHashMap<String, IConfiguration> loadedTests =
-                    loadingStrategy(abis, testsDirectories, mSuitePrefix, mSuiteTag);
+                    loadingStrategy(mAbis, testsDirectories, mSuitePrefix, mSuiteTag);
 
             if (mFailOnEverythingFiltered
                     && loadedTests.isEmpty()
@@ -429,6 +433,11 @@ public class BaseTestSuite extends ITestSuite {
     /** Returns the current {@link SuiteModuleLoader}. */
     public SuiteModuleLoader getModuleLoader() {
         return mModuleRepo;
+    }
+
+    public void reevaluateFilters() {
+        SuiteModuleLoader.addFilters(mIncludeFilters, mIncludeFiltersParsed, mAbis);
+        SuiteModuleLoader.addFilters(mExcludeFilters, mExcludeFiltersParsed, mAbis);
     }
 
     /** Adds module args */
@@ -613,5 +622,36 @@ public class BaseTestSuite extends ITestSuite {
         try (FileInputStreamSource source = new FileInputStreamSource(filterFile)) {
             getCurrentTestLogger().testLog(dataName, type, source);
         }
+    }
+
+    @Override
+    protected boolean shouldModuleRun(ModuleDefinition module) {
+        String moduleId = module.getId();
+        List<SuiteTestFilter> excludeFilters = mExcludeFiltersParsed.get(moduleId);
+        CLog.d("Filters for '%s': %s", moduleId, excludeFilters);
+        if (excludeFilters == null || excludeFilters.isEmpty()) {
+            return true;
+        }
+        for (SuiteTestFilter filter : excludeFilters) {
+            if (filter.getTest() == null) {
+                CLog.d("Skipping %s, it previously passed.", moduleId);
+                return false;
+            }
+            for (IRemoteTest test : module.getTests()) {
+                if (test instanceof ITestFileFilterReceiver
+                        && ((ITestFileFilterReceiver) test).getExcludeTestFile() != null) {
+                    File excludeFilterFile = ((ITestFileFilterReceiver) test).getExcludeTestFile();
+                    try {
+                        FileUtil.writeToFile(filter.getTest() + "\n", excludeFilterFile, true);
+                    } catch (IOException e) {
+                        CLog.e(e);
+                        continue;
+                    }
+                } else if (test instanceof ITestFilterReceiver) {
+                    ((ITestFilterReceiver) test).addExcludeFilter(filter.getTest());
+                }
+            }
+        }
+        return true;
     }
 }

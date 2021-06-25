@@ -61,6 +61,13 @@ public class SuiteTestFilter {
             if (parts[index].startsWith("shard_")) {
                 shardIndex = Integer.parseInt(parts[index].substring("shard_".length()));
                 index++;
+            } else {
+                try {
+                    shardIndex = Integer.parseInt(parts[index]);
+                    index++;
+                } catch (NumberFormatException e) {
+                    // Ignore
+                }
             }
             if (AbiUtils.isAbiSupportedByCompatibility(parts[index])) {
                 abi = parts[index];
