@@ -17,6 +17,7 @@ package com.android.tradefed.retry;
 
 import com.android.annotations.VisibleForTesting;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
+import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.Option;
@@ -35,6 +36,7 @@ import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.result.error.DeviceErrorIdentifier;
+import com.android.tradefed.sandbox.SandboxOptions;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFilterReceiver;
@@ -482,22 +484,11 @@ public class BaseRetryDecision implements IRetryDecision, IConfigurationReceiver
                         start, System.currentTimeMillis());
             }
         } else if (IsolationGrade.FULLY_ISOLATED.equals(mRetryIsolationGrade)) {
-            long start = System.currentTimeMillis();
-            try {
-                isolateRetry(devices);
-                // Rerun suite level preparer if we are inside a subprocess
-                reSetupModule(module, mConfiguration.getCommandOptions()
-                        .getInvocationData()
-                        .containsKey(SubprocessTfLauncher.SUBPROCESS_TAG_NAME));
-            } finally {
-                InvocationMetricLogger.addInvocationPairMetrics(
-                        InvocationMetricKey.RESET_RETRY_ISOLATION_PAIR,
-                        start, System.currentTimeMillis());
-            }
+            resetIsolation(module, devices);
         } else if (lastAttempt == (mMaxRetryAttempts - 2)) {
             // Reset only works for suite right now
             if (mResetAtLastRetry && module != null) {
-                resetDevice(module, devices);
+                compatibleReset(mConfiguration, module, devices);
             } else if (mRebootAtLastRetry) {
                 for (ITestDevice device : devices) {
                     device.reboot();
@@ -506,6 +497,41 @@ public class BaseRetryDecision implements IRetryDecision, IConfigurationReceiver
                 CurrentInvocation.setRunIsolation(IsolationGrade.REBOOT_ISOLATED);
             }
         }
+    }
+
+    private void resetIsolation(ModuleDefinition module, List<ITestDevice> devices)
+            throws DeviceNotAvailableException {
+        long start = System.currentTimeMillis();
+        try {
+            isolateRetry(devices);
+            // Rerun suite level preparer if we are inside a subprocess
+            reSetupModule(module, mConfiguration.getCommandOptions()
+                    .getInvocationData()
+                    .containsKey(SubprocessTfLauncher.SUBPROCESS_TAG_NAME));
+        } finally {
+            InvocationMetricLogger.addInvocationPairMetrics(
+                    InvocationMetricKey.RESET_RETRY_ISOLATION_PAIR,
+                    start, System.currentTimeMillis());
+        }
+    }
+
+    private void compatibleReset(
+            IConfiguration config, ModuleDefinition module, List<ITestDevice> devices)
+                    throws DeviceNotAvailableException {
+        SandboxOptions options = (SandboxOptions)
+                config.getConfigurationObject(Configuration.SANBOX_OPTIONS_TYPE_NAME);
+        if (config.getConfigurationDescription().shouldUseSandbox()) {
+            if (options.startAvdInParent()) {
+                resetIsolation(module, devices);
+            } else {
+                // TODO: When sandbox has been switched to start device in parent, remove the
+                // compatible handling.
+                resetDevice(module, devices);
+            }
+        } else {
+            CLog.d("Not a sandboxed run, reset-at-last-retry is ignored.");
+        }
+        // TODO: Add support for non-sandbox
     }
 
     private void resetDevice(ModuleDefinition module, List<ITestDevice> devices)

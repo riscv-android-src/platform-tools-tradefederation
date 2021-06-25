@@ -25,6 +25,7 @@ import static org.mockito.Mockito.doReturn;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
 import com.android.tradefed.command.CommandOptions;
+import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.Option;
@@ -961,12 +962,15 @@ public class GranularRetriableTestWrapperTest {
     /** Test to reset multi-devices at the last intra-module retry. */
     @Test
     public void testIntraModuleRun_resetMultiDevicesAtLastIntraModuleRetry() throws Exception {
-        IRetryDecision decision = new BaseRetryDecision();
+        BaseRetryDecision decision = new BaseRetryDecision();
         OptionSetter setter = new OptionSetter(decision);
         setter.setOptionValue("reset-at-last-retry", "true");
         setter.setOptionValue("retry-strategy", "RETRY_ANY_FAILURE");
         setter.setOptionValue("max-testcase-run-count", Integer.toString(3));
         decision.setInvocationContext(mModuleInvocationContext);
+        IConfiguration configuration = new Configuration("name", "description");
+        configuration.getConfigurationDescription().setSandboxed(true);
+        decision.setConfiguration(configuration);
         FakeTest test = new FakeTest();
         test.setRunFailure("I failed!");
         ITestDevice noneAVDDevice = EasyMock.createMock(ITestDevice.class);
@@ -996,12 +1000,15 @@ public class GranularRetriableTestWrapperTest {
     /** Test to reset device at the last intra-module retry failed due to preparer failure. */
     @Test
     public void testIntraModuleRun_resetFailed_preparerFailure() throws Exception {
-        IRetryDecision decision = new BaseRetryDecision();
+        BaseRetryDecision decision = new BaseRetryDecision();
         OptionSetter setter = new OptionSetter(decision);
         setter.setOptionValue("reset-at-last-retry", "true");
         setter.setOptionValue("retry-strategy", "RETRY_ANY_FAILURE");
         setter.setOptionValue("max-testcase-run-count", Integer.toString(3));
         decision.setInvocationContext(mModuleInvocationContext);
+        IConfiguration configuration = new Configuration("name", "description");
+        configuration.getConfigurationDescription().setSandboxed(true);
+        decision.setConfiguration(configuration);
         FakeTest test = new FakeTest();
         test.setRunFailure("I failed!");
 
@@ -1031,12 +1038,15 @@ public class GranularRetriableTestWrapperTest {
     public void testIntraModuleRun_resetFailed_powerwashFailure() throws Exception {
         ModuleDefinition module = Mockito.mock(ModuleDefinition.class);
         Mockito.when(module.getModuleInvocationContext()).thenReturn(mModuleInvocationContext);
-        IRetryDecision decision = new BaseRetryDecision();
+        BaseRetryDecision decision = new BaseRetryDecision();
         OptionSetter setter = new OptionSetter(decision);
         setter.setOptionValue("reset-at-last-retry", "true");
         setter.setOptionValue("retry-strategy", "RETRY_ANY_FAILURE");
         setter.setOptionValue("max-testcase-run-count", Integer.toString(3));
         decision.setInvocationContext(mModuleInvocationContext);
+        IConfiguration configuration = new Configuration("name", "description");
+        configuration.getConfigurationDescription().setSandboxed(true);
+        decision.setConfiguration(configuration);
         FakeTest test = new FakeTest();
         test.setRunFailure("I failed!");
 
