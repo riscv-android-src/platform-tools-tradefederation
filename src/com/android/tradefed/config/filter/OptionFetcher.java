@@ -41,8 +41,7 @@ public class OptionFetcher implements AutoCloseable {
      */
     private static final Set<String> OPTION_TO_FETCH = ImmutableSet.of(
             "filter-previous-passed",
-            "retry-isolation-grade",
-            "updated-filtering"
+            "retry-isolation-grade"
             );
 
     private TradefedFeatureClient mClient;
