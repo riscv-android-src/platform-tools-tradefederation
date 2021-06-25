@@ -598,10 +598,12 @@ public class InvocationExecution implements IInvocationExecution {
                         "starting tearDown '%s' on device: '%s'",
                         preparer, device.getSerialNumber());
                 testInfo.setActiveDeviceIndex(deviceIndex);
-                preparer.tearDown(testInfo, exception);
-                CLog.d(
-                        "done with tearDown '%s' on device: '%s'",
-                        preparer, device.getSerialNumber());
+                Throwable tearDownException = exception;
+                // If a previous teardown fail, still notify following ones.
+                if (exception == null && deferredThrowable != null) {
+                    tearDownException = deferredThrowable;
+                }
+                preparer.tearDown(testInfo, tearDownException);
             } catch (Throwable e) {
                 // We catch it and rethrow later to allow each targetprep to be attempted.
                 // Only the first one will be thrown but all should be logged.
@@ -612,6 +614,9 @@ public class InvocationExecution implements IInvocationExecution {
                 }
             } finally {
                 testInfo.setActiveDeviceIndex(0);
+                CLog.d(
+                        "done with tearDown '%s' on device: '%s'",
+                        preparer, device.getSerialNumber());
             }
         }
         return deferredThrowable;
