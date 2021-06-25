@@ -18,6 +18,7 @@ package com.android.tradefed.device.metric;
 import com.android.ddmlib.IDevice;
 import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
@@ -67,12 +68,15 @@ public class ScreenshotOnFailureCollectorTest {
                 EasyMock.<HashMap<String, Metric>>anyObject());
 
         EasyMock.expect(mMockDevice.getDeviceState()).andReturn(TestDeviceState.ONLINE);
+        EasyMock.expect(mMockDevice.getRecoveryMode()).andReturn(RecoveryMode.AVAILABLE);
+        mMockDevice.setRecoveryMode(RecoveryMode.NONE);
         EasyMock.expect(mMockDevice.getScreenshot())
                 .andReturn(new ByteArrayInputStreamSource("".getBytes()));
         mMockListener.testLog(
                 EasyMock.eq("class#test-serial-screenshot-on-failure"),
                 EasyMock.eq(LogDataType.PNG),
                 EasyMock.anyObject());
+        mMockDevice.setRecoveryMode(RecoveryMode.AVAILABLE);
 
         EasyMock.replay(mMockListener, mMockDevice);
         mTestListener = mCollector.init(mContext, mMockListener);
