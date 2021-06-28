@@ -409,7 +409,7 @@ public class InstallApexModuleTargetPreparerTest {
         assertEquals(1, testFiles.size());
         assertEquals(mFakeApex3, testFiles.get(0));
         assertEquals(2, results.size());
-        results.containsAll(apexInData);
+        assertTrue(results.containsAll(apexInData));
         EasyMock.verify(mMockBuildInfo, mMockDevice);
     }
 
@@ -445,7 +445,7 @@ public class InstallApexModuleTargetPreparerTest {
         assertEquals(1, testFiles.size());
         assertEquals(mFakeApex3, testFiles.get(0));
         assertEquals(1, results.size());
-        results.contains(fakeApexData.name);
+        assertTrue(results.contains(fakeApexData.name));
         EasyMock.verify(mMockDevice);
     }
 

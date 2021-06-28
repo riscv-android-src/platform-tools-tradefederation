@@ -241,4 +241,7 @@ public interface ICommandOptions {
 
     /** List of tags used for reporting related to the invocation. */
     public List<String> reportingTags();
+
+    /** Whether or not to disable pre-invocaiton setup and post-invocation teardown. */
+    public boolean shouldDisableInvocationSetupAndTeardown();
 }

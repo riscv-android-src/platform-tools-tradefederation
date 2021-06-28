@@ -28,6 +28,7 @@ import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionCopier;
+import com.android.tradefed.config.filter.CommandOptionsGetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceProperties;
 import com.android.tradefed.device.ITestDevice;
@@ -737,6 +738,14 @@ public abstract class ITestSuite
                     module.getModuleInvocationContext()
                             .addDeviceBuildInfo(deviceName, mContext.getBuildInfo(deviceName));
                 }
+                // Add isolation status before module start for reporting
+                if (!IsolationGrade.NOT_ISOLATED.equals(
+                        CurrentInvocation.moduleCurrentIsolation())) {
+                    module.getModuleInvocationContext()
+                            .addInvocationAttribute(
+                                    ModuleDefinition.MODULE_ISOLATED,
+                                    CurrentInvocation.moduleCurrentIsolation().toString());
+                }
                 listener.testModuleStarted(module.getModuleInvocationContext());
                 mModuleInProgress = module;
                 // Trigger module start on module level listener too
@@ -745,13 +754,6 @@ public abstract class ITestSuite
                 TestInformation moduleInfo =
                         TestInformation.createModuleTestInfo(
                                 testInfo, module.getModuleInvocationContext());
-                if (!IsolationGrade.NOT_ISOLATED.equals(
-                        CurrentInvocation.moduleCurrentIsolation())) {
-                    module.getModuleInvocationContext()
-                            .addInvocationAttribute(
-                                    ModuleDefinition.MODULE_ISOLATED,
-                                    CurrentInvocation.moduleCurrentIsolation().toString());
-                }
                 try {
                     runSingleModule(module, moduleInfo, listener, moduleListeners, failureListener);
                 } finally {
@@ -1530,8 +1532,9 @@ public abstract class ITestSuite
     }
 
     @VisibleForTesting
-    FeatureResponse triggerFeature(TradefedFeatureClient client, Map<String, String> args) {
-        return client.triggerFeature("getPreviousPassed", args);
+    FeatureResponse triggerFeature(
+            TradefedFeatureClient client, String featureName, Map<String, String> args) {
+        return client.triggerFeature(featureName, args);
     }
 
     private void convertResponseToFilter(
@@ -1603,30 +1606,44 @@ public abstract class ITestSuite
         if (mMainConfiguration == null) {
             return previousPassedFilters;
         }
-        if (!mMainConfiguration.getCommandOptions().filterPreviousPassedTests()) {
-            return previousPassedFilters;
-        }
         if (mPreviousPassedFilters != null) {
             return mPreviousPassedFilters;
+        }
+        if (!mMainConfiguration.getCommandOptions().filterPreviousPassedTests()) {
+            // Match the option from the parent if needed
+            try (TradefedFeatureClient client = new TradefedFeatureClient()) {
+                Map<String, String> args = new HashMap<>();
+                args.put(CommandOptionsGetter.OPTION_NAME, "filter-previous-passed");
+                FeatureResponse rep = triggerFeature(client, CommandOptionsGetter.COMMAND_OPTIONS_GETTER, args);
+                if (!"true".equals(rep.getResponse())) {
+                    return previousPassedFilters;
+                }
+            } catch (RuntimeException e) {
+                CLog.e(e);
+                return previousPassedFilters;
+            }
         }
         mPreviousPassedFilters = new ArrayList<>();
         // Test the query of previous passed test
         Map<String, String> args = new HashMap<>();
-        String invocationId =
-                mMainConfiguration
-                        .getCommandOptions()
-                        .getInvocationData()
-                        .getUniqueMap()
-                        .get("invocation_id");
+        Map<String, String> invocationData = mMainConfiguration
+                .getCommandOptions()
+                .getInvocationData()
+                .getUniqueMap();
+        String invocationId = invocationData.get("invocation_id");
         if (!Strings.isNullOrEmpty(invocationId)) {
             args.put("invocation_id", invocationId);
         }
-        // TODO: Only do this if it's not the first attempt
         if (args.isEmpty()) {
             return mPreviousPassedFilters;
         }
+        String attempt = invocationData.get("attempt_index");
+        if ("0".equals(attempt)) {
+            return mPreviousPassedFilters;
+        }
+
         try (TradefedFeatureClient client = new TradefedFeatureClient()) {
-            FeatureResponse previousPassed = triggerFeature(client, args);
+            FeatureResponse previousPassed = triggerFeature(client, "getPreviousPassed", args);
             convertResponseToFilter(previousPassed, previousPassedFilters);
         } catch (RuntimeException e) {
             CLog.e(e);

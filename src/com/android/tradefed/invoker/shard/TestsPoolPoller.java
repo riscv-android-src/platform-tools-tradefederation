@@ -31,6 +31,8 @@ import com.android.tradefed.device.metric.CountTestCasesCollector;
 import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.invoker.TestInformation;
+import com.android.tradefed.invoker.logger.CurrentInvocation;
+import com.android.tradefed.invoker.logger.CurrentInvocation.IsolationGrade;
 import com.android.tradefed.invoker.shard.token.ITokenProvider;
 import com.android.tradefed.invoker.shard.token.ITokenRequest;
 import com.android.tradefed.invoker.shard.token.TokenProperty;
@@ -253,6 +255,8 @@ public final class TestsPoolPoller
                     CLog.w(e);
                 } finally {
                     validationConfig.cleanConfigurationData();
+                    CurrentInvocation.setRunIsolation(IsolationGrade.NOT_ISOLATED);
+                    CurrentInvocation.setModuleIsolation(IsolationGrade.NOT_ISOLATED);
                 }
             }
         } finally {

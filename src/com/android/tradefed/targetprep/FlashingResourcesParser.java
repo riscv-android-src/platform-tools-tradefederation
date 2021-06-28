@@ -17,6 +17,7 @@
 package com.android.tradefed.targetprep;
 
 import com.android.tradefed.command.remote.DeviceDescriptor;
+import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.MultiMap;
 
@@ -179,10 +180,16 @@ public class FlashingResourcesParser implements IFlashingResourcesParser {
     public String getRequiredImageVersion(String imageVersionKey, String productName) {
         MultiMap<String, String> productReqs = mReqs.get(productName);
 
-        if (productReqs == null && productName != null) {
-            // There aren't any product-specific requirements for productName.  Fall back to global
-            // requirements.
-            return getRequiredImageVersion(imageVersionKey, null);
+        if (productReqs == null) {
+            if (productName != null) {
+                // There aren't any product-specific requirements for productName.
+                // Fall back to global requirements.
+                return getRequiredImageVersion(imageVersionKey, null);
+            } else {
+                // No global result exists; return null
+                CLog.w("No global requirements found, android-info.txt might be empty?");
+                return null;
+            }
         }
 
         // Get the latest version assuming versions are sorted alphabetically.

@@ -15,25 +15,32 @@
  */
 package com.android.tradefed.retry;
 
+import com.android.annotations.VisibleForTesting;
 import com.android.ddmlib.testrunner.TestResult.TestStatus;
+import com.android.tradefed.config.Configuration;
+import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.cloud.RemoteAndroidVirtualDevice;
+import com.android.tradefed.device.internal.DeviceResetHandler;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.logger.CurrentInvocation;
-import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.CurrentInvocation.IsolationGrade;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.result.error.DeviceErrorIdentifier;
+import com.android.tradefed.sandbox.SandboxOptions;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFilterReceiver;
+import com.android.tradefed.testtype.SubprocessTfLauncher;
 import com.android.tradefed.testtype.retry.IAutoRetriableTest;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
 import com.android.tradefed.testtype.suite.SuiteTestFilter;
@@ -52,7 +59,7 @@ import java.util.stream.Collectors;
  * Base implementation of {@link IRetryDecision}. Base implementation only take local signals into
  * account.
  */
-public class BaseRetryDecision implements IRetryDecision {
+public class BaseRetryDecision implements IRetryDecision, IConfigurationReceiver {
 
     private static final int ABORT_MAX_FAILURES = 75;
 
@@ -68,6 +75,12 @@ public class BaseRetryDecision implements IRetryDecision {
                     "Reset or powerwash the device at the last retry attempt. If this option is "
                             + "set, option `reboot-at-last-retry` will be ignored.")
     private boolean mResetAtLastRetry = false;
+
+    @Option(
+            name = "retry-isolation-grade",
+            description = "Control the isolation level that should be attempted between retries."
+    )
+    private IsolationGrade mRetryIsolationGrade = IsolationGrade.NOT_ISOLATED;
 
     @Option(
         name = "max-testcase-run-count",
@@ -102,14 +115,15 @@ public class BaseRetryDecision implements IRetryDecision {
     @Option(
             name = "updated-retry-reporting",
             description = "Feature flag to use the updated retry reporting strategy.")
-    private boolean mUpdatedReporting = false;
+    private boolean mUpdatedReporting = true;
 
     @Option(
             name = "updated-filtering",
             description = "Feature flag to use the updated filtering logic.")
-    private boolean mUpdatedFiltering = false;
+    private boolean mUpdatedFiltering = true;
 
     private IInvocationContext mContext;
+    private IConfiguration mConfiguration;
 
     private IRemoteTest mCurrentlyConsideredTest;
     private Set<TestDescription> mPreviouslyFailing;
@@ -141,6 +155,11 @@ public class BaseRetryDecision implements IRetryDecision {
     @Override
     public void setInvocationContext(IInvocationContext context) {
         mContext = context;
+    }
+
+    @Override
+    public void setConfiguration(IConfiguration configuration) {
+        mConfiguration = configuration;
     }
 
     @Override
@@ -249,6 +268,11 @@ public class BaseRetryDecision implements IRetryDecision {
         return mUpdatedReporting;
     }
 
+    @VisibleForTesting
+    public IsolationGrade getIsolationGrade() {
+        return mRetryIsolationGrade;
+    }
+
     private static Set<TestDescription> getPassedTestCases(List<TestRunResult> previousResults) {
         Set<TestDescription> previousPassed = new LinkedHashSet<>();
         for (TestRunResult run : previousResults) {
@@ -326,6 +350,7 @@ public class BaseRetryDecision implements IRetryDecision {
             }
             Set<TestDescription> previouslyPassedTests = getPassedTestCases(previousResults);
             excludePassedTests(test, previouslyPassedTests);
+            excludeNonRetriableFailure(test, previousFailedTests);
             return true;
         } else if (!runFailures.isEmpty()) {
             if (shouldFullRerun(runFailures)) {
@@ -418,6 +443,19 @@ public class BaseRetryDecision implements IRetryDecision {
         }
     }
 
+    private void excludeNonRetriableFailure(
+          ITestFilterReceiver test, Map<TestDescription, TestResult> previousFailedTests) {
+        for (Entry<TestDescription, TestResult> testCaseEntry : previousFailedTests.entrySet()) {
+            TestDescription testCase = testCaseEntry.getKey();
+            if (!testCaseEntry.getValue().getFailure().isRetriable()) {
+                // If a test case failure is not retriable, exclude it from the filters.
+                String filter =
+                        String.format("%s#%s", testCase.getClassName(), testCase.getTestName());
+                test.addExcludeFilter(filter);
+            }
+        }
+    }
+
     /** Returns all the non-stub device associated with the {@link IRemoteTest}. */
     private List<ITestDevice> getDevices() {
         List<ITestDevice> listDevices = new ArrayList<>(mContext.getDevices());
@@ -432,10 +470,25 @@ public class BaseRetryDecision implements IRetryDecision {
     private void recoverStateOfDevices(
             List<ITestDevice> devices, int lastAttempt, ModuleDefinition module)
             throws DeviceNotAvailableException {
-        if (lastAttempt == (mMaxRetryAttempts - 2)) {
+        if (IsolationGrade.REBOOT_ISOLATED.equals(mRetryIsolationGrade)) {
+            long start = System.currentTimeMillis();
+            try {
+                for (ITestDevice device : devices) {
+                    device.reboot();
+                }
+                CurrentInvocation.setModuleIsolation(IsolationGrade.REBOOT_ISOLATED);
+                CurrentInvocation.setRunIsolation(IsolationGrade.REBOOT_ISOLATED);
+            } finally {
+                InvocationMetricLogger.addInvocationPairMetrics(
+                        InvocationMetricKey.REBOOT_RETRY_ISOLATION_PAIR,
+                        start, System.currentTimeMillis());
+            }
+        } else if (IsolationGrade.FULLY_ISOLATED.equals(mRetryIsolationGrade)) {
+            resetIsolation(module, devices);
+        } else if (lastAttempt == (mMaxRetryAttempts - 2)) {
             // Reset only works for suite right now
             if (mResetAtLastRetry && module != null) {
-                resetDevice(module, devices);
+                compatibleReset(mConfiguration, module, devices);
             } else if (mRebootAtLastRetry) {
                 for (ITestDevice device : devices) {
                     device.reboot();
@@ -446,10 +499,44 @@ public class BaseRetryDecision implements IRetryDecision {
         }
     }
 
+    private void resetIsolation(ModuleDefinition module, List<ITestDevice> devices)
+            throws DeviceNotAvailableException {
+        long start = System.currentTimeMillis();
+        try {
+            isolateRetry(devices);
+            // Rerun suite level preparer if we are inside a subprocess
+            reSetupModule(module, mConfiguration.getCommandOptions()
+                    .getInvocationData()
+                    .containsKey(SubprocessTfLauncher.SUBPROCESS_TAG_NAME));
+        } finally {
+            InvocationMetricLogger.addInvocationPairMetrics(
+                    InvocationMetricKey.RESET_RETRY_ISOLATION_PAIR,
+                    start, System.currentTimeMillis());
+        }
+    }
+
+    private void compatibleReset(
+            IConfiguration config, ModuleDefinition module, List<ITestDevice> devices)
+                    throws DeviceNotAvailableException {
+        SandboxOptions options = (SandboxOptions)
+                config.getConfigurationObject(Configuration.SANBOX_OPTIONS_TYPE_NAME);
+        if (config.getConfigurationDescription().shouldUseSandbox()) {
+            if (options.startAvdInParent()) {
+                resetIsolation(module, devices);
+            } else {
+                // TODO: When sandbox has been switched to start device in parent, remove the
+                // compatible handling.
+                resetDevice(module, devices);
+            }
+        } else {
+            CLog.d("Not a sandboxed run, reset-at-last-retry is ignored.");
+        }
+        // TODO: Add support for non-sandbox
+    }
+
     private void resetDevice(ModuleDefinition module, List<ITestDevice> devices)
             throws DeviceNotAvailableException {
         CLog.d("Reset devices...");
-        int deviceResetCount = 0;
         for (ITestDevice device : devices) {
             if (!(device instanceof RemoteAndroidVirtualDevice)) {
                 CLog.i(
@@ -460,7 +547,8 @@ public class BaseRetryDecision implements IRetryDecision {
             boolean success = false;
             try {
                 success = ((RemoteAndroidVirtualDevice) device).powerwashGce();
-                deviceResetCount++;
+                InvocationMetricLogger.addInvocationMetrics(
+                        InvocationMetricKey.DEVICE_RESET_COUNT, 1);
                 CurrentInvocation.setModuleIsolation(IsolationGrade.FULLY_ISOLATED);
                 CurrentInvocation.setRunIsolation(IsolationGrade.FULLY_ISOLATED);
             } catch (TargetSetupError e) {
@@ -482,27 +570,43 @@ public class BaseRetryDecision implements IRetryDecision {
             }
         }
 
-        if (module != null) {
-            if (module.getId() != null) {
-                InvocationMetricLogger.addInvocationMetrics(
-                        InvocationMetricKey.DEVICE_RESET_MODULES, module.getId());
-                InvocationMetricLogger.addInvocationMetrics(
-                        InvocationMetricKey.DEVICE_RESET_COUNT, deviceResetCount);
-            }
+        reSetupModule(module, true);
+    }
 
-            // Run all preparers including suite level ones.
-            Throwable preparationException =
-                    module.runPreparation(true /* includeSuitePreparers */);
-            if (preparationException != null) {
-                CLog.e(preparationException);
+    private void isolateRetry(List<ITestDevice> devices) throws DeviceNotAvailableException {
+        DeviceResetHandler handler = new DeviceResetHandler(mContext);
+        for (ITestDevice device : devices) {
+            boolean resetSuccess = handler.resetDevice(device);
+            if (!resetSuccess) {
                 throw new DeviceNotAvailableException(
-                        String.format(
-                                "Failed to reset devices before retry: %s",
-                                preparationException.toString()),
-                        preparationException,
-                        devices.get(0).getSerialNumber(),
+                        String.format("Failed to reset device: %s", device.getSerialNumber()),
+                        device.getSerialNumber(),
                         DeviceErrorIdentifier.DEVICE_FAILED_TO_RESET);
             }
+        }
+    }
+
+    private void reSetupModule(ModuleDefinition module, boolean includeSuitePreparers)
+            throws DeviceNotAvailableException {
+        if (module == null) {
+            return;
+        }
+        if (module.getId() != null) {
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.DEVICE_RESET_MODULES, module.getId());
+        }
+        // Run all preparers including optionally suite level ones.
+        Throwable preparationException =
+                module.runPreparation(includeSuitePreparers);
+        if (preparationException != null) {
+            CLog.e(preparationException);
+            throw new DeviceNotAvailableException(
+                    String.format(
+                            "Failed to reset devices before retry: %s",
+                            preparationException.toString()),
+                    preparationException,
+                    "serial",
+                    DeviceErrorIdentifier.DEVICE_FAILED_TO_RESET);
         }
     }
 }

@@ -19,7 +19,10 @@ import com.android.os.StatsLog.ConfigMetricsReportList;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.DataType;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.ByteArrayInputStreamSource;
+import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
@@ -28,6 +31,8 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.protobuf.Descriptors.FieldDescriptor;
 import com.google.protobuf.Message;
+import com.google.protobuf.TextFormat;
+import com.google.protobuf.util.JsonFormat;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -64,6 +69,14 @@ public class StatsdGenericPostProcessor extends BasePostProcessor {
     )
     private Set<String> mReportPrefixes = new HashSet<>();
 
+    @Option(
+            name = "output-statsd-report-proto",
+            description =
+                    "Output the human-readable proto of the statsd metric reports in the specified "
+                            + "format. Can be repeated. Empty (off) by default."
+                            + "Only TEXTPB and JSON are supported at the moment.")
+    private Set<LogDataType> mOutputStatsdReportProtoFormats = new HashSet<>();
+
     @VisibleForTesting static final String METRIC_SEP = "-";
     @VisibleForTesting static final String INDEX_SEP = "#";
 
@@ -73,18 +86,20 @@ public class StatsdGenericPostProcessor extends BasePostProcessor {
     private static final ImmutableList FIELDS_TO_SKIP =
             ImmutableList.of(UID_MAP_FIELD_NAME, STRINGS_FIELD_NAME);
 
+    private static final JsonFormat.Printer JSON_PRINTER = JsonFormat.printer();
+
     @Override
     public Map<String, Metric.Builder> processTestMetricsAndLogs(
             TestDescription testDescription,
             HashMap<String, Metric> testMetrics,
             Map<String, LogFile> testLogs) {
-        return processStatsdReportsFromLogs(testLogs);
+        return processStatsdReportsFromLogs(testLogs, testDescription.toString());
     }
 
     @Override
     public Map<String, Metric.Builder> processRunMetricsAndLogs(
             HashMap<String, Metric> rawMetrics, Map<String, LogFile> runLogs) {
-        return processStatsdReportsFromLogs(runLogs);
+        return processStatsdReportsFromLogs(runLogs, "TestRun");
     }
 
     /**
@@ -101,7 +116,8 @@ public class StatsdGenericPostProcessor extends BasePostProcessor {
      * Uses the metrics to locate the statsd report files and then call into the processing method
      * to parse the reports into metrics.
      */
-    private Map<String, Metric.Builder> processStatsdReportsFromLogs(Map<String, LogFile> logs) {
+    private Map<String, Metric.Builder> processStatsdReportsFromLogs(
+            Map<String, LogFile> logs, String testOrRunName) {
         Map<String, Metric.Builder> parsedMetrics = new HashMap<>();
 
         for (String key : logs.keySet()) {
@@ -120,6 +136,30 @@ public class StatsdGenericPostProcessor extends BasePostProcessor {
                 if (reportList.getReportsList().isEmpty()) {
                     CLog.i("No reports collected for %s.", key);
                     continue;
+                }
+                for (LogDataType format : mOutputStatsdReportProtoFormats) {
+                    String dataName =
+                            String.format("%s_%s_report", reportPrefix.get(), testOrRunName);
+                    switch (format) {
+                        case TEXTPB:
+                            testLog(
+                                    dataName,
+                                    format,
+                                    new ByteArrayInputStreamSource(
+                                            TextFormat.printToString(reportList).getBytes()));
+                            break;
+                        case JSON:
+                            testLog(
+                                    dataName,
+                                    format,
+                                    new ByteArrayInputStreamSource(
+                                            JSON_PRINTER.print(reportList).getBytes()));
+                            break;
+                        default:
+                            CLog.e(
+                                    "Cannot output statsd report proto with unsupported format %s.",
+                                    format);
+                    }
                 }
                 Map<String, Metric.Builder> metricsForReport =
                         parseMetricsFromReportList(reportList);
@@ -218,5 +258,13 @@ public class StatsdGenericPostProcessor extends BasePostProcessor {
             }
         }
         return convertedMetrics;
+    }
+
+    /**
+     * Set the metric type to RAW metric.
+     */
+    @Override
+    protected DataType getMetricType() {
+        return DataType.RAW;
     }
 }

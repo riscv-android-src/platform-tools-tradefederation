@@ -86,7 +86,7 @@ public interface IDeviceSelection extends IMatcher<IDevice> {
 
     /** @return <code>true</code> if a gce device (aka a remote device) has been requested */
     public boolean gceDeviceRequested();
-
+    
     /**
      * Gets the given devices product type
      *

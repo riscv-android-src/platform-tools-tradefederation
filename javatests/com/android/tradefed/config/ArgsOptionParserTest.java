@@ -396,7 +396,8 @@ public class ArgsOptionParserTest extends TestCase {
         final String expectedKey = "istanbul";
         final boolean expectedValue = true;
         try {
-            parser.parse(new String[] {"--my_option", expectedKey, Boolean.toString(expectedValue)});
+            parser.parse(
+                    new String[] {"--my_option", expectedKey, Boolean.toString(expectedValue)});
             fail("ConfigurationException not thrown");
         } catch (ConfigurationException e) {
             // expect an exception that explicitly mentions that the "key" is incorrect
@@ -416,7 +417,8 @@ public class ArgsOptionParserTest extends TestCase {
         final int expectedKey = 13;
         final String expectedValue = "notconstantinople";
         try {
-            parser.parse(new String[] {"--my_option", Integer.toString(expectedKey), expectedValue});
+            parser.parse(
+                    new String[] {"--my_option", Integer.toString(expectedKey), expectedValue});
             fail("ConfigurationException not thrown");
         } catch (ConfigurationException e) {
             // expect an exception that explicitly mentions that the "value" is incorrect
@@ -543,6 +545,50 @@ public class ArgsOptionParserTest extends TestCase {
         assertFalse(object.mMyBool);
     }
 
+    /** Test the "--no-(bool option) true" syntax */
+    public void testParse_boolFalseWithTrueValue() throws ConfigurationException {
+        BooleanTrueOptionSource object = new BooleanTrueOptionSource();
+        ArgsOptionParser parser = new ArgsOptionParser(object);
+        parser.parse(new String[] {"--no-my_boolean", "true"});
+        assertFalse(object.mMyBool);
+    }
+
+    /** Test the "--no-(bool option)=true" syntax */
+    public void testParse_boolFalseEqualTrueValue() throws ConfigurationException {
+        BooleanTrueOptionSource object = new BooleanTrueOptionSource();
+        ArgsOptionParser parser = new ArgsOptionParser(object);
+        parser.parse(new String[] {"--no-my_boolean=true"});
+        assertFalse(object.mMyBool);
+    }
+
+    /** Test the "--no-(bool option) false" syntax */
+    public void testParse_boolFalseWithFalseValue() throws ConfigurationException {
+        BooleanTrueOptionSource object = new BooleanTrueOptionSource();
+        ArgsOptionParser parser = new ArgsOptionParser(object);
+        try {
+            parser.parse(new String[] {"--no-my_boolean", "false"});
+            fail(
+                    "ConfigurationException not thrown when user entered a 'false' value after a"
+                            + " boolean flag with 'no-' prefix. Eg: --no-boolean-flag false");
+        } catch (ConfigurationException e) {
+            // expected
+        }
+    }
+
+    /** Test the "--no-(bool option) false" syntax */
+    public void testParse_boolFalseEqualFalseValue() throws ConfigurationException {
+        BooleanTrueOptionSource object = new BooleanTrueOptionSource();
+        ArgsOptionParser parser = new ArgsOptionParser(object);
+        try {
+            parser.parse(new String[] {"--no-my_boolean=false"});
+            fail(
+                    "ConfigurationException not thrown when user entered a 'false' value after a"
+                            + " boolean flag with 'no-' prefix. Eg: --no-boolean-flag=false");
+        } catch (ConfigurationException e) {
+            // expected
+        }
+    }
+
     /**
      * Test the boolean long option syntax
      */
@@ -551,6 +597,38 @@ public class ArgsOptionParserTest extends TestCase {
         ArgsOptionParser parser = new ArgsOptionParser(object);
         parser.parse(new String[] {"--my_boolean"});
         assertTrue(object.mMyBool);
+    }
+
+    /** Test the boolean equal true long option syntax */
+    public void testParse_boolLongEqualTrueValue() throws ConfigurationException {
+        BooleanOptionSource object = new BooleanOptionSource();
+        ArgsOptionParser parser = new ArgsOptionParser(object);
+        parser.parse(new String[] {"--my_boolean=true"});
+        assertTrue(object.mMyBool);
+    }
+
+    /** Test the boolean equal false long option syntax */
+    public void testParse_boolLongEqualFalseValue() throws ConfigurationException {
+        BooleanOptionSource object = new BooleanOptionSource();
+        ArgsOptionParser parser = new ArgsOptionParser(object);
+        parser.parse(new String[] {"--my_boolean=false"});
+        assertFalse(object.mMyBool);
+    }
+
+    /** Test the boolean true long option syntax */
+    public void testParse_boolLongWithTrueValue() throws ConfigurationException {
+        BooleanOptionSource object = new BooleanOptionSource();
+        ArgsOptionParser parser = new ArgsOptionParser(object);
+        parser.parse(new String[] {"--my_boolean", "true"});
+        assertTrue(object.mMyBool);
+    }
+
+    /** Test the boolean false long option syntax */
+    public void testParse_boolLongWithFalseValue() throws ConfigurationException {
+        BooleanOptionSource object = new BooleanOptionSource();
+        ArgsOptionParser parser = new ArgsOptionParser(object);
+        parser.parse(new String[] {"--my_boolean", "false"});
+        assertFalse(object.mMyBool);
     }
 
     /**

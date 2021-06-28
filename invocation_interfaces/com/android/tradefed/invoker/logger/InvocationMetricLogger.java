@@ -36,6 +36,7 @@ public class InvocationMetricLogger {
         STAGE_TESTS_TIME("stage_tests_time_ms", true),
         STAGE_TESTS_BYTES("stage_tests_bytes", true),
         STAGE_TESTS_INDIVIDUAL_DOWNLOADS("stage_tests_individual_downloads", true),
+        SERVER_REFERENCE("server_reference", false),
         // -- Disk memory usage --
         // Approximate peak disk space usage of the invocation
         // Represent files that would usually live for the full invocation (min usage)
@@ -56,6 +57,10 @@ public class InvocationMetricLogger {
         PUSH_FILE_TIME("push_file_time_ms", true),
         // Represents how many times we pushed file from the device.
         PUSH_FILE_COUNT("push_file_count", true),
+        // Capture the time spent isolating a retry with reset
+        RESET_RETRY_ISOLATION_PAIR("reset_isolation_timestamp_pair", true),
+        // Capture the time spent isolating a retry with reboot
+        REBOOT_RETRY_ISOLATION_PAIR("reboot_isolation_timestamp_pair", true),
         // Track if soft restart is occurring after test module
         SOFT_RESTART_AFTER_MODULE("soft_restart_after_module", true),
         CLOUD_DEVICE_PROJECT("cloud_device_project", false),
@@ -90,6 +95,8 @@ public class InvocationMetricLogger {
         INVOCATION_START("tf_invocation_start_timestamp", false),
 
         DYNAMIC_FILE_RESOLVER_PAIR("tf_dynamic_resolver_pair_timestamp", true),
+        ARTIFACTS_DOWNLOAD_SIZE("tf_artifacts_download_size_bytes", true),
+        ARTIFACTS_UPLOAD_SIZE("tf_artifacts_upload_size_bytes", true),
         // TODO: Delete start/end timestamp in favor of pair.
         FETCH_BUILD_START("tf_fetch_build_start_timestamp", false),
         FETCH_BUILD_END("tf_fetch_build_end_timestamp", false),
@@ -98,6 +105,8 @@ public class InvocationMetricLogger {
         SETUP_START("tf_setup_start_timestamp", false),
         SETUP_END("tf_setup_end_timestamp", false),
         SETUP_PAIR("tf_setup_pair_timestamp", true),
+        FLASHING_PERMIT_LATENCY("flashing_permit_latency_ms", true),
+        DOWNLOAD_PERMIT_LATENCY("download_permit_latency_ms", true),
         // Don't aggregate test pair, latest report wins because it's the closest to
         // the execution like in a subprocess.
         TEST_PAIR("tf_test_pair_timestamp", false),
@@ -106,7 +115,11 @@ public class InvocationMetricLogger {
         TEARDOWN_END("tf_teardown_end_timestamp", false),
         TEARDOWN_PAIR("tf_teardown_pair_timestamp", false),
 
-        INVOCATION_END("tf_invocation_end_timestamp", false);
+        INVOCATION_END("tf_invocation_end_timestamp", false),
+
+        MODULE_SETUP_PAIR("tf_module_setup_pair_timestamp", true),
+        MODULE_TEARDOWN_PAIR("tf_module_teardown_pair_timestamp", true),
+        ;
 
         private final String mKeyName;
         // Whether or not to add the value when the key is added again.

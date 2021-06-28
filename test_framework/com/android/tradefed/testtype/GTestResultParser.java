@@ -109,6 +109,7 @@ public class GTestResultParser extends MultiLineReceiver {
 
     /** True if at least one testRunStart has been reported. */
     private boolean mSeenOneTestRunStart = false;
+    private boolean mFailureReported = false;
     /**
      * Track all the log lines before the testRunStart is made, it is helpful on an early failure to
      * report those logs.
@@ -789,7 +790,7 @@ public class GTestResultParser extends MultiLineReceiver {
         } else if (mTestRunInProgress) {
             handleTestRunFailed("No test results", InfraErrorIdentifier.UNDETERMINED);
             mTestRunInProgress = false;
-        } else if (!mSeenOneTestRunStart) {
+        } else if (!mSeenOneTestRunStart && !mFailureReported) {
             for (ITestInvocationListener listener : mTestListeners) {
                 listener.testRunStarted(mTestRunName, 0);
                 listener.testRunFailed(
@@ -800,6 +801,7 @@ public class GTestResultParser extends MultiLineReceiver {
                                         String.join("\n", mTrackLogsBeforeRunStart))));
                 listener.testRunEnded(0L, new HashMap<String, Metric>());
             }
+            mFailureReported = true;
         }
     }
 

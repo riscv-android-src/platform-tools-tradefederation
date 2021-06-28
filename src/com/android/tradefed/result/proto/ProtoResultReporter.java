@@ -249,7 +249,10 @@ public abstract class ProtoResultReporter
 
         // Finalize the module and track it in the child
         TestRecord moduleRecord = moduleBuilder.build();
-        parentBuilder.addChildren(createChildReference(moduleRecord));
+        ChildReference moduleReference = createModuleChildReference(moduleRecord);
+        if (moduleReference != null) {
+            parentBuilder.addChildren(moduleReference);
+        }
         try {
             processTestModuleEnd(moduleRecord);
         } catch (RuntimeException e) {
@@ -502,6 +505,13 @@ public abstract class ProtoResultReporter
         } while (fullmap.containsKey(key));
         fullmap.put(key, any);
         current.putAllArtifacts(fullmap);
+    }
+
+    /**
+     * Creates a child reference for a module.
+     */
+    protected ChildReference createModuleChildReference(TestRecord record) {
+        return createChildReference(record);
     }
 
     private ChildReference createChildReference(TestRecord record) {
