@@ -256,6 +256,11 @@ public class CommandOptions implements ICommandOptions {
             description = "Whether or not to attempt to report the logs until invocationComplete.")
     private boolean mReportInvocationCompleteLogs = false;
 
+    @Option(
+            name = "disable-invocation-setup-and-teardown",
+            description = "Disable the pre-invocation setup and post-invocation teardown phases.")
+    private boolean mDisableInvocationSetupAndTeardown = false;
+
     /**
      * Set the help mode for the config.
      * <p/>
@@ -655,5 +660,11 @@ public class CommandOptions implements ICommandOptions {
             tags.add("incremental_retry");
         }
         return tags;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean shouldDisableInvocationSetupAndTeardown() {
+        return mDisableInvocationSetupAndTeardown;
     }
 }

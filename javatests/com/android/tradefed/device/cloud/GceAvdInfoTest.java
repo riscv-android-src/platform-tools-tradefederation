@@ -26,11 +26,11 @@ import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetr
 import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.targetprep.TargetSetupError;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.json.JSONObject;
-import org.json.JSONArray;
 
 import java.util.Map;
 
@@ -433,8 +433,10 @@ public class GceAvdInfoTest {
 
     @Test
     public void testDetermineAcloudErrorType() {
-        assertEquals(GceAvdInfo.determineAcloudErrorType(null), null);
-        assertEquals(GceAvdInfo.determineAcloudErrorType(""), null);
+        assertEquals(GceAvdInfo.determineAcloudErrorType(null),
+                InfraErrorIdentifier.ACLOUD_UNRECOGNIZED_ERROR_TYPE);
+        assertEquals(GceAvdInfo.determineAcloudErrorType(""),
+                InfraErrorIdentifier.ACLOUD_UNRECOGNIZED_ERROR_TYPE);
         assertEquals(
                 GceAvdInfo.determineAcloudErrorType("invalid error type"),
                 InfraErrorIdentifier.ACLOUD_UNRECOGNIZED_ERROR_TYPE);

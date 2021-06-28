@@ -45,7 +45,6 @@ import com.android.tradefed.util.StringEscapeUtils;
 import com.android.tradefed.util.StringUtil;
 import com.android.tradefed.util.SubprocessEventHelper.InvocationFailedEventInfo;
 import com.android.tradefed.util.SubprocessTestResultsParser;
-import com.android.tradefed.util.SystemUtil;
 
 import java.io.File;
 import java.io.IOException;
@@ -318,7 +317,9 @@ public class ClusterCommandLauncher
     private List<String> buildJavaCommandArgs(String classpath, String tfCommandLine) {
         // Build a command line to invoke a TF process.
         final List<String> cmdArgs = new ArrayList<>();
-        cmdArgs.add(SystemUtil.getRunningJavaBinaryPath().getAbsolutePath());
+        final String javaHome = getEnvVar("JAVA_HOME", System.getProperty("java.home"));
+        final String javaPath = String.format("%s/bin/java", javaHome);
+        cmdArgs.add(javaPath);
         cmdArgs.add("-cp");
         cmdArgs.add(classpath);
         cmdArgs.addAll(mJvmOptions);

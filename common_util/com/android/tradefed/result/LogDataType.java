@@ -39,6 +39,7 @@ public enum LogDataType {
     CLANG_COVERAGE("profdata", "text/plain", false, false), // LLVM indexed profile data
     PB("pb", "application/octet-stream", true, false), // Binary proto file
     TEXTPB("textproto", "text/plain", false, true), // Text proto file
+    JSON("json", "application/json", false, true),
     PERFETTO(
             "perfetto-trace",
             "application/octet-stream",

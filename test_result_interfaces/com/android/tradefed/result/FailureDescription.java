@@ -162,6 +162,24 @@ public class FailureDescription {
         return mErrorMessage;
     }
 
+    /**
+     * A formatted way of displaying the error and some details.
+     */
+    public String getFormattedErrorMessage() {
+        StringBuilder s = new StringBuilder();
+        if (mErrorId != null) {
+            s.append("[");
+            s.append(mErrorId.name());
+            s.append("|");
+            s.append(mErrorId.code());
+            s.append("|");
+            s.append(mErrorId.status());
+            s.append("] ");
+        }
+        s.append(mErrorMessage);
+        return s.toString();
+    }
+
     @Override
     public String toString() {
         // For backward compatibility of result interface, toString falls back to the simple message

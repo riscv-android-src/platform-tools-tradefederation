@@ -70,6 +70,25 @@ java_genrule_host {
      out: ["tradefed-service-grpc.srcjar"],
 }
 
+java_library_host {
+    name: "tradefed-service-grpc-lib",
+    visibility: [
+        "//tools/tradefederation/core",
+    ],
+    srcs: [
+        ":tf-feature-grpc-gen",
+    ],
+    static_libs: [
+        "grpc-java",
+        "grpc-java-netty-shaded",
+        "libprotobuf-java-full",
+        "tradefed-protos",
+        "javax-annotation-api-prebuilt-host-jar",
+        "guava",
+        "opencensus-java-api",
+    ],
+}
+
 // Main Target to build tradefed jar
 java_library_host {
     name: "tradefed",
@@ -110,7 +129,6 @@ java_library_host {
         "src/**/*.java",
         "global_configuration/**/*.java",
         ":lab-resource-grpc-gen",
-        ":tf-feature-grpc-gen",
     ],
     static_libs: [
         "tradefed-common-util",
@@ -118,6 +136,7 @@ java_library_host {
         "tradefed-result-interfaces",
         "tradefed-device-build-interfaces",
         "tradefed-invocation-interfaces",
+        "tradefed-service-grpc-lib",
         "protobuf-java-util-prebuilt-jar",
         "aoa-helper",
         "error_prone_annotations-2.0.18",

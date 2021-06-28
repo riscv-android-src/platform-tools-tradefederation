@@ -24,7 +24,9 @@ public enum LogcatEventType {
     PATCH_COMPLETE,
     UPDATE_VERIFIER_COMPLETE,
     D2O_COMPLETE,
+    INSTALL_PROGRESS_UPDATE,
     UPDATE_COMPLETE,
+    UPDATE_COMPLETE_NOT_ACTIVE,
     // error found in logcat output
     ERROR,
     // error found in logcat output, but doesn't necessarily indicate OTA failure. Should retry.

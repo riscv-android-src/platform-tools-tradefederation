@@ -112,10 +112,12 @@ final class InstrumentationListener extends LogcatCrashResultForwarder {
     @Override
     public void testRunFailed(FailureDescription error) {
         if (error.getErrorMessage().startsWith(DDMLIB_INSTRU_FAILURE_MSG)) {
-            Set<TestDescription> expected = new LinkedHashSet<>(mExpectedTests);
-            expected.removeAll(mTests);
-            String helpMessage = String.format("The following tests didn't run: %s", expected);
-            error.setDebugHelpMessage(helpMessage);
+            if (mExpectedTests != null) {
+                Set<TestDescription> expected = new LinkedHashSet<>(mExpectedTests);
+                expected.removeAll(mTests);
+                String helpMessage = String.format("The following tests didn't run: %s", expected);
+                error.setDebugHelpMessage(helpMessage);
+            }
             error.setFailureStatus(FailureStatus.TEST_FAILURE);
             String wrapMessage = error.getErrorMessage();
             boolean restarted = false;

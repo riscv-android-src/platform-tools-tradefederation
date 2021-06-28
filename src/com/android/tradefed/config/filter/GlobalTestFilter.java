@@ -80,6 +80,10 @@ public final class GlobalTestFilter {
         return new LinkedHashSet<>(mExcludeFilters);
     }
 
+    public void addPreviousPassedTests(Set<String> previousPassed) {
+        mExcludeFilters.addAll(previousPassed);
+    }
+
     /** Initialize the global filters by passing them to the tests. */
     public void setUpFilters(IConfiguration config) {
         if (mDisable) {

@@ -1659,6 +1659,24 @@ public class NativeDevice implements IManagedTestDevice {
     public boolean pushDir(
             File localFileDir, String deviceFilePath, Set<String> excludedDirectories)
             throws DeviceNotAvailableException {
+        if (isSdcardOrEmulated(deviceFilePath)) {
+            Integer currentUser = getCurrentUser();
+            if (currentUser != 0) {
+                ContentProviderHandler handler = getContentProvider();
+                if (handler != null) {
+                    return handler.pushDir(localFileDir, deviceFilePath, excludedDirectories);
+                }
+            } else {
+                // Remove the special handling when content provider performance is better
+                CLog.d("Push without content provider for user '%s'", currentUser);
+            }
+        }
+        return pushDirInternal(localFileDir, deviceFilePath, excludedDirectories);
+    }
+
+    private boolean pushDirInternal(
+            File localFileDir, String deviceFilePath, Set<String> excludedDirectories)
+            throws DeviceNotAvailableException {
         if (!localFileDir.isDirectory()) {
             CLog.e("file %s is not a directory", localFileDir.getAbsolutePath());
             return false;
@@ -1679,7 +1697,7 @@ public class NativeDevice implements IManagedTestDevice {
                     continue;
                 }
                 executeShellCommand(String.format("mkdir -p \"%s\"", remotePath));
-                if (!pushDir(childFile, remotePath, excludedDirectories)) {
+                if (!pushDirInternal(childFile, remotePath, excludedDirectories)) {
                     return false;
                 }
             } else if (childFile.isFile()) {
@@ -5301,7 +5319,7 @@ public class NativeDevice implements IManagedTestDevice {
     }
 
     /** Reset the flag for content provider setup in order to trigger it again. */
-    protected void resetContentProviderSetup() {
+    public void resetContentProviderSetup() {
         mShouldSkipContentProviderSetup = false;
     }
 

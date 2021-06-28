@@ -20,6 +20,7 @@ import com.android.tradefed.build.BuildRetrievalError;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IBuildProvider;
 import com.android.tradefed.build.VersionedFile;
+import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -32,9 +33,14 @@ import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.sandbox.SandboxOptions;
+import com.android.tradefed.targetprep.ITargetPreparer;
+import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Special sandbox execution of the invocation: This is the InvocationExection for when we are
@@ -80,6 +86,14 @@ public class SandboxedInvocationExecution extends InvocationExecution {
         // Don't clean the build info in subprocess. Let the parents do it.
     }
 
+    /** {@inheritDoc} */
+    @Override
+    protected List<ITargetPreparer> getPreparersToRun(IConfiguration config, String deviceName) {
+        List<ITargetPreparer> preparersToRun = new ArrayList<>();
+        preparersToRun.addAll(config.getDeviceConfigByName(deviceName).getTargetPreparers());
+        return preparersToRun;
+    }
+
     /**
      * In order for sandbox to work without currently receiving the parent TestInformation back-fill
      * some information to find artifacts properly.
@@ -118,5 +132,42 @@ public class SandboxedInvocationExecution extends InvocationExecution {
     @Override
     protected void logHostAdb(IConfiguration config, ITestLogger logger) {
         // Do nothing, the parent sandbox will log it.
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void runDevicePreInvocationSetup(
+            IInvocationContext context, IConfiguration config, ITestLogger logger)
+            throws DeviceNotAvailableException, TargetSetupError {
+        if (shouldRunDeviceSpecificSetup(config)) {
+            super.runDevicePreInvocationSetup(context, config, logger);
+        } else {
+            CLog.d("Skipping runDevicePreInvocationSetup it ran in parent sandbox.");
+        }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void runDevicePostInvocationTearDown(
+            IInvocationContext context, IConfiguration config, Throwable exception) {
+        if (shouldRunDeviceSpecificSetup(config)) {
+            super.runDevicePostInvocationTearDown(context, config, exception);
+        } else {
+            CLog.d("Skipping runDevicePostInvocationTearDown it ran in parent sandbox.");
+        }
+    }
+
+    /**
+     * Do not run the pre invocation setup for the device if the parent handled it.
+     */
+    private boolean shouldRunDeviceSpecificSetup(IConfiguration config) {
+        SandboxOptions options =
+                (SandboxOptions)
+                        config.getConfigurationObject(Configuration.SANBOX_OPTIONS_TYPE_NAME);
+        if (options != null && options.startAvdInParent()) {
+            // If it ran in parents, don't run it again.
+            return false;
+        }
+        return true;
     }
 }

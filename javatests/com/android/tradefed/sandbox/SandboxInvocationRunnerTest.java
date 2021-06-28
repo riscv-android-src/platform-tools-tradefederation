@@ -17,6 +17,9 @@ package com.android.tradefed.sandbox;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.IConfiguration;
@@ -27,27 +30,27 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 /** Unit tests for {@link SandboxInvocationRunner}. */
 @RunWith(JUnit4.class)
 public class SandboxInvocationRunnerTest {
 
     private IConfiguration mConfig;
-    private ISandbox mMockSandbox;
     private IInvocationContext mContext;
-    private ITestInvocationListener mMockListener;
+    @Mock ISandbox mMockSandbox;
+    @Mock ITestInvocationListener mMockListener;
 
     @Before
     public void setUp() {
+        MockitoAnnotations.initMocks(this);
         mConfig = new Configuration("name", "description");
         mContext = new InvocationContext();
-        mMockSandbox = EasyMock.createMock(ISandbox.class);
-        mMockListener = EasyMock.createMock(ITestInvocationListener.class);
     }
 
     /** Test a run that is successful. */
@@ -55,14 +58,13 @@ public class SandboxInvocationRunnerTest {
     public void testPrepareAndRun() throws Throwable {
         TestInformation info = TestInformation.newBuilder().setInvocationContext(mContext).build();
         mConfig.setConfigurationObject(Configuration.SANDBOX_TYPE_NAME, mMockSandbox);
-        EasyMock.expect(mMockSandbox.prepareEnvironment(mContext, mConfig, mMockListener))
-                .andReturn(null);
+        when(mMockSandbox.prepareEnvironment(mContext, mConfig, mMockListener)).thenReturn(null);
         CommandResult res = new CommandResult(CommandStatus.SUCCESS);
-        EasyMock.expect(mMockSandbox.run(mConfig, mMockListener)).andReturn(res);
-        mMockSandbox.tearDown();
-        EasyMock.replay(mMockSandbox, mMockListener);
+        when(mMockSandbox.run(mConfig, mMockListener)).thenReturn(res);
+
         SandboxInvocationRunner.prepareAndRun(info, mConfig, mMockListener);
-        EasyMock.verify(mMockSandbox, mMockListener);
+
+        verify(mMockSandbox, times(1)).tearDown();
     }
 
     /** Test a failure to prepare the environment. The exception will be send up. */
@@ -70,16 +72,14 @@ public class SandboxInvocationRunnerTest {
     public void testPrepareAndRun_prepFailure() throws Throwable {
         TestInformation info = TestInformation.newBuilder().setInvocationContext(mContext).build();
         mConfig.setConfigurationObject(Configuration.SANDBOX_TYPE_NAME, mMockSandbox);
-        EasyMock.expect(mMockSandbox.prepareEnvironment(mContext, mConfig, mMockListener))
-                .andReturn(new RuntimeException("my exception"));
-        mMockSandbox.tearDown();
-        EasyMock.replay(mMockSandbox, mMockListener);
+        when(mMockSandbox.prepareEnvironment(mContext, mConfig, mMockListener))
+                .thenReturn(new RuntimeException("my exception"));
         try {
             SandboxInvocationRunner.prepareAndRun(info, mConfig, mMockListener);
             fail("Should have thrown an exception.");
         } catch (RuntimeException expected) {
             assertEquals("my exception", expected.getMessage());
         }
-        EasyMock.verify(mMockSandbox, mMockListener);
+        verify(mMockSandbox, times(1)).tearDown();
     }
 }

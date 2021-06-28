@@ -28,6 +28,7 @@ import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.DynamicRemoteFileResolver;
 import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.IConfiguration;
+import com.android.tradefed.config.filter.OptionFetcher;
 import com.android.tradefed.config.proxy.AutomatedReporters;
 import com.android.tradefed.config.proxy.TradefedDelegator;
 import com.android.tradefed.device.DeviceManager;
@@ -80,6 +81,7 @@ import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.retry.ResultAggregator;
 import com.android.tradefed.retry.RetryStrategy;
+import com.android.tradefed.service.TradefedFeatureServer;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.DeviceFailedToBootError;
 import com.android.tradefed.targetprep.TargetSetupError;
@@ -244,9 +246,7 @@ public class TestInvocation implements ITestInvocation {
             logDeviceBatteryLevel(context, "initial");
             // Run the preInvocationSetup on devices.
             if (!devicePreSetupDone) {
-                if (!config.getCommandOptions().shouldUseSandboxing()) {
-                    invocationPath.runDevicePreInvocationSetup(context, config, listener);
-                }
+                invocationPath.runDevicePreInvocationSetup(context, config, listener);
             }
             // Then run the regular setup and run
             prepareAndRun(config, testInfo, invocationPath, listener);
@@ -813,10 +813,25 @@ public class TestInvocation implements ITestInvocation {
             context.addInvocationAttribute(
                     "inop-options", Joiner.on(",").join(config.getInopOptions()));
         }
+        // Carry the reference of the server so it can be used within the same process.
+        if (config.getConfigurationDescription().getAllMetaData().getUniqueMap()
+                .containsKey(TradefedFeatureServer.SERVER_REFERENCE)) {
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.SERVER_REFERENCE,
+                    config.getConfigurationDescription().getAllMetaData().getUniqueMap()
+                        .get(TradefedFeatureServer.SERVER_REFERENCE));
+        }
         // Only log invocation_start in parent
-        if (!isSubprocess(config)) {
+        boolean isSuprocess = isSubprocess(config);
+        if (!isSuprocess) {
             InvocationMetricLogger.addInvocationMetrics(
                     InvocationMetricKey.INVOCATION_START, System.currentTimeMillis());
+        } else {
+            CLog.d("Fetching options from parent.");
+            // Get options from the parent process
+            try (OptionFetcher fetchOtpions = new OptionFetcher()) {
+                fetchOtpions.fetchParentOptions(config);
+            }
         }
         // Handle the automated reporting
         applyAutomatedReporters(config);
@@ -845,6 +860,8 @@ public class TestInvocation implements ITestInvocation {
                             .setDependenciesFolder(mWorkFolder)
                             .build();
         }
+        // Register the test info to the configuration to be usable.
+        config.setConfigurationObject(TradefedFeatureServer.TEST_INFORMATION_OBJECT, info);
         CurrentInvocation.addInvocationInfo(InvocationInfo.WORK_FOLDER, info.dependenciesFolder());
 
         CleanUpInvocationFiles cleanUpThread = new CleanUpInvocationFiles(info, config);
@@ -1512,7 +1529,7 @@ public class TestInvocation implements ITestInvocation {
     }
 
     /** Returns true if the invocation is currently within a subprocess scope. */
-    private boolean isSubprocess(IConfiguration config) {
+    public static boolean isSubprocess(IConfiguration config) {
         if (System.getenv(DelegatedInvocationExecution.DELEGATED_MODE_VAR) != null) {
             return true;
         }

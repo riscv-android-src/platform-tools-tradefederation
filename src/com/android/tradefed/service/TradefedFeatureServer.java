@@ -18,7 +18,10 @@ package com.android.tradefed.service;
 import com.android.annotations.VisibleForTesting;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
+import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.testtype.ITestInformationReceiver;
+import com.android.tradefed.util.StreamUtil;
 
 import com.proto.tradefed.feature.ErrorInfo;
 import com.proto.tradefed.feature.FeatureRequest;
@@ -39,6 +42,7 @@ import io.grpc.stub.StreamObserver;
 public class TradefedFeatureServer extends TradefedInformationImplBase {
 
     public static final String SERVER_REFERENCE = "SERVER_REFERENCE";
+    public static final String TEST_INFORMATION_OBJECT = "TEST_INFORMATION";
 
     private static final int DEFAULT_PORT = 8889;
     private static final String TF_SERVICE_PORT = "TF_SERVICE_PORT";
@@ -85,7 +89,18 @@ public class TradefedFeatureServer extends TradefedInformationImplBase {
     @Override
     public void triggerFeature(
             FeatureRequest request, StreamObserver<FeatureResponse> responseObserver) {
-        responseObserver.onNext(createResponse(request));
+        FeatureResponse response;
+        try {
+            response = createResponse(request);
+        } catch (RuntimeException exception) {
+            response = FeatureResponse.newBuilder()
+                .setErrorInfo(
+                    ErrorInfo.newBuilder()
+                            .setErrorTrace(StreamUtil.getStackTrace(exception)))
+                    .build();
+        }
+        responseObserver.onNext(response);
+
         responseObserver.onCompleted();
     }
 
@@ -115,8 +130,28 @@ public class TradefedFeatureServer extends TradefedInformationImplBase {
                     ((IConfigurationReceiver) feature)
                             .setConfiguration(mRegisteredInvocation.get(request.getReferenceId()));
                 }
+                if (feature instanceof ITestInformationReceiver) {
+                    if (mRegisteredInvocation.get(request.getReferenceId()) != null) {
+                        ((ITestInformationReceiver) feature)
+                                .setTestInformation(
+                                        (TestInformation) mRegisteredInvocation
+                                            .get(request.getReferenceId())
+                                            .getConfigurationObject(TEST_INFORMATION_OBJECT));
+                    }
+                }
                 try {
-                    return feature.execute(request);
+                    FeatureResponse rep = feature.execute(request);
+                    if (rep == null) {
+                        return FeatureResponse.newBuilder()
+                                .setErrorInfo(
+                                        ErrorInfo.newBuilder()
+                                                .setErrorTrace(
+                                                        String.format(
+                                                                "Feature '%s' returned null response.",
+                                                                request.getName())))
+                                .build();
+                    }
+                    return rep;
                 } finally {
                     if (feature instanceof IConfigurationReceiver) {
                         ((IConfigurationReceiver) feature).setConfiguration(null);

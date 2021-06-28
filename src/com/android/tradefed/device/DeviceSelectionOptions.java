@@ -313,6 +313,10 @@ public class DeviceSelectionOptions implements IDeviceSelection {
         return mGceDeviceRequested;
     }
 
+    public void setGceDeviceRequested(boolean gceDeviceRequested) {
+        mGceDeviceRequested = gceDeviceRequested;
+    }
+
     public boolean remoteDeviceRequested() {
         return DeviceRequestedType.REMOTE_DEVICE.equals(mRequestedType);
     }

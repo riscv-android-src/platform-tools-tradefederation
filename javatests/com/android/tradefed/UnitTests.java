@@ -63,6 +63,8 @@ import com.android.tradefed.config.OptionSetterTest;
 import com.android.tradefed.config.OptionUpdateRuleTest;
 import com.android.tradefed.config.RetryConfigurationFactoryTest;
 import com.android.tradefed.config.SandboxConfigurationFactoryTest;
+import com.android.tradefed.config.filter.CommandOptionsGetterTest;
+import com.android.tradefed.config.filter.OptionFetcherTest;
 import com.android.tradefed.config.gcs.GCSConfigurationFactoryTest;
 import com.android.tradefed.config.gcs.GCSConfigurationServerTest;
 import com.android.tradefed.config.proxy.AutomatedReportersTest;
@@ -96,6 +98,8 @@ import com.android.tradefed.device.cloud.RemoteAndroidVirtualDeviceTest;
 import com.android.tradefed.device.cloud.RemoteFileUtilTest;
 import com.android.tradefed.device.contentprovider.ContentProviderHandlerTest;
 import com.android.tradefed.device.helper.TelephonyHelperTest;
+import com.android.tradefed.device.internal.DeviceResetFeatureTest;
+import com.android.tradefed.device.internal.DeviceResetHandlerTest;
 import com.android.tradefed.device.metric.AtraceCollectorTest;
 import com.android.tradefed.device.metric.AtraceRunMetricCollectorTest;
 import com.android.tradefed.device.metric.AutoLogCollectorTest;
@@ -160,6 +164,7 @@ import com.android.tradefed.monitoring.collector.ResourceMetricUtilTest;
 import com.android.tradefed.postprocessor.AggregatePostProcessorTest;
 import com.android.tradefed.postprocessor.AveragePostProcessorTest;
 import com.android.tradefed.postprocessor.BasePostProcessorTest;
+import com.android.tradefed.postprocessor.MetricFilePostProcessorTest;
 import com.android.tradefed.postprocessor.PerfettoGenericPostProcessorTest;
 import com.android.tradefed.postprocessor.StatsdBeforeAfterGaugeMetricPostProcessorTest;
 import com.android.tradefed.postprocessor.StatsdEventMetricPostProcessorTest;
@@ -326,6 +331,7 @@ import com.android.tradefed.testtype.suite.ModuleMergerTest;
 import com.android.tradefed.testtype.suite.ModuleSplitterTest;
 import com.android.tradefed.testtype.suite.RemoteTestTimeOutEnforcerTest;
 import com.android.tradefed.testtype.suite.SuiteModuleLoaderTest;
+import com.android.tradefed.testtype.suite.SuiteTestFilterTest;
 import com.android.tradefed.testtype.suite.TestFailureListenerTest;
 import com.android.tradefed.testtype.suite.TestMappingSuiteRunnerTest;
 import com.android.tradefed.testtype.suite.TestSuiteInfoTest;
@@ -373,6 +379,7 @@ import com.android.tradefed.util.KeyguardControllerStateTest;
 import com.android.tradefed.util.ListInstrumentationParserTest;
 import com.android.tradefed.util.LocalRunInstructionBuilderTest;
 import com.android.tradefed.util.LogcatEventParserTest;
+import com.android.tradefed.util.MetricUtilityTest;
 import com.android.tradefed.util.MultiMapTest;
 import com.android.tradefed.util.NativeCodeCoverageFlusherTest;
 import com.android.tradefed.util.PairTest;
@@ -498,6 +505,10 @@ import org.junit.runners.Suite.SuiteClasses;
     RetryConfigurationFactoryTest.class,
     SandboxConfigurationFactoryTest.class,
 
+    // config.filter
+    CommandOptionsGetterTest.class,
+    OptionFetcherTest.class,
+
     // config.gcs
     GCSConfigurationServerTest.class,
     GCSConfigurationFactoryTest.class,
@@ -547,6 +558,10 @@ import org.junit.runners.Suite.SuiteClasses;
 
     // device.helper
     TelephonyHelperTest.class,
+
+    // device.internal
+    DeviceResetFeatureTest.class,
+    DeviceResetHandlerTest.class,
 
     // device.metric
     AtraceCollectorTest.class,
@@ -632,6 +647,7 @@ import org.junit.runners.Suite.SuiteClasses;
     AggregatePostProcessorTest.class,
     AveragePostProcessorTest.class,
     BasePostProcessorTest.class,
+    MetricFilePostProcessorTest.class,
     PerfettoGenericPostProcessorTest.class,
     StatsdBeforeAfterGaugeMetricPostProcessorTest.class,
     StatsdEventMetricPostProcessorTest.class,
@@ -839,6 +855,7 @@ import org.junit.runners.Suite.SuiteClasses;
     ModuleSplitterTest.class,
     RemoteTestTimeOutEnforcerTest.class,
     SuiteModuleLoaderTest.class,
+    SuiteTestFilterTest.class,
     TestFailureListenerTest.class,
     TestMappingSuiteRunnerTest.class,
     TestSuiteInfoTest.class,
@@ -894,6 +911,7 @@ import org.junit.runners.Suite.SuiteClasses;
     LegacySubprocessResultsReporterTest.class,
     ListInstrumentationParserTest.class,
     LogcatEventParserTest.class,
+    MetricUtilityTest.class,
     MultiMapTest.class,
     MergedZipEntryCollectionTest.class,
     NativeCodeCoverageFlusherTest.class,
