@@ -865,6 +865,10 @@ public abstract class ITestSuite
         module.setMergeAttemps(mMergeAttempts);
         // Pass the retry decision to be used.
         module.setRetryDecision(decision);
+        // Restore the config, as the setter might have override it with module config.
+        if (decision instanceof IConfigurationReceiver) {
+            ((IConfigurationReceiver) decision).setConfiguration(mMainConfiguration);
+        }
 
         module.setEnableDynamicDownload(mEnableDynamicDownload);
         module.transferSuiteLevelOptions(mMainConfiguration);
