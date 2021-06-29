@@ -19,6 +19,10 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.when;
 
 import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.IDeviceBuildInfo;
@@ -36,7 +40,6 @@ import com.android.tradefed.testtype.HostTest;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
 import com.android.tradefed.util.FileUtil;
 
-import org.easymock.EasyMock;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -44,6 +47,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
+import org.mockito.InOrder;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
@@ -580,7 +584,7 @@ public class BaseDeviceMetricCollectorTest {
      */
     @Test
     public void testResolveRelativeFilePath_withDeviceBuildInfo() throws Exception {
-        IDeviceBuildInfo buildInfo = EasyMock.createStrictMock(IDeviceBuildInfo.class);
+        IDeviceBuildInfo buildInfo = mock(IDeviceBuildInfo.class);
         String fileName = "source_file";
         File testsDir = null;
         try {
@@ -590,10 +594,9 @@ public class BaseDeviceMetricCollectorTest {
             File sourceFile = FileUtil.createTempFile(fileName, null, hostTestCasesDir);
 
             fileName = sourceFile.getName();
-            EasyMock.expect(buildInfo.getFile(fileName)).andReturn(null);
-            EasyMock.expect(buildInfo.getTestsDir()).andReturn(testsDir);
-            EasyMock.expect(buildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR)).andReturn(null);
-            EasyMock.replay(buildInfo);
+            when(buildInfo.getFile(fileName)).thenReturn(null);
+            when(buildInfo.getTestsDir()).thenReturn(testsDir);
+            when(buildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR)).thenReturn(null);
 
             mContext.addDeviceBuildInfo("abc", buildInfo);
             mBase.init(mContext, mMockListener);
@@ -602,7 +605,10 @@ public class BaseDeviceMetricCollectorTest {
                     sourceFile.getAbsolutePath(),
                     mBase.getFileFromTestArtifacts(fileName)
                             .getAbsolutePath());
-            EasyMock.verify(buildInfo);
+            InOrder buildInfoOrder = inOrder(buildInfo);
+            buildInfoOrder.verify(buildInfo).getFile(fileName);
+            buildInfoOrder.verify(buildInfo).getTestsDir();
+            buildInfoOrder.verify(buildInfo).getFile(BuildInfoFileKey.TARGET_LINKED_DIR);
         } finally {
             FileUtil.recursiveDelete(testsDir);
         }
@@ -613,7 +619,7 @@ public class BaseDeviceMetricCollectorTest {
      */
     @Test
     public void testUnableResolveRelativeFilePath_withDeviceBuildInfo() throws Exception {
-        IDeviceBuildInfo buildInfo = EasyMock.createStrictMock(IDeviceBuildInfo.class);
+        IDeviceBuildInfo buildInfo = mock(IDeviceBuildInfo.class);
         String fileName = "source_file";
         File testsDir = null;
         try {
@@ -624,10 +630,9 @@ public class BaseDeviceMetricCollectorTest {
 
             fileName = sourceFile.getName();
             String differentFileName = "abc";
-            EasyMock.expect(buildInfo.getFile(differentFileName)).andReturn(null);
-            EasyMock.expect(buildInfo.getTestsDir()).andReturn(testsDir);
-            EasyMock.expect(buildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR)).andReturn(null);
-            EasyMock.replay(buildInfo);
+            when(buildInfo.getFile(differentFileName)).thenReturn(null);
+            when(buildInfo.getTestsDir()).thenReturn(testsDir);
+            when(buildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR)).thenReturn(null);
 
             mContext.addDeviceBuildInfo("abc", buildInfo);
             mBase.init(mContext, mMockListener);
@@ -635,7 +640,10 @@ public class BaseDeviceMetricCollectorTest {
             Assert.assertNull(
                     sourceFile.getAbsolutePath(),
                     mBase.getFileFromTestArtifacts(differentFileName));
-            EasyMock.verify(buildInfo);
+            InOrder buildInfoOrder = inOrder(buildInfo);
+            buildInfoOrder.verify(buildInfo).getFile(differentFileName);
+            buildInfoOrder.verify(buildInfo).getTestsDir();
+            buildInfoOrder.verify(buildInfo).getFile(BuildInfoFileKey.TARGET_LINKED_DIR);
         } finally {
             FileUtil.recursiveDelete(testsDir);
         }
@@ -647,7 +655,7 @@ public class BaseDeviceMetricCollectorTest {
      */
     @Test
     public void testResolveRelativeFilePath_fromModule() throws Exception {
-        IDeviceBuildInfo buildInfo = EasyMock.createStrictMock(IDeviceBuildInfo.class);
+        IDeviceBuildInfo buildInfo = mock(IDeviceBuildInfo.class);
         String fileName = "source_file";
         File testsDir = null;
         try {
@@ -657,10 +665,9 @@ public class BaseDeviceMetricCollectorTest {
             File sourceFile = FileUtil.createTempFile(fileName, null, hostTestCasesDir);
 
             fileName = sourceFile.getName();
-            EasyMock.expect(buildInfo.getFile(fileName)).andReturn(null);
-            EasyMock.expect(buildInfo.getTestsDir()).andReturn(testsDir);
-            EasyMock.expect(buildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR)).andReturn(null);
-            EasyMock.replay(buildInfo);
+            when(buildInfo.getFile(fileName)).thenReturn(null);
+            when(buildInfo.getTestsDir()).thenReturn(testsDir);
+            when(buildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR)).thenReturn(null);
 
             mContext.addDeviceBuildInfo("abc", buildInfo);
             mContext.addInvocationAttribute(ModuleDefinition.MODULE_NAME, testsDir.getName());
@@ -669,7 +676,10 @@ public class BaseDeviceMetricCollectorTest {
             Assert.assertEquals(
                     sourceFile.getAbsolutePath(),
                     mBase.getFileFromTestArtifacts(fileName).getAbsolutePath());
-            EasyMock.verify(buildInfo);
+            InOrder buildInfoOrder = inOrder(buildInfo);
+            buildInfoOrder.verify(buildInfo).getFile(fileName);
+            buildInfoOrder.verify(buildInfo).getTestsDir();
+            buildInfoOrder.verify(buildInfo).getFile(BuildInfoFileKey.TARGET_LINKED_DIR);
         } finally {
             FileUtil.recursiveDelete(testsDir);
         }
