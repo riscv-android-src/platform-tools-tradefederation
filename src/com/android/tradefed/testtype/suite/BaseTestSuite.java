@@ -218,8 +218,8 @@ public class BaseTestSuite extends ITestSuite {
     private boolean mIgnoreNonPreloadedMainlineModule = false;
 
     private SuiteModuleLoader mModuleRepo;
-    private Map<String, List<SuiteTestFilter>> mIncludeFiltersParsed = new LinkedHashMap<>();
-    private Map<String, List<SuiteTestFilter>> mExcludeFiltersParsed = new LinkedHashMap<>();
+    private Map<String, LinkedHashSet<SuiteTestFilter>> mIncludeFiltersParsed = new LinkedHashMap<>();
+    private Map<String, LinkedHashSet<SuiteTestFilter>> mExcludeFiltersParsed = new LinkedHashMap<>();
     private List<File> mConfigPaths = new ArrayList<>();
     private Set<IAbi> mAbis = new LinkedHashSet<>();
 
@@ -480,8 +480,8 @@ public class BaseTestSuite extends ITestSuite {
      * @return the created {@link SuiteModuleLoader}.
      */
     public SuiteModuleLoader createModuleLoader(
-            Map<String, List<SuiteTestFilter>> includeFiltersFormatted,
-            Map<String, List<SuiteTestFilter>> excludeFiltersFormatted,
+            Map<String, LinkedHashSet<SuiteTestFilter>> includeFiltersFormatted,
+            Map<String, LinkedHashSet<SuiteTestFilter>> excludeFiltersFormatted,
             List<String> testArgs,
             List<String> moduleArgs) {
         return new SuiteModuleLoader(
@@ -627,7 +627,7 @@ public class BaseTestSuite extends ITestSuite {
     @Override
     protected boolean shouldModuleRun(ModuleDefinition module) {
         String moduleId = module.getId();
-        List<SuiteTestFilter> excludeFilters = mExcludeFiltersParsed.get(moduleId);
+        LinkedHashSet<SuiteTestFilter> excludeFilters = mExcludeFiltersParsed.get(moduleId);
         CLog.d("Filters for '%s': %s", moduleId, excludeFilters);
         if (excludeFilters == null || excludeFilters.isEmpty()) {
             return true;
