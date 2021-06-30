@@ -65,7 +65,6 @@ import com.android.tradefed.result.error.TestErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.retry.BaseRetryDecision;
 import com.android.tradefed.retry.IRetryDecision;
-import com.android.tradefed.service.TradefedFeatureClient;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.suite.checker.KeyguardStatusChecker;
 import com.android.tradefed.suite.checker.StatusCheckerResult;
@@ -84,7 +83,6 @@ import com.android.tradefed.util.MultiMap;
 
 import com.google.inject.Guice;
 import com.google.inject.Injector;
-import com.proto.tradefed.feature.FeatureResponse;
 
 import org.easymock.Capture;
 import org.easymock.EasyMock;
@@ -129,8 +127,6 @@ public class ITestSuiteTest {
     private ILogSaver mMockLogSaver;
     private BaseTargetPreparer mMockPreparer;
 
-    private FeatureResponse.Builder mResponseBuilder;
-
     // Guice scope and objects for testing
     private InvocationScope mScope;
     private Injector mInjector;
@@ -141,7 +137,6 @@ public class ITestSuiteTest {
     public static class TestSuiteImpl extends ITestSuite {
         private int mNumTests = 1;
         private ITargetPreparer mPreparer;
-        private FeatureResponse.Builder mResponseBuilder;
 
         public TestSuiteImpl() {
             this(1);
@@ -154,18 +149,6 @@ public class ITestSuiteTest {
         public TestSuiteImpl(int numTests, ITargetPreparer preparer) {
             mNumTests = numTests;
             mPreparer = preparer;
-        }
-
-        public TestSuiteImpl(
-                int numTests, ITargetPreparer preparer, FeatureResponse.Builder response) {
-            this(numTests, preparer);
-            mResponseBuilder = response;
-        }
-
-        @Override
-        FeatureResponse triggerFeature(
-                TradefedFeatureClient client, String featureName, Map<String, String> args) {
-            return mResponseBuilder.build();
         }
 
         @Override
@@ -313,8 +296,7 @@ public class ITestSuiteTest {
         mInjector = Guice.createInjector(mInvocationScope);
 
         mMockPreparer = Mockito.mock(BaseTargetPreparer.class);
-        mResponseBuilder = FeatureResponse.newBuilder();
-        mTestSuite = new TestSuiteImpl(1, mMockPreparer, mResponseBuilder);
+        mTestSuite = new TestSuiteImpl(1, mMockPreparer);
         mTestSuite.setSystemStatusChecker(new ArrayList<>());
         mMockListener = EasyMock.createMock(ITestInvocationListener.class);
         mMockDevice = EasyMock.createMock(ITestDevice.class);
@@ -1903,21 +1885,5 @@ public class ITestSuiteTest {
         EasyMock.replay(mMockListener);
         mTestSuite.reportNotExecuted(mMockListener, "Injected message");
         EasyMock.verify(mMockListener);
-    }
-
-    /** Test when a module is filtered by the previous tests. */
-    @Test
-    public void testRun_previousPassedTest() throws Exception {
-        Mockito.reset(mMockPreparer);
-        OptionSetter invokData = new OptionSetter(mStubMainConfiguration.getCommandOptions());
-        invokData.setOptionValue("invocation-data", "invocation_id", "I8888");
-        invokData.setOptionValue("filter-previous-passed", "true");
-        mResponseBuilder.setResponse("test");
-
-        mContext.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
-
-        replayMocks();
-        mTestSuite.run(mTestInfo, mMockListener);
-        verifyMocks();
     }
 }
