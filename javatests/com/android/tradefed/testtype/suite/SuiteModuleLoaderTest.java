@@ -58,6 +58,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -102,8 +103,8 @@ public class SuiteModuleLoaderTest {
     public void setUp() throws Exception {
         mRepo =
                 new SuiteModuleLoader(
-                        new LinkedHashMap<String, List<SuiteTestFilter>>(),
-                        new LinkedHashMap<String, List<SuiteTestFilter>>(),
+                        new LinkedHashMap<String, LinkedHashSet<SuiteTestFilter>>(),
+                        new LinkedHashMap<String, LinkedHashSet<SuiteTestFilter>>(),
                         new ArrayList<>(),
                         new ArrayList<>());
         mTestsDir = FileUtil.createTempDir("suite-module-loader-tests");
@@ -236,13 +237,15 @@ public class SuiteModuleLoaderTest {
 
         createModuleConfig("module1[test]");
 
-        Map<String, List<SuiteTestFilter>> includeFilter = new LinkedHashMap<>();
+        Map<String, LinkedHashSet<SuiteTestFilter>> includeFilter = new LinkedHashMap<>();
         SuiteTestFilter filter = SuiteTestFilter.createFrom("armeabi-v7a module1[test] test#test");
-        includeFilter.put("armeabi-v7a module1[test]", Arrays.asList(filter));
+        LinkedHashSet<SuiteTestFilter> mapFilters = new LinkedHashSet<>();
+        mapFilters.add(filter);
+        includeFilter.put("armeabi-v7a module1[test]", mapFilters);
         mRepo =
                 new SuiteModuleLoader(
                         includeFilter,
-                        new LinkedHashMap<String, List<SuiteTestFilter>>(),
+                        new LinkedHashMap<String, LinkedHashSet<SuiteTestFilter>>(),
                         new ArrayList<>(),
                         moduleArgs);
         List<String> patterns = new ArrayList<>();
@@ -312,8 +315,8 @@ public class SuiteModuleLoaderTest {
 
         mRepo =
                 new SuiteModuleLoader(
-                        new LinkedHashMap<String, List<SuiteTestFilter>>(),
-                        new LinkedHashMap<String, List<SuiteTestFilter>>(),
+                        new LinkedHashMap<String, LinkedHashSet<SuiteTestFilter>>(),
+                        new LinkedHashMap<String, LinkedHashSet<SuiteTestFilter>>(),
                         testArgs,
                         new ArrayList<>());
         List<String> patterns = new ArrayList<>();
@@ -352,8 +355,8 @@ public class SuiteModuleLoaderTest {
 
         mRepo =
                 new SuiteModuleLoader(
-                        new LinkedHashMap<String, List<SuiteTestFilter>>(),
-                        new LinkedHashMap<String, List<SuiteTestFilter>>(),
+                        new LinkedHashMap<String, LinkedHashSet<SuiteTestFilter>>(),
+                        new LinkedHashMap<String, LinkedHashSet<SuiteTestFilter>>(),
                         new ArrayList<>(),
                         moduleArgs);
         List<String> patterns = new ArrayList<>();
@@ -375,19 +378,23 @@ public class SuiteModuleLoaderTest {
      */
     @Test
     public void testFilterParameterized() throws Exception {
-        Map<String, List<SuiteTestFilter>> excludeFilters = new LinkedHashMap<>();
+        Map<String, LinkedHashSet<SuiteTestFilter>> excludeFilters = new LinkedHashMap<>();
         createInstantModuleConfig("basemodule");
         SuiteTestFilter fullFilter = SuiteTestFilter.createFrom("armeabi-v7a basemodule");
-        excludeFilters.put("armeabi-v7a basemodule", Arrays.asList(fullFilter));
+        LinkedHashSet<SuiteTestFilter> mapFilters = new LinkedHashSet<>();
+        mapFilters.add(fullFilter);
+        excludeFilters.put("armeabi-v7a basemodule", mapFilters);
 
         SuiteTestFilter instantMethodFilter =
                 SuiteTestFilter.createFrom(
                         "armeabi-v7a basemodule[instant] NativeDnsAsyncTest#Async_Cancel");
-        excludeFilters.put("armeabi-v7a basemodule[instant]", Arrays.asList(instantMethodFilter));
+        LinkedHashSet<SuiteTestFilter> instantFilter = new LinkedHashSet<>();
+        instantFilter.add(instantMethodFilter);
+        excludeFilters.put("armeabi-v7a basemodule[instant]", instantFilter);
 
         mRepo =
                 new SuiteModuleLoader(
-                        new LinkedHashMap<String, List<SuiteTestFilter>>(),
+                        new LinkedHashMap<String, LinkedHashSet<SuiteTestFilter>>(),
                         excludeFilters,
                         new ArrayList<>(),
                         new ArrayList<>());
@@ -430,14 +437,16 @@ public class SuiteModuleLoaderTest {
      */
     @Test
     public void testFilterParameterized_excludeFilter_parameter() throws Exception {
-        Map<String, List<SuiteTestFilter>> excludeFilters = new LinkedHashMap<>();
+        Map<String, LinkedHashSet<SuiteTestFilter>> excludeFilters = new LinkedHashMap<>();
         createInstantModuleConfig("basemodule");
         SuiteTestFilter fullFilter = SuiteTestFilter.createFrom("armeabi-v7a basemodule[instant]");
-        excludeFilters.put("basemodule[instant]", Arrays.asList(fullFilter));
+        LinkedHashSet<SuiteTestFilter> mapFilter = new LinkedHashSet<>();
+        mapFilter.add(fullFilter);
+        excludeFilters.put("basemodule[instant]", mapFilter);
 
         mRepo =
                 new SuiteModuleLoader(
-                        new LinkedHashMap<String, List<SuiteTestFilter>>(),
+                        new LinkedHashMap<String, LinkedHashSet<SuiteTestFilter>>(),
                         excludeFilters,
                         new ArrayList<>(),
                         new ArrayList<>());
@@ -457,15 +466,17 @@ public class SuiteModuleLoaderTest {
 
     @Test
     public void testFilterParameterized_includeFilter_base() throws Exception {
-        Map<String, List<SuiteTestFilter>> includeFilters = new LinkedHashMap<>();
+        Map<String, LinkedHashSet<SuiteTestFilter>> includeFilters = new LinkedHashMap<>();
         createInstantModuleConfig("basemodule");
         SuiteTestFilter fullFilter = SuiteTestFilter.createFrom("armeabi-v7a basemodule");
-        includeFilters.put("armeabi-v7a basemodule", Arrays.asList(fullFilter));
+        LinkedHashSet<SuiteTestFilter> mapFilter = new LinkedHashSet<>();
+        mapFilter.add(fullFilter);
+        includeFilters.put("armeabi-v7a basemodule", mapFilter);
 
         mRepo =
                 new SuiteModuleLoader(
                         includeFilters,
-                        new LinkedHashMap<String, List<SuiteTestFilter>>(),
+                        new LinkedHashMap<String, LinkedHashSet<SuiteTestFilter>>(),
                         new ArrayList<>(),
                         new ArrayList<>());
         mRepo.setParameterizedModules(true);
@@ -484,15 +495,17 @@ public class SuiteModuleLoaderTest {
 
     @Test
     public void testFilterParameterized_includeFilter_param() throws Exception {
-        Map<String, List<SuiteTestFilter>> includeFilters = new LinkedHashMap<>();
+        Map<String, LinkedHashSet<SuiteTestFilter>> includeFilters = new LinkedHashMap<>();
         createInstantModuleConfig("basemodule");
         SuiteTestFilter fullFilter = SuiteTestFilter.createFrom("armeabi-v7a basemodule[instant]");
-        includeFilters.put("armeabi-v7a basemodule[instant]", Arrays.asList(fullFilter));
+        LinkedHashSet<SuiteTestFilter> mapFilter = new LinkedHashSet<>();
+        mapFilter.add(fullFilter);
+        includeFilters.put("armeabi-v7a basemodule[instant]", mapFilter);
 
         mRepo =
                 new SuiteModuleLoader(
                         includeFilters,
-                        new LinkedHashMap<String, List<SuiteTestFilter>>(),
+                        new LinkedHashMap<String, LinkedHashSet<SuiteTestFilter>>(),
                         new ArrayList<>(),
                         new ArrayList<>());
         mRepo.setParameterizedModules(true);
@@ -517,8 +530,8 @@ public class SuiteModuleLoaderTest {
 
         mRepo =
                 new SuiteModuleLoader(
-                        new LinkedHashMap<String, List<SuiteTestFilter>>(),
-                        new LinkedHashMap<String, List<SuiteTestFilter>>(),
+                        new LinkedHashMap<String, LinkedHashSet<SuiteTestFilter>>(),
+                        new LinkedHashMap<String, LinkedHashSet<SuiteTestFilter>>(),
                         new ArrayList<>(),
                         moduleArgs);
         mRepo.setParameterizedModules(true);
@@ -549,8 +562,8 @@ public class SuiteModuleLoaderTest {
 
         mRepo =
                 new SuiteModuleLoader(
-                        new LinkedHashMap<String, List<SuiteTestFilter>>(),
-                        new LinkedHashMap<String, List<SuiteTestFilter>>(),
+                        new LinkedHashMap<String, LinkedHashSet<SuiteTestFilter>>(),
+                        new LinkedHashMap<String, LinkedHashSet<SuiteTestFilter>>(),
                         new ArrayList<>(),
                         new ArrayList<>());
 
@@ -573,8 +586,8 @@ public class SuiteModuleLoaderTest {
 
         mRepo =
                 new SuiteModuleLoader(
-                        new LinkedHashMap<String, List<SuiteTestFilter>>(),
-                        new LinkedHashMap<String, List<SuiteTestFilter>>(),
+                        new LinkedHashMap<String, LinkedHashSet<SuiteTestFilter>>(),
+                        new LinkedHashMap<String, LinkedHashSet<SuiteTestFilter>>(),
                         new ArrayList<>(),
                         new ArrayList<>());
 
@@ -597,15 +610,17 @@ public class SuiteModuleLoaderTest {
         createModuleConfig("module2");
         File module2 = new File(mTestsDir, "module2" + SuiteModuleLoader.CONFIG_EXT);
 
-        Map<String, List<SuiteTestFilter>> excludeFilters = new LinkedHashMap<>();
+        Map<String, LinkedHashSet<SuiteTestFilter>> excludeFilters = new LinkedHashMap<>();
         SuiteTestFilter filter =
             SuiteTestFilter.createFrom(
                 "armeabi-v7a module2");
-        excludeFilters.put("armeabi-v7a module2", Arrays.asList(filter));
+        LinkedHashSet<SuiteTestFilter> mapFilter = new LinkedHashSet<>();
+        mapFilter.add(filter);
+        excludeFilters.put("armeabi-v7a module2", mapFilter);
 
         mRepo =
             new SuiteModuleLoader(
-                new LinkedHashMap<String, List<SuiteTestFilter>>(),
+                new LinkedHashMap<String, LinkedHashSet<SuiteTestFilter>>(),
                 excludeFilters,
                 new ArrayList<>(),
                 new ArrayList<>());
@@ -757,8 +772,8 @@ public class SuiteModuleLoaderTest {
         createMainlineModuleConfig("basemodule");
         mRepo =
                 new SuiteModuleLoader(
-                        new LinkedHashMap<String, List<SuiteTestFilter>>(),
-                        new LinkedHashMap<String, List<SuiteTestFilter>>(),
+                        new LinkedHashMap<String, LinkedHashSet<SuiteTestFilter>>(),
+                        new LinkedHashMap<String, LinkedHashSet<SuiteTestFilter>>(),
                         new ArrayList<>(),
                         new ArrayList<>());
         mRepo.setInvocationContext(mContext);
@@ -784,19 +799,23 @@ public class SuiteModuleLoaderTest {
      */
     @Test
     public void testLoadParameterizedMainlineModule_WithFilters() throws Exception {
-        Map<String, List<SuiteTestFilter>> excludeFilters = new LinkedHashMap<>();
+        Map<String, LinkedHashSet<SuiteTestFilter>> excludeFilters = new LinkedHashMap<>();
         createMainlineModuleConfig("basemodule");
         SuiteTestFilter fullFilter = SuiteTestFilter.createFrom("armeabi-v7a basemodule");
-        excludeFilters.put("armeabi-v7a basemodule", Arrays.asList(fullFilter));
+        LinkedHashSet<SuiteTestFilter> mapFilter = new LinkedHashSet<>();
+        mapFilter.add(fullFilter);
+        excludeFilters.put("armeabi-v7a basemodule", mapFilter);
 
         SuiteTestFilter filter =
                 SuiteTestFilter.createFrom(
                         "armeabi-v7a basemodule[mod1.apk] class#method");
-        excludeFilters.put("armeabi-v7a basemodule[mod1.apk]", Arrays.asList(filter));
+        LinkedHashSet<SuiteTestFilter> mainlineFilter = new LinkedHashSet<>();
+        mainlineFilter.add(filter);
+        excludeFilters.put("armeabi-v7a basemodule[mod1.apk]", mainlineFilter);
 
         mRepo =
                 new SuiteModuleLoader(
-                        new LinkedHashMap<String, List<SuiteTestFilter>>(),
+                        new LinkedHashMap<String, LinkedHashSet<SuiteTestFilter>>(),
                         excludeFilters,
                         new ArrayList<>(),
                         new ArrayList<>());
@@ -830,8 +849,8 @@ public class SuiteModuleLoaderTest {
 
         mRepo =
                 new SuiteModuleLoader(
-                        new LinkedHashMap<String, List<SuiteTestFilter>>(),
-                        new LinkedHashMap<String, List<SuiteTestFilter>>(),
+                        new LinkedHashMap<String, LinkedHashSet<SuiteTestFilter>>(),
+                        new LinkedHashMap<String, LinkedHashSet<SuiteTestFilter>>(),
                         new ArrayList<>(),
                         moduleArgs);
         mRepo.setInvocationContext(mContext);
@@ -858,14 +877,18 @@ public class SuiteModuleLoaderTest {
      */
     @Test
     public void testLoadParameterizedMainlineModules_WithMultipleFilters() throws Exception {
-        Map<String, List<SuiteTestFilter>> includeFilters = new LinkedHashMap<>();
-        Map<String, List<SuiteTestFilter>> excludeFilters = new LinkedHashMap<>();
+        Map<String, LinkedHashSet<SuiteTestFilter>> includeFilters = new LinkedHashMap<>();
+        Map<String, LinkedHashSet<SuiteTestFilter>> excludeFilters = new LinkedHashMap<>();
         createMainlineModuleConfig("basemodule");
         SuiteTestFilter filter = SuiteTestFilter.createFrom("armeabi-v7a basemodule[mod1.apk]");
-        includeFilters.put("armeabi-v7a basemodule[mod1.apk]", Arrays.asList(filter));
+        LinkedHashSet<SuiteTestFilter> mapFilter = new LinkedHashSet<>();
+        mapFilter.add(filter);
+        includeFilters.put("armeabi-v7a basemodule[mod1.apk]", mapFilter);
 
         filter = SuiteTestFilter.createFrom("armeabi-v7a basemodule[[mod2.apk]]");
-        excludeFilters.put("armeabi-v7a basemodule[mod2.apk]", Arrays.asList(filter));
+        LinkedHashSet<SuiteTestFilter> mapFilter2 = new LinkedHashSet<>();
+        mapFilter2.add(filter);
+        excludeFilters.put("armeabi-v7a basemodule[mod2.apk]", mapFilter2);
 
         mRepo =
                 new SuiteModuleLoader(
