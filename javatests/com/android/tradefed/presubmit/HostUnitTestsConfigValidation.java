@@ -35,6 +35,7 @@ import com.android.tradefed.util.testmapping.TestInfo;
 import com.android.tradefed.util.testmapping.TestMapping;
 
 import com.google.common.base.Joiner;
+import com.google.common.collect.ImmutableSet;
 
 import org.junit.Assume;
 import org.junit.Test;
@@ -43,6 +44,7 @@ import org.junit.runner.RunWith;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -145,8 +147,11 @@ public class HostUnitTestsConfigValidation implements IBuildReceiver {
 
     // This list contains exemption to the duplication of host-unit-tests & TEST_MAPPING.
     // This will be used when migrating default and clean up as we clear the TEST_MAPPING files.
-    private static final Set<String> EXEMPTION_LIST =
-            new HashSet<>(Arrays.asList("geotz_data_pipeline_tests"));
+    private static final Set<String> EXEMPTION_LIST = Collections.emptySet();
+
+    // These are the final modules allowed to be in host test mapping to prevent new addition.
+    private static final Set<String> FINAL_MODULE_LIST =
+            ImmutableSet.of("hello_world_test", "tvts-tradefed-tests");
 
     /**
      * This test ensures that unit tests are not also running as part of test mapping to avoid
@@ -201,6 +206,11 @@ public class HostUnitTestsConfigValidation implements IBuildReceiver {
                                 "Target '%s' is already running in host-unit-tests, it doesn't "
                                         + "need the test mapping config: %s",
                                 moduleName, infos.get(moduleName)));
+            } else if (infos.containsKey(moduleName) && !FINAL_MODULE_LIST.contains(moduleName)) {
+                errors.add(String.format(
+                        "Target '%s' is attempted to be added to host test mapping."
+                        + " We do not currently allow new addition, consider using unit_tests "
+                        + " setup instead.", moduleName));
             }
         }
         return errors;
