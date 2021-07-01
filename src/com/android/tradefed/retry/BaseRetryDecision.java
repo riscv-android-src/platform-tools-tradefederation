@@ -39,12 +39,16 @@ import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.sandbox.SandboxOptions;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.testtype.IRemoteTest;
+import com.android.tradefed.testtype.ITestFileFilterReceiver;
 import com.android.tradefed.testtype.ITestFilterReceiver;
 import com.android.tradefed.testtype.SubprocessTfLauncher;
 import com.android.tradefed.testtype.retry.IAutoRetriableTest;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
 import com.android.tradefed.testtype.suite.SuiteTestFilter;
+import com.android.tradefed.util.FileUtil;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -439,7 +443,18 @@ public class BaseRetryDecision implements IRetryDecision, IConfigurationReceiver
         // Exclude all passed tests for the retry.
         for (TestDescription testCase : passedTests) {
             String filter = String.format("%s#%s", testCase.getClassName(), testCase.getTestName());
-            test.addExcludeFilter(filter);
+            if (test instanceof ITestFileFilterReceiver &&
+                    ((ITestFileFilterReceiver) test).getExcludeTestFile() != null) {
+                File excludeFilterFile = ((ITestFileFilterReceiver) test).getExcludeTestFile();
+                try {
+                    FileUtil.writeToFile(filter + "\n", excludeFilterFile, true);
+                } catch (IOException e) {
+                    CLog.e(e);
+                    continue;
+                }
+            } else {
+                test.addExcludeFilter(filter);
+            }
         }
     }
 
