@@ -16,6 +16,11 @@
 
 package com.android.tradefed.targetprep;
 
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
+
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
@@ -24,66 +29,63 @@ import com.android.tradefed.invoker.TestInformation;
 
 import junit.framework.TestCase;
 
-import org.easymock.EasyMock;
+import org.mockito.InOrder;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
-/**
- * Unit tests for {@link StopServicesSetup}
- */
+/** Unit tests for {@link StopServicesSetup} */
 public class StopServicesSetupTest extends TestCase {
 
     private StopServicesSetup mPreparer = null;
-    private ITestDevice mMockDevice = null;
+    @Mock ITestDevice mMockDevice = null;
     private TestInformation mTestInfo = null;
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override
     protected void setUp() throws Exception {
+        MockitoAnnotations.initMocks(this);
+
         super.setUp();
-        mMockDevice = EasyMock.createStrictMock(ITestDevice.class);
+
         mPreparer = new StopServicesSetup();
         IInvocationContext context = new InvocationContext();
         context.addAllocatedDevice("device", mMockDevice);
         mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
     }
 
-    /**
-     * Test that the framework is stopped in the default case.
-     */
+    /** Test that the framework is stopped in the default case. */
     public void testNoop() throws DeviceNotAvailableException {
-        EasyMock.expect(mMockDevice.executeShellCommand("stop")).andReturn(null);
+        when(mMockDevice.executeShellCommand("stop")).thenReturn(null);
 
-        EasyMock.replay(mMockDevice);
         mPreparer.setUp(mTestInfo);
-        EasyMock.verify(mMockDevice);
+        verify(mMockDevice).executeShellCommand("stop");
+        verifyNoMoreInteractions(mMockDevice);
     }
 
-    /**
-     * Test that stopping the framework can be overwritten.
-     */
+    /** Test that stopping the framework can be overwritten. */
     public void testNoStopFramework() throws DeviceNotAvailableException {
         mPreparer.setStopFramework(false);
 
-        EasyMock.replay(mMockDevice);
         mPreparer.setUp(mTestInfo);
-        EasyMock.verify(mMockDevice);
+        verifyNoMoreInteractions(mMockDevice);
     }
 
-    /**
-     * Test that additional services are stopped if specified.
-     */
+    /** Test that additional services are stopped if specified. */
     public void testStopServices() throws DeviceNotAvailableException {
         mPreparer.addService("service1");
         mPreparer.addService("service2");
 
-        EasyMock.expect(mMockDevice.executeShellCommand("stop")).andReturn(null);
-        EasyMock.expect(mMockDevice.executeShellCommand("stop service1")).andReturn(null);
-        EasyMock.expect(mMockDevice.executeShellCommand("stop service2")).andReturn(null);
+        when(mMockDevice.executeShellCommand("stop")).thenReturn(null);
+        when(mMockDevice.executeShellCommand("stop service1")).thenReturn(null);
+        when(mMockDevice.executeShellCommand("stop service2")).thenReturn(null);
 
-        EasyMock.replay(mMockDevice);
         mPreparer.setUp(mTestInfo);
-        EasyMock.verify(mMockDevice);
+
+        InOrder inOrder = inOrder(mMockDevice);
+        inOrder.verify(mMockDevice).executeShellCommand("stop");
+        inOrder.verify(mMockDevice).executeShellCommand("stop service1");
+        inOrder.verify(mMockDevice).executeShellCommand("stop service2");
+        verifyNoMoreInteractions(mMockDevice);
     }
 
     /** Test that framework and services are started during tearDown. */
@@ -91,14 +93,18 @@ public class StopServicesSetupTest extends TestCase {
         mPreparer.addService("service1");
         mPreparer.addService("service2");
 
-        EasyMock.expect(mMockDevice.executeShellCommand("start")).andReturn(null);
-        mMockDevice.waitForDeviceAvailable();
-        EasyMock.expect(mMockDevice.executeShellCommand("start service1")).andReturn(null);
-        EasyMock.expect(mMockDevice.executeShellCommand("start service2")).andReturn(null);
+        when(mMockDevice.executeShellCommand("start")).thenReturn(null);
 
-        EasyMock.replay(mMockDevice);
+        when(mMockDevice.executeShellCommand("start service1")).thenReturn(null);
+        when(mMockDevice.executeShellCommand("start service2")).thenReturn(null);
         mPreparer.tearDown(mTestInfo, null);
-        EasyMock.verify(mMockDevice);
+
+        InOrder inOrder = inOrder(mMockDevice);
+        inOrder.verify(mMockDevice).executeShellCommand("start");
+        inOrder.verify(mMockDevice).waitForDeviceAvailable();
+        inOrder.verify(mMockDevice).executeShellCommand("start service1");
+        inOrder.verify(mMockDevice).executeShellCommand("start service2");
+        verify(mMockDevice).waitForDeviceAvailable();
+        verifyNoMoreInteractions(mMockDevice);
     }
 }
-
