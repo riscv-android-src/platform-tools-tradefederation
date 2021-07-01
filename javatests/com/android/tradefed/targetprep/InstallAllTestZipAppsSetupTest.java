@@ -19,20 +19,26 @@ package com.android.tradefed.targetprep;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.android.tradefed.build.IBuildInfo;
-import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.util.FileUtil;
 
-import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import java.io.File;
 import java.io.IOException;
@@ -43,14 +49,16 @@ public class InstallAllTestZipAppsSetupTest {
 
     private static final String SERIAL = "SERIAL";
     private InstallAllTestZipAppsSetup mPrep;
-    private IBuildInfo mMockBuildInfo;
-    private ITestDevice mMockTestDevice;
+    @Mock IBuildInfo mMockBuildInfo;
+    @Mock ITestDevice mMockTestDevice;
     private File mMockUnzipDir;
     private boolean mFailUnzip;
     private boolean mFailAapt;
 
     @Before
     public void setUp() throws Exception {
+        MockitoAnnotations.initMocks(this);
+
         mPrep =
                 new InstallAllTestZipAppsSetup() {
                     @Override
@@ -72,11 +80,10 @@ public class InstallAllTestZipAppsSetupTest {
         mFailAapt = false;
         mFailUnzip = false;
         mMockUnzipDir = null;
-        mMockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
-        mMockTestDevice = EasyMock.createMock(ITestDevice.class);
-        EasyMock.expect(mMockTestDevice.getSerialNumber()).andStubReturn(SERIAL);
-        EasyMock.expect(mMockTestDevice.getDeviceDescriptor()).andStubReturn(null);
-        EasyMock.expect(mMockTestDevice.isAppEnumerationSupported()).andStubReturn(false);
+
+        when(mMockTestDevice.getSerialNumber()).thenReturn(SERIAL);
+        when(mMockTestDevice.getDeviceDescriptor()).thenReturn(null);
+        when(mMockTestDevice.isAppEnumerationSupported()).thenReturn(false);
     }
 
     @After
@@ -102,77 +109,63 @@ public class InstallAllTestZipAppsSetupTest {
         String zip = "zip";
         mPrep.setTestZipName(zip);
         File file = new File(zip);
-        EasyMock.expect(mMockBuildInfo.getFile(zip)).andReturn(file);
-        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
+        when(mMockBuildInfo.getFile(zip)).thenReturn(file);
+
         File ret = mPrep.getZipFile(mMockTestDevice, mMockBuildInfo);
         assertEquals(file, ret);
-        EasyMock.verify(mMockBuildInfo);
     }
 
     @Test
     public void testGetZipFileDoesntExist() throws TargetSetupError {
         String zip = "zip";
         mPrep.setTestZipName(zip);
-        EasyMock.expect(mMockBuildInfo.getFile(zip)).andReturn(null);
-        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
+        when(mMockBuildInfo.getFile(zip)).thenReturn(null);
+
         File ret = mPrep.getZipFile(mMockTestDevice, mMockBuildInfo);
         assertNull(ret);
-        EasyMock.verify(mMockBuildInfo);
     }
 
     @Test
     public void testNullTestZipName() throws DeviceNotAvailableException {
-        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
+
         try {
             mPrep.setUp(mMockTestDevice, mMockBuildInfo);
             fail("Should have thrown a TargetSetupError");
         } catch (TargetSetupError e) {
             // expected
         }
-        EasyMock.verify(mMockBuildInfo, mMockTestDevice);
     }
 
     @Test
     public void testSuccess() throws Exception {
         mPrep.setTestZipName("zip");
 
-        mMockBuildInfo.getFile((String) EasyMock.anyObject());
-        EasyMock.expectLastCall().andReturn(new File("zip"));
+        when(mMockBuildInfo.getFile((String) any())).thenReturn(new File("zip"));
 
         setMockUnzipDir();
-
-        mMockTestDevice.installPackage((File) EasyMock.anyObject(), EasyMock.anyBoolean());
-        EasyMock.expectLastCall().andReturn(null).times(3);
-        mMockTestDevice.uninstallPackage((String) EasyMock.anyObject());
-        EasyMock.expectLastCall().andReturn(null).times(3);
-        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
 
         mPrep.setUp(mMockTestDevice, mMockBuildInfo);
         mPrep.tearDown(mMockTestDevice, mMockBuildInfo, null);
 
-        EasyMock.verify(mMockBuildInfo, mMockTestDevice);
+        verify(mMockTestDevice, times(3)).installPackage((File) any(), anyBoolean());
+        verify(mMockTestDevice, times(3)).uninstallPackage((String) any());
     }
 
     @Test
     public void testForceQueryableSuccess() throws Exception {
-        EasyMock.expect(mMockTestDevice.isAppEnumerationSupported()).andReturn(true);
+        when(mMockTestDevice.isAppEnumerationSupported()).thenReturn(true);
         mPrep.setTestZipName("zip");
 
-        mMockBuildInfo.getFile((String) EasyMock.anyObject());
-        EasyMock.expectLastCall().andReturn(new File("zip"));
+        when(mMockBuildInfo.getFile((String) any())).thenReturn(new File("zip"));
 
         setMockUnzipDir();
-        mMockTestDevice.installPackage(
-                EasyMock.anyObject(), EasyMock.anyBoolean(), EasyMock.eq("--force-queryable"));
-        EasyMock.expectLastCall().andReturn(null).times(3);
-        mMockTestDevice.uninstallPackage((String) EasyMock.anyObject());
-        EasyMock.expectLastCall().andReturn(null).times(3);
-        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
 
         mPrep.setUp(mMockTestDevice, mMockBuildInfo);
         mPrep.tearDown(mMockTestDevice, mMockBuildInfo, null);
 
-        EasyMock.verify(mMockBuildInfo, mMockTestDevice);
+        verify(mMockTestDevice, times(3))
+                .installPackage(any(), anyBoolean(), eq("--force-queryable"));
+        verify(mMockTestDevice, times(3)).uninstallPackage((String) any());
     }
 
     @Test
@@ -180,30 +173,22 @@ public class InstallAllTestZipAppsSetupTest {
         mPrep.setTestZipName("zip");
         mPrep.setCleanup(false);
 
-        mMockBuildInfo.getFile((String) EasyMock.anyObject());
-        EasyMock.expectLastCall().andReturn(new File("zip"));
+        when(mMockBuildInfo.getFile((String) any())).thenReturn(new File("zip"));
 
         setMockUnzipDir();
-
-        mMockTestDevice.installPackage((File) EasyMock.anyObject(), EasyMock.anyBoolean());
-        EasyMock.expectLastCall().andReturn(null).times(3);
-        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
 
         mPrep.setUp(mMockTestDevice, mMockBuildInfo);
         mPrep.tearDown(mMockTestDevice, mMockBuildInfo, null);
 
-        EasyMock.verify(mMockBuildInfo, mMockTestDevice);
+        verify(mMockTestDevice, times(3)).installPackage((File) any(), anyBoolean());
     }
 
     @Test
     public void testInstallFailure() throws DeviceNotAvailableException {
         final String failure = "INSTALL_PARSE_FAILED_MANIFEST_MALFORMED";
         final String file = "TEST";
-        EasyMock.expect(
-                        mMockTestDevice.installPackage(
-                                (File) EasyMock.anyObject(), EasyMock.eq(true)))
-                .andReturn(failure);
-        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
+        when(mMockTestDevice.installPackage((File) any(), eq(true))).thenReturn(failure);
+
         try {
             mPrep.installApk(new File(file), mMockTestDevice);
             fail("Should have thrown an exception");
@@ -213,7 +198,6 @@ public class InstallAllTestZipAppsSetupTest {
                             "Failed to install %s on %s. Reason: '%s'", file, SERIAL, failure);
             assertEquals(expected, e.getMessage());
         }
-        EasyMock.verify(mMockBuildInfo, mMockTestDevice);
     }
 
     @Test
@@ -221,24 +205,19 @@ public class InstallAllTestZipAppsSetupTest {
         final String failure = "INSTALL_PARSE_FAILED_MANIFEST_MALFORMED";
         final String file = "TEST";
         mPrep.setStopInstallOnFailure(false);
-        EasyMock.expect(
-                        mMockTestDevice.installPackage(
-                                (File) EasyMock.anyObject(), EasyMock.eq(true)))
-                .andReturn(failure);
-        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
+        when(mMockTestDevice.installPackage((File) any(), eq(true))).thenReturn(failure);
+
         // should not throw exception
         mPrep.installApk(new File(file), mMockTestDevice);
-        EasyMock.verify(mMockBuildInfo, mMockTestDevice);
     }
 
     @Test
     public void testDisable() throws Exception {
         OptionSetter setter = new OptionSetter(mPrep);
         setter.setOptionValue("disable", "true");
-        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
+
         mPrep.setUp(mMockTestDevice, mMockBuildInfo);
         mPrep.tearDown(mMockTestDevice, mMockBuildInfo, null);
-        EasyMock.verify(mMockBuildInfo, mMockTestDevice);
     }
 
     @Test
@@ -246,10 +225,7 @@ public class InstallAllTestZipAppsSetupTest {
         mFailUnzip = true;
         mPrep.setTestZipName("zip");
 
-        mMockBuildInfo.getFile((String) EasyMock.anyObject());
-        EasyMock.expectLastCall().andReturn(new File("zip"));
-
-        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
+        when(mMockBuildInfo.getFile((String) any())).thenReturn(new File("zip"));
 
         try {
             mPrep.setUp(mMockTestDevice, mMockBuildInfo);
@@ -262,7 +238,6 @@ public class InstallAllTestZipAppsSetupTest {
                             mMockTestDevice.getDeviceDescriptor());
             assertEquals(error.getMessage(), e.getMessage());
         }
-        EasyMock.verify(mMockBuildInfo, mMockTestDevice);
     }
 
     @Test
@@ -271,12 +246,7 @@ public class InstallAllTestZipAppsSetupTest {
         mPrep.setTestZipName("zip");
         setMockUnzipDir();
 
-        mMockBuildInfo.getFile((String) EasyMock.anyObject());
-        EasyMock.expectLastCall().andReturn(new File("zip"));
-        mMockTestDevice.installPackage((File) EasyMock.anyObject(), EasyMock.anyBoolean());
-        EasyMock.expectLastCall().andReturn(null);
-
-        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
+        when(mMockBuildInfo.getFile((String) any())).thenReturn(new File("zip"));
 
         try {
             mPrep.setUp(mMockTestDevice, mMockBuildInfo);
@@ -289,6 +259,6 @@ public class InstallAllTestZipAppsSetupTest {
                             mMockTestDevice.getDeviceDescriptor());
             assertEquals(error.getMessage(), e.getMessage());
         }
-        EasyMock.verify(mMockBuildInfo, mMockTestDevice);
+        verify(mMockTestDevice, times(1)).installPackage((File) any(), anyBoolean());
     }
 }
