@@ -57,6 +57,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -73,8 +74,8 @@ public class SuiteModuleLoader {
     private Map<String, List<OptionDef>> mTestOrPreparerOptions = new HashMap<>();
     private Map<String, List<OptionDef>> mModuleOptions = new HashMap<>();
     private boolean mIncludeAll;
-    private Map<String, List<SuiteTestFilter>> mIncludeFilters = new HashMap<>();
-    private Map<String, List<SuiteTestFilter>> mExcludeFilters = new HashMap<>();
+    private Map<String, LinkedHashSet<SuiteTestFilter>> mIncludeFilters = new HashMap<>();
+    private Map<String, LinkedHashSet<SuiteTestFilter>> mExcludeFilters = new HashMap<>();
     private IConfigurationFactory mConfigFactory = ConfigurationFactory.getInstance();
     private IInvocationContext mContext;
 
@@ -98,8 +99,8 @@ public class SuiteModuleLoader {
      * @param moduleArgs the list of module arguments.
      */
     public SuiteModuleLoader(
-            Map<String, List<SuiteTestFilter>> includeFilters,
-            Map<String, List<SuiteTestFilter>> excludeFilters,
+            Map<String, LinkedHashSet<SuiteTestFilter>> includeFilters,
+            Map<String, LinkedHashSet<SuiteTestFilter>> excludeFilters,
             List<String> testArgs,
             List<String> moduleArgs) {
         mIncludeAll = includeFilters.isEmpty();
@@ -223,14 +224,14 @@ public class SuiteModuleLoader {
             IRemoteTest test,
             IAbi abi,
             String moduleId,
-            Map<String, List<SuiteTestFilter>> includeFilters,
-            Map<String, List<SuiteTestFilter>> excludeFilters) {
+            Map<String, LinkedHashSet<SuiteTestFilter>> includeFilters,
+            Map<String, LinkedHashSet<SuiteTestFilter>> excludeFilters) {
         if (!(test instanceof ITestFilterReceiver)) {
             CLog.e("Test in module %s does not implement ITestFilterReceiver.", moduleId);
             return;
         }
-        List<SuiteTestFilter> mdIncludes = getFilterList(includeFilters, moduleId);
-        List<SuiteTestFilter> mdExcludes = getFilterList(excludeFilters, moduleId);
+        LinkedHashSet<SuiteTestFilter> mdIncludes = getFilterList(includeFilters, moduleId);
+        LinkedHashSet<SuiteTestFilter> mdExcludes = getFilterList(excludeFilters, moduleId);
         if (!mdIncludes.isEmpty()) {
             addTestIncludes((ITestFilterReceiver) test, mdIncludes, moduleId);
         }
@@ -470,7 +471,7 @@ public class SuiteModuleLoader {
      * @param abis The Abis to consider in the filtering.
      */
     public static void addFilters(
-            Set<String> stringFilters, Map<String, List<SuiteTestFilter>> filters, Set<IAbi> abis) {
+            Set<String> stringFilters, Map<String, LinkedHashSet<SuiteTestFilter>> filters, Set<IAbi> abis) {
         for (String filterString : stringFilters) {
             SuiteTestFilter filter = SuiteTestFilter.createFrom(filterString);
             String abi = filter.getAbi();
@@ -485,23 +486,23 @@ public class SuiteModuleLoader {
     }
 
     private static void addFilter(
-            String abi, SuiteTestFilter filter, Map<String, List<SuiteTestFilter>> filters) {
+            String abi, SuiteTestFilter filter, Map<String, LinkedHashSet<SuiteTestFilter>> filters) {
         getFilterList(filters, AbiUtils.createId(abi, filter.getName())).add(filter);
     }
 
-    private static List<SuiteTestFilter> getFilterList(
-            Map<String, List<SuiteTestFilter>> filters, String id) {
-        List<SuiteTestFilter> fs = filters.get(id);
+    private static LinkedHashSet<SuiteTestFilter> getFilterList(
+            Map<String, LinkedHashSet<SuiteTestFilter>> filters, String id) {
+        LinkedHashSet<SuiteTestFilter> fs = filters.get(id);
         if (fs == null) {
-            fs = new ArrayList<>();
+            fs = new LinkedHashSet<>();
             filters.put(id, fs);
         }
         return fs;
     }
 
     private boolean shouldRunModule(String moduleId) {
-        List<SuiteTestFilter> mdIncludes = getFilterList(mIncludeFilters, moduleId);
-        List<SuiteTestFilter> mdExcludes = getFilterList(mExcludeFilters, moduleId);
+        LinkedHashSet<SuiteTestFilter> mdIncludes = getFilterList(mIncludeFilters, moduleId);
+        LinkedHashSet<SuiteTestFilter> mdExcludes = getFilterList(mExcludeFilters, moduleId);
         // if including all modules or includes exist for this module, and there are not excludes
         // for the entire module, this module should be run.
         return (mIncludeAll || !mdIncludes.isEmpty()) && !containsModuleExclude(mdExcludes);
@@ -517,22 +518,22 @@ public class SuiteModuleLoader {
             String nameWithParam,
             Set<IModuleParameter> forcedModuleParameters) {
         // Explicitly excluded
-        List<SuiteTestFilter> excluded = getFilterList(mExcludeFilters, parameterModuleId);
-        List<SuiteTestFilter> excludedParam = getFilterList(mExcludeFilters, nameWithParam);
+        LinkedHashSet<SuiteTestFilter> excluded = getFilterList(mExcludeFilters, parameterModuleId);
+        LinkedHashSet<SuiteTestFilter> excludedParam = getFilterList(mExcludeFilters, nameWithParam);
         if (containsModuleExclude(excluded) || containsModuleExclude(excludedParam)) {
             return false;
         }
 
         // Implicitly included due to forced parameter
         if (forcedModuleParameters != null) {
-            List<SuiteTestFilter> baseInclude = getFilterList(mIncludeFilters, baseModuleId);
+            LinkedHashSet<SuiteTestFilter> baseInclude = getFilterList(mIncludeFilters, baseModuleId);
             if (!baseInclude.isEmpty()) {
                 return true;
             }
         }
         // Explicitly included
-        List<SuiteTestFilter> included = getFilterList(mIncludeFilters, parameterModuleId);
-        List<SuiteTestFilter> includedParam = getFilterList(mIncludeFilters, nameWithParam);
+        LinkedHashSet<SuiteTestFilter> included = getFilterList(mIncludeFilters, parameterModuleId);
+        LinkedHashSet<SuiteTestFilter> includedParam = getFilterList(mIncludeFilters, nameWithParam);
         if (mIncludeAll || !included.isEmpty() || !includedParam.isEmpty()) {
             return true;
         }
@@ -540,7 +541,7 @@ public class SuiteModuleLoader {
     }
 
     private void addTestIncludes(
-            ITestFilterReceiver test, List<SuiteTestFilter> includes, String moduleId) {
+            ITestFilterReceiver test, Collection<SuiteTestFilter> includes, String moduleId) {
         if (test instanceof ITestFileFilterReceiver) {
             String escapedFileName = escapeFilterFileName(moduleId);
             File includeFile = createFilterFile(escapedFileName, ".include", includes);
@@ -557,7 +558,7 @@ public class SuiteModuleLoader {
     }
 
     private void addTestExcludes(
-            ITestFilterReceiver test, List<SuiteTestFilter> excludes, String moduleId) {
+            ITestFilterReceiver test, Collection<SuiteTestFilter> excludes, String moduleId) {
         if (test instanceof ITestFileFilterReceiver) {
             String escapedFileName = escapeFilterFileName(moduleId);
             File excludeFile = createFilterFile(escapedFileName, ".exclude", excludes);
@@ -576,7 +577,7 @@ public class SuiteModuleLoader {
         return escaped;
     }
 
-    private File createFilterFile(String prefix, String suffix, List<SuiteTestFilter> filters) {
+    private File createFilterFile(String prefix, String suffix, Collection<SuiteTestFilter> filters) {
         File filterFile = null;
         PrintWriter out = null;
         try {
