@@ -69,6 +69,7 @@ import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFilterReceiver;
 import com.android.tradefed.testtype.retry.IAutoRetriableTest;
+import com.android.tradefed.testtype.suite.BaseTestSuite;
 import com.android.tradefed.testtype.suite.ITestSuite;
 import com.android.tradefed.testtype.suite.ModuleListener;
 import com.android.tradefed.util.CommandResult;
@@ -679,9 +680,11 @@ public class InvocationExecution implements IInvocationExecution {
                 updateAutoCollectors(config);
 
                 IRetryDecision decision = config.getRetryDecision();
-                // For non-suite apply the filters
-                if (test instanceof ITestFilterReceiver && !(test instanceof ITestSuite)) {
+                // Apply the filters
+                if (test instanceof ITestFilterReceiver) {
                     config.getGlobalFilters().applyFiltersToTest((ITestFilterReceiver) test);
+                } else if (test instanceof BaseTestSuite) {
+                    config.getGlobalFilters().applyFiltersToTest((BaseTestSuite) test);
                 }
                 // Handle the no-retry use case
                 if (!decision.isAutoRetryEnabled()

@@ -61,6 +61,13 @@ public class SuiteTestFilter {
             if (parts[index].startsWith("shard_")) {
                 shardIndex = Integer.parseInt(parts[index].substring("shard_".length()));
                 index++;
+            } else {
+                try {
+                    shardIndex = Integer.parseInt(parts[index]);
+                    index++;
+                } catch (NumberFormatException e) {
+                    // Ignore
+                }
             }
             if (AbiUtils.isAbiSupportedByCompatibility(parts[index])) {
                 abi = parts[index];
@@ -163,5 +170,48 @@ public class SuiteTestFilter {
     /** @return the test identifier of this filter, or null if not specified. */
     public String getTest() {
         return mTest;
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ((mAbi == null) ? 0 : mAbi.hashCode());
+        result = prime * result + ((mName == null) ? 0 : mName.hashCode());
+        result = prime * result + ((mShardIndex == null) ? 0 : mShardIndex.hashCode());
+        result = prime * result + ((mTest == null) ? 0 : mTest.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        SuiteTestFilter other = (SuiteTestFilter) obj;
+        if (mAbi == null) {
+            if (other.mAbi != null)
+                return false;
+        } else if (!mAbi.equals(other.mAbi))
+            return false;
+        if (mName == null) {
+            if (other.mName != null)
+                return false;
+        } else if (!mName.equals(other.mName))
+            return false;
+        if (mShardIndex == null) {
+            if (other.mShardIndex != null)
+                return false;
+        } else if (!mShardIndex.equals(other.mShardIndex))
+            return false;
+        if (mTest == null) {
+            if (other.mTest != null)
+                return false;
+        } else if (!mTest.equals(other.mTest))
+            return false;
+        return true;
     }
 }

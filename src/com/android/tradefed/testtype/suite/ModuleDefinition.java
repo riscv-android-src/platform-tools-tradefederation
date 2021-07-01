@@ -849,6 +849,9 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         TfObjectTracker.countWithParents(preparer.getClass());
         CLog.d("Running setup preparer: %s", preparer.getClass().getSimpleName());
         try {
+            if (preparer instanceof IConfigurationReceiver) {
+                ((IConfigurationReceiver) preparer).setConfiguration(mModuleConfiguration);
+            }
             // set the logger in case they need it.
             if (preparer instanceof ITestLoggerReceiver) {
                 ((ITestLoggerReceiver) preparer).setTestLogger(mInvocationListener);
@@ -885,6 +888,9 @@ public class ModuleDefinition implements Comparable<ModuleDefinition>, ITestColl
         TfObjectTracker.countWithParents(preparer.getClass());
         CLog.d("Running setup multi preparer: %s", preparer.getClass().getSimpleName());
         try {
+            if (preparer instanceof IConfigurationReceiver) {
+                ((IConfigurationReceiver) preparer).setConfiguration(mModuleConfiguration);
+            }
             // set the logger in case they need it.
             if (preparer instanceof ITestLoggerReceiver) {
                 ((ITestLoggerReceiver) preparer).setTestLogger(mInvocationListener);

@@ -129,6 +129,24 @@ public abstract class GTestBase
     private String mLdLibraryPath = null;
 
     @Option(
+            name = "ld-library-path-32",
+            description =
+                    "LD_LIBRARY_PATH value to include in the GTest execution command "
+                            + "for 32-bit tests. If both `--ld-library-path` and "
+                            + "`--ld-library-path-32` are set, only the latter is honored "
+                            + "for 32-bit tests.")
+    private String mLdLibraryPath32 = null;
+
+    @Option(
+            name = "ld-library-path-64",
+            description =
+                    "LD_LIBRARY_PATH value to include in the GTest execution command "
+                            + "for 64-bit tests. If both `--ld-library-path` and "
+                            + "`--ld-library-path-64` are set, only the latter is honored "
+                            + "for 64-bit tests.")
+    private String mLdLibraryPath64 = null;
+
+    @Option(
             name = "gtest-env",
             description =
                     "Environment variable to set before executing test.  "
@@ -577,7 +595,11 @@ public abstract class GTestBase
      */
     protected String getGTestCmdLine(String fullPath, String flags) {
         StringBuilder gTestCmdLine = new StringBuilder();
-        if (mLdLibraryPath != null) {
+        if (mLdLibraryPath32 != null && "32".equals(getAbi().getBitness())) {
+            gTestCmdLine.append(String.format("LD_LIBRARY_PATH=%s ", mLdLibraryPath32));
+        } else if (mLdLibraryPath64 != null && "64".equals(getAbi().getBitness())) {
+            gTestCmdLine.append(String.format("LD_LIBRARY_PATH=%s ", mLdLibraryPath64));
+        } else if (mLdLibraryPath != null) {
             gTestCmdLine.append(String.format("LD_LIBRARY_PATH=%s ", mLdLibraryPath));
         }
 
