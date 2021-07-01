@@ -249,7 +249,7 @@ public class CommandOptions implements ICommandOptions {
     @Option(
             name = "filter-previous-passed",
             description = "Feature flag to test filtering previously passed tests.")
-    private boolean mTestFilterPassed = false;
+    private boolean mTestFilterPassed = true;
 
     @Option(
             name = "report-invocation-complete-logs",
