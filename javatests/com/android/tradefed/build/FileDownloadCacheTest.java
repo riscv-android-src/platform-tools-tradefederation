@@ -21,6 +21,12 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.when;
 
 import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.util.CommandResult;
@@ -29,14 +35,14 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 
-import org.easymock.EasyMock;
-import org.easymock.IAnswer;
-import org.easymock.IExpectationSetters;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -52,8 +58,7 @@ public class FileDownloadCacheTest {
     private static final String REMOTE_PATH = "foo/path";
     private static final String DOWNLOADED_CONTENTS = "downloaded contents";
 
-
-    private IFileDownloader mMockDownloader;
+    @Mock IFileDownloader mMockDownloader;
 
     private File mCacheDir;
     private FileDownloadCache mCache;
@@ -61,7 +66,8 @@ public class FileDownloadCacheTest {
 
     @Before
     public void setUp() throws Exception {
-        mMockDownloader = EasyMock.createMock(IFileDownloader.class);
+        MockitoAnnotations.initMocks(this);
+
         mCacheDir = FileUtil.createTempDir("unittest");
         mCache = new FileDownloadCache(mCacheDir);
     }
@@ -75,10 +81,9 @@ public class FileDownloadCacheTest {
     /** Test basic case for {@link FileDownloadCache#fetchRemoteFile(IFileDownloader, String)}. */
     @Test
     public void testFetchRemoteFile() throws Exception {
-        setDownloadExpections();
-        EasyMock.replay(mMockDownloader);
+        setDownloadExpectations();
+
         assertFetchRemoteFile();
-        EasyMock.verify(mMockDownloader);
     }
 
     /**
@@ -86,23 +91,21 @@ public class FileDownloadCacheTest {
      */
     @Test
     public void testFetchRemoteFile_destFile() throws Exception {
-        setDownloadExpections();
-        EasyMock.replay(mMockDownloader);
+        setDownloadExpectations();
+
         File destFile = FileUtil.createTempFile("test-download-cache", "txt");
         assertFetchRemoteFile(REMOTE_PATH, null, destFile);
-        EasyMock.verify(mMockDownloader);
     }
 
     @Test
     public void testFetchRemoteFile_destFile_nullPath() throws Exception {
-        EasyMock.replay(mMockDownloader);
+
         try {
             assertFetchRemoteFile(null, null, null);
             fail("Should have thrown an exception.");
         } catch (BuildRetrievalError expected) {
             assertEquals("remote path was null.", expected.getMessage());
         }
-        EasyMock.verify(mMockDownloader);
     }
 
     /**
@@ -111,18 +114,16 @@ public class FileDownloadCacheTest {
      */
     @Test
     public void testFetchRemoteFile_cacheHit() throws Exception {
-        setDownloadExpections();
-        EasyMock.replay(mMockDownloader);
+        setDownloadExpectations();
+
         assertFetchRemoteFile();
-        EasyMock.verify(mMockDownloader);
 
         // now retrieve file again
-        EasyMock.reset(mMockDownloader);
-        setFreshnessExpections(true);
-        EasyMock.replay(mMockDownloader);
+        reset(mMockDownloader);
+        setFreshnessExpectations(true);
+
         assertFetchRemoteFile();
         // verify only one download call occurred. It is not called at the second time.
-        EasyMock.verify(mMockDownloader);
     }
 
     /**
@@ -131,19 +132,17 @@ public class FileDownloadCacheTest {
      */
     @Test
     public void testFetchRemoteFile_cacheHit_notFresh() throws Exception {
-        setDownloadExpections();
-        EasyMock.replay(mMockDownloader);
+        setDownloadExpectations();
+
         assertFetchRemoteFile();
-        EasyMock.verify(mMockDownloader);
 
         // now retrieve file again
-        EasyMock.reset(mMockDownloader);
-        setFreshnessExpections(false);
-        setDownloadExpections();
-        EasyMock.replay(mMockDownloader);
+        reset(mMockDownloader);
+        setFreshnessExpectations(false);
+        setDownloadExpectations();
+
         assertFetchRemoteFile();
         // Assert the download is called again.
-        EasyMock.verify(mMockDownloader);
     }
 
     /**
@@ -155,15 +154,14 @@ public class FileDownloadCacheTest {
         final String remotePath2 = "anotherpath";
         // set cache size to be small
         mCache.setMaxCacheSize(DOWNLOADED_CONTENTS.length() + 1);
-        setDownloadExpections(remotePath2);
-        setDownloadExpections();
-        EasyMock.replay(mMockDownloader);
+        setDownloadExpectations(remotePath2);
+        setDownloadExpectations();
+
         assertFetchRemoteFile(remotePath2, null);
         // now retrieve another file, which will exceed size of cache
         assertFetchRemoteFile();
         assertNotNull(mCache.getCachedFile(REMOTE_PATH));
         assertNull(mCache.getCachedFile(remotePath2));
-        EasyMock.verify(mMockDownloader);
     }
 
     /**
@@ -171,13 +169,12 @@ public class FileDownloadCacheTest {
      */
     @Test
     public void testFetchRemoteFile_downloadFailed() throws Exception {
-        mMockDownloader.downloadFile(EasyMock.eq(REMOTE_PATH),
-                (File)EasyMock.anyObject());
-        EasyMock.expectLastCall()
-                .andThrow(
+        doThrow(
                         new BuildRetrievalError(
-                                "download error", InfraErrorIdentifier.ARTIFACT_DOWNLOAD_ERROR));
-        EasyMock.replay(mMockDownloader);
+                                "download error", InfraErrorIdentifier.ARTIFACT_DOWNLOAD_ERROR))
+                .when(mMockDownloader)
+                .downloadFile(eq(REMOTE_PATH), any(File.class));
+
         try {
             mCache.fetchRemoteFile(mMockDownloader, REMOTE_PATH);
             fail("BuildRetrievalError not thrown");
@@ -185,7 +182,6 @@ public class FileDownloadCacheTest {
             // expected
         }
         assertNull(mCache.getCachedFile(REMOTE_PATH));
-        EasyMock.verify(mMockDownloader);
     }
 
     /**
@@ -194,9 +190,10 @@ public class FileDownloadCacheTest {
      */
     @Test
     public void testFetchRemoteFile_downloadFailed_Runtime() throws Exception {
-        mMockDownloader.downloadFile(EasyMock.eq(REMOTE_PATH), (File) EasyMock.anyObject());
-        EasyMock.expectLastCall().andThrow(new RuntimeException("download error"));
-        EasyMock.replay(mMockDownloader);
+        doThrow(new RuntimeException("download error"))
+                .when(mMockDownloader)
+                .downloadFile(eq(REMOTE_PATH), any(File.class));
+
         try {
             mCache.fetchRemoteFile(mMockDownloader, REMOTE_PATH);
             fail("RuntimeException not thrown");
@@ -204,7 +201,6 @@ public class FileDownloadCacheTest {
             // expected
         }
         assertNull(mCache.getCachedFile(REMOTE_PATH));
-        EasyMock.verify(mMockDownloader);
     }
 
     /**
@@ -214,10 +210,10 @@ public class FileDownloadCacheTest {
     @Test
     public void testFetchRemoteFile_cacheMissing() throws Exception {
         // perform successful download
-        setDownloadExpections(REMOTE_PATH);
-        EasyMock.replay(mMockDownloader);
+        setDownloadExpectations(REMOTE_PATH);
+
         assertFetchRemoteFile();
-        EasyMock.verify(mMockDownloader);
+
         // now be sneaky and delete the cachedFile, so copy will fail
         File cachedFile = mCache.getCachedFile(REMOTE_PATH);
         assertNotNull(cachedFile);
@@ -225,14 +221,13 @@ public class FileDownloadCacheTest {
         assertTrue(res);
         File file = null;
         try {
-            EasyMock.reset(mMockDownloader);
-            setDownloadExpections(REMOTE_PATH);
-            EasyMock.replay(mMockDownloader);
+            reset(mMockDownloader);
+            setDownloadExpectations(REMOTE_PATH);
+
             file = mCache.fetchRemoteFile(mMockDownloader, REMOTE_PATH);
             // file should have been updated in cache.
             assertNotNull(file);
             assertNotNull(mCache.getCachedFile(REMOTE_PATH));
-            EasyMock.verify(mMockDownloader);
         } finally {
             FileUtil.deleteFile(file);
         }
@@ -256,16 +251,15 @@ public class FileDownloadCacheTest {
                     }
                 };
         // perform successful download
-        setDownloadExpections(REMOTE_PATH);
-        EasyMock.replay(mMockDownloader);
+        setDownloadExpectations(REMOTE_PATH);
+
         assertFetchRemoteFile();
-        EasyMock.verify(mMockDownloader);
 
         mFailCopy = true;
         try {
-            EasyMock.reset(mMockDownloader);
-            setFreshnessExpections(true);
-            EasyMock.replay(mMockDownloader);
+            reset(mMockDownloader);
+            setFreshnessExpectations(true);
+
             mCache.fetchRemoteFile(mMockDownloader, REMOTE_PATH);
             fail("BuildRetrievalError not thrown");
         } catch (BuildRetrievalError e) {
@@ -273,7 +267,6 @@ public class FileDownloadCacheTest {
         }
         // file should be removed from cache
         assertNull(mCache.getCachedFile(REMOTE_PATH));
-        EasyMock.verify(mMockDownloader);
     }
 
     /**
@@ -286,10 +279,9 @@ public class FileDownloadCacheTest {
         relativePaths.add("file.txt");
         relativePaths.add("folder1/file1.txt");
         relativePaths.add("folder1/folder2/file2.txt");
-        setDownloadExpections(REMOTE_PATH, relativePaths);
-        EasyMock.replay(mMockDownloader);
+        setDownloadExpectations(REMOTE_PATH, relativePaths);
+
         assertFetchRemoteFile(REMOTE_PATH, relativePaths);
-        EasyMock.verify(mMockDownloader);
     }
 
     /** Test that when the cache is rebuilt we can find the file without a new download. */
@@ -302,14 +294,12 @@ public class FileDownloadCacheTest {
         File cacheFile = null;
         try {
             mCache = new FileDownloadCache(cacheDir);
-            setFreshnessExpections(true);
+            setFreshnessExpectations(true);
 
-            EasyMock.replay(mMockDownloader);
             cacheFile =
                     mCache.fetchRemoteFile(
                             mMockDownloader, subDir.getName() + "/" + file.getName());
             assertNotNull(cacheFile);
-            EasyMock.verify(mMockDownloader);
         } finally {
             FileUtil.recursiveDelete(cacheDir);
             FileUtil.deleteFile(cacheFile);
@@ -321,10 +311,9 @@ public class FileDownloadCacheTest {
     public void testCacheRebuild_multiSlashPath() throws Exception {
         String gsPath = "foo//bar";
         // Perform successful download
-        setDownloadExpections(gsPath);
-        EasyMock.replay(mMockDownloader);
+        setDownloadExpectations(gsPath);
+
         assertFetchRemoteFile(gsPath, null);
-        EasyMock.verify(mMockDownloader);
 
         File cachedFile = mCache.getCachedFile(gsPath);
         try {
@@ -378,57 +367,49 @@ public class FileDownloadCacheTest {
                     assertEquals(DOWNLOADED_CONTENTS, FileUtil.readStringFromFile(file));
                 }
             }
-
         } finally {
             FileUtil.recursiveDelete(fileCopy);
         }
     }
 
-    /**
-     * Set EasyMock expectations for a downloadFile call for default remote path
-     */
-    private void setDownloadExpections() throws BuildRetrievalError {
-        setDownloadExpections(REMOTE_PATH, null);
+    /** Set EasyMock expectations for a downloadFile call for default remote path */
+    private void setDownloadExpectations() throws BuildRetrievalError {
+        setDownloadExpectations(REMOTE_PATH, null);
     }
 
     /** Set EasyMock expectations for a downloadFile call. */
-    private void setDownloadExpections(String remotePath) throws BuildRetrievalError {
-        setDownloadExpections(remotePath, null);
+    private void setDownloadExpectations(String remotePath) throws BuildRetrievalError {
+        setDownloadExpectations(remotePath, null);
     }
 
     /** Set EasyMock expectations for a downloadFile call */
-    private IExpectationSetters<Object> setDownloadExpections(
-            String remotePath, List<String> relativePaths) throws BuildRetrievalError {
-        IAnswer<Object> downloadAnswer =
-                new IAnswer<Object>() {
-                    @Override
-                    public Object answer() throws Throwable {
-                        File fileArg = (File) EasyMock.getCurrentArguments()[1];
-                        if (relativePaths == null || relativePaths.size() == 0) {
-                            FileUtil.writeToFile(DOWNLOADED_CONTENTS, fileArg);
-                        } else {
-                            fileArg.mkdir();
-                            for (String relativePath : relativePaths) {
-                                File file =
-                                        Paths.get(fileArg.getAbsolutePath(), relativePath).toFile();
-                                file.getParentFile().mkdirs();
-                                FileUtil.writeToFile(DOWNLOADED_CONTENTS, file);
-                            }
-                        }
-                        return null;
-                    }
-                };
+    private void setDownloadExpectations(String remotePath, List<String> relativePaths)
+            throws BuildRetrievalError {
 
-        mMockDownloader.downloadFile(EasyMock.eq(remotePath),
-                EasyMock.<File>anyObject());
-        return EasyMock.expectLastCall().andAnswer(downloadAnswer);
+        doAnswer(
+                        invocation -> {
+                            File fileArg = (File) invocation.getArguments()[1];
+                            if (relativePaths == null || relativePaths.size() == 0) {
+                                FileUtil.writeToFile(DOWNLOADED_CONTENTS, fileArg);
+                            } else {
+                                fileArg.mkdir();
+                                for (String relativePath : relativePaths) {
+                                    File file =
+                                            Paths.get(fileArg.getAbsolutePath(), relativePath)
+                                                    .toFile();
+                                    file.getParentFile().mkdirs();
+                                    FileUtil.writeToFile(DOWNLOADED_CONTENTS, file);
+                                }
+                            }
+                            return null;
+                        })
+                .when(mMockDownloader)
+                .downloadFile(eq(remotePath), Mockito.<File>any());
     }
 
     /** Set EasyMock expectations for a checkFreshness call */
-    private void setFreshnessExpections(boolean freshness) throws BuildRetrievalError {
-        EasyMock.expect(
-                        mMockDownloader.isFresh(
-                                EasyMock.<File>anyObject(), EasyMock.<String>anyObject()))
-                .andReturn(freshness);
+    private void setFreshnessExpectations(boolean freshness) throws BuildRetrievalError {
+        when(mMockDownloader.isFresh(Mockito.<File>any(), Mockito.<String>any()))
+                .thenReturn(freshness);
     }
 }
