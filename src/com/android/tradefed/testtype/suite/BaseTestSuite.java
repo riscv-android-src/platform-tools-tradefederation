@@ -244,10 +244,10 @@ public class BaseTestSuite extends ITestSuite {
             SuiteModuleLoader.addFilters(mIncludeFilters, mIncludeFiltersParsed, mAbis);
             SuiteModuleLoader.addFilters(mExcludeFilters, mExcludeFiltersParsed, mAbis);
 
-            String includeFilter = mIncludeFiltersParsed.toString();
+            String includeFilters = "";
             if (mIncludeFiltersParsed.size() > MAX_FILTER_DISPLAY) {
                 if (isSplitting()) {
-                    includeFilter = includeFilter.substring(0, 100) + "...";
+                    includeFilters = "Includes: <too long to display>";
                 } else {
                     File suiteIncludeFilters = null;
                     try {
@@ -258,7 +258,8 @@ public class BaseTestSuite extends ITestSuite {
                                 suiteIncludeFilters,
                                 suiteIncludeFilters.getName(),
                                 LogDataType.TEXT);
-                        includeFilter = String.format("See %s", suiteIncludeFilters.getName());
+                        includeFilters =
+                                String.format("Includes: See %s", suiteIncludeFilters.getName());
                     } catch (IOException e) {
                         CLog.e(e);
                     } finally {
@@ -267,10 +268,10 @@ public class BaseTestSuite extends ITestSuite {
                 }
             }
 
-            String excludeFilter = mExcludeFiltersParsed.toString();
+            String excludeFilters = "";
             if (mExcludeFiltersParsed.size() > MAX_FILTER_DISPLAY) {
                 if (isSplitting()) {
-                    excludeFilter = excludeFilter.substring(0, 100) + "...";
+                    excludeFilters = "Excludes: <too long to display>";
                 } else {
                     File suiteExcludeFilters = null;
                     try {
@@ -281,7 +282,8 @@ public class BaseTestSuite extends ITestSuite {
                                 suiteExcludeFilters,
                                 suiteExcludeFilters.getName(),
                                 LogDataType.TEXT);
-                        excludeFilter = String.format("See %s", suiteExcludeFilters.getName());
+                        excludeFilters =
+                                String.format("Excludes: See %s", suiteExcludeFilters.getName());
                     } catch (IOException e) {
                         CLog.e(e);
                     } finally {
@@ -292,8 +294,8 @@ public class BaseTestSuite extends ITestSuite {
 
             CLog.d(
                     "Initializing ModuleRepo\nABIs:%s\n"
-                            + "Test Args:%s\nModule Args:%s\nIncludes:%s\nExcludes:%s",
-                            mAbis, mTestArgs, mModuleArgs, includeFilter, excludeFilter);
+                            + "Test Args:%s\nModule Args:%s\n%s\n%s",
+                            mAbis, mTestArgs, mModuleArgs, includeFilters, excludeFilters);
 
             mModuleRepo =
                     createModuleLoader(
@@ -351,7 +353,7 @@ public class BaseTestSuite extends ITestSuite {
                         String.format(
                                 "Include filter '%s' was specified"
                                         + " but resulted in an empty test set.",
-                                includeFilter),
+                                        mIncludeFiltersParsed.toString()),
                         InfraErrorIdentifier.OPTION_CONFIGURATION_ERROR);
             }
             return loadedTests;

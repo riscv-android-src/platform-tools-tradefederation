@@ -143,6 +143,13 @@ public class ConfigurationDescriptor implements Serializable, Cloneable {
         }
     }
 
+    /**
+     * Remove the tracking of the specified metadata key.
+     */
+    public List<String> removeMetadata(String key) {
+        return mMetaData.remove(key);
+    }
+
     /** Returns if the configuration is shardable or not as part of a suite */
     public boolean isNotShardable() {
         return mNotShardable;
