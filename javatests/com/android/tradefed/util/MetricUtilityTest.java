@@ -370,6 +370,8 @@ public class MetricUtilityTest {
                         "\n";
             case OUTPUT_3:
                 return "pkg_name#test_name\n" +
+                        "\n" +
+                        "\n" +
                         "\n";
             case OUTPUT_4:
                 return "pkg_name#test_name\n" +
@@ -440,6 +442,8 @@ public class MetricUtilityTest {
                         "\n";
             case OUTPUT_8:
                 return "pkg#test1\n" +
+                        "\n" +
+                        "\n" +
                         "\n";
             default:
                 return null;
