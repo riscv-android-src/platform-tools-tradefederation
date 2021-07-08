@@ -16,6 +16,8 @@
 package com.android.tradefed.testtype;
 
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.invoker.TestInformation;
@@ -24,11 +26,11 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mockito;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -43,6 +45,7 @@ public class DeviceTestSuiteTest {
             // Metrics are also available for test within Suite
             addTestMetric("key1", "metric1");
         }
+
         public void test2() {}
     }
 
@@ -69,21 +72,22 @@ public class DeviceTestSuiteTest {
         DeviceTestSuite suite = new DeviceTestSuite();
         suite.addTestSuite(MockTest.class);
 
-        ITestInvocationListener listener = EasyMock.createMock(ITestInvocationListener.class);
-        listener.testRunStarted(DeviceTestSuite.class.getName(), 2);
+        ITestInvocationListener listener = mock(ITestInvocationListener.class);
+
         final TestDescription test1 = new TestDescription(MockTest.class.getName(), "test1");
         final TestDescription test2 = new TestDescription(MockTest.class.getName(), "test2");
-        listener.testStarted(test1);
+
         Map<String, String> metrics = new HashMap<>();
         metrics.put("key1", "metric1");
-        listener.testEnded(test1, TfMetricProtoUtil.upgradeConvert(metrics));
-        listener.testStarted(test2);
-        listener.testEnded(test2, new HashMap<String, Metric>());
-        listener.testRunEnded(EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-        EasyMock.replay(listener);
 
         suite.run(mTestInfo, listener);
-        EasyMock.verify(listener);
+
+        verify(listener).testRunStarted(DeviceTestSuite.class.getName(), 2);
+        verify(listener).testStarted(test1);
+        verify(listener).testEnded(test1, TfMetricProtoUtil.upgradeConvert(metrics));
+        verify(listener).testStarted(test2);
+        verify(listener).testEnded(test2, new HashMap<String, Metric>());
+        verify(listener).testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
     }
 
     /** Verify that a device not available exception is thrown up. */
@@ -93,23 +97,22 @@ public class DeviceTestSuiteTest {
         suite.addTestSuite(MockAbortTest.class);
 
         // create a mock ITestInvocationListener, because results are easier to verify
-        ITestInvocationListener listener = EasyMock.createMock(ITestInvocationListener.class);
+        ITestInvocationListener listener = mock(ITestInvocationListener.class);
 
         final TestDescription test1 = new TestDescription(MockAbortTest.class.getName(), "test1");
-        listener.testRunStarted(DeviceTestSuite.class.getName(), 1);
-        listener.testStarted(test1);
-        listener.testFailed(EasyMock.eq(test1),
-                EasyMock.contains(MockAbortTest.EXCEP_MSG));
-        listener.testEnded(test1, new HashMap<String, Metric>());
-        listener.testRunFailed(EasyMock.contains(MockAbortTest.EXCEP_MSG));
-        listener.testRunEnded(EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-        EasyMock.replay(listener);
+
         try {
             suite.run(mTestInfo, listener);
             fail("DeviceNotAvailableException not thrown");
         } catch (DeviceNotAvailableException e) {
             // expected
         }
-        EasyMock.verify(listener);
+
+        verify(listener).testRunStarted(DeviceTestSuite.class.getName(), 1);
+        verify(listener).testStarted(test1);
+        verify(listener).testFailed(Mockito.eq(test1), Mockito.contains(MockAbortTest.EXCEP_MSG));
+        verify(listener).testEnded(test1, new HashMap<String, Metric>());
+        verify(listener).testRunFailed(Mockito.contains(MockAbortTest.EXCEP_MSG));
+        verify(listener).testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
     }
 }
