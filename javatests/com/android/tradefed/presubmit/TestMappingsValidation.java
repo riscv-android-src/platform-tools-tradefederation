@@ -218,7 +218,17 @@ public class TestMappingsValidation implements IBuildReceiver {
             }
         }
         if (!errors.isEmpty()) {
-            String error = format("Fail test entry check:\n%s", Joiner.on("\n").join(errors));
+            String error =
+                    format(
+                            "Fail test entry check. Some test modules are not found or the module"
+                                + " name has been changed or been removed from build file. \n\n"
+                                + "To locate owner that is responsible for the breakage, try to do"
+                                + " code search on the test modules, check the changelog/blame of"
+                                + " the broken TEST_MAPPING file or Android.bp/mk to locate the"
+                                + " owner.\n\n"
+                                + "Details: \n"
+                                + "%s",
+                            Joiner.on("\n").join(errors));
             if (!mEnforceModuleNameCheck) {
                 CLog.w(error);
             } else {

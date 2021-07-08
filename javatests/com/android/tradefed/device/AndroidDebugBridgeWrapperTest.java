@@ -16,27 +16,32 @@
 package com.android.tradefed.device;
 
 import static org.junit.Assert.*;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.when;
 
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.IRunUtil;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 /** Unit tests for {@link AndroidDebugBridgeWrapper}. */
 @RunWith(JUnit4.class)
 public class AndroidDebugBridgeWrapperTest {
 
     private AndroidDebugBridgeWrapper mBridge;
-    private IRunUtil mMockRunUtil;
+    @Mock IRunUtil mMockRunUtil;
 
     @Before
     public void setUp() {
-        mMockRunUtil = EasyMock.createMock(IRunUtil.class);
+        MockitoAnnotations.initMocks(this);
+
         mBridge =
                 new AndroidDebugBridgeWrapper() {
                     @Override
@@ -52,14 +57,10 @@ public class AndroidDebugBridgeWrapperTest {
         CommandResult res = new CommandResult();
         res.setStatus(CommandStatus.SUCCESS);
         res.setStdout("Android Debug Bridge version 1.0.36\nRevision 0e7324e9095a-android\n");
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(), EasyMock.eq("fakeadb"), EasyMock.eq("version")))
-                .andReturn(res);
-        EasyMock.replay(mMockRunUtil);
+        when(mMockRunUtil.runTimedCmd(anyLong(), eq("fakeadb"), eq("version"))).thenReturn(res);
+
         String version = mBridge.getAdbVersion("fakeadb");
         assertEquals("1.0.36-0e7324e9095a-android", version);
-        EasyMock.verify(mMockRunUtil);
     }
 
     /** Test parsing the adb version when available with alternative format. */
@@ -71,14 +72,10 @@ public class AndroidDebugBridgeWrapperTest {
                 "Android Debug Bridge version 1.0.36\n"
                         + "Version 0.0.0-4407735\n"
                         + "Installed as /usr/local/adb\n");
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(), EasyMock.eq("fakeadb"), EasyMock.eq("version")))
-                .andReturn(res);
-        EasyMock.replay(mMockRunUtil);
+        when(mMockRunUtil.runTimedCmd(anyLong(), eq("fakeadb"), eq("version"))).thenReturn(res);
+
         String version = mBridge.getAdbVersion("fakeadb");
         assertEquals("1.0.36 subVersion: 0.0.0-4407735 install path: /usr/local/adb", version);
-        EasyMock.verify(mMockRunUtil);
     }
 
     /** Test when the version process fails. */
@@ -88,13 +85,9 @@ public class AndroidDebugBridgeWrapperTest {
         res.setStatus(CommandStatus.FAILED);
         res.setStdout("");
         res.setStderr("");
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(), EasyMock.eq("fakeadb"), EasyMock.eq("version")))
-                .andReturn(res);
-        EasyMock.replay(mMockRunUtil);
+        when(mMockRunUtil.runTimedCmd(anyLong(), eq("fakeadb"), eq("version"))).thenReturn(res);
+
         assertNull(mBridge.getAdbVersion("fakeadb"));
-        EasyMock.verify(mMockRunUtil);
     }
 
     /** Test when the revision is not present, in that case we output a partial version. */
@@ -103,14 +96,10 @@ public class AndroidDebugBridgeWrapperTest {
         CommandResult res = new CommandResult();
         res.setStatus(CommandStatus.SUCCESS);
         res.setStdout("Android Debug Bridge version 1.0.36\n");
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(), EasyMock.eq("fakeadb"), EasyMock.eq("version")))
-                .andReturn(res);
-        EasyMock.replay(mMockRunUtil);
+        when(mMockRunUtil.runTimedCmd(anyLong(), eq("fakeadb"), eq("version"))).thenReturn(res);
+
         String version = mBridge.getAdbVersion("fakeadb");
         assertEquals("1.0.36", version);
-        EasyMock.verify(mMockRunUtil);
     }
 
     /** Test when the output from 'adb version' is not as expected at all. */
@@ -119,12 +108,8 @@ public class AndroidDebugBridgeWrapperTest {
         CommandResult res = new CommandResult();
         res.setStatus(CommandStatus.SUCCESS);
         res.setStdout("This is probably not the right output\n");
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(), EasyMock.eq("fakeadb"), EasyMock.eq("version")))
-                .andReturn(res);
-        EasyMock.replay(mMockRunUtil);
+        when(mMockRunUtil.runTimedCmd(anyLong(), eq("fakeadb"), eq("version"))).thenReturn(res);
+
         assertNull(mBridge.getAdbVersion("fakeadb"));
-        EasyMock.verify(mMockRunUtil);
     }
 }

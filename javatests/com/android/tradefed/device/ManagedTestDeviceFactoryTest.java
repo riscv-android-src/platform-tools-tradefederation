@@ -17,17 +17,23 @@ package com.android.tradefed.device;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.IDevice.DeviceState;
 import com.android.tradefed.device.cloud.NestedRemoteDevice;
 import com.android.tradefed.util.IRunUtil;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import java.util.concurrent.TimeUnit;
 
@@ -36,18 +42,16 @@ import java.util.concurrent.TimeUnit;
 public class ManagedTestDeviceFactoryTest {
 
     private ManagedTestDeviceFactory mFactory;
-    private IDeviceManager mMockDeviceManager;
-    private IDeviceMonitor mMockDeviceMonitor;
-    private IRunUtil mMockRunUtil;
-    private IDevice mMockIDevice;
+    @Mock IDeviceManager mMockDeviceManager;
+    @Mock IDeviceMonitor mMockDeviceMonitor;
+    @Mock IRunUtil mMockRunUtil;
+    @Mock IDevice mMockIDevice;
 
     @Before
     public void setUp() throws Exception {
-        mMockDeviceManager = EasyMock.createMock(IDeviceManager.class);
-        mMockDeviceMonitor = EasyMock.createMock(IDeviceMonitor.class);
+        MockitoAnnotations.initMocks(this);
+
         mFactory = new ManagedTestDeviceFactory(true, mMockDeviceManager, mMockDeviceMonitor) ;
-        mMockRunUtil = EasyMock.createMock(IRunUtil.class);
-        mMockIDevice = EasyMock.createMock(IDevice.class);
     }
 
     @Test
@@ -82,8 +86,8 @@ public class ManagedTestDeviceFactoryTest {
 
     @Test
     public void testNestedDevice() throws Exception {
-        EasyMock.expect(mMockDeviceManager.isFileSystemMountCheckEnabled()).andReturn(false);
-        EasyMock.expect(mMockDeviceManager.getFastbootPath()).andReturn("fastboot");
+        when(mMockDeviceManager.isFileSystemMountCheckEnabled()).thenReturn(false);
+        when(mMockDeviceManager.getFastbootPath()).thenReturn("fastboot");
         mFactory =
                 new ManagedTestDeviceFactory(true, mMockDeviceManager, mMockDeviceMonitor) {
                     @Override
@@ -91,12 +95,11 @@ public class ManagedTestDeviceFactoryTest {
                         return true;
                     }
                 };
-        EasyMock.expect(mMockIDevice.getSerialNumber()).andStubReturn("127.0.0.1:6520");
-        EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.ONLINE);
-        EasyMock.replay(mMockIDevice, mMockDeviceManager);
+        when(mMockIDevice.getSerialNumber()).thenReturn("127.0.0.1:6520");
+        when(mMockIDevice.getState()).thenReturn(DeviceState.ONLINE);
+
         IManagedTestDevice result = mFactory.createDevice(mMockIDevice);
         assertTrue(result instanceof NestedRemoteDevice);
-        EasyMock.verify(mMockIDevice, mMockDeviceManager);
     }
 
     /**
@@ -106,26 +109,25 @@ public class ManagedTestDeviceFactoryTest {
     @Test
     public void testFrameworkAvailable() throws Exception {
         final CollectingOutputReceiver cor = new CollectingOutputReceiver();
-        mFactory = new ManagedTestDeviceFactory(true, mMockDeviceManager, mMockDeviceMonitor) {
-            @Override
-            protected CollectingOutputReceiver createOutputReceiver() {
-                String response = ManagedTestDeviceFactory.EXPECTED_RES + "\n";
-                cor.addOutput(response.getBytes(), 0, response.length());
-                return cor;
-            }
-        };
-        EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.ONLINE);
-        String expectedCmd = String.format(ManagedTestDeviceFactory.CHECK_PM_CMD,
-                ManagedTestDeviceFactory.EXPECTED_RES);
-        mMockIDevice.executeShellCommand(
-                EasyMock.eq(expectedCmd),
-                EasyMock.eq(cor),
-                EasyMock.anyLong(),
-                EasyMock.eq(TimeUnit.MILLISECONDS));
-        EasyMock.expectLastCall();
-        EasyMock.replay(mMockIDevice);
+        mFactory =
+                new ManagedTestDeviceFactory(true, mMockDeviceManager, mMockDeviceMonitor) {
+                    @Override
+                    protected CollectingOutputReceiver createOutputReceiver() {
+                        String response = ManagedTestDeviceFactory.EXPECTED_RES + "\n";
+                        cor.addOutput(response.getBytes(), 0, response.length());
+                        return cor;
+                    }
+                };
+        when(mMockIDevice.getState()).thenReturn(DeviceState.ONLINE);
+        String expectedCmd =
+                String.format(
+                        ManagedTestDeviceFactory.CHECK_PM_CMD,
+                        ManagedTestDeviceFactory.EXPECTED_RES);
+
         assertTrue(mFactory.checkFrameworkSupport(mMockIDevice));
-        EasyMock.verify(mMockIDevice);
+        verify(mMockIDevice, times(1))
+                .executeShellCommand(
+                        eq(expectedCmd), eq(cor), anyLong(), eq(TimeUnit.MILLISECONDS));
     }
 
     /**
@@ -135,26 +137,25 @@ public class ManagedTestDeviceFactoryTest {
     @Test
     public void testFrameworkNotAvailable() throws Exception {
         final CollectingOutputReceiver cor = new CollectingOutputReceiver();
-        mFactory = new ManagedTestDeviceFactory(true, mMockDeviceManager, mMockDeviceMonitor) {
-            @Override
-            protected CollectingOutputReceiver createOutputReceiver() {
-                String response = "ls: /system/bin/pm: No such file or directory\n";
-                cor.addOutput(response.getBytes(), 0, response.length());
-                return cor;
-            }
-        };
-        EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.ONLINE);
-        String expectedCmd = String.format(ManagedTestDeviceFactory.CHECK_PM_CMD,
-                ManagedTestDeviceFactory.EXPECTED_RES);
-        mMockIDevice.executeShellCommand(
-                EasyMock.eq(expectedCmd),
-                EasyMock.eq(cor),
-                EasyMock.anyLong(),
-                EasyMock.eq(TimeUnit.MILLISECONDS));
-        EasyMock.expectLastCall();
-        EasyMock.replay(mMockIDevice);
+        mFactory =
+                new ManagedTestDeviceFactory(true, mMockDeviceManager, mMockDeviceMonitor) {
+                    @Override
+                    protected CollectingOutputReceiver createOutputReceiver() {
+                        String response = "ls: /system/bin/pm: No such file or directory\n";
+                        cor.addOutput(response.getBytes(), 0, response.length());
+                        return cor;
+                    }
+                };
+        when(mMockIDevice.getState()).thenReturn(DeviceState.ONLINE);
+        String expectedCmd =
+                String.format(
+                        ManagedTestDeviceFactory.CHECK_PM_CMD,
+                        ManagedTestDeviceFactory.EXPECTED_RES);
+
         assertFalse(mFactory.checkFrameworkSupport(mMockIDevice));
-        EasyMock.verify(mMockIDevice);
+        verify(mMockIDevice, times(1))
+                .executeShellCommand(
+                        eq(expectedCmd), eq(cor), anyLong(), eq(TimeUnit.MILLISECONDS));
     }
 
     /**
@@ -164,32 +165,32 @@ public class ManagedTestDeviceFactoryTest {
     @Test
     public void testCheckFramework_emptyReturns() throws Exception {
         final CollectingOutputReceiver cor = new CollectingOutputReceiver();
-        mFactory = new ManagedTestDeviceFactory(true, mMockDeviceManager, mMockDeviceMonitor) {
-            @Override
-            protected CollectingOutputReceiver createOutputReceiver() {
-                String response = "";
-                cor.addOutput(response.getBytes(), 0, response.length());
-                return cor;
-            }
-            @Override
-            protected IRunUtil getRunUtil() {
-                return mMockRunUtil;
-            }
-        };
-        mMockRunUtil.sleep(500);
-        EasyMock.expectLastCall().times(ManagedTestDeviceFactory.FRAMEWORK_CHECK_MAX_RETRY);
-        EasyMock.expect(mMockIDevice.getSerialNumber()).andStubReturn("SERIAL");
-        EasyMock.expect(mMockIDevice.getState()).andStubReturn(DeviceState.ONLINE);
-        String expectedCmd = String.format(ManagedTestDeviceFactory.CHECK_PM_CMD,
-                ManagedTestDeviceFactory.EXPECTED_RES);
-        mMockIDevice.executeShellCommand(
-                EasyMock.eq(expectedCmd),
-                EasyMock.eq(cor),
-                EasyMock.anyLong(),
-                EasyMock.eq(TimeUnit.MILLISECONDS));
-        EasyMock.expectLastCall().times(ManagedTestDeviceFactory.FRAMEWORK_CHECK_MAX_RETRY);
-        EasyMock.replay(mMockIDevice, mMockRunUtil);
+        mFactory =
+                new ManagedTestDeviceFactory(true, mMockDeviceManager, mMockDeviceMonitor) {
+                    @Override
+                    protected CollectingOutputReceiver createOutputReceiver() {
+                        String response = "";
+                        cor.addOutput(response.getBytes(), 0, response.length());
+                        return cor;
+                    }
+
+                    @Override
+                    protected IRunUtil getRunUtil() {
+                        return mMockRunUtil;
+                    }
+                };
+
+        when(mMockIDevice.getSerialNumber()).thenReturn("SERIAL");
+        when(mMockIDevice.getState()).thenReturn(DeviceState.ONLINE);
+        String expectedCmd =
+                String.format(
+                        ManagedTestDeviceFactory.CHECK_PM_CMD,
+                        ManagedTestDeviceFactory.EXPECTED_RES);
+
         assertTrue(mFactory.checkFrameworkSupport(mMockIDevice));
-        EasyMock.verify(mMockIDevice, mMockRunUtil);
+        verify(mMockRunUtil, times(ManagedTestDeviceFactory.FRAMEWORK_CHECK_MAX_RETRY)).sleep(500);
+        verify(mMockIDevice, times(ManagedTestDeviceFactory.FRAMEWORK_CHECK_MAX_RETRY))
+                .executeShellCommand(
+                        eq(expectedCmd), eq(cor), anyLong(), eq(TimeUnit.MILLISECONDS));
     }
 }

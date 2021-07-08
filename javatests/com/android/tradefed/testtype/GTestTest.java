@@ -626,6 +626,48 @@ public class GTestTest {
         EasyMock.verify(mMockITestDevice);
     }
 
+    /**
+     * Test {@link GTest#getGTestCmdLine(String, String)} with an LD_LIBRARY_PATH environment
+     * variable option.
+     */
+    @Test
+    public void testGetGTestCmdLine_ldLibraryPath() throws Exception {
+        mSetter.setOptionValue("ld-library-path", "/path1:/path2:/path3");
+
+        String cmd_line = mGTest.getGTestCmdLine("test_path", "flags");
+        assertEquals("LD_LIBRARY_PATH=/path1:/path2:/path3 test_path flags", cmd_line);
+    }
+
+    /**
+     * Test {@link GTest#getGTestCmdLine(String, String)} with multiple LD_LIBRARY_PATH environment
+     * variable options on a 32-bit device.
+     */
+    @Test
+    public void testGetGTestCmdLine_multipleLdLibraryPath32BitDevice() throws Exception {
+        mGTest.setAbi(new Abi("armeabi-v7a", "32"));
+        mSetter.setOptionValue("ld-library-path", "/lib");
+        mSetter.setOptionValue("ld-library-path-32", "/lib32");
+        mSetter.setOptionValue("ld-library-path-64", "/lib64");
+
+        String cmd_line = mGTest.getGTestCmdLine("test_path", "flags");
+        assertEquals("LD_LIBRARY_PATH=/lib32 test_path flags", cmd_line);
+    }
+
+    /**
+     * Test {@link GTest#getGTestCmdLine(String, String)} with multiple LD_LIBRARY_PATH environment
+     * variable options on a 64-bit device.
+     */
+    @Test
+    public void testGetGTestCmdLine_multipleLdLibraryPath64BitDevice() throws Exception {
+        mGTest.setAbi(new Abi("arm64-v8a", "64"));
+        mSetter.setOptionValue("ld-library-path", "/lib");
+        mSetter.setOptionValue("ld-library-path", "/lib32");
+        mSetter.setOptionValue("ld-library-path", "/lib64");
+
+        String cmd_line = mGTest.getGTestCmdLine("test_path", "flags");
+        assertEquals("LD_LIBRARY_PATH=/lib64 test_path flags", cmd_line);
+    }
+
     /** Test {@link GTest#getGTestCmdLine(String, String)} with environment variable. */
     @Test
     public void testGetGTestCmdLine_envVar() throws Exception {

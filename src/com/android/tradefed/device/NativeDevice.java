@@ -1660,9 +1660,15 @@ public class NativeDevice implements IManagedTestDevice {
             File localFileDir, String deviceFilePath, Set<String> excludedDirectories)
             throws DeviceNotAvailableException {
         if (isSdcardOrEmulated(deviceFilePath)) {
-            ContentProviderHandler handler = getContentProvider();
-            if (handler != null) {
-                return handler.pushDir(localFileDir, deviceFilePath, excludedDirectories);
+            Integer currentUser = getCurrentUser();
+            if (currentUser != 0) {
+                ContentProviderHandler handler = getContentProvider();
+                if (handler != null) {
+                    return handler.pushDir(localFileDir, deviceFilePath, excludedDirectories);
+                }
+            } else {
+                // Remove the special handling when content provider performance is better
+                CLog.d("Push without content provider for user '%s'", currentUser);
             }
         }
         return pushDirInternal(localFileDir, deviceFilePath, excludedDirectories);
