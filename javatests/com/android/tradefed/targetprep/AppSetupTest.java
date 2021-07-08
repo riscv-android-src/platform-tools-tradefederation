@@ -17,8 +17,13 @@ package com.android.tradefed.targetprep;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.IBuildInfo;
@@ -29,13 +34,14 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.util.AaptParser;
 import com.android.tradefed.util.FileUtil;
 
-import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
 import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -44,27 +50,27 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-/**
- * Unit Tests for {@link AppSetup}.
- */
+/** Unit Tests for {@link AppSetup}. */
 @RunWith(JUnit4.class)
 public class AppSetupTest {
 
     private static final String SERIAL = "serial";
     private AppSetup mAppSetup;
-    private ITestDevice mMockDevice;
-    private IBuildInfo mMockBuildInfo;
+    @Mock ITestDevice mMockDevice;
+    @Mock IBuildInfo mMockBuildInfo;
     private AaptParser mMockAaptParser;
     private List<VersionedFile> mApps;
 
     @Before
     public void setUp() throws Exception {
+        MockitoAnnotations.initMocks(this);
+
         mAppSetup = new AppSetup();
-        mMockDevice = EasyMock.createMock(ITestDevice.class);
-        EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn(SERIAL);
-        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andStubReturn(null);
-        EasyMock.expect(mMockDevice.isAppEnumerationSupported()).andStubReturn(false);
-        mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
+
+        when(mMockDevice.getSerialNumber()).thenReturn(SERIAL);
+        when(mMockDevice.getDeviceDescriptor()).thenReturn(null);
+        when(mMockDevice.isAppEnumerationSupported()).thenReturn(false);
+
         mMockAaptParser = Mockito.mock(AaptParser.class);
         mApps = new ArrayList<>();
         File tmpFile = FileUtil.createTempFile("versioned", ".test");
@@ -78,29 +84,19 @@ public class AppSetupTest {
         }
     }
 
-    private void replayMocks() {
-        EasyMock.replay(mMockDevice, mMockBuildInfo);
-    }
-
-    private void verifyMocks() {
-        EasyMock.verify(mMockDevice, mMockBuildInfo);
-    }
-
     /**
      * Test for {@link AppSetup#setUp(ITestDevice, IBuildInfo)} when the IBuildInfo doesn't contain
      * any apps.
      */
     @Test
     public void testSetup_notApps() throws Exception {
-        replayMocks();
         // Inop setup
         mAppSetup.setUp(mMockDevice, new BuildInfo());
-        verifyMocks();
     }
 
     /**
-     * Test for {@link AppSetup#setUp(ITestDevice, IBuildInfo)} when the apk installation fails
-     * with some error.
+     * Test for {@link AppSetup#setUp(ITestDevice, IBuildInfo)} when the apk installation fails with
+     * some error.
      */
     @Test
     public void testSetup_failToInstall() throws Exception {
@@ -108,18 +104,19 @@ public class AppSetupTest {
         File tmpFile = FileUtil.createTempFile("versioned", ".test");
         try {
             files.add(new VersionedFile(tmpFile, "1"));
-            EasyMock.expect(mMockBuildInfo.getAppPackageFiles()).andReturn(files);
-            EasyMock.expect(mMockDevice.installPackage(EasyMock.eq(tmpFile), EasyMock.eq(true)))
-                    .andReturn("Error");
-            replayMocks();
+            when(mMockBuildInfo.getAppPackageFiles()).thenReturn(files);
+            when(mMockDevice.installPackage(eq(tmpFile), eq(true))).thenReturn("Error");
+
             mAppSetup.setUp(mMockDevice, mMockBuildInfo);
             fail("Should have thrown an exception.");
         } catch (BuildError expected) {
-            assertEquals(String.format("Failed to install %s on %s. Reason: Error null",
-                    tmpFile.getName(), SERIAL), expected.getMessage());
+            assertEquals(
+                    String.format(
+                            "Failed to install %s on %s. Reason: Error null",
+                            tmpFile.getName(), SERIAL),
+                    expected.getMessage());
         } finally {
             FileUtil.deleteFile(tmpFile);
-            verifyMocks();
         }
     }
 
@@ -133,10 +130,9 @@ public class AppSetupTest {
         File tmpFile = FileUtil.createTempFile("versioned", ".test");
         try {
             files.add(new VersionedFile(tmpFile, "1"));
-            EasyMock.expect(mMockBuildInfo.getAppPackageFiles()).andReturn(files);
-            EasyMock.expect(mMockDevice.installPackage(EasyMock.eq(tmpFile), EasyMock.eq(true)))
-                    .andReturn(null);
-            replayMocks();
+            when(mMockBuildInfo.getAppPackageFiles()).thenReturn(files);
+            when(mMockDevice.installPackage(eq(tmpFile), eq(true))).thenReturn(null);
+
             mAppSetup.setUp(mMockDevice, mMockBuildInfo);
             fail("Should have thrown an exception.");
         } catch (TargetSetupError expected) {
@@ -147,7 +143,6 @@ public class AppSetupTest {
                     expected.getMessage());
         } finally {
             FileUtil.deleteFile(tmpFile);
-            verifyMocks();
         }
     }
 
@@ -157,21 +152,21 @@ public class AppSetupTest {
      */
     @Test
     public void testSetup_noPackageName() throws Exception {
-        mAppSetup = new AppSetup() {
-            @Override
-            AaptParser doAaptParse(File apkFile) {
-                return mMockAaptParser;
-            }
-        };
+        mAppSetup =
+                new AppSetup() {
+                    @Override
+                    AaptParser doAaptParse(File apkFile) {
+                        return mMockAaptParser;
+                    }
+                };
         List<VersionedFile> files = new ArrayList<>();
         File tmpFile = FileUtil.createTempFile("versioned", ".test");
         try {
             files.add(new VersionedFile(tmpFile, "1"));
-            EasyMock.expect(mMockBuildInfo.getAppPackageFiles()).andReturn(files);
-            EasyMock.expect(mMockDevice.installPackage(EasyMock.eq(tmpFile), EasyMock.eq(true)))
-                    .andReturn(null);
+            when(mMockBuildInfo.getAppPackageFiles()).thenReturn(files);
+            when(mMockDevice.installPackage(eq(tmpFile), eq(true))).thenReturn(null);
             doReturn(null).when(mMockAaptParser).getPackageName();
-            replayMocks();
+
             mAppSetup.setUp(mMockDevice, mMockBuildInfo);
             fail("Should have thrown an exception.");
         } catch (TargetSetupError expected) {
@@ -182,31 +177,32 @@ public class AppSetupTest {
                     expected.getMessage());
         } finally {
             FileUtil.deleteFile(tmpFile);
-            verifyMocks();
+
             Mockito.verify(mMockAaptParser, times(1)).getPackageName();
         }
     }
 
     /**
-     * Test for {@link AppSetup#setUp(ITestDevice, IBuildInfo)} when checking min sdk is enabled
-     * and we fail to parse the file.
+     * Test for {@link AppSetup#setUp(ITestDevice, IBuildInfo)} when checking min sdk is enabled and
+     * we fail to parse the file.
      */
     @Test
     public void testSetup_checkMinSdk_failParsing() throws Exception {
-        mAppSetup = new AppSetup() {
-            @Override
-            AaptParser doAaptParse(File apkFile) {
-                return null;
-            }
-        };
+        mAppSetup =
+                new AppSetup() {
+                    @Override
+                    AaptParser doAaptParse(File apkFile) {
+                        return null;
+                    }
+                };
         OptionSetter setter = new OptionSetter(mAppSetup);
         setter.setOptionValue("check-min-sdk", "true");
         List<VersionedFile> files = new ArrayList<>();
         File tmpFile = FileUtil.createTempFile("versioned", ".test");
         try {
             files.add(new VersionedFile(tmpFile, "1"));
-            EasyMock.expect(mMockBuildInfo.getAppPackageFiles()).andReturn(files);
-            replayMocks();
+            when(mMockBuildInfo.getAppPackageFiles()).thenReturn(files);
+
             mAppSetup.setUp(mMockDevice, mMockBuildInfo);
             fail("Should have thrown an exception.");
         } catch (TargetSetupError expected) {
@@ -215,36 +211,37 @@ public class AppSetupTest {
                     expected.getMessage());
         } finally {
             FileUtil.deleteFile(tmpFile);
-            verifyMocks();
         }
     }
 
     /**
-     * Test for {@link AppSetup#setUp(ITestDevice, IBuildInfo)} when we check the min sdk level
-     * and the device API level is too low. Install should be skipped.
+     * Test for {@link AppSetup#setUp(ITestDevice, IBuildInfo)} when we check the min sdk level and
+     * the device API level is too low. Install should be skipped.
      */
     @Test
     public void testSetup_checkMinSdk_apiLow() throws Exception {
-        mAppSetup = new AppSetup() {
-            @Override
-            AaptParser doAaptParse(File apkFile) {
-                return mMockAaptParser;
-            }
-        };
+        mAppSetup =
+                new AppSetup() {
+                    @Override
+                    AaptParser doAaptParse(File apkFile) {
+                        return mMockAaptParser;
+                    }
+                };
         OptionSetter setter = new OptionSetter(mAppSetup);
         setter.setOptionValue("check-min-sdk", "true");
         List<VersionedFile> files = new ArrayList<>();
         File tmpFile = FileUtil.createTempFile("versioned", ".test");
         try {
             files.add(new VersionedFile(tmpFile, "1"));
-            EasyMock.expect(mMockBuildInfo.getAppPackageFiles()).andReturn(files);
-            EasyMock.expect(mMockDevice.getApiLevel()).andReturn(21).times(2);
+            when(mMockBuildInfo.getAppPackageFiles()).thenReturn(files);
+            when(mMockDevice.getApiLevel()).thenReturn(21);
             doReturn(22).when(mMockAaptParser).getSdkVersion();
-            replayMocks();
+
             mAppSetup.setUp(mMockDevice, mMockBuildInfo);
         } finally {
             FileUtil.deleteFile(tmpFile);
-            verifyMocks();
+            verify(mMockDevice, times(2)).getApiLevel();
+
             Mockito.verify(mMockAaptParser, times(2)).getSdkVersion();
         }
     }
@@ -255,51 +252,49 @@ public class AppSetupTest {
      */
     @Test
     public void testSetup_checkMinSdk_apiOk() throws Exception {
-        mAppSetup = new AppSetup() {
-            @Override
-            AaptParser doAaptParse(File apkFile) {
-                return mMockAaptParser;
-            }
-        };
+        mAppSetup =
+                new AppSetup() {
+                    @Override
+                    AaptParser doAaptParse(File apkFile) {
+                        return mMockAaptParser;
+                    }
+                };
         OptionSetter setter = new OptionSetter(mAppSetup);
         setter.setOptionValue("check-min-sdk", "true");
         List<VersionedFile> files = new ArrayList<>();
         File tmpFile = FileUtil.createTempFile("versioned", ".test");
         try {
             files.add(new VersionedFile(tmpFile, "1"));
-            EasyMock.expect(mMockBuildInfo.getAppPackageFiles()).andReturn(files);
-            EasyMock.expect(mMockDevice.getApiLevel()).andReturn(23);
+            when(mMockBuildInfo.getAppPackageFiles()).thenReturn(files);
+            when(mMockDevice.getApiLevel()).thenReturn(23);
             doReturn(22).when(mMockAaptParser).getSdkVersion();
-            EasyMock.expect(mMockDevice.installPackage(EasyMock.eq(tmpFile), EasyMock.eq(true)))
-                    .andReturn(null);
+            when(mMockDevice.installPackage(eq(tmpFile), eq(true))).thenReturn(null);
             doReturn("com.fake.package").when(mMockAaptParser).getPackageName();
-            replayMocks();
+
             mAppSetup.setUp(mMockDevice, mMockBuildInfo);
         } finally {
             FileUtil.deleteFile(tmpFile);
-            verifyMocks();
+
             Mockito.verify(mMockAaptParser, times(2)).getPackageName();
             Mockito.verify(mMockAaptParser, times(1)).getSdkVersion();
         }
     }
 
     /**
-     * Test for {@link AppSetup#setUp(ITestDevice, IBuildInfo)} when running a post install
-     * command.
+     * Test for {@link AppSetup#setUp(ITestDevice, IBuildInfo)} when running a post install command.
      */
     @Test
     public void testSetup_executePostInstall() throws Exception {
-        EasyMock.expect(mMockBuildInfo.getAppPackageFiles()).andReturn(mApps);
+        when(mMockBuildInfo.getAppPackageFiles()).thenReturn(mApps);
         final String fakeCmd = "fake command";
         OptionSetter setter = new OptionSetter(mAppSetup);
         setter.setOptionValue("install", "false");
         setter.setOptionValue("post-install-cmd", fakeCmd);
-        mMockDevice.executeShellCommand(EasyMock.eq(fakeCmd), EasyMock.anyObject(),
-                EasyMock.anyLong(), EasyMock.eq(TimeUnit.MILLISECONDS), EasyMock.eq(1));
-        EasyMock.expectLastCall();
-        replayMocks();
+
         mAppSetup.setUp(mMockDevice, mMockBuildInfo);
-        verifyMocks();
+        verify(mMockDevice, times(1))
+                .executeShellCommand(
+                        eq(fakeCmd), any(), anyLong(), eq(TimeUnit.MILLISECONDS), eq(1));
     }
 
     /**
@@ -308,15 +303,14 @@ public class AppSetupTest {
      */
     @Test
     public void testSetup_uninstallAll_noPackage() throws Exception {
-        EasyMock.expect(mMockBuildInfo.getAppPackageFiles()).andReturn(mApps);
+        when(mMockBuildInfo.getAppPackageFiles()).thenReturn(mApps);
         OptionSetter setter = new OptionSetter(mAppSetup);
         setter.setOptionValue("install", "false");
         setter.setOptionValue("uninstall-all", "true");
         Set<String> res = new HashSet<>();
-        EasyMock.expect(mMockDevice.getUninstallablePackageNames()).andReturn(res);
-        replayMocks();
+        when(mMockDevice.getUninstallablePackageNames()).thenReturn(res);
+
         mAppSetup.setUp(mMockDevice, mMockBuildInfo);
-        verifyMocks();
     }
 
     /**
@@ -325,64 +319,59 @@ public class AppSetupTest {
      */
     @Test
     public void testSetup_uninstallAll() throws Exception {
-        EasyMock.expect(mMockBuildInfo.getAppPackageFiles()).andReturn(mApps);
+        when(mMockBuildInfo.getAppPackageFiles()).thenReturn(mApps);
         OptionSetter setter = new OptionSetter(mAppSetup);
         setter.setOptionValue("install", "false");
         setter.setOptionValue("uninstall-all", "true");
         Set<String> res = new HashSet<>();
         res.add("com.fake1");
-        EasyMock.expect(mMockDevice.getUninstallablePackageNames()).andReturn(res).times(2);
-        EasyMock.expect(mMockDevice.uninstallPackage("com.fake1")).andReturn(null).times(2);
-        EasyMock.expect(mMockDevice.getUninstallablePackageNames()).andReturn(new HashSet<>());
-        replayMocks();
+        // Retunrs res for the first two times, and an empty hashset for the 3rd time.
+        when(mMockDevice.getUninstallablePackageNames()).thenReturn(res, res, new HashSet<>());
+        when(mMockDevice.uninstallPackage("com.fake1")).thenReturn(null);
+
         mAppSetup.setUp(mMockDevice, mMockBuildInfo);
-        verifyMocks();
+        verify(mMockDevice, times(3)).getUninstallablePackageNames();
+        verify(mMockDevice, times(2)).uninstallPackage("com.fake1");
     }
 
-    /**
-     * Test for {@link AppSetup#setUp(ITestDevice, IBuildInfo)} when uninstall is failing.
-     */
+    /** Test for {@link AppSetup#setUp(ITestDevice, IBuildInfo)} when uninstall is failing. */
     @Test
     public void testSetup_uninstallAll_fails() throws Exception {
-        EasyMock.expect(mMockBuildInfo.getAppPackageFiles()).andReturn(mApps);
+        when(mMockBuildInfo.getAppPackageFiles()).thenReturn(mApps);
         OptionSetter setter = new OptionSetter(mAppSetup);
         setter.setOptionValue("install", "false");
         setter.setOptionValue("uninstall-all", "true");
         Set<String> res = new HashSet<>();
         res.add("com.fake1");
-        EasyMock.expect(mMockDevice.getUninstallablePackageNames()).andReturn(res).times(4);
-        EasyMock.expect(mMockDevice.uninstallPackage("com.fake1")).andReturn("error").times(3);
-        replayMocks();
+        when(mMockDevice.getUninstallablePackageNames()).thenReturn(res);
+        when(mMockDevice.uninstallPackage("com.fake1")).thenReturn("error");
+
         try {
             mAppSetup.setUp(mMockDevice, mMockBuildInfo);
             fail("Should have thrown an exception.");
         } catch (DeviceNotAvailableException expected) {
             assertEquals("Failed to uninstall apps on " + SERIAL, expected.getMessage());
         }
-        verifyMocks();
+        verify(mMockDevice, times(4)).getUninstallablePackageNames();
+        verify(mMockDevice, times(3)).uninstallPackage("com.fake1");
     }
 
     /**
-     * Test for {@link AppSetup#tearDown(ITestDevice, IBuildInfo, Throwable)} when throwable is
-     * a DNAE instance, it should just return.
+     * Test for {@link AppSetup#tearDown(ITestDevice, IBuildInfo, Throwable)} when throwable is a
+     * DNAE instance, it should just return.
      */
     @Test
     public void testTearDown_DNAE() throws Exception {
-        replayMocks();
+
         mAppSetup.tearDown(
                 mMockDevice, mMockBuildInfo, new DeviceNotAvailableException("test", "serial"));
-        verifyMocks();
     }
 
-    /**
-     * Test for {@link AppSetup#tearDown(ITestDevice, IBuildInfo, Throwable)}.
-     */
+    /** Test for {@link AppSetup#tearDown(ITestDevice, IBuildInfo, Throwable)}. */
     @Test
     public void testTearDown() throws Exception {
-        mMockDevice.reboot();
-        EasyMock.expectLastCall();
-        replayMocks();
+
         mAppSetup.tearDown(mMockDevice, mMockBuildInfo, null);
-        verifyMocks();
+        verify(mMockDevice, times(1)).reboot();
     }
 }

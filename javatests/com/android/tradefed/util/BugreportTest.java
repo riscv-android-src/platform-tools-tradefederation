@@ -15,10 +15,14 @@
  */
 package com.android.tradefed.util;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.result.LogDataType;
 
-import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -34,9 +38,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.zip.ZipOutputStream;
 
-/**
- * Unit test suite for {@link Bugreport}
- */
+/** Unit test suite for {@link Bugreport} */
 public class BugreportTest {
 
     private static final String BUGREPORT_PREFIX = "bugreport_DEVICE_";
@@ -77,9 +79,7 @@ public class BugreportTest {
         FileUtil.deleteFile(mZipFile);
     }
 
-    /**
-     * Test {@link Bugreport#getMainFile()} for a flat bugreport.
-     */
+    /** Test {@link Bugreport#getMainFile()} for a flat bugreport. */
     @Test
     public void testBugreport_flat() throws IOException {
         mBugreport = new Bugreport(mRegularFile, false);
@@ -91,9 +91,7 @@ public class BugreportTest {
         }
     }
 
-    /**
-     * Test {@link Bugreport#getMainFile()} for a zipped bugreport.
-     */
+    /** Test {@link Bugreport#getMainFile()} for a zipped bugreport. */
     @Test
     public void testBugreport_zipped() throws IOException {
         mBugreport = new Bugreport(mZipFile, true);
@@ -109,9 +107,7 @@ public class BugreportTest {
         }
     }
 
-    /**
-     * Test {@link Bugreport#getFileByName(String)} for a zipped bugreport.
-     */
+    /** Test {@link Bugreport#getFileByName(String)} for a zipped bugreport. */
     @Test
     public void testBugreport_getFileByName() throws IOException {
         mBugreport = new Bugreport(mZipFile, true);
@@ -134,9 +130,7 @@ public class BugreportTest {
         }
     }
 
-    /**
-     * Test when created with a null file for zipped and unzipped.
-     */
+    /** Test when created with a null file for zipped and unzipped. */
     @Test
     public void testBugreport_nullFile() {
         mBugreport = new Bugreport(null, true);
@@ -150,9 +144,7 @@ public class BugreportTest {
         Assert.assertNull(mBugreport.getFileByName(""));
     }
 
-    /**
-     * Test when the zipped bugreport does not contain a main_entry.txt
-     */
+    /** Test when the zipped bugreport does not contain a main_entry.txt */
     @Test
     public void testBugreportz_noMainFile() throws Exception {
         File tempDir = null;
@@ -178,39 +170,33 @@ public class BugreportTest {
         }
     }
 
-    /**
-     * Test that logging a zip bugreport use the proper type.
-     */
+    /** Test that logging a zip bugreport use the proper type. */
     @Test
     public void testLogBugreport() throws Exception {
         final String dataName = "TEST";
         try {
             mBugreport = new Bugreport(mZipFile, true);
-            ITestLogger logger = EasyMock.createMock(ITestLogger.class);
-            logger.testLog(EasyMock.eq(dataName), EasyMock.eq(LogDataType.BUGREPORTZ),
-                    EasyMock.anyObject());
-            EasyMock.replay(logger);
+            ITestLogger logger = mock(ITestLogger.class);
+
             mBugreport.log(dataName, logger);
-            EasyMock.verify(logger);
+
+            verify(logger).testLog(eq(dataName), eq(LogDataType.BUGREPORTZ), any());
         } finally {
             mBugreport.close();
         }
     }
 
-    /**
-     * Test that logging a flat bugreport use the proper type.
-     */
+    /** Test that logging a flat bugreport use the proper type. */
     @Test
     public void testLogBugreportFlat() throws Exception {
         final String dataName = "TEST";
         try {
             mBugreport = new Bugreport(mRegularFile, false);
-            ITestLogger logger = EasyMock.createMock(ITestLogger.class);
-            logger.testLog(EasyMock.eq(dataName), EasyMock.eq(LogDataType.BUGREPORT),
-                    EasyMock.anyObject());
-            EasyMock.replay(logger);
+            ITestLogger logger = mock(ITestLogger.class);
+
             mBugreport.log(dataName, logger);
-            EasyMock.verify(logger);
+
+            verify(logger).testLog(eq(dataName), eq(LogDataType.BUGREPORT), any());
         } finally {
             mBugreport.close();
         }

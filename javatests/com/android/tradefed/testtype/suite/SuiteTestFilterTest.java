@@ -16,6 +16,7 @@
 package com.android.tradefed.testtype.suite;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -41,5 +42,19 @@ public class SuiteTestFilterTest {
         assertEquals("x86", filter.getAbi());
         assertEquals("module", filter.getBaseName());
         assertEquals("class#method", filter.getTest());
+    }
+
+    @Test
+    public void testEquals() {
+        SuiteTestFilter filter1 = SuiteTestFilter.createFrom("x86 module class#method");
+        SuiteTestFilter filter2 = SuiteTestFilter.createFrom("x86 module class#method");
+        assertEquals(filter1, filter2);
+    }
+
+    @Test
+    public void testNotEquals() {
+        SuiteTestFilter filter1 = SuiteTestFilter.createFrom("0 x86 module class#method");
+        SuiteTestFilter filter2 = SuiteTestFilter.createFrom("x86 module class#method");
+        assertNotEquals(filter1, filter2);
     }
 }

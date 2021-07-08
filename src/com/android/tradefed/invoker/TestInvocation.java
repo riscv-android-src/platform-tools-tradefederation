@@ -827,6 +827,7 @@ public class TestInvocation implements ITestInvocation {
             InvocationMetricLogger.addInvocationMetrics(
                     InvocationMetricKey.INVOCATION_START, System.currentTimeMillis());
         } else {
+            CLog.d("Fetching options from parent.");
             // Get options from the parent process
             try (OptionFetcher fetchOtpions = new OptionFetcher()) {
                 fetchOtpions.fetchParentOptions(config);

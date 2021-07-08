@@ -371,7 +371,10 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
                     uninstallPackage(device, apkPkgName);
                 }
                 if (!mTestApexInfoList.isEmpty()) {
-                    cleanUpStagedAndActiveSession(device);
+                    for (ApexInfo apex : mTestApexInfoList) {
+                        uninstallPackage(device, apex.name);
+                    }
+                    device.reboot();
                 }
             }
         }

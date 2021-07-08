@@ -25,9 +25,11 @@ import com.android.tradefed.testtype.ITestFilterReceiver;
 import com.android.tradefed.testtype.suite.BaseTestSuite;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Strings;
 import com.proto.tradefed.feature.FeatureResponse;
 import com.proto.tradefed.feature.PartResponse;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -58,7 +60,7 @@ public final class GlobalTestFilter {
     @Option(
             name = "disable-global-filters",
             description = "Feature flag to enable the global filters")
-    private boolean mDisable = true;
+    private boolean mDisable = false;
 
     private TradefedFeatureClient mClient;
     private boolean mSetupDone = false;
@@ -125,6 +127,13 @@ public final class GlobalTestFilter {
         filterableTest.addAllExcludeFilters(excludeFilters);
     }
 
+    /** Apply global filters to the suite */
+    public void applyFiltersToTest(BaseTestSuite suite) {
+        suite.setIncludeFilter(mIncludeFilters);
+        suite.setExcludeFilter(mExcludeFilters);
+        suite.reevaluateFilters();
+    }
+
     /** Fetch and populate global filters if needed. */
     private void populateGlobalFilters() {
         if (mClient == null) {
@@ -154,6 +163,9 @@ public final class GlobalTestFilter {
     }
 
     private List<String> splitStringFilters(String value) {
+        if (Strings.isNullOrEmpty(value)) {
+            return new ArrayList<String>();
+        }
         return Arrays.asList(value.split("\n"));
     }
 }

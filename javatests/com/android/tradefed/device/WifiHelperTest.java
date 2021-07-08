@@ -16,14 +16,22 @@
 package com.android.tradefed.device;
 
 import static org.junit.Assert.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.android.tradefed.util.IRunUtil;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import java.io.File;
 import java.util.List;
@@ -33,13 +41,14 @@ import java.util.concurrent.TimeUnit;
 @RunWith(JUnit4.class)
 public class WifiHelperTest {
 
-    private ITestDevice mMockDevice;
+    @Mock ITestDevice mMockDevice;
 
     @Before
     public void setUp() throws Exception {
-        mMockDevice = EasyMock.createMock(ITestDevice.class);
-        EasyMock.expect(mMockDevice.executeShellCommand(WifiHelper.CHECK_PACKAGE_CMD))
-                .andReturn(String.format("versionCode=%d", WifiHelper.PACKAGE_VERSION_CODE));
+        MockitoAnnotations.initMocks(this);
+
+        when(mMockDevice.executeShellCommand(WifiHelper.CHECK_PACKAGE_CMD))
+                .thenReturn(String.format("versionCode=%d", WifiHelper.PACKAGE_VERSION_CODE));
     }
 
     // tests for reimplementation
@@ -90,20 +99,25 @@ public class WifiHelperTest {
      */
     @Test
     public void testWaitForIp_failThenPass() throws Exception {
-        MockTestDeviceHelper.injectShellResponse(mMockDevice, null, 5, TimeUnit.MINUTES, 0, "",
-                false);
-        MockTestDeviceHelper.injectShellResponse(mMockDevice, null, 5, TimeUnit.MINUTES, 0,
-                "INSTRUMENTATION_RESULT: result=1.2.3.4", false);
-        EasyMock.replay(mMockDevice);
-        WifiHelper wifiHelper = new WifiHelper(mMockDevice) {
-            @Override
-            IRunUtil getRunUtil() {
-                return EasyMock.createNiceMock(IRunUtil.class);
-            }
-        };
+        MockTestDeviceHelper.injectShellResponse(mMockDevice, null, 5, TimeUnit.MINUTES, 0, "");
+        MockTestDeviceHelper.injectShellResponse(
+                mMockDevice,
+                null,
+                5,
+                TimeUnit.MINUTES,
+                0,
+                "INSTRUMENTATION_RESULT: result=1.2.3.4");
+
+        WifiHelper wifiHelper =
+                new WifiHelper(mMockDevice) {
+                    @Override
+                    IRunUtil getRunUtil() {
+                        return mock(IRunUtil.class);
+                    }
+                };
         assertTrue(wifiHelper.waitForIp(10 * 60 * 1000));
         // verify that two executeCommand attempt were made
-        EasyMock.verify(mMockDevice);
+        verify(mMockDevice, times(1)).executeShellCommand(WifiHelper.CHECK_PACKAGE_CMD);
     }
 
     @Test
@@ -112,100 +126,103 @@ public class WifiHelperTest {
         final String urlToCheck = "urlToCheck";
         String expectedCommand = WifiHelper.buildWifiUtilCmd("startMonitor",
                 "interval", Long.toString(interval), "urlToCheck", urlToCheck);
-        MockTestDeviceHelper.injectShellResponse(mMockDevice, expectedCommand, 5, TimeUnit.MINUTES,
-                0, "INSTRUMENTATION_RESULT: result=true", false);
-        EasyMock.replay(mMockDevice);
+        MockTestDeviceHelper.injectShellResponse(
+                mMockDevice,
+                expectedCommand,
+                5,
+                TimeUnit.MINUTES,
+                0,
+                "INSTRUMENTATION_RESULT: result=true");
+
         WifiHelper wifiHelper = new WifiHelper(mMockDevice);
         assertTrue(wifiHelper.startMonitor(interval, urlToCheck));
         // verify that executeCommand attempt were made
-        EasyMock.verify(mMockDevice);
+        verify(mMockDevice, times(1)).executeShellCommand(WifiHelper.CHECK_PACKAGE_CMD);
     }
 
     @Test
     public void testStopMonitor() throws Exception {
-        MockTestDeviceHelper.injectShellResponse(mMockDevice, null, 5, TimeUnit.MINUTES, 0,
-                "INSTRUMENTATION_RESULT: result=1,2,3,4,", false);
-        EasyMock.replay(mMockDevice);
+        MockTestDeviceHelper.injectShellResponse(
+                mMockDevice,
+                null,
+                5,
+                TimeUnit.MINUTES,
+                0,
+                "INSTRUMENTATION_RESULT: result=1,2,3,4,");
+
         WifiHelper wifiHelper = new WifiHelper(mMockDevice);
         List<Long> result = wifiHelper.stopMonitor();
         assertEquals(4, result.size());
         // verify that executeCommand attempt were made
-        EasyMock.verify(mMockDevice);
+        verify(mMockDevice, times(1)).executeShellCommand(WifiHelper.CHECK_PACKAGE_CMD);
     }
 
     @Test
     public void testStopMonitor_nullResult() throws Exception {
-        MockTestDeviceHelper.injectShellResponse(mMockDevice, null, 5, TimeUnit.MINUTES, 0,
-                "INSTRUMENTATION_RESULT: result=null", false);
-        EasyMock.replay(mMockDevice);
+        MockTestDeviceHelper.injectShellResponse(
+                mMockDevice, null, 5, TimeUnit.MINUTES, 0, "INSTRUMENTATION_RESULT: result=null");
+
         WifiHelper wifiHelper = new WifiHelper(mMockDevice);
         List<Long> result = wifiHelper.stopMonitor();
         assertEquals(0, result.size());
         // verify that executeCommand attempt were made
-        EasyMock.verify(mMockDevice);
+        verify(mMockDevice, times(1)).executeShellCommand(WifiHelper.CHECK_PACKAGE_CMD);
     }
 
     @Test
     public void testEnsureDeviceSetup_alternateVersionPattern() throws Exception {
-        EasyMock.reset(mMockDevice);
-        EasyMock.expect(mMockDevice.executeShellCommand(WifiHelper.CHECK_PACKAGE_CMD))
-                .andReturn(String.format("versionCode=%d targetSdk=7",
-                        WifiHelper.PACKAGE_VERSION_CODE));
-        EasyMock.replay(mMockDevice);
+        reset(mMockDevice);
+        when(mMockDevice.executeShellCommand(WifiHelper.CHECK_PACKAGE_CMD))
+                .thenReturn(
+                        String.format(
+                                "versionCode=%d targetSdk=7", WifiHelper.PACKAGE_VERSION_CODE));
+
         new WifiHelper(mMockDevice);
-        EasyMock.verify(mMockDevice);
     }
 
     @Test
     public void testEnsureDeviceSetup_lowerVersion() throws Exception {
-        EasyMock.reset(mMockDevice);
-        EasyMock.expect(mMockDevice.executeShellCommand(WifiHelper.CHECK_PACKAGE_CMD))
-                .andReturn(String.format("versionCode=%d", 10));
-        EasyMock.expect(mMockDevice.installPackage(EasyMock.<File>anyObject(), EasyMock.eq(true)))
-                .andReturn(null);
-        EasyMock.replay(mMockDevice);
+        reset(mMockDevice);
+        when(mMockDevice.executeShellCommand(WifiHelper.CHECK_PACKAGE_CMD))
+                .thenReturn(String.format("versionCode=%d", 10));
+        when(mMockDevice.installPackage(any(), eq(true))).thenReturn(null);
+
         new WifiHelper(mMockDevice);
-        EasyMock.verify(mMockDevice);
     }
 
     @Test
     public void testEnsureDeviceSetup_alternateWifiUtilAPKPath() throws Exception {
         final String apkPath = "/path/to/WifiUtil.APK";
-        EasyMock.reset(mMockDevice);
-        EasyMock.expect(mMockDevice.executeShellCommand(WifiHelper.CHECK_PACKAGE_CMD))
-                .andReturn(String.format("versionCode=%d", WifiHelper.PACKAGE_VERSION_CODE - 1));
-        EasyMock.expect(mMockDevice.installPackage(EasyMock.<File>anyObject(), EasyMock.eq(true)))
-                .andReturn(null);
-        EasyMock.replay(mMockDevice);
+        reset(mMockDevice);
+        when(mMockDevice.executeShellCommand(WifiHelper.CHECK_PACKAGE_CMD))
+                .thenReturn(String.format("versionCode=%d", WifiHelper.PACKAGE_VERSION_CODE - 1));
+        when(mMockDevice.installPackage(any(), eq(true))).thenReturn(null);
+
         WifiHelper wifiHelper = new WifiHelper(mMockDevice, apkPath);
         File wifiUtilApkFile = wifiHelper.getWifiUtilApkFile();
         assertEquals(wifiUtilApkFile.getPath(), apkPath);
-        EasyMock.verify(mMockDevice);
     }
 
     @Test
     public void testEnsureDeviceSetup_deleteAPK() throws Exception {
-        EasyMock.reset(mMockDevice);
-        EasyMock.expect(mMockDevice.executeShellCommand(WifiHelper.CHECK_PACKAGE_CMD))
-                .andReturn(String.format("versionCode=%d", WifiHelper.PACKAGE_VERSION_CODE - 1));
-        EasyMock.expect(mMockDevice.installPackage(EasyMock.<File>anyObject(), EasyMock.eq(true)))
-                .andReturn(null);
-        EasyMock.replay(mMockDevice);
+        reset(mMockDevice);
+        when(mMockDevice.executeShellCommand(WifiHelper.CHECK_PACKAGE_CMD))
+                .thenReturn(String.format("versionCode=%d", WifiHelper.PACKAGE_VERSION_CODE - 1));
+        when(mMockDevice.installPackage(any(), eq(true))).thenReturn(null);
+
         WifiHelper wifiHelper = new WifiHelper(mMockDevice);
         File wifiUtilApkFile = wifiHelper.getWifiUtilApkFile();
         assertFalse(wifiUtilApkFile.exists());
-        EasyMock.verify(mMockDevice);
     }
 
     /** Test that {@link WifiHelper#cleanUp()} calls uninstall on the instrumentation package. */
     @Test
     public void testCleanPackage() throws Exception {
-        EasyMock.expect(mMockDevice.uninstallPackage(WifiHelper.INSTRUMENTATION_PKG))
-                .andReturn(null);
-        EasyMock.replay(mMockDevice);
+        when(mMockDevice.uninstallPackage(WifiHelper.INSTRUMENTATION_PKG)).thenReturn(null);
+
         WifiHelper wifiHelper = new WifiHelper(mMockDevice);
         wifiHelper.cleanUp();
         // verify that executeCommand attempt were made
-        EasyMock.verify(mMockDevice);
+        verify(mMockDevice, times(1)).executeShellCommand(WifiHelper.CHECK_PACKAGE_CMD);
     }
 }
