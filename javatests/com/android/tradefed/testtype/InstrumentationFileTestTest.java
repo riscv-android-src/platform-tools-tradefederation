@@ -19,6 +19,10 @@ package com.android.tradefed.testtype;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.testrunner.IRemoteAndroidTestRunner;
@@ -37,13 +41,16 @@ import com.android.tradefed.result.ITestLifeCycleReceiver;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.ddmlib.TestRunToTestInvocationForwarder;
 
-import org.easymock.EasyMock;
-import org.easymock.IAnswer;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.InOrder;
+import org.mockito.Mock;
 import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -59,12 +66,13 @@ import java.util.HashMap;
 public class InstrumentationFileTestTest {
 
     private static final String TEST_PACKAGE_VALUE = "com.foo";
+    private static final String TEST_RUN_FAILURE = "test run failure";
 
     /** The {@link InstrumentationFileTest} under test, with all dependencies mocked out */
     private InstrumentationFileTest mInstrumentationFileTest;
 
-    private ITestDevice mMockTestDevice;
-    private ITestInvocationListener mMockListener;
+    @Mock ITestDevice mMockTestDevice;
+    @Mock ITestInvocationListener mMockListener;
     private InstrumentationTest mMockITest;
     private TestInformation mTestInfo;
 
@@ -72,24 +80,24 @@ public class InstrumentationFileTestTest {
 
     @Before
     public void setUp() throws Exception {
+        MockitoAnnotations.initMocks(this);
+
         mTestFile = null;
 
-        IDevice mockIDevice = EasyMock.createMock(IDevice.class);
-        mMockTestDevice = EasyMock.createMock(ITestDevice.class);
-        mMockListener = EasyMock.createMock(ITestInvocationListener.class);
+        IDevice mockIDevice = mock(IDevice.class);
 
-        EasyMock.expect(mMockTestDevice.getIDevice()).andStubReturn(mockIDevice);
-        EasyMock.expect(mMockTestDevice.getSerialNumber()).andStubReturn("serial");
-        EasyMock.expect(mMockTestDevice.checkApiLevelAgainstNextRelease(EasyMock.anyInt()))
-                .andStubReturn(false);
+        when(mMockTestDevice.getIDevice()).thenReturn(mockIDevice);
+        when(mMockTestDevice.getSerialNumber()).thenReturn("serial");
+        when(mMockTestDevice.checkApiLevelAgainstNextRelease(Mockito.anyInt())).thenReturn(false);
 
         // mock out InstrumentationTest that will be used to create InstrumentationFileTest
-        mMockITest = new InstrumentationTest() {
-            @Override
-            protected String queryRunnerName() {
-                return "runner";
-            }
-        };
+        mMockITest =
+                new InstrumentationTest() {
+                    @Override
+                    protected String queryRunnerName() {
+                        return "runner";
+                    }
+                };
         mMockITest.setConfiguration(new Configuration("", ""));
         mMockITest.setDevice(mMockTestDevice);
         mMockITest.setPackageName(TEST_PACKAGE_VALUE);
@@ -122,37 +130,40 @@ public class InstrumentationFileTestTest {
                         return true;
                     }
                 };
-        setRunTestExpectations(runTestResponse);
-        mInstrumentationFileTest = new InstrumentationFileTest(mMockITest, testsList, true, -1) {
-            @Override
-            InstrumentationTest createInstrumentationTest() {
-                return mMockITest;
-            }
-            @Override
-            boolean pushFileToTestDevice(File file, String destinationPath)
-                    throws DeviceNotAvailableException {
-                // simulate successful push and store created file
-                mTestFile = file;
-                // verify that the content of the testFile contains all expected tests
-                verifyTestFile(testsList);
-                return true;
-            }
-            @Override
-            void deleteTestFileFromDevice(String pathToFile) throws DeviceNotAvailableException {
-                //ignore
-            }
-        };
 
-        // mock successful test run lifecycle
-        mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 1);
-        mMockListener.testStarted(EasyMock.eq(test), EasyMock.anyLong());
-        mMockListener.testEnded(
-                EasyMock.eq(test), EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
-        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
+        when(mMockTestDevice.runInstrumentationTests(
+                        (IRemoteAndroidTestRunner) Mockito.any(),
+                        (ITestLifeCycleReceiver) Mockito.any()))
+                .thenAnswer(runTestResponse);
 
-        EasyMock.replay(mMockListener, mMockTestDevice);
+        mInstrumentationFileTest =
+                new InstrumentationFileTest(mMockITest, testsList, true, -1) {
+                    @Override
+                    InstrumentationTest createInstrumentationTest() {
+                        return mMockITest;
+                    }
+
+                    @Override
+                    boolean pushFileToTestDevice(File file, String destinationPath)
+                            throws DeviceNotAvailableException {
+                        // simulate successful push and store created file
+                        mTestFile = file;
+                        // verify that the content of the testFile contains all expected tests
+                        verifyTestFile(testsList);
+                        return true;
+                    }
+
+                    @Override
+                    void deleteTestFileFromDevice(String pathToFile)
+                            throws DeviceNotAvailableException {
+                        // ignore
+                    }
+                };
+
         mInstrumentationFileTest.run(mTestInfo, mMockListener);
+
         assertEquals(mMockTestDevice, mMockITest.getDevice());
+
         // Ensure that we unset the package name
         Mockito.verify(mMockITest).setTestPackageName(null);
         Mockito.verify(mMockITest).removeFromInstrumentationArg("package");
@@ -189,7 +200,6 @@ public class InstrumentationFileTestTest {
                         return true;
                     }
                 };
-        setRunTestExpectations(firstRunAnswer);
 
         // now expect second run to rerun remaining test3 and test2
         RunTestAnswer secondRunAnswer =
@@ -211,50 +221,37 @@ public class InstrumentationFileTestTest {
                         return true;
                     }
                 };
-        setRunTestExpectations(secondRunAnswer);
-        mInstrumentationFileTest = new InstrumentationFileTest(mMockITest, testsList, true, -1) {
-            @Override
-            InstrumentationTest createInstrumentationTest() {
-                return mMockITest;
-            }
-            @Override
-            boolean pushFileToTestDevice(File file, String destinationPath)
-                    throws DeviceNotAvailableException {
-                // simulate successful push and store created file
-                mTestFile = file;
-                // verify that the content of the testFile contains all expected tests
-                verifyTestFile(testsList);
-                return true;
-            }
-            @Override
-            void deleteTestFileFromDevice(String pathToFile) throws DeviceNotAvailableException {
-                //ignore
-            }
-        };
 
-        // First run:
-        mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 2);
-        // expect test1 to start and finish successfully
-        mMockListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mMockListener.testEnded(
-                EasyMock.eq(test1), EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
-        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
-        // expect test2 to start but never finish
-        mMockListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        // Second run:
-        mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 2);
-        // expect test3 to start and finish successfully
-        mMockListener.testStarted(EasyMock.eq(test3), EasyMock.anyLong());
-        mMockListener.testEnded(
-                EasyMock.eq(test3), EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
-        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
-        // expect to rerun test2 successfully
-        mMockListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mMockListener.testEnded(
-                EasyMock.eq(test2), EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
-        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
+        when(mMockTestDevice.runInstrumentationTests(
+                        (IRemoteAndroidTestRunner) Mockito.any(),
+                        (ITestLifeCycleReceiver) Mockito.any()))
+                .thenAnswer(firstRunAnswer)
+                .thenAnswer(secondRunAnswer);
 
-        EasyMock.replay(mMockListener, mMockTestDevice);
+        mInstrumentationFileTest =
+                new InstrumentationFileTest(mMockITest, testsList, true, -1) {
+                    @Override
+                    InstrumentationTest createInstrumentationTest() {
+                        return mMockITest;
+                    }
+
+                    @Override
+                    boolean pushFileToTestDevice(File file, String destinationPath)
+                            throws DeviceNotAvailableException {
+                        // simulate successful push and store created file
+                        mTestFile = file;
+                        // verify that the content of the testFile contains all expected tests
+                        verifyTestFile(testsList);
+                        return true;
+                    }
+
+                    @Override
+                    void deleteTestFileFromDevice(String pathToFile)
+                            throws DeviceNotAvailableException {
+                        // ignore
+                    }
+                };
+
         mInstrumentationFileTest.run(mTestInfo, mMockListener);
         assertEquals(mMockTestDevice, mMockITest.getDevice());
     }
@@ -263,7 +260,7 @@ public class InstrumentationFileTestTest {
     @Test
     public void testRun_serialReRunOfTwoFailedToCompleteTests()
             throws DeviceNotAvailableException, ConfigurationException {
-        mMockListener = EasyMock.createStrictMock(ITestInvocationListener.class);
+        mMockListener = mock(ITestInvocationListener.class);
         final Collection<TestDescription> testsList = new ArrayList<>(1);
         final TestDescription test1 = new TestDescription("ClassFoo1", "methodBar1");
         final TestDescription test2 = new TestDescription("ClassFoo2", "methodBar2");
@@ -285,7 +282,6 @@ public class InstrumentationFileTestTest {
                         return true;
                     }
                 };
-        setRunTestExpectations(firstRunAnswer);
 
         // verify successful serial execution of test1
         RunTestAnswer firstSerialRunAnswer =
@@ -294,15 +290,15 @@ public class InstrumentationFileTestTest {
                     public Boolean answer(
                             IRemoteAndroidTestRunner runner, ITestRunListener listener) {
                         // first test started and ended successfully in serial mode
-                        listener.testRunStarted(TEST_PACKAGE_VALUE, 1);
+                        listener.testRunStarted(TEST_PACKAGE_VALUE, 2);
                         listener.testStarted(TestDescription.convertToIdentifier(test1));
                         listener.testEnded(
                                 TestDescription.convertToIdentifier(test1), Collections.emptyMap());
+                        listener.testRunFailed(TEST_RUN_FAILURE);
                         listener.testRunEnded(1, Collections.emptyMap());
                         return true;
                     }
                 };
-        setRunTestExpectations(firstSerialRunAnswer);
 
         // verify successful serial execution of test2
         RunTestAnswer secdondSerialRunAnswer =
@@ -319,55 +315,86 @@ public class InstrumentationFileTestTest {
                         return true;
                     }
                 };
-        setRunTestExpectations(secdondSerialRunAnswer);
-        mMockTestDevice.waitForDeviceAvailable();
 
-        mInstrumentationFileTest = new InstrumentationFileTest(mMockITest, testsList, true, -1) {
-            @Override
-            InstrumentationTest createInstrumentationTest() {
-                return mMockITest;
-            }
-            @Override
-            boolean pushFileToTestDevice(File file, String destinationPath)
-                    throws DeviceNotAvailableException {
-                // simulate successful push and store created file
-                mTestFile = file;
-                return true;
-            }
-            @Override
-            void deleteTestFileFromDevice(String pathToFile) throws DeviceNotAvailableException {
-                //ignore
-            }
-        };
+        when(mMockTestDevice.runInstrumentationTests(
+                        (IRemoteAndroidTestRunner) Mockito.any(),
+                        (ITestLifeCycleReceiver) Mockito.any()))
+                .thenAnswer(firstRunAnswer)
+                .thenAnswer(firstSerialRunAnswer)
+                .thenAnswer(secdondSerialRunAnswer);
 
-        // First run:
-        mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 2);
-        // expect test1 and test 2 to start but never finish
-        mMockListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mMockListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
+        mInstrumentationFileTest =
+                new InstrumentationFileTest(mMockITest, testsList, true, -1) {
+                    @Override
+                    InstrumentationTest createInstrumentationTest() {
+                        return mMockITest;
+                    }
 
-        // re-run test1 and test2 serially
-        // first serial re-run:
-        mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 1);
-        // expect test1 to start and finish successfully
-        mMockListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mMockListener.testEnded(
-                EasyMock.eq(test1), EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
-        mMockListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mMockListener.testFailed(EasyMock.eq(test2), EasyMock.<FailureDescription>anyObject());
-        mMockListener.testEnded(
-                EasyMock.eq(test2), EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
-        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
-        // first serial re-run:
-        mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 0, 1);
-        // expect test2 to start and finish successfully
-        mMockListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mMockListener.testEnded(
-                EasyMock.eq(test2), EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
-        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
+                    @Override
+                    boolean pushFileToTestDevice(File file, String destinationPath)
+                            throws DeviceNotAvailableException {
+                        // simulate successful push and store created file
+                        mTestFile = file;
+                        return true;
+                    }
 
-        EasyMock.replay(mMockListener, mMockTestDevice);
+                    @Override
+                    void deleteTestFileFromDevice(String pathToFile)
+                            throws DeviceNotAvailableException {
+                        // ignore
+                    }
+                };
+
         mInstrumentationFileTest.run(mTestInfo, mMockListener);
+
+        InOrder inOrder = Mockito.inOrder(mMockListener);
+        // First run - expect test1 and test 2 to start but never finish.
+        inOrder.verify(mMockListener).testRunStarted(TEST_PACKAGE_VALUE, 2);
+        inOrder.verify(mMockListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrder.verify(mMockListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+
+        // re-run test1 and test2 serially - expect test1 to start and finish successfully.
+        inOrder.verify(mMockListener).testRunStarted(TEST_PACKAGE_VALUE, 2);
+        inOrder.verify(mMockListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrder.verify(mMockListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.eq(new HashMap<String, Metric>()));
+        inOrder.verify(mMockListener)
+                .testRunEnded(Mockito.anyLong(), Mockito.eq(new HashMap<String, Metric>()));
+
+        // first serial re-run - expect test2 to start and finish successfully.
+        inOrder.verify(mMockListener).testRunStarted(TEST_PACKAGE_VALUE, 0, 1);
+        inOrder.verify(mMockListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrder.verify(mMockListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.eq(new HashMap<String, Metric>()));
+        inOrder.verify(mMockListener)
+                .testRunEnded(Mockito.anyLong(), Mockito.eq(new HashMap<String, Metric>()));
+
+        // Verify interaction times.
+        verify(mMockTestDevice).waitForDeviceAvailable();
+        verify(mMockListener, times(2)).testRunStarted(TEST_PACKAGE_VALUE, 2);
+        verify(mMockListener, times(2)).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        verify(mMockListener, times(3)).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        verify(mMockListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.eq(new HashMap<String, Metric>()));
+        verify(mMockListener).testFailed(Mockito.eq(test2), Mockito.<FailureDescription>any());
+        verify(mMockListener, times(2))
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.eq(new HashMap<String, Metric>()));
+        verify(mMockListener, times(2))
+                .testRunEnded(Mockito.anyLong(), Mockito.eq(new HashMap<String, Metric>()));
+        verify(mMockListener).testRunStarted(TEST_PACKAGE_VALUE, 0, 1);
+
         assertEquals(mMockTestDevice, mMockITest.getDevice());
         // test file is expected to be null since we defaulted to serial test execution
         assertEquals(null, mMockITest.getTestFilePathOnDevice());
@@ -397,33 +424,34 @@ public class InstrumentationFileTestTest {
                         return true;
                     }
                 };
-        setRunTestExpectations(firstRunAnswer);
 
-        mInstrumentationFileTest = new InstrumentationFileTest(mMockITest, testsList, false, -1) {
-            @Override
-            InstrumentationTest createInstrumentationTest() {
-                return mMockITest;
-            }
-            @Override
-            boolean pushFileToTestDevice(File file, String destinationPath)
-                    throws DeviceNotAvailableException {
-                // simulate successful push and store created file
-                mTestFile = file;
-                return true;
-            }
-            @Override
-            void deleteTestFileFromDevice(String pathToFile) throws DeviceNotAvailableException {
-                //ignore
-            }
-        };
+        when(mMockTestDevice.runInstrumentationTests(
+                        (IRemoteAndroidTestRunner) Mockito.any(),
+                        (ITestLifeCycleReceiver) Mockito.any()))
+                .thenAnswer(firstRunAnswer);
 
-        // First run:
-        mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 2);
-        // expect test1 and test 2 to start but never finish
-        mMockListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mMockListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
+        mInstrumentationFileTest =
+                new InstrumentationFileTest(mMockITest, testsList, false, -1) {
+                    @Override
+                    InstrumentationTest createInstrumentationTest() {
+                        return mMockITest;
+                    }
 
-        EasyMock.replay(mMockListener, mMockTestDevice);
+                    @Override
+                    boolean pushFileToTestDevice(File file, String destinationPath)
+                            throws DeviceNotAvailableException {
+                        // simulate successful push and store created file
+                        mTestFile = file;
+                        return true;
+                    }
+
+                    @Override
+                    void deleteTestFileFromDevice(String pathToFile)
+                            throws DeviceNotAvailableException {
+                        // ignore
+                    }
+                };
+
         mInstrumentationFileTest.run(mTestInfo, mMockListener);
         assertEquals(mMockTestDevice, mMockITest.getDevice());
     }
@@ -468,7 +496,6 @@ public class InstrumentationFileTestTest {
                         return true;
                     }
                 };
-        setRunTestExpectations(firstRunAnswer);
 
         // test2 finished, test3 started but not finished.
         RunTestAnswer secondRunAnswer =
@@ -489,7 +516,6 @@ public class InstrumentationFileTestTest {
                         return true;
                     }
                 };
-        setRunTestExpectations(secondRunAnswer);
 
         // test3 finished, test4 started but not finished.
         RunTestAnswer thirdRunAnswer =
@@ -510,53 +536,36 @@ public class InstrumentationFileTestTest {
                         return true;
                     }
                 };
-        setRunTestExpectations(thirdRunAnswer);
 
-        mInstrumentationFileTest = new InstrumentationFileTest(mMockITest, testsList, false, 3) {
-            @Override
-            InstrumentationTest createInstrumentationTest() {
-                return mMockITest;
-            }
-            @Override
-            boolean pushFileToTestDevice(File file, String destinationPath)
-                    throws DeviceNotAvailableException {
-                // simulate successful push and store created file
-                mTestFile = file;
-                return true;
-            }
-            @Override
-            void deleteTestFileFromDevice(String pathToFile) throws DeviceNotAvailableException {
-                //ignore
-            }
-        };
+        when(mMockTestDevice.runInstrumentationTests(
+                        (IRemoteAndroidTestRunner) Mockito.any(),
+                        (ITestLifeCycleReceiver) Mockito.any()))
+                .thenAnswer(firstRunAnswer)
+                .thenAnswer(secondRunAnswer)
+                .thenAnswer(thirdRunAnswer);
 
-        // First run:
-        mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 6);
-        mMockListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mMockListener.testEnded(
-                EasyMock.eq(test1), EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
-        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
-        mMockListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
+        mInstrumentationFileTest =
+                new InstrumentationFileTest(mMockITest, testsList, false, 3) {
+                    @Override
+                    InstrumentationTest createInstrumentationTest() {
+                        return mMockITest;
+                    }
 
-        // Second run:
-        mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 5);
-        mMockListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mMockListener.testEnded(
-                EasyMock.eq(test2), EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
-        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
-        mMockListener.testStarted(EasyMock.eq(test3), EasyMock.anyLong());
+                    @Override
+                    boolean pushFileToTestDevice(File file, String destinationPath)
+                            throws DeviceNotAvailableException {
+                        // simulate successful push and store created file
+                        mTestFile = file;
+                        return true;
+                    }
 
-        // Third run:
-        mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 4);
-        mMockListener.testStarted(EasyMock.eq(test3), EasyMock.anyLong());
-        mMockListener.testEnded(
-                EasyMock.eq(test3), EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
-        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
-        mMockListener.testStarted(EasyMock.eq(test4), EasyMock.anyLong());
+                    @Override
+                    void deleteTestFileFromDevice(String pathToFile)
+                            throws DeviceNotAvailableException {
+                        // ignore
+                    }
+                };
 
-        // MAX_ATTEMPTS is 3, so there will be no forth run.
-
-        EasyMock.replay(mMockListener, mMockTestDevice);
         mInstrumentationFileTest.run(mTestInfo, mMockListener);
         assertEquals(mMockTestDevice, mMockITest.getDevice());
     }
@@ -587,7 +596,6 @@ public class InstrumentationFileTestTest {
                         return true;
                     }
                 };
-        setRunTestExpectations(runTestResponse);
 
         RunTestAnswer secondRunAnswer =
                 new RunTestAnswer() {
@@ -606,7 +614,12 @@ public class InstrumentationFileTestTest {
                         return true;
                     }
                 };
-        setRunTestExpectations(secondRunAnswer);
+
+        when(mMockTestDevice.runInstrumentationTests(
+                        (IRemoteAndroidTestRunner) Mockito.any(),
+                        (ITestLifeCycleReceiver) Mockito.any()))
+                .thenAnswer(runTestResponse)
+                .thenAnswer(secondRunAnswer);
 
         mInstrumentationFileTest =
                 new InstrumentationFileTest(mMockITest, testsList, true, -1) {
@@ -631,29 +644,10 @@ public class InstrumentationFileTestTest {
                     @Override
                     void deleteTestFileFromDevice(String pathToFile)
                             throws DeviceNotAvailableException {
-                        //ignore
+                        // ignore
                     }
                 };
 
-        // mock successful test run lifecycle for the first test
-        mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 3);
-        mMockListener.testStarted(EasyMock.eq(test), EasyMock.anyLong());
-        mMockListener.testEnded(
-                EasyMock.eq(test), EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
-        mMockListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
-
-        // Second run:
-        mMockListener.testRunStarted(TEST_PACKAGE_VALUE, 2);
-        mMockListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mMockListener.testEnded(
-                EasyMock.eq(test1), EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
-        mMockListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mMockListener.testEnded(
-                EasyMock.eq(test2), EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
-        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(new HashMap<String, Metric>()));
-
-        EasyMock.replay(mMockListener, mMockTestDevice);
         mInstrumentationFileTest.run(mTestInfo, mMockListener);
         assertEquals(mMockTestDevice, mMockITest.getDevice());
     }
@@ -672,9 +666,11 @@ public class InstrumentationFileTestTest {
             while ((line = br.readLine()) != null) {
                 String[] str = line.split("#");
                 TestDescription test = new TestDescription(str[0], str[1]);
-                assertTrue(String.format(
-                        "Test with class name: %s and method name: %s does not exists",
-                        test.getClassName(), test.getTestName()), testsList.contains(test));
+                assertTrue(
+                        String.format(
+                                "Test with class name: %s and method name: %s does not exist",
+                                test.getClassName(), test.getTestName()),
+                        testsList.contains(test));
             }
         } catch (IOException e) {
             // fail if the file is corrupt in any way
@@ -683,29 +679,19 @@ public class InstrumentationFileTestTest {
     }
 
     /**
-     * Helper class for providing an EasyMock {@link IAnswer} to a
-     * {@link ITestDevice#runInstrumentationTests(IRemoteAndroidTestRunner, Collection)} call.
+     * Helper class for providing an EasyMock {@link Answer} to a {@link
+     * ITestDevice#runInstrumentationTests(IRemoteAndroidTestRunner, Collection)} call.
      */
-    private static abstract class RunTestAnswer implements IAnswer<Boolean> {
+    private abstract static class RunTestAnswer implements Answer<Boolean> {
         @Override
-        public Boolean answer() throws Throwable {
-            Object[] args = EasyMock.getCurrentArguments();
+        public Boolean answer(InvocationOnMock invocation) throws Throwable {
+            Object[] args = invocation.getArguments();
             return answer(
                     (IRemoteAndroidTestRunner) args[0],
                     new TestRunToTestInvocationForwarder((ITestLifeCycleReceiver) args[1]));
         }
 
-        public abstract Boolean answer(IRemoteAndroidTestRunner runner,
-                ITestRunListener listener) throws DeviceNotAvailableException;
-    }
-
-    private void setRunTestExpectations(RunTestAnswer runTestResponse)
-            throws DeviceNotAvailableException {
-
-        EasyMock.expect(
-                        mMockTestDevice.runInstrumentationTests(
-                                (IRemoteAndroidTestRunner) EasyMock.anyObject(),
-                                (ITestLifeCycleReceiver) EasyMock.anyObject()))
-                .andAnswer(runTestResponse);
+        public abstract Boolean answer(IRemoteAndroidTestRunner runner, ITestRunListener listener)
+                throws DeviceNotAvailableException;
     }
 }
