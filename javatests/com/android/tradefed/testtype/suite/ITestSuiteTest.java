@@ -22,6 +22,10 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.android.ddmlib.IDevice;
 import com.android.tradefed.build.BuildInfo;
@@ -84,14 +88,15 @@ import com.android.tradefed.util.MultiMap;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 
-import org.easymock.Capture;
-import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
 import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -116,15 +121,15 @@ public class ITestSuiteTest {
     private static final String FAKE_HOST_ARCH = "arm";
 
     private TestSuiteImpl mTestSuite;
-    private ITestInvocationListener mMockListener;
-    private ITestDevice mMockDevice;
-    private IBuildInfo mMockBuildInfo;
-    private ISystemStatusChecker mMockSysChecker;
+    @Mock ITestInvocationListener mMockListener;
+    @Mock ITestDevice mMockDevice;
+    @Mock IBuildInfo mMockBuildInfo;
+    @Mock ISystemStatusChecker mMockSysChecker;
     private TestInformation mTestInfo;
     private IInvocationContext mContext;
     private List<IMetricCollector> mListCollectors;
     private IConfiguration mStubMainConfiguration;
-    private ILogSaver mMockLogSaver;
+    @Mock ILogSaver mMockLogSaver;
     private BaseTargetPreparer mMockPreparer;
 
     // Guice scope and objects for testing
@@ -289,6 +294,8 @@ public class ITestSuiteTest {
 
     @Before
     public void setUp() throws Exception {
+        MockitoAnnotations.initMocks(this);
+
         // Start with the Guice scope setup
         mScope = new InvocationScope();
         mScope.enter();
@@ -298,15 +305,12 @@ public class ITestSuiteTest {
         mMockPreparer = Mockito.mock(BaseTargetPreparer.class);
         mTestSuite = new TestSuiteImpl(1, mMockPreparer);
         mTestSuite.setSystemStatusChecker(new ArrayList<>());
-        mMockListener = EasyMock.createMock(ITestInvocationListener.class);
-        mMockDevice = EasyMock.createMock(ITestDevice.class);
-        EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("SERIAL");
-        EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(EasyMock.createMock(IDevice.class));
-        EasyMock.expect(mMockDevice.getDeviceDate()).andReturn(0L).anyTimes();
-        mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
-        EasyMock.expect(mMockBuildInfo.getRemoteFiles()).andReturn(null).once();
-        mMockSysChecker = EasyMock.createMock(ISystemStatusChecker.class);
-        mMockLogSaver = EasyMock.createMock(ILogSaver.class);
+
+        when(mMockDevice.getSerialNumber()).thenReturn("SERIAL");
+        when(mMockDevice.getIDevice()).thenReturn(mock(IDevice.class));
+        when(mMockDevice.getDeviceDate()).thenReturn(0L);
+        when(mMockBuildInfo.getRemoteFiles()).thenReturn(null);
+
         mStubMainConfiguration = new Configuration("stub", "stub");
         mStubMainConfiguration.setLogSaver(mMockLogSaver);
 
@@ -353,36 +357,22 @@ public class ITestSuiteTest {
         }
     }
 
-    /** Helper to get test modules to be ran.*/
+    /** Helper to get test modules to be ran. */
     private List<ModuleDefinition> getRunModules(
             LinkedHashMap<String, IConfiguration> testConfigs) {
         List<ModuleDefinition> runModules = new ArrayList<>();
         for (Entry<String, IConfiguration> config : testConfigs.entrySet()) {
             Map<String, List<ITargetPreparer>> preparersPerDevice = null;
             ModuleDefinition module =
-                new ModuleDefinition(
-                    config.getKey(),
-                    config.getValue().getTests(),
-                    preparersPerDevice,
-                    config.getValue().getMultiTargetPreparers(),
-                    config.getValue());
+                    new ModuleDefinition(
+                            config.getKey(),
+                            config.getValue().getTests(),
+                            preparersPerDevice,
+                            config.getValue().getMultiTargetPreparers(),
+                            config.getValue());
             runModules.add(module);
         }
         return runModules;
-    }
-
-    /**
-     * Helper for replaying mocks.
-     */
-    private void replayMocks() {
-        EasyMock.replay(mMockListener, mMockDevice, mMockBuildInfo, mMockSysChecker);
-    }
-
-    /**
-     * Helper for verifying mocks.
-     */
-    private void verifyMocks() {
-        EasyMock.verify(mMockListener, mMockDevice, mMockBuildInfo, mMockSysChecker);
     }
 
     /** Helper to expect the test run callback. */
@@ -398,9 +388,9 @@ public class ITestSuiteTest {
     /** Helper to expect the test run callback. */
     private void expectTestRun(
             ITestInvocationListener listener, String message, boolean testFailed) {
-        listener.testModuleStarted(EasyMock.anyObject());
+        listener.testModuleStarted(Mockito.any());
         listener.testRunStarted(
-                EasyMock.eq(TEST_CONFIG_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
+                Mockito.eq(TEST_CONFIG_NAME), Mockito.eq(1), Mockito.eq(0), Mockito.anyLong());
         TestDescription test = new TestDescription(EMPTY_CONFIG, EMPTY_CONFIG);
         listener.testStarted(test, 0);
         if (testFailed) {
@@ -408,20 +398,20 @@ public class ITestSuiteTest {
                     test, FailureDescription.create(message, FailureStatus.TEST_FAILURE));
         }
         listener.testEnded(test, 5, new HashMap<String, Metric>());
-        listener.testRunEnded(EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
+        listener.testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
         listener.testModuleEnded();
     }
 
     /** Helper to expect the test run callback. */
     private void expectIntraModuleTestRun(
             ITestInvocationListener listener, int totalAttempt, boolean testFailed) {
-        listener.testModuleStarted(EasyMock.anyObject());
+        listener.testModuleStarted(Mockito.any());
         for (int attemptNumber = 0; attemptNumber < totalAttempt; attemptNumber++) {
             listener.testRunStarted(
-                    EasyMock.eq(TEST_CONFIG_NAME),
-                    EasyMock.eq(1),
-                    EasyMock.eq(attemptNumber),
-                    EasyMock.anyLong());
+                    Mockito.eq(TEST_CONFIG_NAME),
+                    Mockito.eq(1),
+                    Mockito.eq(attemptNumber),
+                    Mockito.anyLong());
             TestDescription test = new TestDescription(EMPTY_CONFIG, EMPTY_CONFIG);
             listener.testStarted(test, 0);
             if (testFailed) {
@@ -430,8 +420,7 @@ public class ITestSuiteTest {
                         FailureDescription.create(mTestFailedMessage, FailureStatus.TEST_FAILURE));
             }
             listener.testEnded(test, 5, new HashMap<String, Metric>());
-            listener.testRunEnded(
-                    EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
+            listener.testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
         }
         listener.testModuleEnded();
     }
@@ -443,20 +432,20 @@ public class ITestSuiteTest {
         setter.setOptionValue("reboot-before-test", "true");
         mContext.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
         // Since we set the option, expect a reboot to occur.
-        EasyMock.expect(mMockDevice.getIDevice()).andReturn(EasyMock.createMock(IDevice.class));
-        mMockDevice.reboot();
+        when(mMockDevice.getIDevice()).thenReturn(mock(IDevice.class));
 
         List<ISystemStatusChecker> sysChecker = new ArrayList<ISystemStatusChecker>();
         sysChecker.add(mMockSysChecker);
         mTestSuite.setSystemStatusChecker(sysChecker);
-        EasyMock.expect(mMockSysChecker.preExecutionCheck(EasyMock.eq(mMockDevice)))
-                .andReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
-        EasyMock.expect(mMockSysChecker.postExecutionCheck(EasyMock.eq(mMockDevice)))
-                .andReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
+        when(mMockSysChecker.preExecutionCheck(Mockito.eq(mMockDevice)))
+                .thenReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
+        when(mMockSysChecker.postExecutionCheck(Mockito.eq(mMockDevice)))
+                .thenReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
         expectTestRun(mMockListener);
-        replayMocks();
+
         mTestSuite.run(mTestInfo, mMockListener);
-        verifyMocks();
+
+        verify(mMockDevice).reboot();
         // Setup should have been called.
         Mockito.verify(mMockPreparer).setUp(Mockito.any());
     }
@@ -470,20 +459,20 @@ public class ITestSuiteTest {
                 ITestSuite.PREPARER_WHITELIST, StubTargetPreparer.class.getCanonicalName());
         mContext.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
         // Since we set the option, expect a reboot to occur.
-        EasyMock.expect(mMockDevice.getIDevice()).andReturn(EasyMock.createMock(IDevice.class));
-        mMockDevice.reboot();
+        when(mMockDevice.getIDevice()).thenReturn(mock(IDevice.class));
 
         List<ISystemStatusChecker> sysChecker = new ArrayList<ISystemStatusChecker>();
         sysChecker.add(mMockSysChecker);
         mTestSuite.setSystemStatusChecker(sysChecker);
-        EasyMock.expect(mMockSysChecker.preExecutionCheck(EasyMock.eq(mMockDevice)))
-                .andReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
-        EasyMock.expect(mMockSysChecker.postExecutionCheck(EasyMock.eq(mMockDevice)))
-                .andReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
+        when(mMockSysChecker.preExecutionCheck(Mockito.eq(mMockDevice)))
+                .thenReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
+        when(mMockSysChecker.postExecutionCheck(Mockito.eq(mMockDevice)))
+                .thenReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
         expectTestRun(mMockListener);
-        replayMocks();
+
         mTestSuite.run(mTestInfo, mMockListener);
-        verifyMocks();
+
+        verify(mMockDevice).reboot();
         // Setup should have been called.
         Mockito.verify(mMockPreparer, Mockito.times(0)).setUp(Mockito.any());
     }
@@ -500,19 +489,13 @@ public class ITestSuiteTest {
         StatusCheckerResult result = new StatusCheckerResult(CheckStatus.FAILED);
         result.setErrorMessage("some failures.");
         result.setBugreportNeeded(true);
-        EasyMock.expect(mMockSysChecker.preExecutionCheck(EasyMock.eq(mMockDevice)))
-                .andReturn(result);
-        EasyMock.expect(
-                        mMockDevice.logBugreport(
-                                EasyMock.anyObject(), EasyMock.same(mMockListener)))
-                .andReturn(true)
-                .times(2);
-        EasyMock.expect(mMockSysChecker.postExecutionCheck(EasyMock.eq(mMockDevice)))
-                .andReturn(result);
+        when(mMockSysChecker.preExecutionCheck(Mockito.eq(mMockDevice))).thenReturn(result);
+        when(mMockDevice.logBugreport(Mockito.any(), Mockito.same(mMockListener))).thenReturn(true);
+        when(mMockSysChecker.postExecutionCheck(Mockito.eq(mMockDevice))).thenReturn(result);
         expectTestRun(mMockListener);
-        replayMocks();
+
         mTestSuite.run(mTestInfo, mMockListener);
-        verifyMocks();
+        verify(mMockDevice, times(2)).logBugreport(Mockito.any(), Mockito.same(mMockListener));
     }
 
     /**
@@ -526,20 +509,16 @@ public class ITestSuiteTest {
         sysChecker.add(mMockSysChecker);
         mTestSuite.setSystemStatusChecker(sysChecker);
 
-        EasyMock.expect(mMockSysChecker.preExecutionCheck(EasyMock.eq(mMockDevice)))
-                .andThrow(new RuntimeException("I failed."));
-        EasyMock.expect(
-                        mMockDevice.logBugreport(
-                                EasyMock.anyObject(), EasyMock.same(mMockListener)))
-                .andReturn(true)
-                .times(2);
+        when(mMockSysChecker.preExecutionCheck(Mockito.eq(mMockDevice)))
+                .thenThrow(new RuntimeException("I failed."));
+        when(mMockDevice.logBugreport(Mockito.any(), Mockito.same(mMockListener))).thenReturn(true);
 
-        EasyMock.expect(mMockSysChecker.postExecutionCheck(EasyMock.eq(mMockDevice)))
-                .andThrow(new RuntimeException("I failed post."));
+        when(mMockSysChecker.postExecutionCheck(Mockito.eq(mMockDevice)))
+                .thenThrow(new RuntimeException("I failed post."));
         expectTestRun(mMockListener);
-        replayMocks();
+
         mTestSuite.run(mTestInfo, mMockListener);
-        verifyMocks();
+        verify(mMockDevice, times(2)).logBugreport(Mockito.any(), Mockito.same(mMockListener));
     }
 
     /**
@@ -554,37 +533,34 @@ public class ITestSuiteTest {
         List<ISystemStatusChecker> sysChecker = new ArrayList<ISystemStatusChecker>();
         sysChecker.add(mMockSysChecker);
         mTestSuite.setSystemStatusChecker(sysChecker);
-        EasyMock.expect(mMockSysChecker.preExecutionCheck(EasyMock.eq(mMockDevice)))
-                .andReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
+        when(mMockSysChecker.preExecutionCheck(Mockito.eq(mMockDevice)))
+                .thenReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
 
         // No bugreport is captured if not explicitly requested
         StatusCheckerResult result = new StatusCheckerResult(CheckStatus.FAILED);
         result.setErrorMessage("some failures.");
-        EasyMock.expect(mMockSysChecker.postExecutionCheck(EasyMock.eq(mMockDevice)))
-                .andReturn(result);
+        when(mMockSysChecker.postExecutionCheck(Mockito.eq(mMockDevice))).thenReturn(result);
         expectTestRun(mMockListener);
 
-        mMockListener.testRunStarted(
-                EasyMock.eq(ITestSuite.MODULE_CHECKER_PRE + "_test"),
-                EasyMock.eq(0),
-                EasyMock.eq(0),
-                EasyMock.anyLong());
-        mMockListener.testRunEnded(
-                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-
-        mMockListener.testRunStarted(
-                EasyMock.eq(ITestSuite.MODULE_CHECKER_POST + "_test"),
-                EasyMock.eq(0),
-                EasyMock.eq(0),
-                EasyMock.anyLong());
-        Capture<FailureDescription> capture = new Capture<>();
-        mMockListener.testRunFailed(EasyMock.capture(capture));
-        mMockListener.testRunEnded(
-                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-
-        replayMocks();
         mTestSuite.run(mTestInfo, mMockListener);
-        verifyMocks();
+
+        verify(mMockListener)
+                .testRunStarted(
+                        Mockito.eq(ITestSuite.MODULE_CHECKER_PRE + "_test"),
+                        Mockito.eq(0),
+                        Mockito.eq(0),
+                        Mockito.anyLong());
+        verify(mMockListener, times(4))
+                .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
+        verify(mMockListener)
+                .testRunStarted(
+                        Mockito.eq(ITestSuite.MODULE_CHECKER_POST + "_test"),
+                        Mockito.eq(0),
+                        Mockito.eq(0),
+                        Mockito.anyLong());
+        ArgumentCaptor<FailureDescription> capture =
+                ArgumentCaptor.forClass(FailureDescription.class);
+        verify(mMockListener).testRunFailed(capture.capture());
         FailureDescription failure = capture.getValue();
         assertEquals(
                 TestErrorIdentifier.MODULE_CHANGED_SYSTEM_STATUS, failure.getErrorIdentifier());
@@ -597,43 +573,36 @@ public class ITestSuiteTest {
         List<ISystemStatusChecker> sysChecker = new ArrayList<ISystemStatusChecker>();
         sysChecker.add(mMockSysChecker);
         mTestSuite.setSystemStatusChecker(sysChecker);
-        EasyMock.expect(mMockSysChecker.preExecutionCheck(EasyMock.eq(mMockDevice)))
-                .andReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
-        EasyMock.expect(
-                        mMockDevice.logBugreport(
-                                EasyMock.anyObject(), EasyMock.same(mMockListener)))
-                .andReturn(true)
-                .times(1);
+        when(mMockSysChecker.preExecutionCheck(Mockito.eq(mMockDevice)))
+                .thenReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
+        when(mMockDevice.logBugreport(Mockito.any(), Mockito.same(mMockListener))).thenReturn(true);
 
         // No bugreport is captured if not explicitly requested
         StatusCheckerResult result = new StatusCheckerResult(CheckStatus.FAILED);
         result.setErrorMessage("some failures.");
         result.setBugreportNeeded(true);
-        EasyMock.expect(mMockSysChecker.postExecutionCheck(EasyMock.eq(mMockDevice)))
-                .andReturn(result);
+        when(mMockSysChecker.postExecutionCheck(Mockito.eq(mMockDevice))).thenReturn(result);
         expectTestRun(mMockListener);
 
-        mMockListener.testRunStarted(
-                EasyMock.eq(ITestSuite.MODULE_CHECKER_PRE + "_test"),
-                EasyMock.eq(0),
-                EasyMock.eq(0),
-                EasyMock.anyLong());
-        mMockListener.testRunEnded(
-                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-
-        mMockListener.testRunStarted(
-                EasyMock.eq(ITestSuite.MODULE_CHECKER_POST + "_test"),
-                EasyMock.eq(0),
-                EasyMock.eq(0),
-                EasyMock.anyLong());
-        Capture<FailureDescription> capture = new Capture<>();
-        mMockListener.testRunFailed(EasyMock.capture(capture));
-        mMockListener.testRunEnded(
-                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-
-        replayMocks();
         mTestSuite.run(mTestInfo, mMockListener);
-        verifyMocks();
+        verify(mMockDevice, times(1)).logBugreport(Mockito.any(), Mockito.same(mMockListener));
+        verify(mMockListener)
+                .testRunStarted(
+                        Mockito.eq(ITestSuite.MODULE_CHECKER_PRE + "_test"),
+                        Mockito.eq(0),
+                        Mockito.eq(0),
+                        Mockito.anyLong());
+        verify(mMockListener, times(4))
+                .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
+        verify(mMockListener)
+                .testRunStarted(
+                        Mockito.eq(ITestSuite.MODULE_CHECKER_POST + "_test"),
+                        Mockito.eq(0),
+                        Mockito.eq(0),
+                        Mockito.anyLong());
+        ArgumentCaptor<FailureDescription> capture =
+                ArgumentCaptor.forClass(FailureDescription.class);
+        verify(mMockListener).testRunFailed(capture.capture());
         FailureDescription failure = capture.getValue();
         assertEquals(
                 TestErrorIdentifier.MODULE_CHANGED_SYSTEM_STATUS, failure.getErrorIdentifier());
@@ -651,12 +620,12 @@ public class ITestSuiteTest {
         OptionSetter setter = new OptionSetter(mTestSuite);
         setter.setOptionValue("skip-all-system-status-check", "true");
         setter.setOptionValue("reboot-per-module", "true");
-        EasyMock.expect(mMockDevice.getProperty("ro.build.type")).andReturn("userdebug");
-        mMockDevice.reboot();
+        when(mMockDevice.getProperty("ro.build.type")).thenReturn("userdebug");
         expectTestRun(mMockListener);
-        replayMocks();
+
         mTestSuite.run(mTestInfo, mMockListener);
-        verifyMocks();
+
+        verify(mMockDevice).reboot();
     }
 
     /**
@@ -700,25 +669,30 @@ public class ITestSuiteTest {
         OptionSetter setter = new OptionSetter(mTestSuite);
         setter.setOptionValue("skip-all-system-status-check", "true");
         setter.setOptionValue("reboot-per-module", "true");
-        EasyMock.expect(mMockDevice.getProperty("ro.build.type")).andReturn("user");
-        mMockListener.testModuleStarted(EasyMock.anyObject());
-        mMockListener.testRunStarted(
-                EasyMock.eq(TEST_CONFIG_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
-        EasyMock.expectLastCall().times(1);
-        mMockListener.testRunFailed(
-                FailureDescription.create("unresponsive", FailureStatus.LOST_SYSTEM_UNDER_TEST));
-        EasyMock.expect(
-                        mMockDevice.logBugreport(
-                                EasyMock.eq("module-test-failure-SERIAL-bugreport"),
-                                EasyMock.anyObject()))
-                .andReturn(true);
-        mMockListener.testRunEnded(
-                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-        EasyMock.expectLastCall().times(1);
-        mMockListener.testModuleEnded();
-        replayMocks();
+        when(mMockDevice.getProperty("ro.build.type")).thenReturn("user");
+
+        when(mMockDevice.logBugreport(
+                        Mockito.eq("module-test-failure-SERIAL-bugreport"), Mockito.any()))
+                .thenReturn(true);
+
         mTestSuite.run(mTestInfo, mMockListener);
-        verifyMocks();
+
+        verify(mMockListener, times(1))
+                .testRunStarted(
+                        Mockito.eq(TEST_CONFIG_NAME),
+                        Mockito.eq(1),
+                        Mockito.eq(0),
+                        Mockito.anyLong());
+        verify(mMockListener, times(1))
+                .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
+        verify(mMockListener).testModuleStarted(Mockito.any());
+        ArgumentCaptor<FailureDescription> captureRunFailure =
+                ArgumentCaptor.forClass(FailureDescription.class);
+        verify(mMockListener).testRunFailed(captureRunFailure.capture());
+        verify(mMockListener).testModuleEnded();
+        FailureDescription failure = captureRunFailure.getValue();
+        assertTrue(failure.getErrorMessage().equals("unresponsive"));
+        assertEquals(FailureStatus.LOST_SYSTEM_UNDER_TEST, failure.getFailureStatus());
     }
 
     /**
@@ -759,37 +733,40 @@ public class ITestSuiteTest {
         OptionSetter setter = new OptionSetter(mTestSuite);
         setter.setOptionValue("skip-all-system-status-check", "true");
         setter.setOptionValue("reboot-per-module", "true");
-        EasyMock.expect(mMockDevice.getProperty("ro.build.type")).andReturn("user");
-        mMockListener.testModuleStarted(EasyMock.anyObject());
-        EasyMock.expectLastCall().times(2);
-        mMockListener.testRunStarted(
-                EasyMock.eq(TEST_CONFIG_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
-        EasyMock.expectLastCall().times(1);
-        mMockListener.testRunFailed(FailureDescription.create("I failed"));
-        mMockListener.testRunEnded(
-                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-        EasyMock.expectLastCall().times(1);
+        when(mMockDevice.getProperty("ro.build.type")).thenReturn("user");
 
-        // The module that didn't run is reported too.
-        mMockListener.testRunStarted(
-                EasyMock.eq("NOT_RUN"), EasyMock.eq(0), EasyMock.eq(0), EasyMock.anyLong());
-        mMockListener.testRunFailed(
-                FailureDescription.create(
-                        "Module did not run due to device not available.",
-                        FailureStatus.NOT_EXECUTED));
-        mMockListener.testRunEnded(0L, new HashMap<String, Metric>());
-
-        mMockListener.testModuleEnded();
-        EasyMock.expectLastCall().times(2);
-        replayMocks();
-        // The DNAE is bubbled up to the top
         try {
             mTestSuite.run(mTestInfo, mMockListener);
             fail("Should have thrown an exception.");
         } catch (DeviceNotAvailableException expected) {
             assertEquals("I failed", expected.getMessage());
         }
-        verifyMocks();
+
+        verify(mMockListener, times(2)).testModuleStarted(Mockito.any());
+        verify(mMockListener, times(1))
+                .testRunStarted(
+                        Mockito.eq(TEST_CONFIG_NAME),
+                        Mockito.eq(1),
+                        Mockito.eq(0),
+                        Mockito.anyLong());
+        verify(mMockListener, times(2))
+                .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
+        verify(mMockListener, times(2)).testModuleEnded();
+        ArgumentCaptor<FailureDescription> captureRunFailure =
+                ArgumentCaptor.forClass(FailureDescription.class);
+        verify(mMockListener, times(2)).testRunFailed(captureRunFailure.capture());
+        verify(mMockListener)
+                .testRunStarted(
+                        Mockito.eq("NOT_RUN"), Mockito.eq(0), Mockito.eq(0), Mockito.anyLong());
+        verify(mMockListener).testRunEnded(0L, new HashMap<String, Metric>());
+
+        List<FailureDescription> failures = captureRunFailure.getAllValues();
+        assertTrue(failures.get(0).getErrorMessage().equals("I failed"));
+        assertTrue(
+                failures.get(1)
+                        .getErrorMessage()
+                        .equals("Module did not run due to device not available."));
+        assertEquals(FailureStatus.NOT_EXECUTED, failures.get(1).getFailureStatus());
     }
 
     /**
@@ -827,20 +804,24 @@ public class ITestSuiteTest {
         OptionSetter setter = new OptionSetter(mTestSuite);
         setter.setOptionValue("skip-all-system-status-check", "true");
         setter.setOptionValue("reboot-per-module", "true");
-        EasyMock.expect(mMockDevice.getProperty("ro.build.type")).andReturn("user");
-        mMockListener.testModuleStarted(EasyMock.anyObject());
-        mMockListener.testRunStarted(
-                EasyMock.eq(TEST_CONFIG_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
-        EasyMock.expectLastCall().times(1);
-        Capture<FailureDescription> captured = new Capture<>();
-        mMockListener.testRunFailed(EasyMock.capture(captured));
-        mMockListener.testRunEnded(
-                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-        EasyMock.expectLastCall().times(1);
-        mMockListener.testModuleEnded();
-        replayMocks();
+        when(mMockDevice.getProperty("ro.build.type")).thenReturn("user");
+
         mTestSuite.run(mTestInfo, mMockListener);
-        verifyMocks();
+
+        verify(mMockListener, times(1))
+                .testRunStarted(
+                        Mockito.eq(TEST_CONFIG_NAME),
+                        Mockito.eq(1),
+                        Mockito.eq(0),
+                        Mockito.anyLong());
+        verify(mMockListener, times(1))
+                .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
+        verify(mMockListener).testModuleStarted(Mockito.any());
+        ArgumentCaptor<FailureDescription> captured =
+                ArgumentCaptor.forClass(FailureDescription.class);
+        verify(mMockListener).testRunFailed(captured.capture());
+        verify(mMockListener).testModuleEnded();
+
         FailureDescription exception = captured.getValue();
         assertTrue(exception.getErrorMessage().contains("runtime"));
         assertFalse(exception instanceof MultiFailureDescription);
@@ -893,18 +874,17 @@ public class ITestSuiteTest {
      */
     @Test
     public void testGetAbis() throws DeviceNotAvailableException {
-        EasyMock.expect(mMockDevice.getProperty(EasyMock.eq("ro.product.cpu.abilist")))
-                .andReturn("arm64-v8a,armeabi-v7a,armeabi");
+        when(mMockDevice.getProperty(Mockito.eq("ro.product.cpu.abilist")))
+                .thenReturn("arm64-v8a,armeabi-v7a,armeabi");
         Set<String> expectedAbis = new HashSet<>();
         expectedAbis.add("arm64-v8a");
         expectedAbis.add("armeabi-v7a");
-        EasyMock.replay(mMockDevice);
+
         Set<IAbi> res = mTestSuite.getAbis(mMockDevice);
         assertEquals(2, res.size());
         for (IAbi abi : res) {
             assertTrue(expectedAbis.contains(abi.getName()));
         }
-        EasyMock.verify(mMockDevice);
     }
 
     /**
@@ -913,9 +893,8 @@ public class ITestSuiteTest {
      */
     @Test
     public void testGetAbis_notSupported() throws DeviceNotAvailableException {
-        EasyMock.expect(mMockDevice.getProperty(EasyMock.eq("ro.product.cpu.abilist")))
-                .andReturn("armeabi");
-        EasyMock.replay(mMockDevice);
+        when(mMockDevice.getProperty(Mockito.eq("ro.product.cpu.abilist"))).thenReturn("armeabi");
+
         try {
             mTestSuite.getAbis(mMockDevice);
             fail("Should have thrown an exception");
@@ -926,7 +905,6 @@ public class ITestSuiteTest {
                             + " are supported by the device ('[armeabi]').",
                     e.getMessage());
         }
-        EasyMock.verify(mMockDevice);
     }
 
     /**
@@ -936,17 +914,15 @@ public class ITestSuiteTest {
     public void testGetAbis_primaryAbiOnly() throws Exception {
         OptionSetter setter = new OptionSetter(mTestSuite);
         setter.setOptionValue(ITestSuite.PRIMARY_ABI_RUN, "true");
-        EasyMock.expect(mMockDevice.getProperty(EasyMock.eq("ro.product.cpu.abi")))
-                .andReturn("arm64-v8a");
+        when(mMockDevice.getProperty(Mockito.eq("ro.product.cpu.abi"))).thenReturn("arm64-v8a");
         Set<String> expectedAbis = new HashSet<>();
         expectedAbis.add("arm64-v8a");
-        EasyMock.replay(mMockDevice);
+
         Set<IAbi> res = mTestSuite.getAbis(mMockDevice);
         assertEquals(1, res.size());
         for (IAbi abi : res) {
             assertTrue(expectedAbis.contains(abi.getName()));
         }
-        EasyMock.verify(mMockDevice);
     }
 
     /**
@@ -957,9 +933,8 @@ public class ITestSuiteTest {
     public void testGetAbis_primaryAbiOnly_NotSupported() throws Exception {
         OptionSetter setter = new OptionSetter(mTestSuite);
         setter.setOptionValue(ITestSuite.PRIMARY_ABI_RUN, "true");
-        EasyMock.expect(mMockDevice.getProperty(EasyMock.eq("ro.product.cpu.abi")))
-                .andReturn("armeabi");
-        EasyMock.replay(mMockDevice);
+        when(mMockDevice.getProperty(Mockito.eq("ro.product.cpu.abi"))).thenReturn("armeabi");
+
         try {
             mTestSuite.getAbis(mMockDevice);
             fail("Should have thrown an exception");
@@ -969,7 +944,6 @@ public class ITestSuiteTest {
                             + "this suite currently supports '[arm64-v8a, armeabi-v7a]'.",
                     e.getMessage());
         }
-        EasyMock.verify(mMockDevice);
     }
 
     /**
@@ -980,18 +954,17 @@ public class ITestSuiteTest {
     public void testGetAbis_skipCtsArchCheck() throws Exception {
         OptionSetter setter = new OptionSetter(mTestSuite);
         setter.setOptionValue(ITestSuite.SKIP_HOST_ARCH_CHECK, "true");
-        EasyMock.expect(mMockDevice.getProperty(EasyMock.eq("ro.product.cpu.abilist")))
-                .andReturn("x86_64,x86,armeabi");
+        when(mMockDevice.getProperty(Mockito.eq("ro.product.cpu.abilist")))
+                .thenReturn("x86_64,x86,armeabi");
         Set<String> expectedAbis = new HashSet<>();
         expectedAbis.add("x86_64");
         expectedAbis.add("x86");
-        EasyMock.replay(mMockDevice);
+
         Set<IAbi> res = mTestSuite.getAbis(mMockDevice);
         assertEquals(2, res.size());
         for (IAbi abi : res) {
             assertTrue(expectedAbis.contains(abi.getName()));
         }
-        EasyMock.verify(mMockDevice);
     }
 
     /**
@@ -1005,13 +978,12 @@ public class ITestSuiteTest {
         setter.setOptionValue(ITestSuite.ABI_OPTION, "x86");
         Set<String> expectedAbis = new HashSet<>();
         expectedAbis.add("x86");
-        EasyMock.replay(mMockDevice);
+
         Set<IAbi> res = mTestSuite.getAbis(mMockDevice);
         assertEquals(1, res.size());
         for (IAbi abi : res) {
             assertTrue(expectedAbis.contains(abi.getName()));
         }
-        EasyMock.verify(mMockDevice);
     }
 
     /** When there are no metadata based filters specified, config should be included. */
@@ -1275,24 +1247,26 @@ public class ITestSuiteTest {
         sysChecker.add(mMockSysChecker);
         mTestSuite.setSystemStatusChecker(sysChecker);
         mTestSuite.setMetricCollectors(mListCollectors);
-        EasyMock.expect(mMockSysChecker.preExecutionCheck(EasyMock.eq(mMockDevice)))
-                .andReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
-        EasyMock.expect(mMockSysChecker.postExecutionCheck(EasyMock.eq(mMockDevice)))
-                .andReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
+        when(mMockSysChecker.preExecutionCheck(Mockito.eq(mMockDevice)))
+                .thenReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
+        when(mMockSysChecker.postExecutionCheck(Mockito.eq(mMockDevice)))
+                .thenReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
 
-        Capture<HashMap<String, Metric>> c = new Capture<>();
-        mMockListener.testModuleStarted(EasyMock.anyObject());
-        mMockListener.testRunStarted(
-                EasyMock.eq(TEST_CONFIG_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         TestDescription test = new TestDescription(EMPTY_CONFIG, EMPTY_CONFIG);
-        mMockListener.testStarted(test, 0);
-        mMockListener.testEnded(test, 5, new HashMap<String, Metric>());
-        mMockListener.testRunEnded(EasyMock.anyLong(), EasyMock.capture(c));
-        mMockListener.testModuleEnded();
-
-        replayMocks();
         mTestSuite.run(mTestInfo, mMockListener);
-        verifyMocks();
+
+        verify(mMockListener).testModuleStarted(Mockito.any());
+        verify(mMockListener)
+                .testRunStarted(
+                        Mockito.eq(TEST_CONFIG_NAME),
+                        Mockito.eq(1),
+                        Mockito.eq(0),
+                        Mockito.anyLong());
+        verify(mMockListener).testStarted(test, 0);
+        verify(mMockListener).testEnded(test, 5, new HashMap<String, Metric>());
+        ArgumentCaptor<HashMap<String, Metric>> c = ArgumentCaptor.forClass(HashMap.class);
+        verify(mMockListener).testRunEnded(Mockito.anyLong(), c.capture());
+        verify(mMockListener).testModuleEnded();
         assertEquals("value1", c.getValue().get("metric1").getMeasurements().getSingleString());
         assertEquals("value2", c.getValue().get("metric2").getMeasurements().getSingleString());
     }
@@ -1327,14 +1301,13 @@ public class ITestSuiteTest {
         // getKeyguardState is never called because it is skipped.
         sysChecker.add(new KeyguardStatusChecker());
         mTestSuite.setSystemStatusChecker(sysChecker);
-        EasyMock.expect(mMockSysChecker.preExecutionCheck(EasyMock.eq(mMockDevice)))
-                .andReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
-        EasyMock.expect(mMockSysChecker.postExecutionCheck(EasyMock.eq(mMockDevice)))
-                .andReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
+        when(mMockSysChecker.preExecutionCheck(Mockito.eq(mMockDevice)))
+                .thenReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
+        when(mMockSysChecker.postExecutionCheck(Mockito.eq(mMockDevice)))
+                .thenReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
         expectTestRun(mMockListener);
-        replayMocks();
+
         mTestSuite.run(mTestInfo, mMockListener);
-        verifyMocks();
     }
 
     /** If a non-existing runner name is provided for the whitelist, throw an exception. */
@@ -1463,7 +1436,7 @@ public class ITestSuiteTest {
      */
     @Test
     public void testRun_withModuleListener() throws Exception {
-        ITestInvocationListener moduleListener = EasyMock.createMock(ITestInvocationListener.class);
+        ITestInvocationListener moduleListener = mock(ITestInvocationListener.class);
         mTestSuite =
                 new TestSuiteImpl() {
                     @Override
@@ -1483,18 +1456,15 @@ public class ITestSuiteTest {
         List<ISystemStatusChecker> sysChecker = new ArrayList<ISystemStatusChecker>();
         sysChecker.add(mMockSysChecker);
         mTestSuite.setSystemStatusChecker(sysChecker);
-        EasyMock.expect(mMockSysChecker.preExecutionCheck(EasyMock.eq(mMockDevice)))
-                .andReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
-        EasyMock.expect(mMockSysChecker.postExecutionCheck(EasyMock.eq(mMockDevice)))
-                .andReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
+        when(mMockSysChecker.preExecutionCheck(Mockito.eq(mMockDevice)))
+                .thenReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
+        when(mMockSysChecker.postExecutionCheck(Mockito.eq(mMockDevice)))
+                .thenReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
         expectTestRun(mMockListener);
         // We expect the full test run on the module listener too
         expectIntraModuleTestRun(moduleListener, 1, false);
-        replayMocks();
-        EasyMock.replay(moduleListener);
+
         mTestSuite.run(mTestInfo, mMockListener);
-        verifyMocks();
-        EasyMock.verify(moduleListener);
     }
 
     /**
@@ -1531,23 +1501,27 @@ public class ITestSuiteTest {
         List<ISystemStatusChecker> sysChecker = new ArrayList<ISystemStatusChecker>();
         sysChecker.add(mMockSysChecker);
         mTestSuite.setSystemStatusChecker(sysChecker);
-        EasyMock.expect(mMockSysChecker.preExecutionCheck(EasyMock.eq(mMockDevice)))
-                .andReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
-        EasyMock.expect(mMockSysChecker.postExecutionCheck(EasyMock.eq(mMockDevice)))
-                .andReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
-        mMockListener.testModuleStarted(EasyMock.anyObject());
-        mMockListener.testRunStarted(
-                EasyMock.eq(TEST_CONFIG_NAME), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
-        TestDescription testDescription = new TestDescription(EMPTY_CONFIG, EMPTY_CONFIG);
-        mMockListener.testStarted(testDescription, 0);
-        mMockListener.testEnded(testDescription, 5, new HashMap<String, Metric>());
-        mMockListener.testRunEnded(
-                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-        mMockListener.testModuleEnded();
-        replayMocks();
-        mTestSuite.run(mTestInfo, mMockListener);
-        verifyMocks();
+        when(mMockSysChecker.preExecutionCheck(Mockito.eq(mMockDevice)))
+                .thenReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
+        when(mMockSysChecker.postExecutionCheck(Mockito.eq(mMockDevice)))
+                .thenReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
 
+        TestDescription testDescription = new TestDescription(EMPTY_CONFIG, EMPTY_CONFIG);
+
+        mTestSuite.run(mTestInfo, mMockListener);
+
+        verify(mMockListener).testModuleStarted(Mockito.any());
+        verify(mMockListener)
+                .testRunStarted(
+                        Mockito.eq(TEST_CONFIG_NAME),
+                        Mockito.eq(1),
+                        Mockito.eq(0),
+                        Mockito.anyLong());
+        verify(mMockListener).testStarted(testDescription, 0);
+        verify(mMockListener).testEnded(testDescription, 5, new HashMap<String, Metric>());
+        verify(mMockListener)
+                .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
+        verify(mMockListener).testModuleEnded();
         // Check that CoverageOptions was copied to the module.
         assertSame(
                 mStubMainConfiguration.getCoverageOptions(),
@@ -1560,7 +1534,7 @@ public class ITestSuiteTest {
      */
     @Test
     public void testRun_GranularRerunwithModuleListener() throws Exception {
-        ITestInvocationListener moduleListener = EasyMock.createMock(ITestInvocationListener.class);
+        ITestInvocationListener moduleListener = mock(ITestInvocationListener.class);
         final int maxRunLimit = 3;
         StubCollectingTest test = new StubCollectingTest();
         test.setFailed(mTestFailedMessage);
@@ -1608,52 +1582,53 @@ public class ITestSuiteTest {
         List<ISystemStatusChecker> sysChecker = new ArrayList<ISystemStatusChecker>();
         sysChecker.add(mMockSysChecker);
         mTestSuite.setSystemStatusChecker(sysChecker);
-        EasyMock.expect(mMockSysChecker.preExecutionCheck(EasyMock.eq(mMockDevice)))
-                .andReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
-        EasyMock.expect(mMockSysChecker.postExecutionCheck(EasyMock.eq(mMockDevice)))
-                .andReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
-        // The main listener get the granular message failures since auto-retry is enabled.
-        mMockListener.testModuleStarted(EasyMock.anyObject());
-        for (int i = 0; i < maxRunLimit; i++) {
-            mMockListener.testRunStarted(
-                    EasyMock.eq(TEST_CONFIG_NAME),
-                    EasyMock.eq(1),
-                    EasyMock.eq(i),
-                    EasyMock.anyLong());
-            TestDescription testId = new TestDescription(EMPTY_CONFIG, EMPTY_CONFIG);
-            mMockListener.testStarted(testId, 0);
-            mMockListener.testFailed(
-                    testId,
-                    FailureDescription.create(mTestFailedMessage, FailureStatus.TEST_FAILURE));
-            mMockListener.testEnded(testId, 5, new HashMap<String, Metric>());
-            mMockListener.testRunEnded(
-                    EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-        }
-        mMockListener.testModuleEnded();
+        when(mMockSysChecker.preExecutionCheck(Mockito.eq(mMockDevice)))
+                .thenReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
+        when(mMockSysChecker.postExecutionCheck(Mockito.eq(mMockDevice)))
+                .thenReturn(new StatusCheckerResult(CheckStatus.SUCCESS));
+
         // Verify that when the suite is intra-module retried, the moduleListener receives every
         // run attempt's result.
         expectIntraModuleTestRun(moduleListener, maxRunLimit, true);
-        replayMocks();
-        EasyMock.replay(moduleListener);
+
         mTestSuite.run(mTestInfo, mMockListener);
-        verifyMocks();
-        EasyMock.verify(moduleListener);
+
+        verify(mMockListener).testModuleStarted(Mockito.any());
+        for (int i = 0; i < maxRunLimit; i++) {
+            verify(mMockListener)
+                    .testRunStarted(
+                            Mockito.eq(TEST_CONFIG_NAME),
+                            Mockito.eq(1),
+                            Mockito.eq(i),
+                            Mockito.anyLong());
+        }
+        TestDescription testId = new TestDescription(EMPTY_CONFIG, EMPTY_CONFIG);
+
+        verify(mMockListener, times(maxRunLimit)).testStarted(testId, 0);
+        verify(mMockListener, times(maxRunLimit))
+                .testFailed(
+                        testId,
+                        FailureDescription.create(mTestFailedMessage, FailureStatus.TEST_FAILURE));
+        verify(mMockListener, times(maxRunLimit))
+                .testEnded(testId, 5, new HashMap<String, Metric>());
+        verify(mMockListener, times(maxRunLimit))
+                .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
+        verify(mMockListener).testModuleEnded();
     }
 
     /** If a null-device is used with the suite, ensure we pick abi of the machine hosts. */
     @Test
     public void testNullDeviceSuite() throws Exception {
-        EasyMock.expect(mMockDevice.getIDevice()).andReturn(new NullDevice("null-device-0"));
+        when(mMockDevice.getIDevice()).thenReturn(new NullDevice("null-device-0"));
         Set<String> expectedAbis = new HashSet<>();
         expectedAbis.add("arm64-v8a");
         expectedAbis.add("armeabi-v7a");
-        EasyMock.replay(mMockDevice);
+
         Set<IAbi> res = mTestSuite.getAbis(mMockDevice);
         assertEquals(2, res.size());
         for (IAbi abi : res) {
             assertTrue(expectedAbis.contains(abi.getName()));
         }
-        EasyMock.verify(mMockDevice);
     }
 
     /**
@@ -1664,12 +1639,11 @@ public class ITestSuiteTest {
     public void testNullDeviceSuite_primaryAbi() throws Exception {
         OptionSetter setter = new OptionSetter(mTestSuite);
         setter.setOptionValue(ITestSuite.PRIMARY_ABI_RUN, "true");
-        EasyMock.expect(mMockDevice.getIDevice()).andReturn(new NullDevice("null-device-0"));
-        EasyMock.replay(mMockDevice);
+        when(mMockDevice.getIDevice()).thenReturn(new NullDevice("null-device-0"));
+
         Set<IAbi> res = mTestSuite.getAbis(mMockDevice);
         assertEquals(1, res.size());
         assertEquals("arm64-v8a", res.iterator().next().getName());
-        EasyMock.verify(mMockDevice);
     }
 
     /** If a null-device is used with the suite, ensure we pick abi of the machine hosts. */
@@ -1677,25 +1651,21 @@ public class ITestSuiteTest {
     public void testNullDeviceSuite_requestAbi() throws Exception {
         OptionSetter setter = new OptionSetter(mTestSuite);
         setter.setOptionValue(ITestSuite.ABI_OPTION, "arm64-v8a");
-        EasyMock.replay(mMockDevice);
+
         Set<IAbi> res = mTestSuite.getAbis(mMockDevice);
         assertEquals(1, res.size());
         assertEquals("arm64-v8a", res.iterator().next().getName());
-        EasyMock.verify(mMockDevice);
     }
 
     /** If a device does not return any abi, throw an exception we cannot decide. */
     @Test
     public void testNoAbi() throws Exception {
-        EasyMock.reset(mMockDevice);
-        EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(new TcpDevice("tcp-device-0"));
+        Mockito.reset(mMockDevice);
+        when(mMockDevice.getIDevice()).thenReturn(new TcpDevice("tcp-device-0"));
+        when(mMockDevice.getProperty("ro.product.cpu.abilist")).thenReturn(null);
+        when(mMockDevice.getProperty("ro.product.cpu.abi")).thenReturn(null);
+        when(mMockDevice.getSerialNumber()).thenReturn("SERIAL");
 
-        EasyMock.expect(mMockDevice.getProperty("ro.product.cpu.abilist")).andReturn(null);
-        EasyMock.expect(mMockDevice.getProperty("ro.product.cpu.abi")).andReturn(null);
-
-        EasyMock.expect(mMockDevice.getSerialNumber()).andReturn("SERIAL");
-
-        EasyMock.replay(mMockDevice);
         try {
             mTestSuite.getAbis(mMockDevice);
             fail("Should have thrown an exception.");
@@ -1704,21 +1674,17 @@ public class ITestSuiteTest {
             assertEquals(
                     "Couldn't determinate the abi of the device 'SERIAL'.", expected.getMessage());
         }
-        EasyMock.verify(mMockDevice);
     }
 
     @Test
     public void testNoPrimaryAbi() throws Exception {
         OptionSetter setter = new OptionSetter(mTestSuite);
         setter.setOptionValue(ITestSuite.PRIMARY_ABI_RUN, "true");
-        EasyMock.reset(mMockDevice);
-        EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(new TcpDevice("tcp-device-0"));
+        Mockito.reset(mMockDevice);
+        when(mMockDevice.getIDevice()).thenReturn(new TcpDevice("tcp-device-0"));
+        when(mMockDevice.getProperty("ro.product.cpu.abi")).thenReturn(null);
+        when(mMockDevice.getSerialNumber()).thenReturn("SERIAL");
 
-        EasyMock.expect(mMockDevice.getProperty("ro.product.cpu.abi")).andReturn(null);
-
-        EasyMock.expect(mMockDevice.getSerialNumber()).andReturn("SERIAL");
-
-        EasyMock.replay(mMockDevice);
         try {
             mTestSuite.getAbis(mMockDevice);
             fail("Should have thrown an exception.");
@@ -1728,7 +1694,6 @@ public class ITestSuiteTest {
                     "Device 'SERIAL' was not online to query ro.product.cpu.abi",
                     expected.getMessage());
         }
-        EasyMock.verify(mMockDevice);
     }
 
     /** Test that when {@link ITestSuite} is within a Guice scope it can receive the injector. */
@@ -1779,8 +1744,8 @@ public class ITestSuiteTest {
     }
 
     /**
-     * Test for {@link ITestSuite#randomizeTestModules(List, long)} to make sure the random-seed
-     * be injected into BuildInfo correctly.
+     * Test for {@link ITestSuite#randomizeTestModules(List, long)} to make sure the random-seed be
+     * injected into BuildInfo correctly.
      */
     @Test
     public void testSeedwhenRandomization() throws Exception {
@@ -1814,36 +1779,42 @@ public class ITestSuiteTest {
                     }
                 };
         mTestSuite.setDynamicResolver(dynamicResolver);
-        IDeviceBuildInfo mockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
-        EasyMock.expect(mockBuildInfo.getTestsDir()).andStubReturn(new File("tests_dir"));
-        EasyMock.expect(mockBuildInfo.getRemoteFiles())
-                .andReturn(new HashSet<File>(Arrays.asList(new File(remoteFilePath))))
-                .times(3);
+        IDeviceBuildInfo mockBuildInfo = mock(IDeviceBuildInfo.class);
+        when(mockBuildInfo.getTestsDir()).thenReturn(new File("tests_dir"));
+        when(mockBuildInfo.getRemoteFiles())
+                .thenReturn(new HashSet<File>(Arrays.asList(new File(remoteFilePath))));
         mTestSuite.setBuild(mockBuildInfo);
 
         List<ISystemStatusChecker> checkers = new ArrayList<ISystemStatusChecker>();
         mTestSuite.setSystemStatusChecker(checkers);
 
-        EasyMock.replay(mockBuildInfo);
         mTestSuite.run(mTestInfo, mMockListener);
-        EasyMock.verify(mockBuildInfo);
+
+        verify(mockBuildInfo, times(3)).getRemoteFiles();
     }
 
     /** Test for {@link ITestSuite#reportNotExecuted(ITestInvocationListener, String)}. */
     @Test
     public void testReportNotExecuted() {
-        mMockListener.testModuleStarted(EasyMock.anyObject());
-        mMockListener.testRunStarted(
-                EasyMock.eq(TEST_CONFIG_NAME), EasyMock.eq(0), EasyMock.eq(0), EasyMock.anyLong());
-        mMockListener.testRunFailed(
-                FailureDescription.create("Injected message", FailureStatus.NOT_EXECUTED));
-        mMockListener.testRunEnded(
-                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-        mMockListener.testModuleEnded();
-
-        EasyMock.replay(mMockListener);
         mTestSuite.reportNotExecuted(mMockListener, "Injected message");
-        EasyMock.verify(mMockListener);
+
+        verify(mMockListener).testModuleStarted(Mockito.any());
+        verify(mMockListener)
+                .testRunStarted(
+                        Mockito.eq(TEST_CONFIG_NAME),
+                        Mockito.eq(0),
+                        Mockito.eq(0),
+                        Mockito.anyLong());
+        ArgumentCaptor<FailureDescription> captureRunFailure =
+                ArgumentCaptor.forClass(FailureDescription.class);
+        verify(mMockListener).testRunFailed(captureRunFailure.capture());
+        verify(mMockListener)
+                .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
+        verify(mMockListener).testModuleEnded();
+
+        FailureDescription failure = captureRunFailure.getValue();
+        assertTrue(failure.getErrorMessage().equals("Injected message"));
+        assertEquals(FailureStatus.NOT_EXECUTED, failure.getFailureStatus());
     }
 
     /**
@@ -1860,30 +1831,41 @@ public class ITestSuiteTest {
                         new ArrayList<>(),
                         new Configuration("", ""));
         mTestSuite.setModuleInProgress(m);
-        mMockListener.testModuleStarted(EasyMock.anyObject());
-        mMockListener.testRunStarted(
-                EasyMock.eq("in-progress"), EasyMock.eq(0), EasyMock.eq(0), EasyMock.anyLong());
+
         FailureDescription error =
                 FailureDescription.create(
                                 "Module in-progress was interrupted after starting. Results might"
                                         + " not be accurate or complete.")
                         .setFailureStatus(FailureStatus.NOT_EXECUTED);
-        mMockListener.testRunFailed(error);
-        mMockListener.testRunEnded(
-                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-        mMockListener.testModuleEnded();
-        // The non-executed module gets reported too.
-        mMockListener.testModuleStarted(EasyMock.anyObject());
-        mMockListener.testRunStarted(
-                EasyMock.eq(TEST_CONFIG_NAME), EasyMock.eq(0), EasyMock.eq(0), EasyMock.anyLong());
-        mMockListener.testRunFailed(
-                FailureDescription.create("Injected message", FailureStatus.NOT_EXECUTED));
-        mMockListener.testRunEnded(
-                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-        mMockListener.testModuleEnded();
 
-        EasyMock.replay(mMockListener);
         mTestSuite.reportNotExecuted(mMockListener, "Injected message");
-        EasyMock.verify(mMockListener);
+
+        verify(mMockListener, times(2)).testModuleStarted(Mockito.any());
+        verify(mMockListener)
+                .testRunStarted(
+                        Mockito.eq("in-progress"), Mockito.eq(0), Mockito.eq(0), Mockito.anyLong());
+        ArgumentCaptor<FailureDescription> captureRunFailure =
+                ArgumentCaptor.forClass(FailureDescription.class);
+        verify(mMockListener, times(2)).testRunFailed(captureRunFailure.capture());
+        verify(mMockListener, times(2))
+                .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
+        verify(mMockListener, times(2)).testModuleEnded();
+        verify(mMockListener)
+                .testRunStarted(
+                        Mockito.eq(TEST_CONFIG_NAME),
+                        Mockito.eq(0),
+                        Mockito.eq(0),
+                        Mockito.anyLong());
+
+        List<FailureDescription> failures = captureRunFailure.getAllValues();
+        assertTrue(
+                failures.get(0)
+                        .getErrorMessage()
+                        .equals(
+                                "Module in-progress was interrupted after starting. Results might"
+                                        + " not be accurate or complete."));
+        assertEquals(FailureStatus.NOT_EXECUTED, failures.get(0).getFailureStatus());
+        assertTrue(failures.get(1).getErrorMessage().equals("Injected message"));
+        assertEquals(FailureStatus.NOT_EXECUTED, failures.get(1).getFailureStatus());
     }
 }
