@@ -16,6 +16,7 @@
 package com.android.tradefed.testtype.suite.module;
 
 import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.when;
 
 import com.android.ddmlib.IDevice;
 import com.android.tradefed.config.ConfigurationDef;
@@ -29,33 +30,35 @@ import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
 import com.android.tradefed.testtype.suite.module.IModuleController.RunStrategy;
 
-import java.util.HashSet;
-import java.util.Set;
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+
+import java.util.HashSet;
+import java.util.Set;
 
 /** Unit tests for {@link MainlineTestModuleController}. */
 @RunWith(JUnit4.class)
 public class MainlineTestModuleControllerTest {
     private MainlineTestModuleController mController;
     private IInvocationContext mContext;
-    private ITestDevice mMockDevice;
-    private IDevice mMockIDevice;
+    @Mock ITestDevice mMockDevice;
+    @Mock IDevice mMockIDevice;
     private ApexInfo mFakeApexInfo;
     private Set<ApexInfo> mFakeApexes;
 
     @Before
     public void setUp() throws ConfigurationException {
+        MockitoAnnotations.initMocks(this);
+
         mController = new MainlineTestModuleController();
-        mMockDevice = EasyMock.createMock(ITestDevice.class);
         mContext = new InvocationContext();
         mContext.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
         mContext.addInvocationAttribute(ModuleDefinition.MODULE_ABI, "arm64-v8a");
         mContext.addInvocationAttribute(ModuleDefinition.MODULE_NAME, "module1");
-        mMockIDevice = EasyMock.createMock(IDevice.class);
         mFakeApexes = new HashSet<ITestDevice.ApexInfo>();
     }
 
@@ -67,11 +70,10 @@ public class MainlineTestModuleControllerTest {
         setter.setOptionValue("mainline-module-package-name", "com.google.android.fakeapex");
         mFakeApexInfo = new ApexInfo("com.google.android.fakeapex", 1, "fakeDir");
         mFakeApexes.add(mFakeApexInfo);
-        EasyMock.expect(mMockDevice.getIDevice()).andReturn(mMockIDevice);
-        EasyMock.expect(mMockDevice.getActiveApexes()).andReturn(mFakeApexes);
-        EasyMock.replay(mMockDevice);
+        when(mMockDevice.getIDevice()).thenReturn(mMockIDevice);
+        when(mMockDevice.getActiveApexes()).thenReturn(mFakeApexes);
+
         assertEquals(RunStrategy.RUN, mController.shouldRunModule(mContext));
-        EasyMock.verify(mMockDevice);
     }
 
     /** Test mainline module is not installed and test should not run. */
@@ -83,11 +85,10 @@ public class MainlineTestModuleControllerTest {
         setter.setOptionValue("mainline-module-package-name", "com.google.android.fakeapex");
         ApexInfo fakeApexInfo = new ApexInfo("com.google.android.fake1apex", 1, "fakeDir");
         mFakeApexes.add(fakeApexInfo);
-        EasyMock.expect(mMockDevice.getIDevice()).andReturn(mMockIDevice);
-        EasyMock.expect(mMockDevice.getActiveApexes()).andReturn(mFakeApexes);
-        EasyMock.replay(mMockDevice);
+        when(mMockDevice.getIDevice()).thenReturn(mMockIDevice);
+        when(mMockDevice.getActiveApexes()).thenReturn(mFakeApexes);
+
         assertEquals(RunStrategy.FULL_MODULE_BYPASS, mController.shouldRunModule(mContext));
-        EasyMock.verify(mMockDevice);
     }
 
     /** Test {@link MainlineTestModuleController} is disabled and test should run anyway. */
@@ -96,9 +97,8 @@ public class MainlineTestModuleControllerTest {
             throws DeviceNotAvailableException, ConfigurationException {
         OptionSetter setter = new OptionSetter(mController);
         setter.setOptionValue("enable", "false");
-        EasyMock.replay(mMockDevice);
+
         assertEquals(RunStrategy.RUN, mController.shouldRunModule(mContext));
-        EasyMock.verify(mMockDevice);
     }
 
     /** Test {@link MainlineTestModuleController} is enabled but no mainline module specified. */
@@ -107,8 +107,7 @@ public class MainlineTestModuleControllerTest {
             throws DeviceNotAvailableException, ConfigurationException {
         OptionSetter setter = new OptionSetter(mController);
         setter.setOptionValue("enable", "true");
-        EasyMock.replay(mMockDevice);
+
         assertEquals(RunStrategy.RUN, mController.shouldRunModule(mContext));
-        EasyMock.verify(mMockDevice);
     }
 }
