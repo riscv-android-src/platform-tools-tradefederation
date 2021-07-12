@@ -15,13 +15,16 @@
  */
 package com.android.tradefed.testtype.suite.params;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-import java.util.Set;
+import java.util.Map;
 
 /** Unit tests for {@link ModuleParametersHelper}. */
 @RunWith(JUnit4.class)
@@ -38,60 +41,60 @@ public class ModuleParametersHelperTest {
                 continue;
             }
 
-            IModuleParameter handler =
-                    ModuleParametersHelper.getParameterHandler(param, /* withOptional= */ true);
+            Map<ModuleParameters, IModuleParameterHandler> handler =
+                    ModuleParametersHelper.resolveParam(param, /* withOptional= */ true);
             assertNotNull(handler);
         }
     }
 
     private boolean isGroupParameter(ModuleParameters param) {
-        Set<ModuleParameters> resolvedParams =
+        Map<ModuleParameters, IModuleParameterHandler> resolvedParams =
                 ModuleParametersHelper.resolveParam(param, /* withOptional= */ true);
 
         if (resolvedParams.size() != 1) {
             return true;
         }
 
-        return resolvedParams.iterator().next() != param;
+        return resolvedParams.keySet().iterator().next() != param;
     }
 
     @Test
     public void resolveParam_notGroupParam_returnsSetOfSameParam() {
-        Set<ModuleParameters> resolvedParams =
+        Map<ModuleParameters, IModuleParameterHandler> resolvedParams =
                 ModuleParametersHelper.resolveParam(
                         ModuleParameters.INSTANT_APP, /* withOptional= */ true);
 
         assertEquals(resolvedParams.size(), 1);
-        assertEquals(resolvedParams.iterator().next(), ModuleParameters.INSTANT_APP);
+        assertEquals(resolvedParams.keySet().iterator().next(), ModuleParameters.INSTANT_APP);
     }
 
     @Test
     public void resolveParam_groupParam_returnsSetOfMultipleParams() {
-        Set<ModuleParameters> resolvedParams =
+        Map<ModuleParameters, IModuleParameterHandler> resolvedParams =
                 ModuleParametersHelper.resolveParam(
                         ModuleParameters.MULTIUSER, /* withOptional= */ true);
 
         assertNotEquals(resolvedParams.size(), 1);
-        assertFalse(resolvedParams.contains(ModuleParameters.MULTIUSER));
+        assertFalse(resolvedParams.keySet().contains(ModuleParameters.MULTIUSER));
     }
 
     @Test
     public void resolveParamString_notGroupParam_returnsSetOfSameParam() {
-        Set<ModuleParameters> resolvedParams =
+        Map<ModuleParameters, IModuleParameterHandler> resolvedParams =
                 ModuleParametersHelper.resolveParam(
                         ModuleParameters.INSTANT_APP.toString(), /* withOptional= */ true);
 
         assertEquals(resolvedParams.size(), 1);
-        assertEquals(resolvedParams.iterator().next(), ModuleParameters.INSTANT_APP);
+        assertEquals(resolvedParams.keySet().iterator().next(), ModuleParameters.INSTANT_APP);
     }
 
     @Test
     public void resolveParamString_groupParam_returnsSetOfMultipleParams() {
-        Set<ModuleParameters> resolvedParams =
+        Map<ModuleParameters, IModuleParameterHandler> resolvedParams =
                 ModuleParametersHelper.resolveParam(
                         ModuleParameters.MULTIUSER.toString(), /* withOptional= */ true);
 
         assertNotEquals(resolvedParams.size(), 1);
-        assertFalse(resolvedParams.contains(ModuleParameters.MULTIUSER));
+        assertFalse(resolvedParams.keySet().contains(ModuleParameters.MULTIUSER));
     }
 }

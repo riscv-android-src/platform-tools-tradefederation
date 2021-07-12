@@ -18,7 +18,7 @@ package com.android.tradefed.testtype.suite.params;
 import com.android.tradefed.config.IConfiguration;
 
 /** The interface for parameters of suites modules. */
-public interface IModuleParameter {
+public interface IModuleParameterHandler {
 
     /** Returns the name the parameterized module will be identified as. */
     public String getParameterIdentifier();

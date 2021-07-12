@@ -31,7 +31,7 @@ import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFileFilterReceiver;
 import com.android.tradefed.testtype.ITestFilterReceiver;
-import com.android.tradefed.testtype.suite.params.IModuleParameter;
+import com.android.tradefed.testtype.suite.params.IModuleParameterHandler;
 import com.android.tradefed.testtype.suite.params.ModuleParameters;
 import com.android.tradefed.testtype.suite.params.ModuleParametersHelper;
 import com.android.tradefed.testtype.suite.params.NegativeHandler;
@@ -49,6 +49,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 /** A Test for running Compatibility Test Suite with new suite system. */
@@ -540,21 +541,24 @@ public class BaseTestSuite extends ITestSuite {
             // Create the matching filters for the parameterized version of it if needed.
             if (mEnableParameter) {
                 for (ModuleParameters param : ModuleParameters.values()) {
-                    IModuleParameter moduleParam =
-                            ModuleParametersHelper.getParameterHandler(
-                                    param, mEnableOptionalParameter);
-                    if (moduleParam == null) {
+                    Map<ModuleParameters, IModuleParameterHandler> moduleParamExpanded =
+                            ModuleParametersHelper.resolveParam(param, mEnableOptionalParameter);
+                    if (moduleParamExpanded == null) {
                         continue;
                     }
-                    if (moduleParam instanceof NegativeHandler) {
-                        continue;
+                    for (Entry<ModuleParameters, IModuleParameterHandler> moduleParam :
+                            moduleParamExpanded.entrySet()) {
+                        if (moduleParam.getValue() instanceof NegativeHandler) {
+                            continue;
+                        }
+                        String paramModuleName =
+                                String.format(
+                                        "%s[%s]", moduleName,
+                                        moduleParam.getValue().getParameterIdentifier());
+                        mIncludeFilters.add(
+                                new SuiteTestFilter(getRequestedAbi(), paramModuleName, mTestName)
+                                        .toString());
                     }
-                    String paramModuleName =
-                            String.format(
-                                    "%s[%s]", moduleName, moduleParam.getParameterIdentifier());
-                    mIncludeFilters.add(
-                            new SuiteTestFilter(getRequestedAbi(), paramModuleName, mTestName)
-                                    .toString());
                 }
             }
         }
