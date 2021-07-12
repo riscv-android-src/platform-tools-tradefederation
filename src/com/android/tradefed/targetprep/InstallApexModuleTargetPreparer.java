@@ -82,7 +82,7 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
     @Option(name = "bundletool-file-name", description = "The file name of the bundletool jar.")
     private String mBundletoolFilename;
 
-    @Option(name = "train-path", description = "The absoulte path of the train folder.")
+    @Option(name = "train-path", description = "The absolute path of the train folder.")
     private File mTrainFolderPath;
 
     @Option(
