@@ -47,7 +47,9 @@ public class CommandOptionsGetterTest {
     }
 
     @Test
-    public void getCommandOptionsValue() {
+    public void getCommandOptionsValue() throws Exception {
+        OptionSetter setter = new OptionSetter(mConfiguration.getCommandOptions());
+        setter.setOptionValue("filter-previous-passed", "false");
         FeatureResponse response = mGetter.execute(FeatureRequest.newBuilder()
                 .setName(CommandOptionsGetter.COMMAND_OPTIONS_GETTER)
                 .putArgs(CommandOptionsGetter.OPTION_NAME, "filter-previous-passed").build());
