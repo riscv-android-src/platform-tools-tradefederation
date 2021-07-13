@@ -17,6 +17,8 @@ package com.android.tradefed.result.ddmlib;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import com.android.commands.am.InstrumentationData.ResultsBundle;
 import com.android.commands.am.InstrumentationData.ResultsBundleEntry;
@@ -27,13 +29,16 @@ import com.android.commands.am.InstrumentationData.TestStatus;
 import com.android.ddmlib.testrunner.ITestRunListener;
 import com.android.ddmlib.testrunner.TestIdentifier;
 
-import org.easymock.Capture;
-import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -49,7 +54,7 @@ import java.util.Map;
 public class InstrumentationResultProtoParserTest {
 
     private InstrumentationResultProtoParser mParser;
-    private ITestRunListener mMockListener;
+    @Mock ITestRunListener mMockListener;
 
     private static final String RUN_KEY = "testing";
     private static final String CLASS_NAME_1 = "class_1";
@@ -60,8 +65,8 @@ public class InstrumentationResultProtoParserTest {
     private static final String RUN_FAILURE_MESSAGE = "Unable to find instrumentation info:";
     private static final String TEST_COMPLETED_STATUS_1 = "Expected 2 tests, received 0";
     private static final String TEST_COMPLETED_STATUS_2 = "Expected 2 tests, received 1";
-    private static final String INCOMPLETE_TEST_ERR_MSG_PREFIX = "Test failed to run"
-            + " to completion";
+    private static final String INCOMPLETE_TEST_ERR_MSG_PREFIX =
+            "Test failed to run" + " to completion";
     private static final String INCOMPLETE_RUN_ERR_MSG_PREFIX = "Test run failed to complete";
     private static final String FATAL_EXCEPTION_MSG = "Fatal exception when running tests";
 
@@ -69,8 +74,10 @@ public class InstrumentationResultProtoParserTest {
 
     @Before
     public void setUp() {
+        MockitoAnnotations.initMocks(this);
+
         List<ITestRunListener> runListeners = new ArrayList<>();
-        mMockListener = EasyMock.createStrictMock(ITestRunListener.class);
+
         runListeners.add(mMockListener);
         mParser = new InstrumentationResultProtoParser(RUN_KEY, runListeners);
     }
@@ -159,12 +166,19 @@ public class InstrumentationResultProtoParserTest {
     @Test
     public void testNullProtoFile() throws IOException {
         protoTestFile = null;
-        mMockListener.testRunStarted(RUN_KEY, 0);
-        mMockListener.testRunFailed(EasyMock
-                .eq(InstrumentationResultProtoParser.NO_TEST_RESULTS_FILE));
-        mMockListener.testRunEnded(0, Collections.emptyMap());
 
-        processProtoAndVerify(protoTestFile);
+        mParser.processProtoFile(protoTestFile);
+
+        InOrder inOrder = Mockito.inOrder(mMockListener);
+        inOrder.verify(mMockListener).testRunStarted(RUN_KEY, 0);
+        inOrder.verify(mMockListener)
+                .testRunFailed(Mockito.eq(InstrumentationResultProtoParser.NO_TEST_RESULTS_FILE));
+        inOrder.verify(mMockListener).testRunEnded(0, Collections.emptyMap());
+
+        verify(mMockListener).testRunStarted(RUN_KEY, 0);
+        verify(mMockListener)
+                .testRunFailed(Mockito.eq(InstrumentationResultProtoParser.NO_TEST_RESULTS_FILE));
+        verify(mMockListener).testRunEnded(0, Collections.emptyMap());
     }
 
     /**
@@ -175,12 +189,19 @@ public class InstrumentationResultProtoParserTest {
     @Test
     public void testEmptyProtoFile() throws IOException {
         protoTestFile = File.createTempFile("tmp", ".pb");
-        mMockListener.testRunStarted(RUN_KEY, 0);
-        mMockListener.testRunFailed(EasyMock
-                .eq(InstrumentationResultProtoParser.NO_TEST_RESULTS_MSG));
-        mMockListener.testRunEnded(0, Collections.emptyMap());
 
-        processProtoAndVerify(protoTestFile);
+        mParser.processProtoFile(protoTestFile);
+
+        InOrder inOrder = Mockito.inOrder(mMockListener);
+        inOrder.verify(mMockListener).testRunStarted(RUN_KEY, 0);
+        inOrder.verify(mMockListener)
+                .testRunFailed(Mockito.eq(InstrumentationResultProtoParser.NO_TEST_RESULTS_MSG));
+        inOrder.verify(mMockListener).testRunEnded(0, Collections.emptyMap());
+
+        verify(mMockListener).testRunStarted(RUN_KEY, 0);
+        verify(mMockListener)
+                .testRunFailed(Mockito.eq(InstrumentationResultProtoParser.NO_TEST_RESULTS_MSG));
+        verify(mMockListener).testRunEnded(0, Collections.emptyMap());
     }
 
     /**
@@ -194,12 +215,21 @@ public class InstrumentationResultProtoParserTest {
         FileOutputStream fout = new FileOutputStream(protoTestFile);
         fout.write(65);
         fout.close();
-        mMockListener.testRunStarted(RUN_KEY, 0);
-        mMockListener.testRunFailed(EasyMock
-                .eq(InstrumentationResultProtoParser.INVALID_TEST_RESULTS_FILE));
-        mMockListener.testRunEnded(0, Collections.emptyMap());
 
-        processProtoAndVerify(protoTestFile);
+        mParser.processProtoFile(protoTestFile);
+
+        InOrder inOrder = Mockito.inOrder(mMockListener);
+        inOrder.verify(mMockListener).testRunStarted(RUN_KEY, 0);
+        inOrder.verify(mMockListener)
+                .testRunFailed(
+                        Mockito.eq(InstrumentationResultProtoParser.INVALID_TEST_RESULTS_FILE));
+        inOrder.verify(mMockListener).testRunEnded(0, Collections.emptyMap());
+
+        verify(mMockListener).testRunStarted(RUN_KEY, 0);
+        verify(mMockListener)
+                .testRunFailed(
+                        Mockito.eq(InstrumentationResultProtoParser.INVALID_TEST_RESULTS_FILE));
+        verify(mMockListener).testRunEnded(0, Collections.emptyMap());
     }
 
     /**
@@ -212,10 +242,14 @@ public class InstrumentationResultProtoParserTest {
 
         protoTestFile = buildNoTestResultsProtoFile();
 
-        mMockListener.testRunStarted(RUN_KEY, 0);
-        mMockListener.testRunEnded(27013, Collections.emptyMap());
+        mParser.processProtoFile(protoTestFile);
 
-        processProtoAndVerify(protoTestFile);
+        InOrder inOrder = Mockito.inOrder(mMockListener);
+        inOrder.verify(mMockListener).testRunStarted(RUN_KEY, 0);
+        inOrder.verify(mMockListener).testRunEnded(27013, Collections.emptyMap());
+
+        verify(mMockListener).testRunStarted(RUN_KEY, 0);
+        verify(mMockListener).testRunEnded(27013, Collections.emptyMap());
     }
 
     /**
@@ -228,21 +262,24 @@ public class InstrumentationResultProtoParserTest {
         protoTestFile = buildSingleTestMetricSuccessProtoFile();
 
         TestIdentifier td = new TestIdentifier(CLASS_NAME_1, METHOD_NAME_1);
-        Capture<Map<String, String>> captureTestMetrics = new Capture<Map<String, String>>();
+        ArgumentCaptor<Map<String, String>> captureTestMetrics = ArgumentCaptor.forClass(Map.class);
 
-        mMockListener.testRunStarted(RUN_KEY, 1);
-        mMockListener.testStarted(td);
-        mMockListener.testEnded(EasyMock.eq(td), EasyMock.capture(captureTestMetrics));
-        mMockListener.testRunEnded(27013, Collections.emptyMap());
+        mParser.processProtoFile(protoTestFile);
 
-        processProtoAndVerify(protoTestFile);
+        InOrder inOrder = Mockito.inOrder(mMockListener);
+        inOrder.verify(mMockListener).testRunStarted(RUN_KEY, 1);
+        inOrder.verify(mMockListener).testStarted(td);
+        inOrder.verify(mMockListener).testEnded(Mockito.eq(td), captureTestMetrics.capture());
+        inOrder.verify(mMockListener).testRunEnded(27013, Collections.emptyMap());
+
+        verify(mMockListener).testRunStarted(RUN_KEY, 1);
+        verify(mMockListener).testStarted(td);
+        verify(mMockListener).testEnded(Mockito.eq(td), captureTestMetrics.capture());
+        verify(mMockListener).testRunEnded(27013, Collections.emptyMap());
 
         // Verify the test metrics
-        assertEquals("626",
-                captureTestMetrics.getValue().get("metric_key1"));
-        assertEquals("1",
-                captureTestMetrics.getValue()
-                        .get("metric_key2"));
+        assertEquals("626", captureTestMetrics.getValue().get("metric_key1"));
+        assertEquals("1", captureTestMetrics.getValue().get("metric_key2"));
     }
 
     /**
@@ -255,8 +292,8 @@ public class InstrumentationResultProtoParserTest {
     public void testOneTestSuccessWithMultipleListeners() throws IOException {
 
         List<ITestRunListener> runListeners = new ArrayList<>();
-        ITestRunListener mMockListener1 = EasyMock.createStrictMock(ITestRunListener.class);
-        ITestRunListener mMockListener2 = EasyMock.createStrictMock(ITestRunListener.class);
+        ITestRunListener mMockListener1 = mock(ITestRunListener.class);
+        ITestRunListener mMockListener2 = mock(ITestRunListener.class);
         runListeners.add(mMockListener1);
         runListeners.add(mMockListener2);
 
@@ -265,38 +302,40 @@ public class InstrumentationResultProtoParserTest {
         protoTestFile = buildSingleTestMetricSuccessProtoFile();
 
         TestIdentifier td = new TestIdentifier(CLASS_NAME_1, METHOD_NAME_1);
-        Capture<Map<String, String>> captureListener1Metrics = new Capture<Map<String, String>>();
-        Capture<Map<String, String>> captureListener2Metrics = new Capture<Map<String, String>>();
 
-        mMockListener1.testRunStarted(RUN_KEY, 1);
-        mMockListener1.testStarted(td);
-        mMockListener1.testEnded(EasyMock.eq(td), EasyMock.capture(captureListener1Metrics));
-        mMockListener1.testRunEnded(27013, Collections.emptyMap());
-
-        mMockListener2.testRunStarted(RUN_KEY, 1);
-        mMockListener2.testStarted(td);
-        mMockListener2.testEnded(EasyMock.eq(td), EasyMock.capture(captureListener2Metrics));
-        mMockListener2.testRunEnded(27013, Collections.emptyMap());
-
-        EasyMock.replay(mMockListener1);
-        EasyMock.replay(mMockListener2);
         mParser.processProtoFile(protoTestFile);
-        EasyMock.verify(mMockListener1);
-        EasyMock.verify(mMockListener2);
+
+        InOrder inOrder = Mockito.inOrder(mMockListener1, mMockListener2);
+        inOrder.verify(mMockListener1).testRunStarted(RUN_KEY, 1);
+        inOrder.verify(mMockListener2).testRunStarted(RUN_KEY, 1);
+        inOrder.verify(mMockListener1).testStarted(td);
+        inOrder.verify(mMockListener2).testStarted(td);
+        inOrder.verify(mMockListener1).testEnded(Mockito.eq(td), Mockito.any(Map.class));
+        inOrder.verify(mMockListener2).testEnded(Mockito.eq(td), Mockito.any(Map.class));
+        inOrder.verify(mMockListener1).testRunEnded(27013, Collections.emptyMap());
+        inOrder.verify(mMockListener2).testRunEnded(27013, Collections.emptyMap());
+
+        verify(mMockListener1).testRunStarted(RUN_KEY, 1);
+        verify(mMockListener1).testStarted(td);
+        ArgumentCaptor<Map<String, String>> captureListener1Metrics =
+                ArgumentCaptor.forClass(Map.class);
+        verify(mMockListener1).testEnded(Mockito.eq(td), captureListener1Metrics.capture());
+        verify(mMockListener1).testRunEnded(27013, Collections.emptyMap());
+
+        verify(mMockListener2).testRunStarted(RUN_KEY, 1);
+        verify(mMockListener2).testStarted(td);
+        ArgumentCaptor<Map<String, String>> captureListener2Metrics =
+                ArgumentCaptor.forClass(Map.class);
+        verify(mMockListener2).testEnded(Mockito.eq(td), captureListener2Metrics.capture());
+        verify(mMockListener2).testRunEnded(27013, Collections.emptyMap());
 
         // Verify the test metrics
-        assertEquals("626",
-                captureListener1Metrics.getValue().get("metric_key1"));
-        assertEquals("1",
-                captureListener1Metrics.getValue()
-                        .get("metric_key2"));
+        assertEquals("626", captureListener1Metrics.getValue().get("metric_key1"));
+        assertEquals("1", captureListener1Metrics.getValue().get("metric_key2"));
 
         // Verify the test metrics
-        assertEquals("626",
-                captureListener2Metrics.getValue().get("metric_key1"));
-        assertEquals("1",
-                captureListener2Metrics.getValue()
-                        .get("metric_key2"));
+        assertEquals("626", captureListener2Metrics.getValue().get("metric_key1"));
+        assertEquals("1", captureListener2Metrics.getValue().get("metric_key2"));
     }
 
     /**
@@ -309,17 +348,23 @@ public class InstrumentationResultProtoParserTest {
         protoTestFile = buildRunMetricSuccessProtoFile();
 
         TestIdentifier td = new TestIdentifier(CLASS_NAME_1, METHOD_NAME_1);
-        Capture<Map<String, String>> captureRunMetrics = new Capture<Map<String, String>>();
-        mMockListener.testRunStarted(RUN_KEY, 1);
-        mMockListener.testStarted(td);
-        mMockListener.testEnded(td, Collections.emptyMap());
-        mMockListener.testRunEnded(EasyMock.eq(27013L), EasyMock.capture(captureRunMetrics));
+        ArgumentCaptor<Map<String, String>> captureRunMetrics = ArgumentCaptor.forClass(Map.class);
 
-        processProtoAndVerify(protoTestFile);
+        mParser.processProtoFile(protoTestFile);
+
+        InOrder inOrder = Mockito.inOrder(mMockListener);
+        inOrder.verify(mMockListener).testRunStarted(RUN_KEY, 1);
+        inOrder.verify(mMockListener).testStarted(td);
+        inOrder.verify(mMockListener).testEnded(td, Collections.emptyMap());
+        inOrder.verify(mMockListener).testRunEnded(Mockito.eq(27013L), captureRunMetrics.capture());
+
+        verify(mMockListener).testRunStarted(RUN_KEY, 1);
+        verify(mMockListener).testStarted(td);
+        verify(mMockListener).testEnded(td, Collections.emptyMap());
+        verify(mMockListener).testRunEnded(Mockito.eq(27013L), captureRunMetrics.capture());
 
         // Verify run metrics
-        assertEquals("39584",
-                captureRunMetrics.getValue().get("run_metric_key"));
+        assertEquals("39584", captureRunMetrics.getValue().get("run_metric_key"));
     }
 
     /**
@@ -332,25 +377,28 @@ public class InstrumentationResultProtoParserTest {
         protoTestFile = buildTestAndRunMetricSuccessProtoFile();
 
         TestIdentifier td = new TestIdentifier(CLASS_NAME_1, METHOD_NAME_1);
-        Capture<Map<String, String>> captureTestMetrics = new Capture<Map<String, String>>();
-        Capture<Map<String, String>> captureRunMetrics = new Capture<Map<String, String>>();
-        mMockListener.testRunStarted(RUN_KEY, 1);
-        mMockListener.testStarted(td);
-        mMockListener.testEnded(EasyMock.eq(td), EasyMock.capture(captureTestMetrics));
-        mMockListener.testRunEnded(EasyMock.eq(27013L), EasyMock.capture(captureRunMetrics));
+        ArgumentCaptor<Map<String, String>> captureTestMetrics = ArgumentCaptor.forClass(Map.class);
+        ArgumentCaptor<Map<String, String>> captureRunMetrics = ArgumentCaptor.forClass(Map.class);
 
-        processProtoAndVerify(protoTestFile);
+        mParser.processProtoFile(protoTestFile);
+
+        InOrder inOrder = Mockito.inOrder(mMockListener);
+        inOrder.verify(mMockListener).testRunStarted(RUN_KEY, 1);
+        inOrder.verify(mMockListener).testStarted(td);
+        inOrder.verify(mMockListener).testEnded(Mockito.eq(td), captureTestMetrics.capture());
+        inOrder.verify(mMockListener).testRunEnded(Mockito.eq(27013L), captureRunMetrics.capture());
+
+        verify(mMockListener).testRunStarted(RUN_KEY, 1);
+        verify(mMockListener).testStarted(td);
+        verify(mMockListener).testEnded(Mockito.eq(td), captureTestMetrics.capture());
+        verify(mMockListener).testRunEnded(Mockito.eq(27013L), captureRunMetrics.capture());
 
         // Verify the test metrics
-        assertEquals("626",
-                captureTestMetrics.getValue().get("metric_key1"));
-        assertEquals("1",
-                captureTestMetrics.getValue()
-                        .get("metric_key2"));
+        assertEquals("626", captureTestMetrics.getValue().get("metric_key1"));
+        assertEquals("1", captureTestMetrics.getValue().get("metric_key2"));
 
         // Verify run metrics
-        assertEquals("39584",
-                captureRunMetrics.getValue().get("run_metric_key"));
+        assertEquals("39584", captureRunMetrics.getValue().get("run_metric_key"));
     }
 
     /**
@@ -365,34 +413,37 @@ public class InstrumentationResultProtoParserTest {
         TestIdentifier td1 = new TestIdentifier(CLASS_NAME_1, METHOD_NAME_1);
         TestIdentifier td2 = new TestIdentifier(CLASS_NAME_2, METHOD_NAME_2);
 
-        Capture<Map<String, String>> captureTest1Metrics = new Capture<Map<String, String>>();
-        Capture<Map<String, String>> captureTest2Metrics = new Capture<Map<String, String>>();
-        Capture<Map<String, String>> captureRunMetrics = new Capture<Map<String, String>>();
+        ArgumentCaptor<Map<String, String>> captureTest1Metrics =
+                ArgumentCaptor.forClass(Map.class);
+        ArgumentCaptor<Map<String, String>> captureTest2Metrics =
+                ArgumentCaptor.forClass(Map.class);
+        ArgumentCaptor<Map<String, String>> captureRunMetrics = ArgumentCaptor.forClass(Map.class);
 
-        mMockListener.testRunStarted(RUN_KEY, 2);
-        mMockListener.testStarted(td1);
-        mMockListener.testEnded(EasyMock.eq(td1), EasyMock.capture(captureTest1Metrics));
-        mMockListener.testStarted(td2);
-        mMockListener.testEnded(EasyMock.eq(td2), EasyMock.capture(captureTest2Metrics));
-        mMockListener.testRunEnded(EasyMock.eq(27013L), EasyMock.capture(captureRunMetrics));
+        mParser.processProtoFile(protoTestFile);
 
-        processProtoAndVerify(protoTestFile);
+        InOrder inOrder = Mockito.inOrder(mMockListener);
+        inOrder.verify(mMockListener).testRunStarted(RUN_KEY, 2);
+        inOrder.verify(mMockListener).testStarted(td1);
+        inOrder.verify(mMockListener).testEnded(Mockito.eq(td1), captureTest1Metrics.capture());
+        inOrder.verify(mMockListener).testStarted(td2);
+        inOrder.verify(mMockListener).testEnded(Mockito.eq(td2), captureTest2Metrics.capture());
+        inOrder.verify(mMockListener).testRunEnded(Mockito.eq(27013L), captureRunMetrics.capture());
+
+        verify(mMockListener).testRunStarted(RUN_KEY, 2);
+        verify(mMockListener).testStarted(td1);
+        verify(mMockListener).testEnded(Mockito.eq(td1), captureTest1Metrics.capture());
+        verify(mMockListener).testStarted(td2);
+        verify(mMockListener).testEnded(Mockito.eq(td2), captureTest2Metrics.capture());
+        verify(mMockListener).testRunEnded(Mockito.eq(27013L), captureRunMetrics.capture());
 
         // Verify the test1 and test2 metrics
-        assertEquals("626",
-                captureTest1Metrics.getValue().get("metric_key1"));
-        assertEquals("1",
-                captureTest1Metrics.getValue()
-                        .get("metric_key2"));
-        assertEquals("626",
-                captureTest2Metrics.getValue().get("metric_key1"));
-        assertEquals("1",
-                captureTest2Metrics.getValue()
-                        .get("metric_key2"));
+        assertEquals("626", captureTest1Metrics.getValue().get("metric_key1"));
+        assertEquals("1", captureTest1Metrics.getValue().get("metric_key2"));
+        assertEquals("626", captureTest2Metrics.getValue().get("metric_key1"));
+        assertEquals("1", captureTest2Metrics.getValue().get("metric_key2"));
 
         // Verify run metrics
-        assertEquals("39584",
-                captureRunMetrics.getValue().get("run_metric_key"));
+        assertEquals("39584", captureRunMetrics.getValue().get("run_metric_key"));
     }
 
     /**
@@ -405,22 +456,27 @@ public class InstrumentationResultProtoParserTest {
         protoTestFile = buildSingleTestFailureProtoFile();
 
         TestIdentifier td = new TestIdentifier(CLASS_NAME_1, METHOD_NAME_1);
-        Capture<Map<String, String>> captureTestMetrics = new Capture<Map<String, String>>();
+        ArgumentCaptor<Map<String, String>> captureTestMetrics = ArgumentCaptor.forClass(Map.class);
 
-        mMockListener.testRunStarted(RUN_KEY, 1);
-        mMockListener.testStarted(td);
-        mMockListener.testFailed(EasyMock.eq(td), EasyMock.eq(TEST_FAILURE_MESSAGE_1));
-        mMockListener.testEnded(EasyMock.eq(td), EasyMock.capture(captureTestMetrics));
-        mMockListener.testRunEnded(27013, Collections.emptyMap());
+        mParser.processProtoFile(protoTestFile);
 
-        processProtoAndVerify(protoTestFile);
+        InOrder inOrder = Mockito.inOrder(mMockListener);
+        inOrder.verify(mMockListener).testRunStarted(RUN_KEY, 1);
+        inOrder.verify(mMockListener).testStarted(td);
+        inOrder.verify(mMockListener)
+                .testFailed(Mockito.eq(td), Mockito.eq(TEST_FAILURE_MESSAGE_1));
+        inOrder.verify(mMockListener).testEnded(Mockito.eq(td), captureTestMetrics.capture());
+        inOrder.verify(mMockListener).testRunEnded(27013, Collections.emptyMap());
+
+        verify(mMockListener).testRunStarted(RUN_KEY, 1);
+        verify(mMockListener).testStarted(td);
+        verify(mMockListener).testFailed(Mockito.eq(td), Mockito.eq(TEST_FAILURE_MESSAGE_1));
+        verify(mMockListener).testEnded(Mockito.eq(td), captureTestMetrics.capture());
+        verify(mMockListener).testRunEnded(27013, Collections.emptyMap());
 
         // Verify the test metrics
-        assertEquals("626",
-                captureTestMetrics.getValue().get("metric_key1"));
-        assertEquals("1",
-                captureTestMetrics.getValue()
-                        .get("metric_key2"));
+        assertEquals("626", captureTestMetrics.getValue().get("metric_key1"));
+        assertEquals("1", captureTestMetrics.getValue().get("metric_key2"));
     }
 
     /**
@@ -435,26 +491,32 @@ public class InstrumentationResultProtoParserTest {
         TestIdentifier td1 = new TestIdentifier(CLASS_NAME_1, METHOD_NAME_1);
         TestIdentifier td2 = new TestIdentifier(CLASS_NAME_2, METHOD_NAME_2);
 
-        Capture<Map<String, String>> captureTest1Metrics = new Capture<Map<String, String>>();
+        ArgumentCaptor<Map<String, String>> captureTest1Metrics =
+                ArgumentCaptor.forClass(Map.class);
 
-        mMockListener.testRunStarted(RUN_KEY, 2);
-        mMockListener.testStarted(td1);
-        mMockListener.testEnded(EasyMock.eq(td1), EasyMock.capture(captureTest1Metrics));
+        mParser.processProtoFile(protoTestFile);
 
-        mMockListener.testStarted(td2);
-        mMockListener.testFailed(EasyMock.eq(td2), EasyMock.eq(TEST_FAILURE_MESSAGE_1));
-        mMockListener.testEnded(td2, Collections.emptyMap());
+        InOrder inOrder = Mockito.inOrder(mMockListener);
+        inOrder.verify(mMockListener).testRunStarted(RUN_KEY, 2);
+        inOrder.verify(mMockListener).testStarted(td1);
+        inOrder.verify(mMockListener).testEnded(Mockito.eq(td1), captureTest1Metrics.capture());
+        inOrder.verify(mMockListener).testStarted(td2);
+        inOrder.verify(mMockListener)
+                .testFailed(Mockito.eq(td2), Mockito.eq(TEST_FAILURE_MESSAGE_1));
+        inOrder.verify(mMockListener).testEnded(td2, Collections.emptyMap());
+        inOrder.verify(mMockListener).testRunEnded(27013, Collections.emptyMap());
 
-        mMockListener.testRunEnded(27013, Collections.emptyMap());
-
-        processProtoAndVerify(protoTestFile);
+        verify(mMockListener).testRunStarted(RUN_KEY, 2);
+        verify(mMockListener).testStarted(td1);
+        verify(mMockListener).testEnded(Mockito.eq(td1), captureTest1Metrics.capture());
+        verify(mMockListener).testStarted(td2);
+        verify(mMockListener).testFailed(Mockito.eq(td2), Mockito.eq(TEST_FAILURE_MESSAGE_1));
+        verify(mMockListener).testEnded(td2, Collections.emptyMap());
+        verify(mMockListener).testRunEnded(27013, Collections.emptyMap());
 
         // Verify the test metrics
-        assertEquals("626",
-                captureTest1Metrics.getValue().get("metric_key1"));
-        assertEquals("1",
-                captureTest1Metrics.getValue()
-                        .get("metric_key2"));
+        assertEquals("626", captureTest1Metrics.getValue().get("metric_key1"));
+        assertEquals("1", captureTest1Metrics.getValue().get("metric_key2"));
     }
 
     /**
@@ -465,25 +527,34 @@ public class InstrumentationResultProtoParserTest {
     @Test
     public void testAllTestsIncomplete() throws IOException {
         protoTestFile = buildTestsIncompleteProtoFile();
-        Capture<String> testOutputErrorMessage = new Capture<>();
-        Capture<String> runOutputErrorMessage = new Capture<>();
+        ArgumentCaptor<String> testOutputErrorMessage = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> runOutputErrorMessage = ArgumentCaptor.forClass(String.class);
 
         TestIdentifier td1 = new TestIdentifier(CLASS_NAME_1, METHOD_NAME_1);
-        mMockListener.testRunStarted(RUN_KEY, 2);
-        mMockListener.testStarted(td1);
-        mMockListener.testFailed(EasyMock.eq(td1), EasyMock.capture(testOutputErrorMessage));
-        mMockListener.testEnded(td1, Collections.emptyMap());
-        mMockListener.testRunFailed(EasyMock.capture(runOutputErrorMessage));
-        mMockListener.testRunEnded(0, Collections.emptyMap());
 
-        processProtoAndVerify(protoTestFile);
+        mParser.processProtoFile(protoTestFile);
 
-        assertTrue(testOutputErrorMessage.toString().contains(
-                INCOMPLETE_TEST_ERR_MSG_PREFIX));
-        assertTrue(testOutputErrorMessage.toString().contains(TEST_COMPLETED_STATUS_1));
-        assertTrue(runOutputErrorMessage.toString().contains(
-                INCOMPLETE_RUN_ERR_MSG_PREFIX));
-        assertTrue(runOutputErrorMessage.toString().contains(TEST_COMPLETED_STATUS_1));
+        InOrder inOrder = Mockito.inOrder(mMockListener);
+        inOrder.verify(mMockListener).testRunStarted(RUN_KEY, 2);
+        inOrder.verify(mMockListener).testStarted(td1);
+        inOrder.verify(mMockListener).testFailed(Mockito.eq(td1), Mockito.any(String.class));
+        inOrder.verify(mMockListener).testEnded(td1, Collections.emptyMap());
+        inOrder.verify(mMockListener).testRunFailed(Mockito.any(String.class));
+        inOrder.verify(mMockListener).testRunEnded(0, Collections.emptyMap());
+
+        verify(mMockListener).testRunStarted(RUN_KEY, 2);
+        verify(mMockListener).testStarted(td1);
+        verify(mMockListener).testFailed(Mockito.eq(td1), testOutputErrorMessage.capture());
+        verify(mMockListener).testEnded(td1, Collections.emptyMap());
+        verify(mMockListener).testRunFailed(runOutputErrorMessage.capture());
+        verify(mMockListener).testRunEnded(0, Collections.emptyMap());
+
+        // CLog.i("#### testOutputErrorMessage = %s", testOutputErrorMessage.getValue().toString());
+        // CLog.i("#### runOutputErrorMessage = %s", runOutputErrorMessage.getValue().toString());
+        assertTrue(testOutputErrorMessage.getValue().contains(INCOMPLETE_TEST_ERR_MSG_PREFIX));
+        assertTrue(testOutputErrorMessage.getValue().contains(TEST_COMPLETED_STATUS_1));
+        assertTrue(runOutputErrorMessage.getValue().contains(INCOMPLETE_RUN_ERR_MSG_PREFIX));
+        assertTrue(runOutputErrorMessage.getValue().contains(TEST_COMPLETED_STATUS_1));
     }
 
     /**
@@ -495,34 +566,40 @@ public class InstrumentationResultProtoParserTest {
     public void testPartialTestsIncomplete() throws IOException {
         protoTestFile = buildPartialTestsIncompleteProtoFile();
 
-        Capture<String> testOutputErrorMessage = new Capture<>();
-        Capture<String> runOutputErrorMessage = new Capture<>();
+        ArgumentCaptor<String> testOutputErrorMessage = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> runOutputErrorMessage = ArgumentCaptor.forClass(String.class);
         TestIdentifier td1 = new TestIdentifier(CLASS_NAME_1, METHOD_NAME_1);
         TestIdentifier td2 = new TestIdentifier(CLASS_NAME_2, METHOD_NAME_2);
-        Capture<Map<String, String>> captureTest1Metrics = new Capture<Map<String, String>>();
+        ArgumentCaptor<Map<String, String>> captureTest1Metrics =
+                ArgumentCaptor.forClass(Map.class);
 
-        mMockListener.testRunStarted(RUN_KEY, 2);
-        mMockListener.testStarted(td1);
-        mMockListener.testEnded(EasyMock.eq(td1), EasyMock.capture(captureTest1Metrics));
-        mMockListener.testStarted(td2);
-        mMockListener.testFailed(EasyMock.eq(td2), EasyMock.capture(testOutputErrorMessage));
-        mMockListener.testEnded(td2, Collections.emptyMap());
-        mMockListener.testRunFailed(EasyMock.capture(runOutputErrorMessage));
-        mMockListener.testRunEnded(0, Collections.emptyMap());
+        mParser.processProtoFile(protoTestFile);
 
-        processProtoAndVerify(protoTestFile);
+        InOrder inOrder = Mockito.inOrder(mMockListener);
+        inOrder.verify(mMockListener).testRunStarted(RUN_KEY, 2);
+        inOrder.verify(mMockListener).testStarted(td1);
+        inOrder.verify(mMockListener).testEnded(Mockito.eq(td1), Mockito.any(Map.class));
+        inOrder.verify(mMockListener).testStarted(td2);
+        inOrder.verify(mMockListener).testFailed(Mockito.eq(td2), Mockito.any(String.class));
+        inOrder.verify(mMockListener).testEnded(td2, Collections.emptyMap());
+        inOrder.verify(mMockListener).testRunFailed(Mockito.any(String.class));
+        inOrder.verify(mMockListener).testRunEnded(0, Collections.emptyMap());
 
-        assertEquals("626",
-                captureTest1Metrics.getValue().get("metric_key1"));
-        assertEquals("1",
-                captureTest1Metrics.getValue()
-                        .get("metric_key2"));
-        assertTrue(testOutputErrorMessage.toString().contains(
-                INCOMPLETE_TEST_ERR_MSG_PREFIX));
-        assertTrue(testOutputErrorMessage.toString().contains(TEST_COMPLETED_STATUS_2));
-        assertTrue(runOutputErrorMessage.toString().contains(
-                INCOMPLETE_RUN_ERR_MSG_PREFIX));
-        assertTrue(runOutputErrorMessage.toString().contains(TEST_COMPLETED_STATUS_2));
+        verify(mMockListener).testRunStarted(RUN_KEY, 2);
+        verify(mMockListener).testStarted(td1);
+        verify(mMockListener).testEnded(Mockito.eq(td1), captureTest1Metrics.capture());
+        verify(mMockListener).testStarted(td2);
+        verify(mMockListener).testFailed(Mockito.eq(td2), testOutputErrorMessage.capture());
+        verify(mMockListener).testEnded(td2, Collections.emptyMap());
+        verify(mMockListener).testRunFailed(runOutputErrorMessage.capture());
+        verify(mMockListener).testRunEnded(0, Collections.emptyMap());
+
+        assertEquals("626", captureTest1Metrics.getValue().get("metric_key1"));
+        assertEquals("1", captureTest1Metrics.getValue().get("metric_key2"));
+        assertTrue(testOutputErrorMessage.getValue().contains(INCOMPLETE_TEST_ERR_MSG_PREFIX));
+        assertTrue(testOutputErrorMessage.getValue().contains(TEST_COMPLETED_STATUS_2));
+        assertTrue(runOutputErrorMessage.getValue().contains(INCOMPLETE_RUN_ERR_MSG_PREFIX));
+        assertTrue(runOutputErrorMessage.getValue().contains(TEST_COMPLETED_STATUS_2));
     }
 
     /**
@@ -533,26 +610,30 @@ public class InstrumentationResultProtoParserTest {
     @Test
     public void testOneTestNotStarted() throws IOException {
         protoTestFile = buildOneTestNotStarted();
-        Capture<String> runOutputErrorMessage = new Capture<>();
+        ArgumentCaptor<String> runOutputErrorMessage = ArgumentCaptor.forClass(String.class);
         TestIdentifier td1 = new TestIdentifier(CLASS_NAME_1, METHOD_NAME_1);
-        Capture<Map<String, String>> captureTest1Metrics = new Capture<Map<String, String>>();
+        ArgumentCaptor<Map<String, String>> captureTest1Metrics =
+                ArgumentCaptor.forClass(Map.class);
 
-        mMockListener.testRunStarted(RUN_KEY, 2);
-        mMockListener.testStarted(td1);
-        mMockListener.testEnded(EasyMock.eq(td1), EasyMock.capture(captureTest1Metrics));
-        mMockListener.testRunFailed(EasyMock.capture(runOutputErrorMessage));
-        mMockListener.testRunEnded(0, Collections.emptyMap());
+        mParser.processProtoFile(protoTestFile);
 
-        processProtoAndVerify(protoTestFile);
+        InOrder inOrder = Mockito.inOrder(mMockListener);
+        inOrder.verify(mMockListener).testRunStarted(RUN_KEY, 2);
+        inOrder.verify(mMockListener).testStarted(td1);
+        inOrder.verify(mMockListener).testEnded(Mockito.eq(td1), Mockito.any(Map.class));
+        inOrder.verify(mMockListener).testRunFailed(Mockito.any(String.class));
+        inOrder.verify(mMockListener).testRunEnded(0, Collections.emptyMap());
 
-        assertEquals("626",
-                captureTest1Metrics.getValue().get("metric_key1"));
-        assertEquals("1",
-                captureTest1Metrics.getValue()
-                        .get("metric_key2"));
-        assertTrue(runOutputErrorMessage.toString().contains(
-                INCOMPLETE_RUN_ERR_MSG_PREFIX));
-        assertTrue(runOutputErrorMessage.toString().contains(TEST_COMPLETED_STATUS_2));
+        verify(mMockListener).testRunStarted(RUN_KEY, 2);
+        verify(mMockListener).testStarted(td1);
+        verify(mMockListener).testEnded(Mockito.eq(td1), captureTest1Metrics.capture());
+        verify(mMockListener).testRunFailed(runOutputErrorMessage.capture());
+        verify(mMockListener).testRunEnded(0, Collections.emptyMap());
+
+        assertEquals("626", captureTest1Metrics.getValue().get("metric_key1"));
+        assertEquals("1", captureTest1Metrics.getValue().get("metric_key2"));
+        assertTrue(runOutputErrorMessage.getValue().contains(INCOMPLETE_RUN_ERR_MSG_PREFIX));
+        assertTrue(runOutputErrorMessage.getValue().contains(TEST_COMPLETED_STATUS_2));
     }
 
     /**
@@ -564,10 +645,14 @@ public class InstrumentationResultProtoParserTest {
     public void testTimeStampMissingNotEnforced() throws IOException {
         protoTestFile = buildInvalidTimeStampResultsProto(false);
 
-        mMockListener.testRunStarted(RUN_KEY, 0);
-        mMockListener.testRunEnded(0, Collections.emptyMap());
+        mParser.processProtoFile(protoTestFile);
 
-        processProtoAndVerify(protoTestFile);
+        InOrder inOrder = Mockito.inOrder(mMockListener);
+        inOrder.verify(mMockListener).testRunStarted(RUN_KEY, 0);
+        inOrder.verify(mMockListener).testRunEnded(0, Collections.emptyMap());
+
+        verify(mMockListener).testRunStarted(RUN_KEY, 0);
+        verify(mMockListener).testRunEnded(0, Collections.emptyMap());
     }
 
     /**
@@ -581,12 +666,18 @@ public class InstrumentationResultProtoParserTest {
     public void testDirectFailure() throws IOException {
         protoTestFile = buildValidTimeStampWithFatalExceptionResultsProto();
 
-        Capture<String> capture = new Capture<>();
-        mMockListener.testRunStarted(RUN_KEY, 0);
-        mMockListener.testRunFailed(EasyMock.capture(capture));
-        mMockListener.testRunEnded(0, Collections.emptyMap());
+        ArgumentCaptor<String> capture = ArgumentCaptor.forClass(String.class);
 
-        processProtoAndVerify(protoTestFile);
+        mParser.processProtoFile(protoTestFile);
+
+        InOrder inOrder = Mockito.inOrder(mMockListener);
+        inOrder.verify(mMockListener).testRunStarted(RUN_KEY, 0);
+        inOrder.verify(mMockListener).testRunFailed(capture.capture());
+        inOrder.verify(mMockListener).testRunEnded(0, Collections.emptyMap());
+
+        verify(mMockListener).testRunStarted(RUN_KEY, 0);
+        verify(mMockListener).testRunFailed(capture.capture());
+        verify(mMockListener).testRunEnded(0, Collections.emptyMap());
 
         String failure = capture.getValue();
         assertTrue(failure.contains("java.lang.RuntimeException: it failed super fast."));
@@ -601,14 +692,22 @@ public class InstrumentationResultProtoParserTest {
     public void testIgnoreProtoResult() throws IOException {
         protoTestFile = buildTestIgnoredResultsProto();
 
-        mMockListener.testRunStarted(RUN_KEY, 1);
         TestIdentifier td1 = new TestIdentifier(CLASS_NAME_1, METHOD_NAME_1);
-        mMockListener.testStarted(td1);
-        mMockListener.testIgnored(td1);
-        mMockListener.testEnded(td1, Collections.emptyMap());
-        mMockListener.testRunEnded(27013, Collections.emptyMap());
 
-        processProtoAndVerify(protoTestFile);
+        mParser.processProtoFile(protoTestFile);
+
+        InOrder inOrder = Mockito.inOrder(mMockListener);
+        inOrder.verify(mMockListener).testRunStarted(RUN_KEY, 1);
+        inOrder.verify(mMockListener).testStarted(td1);
+        inOrder.verify(mMockListener).testIgnored(td1);
+        inOrder.verify(mMockListener).testEnded(td1, Collections.emptyMap());
+        inOrder.verify(mMockListener).testRunEnded(27013, Collections.emptyMap());
+
+        verify(mMockListener).testRunStarted(RUN_KEY, 1);
+        verify(mMockListener).testStarted(td1);
+        verify(mMockListener).testIgnored(td1);
+        verify(mMockListener).testEnded(td1, Collections.emptyMap());
+        verify(mMockListener).testRunEnded(27013, Collections.emptyMap());
     }
 
     /**
@@ -620,17 +719,32 @@ public class InstrumentationResultProtoParserTest {
     public void testAssumptionProtoResult() throws IOException {
         protoTestFile = buildTestAssumptionResultsProto();
 
-        mMockListener.testRunStarted(RUN_KEY, 1);
         TestIdentifier td1 = new TestIdentifier(CLASS_NAME_1, METHOD_NAME_1);
-        mMockListener.testStarted(td1);
-        mMockListener.testAssumptionFailure(EasyMock.eq(td1),
-                EasyMock.startsWith(
-                        "org.junit.AssumptionViolatedException:"
-                                + " got: <false>, expected: is <true>"));
-        mMockListener.testEnded(td1, Collections.emptyMap());
-        mMockListener.testRunEnded(27013, Collections.emptyMap());
-        processProtoAndVerify(protoTestFile);
 
+        mParser.processProtoFile(protoTestFile);
+
+        InOrder inOrder = Mockito.inOrder(mMockListener);
+        inOrder.verify(mMockListener).testRunStarted(RUN_KEY, 1);
+        inOrder.verify(mMockListener).testStarted(td1);
+        inOrder.verify(mMockListener)
+                .testAssumptionFailure(
+                        Mockito.eq(td1),
+                        Mockito.startsWith(
+                                "org.junit.AssumptionViolatedException:"
+                                        + " got: <false>, expected: is <true>"));
+        inOrder.verify(mMockListener).testEnded(td1, Collections.emptyMap());
+        inOrder.verify(mMockListener).testRunEnded(27013, Collections.emptyMap());
+
+        verify(mMockListener).testRunStarted(RUN_KEY, 1);
+        verify(mMockListener).testStarted(td1);
+        verify(mMockListener)
+                .testAssumptionFailure(
+                        Mockito.eq(td1),
+                        Mockito.startsWith(
+                                "org.junit.AssumptionViolatedException:"
+                                        + " got: <false>, expected: is <true>"));
+        verify(mMockListener).testEnded(td1, Collections.emptyMap());
+        verify(mMockListener).testRunEnded(27013, Collections.emptyMap());
     }
 
     @After
@@ -640,15 +754,9 @@ public class InstrumentationResultProtoParserTest {
         }
     }
 
-    private void processProtoAndVerify(File protoTestFile) throws IOException {
-        EasyMock.replay(mMockListener);
-        mParser.processProtoFile(protoTestFile);
-        EasyMock.verify(mMockListener);
-    }
-
     private File buildNoTestResultsProtoFile() throws IOException {
-        Session sessionProto = Session.newBuilder()
-                .setSessionStatus(getSessionStatusProto(false, false)).build();
+        Session sessionProto =
+                Session.newBuilder().setSessionStatus(getSessionStatusProto(false, false)).build();
         File protoFile = File.createTempFile("tmp", ".pb");
         sessionProto.writeTo(new FileOutputStream(protoFile));
         return protoFile;
@@ -662,8 +770,11 @@ public class InstrumentationResultProtoParserTest {
         testStatusList.add(getTestStatusProto(true));
         // Test End
         testStatusList.add(getTestInfoProto(CLASS_NAME_1, METHOD_NAME_1, 1, 1, false, false));
-        Session sessionProto = Session.newBuilder().addAllTestStatus(testStatusList)
-                .setSessionStatus(getSessionStatusProto(false, false)).build();
+        Session sessionProto =
+                Session.newBuilder()
+                        .addAllTestStatus(testStatusList)
+                        .setSessionStatus(getSessionStatusProto(false, false))
+                        .build();
         File protoFile = File.createTempFile("tmp", ".pb");
         sessionProto.writeTo(new FileOutputStream(protoFile));
         return protoFile;
@@ -678,8 +789,11 @@ public class InstrumentationResultProtoParserTest {
         // Test End.
         testStatusList.add(getTestInfoProto(CLASS_NAME_1, METHOD_NAME_1, 1, 1, false, false));
         // Session with metrics.
-        Session sessionProto = Session.newBuilder().addAllTestStatus(testStatusList)
-                .setSessionStatus(getSessionStatusProto(true, false)).build();
+        Session sessionProto =
+                Session.newBuilder()
+                        .addAllTestStatus(testStatusList)
+                        .setSessionStatus(getSessionStatusProto(true, false))
+                        .build();
         File protoFile = File.createTempFile("tmp", ".pb");
         sessionProto.writeTo(new FileOutputStream(protoFile));
         return protoFile;
@@ -694,8 +808,11 @@ public class InstrumentationResultProtoParserTest {
         // Test End.
         testStatusList.add(getTestInfoProto(CLASS_NAME_1, METHOD_NAME_1, 1, 1, false, false));
         // Session with metrics.
-        Session sessionProto = Session.newBuilder().addAllTestStatus(testStatusList)
-                .setSessionStatus(getSessionStatusProto(true, false)).build();
+        Session sessionProto =
+                Session.newBuilder()
+                        .addAllTestStatus(testStatusList)
+                        .setSessionStatus(getSessionStatusProto(true, false))
+                        .build();
         File protoFile = File.createTempFile("tmp", ".pb");
         sessionProto.writeTo(new FileOutputStream(protoFile));
         return protoFile;
@@ -716,8 +833,11 @@ public class InstrumentationResultProtoParserTest {
         // Test End.
         testStatusList.add(getTestInfoProto(CLASS_NAME_2, METHOD_NAME_2, 2, 2, false, false));
         // Session with metrics.
-        Session sessionProto = Session.newBuilder().addAllTestStatus(testStatusList)
-                .setSessionStatus(getSessionStatusProto(true, false)).build();
+        Session sessionProto =
+                Session.newBuilder()
+                        .addAllTestStatus(testStatusList)
+                        .setSessionStatus(getSessionStatusProto(true, false))
+                        .build();
         File protoFile = File.createTempFile("tmp", ".pb");
         sessionProto.writeTo(new FileOutputStream(protoFile));
         return protoFile;
@@ -732,8 +852,11 @@ public class InstrumentationResultProtoParserTest {
         // Test End.
         testStatusList.add(getTestInfoProto(CLASS_NAME_1, METHOD_NAME_1, 1, 1, false, true));
         // Session with metrics.
-        Session sessionProto = Session.newBuilder().addAllTestStatus(testStatusList)
-                .setSessionStatus(getSessionStatusProto(false, false)).build();
+        Session sessionProto =
+                Session.newBuilder()
+                        .addAllTestStatus(testStatusList)
+                        .setSessionStatus(getSessionStatusProto(false, false))
+                        .build();
         File protoFile = File.createTempFile("tmp", ".pb");
         sessionProto.writeTo(new FileOutputStream(protoFile));
         return protoFile;
@@ -753,8 +876,11 @@ public class InstrumentationResultProtoParserTest {
         // Test End.
         testStatusList.add(getTestInfoProto(CLASS_NAME_2, METHOD_NAME_2, 2, 2, false, true));
         // Session with metrics.
-        Session sessionProto = Session.newBuilder().addAllTestStatus(testStatusList)
-                .setSessionStatus(getSessionStatusProto(false, false)).build();
+        Session sessionProto =
+                Session.newBuilder()
+                        .addAllTestStatus(testStatusList)
+                        .setSessionStatus(getSessionStatusProto(false, false))
+                        .build();
         File protoFile = File.createTempFile("tmp", ".pb");
         sessionProto.writeTo(new FileOutputStream(protoFile));
         return protoFile;
@@ -766,12 +892,10 @@ public class InstrumentationResultProtoParserTest {
         testStatusList.add(getTestInfoProto(CLASS_NAME_1, METHOD_NAME_1, 1, 2, true, false));
 
         // Session with metrics.
-        Session sessionProto = Session.newBuilder().addAllTestStatus(testStatusList)
-                .build();
+        Session sessionProto = Session.newBuilder().addAllTestStatus(testStatusList).build();
         File protoFile = File.createTempFile("tmp", ".pb");
         sessionProto.writeTo(new FileOutputStream(protoFile));
         return protoFile;
-
     }
 
     private File buildPartialTestsIncompleteProtoFile() throws IOException {
@@ -815,26 +939,29 @@ public class InstrumentationResultProtoParserTest {
         List<ResultsBundleEntry> entryList = new LinkedList<ResultsBundleEntry>();
 
         if (isWithStack) {
-            entryList.add(ResultsBundleEntry.newBuilder()
-                    .setKey("stream")
-                    .setValueString(FATAL_EXCEPTION_MSG
-                            + " java.lang.IllegalArgumentException: Ambiguous arguments: "
-                            + "cannot provide both test package and test class(es) to run")
-                    .build());
+            entryList.add(
+                    ResultsBundleEntry.newBuilder()
+                            .setKey("stream")
+                            .setValueString(
+                                    FATAL_EXCEPTION_MSG
+                                            + " java.lang.IllegalArgumentException: Ambiguous"
+                                            + " arguments: cannot provide both test package and"
+                                            + " test class(es) to run")
+                            .build());
         } else {
-            entryList.add(ResultsBundleEntry.newBuilder()
-                    .setKey("stream").setValueString("")
-                    .build());
+            entryList.add(
+                    ResultsBundleEntry.newBuilder().setKey("stream").setValueString("").build());
         }
 
-        SessionStatus sessionStatus = SessionStatus.newBuilder().setResultCode(-1)
-                .setStatusCode(SessionStatusCode.SESSION_FINISHED)
-                .setResults(ResultsBundle.newBuilder().addAllEntries(entryList).build())
-                .build();
+        SessionStatus sessionStatus =
+                SessionStatus.newBuilder()
+                        .setResultCode(-1)
+                        .setStatusCode(SessionStatusCode.SESSION_FINISHED)
+                        .setResults(ResultsBundle.newBuilder().addAllEntries(entryList).build())
+                        .build();
 
         // Session with metrics.
-        Session sessionProto = Session.newBuilder()
-                .setSessionStatus(sessionStatus).build();
+        Session sessionProto = Session.newBuilder().setSessionStatus(sessionStatus).build();
         File protoFile = File.createTempFile("tmp", ".pb");
         sessionProto.writeTo(new FileOutputStream(protoFile));
         return protoFile;
@@ -843,24 +970,26 @@ public class InstrumentationResultProtoParserTest {
     private File buildValidTimeStampWithFatalExceptionResultsProto() throws IOException {
         List<ResultsBundleEntry> entryList = new LinkedList<ResultsBundleEntry>();
 
-        entryList.add(ResultsBundleEntry.newBuilder()
-                .setKey("stream")
-                .setValueString(FATAL_EXCEPTION_MSG
-                        + "Time: 0 \n"
-                        + "1) Fatal exception when running tests"
-                        + "java.lang.RuntimeException: it failed super fast."
-                        + "at stackstack"
-                )
-                .build());
+        entryList.add(
+                ResultsBundleEntry.newBuilder()
+                        .setKey("stream")
+                        .setValueString(
+                                FATAL_EXCEPTION_MSG
+                                        + "Time: 0 \n"
+                                        + "1) Fatal exception when running tests"
+                                        + "java.lang.RuntimeException: it failed super fast."
+                                        + "at stackstack")
+                        .build());
 
-        SessionStatus sessionStatus = SessionStatus.newBuilder().setResultCode(-1)
-                .setStatusCode(SessionStatusCode.SESSION_FINISHED)
-                .setResults(ResultsBundle.newBuilder().addAllEntries(entryList).build())
-                .build();
+        SessionStatus sessionStatus =
+                SessionStatus.newBuilder()
+                        .setResultCode(-1)
+                        .setStatusCode(SessionStatusCode.SESSION_FINISHED)
+                        .setResults(ResultsBundle.newBuilder().addAllEntries(entryList).build())
+                        .build();
 
         // Session with metrics.
-        Session sessionProto = Session.newBuilder()
-                .setSessionStatus(sessionStatus).build();
+        Session sessionProto = Session.newBuilder().setSessionStatus(sessionStatus).build();
         File protoFile = File.createTempFile("tmp", ".pb");
         sessionProto.writeTo(new FileOutputStream(protoFile));
         return protoFile;
@@ -874,24 +1003,36 @@ public class InstrumentationResultProtoParserTest {
 
         // Test ignore status result.
         List<ResultsBundleEntry> entryList = new LinkedList<ResultsBundleEntry>();
-        entryList.add(ResultsBundleEntry.newBuilder().setKey("class").setValueString(CLASS_NAME_1)
-                .build());
-        entryList.add(ResultsBundleEntry.newBuilder().setKey("current").setValueInt(1)
-                .build());
-        entryList.add(ResultsBundleEntry.newBuilder().setKey("id")
-                .setValueString("AndroidJUnitRunner").build());
-        entryList.add(ResultsBundleEntry.newBuilder().setKey("numtests").setValueInt(1)
-                .build());
+        entryList.add(
+                ResultsBundleEntry.newBuilder()
+                        .setKey("class")
+                        .setValueString(CLASS_NAME_1)
+                        .build());
+        entryList.add(ResultsBundleEntry.newBuilder().setKey("current").setValueInt(1).build());
+        entryList.add(
+                ResultsBundleEntry.newBuilder()
+                        .setKey("id")
+                        .setValueString("AndroidJUnitRunner")
+                        .build());
+        entryList.add(ResultsBundleEntry.newBuilder().setKey("numtests").setValueInt(1).build());
 
-        entryList.add(ResultsBundleEntry.newBuilder().setKey("test").setValueString(METHOD_NAME_1)
-                .build());
+        entryList.add(
+                ResultsBundleEntry.newBuilder()
+                        .setKey("test")
+                        .setValueString(METHOD_NAME_1)
+                        .build());
 
-        testStatusList.add(TestStatus.newBuilder().setResultCode(-3)
-                .setResults(ResultsBundle.newBuilder().addAllEntries(entryList).build())
-                .build());
+        testStatusList.add(
+                TestStatus.newBuilder()
+                        .setResultCode(-3)
+                        .setResults(ResultsBundle.newBuilder().addAllEntries(entryList).build())
+                        .build());
 
-        Session sessionProto = Session.newBuilder().addAllTestStatus(testStatusList)
-                .setSessionStatus(getSessionStatusProto(false, false)).build();
+        Session sessionProto =
+                Session.newBuilder()
+                        .addAllTestStatus(testStatusList)
+                        .setSessionStatus(getSessionStatusProto(false, false))
+                        .build();
         File protoFile = File.createTempFile("tmp", ".pb");
         sessionProto.writeTo(new FileOutputStream(protoFile));
         return protoFile;
@@ -906,25 +1047,41 @@ public class InstrumentationResultProtoParserTest {
 
         // Test ignore status result.
         List<ResultsBundleEntry> entryList = new LinkedList<ResultsBundleEntry>();
-        entryList.add(ResultsBundleEntry.newBuilder().setKey("class").setValueString(CLASS_NAME_1)
-                .build());
-        entryList.add(ResultsBundleEntry.newBuilder().setKey("current").setValueInt(1)
-                .build());
-        entryList.add(ResultsBundleEntry.newBuilder().setKey("id")
-                .setValueString("AndroidJUnitRunner").build());
-        entryList.add(ResultsBundleEntry.newBuilder().setKey("numtests").setValueInt(1)
-                .build());
-        entryList.add(ResultsBundleEntry.newBuilder().setKey("test").setValueString(METHOD_NAME_1)
-                .build());
-        entryList.add(ResultsBundleEntry.newBuilder().setKey("stack").setValueString(
-                "org.junit.AssumptionViolatedException: got: <false>, expected: is <true>")
-                .build());
-        testStatusList.add(TestStatus.newBuilder().setResultCode(-4)
-                .setResults(ResultsBundle.newBuilder().addAllEntries(entryList).build())
-                .build());
+        entryList.add(
+                ResultsBundleEntry.newBuilder()
+                        .setKey("class")
+                        .setValueString(CLASS_NAME_1)
+                        .build());
+        entryList.add(ResultsBundleEntry.newBuilder().setKey("current").setValueInt(1).build());
+        entryList.add(
+                ResultsBundleEntry.newBuilder()
+                        .setKey("id")
+                        .setValueString("AndroidJUnitRunner")
+                        .build());
+        entryList.add(ResultsBundleEntry.newBuilder().setKey("numtests").setValueInt(1).build());
+        entryList.add(
+                ResultsBundleEntry.newBuilder()
+                        .setKey("test")
+                        .setValueString(METHOD_NAME_1)
+                        .build());
+        entryList.add(
+                ResultsBundleEntry.newBuilder()
+                        .setKey("stack")
+                        .setValueString(
+                                "org.junit.AssumptionViolatedException: got: <false>, expected: is"
+                                        + " <true>")
+                        .build());
+        testStatusList.add(
+                TestStatus.newBuilder()
+                        .setResultCode(-4)
+                        .setResults(ResultsBundle.newBuilder().addAllEntries(entryList).build())
+                        .build());
 
-        Session sessionProto = Session.newBuilder().addAllTestStatus(testStatusList)
-                .setSessionStatus(getSessionStatusProto(false, false)).build();
+        Session sessionProto =
+                Session.newBuilder()
+                        .addAllTestStatus(testStatusList)
+                        .setSessionStatus(getSessionStatusProto(false, false))
+                        .build();
         File protoFile = File.createTempFile("tmp", ".pb");
         sessionProto.writeTo(new FileOutputStream(protoFile));
         return protoFile;
@@ -941,46 +1098,61 @@ public class InstrumentationResultProtoParserTest {
      * @param isFailure true if the test if failed.
      * @return
      */
-    private TestStatus getTestInfoProto(String className, String methodName, int current,
-            int numTests, boolean isStart, boolean isFailure) {
+    private TestStatus getTestInfoProto(
+            String className,
+            String methodName,
+            int current,
+            int numTests,
+            boolean isStart,
+            boolean isFailure) {
         List<ResultsBundleEntry> entryList = new LinkedList<ResultsBundleEntry>();
-        entryList.add(ResultsBundleEntry.newBuilder().setKey("class").setValueString(className)
-                .build());
-        entryList.add(ResultsBundleEntry.newBuilder().setKey("current").setValueInt(current)
-                .build());
-        entryList.add(ResultsBundleEntry.newBuilder().setKey("id")
-                .setValueString("AndroidJUnitRunner").build());
-        entryList.add(ResultsBundleEntry.newBuilder().setKey("numtests").setValueInt(numTests)
-                .build());
+        entryList.add(
+                ResultsBundleEntry.newBuilder().setKey("class").setValueString(className).build());
+        entryList.add(
+                ResultsBundleEntry.newBuilder().setKey("current").setValueInt(current).build());
+        entryList.add(
+                ResultsBundleEntry.newBuilder()
+                        .setKey("id")
+                        .setValueString("AndroidJUnitRunner")
+                        .build());
+        entryList.add(
+                ResultsBundleEntry.newBuilder().setKey("numtests").setValueInt(numTests).build());
 
-        entryList.add(ResultsBundleEntry.newBuilder().setKey("test").setValueString(methodName)
-                .build());
+        entryList.add(
+                ResultsBundleEntry.newBuilder().setKey("test").setValueString(methodName).build());
 
         if (isFailure) {
-            entryList.add(ResultsBundleEntry.newBuilder().setKey("stack")
-                    .setValueString(TEST_FAILURE_MESSAGE_1)
-                    .build());
-            entryList.add(ResultsBundleEntry.newBuilder().setKey("stream")
-                    .setValueString(TEST_FAILURE_MESSAGE_1)
-                    .build());
+            entryList.add(
+                    ResultsBundleEntry.newBuilder()
+                            .setKey("stack")
+                            .setValueString(TEST_FAILURE_MESSAGE_1)
+                            .build());
+            entryList.add(
+                    ResultsBundleEntry.newBuilder()
+                            .setKey("stream")
+                            .setValueString(TEST_FAILURE_MESSAGE_1)
+                            .build());
             // Test failure will have result code "-2"
-            return TestStatus.newBuilder().setResultCode(-2)
+            return TestStatus.newBuilder()
+                    .setResultCode(-2)
                     .setResults(ResultsBundle.newBuilder().addAllEntries(entryList).build())
                     .build();
         }
 
-        entryList.add(ResultsBundleEntry.newBuilder().setKey("stream").setValueString("\nabc:")
-                .build());
+        entryList.add(
+                ResultsBundleEntry.newBuilder().setKey("stream").setValueString("\nabc:").build());
 
         if (isStart) {
             // Test start will have result code 1.
-            return TestStatus.newBuilder().setResultCode(1)
+            return TestStatus.newBuilder()
+                    .setResultCode(1)
                     .setResults(ResultsBundle.newBuilder().addAllEntries(entryList).build())
                     .build();
         }
 
         return TestStatus.newBuilder()
-                .setResults(ResultsBundle.newBuilder().addAllEntries(entryList).build()).build();
+                .setResults(ResultsBundle.newBuilder().addAllEntries(entryList).build())
+                .build();
     }
 
     /**
@@ -992,16 +1164,21 @@ public class InstrumentationResultProtoParserTest {
     private TestStatus getTestStatusProto(boolean isWithMetrics) {
         List<ResultsBundleEntry> entryList = new LinkedList<ResultsBundleEntry>();
         if (isWithMetrics) {
-            entryList.add(ResultsBundleEntry.newBuilder()
-                    .setKey("metric_key1").setValueString("626")
-                    .build());
-            entryList.add(ResultsBundleEntry.newBuilder()
-                    .setKey("metric_key2").setValueString("1")
-                    .build());
+            entryList.add(
+                    ResultsBundleEntry.newBuilder()
+                            .setKey("metric_key1")
+                            .setValueString("626")
+                            .build());
+            entryList.add(
+                    ResultsBundleEntry.newBuilder()
+                            .setKey("metric_key2")
+                            .setValueString("1")
+                            .build());
         }
 
         // Metric status will be in progress
-        return TestStatus.newBuilder().setResultCode(2)
+        return TestStatus.newBuilder()
+                .setResultCode(2)
                 .setResults(ResultsBundle.newBuilder().addAllEntries(entryList).build())
                 .build();
     }
@@ -1018,31 +1195,38 @@ public class InstrumentationResultProtoParserTest {
         List<ResultsBundleEntry> entryList = new LinkedList<ResultsBundleEntry>();
 
         if (isFailure) {
-            entryList.add(ResultsBundleEntry.newBuilder()
-                    .setKey("Error").setValueString(RUN_FAILURE_MESSAGE)
-                    .build());
-            entryList.add(ResultsBundleEntry.newBuilder()
-                    .setKey("id").setValueString("ActivityManagerService")
-                    .build());
-            return SessionStatus.newBuilder().setResultCode(-1)
+            entryList.add(
+                    ResultsBundleEntry.newBuilder()
+                            .setKey("Error")
+                            .setValueString(RUN_FAILURE_MESSAGE)
+                            .build());
+            entryList.add(
+                    ResultsBundleEntry.newBuilder()
+                            .setKey("id")
+                            .setValueString("ActivityManagerService")
+                            .build());
+            return SessionStatus.newBuilder()
+                    .setResultCode(-1)
                     .setStatusCode(SessionStatusCode.SESSION_FINISHED)
                     .setResults(ResultsBundle.newBuilder().addAllEntries(entryList).build())
                     .build();
-
         }
-        entryList.add(ResultsBundleEntry.newBuilder()
-                .setKey("stream").setValueString("\n\nTime: 27.013\n\nOK (1 test)\n\n")
-                .build());
+        entryList.add(
+                ResultsBundleEntry.newBuilder()
+                        .setKey("stream")
+                        .setValueString("\n\nTime: 27.013\n\nOK (1 test)\n\n")
+                        .build());
 
         if (isWithMetrics) {
-            entryList.add(ResultsBundleEntry.newBuilder()
-                    .setKey("run_metric_key").setValueString("39584")
-                    .build());
+            entryList.add(
+                    ResultsBundleEntry.newBuilder()
+                            .setKey("run_metric_key")
+                            .setValueString("39584")
+                            .build());
         }
 
-
-
-        return SessionStatus.newBuilder().setResultCode(-1)
+        return SessionStatus.newBuilder()
+                .setResultCode(-1)
                 .setStatusCode(SessionStatusCode.SESSION_FINISHED)
                 .setResults(ResultsBundle.newBuilder().addAllEntries(entryList).build())
                 .build();
