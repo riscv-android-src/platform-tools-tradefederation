@@ -74,6 +74,7 @@ public class RunOnWorkProfileTargetPreparerTest {
         when(mTestInfo.getDevice().hasFeature("android.software.managed_users")).thenReturn(true);
         when(mTestInfo.getDevice().getMaxNumberOfUsersSupported()).thenReturn(2);
         when(mTestInfo.getDevice().listUsers()).thenReturn(userIds);
+        when(mTestInfo.getDevice().getApiLevel()).thenReturn(30);
     }
 
     @Test
@@ -86,6 +87,19 @@ public class RunOnWorkProfileTargetPreparerTest {
 
         verify(mTestInfo.getDevice()).executeShellCommand(expectedCreateUserCommand);
         verify(mTestInfo.getDevice()).startUser(10, /* waitFlag= */ true);
+    }
+
+    @Test
+    public void setUp_oldVersion_createsAndStartsWorkProfileWithoutWait() throws Exception {
+        String expectedCreateUserCommand = "pm create-user --profileOf 0 --managed work";
+        when(mTestInfo.getDevice().executeShellCommand(expectedCreateUserCommand))
+                .thenReturn(CREATED_USER_10_MESSAGE);
+        when(mTestInfo.getDevice().getApiLevel()).thenReturn(28);
+
+        mPreparer.setUp(mTestInfo);
+
+        verify(mTestInfo.getDevice()).executeShellCommand(expectedCreateUserCommand);
+        verify(mTestInfo.getDevice()).startUser(10, /* waitFlag= */ false);
     }
 
     @Test

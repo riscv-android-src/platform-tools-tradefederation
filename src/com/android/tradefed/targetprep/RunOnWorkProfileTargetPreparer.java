@@ -97,7 +97,9 @@ public class RunOnWorkProfileTargetPreparer extends BaseTargetPreparer
             userIdToDelete = workProfileId;
         }
 
-        testInfo.getDevice().startUser(workProfileId, /* waitFlag= */ true);
+        // The wait flag is only supported on Android 29+
+        testInfo.getDevice()
+                .startUser(workProfileId, /* waitFlag= */ testInfo.getDevice().getApiLevel() >= 29);
 
         for (String pkg : mTestPackages) {
             testInfo.getDevice()
@@ -120,11 +122,20 @@ public class RunOnWorkProfileTargetPreparer extends BaseTargetPreparer
     /** Creates a work profile and returns the new user ID. */
     private static int createWorkProfile(ITestDevice device) throws DeviceNotAvailableException {
         int parentProfile = device.getCurrentUser();
-        final String createUserOutput =
-                device.executeShellCommand(
-                        "pm create-user --profileOf " + parentProfile + " --managed work");
-        final int profileId = Integer.parseInt(createUserOutput.split(" id ")[1].trim());
-        return profileId;
+        String command = "pm create-user --profileOf " + parentProfile + " --managed work";
+        final String createUserOutput = device.executeShellCommand(command);
+
+        try {
+            return Integer.parseInt(createUserOutput.split(" id ")[1].trim());
+        } catch (RuntimeException e) {
+            throw new IllegalStateException(
+                    "Error creating work profile, command was '"
+                            + command
+                            + "', output was '"
+                            + createUserOutput
+                            + "'",
+                    e);
+        }
     }
 
     @Override

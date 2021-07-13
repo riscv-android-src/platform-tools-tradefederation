@@ -93,7 +93,10 @@ public class RunOnSecondaryUserTargetPreparer extends BaseTargetPreparer
             userIdToDelete = secondaryUserId;
         }
 
-        testInfo.getDevice().startUser(secondaryUserId, /* waitFlag= */ true);
+        // The wait flag is only supported on Android 29+
+        testInfo.getDevice()
+                .startUser(
+                        secondaryUserId, /* waitFlag= */ testInfo.getDevice().getApiLevel() >= 29);
 
         originalUserId = testInfo.getDevice().getCurrentUser();
 

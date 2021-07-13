@@ -73,6 +73,7 @@ public class RunOnSecondaryUserTargetPreparerTest {
 
         when(mTestInfo.getDevice().getMaxNumberOfUsersSupported()).thenReturn(2);
         when(mTestInfo.getDevice().listUsers()).thenReturn(userIds);
+        when(mTestInfo.getDevice().getApiLevel()).thenReturn(30);
     }
 
     @Test
@@ -84,6 +85,20 @@ public class RunOnSecondaryUserTargetPreparerTest {
 
         verify(mTestInfo.getDevice()).createUser("secondary");
         verify(mTestInfo.getDevice()).startUser(2, /* waitFlag= */ true);
+        verify(mTestInfo.getDevice()).switchUser(2);
+    }
+
+    @Test
+    public void setUp_oldVersion_createsStartsAndSwitchesToSecondaryUserWithoutWait()
+            throws Exception {
+        when(mTestInfo.getDevice().createUser(any())).thenReturn(2);
+        when(mTestInfo.getDevice().getCurrentUser()).thenReturn(0);
+        when(mTestInfo.getDevice().getApiLevel()).thenReturn(28);
+
+        mPreparer.setUp(mTestInfo);
+
+        verify(mTestInfo.getDevice()).createUser("secondary");
+        verify(mTestInfo.getDevice()).startUser(2, /* waitFlag= */ false);
         verify(mTestInfo.getDevice()).switchUser(2);
     }
 
