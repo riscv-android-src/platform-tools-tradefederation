@@ -16,6 +16,7 @@
 
 package com.android.tradefed.targetprep;
 
+import com.android.ddmlib.Log;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
@@ -50,6 +51,8 @@ import java.util.Map;
 public class RunOnWorkProfileTargetPreparer extends BaseTargetPreparer
         implements IConfigurationReceiver {
 
+    private static final String LOG_TAG = "RunOnWorkProfileTargetPreparer";
+
     @VisibleForTesting static final String RUN_TESTS_AS_USER_KEY = "RUN_TESTS_AS_USER";
 
     @VisibleForTesting static final String TEST_PACKAGE_NAME_OPTION = "test-package-name";
@@ -58,7 +61,18 @@ public class RunOnWorkProfileTargetPreparer extends BaseTargetPreparer
 
     private IConfiguration mConfiguration;
 
-    private int userIdToDelete = -1;
+    private int mUserIdToDelete = -1;
+    private DeviceOwner mDeviceOwnerToSet = null;
+
+    private static class DeviceOwner {
+        final String componentName;
+        final int userId;
+
+        DeviceOwner(String componentName, int userId) {
+            this.componentName = componentName;
+            this.userId = userId;
+        }
+    }
 
     @Option(
             name = TEST_PACKAGE_NAME_OPTION,
@@ -93,8 +107,18 @@ public class RunOnWorkProfileTargetPreparer extends BaseTargetPreparer
                 return;
             }
 
+            mDeviceOwnerToSet = getDeviceOwner(testInfo.getDevice());
+
+            if (mDeviceOwnerToSet != null) {
+                Log.d(
+                        LOG_TAG,
+                        "Work profiles cannot be created after device owner is set. Attempting to"
+                                + " remove device owner");
+                removeDeviceOwner(testInfo.getDevice(), mDeviceOwnerToSet);
+            }
+
             workProfileId = createWorkProfile(testInfo.getDevice());
-            userIdToDelete = workProfileId;
+            mUserIdToDelete = workProfileId;
         }
 
         // The wait flag is only supported on Android 29+
@@ -128,21 +152,21 @@ public class RunOnWorkProfileTargetPreparer extends BaseTargetPreparer
         try {
             return Integer.parseInt(createUserOutput.split(" id ")[1].trim());
         } catch (RuntimeException e) {
-            throw new IllegalStateException(
-                    "Error creating work profile, command was '"
-                            + command
-                            + "', output was '"
-                            + createUserOutput
-                            + "'",
-                    e);
+            throwCommandError("Error creating work profile", command, createUserOutput, e);
+            return -1; // Never reached as showCommandError throws an exception
         }
     }
 
     @Override
     public void tearDown(TestInformation testInfo, Throwable e) throws DeviceNotAvailableException {
         testInfo.properties().remove(RUN_TESTS_AS_USER_KEY);
-        if (userIdToDelete != -1) {
-            testInfo.getDevice().removeUser(userIdToDelete);
+        if (mUserIdToDelete != -1) {
+            testInfo.getDevice().removeUser(mUserIdToDelete);
+        }
+
+        if (mDeviceOwnerToSet != null) {
+            testInfo.getDevice()
+                    .setDeviceOwner(mDeviceOwnerToSet.componentName, mDeviceOwnerToSet.userId);
         }
     }
 
@@ -185,5 +209,52 @@ public class RunOnWorkProfileTargetPreparer extends BaseTargetPreparer
     protected boolean canCreateAdditionalUsers(ITestDevice device, int numberOfUsers)
             throws DeviceNotAvailableException {
         return device.listUsers().size() + numberOfUsers <= device.getMaxNumberOfUsersSupported();
+    }
+
+    private DeviceOwner getDeviceOwner(ITestDevice device) throws DeviceNotAvailableException {
+        String command = "dumpsys device_policy";
+        String dumpsysOutput = device.executeShellCommand(command);
+
+        if (!dumpsysOutput.contains("Device Owner:")) {
+            return null;
+        }
+
+        try {
+            String deviceOwnerOnwards = dumpsysOutput.split("Device Owner:", 2)[1];
+            String componentName =
+                    deviceOwnerOnwards.split("ComponentInfo\\{", 2)[1].split("}", 2)[0];
+            int userId =
+                    Integer.parseInt(
+                            deviceOwnerOnwards.split("User ID: ", 2)[1].split("\n", 2)[0].trim());
+            return new DeviceOwner(componentName, userId);
+        } catch (RuntimeException e) {
+            throwCommandError("Error reading device owner information", command, dumpsysOutput, e);
+            return null; // Never reached as showCommandError throws an exception
+        }
+    }
+
+    private void removeDeviceOwner(ITestDevice device, DeviceOwner deviceOwner)
+            throws DeviceNotAvailableException {
+        String command =
+                "dpm remove-active-admin --user "
+                        + deviceOwner.userId
+                        + " "
+                        + deviceOwner.componentName;
+
+        String commandOutput = device.executeShellCommand(command);
+        if (!commandOutput.startsWith("Success")) {
+            throwCommandError("Error removing device owner", command, commandOutput);
+        }
+    }
+
+    private static void throwCommandError(String error, String command, String commandOutput) {
+        throwCommandError(error, command, commandOutput, /* exception= */ null);
+    }
+
+    private static void throwCommandError(
+            String error, String command, String commandOutput, Exception exception) {
+        throw new IllegalStateException(
+                error + ". Command was '" + command + "', output was '" + commandOutput + "'",
+                exception);
     }
 }
