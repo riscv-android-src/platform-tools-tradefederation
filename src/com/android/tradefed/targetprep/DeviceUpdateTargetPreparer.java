@@ -20,9 +20,10 @@ import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
-import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
+import com.android.tradefed.host.IHostOptions;
+import com.android.tradefed.host.IHostOptions.PermitLimitType;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.error.DeviceErrorIdentifier;
@@ -72,8 +73,8 @@ public abstract class DeviceUpdateTargetPreparer extends DeviceBuildInfoBootStra
         preUpdateActions(deviceUpdateImage, device);
         // flashing concurrency control
         long start = System.currentTimeMillis();
-        IDeviceManager deviceManager = GlobalConfiguration.getDeviceManagerInstance();
-        deviceManager.takeFlashingPermit();
+        IHostOptions hostOptions = GlobalConfiguration.getInstance().getHostOptions();
+        hostOptions.takePermit(PermitLimitType.CONCURRENT_FLASHER);
         CLog.v(
                 "Flashing permit obtained after %ds",
                 TimeUnit.MILLISECONDS.toSeconds((System.currentTimeMillis() - start)));
@@ -83,7 +84,7 @@ public abstract class DeviceUpdateTargetPreparer extends DeviceBuildInfoBootStra
             CLog.v(
                     "Flashing finished after %ds",
                     TimeUnit.MILLISECONDS.toSeconds((System.currentTimeMillis() - start)));
-            deviceManager.returnFlashingPermit();
+            hostOptions.returnPermit(PermitLimitType.CONCURRENT_FLASHER);
         }
         postUpdateActions(deviceUpdateImage, device);
         CLog.i(

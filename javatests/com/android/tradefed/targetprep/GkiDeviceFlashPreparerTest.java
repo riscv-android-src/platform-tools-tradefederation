@@ -27,13 +27,13 @@ import static org.mockito.Mockito.when;
 import com.android.tradefed.build.DeviceBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.command.remote.DeviceDescriptor;
-import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceAllocationState;
 import com.android.tradefed.device.DeviceNotAvailableException;
-import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.TestDeviceOptions;
+import com.android.tradefed.host.HostOptions;
+import com.android.tradefed.host.IHostOptions;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
@@ -54,18 +54,15 @@ import org.mockito.MockitoAnnotations;
 import java.io.File;
 import java.util.List;
 
-/** Unit tests for {@link GkiDevicePreparer}. */
+/** Unit tests for {@link GkiDeviceFlashPreparer}. */
 @RunWith(JUnit4.class)
 public class GkiDeviceFlashPreparerTest {
 
-    @Mock IDeviceManager mMockDeviceManager;
-    private IDeviceFlasher mMockFlasher;
     private GkiDeviceFlashPreparer mPreparer;
     @Mock ITestDevice mMockDevice;
     private IDeviceBuildInfo mBuildInfo;
     private File mTmpDir;
     private TestInformation mTestInfo;
-    private OptionSetter mOptionSetter;
     private CommandResult mSuccessResult;
     private CommandResult mFailureResult;
     @Mock IRunUtil mMockRunUtil;
@@ -98,12 +95,11 @@ public class GkiDeviceFlashPreparerTest {
                     }
 
                     @Override
-                    IDeviceManager getDeviceManager() {
-                        return mMockDeviceManager;
+                    protected IHostOptions getHostOptions() {
+                        return new HostOptions();
                     }
                 };
         // Reset default settings
-        mOptionSetter = new OptionSetter(mPreparer);
         mTmpDir = FileUtil.createTempDir("tmp");
         mBuildInfo = new DeviceBuildInfo("0", "");
         mBuildInfo.setBuildFlavor("flavor");

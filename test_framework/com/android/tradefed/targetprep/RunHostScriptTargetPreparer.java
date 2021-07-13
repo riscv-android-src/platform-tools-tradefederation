@@ -22,6 +22,8 @@ import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.host.IHostOptions;
+import com.android.tradefed.host.IHostOptions.PermitLimitType;
 import com.android.tradefed.invoker.ExecutionFiles.FilesKey;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -89,12 +91,12 @@ public class RunHostScriptTargetPreparer extends BaseTargetPreparer {
 
         try {
             if (mUseFlashingPermit) {
-                getDeviceManager().takeFlashingPermit();
+                getHostOptions().takePermit(PermitLimitType.CONCURRENT_FLASHER);
             }
             executeScript(scriptFile, device);
         } finally {
             if (mUseFlashingPermit) {
-                getDeviceManager().returnFlashingPermit();
+                getHostOptions().returnPermit(PermitLimitType.CONCURRENT_FLASHER);
             }
         }
     }
@@ -112,6 +114,12 @@ public class RunHostScriptTargetPreparer extends BaseTargetPreparer {
     @VisibleForTesting
     IDeviceManager getDeviceManager() {
         return GlobalConfiguration.getDeviceManagerInstance();
+    }
+
+    /** @return {@link IHostOptions} instance used for flashing permits */
+    @VisibleForTesting
+    IHostOptions getHostOptions() {
+        return GlobalConfiguration.getInstance().getHostOptions();
     }
 
     /** Find the script file to execute. */
