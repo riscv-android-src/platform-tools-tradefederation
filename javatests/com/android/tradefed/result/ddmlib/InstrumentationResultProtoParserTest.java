@@ -549,8 +549,6 @@ public class InstrumentationResultProtoParserTest {
         verify(mMockListener).testRunFailed(runOutputErrorMessage.capture());
         verify(mMockListener).testRunEnded(0, Collections.emptyMap());
 
-        // CLog.i("#### testOutputErrorMessage = %s", testOutputErrorMessage.getValue().toString());
-        // CLog.i("#### runOutputErrorMessage = %s", runOutputErrorMessage.getValue().toString());
         assertTrue(testOutputErrorMessage.getValue().contains(INCOMPLETE_TEST_ERR_MSG_PREFIX));
         assertTrue(testOutputErrorMessage.getValue().contains(TEST_COMPLETED_STATUS_1));
         assertTrue(runOutputErrorMessage.getValue().contains(INCOMPLETE_RUN_ERR_MSG_PREFIX));
