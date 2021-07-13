@@ -29,6 +29,8 @@ import static org.mockito.Mockito.when;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.IDeviceManager;
+import com.android.tradefed.host.IHostOptions;
+import com.android.tradefed.host.IHostOptions.PermitLimitType;
 import com.android.tradefed.invoker.ExecutionFiles.FilesKey;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.util.CommandResult;
@@ -65,6 +67,7 @@ public final class RunHostScriptTargetPreparerTest {
     private TestInformation mTestInfo;
 
     @Mock private IRunUtil mRunUtil;
+    @Mock private IHostOptions mHostOptions;
     @Mock private IDeviceManager mDeviceManager;
     private RunHostScriptTargetPreparer mPreparer;
     private OptionSetter mOptionSetter;
@@ -79,6 +82,11 @@ public final class RunHostScriptTargetPreparerTest {
                     @Override
                     IRunUtil getRunUtil() {
                         return mRunUtil;
+                    }
+
+                    @Override
+                    IHostOptions getHostOptions() {
+                        return mHostOptions;
                     }
 
                     @Override
@@ -120,8 +128,8 @@ public final class RunHostScriptTargetPreparerTest {
         // Verify that script is executable
         assertTrue(mScriptFile.canExecute());
         // No flashing permit taken/returned by default
-        verify(mDeviceManager, never()).takeFlashingPermit();
-        verify(mDeviceManager, never()).returnFlashingPermit();
+        verify(mHostOptions, never()).takePermit(PermitLimitType.CONCURRENT_FLASHER);
+        verify(mHostOptions, never()).returnPermit(PermitLimitType.CONCURRENT_FLASHER);
     }
 
     @Test
@@ -181,9 +189,9 @@ public final class RunHostScriptTargetPreparerTest {
         mOptionSetter.setOptionValue("use-flashing-permit", "true");
         // Verify script executed with flashing permit
         mPreparer.setUp(mTestInfo);
-        InOrder inOrder = inOrder(mRunUtil, mDeviceManager);
-        inOrder.verify(mDeviceManager).takeFlashingPermit();
+        InOrder inOrder = inOrder(mRunUtil, mHostOptions);
+        inOrder.verify(mHostOptions).takePermit(PermitLimitType.CONCURRENT_FLASHER);
         inOrder.verify(mRunUtil).runTimedCmd(anyLong(), eq(mScriptFile.getAbsolutePath()));
-        inOrder.verify(mDeviceManager).returnFlashingPermit();
+        inOrder.verify(mHostOptions).returnPermit(PermitLimitType.CONCURRENT_FLASHER);
     }
 }
