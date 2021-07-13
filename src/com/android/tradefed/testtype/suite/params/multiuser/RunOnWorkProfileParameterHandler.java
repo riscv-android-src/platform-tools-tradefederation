@@ -22,13 +22,13 @@ import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.RunOnWorkProfileTargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestAnnotationFilterReceiver;
-import com.android.tradefed.testtype.suite.params.IModuleParameter;
+import com.android.tradefed.testtype.suite.params.IModuleParameterHandler;
 
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class RunOnWorkProfileParameterHandler implements IModuleParameter {
+public class RunOnWorkProfileParameterHandler implements IModuleParameterHandler {
 
     private static final String REQUIRE_RUN_ON_WORK_PROFILE_NAME =
             "com.android.bedstead.harrier.annotations.RequireRunOnWorkProfile";
