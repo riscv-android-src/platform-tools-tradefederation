@@ -19,7 +19,6 @@ package com.android.tradefed.targetprep;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
-import com.android.tradefed.device.DeviceUnresponsiveException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.invoker.TestInformation;
@@ -78,16 +77,15 @@ public class DeviceCleaner extends BaseTargetPreparer {
 
     @Override
     public void tearDown(TestInformation testInfo, Throwable e) throws DeviceNotAvailableException {
-        if (e instanceof DeviceFailedToBootError) {
-            CLog.w("boot failure: attempting to stop runtime instead of cleanup");
-            try {
-                testInfo.getDevice().executeShellCommand("stop");
-            } catch (DeviceUnresponsiveException due) {
-                CLog.w("boot failure: ignored DeviceUnresponsiveException during forced cleanup");
-            }
-        } else {
-            clean(testInfo.getDevice());
+        if (e instanceof DeviceNotAvailableException) {
+            CLog.w("Skipping device clean up due to device unavailable.");
+            return;
         }
+        if (e instanceof DeviceFailedToBootError) {
+            CLog.w("Skipping device clean up due to boot failure.");
+            return;
+        }
+        clean(testInfo.getDevice());
     }
 
     /**
