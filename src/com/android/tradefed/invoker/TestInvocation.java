@@ -367,7 +367,13 @@ public class TestInvocation implements ITestInvocation {
             }
             // Save the device executeShellCommand logs
             logExecuteShellCommand(context.getDevices(), listener);
-
+            if (exception == null) {
+                exception = mUnavailableMonitor.getUnavailableException();
+                if (exception != null) {
+                    CLog.e("Found a test level only device unavailable exception:");
+                    CLog.e(exception);
+                }
+            }
             mStatus = "tearing down";
             try {
                 invocationPath.doTeardown(testInfo, config, listener, exception);
@@ -394,13 +400,6 @@ public class TestInvocation implements ITestInvocation {
             // Track the timestamp when we are done with devices
             addInvocationMetric(
                     InvocationMetricKey.DEVICE_DONE_TIMESTAMP, System.currentTimeMillis());
-            if (exception == null) {
-                exception = mUnavailableMonitor.getUnavailableException();
-                if (exception != null) {
-                    CLog.e("Found a test level only device unavailable exception:");
-                    CLog.e(exception);
-                }
-            }
             Map<ITestDevice, FreeDeviceState> devicesStates =
                     handleAndLogReleaseState(context, exception, tearDownException);
             if (config.getCommandOptions().earlyDeviceRelease()) {
