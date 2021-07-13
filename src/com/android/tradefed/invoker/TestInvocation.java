@@ -348,6 +348,8 @@ public class TestInvocation implements ITestInvocation {
                         for (ITestDevice device : context.getDevices()) {
                             Callable<Boolean> callableTask =
                                     () -> {
+                                        CLog.d("Start taking bugreport on '%s'",
+                                                device.getSerialNumber());
                                         takeBugreport(device, listener, reportName);
                                         return true;
                                     };
@@ -578,7 +580,9 @@ public class TestInvocation implements ITestInvocation {
             return;
         }
         // logBugreport will report a regular bugreport if bugreportz is not supported.
+        RecoveryMode recovery = device.getRecoveryMode();
         try {
+            device.setRecoveryMode(RecoveryMode.NONE);
             boolean res =
                     device.logBugreport(
                             String.format("%s_%s", bugreportName, device.getSerialNumber()),
@@ -589,6 +593,8 @@ public class TestInvocation implements ITestInvocation {
         } catch (RuntimeException e) {
             CLog.e("Harness Exception while collecting bugreport");
             CLog.e(e);
+        } finally {
+            device.setRecoveryMode(recovery);
         }
     }
 
