@@ -47,42 +47,34 @@ public class FuseUtilTest {
     @Test
     public void testCanMountZip() {
         mFuseUtil.resetCanMountZip();
-        Mockito.when(
-                        mRunUtil.runTimedCmd(
-                                Mockito.anyLong(), Mockito.anyString(), Mockito.anyString()))
+        Mockito.when(mRunUtil.runTimedCmd(Mockito.anyLong(), Mockito.<String>any()))
                 .thenReturn(new CommandResult(CommandStatus.SUCCESS))
                 .thenReturn(new CommandResult(CommandStatus.SUCCESS));
 
         Assert.assertTrue(mFuseUtil.canMountZip());
 
-        Mockito.verify(mRunUtil).runTimedCmd(FuseUtil.FUSE_ZIP_TIMEOUT_MILLIS, "test", "/dev/fuse");
+        Mockito.verify(mRunUtil)
+                .runTimedCmd(FuseUtil.FUSE_ZIP_TIMEOUT_MILLIS, "test", "-c", "/dev/fuse");
         Mockito.verify(mRunUtil).runTimedCmd(FuseUtil.FUSE_ZIP_TIMEOUT_MILLIS, "fuse-zip", "-h");
     }
 
     @Test
     public void testCanMountZip_unsupported() {
         mFuseUtil.resetCanMountZip();
-        Mockito.when(
-                        mRunUtil.runTimedCmd(
-                                Mockito.anyLong(), Mockito.anyString(), Mockito.anyString()))
+        Mockito.when(mRunUtil.runTimedCmd(Mockito.anyLong(), Mockito.<String>any()))
                 .thenReturn(new CommandResult(CommandStatus.SUCCESS))
                 .thenReturn(new CommandResult(CommandStatus.FAILED));
 
         Assert.assertFalse(mFuseUtil.canMountZip());
 
-        Mockito.verify(mRunUtil).runTimedCmd(FuseUtil.FUSE_ZIP_TIMEOUT_MILLIS, "test", "/dev/fuse");
+        Mockito.verify(mRunUtil)
+                .runTimedCmd(FuseUtil.FUSE_ZIP_TIMEOUT_MILLIS, "test", "-c", "/dev/fuse");
         Mockito.verify(mRunUtil).runTimedCmd(FuseUtil.FUSE_ZIP_TIMEOUT_MILLIS, "fuse-zip", "-h");
     }
 
     @Test
     public void testMountZip() {
-        Mockito.when(
-                        mRunUtil.runTimedCmd(
-                                Mockito.anyLong(),
-                                Mockito.anyString(),
-                                Mockito.anyString(),
-                                Mockito.anyString(),
-                                Mockito.anyString()))
+        Mockito.when(mRunUtil.runTimedCmd(Mockito.anyLong(), Mockito.<String>any()))
                 .thenReturn(new CommandResult(CommandStatus.SUCCESS));
         File zipFile = new File("/path/to/zip");
         File mountDir = new File("/path/to/mount");
@@ -100,12 +92,7 @@ public class FuseUtilTest {
 
     @Test
     public void testUnmountZip() {
-        Mockito.when(
-                        mRunUtil.runTimedCmd(
-                                Mockito.anyLong(),
-                                Mockito.anyString(),
-                                Mockito.anyString(),
-                                Mockito.anyString()))
+        Mockito.when(mRunUtil.runTimedCmd(Mockito.anyLong(), Mockito.<String>any()))
                 .thenReturn(new CommandResult(CommandStatus.SUCCESS));
         File mountDir = new File("/path/to/mount");
 
