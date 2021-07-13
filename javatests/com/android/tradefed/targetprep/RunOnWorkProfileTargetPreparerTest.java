@@ -22,6 +22,8 @@ import static com.android.tradefed.targetprep.RunOnWorkProfileTargetPreparer.TES
 
 import static com.google.common.truth.Truth.assertThat;
 
+import static junit.framework.Assert.fail;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -62,6 +64,26 @@ public class RunOnWorkProfileTargetPreparerTest {
     private RunOnWorkProfileTargetPreparer mPreparer;
     private OptionSetter mOptionSetter;
 
+    private static final String DEVICE_OWNER_COMPONENT_NAME =
+            "com.android.dpcpackage/com.android.Receiver";
+    private static final int DEVICE_OWNER_USER = 0;
+    private static final String DUMPSYS_WITH_DEVICE_OWNER =
+            "Current Device Policy Manager state:\n"
+                    + "  Immutable state:\n"
+                    + "    mHasFeature=true\n"
+                    + "    mIsWatch=false\n"
+                    + "    mIsAutomotive=false\n"
+                    + "    mHasTelephonyFeature=true\n"
+                    + "    mSafetyChecker=null\n"
+                    + "  Device Owner:\n"
+                    + "    admin=ComponentInfo{com.android.dpcpackage/com.android.Receiver}\n"
+                    + "    name=DO\n"
+                    + "    package=com.android.dpcpackage\n"
+                    + "    isOrganizationOwnedDevice=true\n"
+                    + "    User ID: 0\n"
+                    + "\n"
+                    + "  Profile Owner (User 49):";
+
     @Before
     public void setUp() throws Exception {
         mPreparer = new RunOnWorkProfileTargetPreparer();
@@ -75,6 +97,7 @@ public class RunOnWorkProfileTargetPreparerTest {
         when(mTestInfo.getDevice().getMaxNumberOfUsersSupported()).thenReturn(2);
         when(mTestInfo.getDevice().listUsers()).thenReturn(userIds);
         when(mTestInfo.getDevice().getApiLevel()).thenReturn(30);
+        when(mTestInfo.getDevice().executeShellCommand("dumpsys device_policy")).thenReturn("");
     }
 
     @Test
@@ -103,6 +126,44 @@ public class RunOnWorkProfileTargetPreparerTest {
     }
 
     @Test
+    public void setup_hasDeviceOwner_removesDeviceOwner() throws Exception {
+        String expectedCreateUserCommand = "pm create-user --profileOf 0 --managed work";
+        String expectedRemoveDeviceOwnerCommand =
+                "dpm remove-active-admin --user 0 " + DEVICE_OWNER_COMPONENT_NAME;
+        when(mTestInfo.getDevice().executeShellCommand(expectedCreateUserCommand))
+                .thenReturn(CREATED_USER_10_MESSAGE);
+        when(mTestInfo.getDevice().executeShellCommand("dumpsys device_policy"))
+                .thenReturn(DUMPSYS_WITH_DEVICE_OWNER);
+        when(mTestInfo.getDevice().executeShellCommand(expectedRemoveDeviceOwnerCommand))
+                .thenReturn("Success: done");
+
+        mPreparer.setUp(mTestInfo);
+
+        verify(mTestInfo.getDevice()).executeShellCommand(expectedRemoveDeviceOwnerCommand);
+    }
+
+    @Test
+    public void setup_hasDeviceOwner_errorWhenRemovingDeviceOwner_throwsException()
+            throws Exception {
+        String expectedCreateUserCommand = "pm create-user --profileOf 0 --managed work";
+        String expectedRemoveDeviceOwnerCommand =
+                "dpm remove-active-admin --user 0 " + DEVICE_OWNER_COMPONENT_NAME;
+        when(mTestInfo.getDevice().executeShellCommand(expectedCreateUserCommand))
+                .thenReturn(CREATED_USER_10_MESSAGE);
+        when(mTestInfo.getDevice().executeShellCommand("dumpsys device_policy"))
+                .thenReturn(DUMPSYS_WITH_DEVICE_OWNER);
+        when(mTestInfo.getDevice().executeShellCommand(expectedRemoveDeviceOwnerCommand))
+                .thenReturn("Error: could not remove");
+
+        try {
+            mPreparer.setUp(mTestInfo);
+            fail();
+        } catch (IllegalStateException expected) {
+
+        }
+    }
+
+    @Test
     public void setUp_workProfileAlreadyExists_doesNotCreateWorkProfile() throws Exception {
         Map<Integer, UserInfo> userInfos = new HashMap<>();
         userInfos.put(
@@ -113,6 +174,26 @@ public class RunOnWorkProfileTargetPreparerTest {
                         /* flag= */ UserInfo.FLAG_MANAGED_PROFILE,
                         /* isRunning= */ true));
         when(mTestInfo.getDevice().getUserInfos()).thenReturn(userInfos);
+
+        mPreparer.setUp(mTestInfo);
+
+        verify(mTestInfo.getDevice(), never()).executeShellCommand(any());
+    }
+
+    @Test
+    public void setUp_workProfileAlreadyExists_hasDeviceOwner_doesNotRemoveDeviceOwner()
+            throws Exception {
+        Map<Integer, UserInfo> userInfos = new HashMap<>();
+        userInfos.put(
+                10,
+                new UserInfo(
+                        10,
+                        "work",
+                        /* flag= */ UserInfo.FLAG_MANAGED_PROFILE,
+                        /* isRunning= */ true));
+        when(mTestInfo.getDevice().getUserInfos()).thenReturn(userInfos);
+        when(mTestInfo.getDevice().executeShellCommand("dumpsys device_policy"))
+                .thenReturn(DUMPSYS_WITH_DEVICE_OWNER);
 
         mPreparer.setUp(mTestInfo);
 
@@ -240,6 +321,25 @@ public class RunOnWorkProfileTargetPreparerTest {
         mPreparer.tearDown(mTestInfo, /* throwable= */ null);
 
         verify(mTestInfo.properties()).remove(RUN_TESTS_AS_USER_KEY);
+    }
+
+    @Test
+    public void teardown_didRemoveDeviceOwner_setsDeviceOwner() throws Exception {
+        String expectedCreateUserCommand = "pm create-user --profileOf 0 --managed work";
+        String expectedRemoveDeviceOwnerCommand =
+                "dpm remove-active-admin --user 0 " + DEVICE_OWNER_COMPONENT_NAME;
+        when(mTestInfo.getDevice().executeShellCommand(expectedCreateUserCommand))
+                .thenReturn(CREATED_USER_10_MESSAGE);
+        when(mTestInfo.getDevice().executeShellCommand("dumpsys device_policy"))
+                .thenReturn(DUMPSYS_WITH_DEVICE_OWNER);
+        when(mTestInfo.getDevice().executeShellCommand(expectedRemoveDeviceOwnerCommand))
+                .thenReturn("Success: done");
+        mPreparer.setUp(mTestInfo);
+
+        mPreparer.tearDown(mTestInfo, /* throwable= */ null);
+
+        verify(mTestInfo.getDevice())
+                .setDeviceOwner(DEVICE_OWNER_COMPONENT_NAME, /* userId= */ DEVICE_OWNER_USER);
     }
 
     @Test
