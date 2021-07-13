@@ -16,16 +16,19 @@
 package com.android.tradefed.suite.checker;
 
 import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.suite.checker.StatusCheckerResult.CheckStatus;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mockito;
 
 /** Unit tests for {@link DeviceStorageStatusChecker} */
 @RunWith(JUnit4.class)
@@ -37,7 +40,7 @@ public class DeviceStorageStatusCheckerTest {
 
     @Before
     public void setup() throws Exception {
-        mMockDevice = EasyMock.createMock(ITestDevice.class);
+        mMockDevice = mock(ITestDevice.class);
         mChecker = new DeviceStorageStatusChecker();
         mOptionSetter = new OptionSetter(mChecker);
         mOptionSetter.setOptionValue("partition", "/data");
@@ -47,50 +50,43 @@ public class DeviceStorageStatusCheckerTest {
     /** Test that device checker passes if device has enough storage. */
     @Test
     public void testEnoughDeviceStorage() throws Exception {
-        EasyMock.expect(mMockDevice.getPartitionFreeSpace(EasyMock.eq("/data")))
-                .andReturn(54L * 1024); // 54MB
-        EasyMock.expect(mMockDevice.getPartitionFreeSpace(EasyMock.eq("/data2")))
-                .andReturn(54L * 1024); // 54MB
-        EasyMock.replay(mMockDevice);
+        when(mMockDevice.getPartitionFreeSpace(Mockito.eq("/data"))).thenReturn(54L * 1024); // 54MB
+        when(mMockDevice.getPartitionFreeSpace(Mockito.eq("/data2")))
+                .thenReturn(54L * 1024); // 54MB
+
         assertEquals(CheckStatus.SUCCESS, mChecker.preExecutionCheck(mMockDevice).getStatus());
-        EasyMock.verify(mMockDevice);
     }
 
     /** Test that device checker fails if device has not enough storage on 1 partition. */
     @Test
     public void testInEnoughDeviceStorageOn1Partition() throws Exception {
-        EasyMock.expect(mMockDevice.getPartitionFreeSpace(EasyMock.eq("/data")))
-            .andReturn(48L * 1024); // 48MB
-        EasyMock.expect(mMockDevice.getPartitionFreeSpace(EasyMock.eq("/data2")))
-            .andReturn(54L * 1024); // 54MB
-        EasyMock.replay(mMockDevice);
+        when(mMockDevice.getPartitionFreeSpace(Mockito.eq("/data"))).thenReturn(48L * 1024); // 48MB
+        when(mMockDevice.getPartitionFreeSpace(Mockito.eq("/data2")))
+                .thenReturn(54L * 1024); // 54MB
+
         assertEquals(CheckStatus.FAILED, mChecker.preExecutionCheck(mMockDevice).getStatus());
-        EasyMock.verify(mMockDevice);
     }
 
     /** Test that device checker fails if device has not enough given storage. */
     @Test
     public void testNotEnoughDeviceStorageWithGivenStorageParameter() throws Exception {
         mOptionSetter.setOptionValue("minimal-storage-bytes", "104857600"); // 100MB
-        EasyMock.expect(mMockDevice.getPartitionFreeSpace(EasyMock.eq("/data")))
-                .andReturn(54L * 1024); // 54MB
-        EasyMock.expect(mMockDevice.getPartitionFreeSpace(EasyMock.eq("/data2")))
-                .andReturn(54L * 1024); // 54MB
-        EasyMock.replay(mMockDevice);
+        when(mMockDevice.getPartitionFreeSpace(Mockito.eq("/data"))).thenReturn(54L * 1024); // 54MB
+        when(mMockDevice.getPartitionFreeSpace(Mockito.eq("/data2")))
+                .thenReturn(54L * 1024); // 54MB
+
         assertEquals(CheckStatus.FAILED, mChecker.preExecutionCheck(mMockDevice).getStatus());
-        EasyMock.verify(mMockDevice);
     }
 
     /** Test that device checker passes if device has enough given storage. */
     @Test
     public void testEnoughDeviceStorageWithGivenStorageParameter() throws Exception {
         mOptionSetter.setOptionValue("minimal-storage-bytes", "104857600"); // 100MB
-        EasyMock.expect(mMockDevice.getPartitionFreeSpace(EasyMock.eq("/data")))
-                .andReturn(101L * 1024); // 101MB
-        EasyMock.expect(mMockDevice.getPartitionFreeSpace(EasyMock.eq("/data2")))
-                .andReturn(101L * 1024); // 101MB
-        EasyMock.replay(mMockDevice);
+        when(mMockDevice.getPartitionFreeSpace(Mockito.eq("/data")))
+                .thenReturn(101L * 1024); // 101MB
+        when(mMockDevice.getPartitionFreeSpace(Mockito.eq("/data2")))
+                .thenReturn(101L * 1024); // 101MB
+
         assertEquals(CheckStatus.SUCCESS, mChecker.preExecutionCheck(mMockDevice).getStatus());
-        EasyMock.verify(mMockDevice);
     }
 }
