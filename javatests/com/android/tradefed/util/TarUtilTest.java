@@ -16,11 +16,14 @@
 package com.android.tradefed.util;
 
 import static org.junit.Assert.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.result.LogDataType;
 
-import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -33,9 +36,7 @@ import java.io.InputStream;
 import java.util.Arrays;
 import java.util.List;
 
-/**
- * Test class for {@link TarUtil}.
- */
+/** Test class for {@link TarUtil}. */
 public class TarUtilTest {
 
     private static final String EMMA_METADATA_RESOURCE_PATH = "/testdata/LOG.tar.gz";
@@ -71,9 +72,7 @@ public class TarUtilTest {
         }
     }
 
-    /**
-     * Test that {TarUtil#unGzip(File, File)} can ungzip properly a tar.gz file.
-     */
+    /** Test that {TarUtil#unGzip(File, File)} can ungzip properly a tar.gz file. */
     @Test
     public void testUnGzip() throws Exception {
         InputStream logTarGz = getClass().getResourceAsStream(EMMA_METADATA_RESOURCE_PATH);
@@ -83,17 +82,15 @@ public class TarUtilTest {
             File testFile = TarUtil.unGzip(logTarGzFile, mWorkDir);
             Assert.assertTrue(testFile.exists());
             // Expect same name without the .gz extension.
-            String expectedName = logTarGzFile.getName().substring(0,
-                    logTarGzFile.getName().length() - 3);
+            String expectedName =
+                    logTarGzFile.getName().substring(0, logTarGzFile.getName().length() - 3);
             Assert.assertEquals(expectedName, testFile.getName());
         } finally {
             FileUtil.deleteFile(logTarGzFile);
         }
     }
 
-    /**
-     * Test that {TarUtil#unTar(File, File)} can untar properly a tar file.
-     */
+    /** Test that {TarUtil#unTar(File, File)} can untar properly a tar file. */
     @Test
     public void testUntar() throws Exception {
         InputStream logTarGz = getClass().getResourceAsStream(EMMA_METADATA_RESOURCE_PATH);
@@ -173,18 +170,16 @@ public class TarUtilTest {
         File logTarGzFile = FileUtil.createTempFile("log_tarutil_test", ".tar.gz");
         try {
             FileUtil.writeToFile(logTarGz, logTarGzFile);
-            ITestLogger listener = EasyMock.createMock(ITestLogger.class);
+            ITestLogger listener = mock(ITestLogger.class);
             // Main tar file is logged under the base name directly
-            listener.testLog(EasyMock.eq(baseName), EasyMock.eq(LogDataType.TAR_GZ),
-                    EasyMock.anyObject());
+
             // Contents is log under baseName_filename
-            listener.testLog(EasyMock.eq(baseName + "_TEST.log"), EasyMock.eq(LogDataType.TEXT),
-                    EasyMock.anyObject());
-            listener.testLog(EasyMock.eq(baseName + "_TEST2.log"), EasyMock.eq(LogDataType.TEXT),
-                    EasyMock.anyObject());
-            EasyMock.replay(listener);
+
             TarUtil.extractAndLog(listener, logTarGzFile, baseName);
-            EasyMock.verify(listener);
+
+            verify(listener).testLog(eq(baseName), eq(LogDataType.TAR_GZ), any());
+            verify(listener).testLog(eq(baseName + "_TEST.log"), eq(LogDataType.TEXT), any());
+            verify(listener).testLog(eq(baseName + "_TEST2.log"), eq(LogDataType.TEXT), any());
         } finally {
             FileUtil.deleteFile(logTarGzFile);
         }

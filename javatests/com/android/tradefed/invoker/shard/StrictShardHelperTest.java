@@ -21,6 +21,7 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.mock;
 
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.StubBuildProvider;
@@ -48,8 +49,6 @@ import com.android.tradefed.testtype.StubTest;
 import com.android.tradefed.testtype.suite.ITestSuite;
 import com.android.tradefed.util.FileUtil;
 
-import java.util.Arrays;
-import org.easymock.EasyMock;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -61,6 +60,7 @@ import org.mockito.Mockito;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -289,7 +289,7 @@ public class StrictShardHelperTest {
     }
 
     private List<IRemoteTest> testShard(int shardIndex) throws Exception {
-        mContext.addAllocatedDevice("default", EasyMock.createMock(ITestDevice.class));
+        mContext.addAllocatedDevice("default", mock(ITestDevice.class));
         List<IRemoteTest> test = new ArrayList<>();
         test.add(createFakeSuite("module2"));
         test.add(createFakeSuite("module1"));
@@ -351,47 +351,41 @@ public class StrictShardHelperTest {
         assertEquals(1, ((ITestSuite) res.get(2)).getDirectModule().numTests());
     }
 
-    /**
-     * Test that the unsorted test modules are re-ordered.
-     */
+    /** Test that the unsorted test modules are re-ordered. */
     @Test
     public void testReorderTestModules() throws Exception {
         List<String> unSortedModules =
-            Arrays.asList(
-                "module1[com.android.mod1.apex]",
-                "module1[com.android.mod1.apex+com.android.mod2.apex]",
-                "module2[com.android.mod1.apex]",
-                "module1[com.android.mod3.apk]",
-                "module2[com.android.mod1.apex+com.android.mod2.apex]",
-                "module2[com.android.mod3.apk]",
-                "module3[com.android.mod1.apex+com.android.mod2.apex]",
-                "module3[com.android.mod3.apk]",
-                "module4[com.android.mod3.apk]",
-                "module5[com.android.mod3.apk]"
-            );
+                Arrays.asList(
+                        "module1[com.android.mod1.apex]",
+                        "module1[com.android.mod1.apex+com.android.mod2.apex]",
+                        "module2[com.android.mod1.apex]",
+                        "module1[com.android.mod3.apk]",
+                        "module2[com.android.mod1.apex+com.android.mod2.apex]",
+                        "module2[com.android.mod3.apk]",
+                        "module3[com.android.mod1.apex+com.android.mod2.apex]",
+                        "module3[com.android.mod3.apk]",
+                        "module4[com.android.mod3.apk]",
+                        "module5[com.android.mod3.apk]");
         List<IRemoteTest> res = createITestSuiteList(unSortedModules);
 
         List<String> sortedModules =
-            Arrays.asList(
-                "module1[com.android.mod1.apex]",
-                "module2[com.android.mod1.apex]",
-                "module1[com.android.mod1.apex+com.android.mod2.apex]",
-                "module2[com.android.mod1.apex+com.android.mod2.apex]",
-                "module3[com.android.mod1.apex+com.android.mod2.apex]",
-                "module1[com.android.mod3.apk]",
-                "module2[com.android.mod3.apk]",
-                "module3[com.android.mod3.apk]",
-                "module4[com.android.mod3.apk]",
-                "module5[com.android.mod3.apk]"
-            );
-        for (int i = 0 ; i < sortedModules.size() ; i++) {
-            assertEquals(sortedModules.get(i), ((ITestSuite)res.get(i)).getDirectModule().getId());
+                Arrays.asList(
+                        "module1[com.android.mod1.apex]",
+                        "module2[com.android.mod1.apex]",
+                        "module1[com.android.mod1.apex+com.android.mod2.apex]",
+                        "module2[com.android.mod1.apex+com.android.mod2.apex]",
+                        "module3[com.android.mod1.apex+com.android.mod2.apex]",
+                        "module1[com.android.mod3.apk]",
+                        "module2[com.android.mod3.apk]",
+                        "module3[com.android.mod3.apk]",
+                        "module4[com.android.mod3.apk]",
+                        "module5[com.android.mod3.apk]");
+        for (int i = 0; i < sortedModules.size(); i++) {
+            assertEquals(sortedModules.get(i), ((ITestSuite) res.get(i)).getDirectModule().getId());
         }
     }
 
-    /**
-     * Test that the there exist a module with invalid parameterized modules defined.
-     */
+    /** Test that the there exist a module with invalid parameterized modules defined. */
     @Test
     public void testReorderTestModulesWithUnexpectedMainlineModules() throws Exception {
         List<String> modules = Arrays.asList("module1[com.mod1.apex]", "module1[com.mod1]");
@@ -400,9 +394,12 @@ public class StrictShardHelperTest {
             fail("Should have thrown an exception.");
         } catch (RuntimeException expected) {
             // expected
-            assertTrue(expected.getMessage().contains(
-                    "Module: module1[com.mod1] doesn't match the pattern for mainline " +
-                        "modules. The pattern should end with apk/apex/apks."));
+            assertTrue(
+                    expected.getMessage()
+                            .contains(
+                                    "Module: module1[com.mod1] doesn't match the pattern for"
+                                            + " mainline modules. The pattern should end with"
+                                            + " apk/apex/apks."));
         }
     }
 
@@ -481,7 +478,7 @@ public class StrictShardHelperTest {
     /** Test that no exception occurs when sharding for any possible interfaces. */
     @Test
     public void testSuite_withAllInterfaces() throws Exception {
-        mContext.addAllocatedDevice("default", EasyMock.createMock(ITestDevice.class));
+        mContext.addAllocatedDevice("default", mock(ITestDevice.class));
         IRemoteTest forceTest = new TestInterfaceClass();
         IRemoteTest test = new SplitITestSuite("suite-interface", forceTest);
 

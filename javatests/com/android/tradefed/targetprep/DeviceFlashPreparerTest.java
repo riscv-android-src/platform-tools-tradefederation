@@ -29,7 +29,6 @@ import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceAllocationState;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
-import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.TestDeviceOptions;
@@ -56,7 +55,6 @@ import java.util.Arrays;
 @RunWith(JUnit4.class)
 public class DeviceFlashPreparerTest {
 
-    private IDeviceManager mMockDeviceManager;
     private IDeviceFlasher mMockFlasher;
     private DeviceFlashPreparer mDeviceFlashPreparer;
     private ITestDevice mMockDevice;
@@ -69,7 +67,6 @@ public class DeviceFlashPreparerTest {
 
     @Before
     public void setUp() throws Exception {
-        mMockDeviceManager = EasyMock.createMock(IDeviceManager.class);
         mMockFlasher = EasyMock.createMock(IDeviceFlasher.class);
         mMockDevice = EasyMock.createMock(ITestDevice.class);
         EasyMock.expect(mMockDevice.getSerialNumber()).andReturn("foo").anyTimes();
@@ -89,11 +86,6 @@ public class DeviceFlashPreparerTest {
             @Override
             int getDeviceBootPollTimeMs() {
                 return 100;
-            }
-
-            @Override
-            IDeviceManager getDeviceManager() {
-                return mMockDeviceManager;
             }
 
             @Override

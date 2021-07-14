@@ -19,22 +19,23 @@ import static junit.framework.TestCase.assertFalse;
 import static junit.framework.TestCase.assertNull;
 import static junit.framework.TestCase.assertTrue;
 
+import static org.mockito.Mockito.mock;
+
 import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
-
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.StubTest;
-import java.time.Duration;
-import org.easymock.EasyMock;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-
-import java.util.HashMap;
 import org.mockito.Mockito;
+
+import java.time.Duration;
+import java.util.HashMap;
 
 /** Unit tests for {@link RemoteTestTimeOutEnforcer}. */
 @RunWith(JUnit4.class)
@@ -52,7 +53,7 @@ public class RemoteTestTimeOutEnforcerTest {
 
     @Before
     public void setUp() {
-        mListener = new ModuleListener(EasyMock.createMock(ITestInvocationListener.class));
+        mListener = new ModuleListener(mock(ITestInvocationListener.class));
         mIRemoteTest = new StubTest();
         mConfigurationDescriptor = new ConfigurationDescriptor();
         mModuleDefinition = Mockito.mock(ModuleDefinition.class);
@@ -61,24 +62,25 @@ public class RemoteTestTimeOutEnforcerTest {
                 Integer.toString(mIRemoteTest.hashCode()), mTestMappingPath);
         mModuleInvocationContext.setConfigurationDescriptor(mConfigurationDescriptor);
         Mockito.when(mModuleDefinition.getId()).thenReturn(mModuleName);
-        Mockito.when(mModuleDefinition.getModuleInvocationContext()).thenReturn(
-                mModuleInvocationContext);
-        mEnforcer = new RemoteTestTimeOutEnforcer(
-                mListener, mModuleDefinition, mIRemoteTest, mTimeout);
+        Mockito.when(mModuleDefinition.getModuleInvocationContext())
+                .thenReturn(mModuleInvocationContext);
+        mEnforcer =
+                new RemoteTestTimeOutEnforcer(mListener, mModuleDefinition, mIRemoteTest, mTimeout);
     }
 
     @Test
     public void testTimeout() {
         mEnforcer.testRunEnded(200000L, new HashMap<String, Metric>());
         assertTrue(
-                mListener.getCurrentRunResults().getRunFailureDescription().getErrorMessage()
-                        .contains(String.format(
-                                "%s defined in [%s] took 200 seconds while timeout is %s seconds",
-                                mModuleName,
-                                mTestMappingPath,
-                                mTimeout.getSeconds())
-                        )
-        );
+                mListener
+                        .getCurrentRunResults()
+                        .getRunFailureDescription()
+                        .getErrorMessage()
+                        .contains(
+                                String.format(
+                                        "%s defined in [%s] took 200 seconds while timeout is %s"
+                                                + " seconds",
+                                        mModuleName, mTestMappingPath, mTimeout.getSeconds())));
         assertFalse(mListener.getCurrentRunResults().getRunFailureDescription().isRetriable());
     }
 

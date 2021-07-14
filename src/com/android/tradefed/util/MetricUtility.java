@@ -137,9 +137,7 @@ public class MetricUtility {
                         METRIC_KEY_VALUE_SEPARATOR, entry.getValue());
                 outputStream.write(String.format("%s%s", test_metric, METRIC_SEPARATOR).getBytes());
             }
-            if (!metrics.isEmpty()) {
-                outputStream.write(TEST_HEADER_SEPARATOR.getBytes());
-            }
+            outputStream.write(TEST_HEADER_SEPARATOR.getBytes());
         } catch (IOException ioe) {
             CLog.e(ioe);
         }

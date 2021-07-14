@@ -21,9 +21,10 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
-import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
+import com.android.tradefed.host.IHostOptions;
+import com.android.tradefed.host.IHostOptions.PermitLimitType;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.error.DeviceErrorIdentifier;
@@ -156,13 +157,13 @@ public class GsiDeviceFlashPreparer extends BaseTargetPreparer {
     }
 
     /**
-     * Get a reference to the {@link IDeviceManager}
+     * Get a reference to the {@link IHostOptions}
      *
-     * @return the {@link IDeviceManager} to use
+     * @return the {@link IHostOptions} to use
      */
     @VisibleForTesting
-    IDeviceManager getDeviceManager() {
-        return GlobalConfiguration.getDeviceManagerInstance();
+    protected IHostOptions getHostOptions() {
+        return GlobalConfiguration.getInstance().getHostOptions();
     }
 
     /**
@@ -184,7 +185,6 @@ public class GsiDeviceFlashPreparer extends BaseTargetPreparer {
      */
     private void flashGsi(ITestDevice device, IBuildInfo buildInfo)
             throws TargetSetupError, DeviceNotAvailableException {
-        IDeviceManager deviceManager = getDeviceManager();
         device.waitForDeviceOnline();
         // After Android 10, system parition and product partion are moved to dynamic partitions
         // https://source.android.com/devices/tech/ota/dynamic_partitions/implement?hl=en
@@ -194,7 +194,7 @@ public class GsiDeviceFlashPreparer extends BaseTargetPreparer {
         }
         device.rebootIntoBootloader();
         long start = System.currentTimeMillis();
-        deviceManager.takeFlashingPermit();
+        getHostOptions().takePermit(PermitLimitType.CONCURRENT_FLASHER);
         CLog.v(
                 "Flashing permit obtained after %ds",
                 TimeUnit.MILLISECONDS.toSeconds((System.currentTimeMillis() - start)));
@@ -233,7 +233,7 @@ public class GsiDeviceFlashPreparer extends BaseTargetPreparer {
                 executeFastbootCmd(device, "flash", "boot", mBootImg.getAbsolutePath());
             }
         } finally {
-            deviceManager.returnFlashingPermit();
+            getHostOptions().returnPermit(PermitLimitType.CONCURRENT_FLASHER);
             // Allow interruption at the end no matter what.
             getRunUtil().allowInterrupt(true);
             CLog.v(

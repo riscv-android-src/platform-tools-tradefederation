@@ -16,27 +16,33 @@
 package com.android.tradefed.suite.checker;
 
 import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.suite.checker.StatusCheckerResult.CheckStatus;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 /** Unit tests for {@link TimeStatusChecker}. */
 @RunWith(JUnit4.class)
 public class TimeStatusCheckerTest {
 
     private TimeStatusChecker mChecker;
-    private ITestDevice mMockDevice;
+    @Mock ITestDevice mMockDevice;
 
     @Before
     public void setUp() {
-        mMockDevice = EasyMock.createMock(ITestDevice.class);
+        MockitoAnnotations.initMocks(this);
+
         mChecker = new TimeStatusChecker();
     }
 
@@ -46,10 +52,9 @@ public class TimeStatusCheckerTest {
      */
     @Test
     public void testCheckTimeDiff_small() throws DeviceNotAvailableException {
-        EasyMock.expect(mMockDevice.getDeviceTimeOffset(EasyMock.anyObject())).andReturn(2000L);
-        EasyMock.replay(mMockDevice);
+        when(mMockDevice.getDeviceTimeOffset(Mockito.any())).thenReturn(2000L);
+
         assertEquals(CheckStatus.SUCCESS, mChecker.postExecutionCheck(mMockDevice).getStatus());
-        EasyMock.verify(mMockDevice);
     }
 
     /**
@@ -58,13 +63,13 @@ public class TimeStatusCheckerTest {
      */
     @Test
     public void testCheckTimeDiff_large() throws DeviceNotAvailableException {
-        EasyMock.expect(mMockDevice.getDeviceTimeOffset(EasyMock.anyObject())).andReturn(15000L);
-        mMockDevice.logOnDevice(
-                EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.contains("reset the time."));
-        mMockDevice.setDate(EasyMock.anyObject());
-        EasyMock.replay(mMockDevice);
+        when(mMockDevice.getDeviceTimeOffset(Mockito.any())).thenReturn(15000L);
+
         assertEquals(CheckStatus.FAILED, mChecker.postExecutionCheck(mMockDevice).getStatus());
-        EasyMock.verify(mMockDevice);
+
+        verify(mMockDevice)
+                .logOnDevice(Mockito.any(), Mockito.any(), Mockito.contains("reset the time."));
+        verify(mMockDevice).setDate(Mockito.any());
     }
 
     /**
@@ -73,18 +78,15 @@ public class TimeStatusCheckerTest {
      */
     @Test
     public void testCheckTimeDiff_multiFailure() throws DeviceNotAvailableException {
-        EasyMock.expect(mMockDevice.getDeviceTimeOffset(EasyMock.anyObject()))
-                .andReturn(15000L)
-                .times(2);
-        mMockDevice.logOnDevice(
-                EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.contains("reset the time."));
-        EasyMock.expectLastCall().times(2);
-        mMockDevice.setDate(EasyMock.anyObject());
-        EasyMock.expectLastCall().times(2);
-        EasyMock.expect(mMockDevice.getSerialNumber()).andReturn("serial");
-        EasyMock.replay(mMockDevice);
+        when(mMockDevice.getDeviceTimeOffset(Mockito.any())).thenReturn(15000L);
+
+        when(mMockDevice.getSerialNumber()).thenReturn("serial");
+
         assertEquals(CheckStatus.FAILED, mChecker.postExecutionCheck(mMockDevice).getStatus());
         assertEquals(CheckStatus.SUCCESS, mChecker.postExecutionCheck(mMockDevice).getStatus());
-        EasyMock.verify(mMockDevice);
+        verify(mMockDevice, times(2))
+                .logOnDevice(Mockito.any(), Mockito.any(), Mockito.contains("reset the time."));
+        verify(mMockDevice, times(2)).setDate(Mockito.any());
+        verify(mMockDevice, times(2)).getDeviceTimeOffset(Mockito.any());
     }
 }

@@ -21,6 +21,8 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.IBuildInfo;
@@ -38,14 +40,15 @@ import com.android.tradefed.util.MultiMap;
 
 import com.google.common.net.HostAndPort;
 
-import org.easymock.Capture;
-import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
 import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.io.File;
 import java.io.IOException;
@@ -60,16 +63,16 @@ import java.util.List;
 public class GceManagerTest {
 
     private GceManager mGceManager;
-    private DeviceDescriptor mMockDeviceDesc;
+    @Mock DeviceDescriptor mMockDeviceDesc;
     private TestDeviceOptions mOptions;
     private IBuildInfo mMockBuildInfo;
-    private IRunUtil mMockRunUtil;
+    @Mock IRunUtil mMockRunUtil;
     private File mAvdBinary;
 
     @Before
     public void setUp() throws Exception {
-        mMockRunUtil = EasyMock.createMock(IRunUtil.class);
-        mMockDeviceDesc = Mockito.mock(DeviceDescriptor.class);
+        MockitoAnnotations.initMocks(this);
+
         mMockBuildInfo = new BuildInfo();
         mOptions = new TestDeviceOptions();
         OptionSetter setter = new OptionSetter(mOptions);
@@ -160,13 +163,12 @@ public class GceManagerTest {
     /** Test {@link GceManager#buildGceCmd(File, IBuildInfo, String)}. */
     @Test
     public void testBuildGceCommand() throws IOException {
-        IBuildInfo mockBuildInfo = EasyMock.createMock(IBuildInfo.class);
-        EasyMock.expect(mockBuildInfo.getBuildAttributes())
-                .andReturn(Collections.<String, String>emptyMap());
-        EasyMock.expect(mockBuildInfo.getBuildFlavor()).andReturn("FLAVOR");
-        EasyMock.expect(mockBuildInfo.getBuildBranch()).andReturn("BRANCH");
-        EasyMock.expect(mockBuildInfo.getBuildId()).andReturn("BUILDID");
-        EasyMock.replay(mockBuildInfo);
+        IBuildInfo mockBuildInfo = mock(IBuildInfo.class);
+        when(mockBuildInfo.getBuildAttributes()).thenReturn(Collections.<String, String>emptyMap());
+        when(mockBuildInfo.getBuildFlavor()).thenReturn("FLAVOR");
+        when(mockBuildInfo.getBuildBranch()).thenReturn("BRANCH");
+        when(mockBuildInfo.getBuildId()).thenReturn("BUILDID");
+
         MultiMap<String, String> stubAttributes = new MultiMap<>();
         stubAttributes.put("foo", "bar");
         File reportFile = null;
@@ -195,19 +197,18 @@ public class GceManagerTest {
         } finally {
             FileUtil.deleteFile(reportFile);
         }
-        EasyMock.verify(mockBuildInfo);
     }
 
     /** Test {@link GceManager#buildGceCmd(File, IBuildInfo, String)} with json key file set. */
     @Test
     public void testBuildGceCommand_withServiceAccountJsonKeyFile() throws Exception {
-        IBuildInfo mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
-        EasyMock.expect(mMockBuildInfo.getBuildAttributes())
-                .andReturn(Collections.<String, String>emptyMap());
-        EasyMock.expect(mMockBuildInfo.getBuildFlavor()).andReturn("FLAVOR");
-        EasyMock.expect(mMockBuildInfo.getBuildBranch()).andReturn("BRANCH");
-        EasyMock.expect(mMockBuildInfo.getBuildId()).andReturn("BUILDID");
-        EasyMock.replay(mMockBuildInfo);
+        IBuildInfo mMockBuildInfo = mock(IBuildInfo.class);
+        when(mMockBuildInfo.getBuildAttributes())
+                .thenReturn(Collections.<String, String>emptyMap());
+        when(mMockBuildInfo.getBuildFlavor()).thenReturn("FLAVOR");
+        when(mMockBuildInfo.getBuildBranch()).thenReturn("BRANCH");
+        when(mMockBuildInfo.getBuildId()).thenReturn("BUILDID");
+
         File reportFile = null;
         OptionSetter setter = new OptionSetter(mOptions);
         setter.setOptionValue("gce-driver-service-account-json-key-path", "/path/to/key.json");
@@ -235,19 +236,18 @@ public class GceManagerTest {
         } finally {
             FileUtil.deleteFile(reportFile);
         }
-        EasyMock.verify(mMockBuildInfo);
     }
 
     /** Test {@link GceManager#buildGceCmd(File, IBuildInfo, String)}. */
     @Test
     public void testBuildGceCommandWithEmulatorBuild() throws Exception {
-        IBuildInfo mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
-        EasyMock.expect(mMockBuildInfo.getBuildAttributes())
-                .andReturn(Collections.<String, String>emptyMap());
-        EasyMock.expect(mMockBuildInfo.getBuildFlavor()).andReturn("TARGET");
-        EasyMock.expect(mMockBuildInfo.getBuildBranch()).andReturn("BRANCH");
-        EasyMock.expect(mMockBuildInfo.getBuildId()).andReturn("BUILDID");
-        EasyMock.replay(mMockBuildInfo);
+        IBuildInfo mMockBuildInfo = mock(IBuildInfo.class);
+        when(mMockBuildInfo.getBuildAttributes())
+                .thenReturn(Collections.<String, String>emptyMap());
+        when(mMockBuildInfo.getBuildFlavor()).thenReturn("TARGET");
+        when(mMockBuildInfo.getBuildBranch()).thenReturn("BRANCH");
+        when(mMockBuildInfo.getBuildId()).thenReturn("BUILDID");
+
         File reportFile = null;
 
         try {
@@ -284,19 +284,18 @@ public class GceManagerTest {
         } finally {
             FileUtil.deleteFile(reportFile);
         }
-        EasyMock.verify(mMockBuildInfo);
     }
 
     /** Test {@link GceManager#buildGceCmd(File, IBuildInfo, String)}. */
     @Test
     public void testBuildGceCommandWithGceDriverParam() throws Exception {
-        IBuildInfo mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
-        EasyMock.expect(mMockBuildInfo.getBuildAttributes())
-                .andReturn(Collections.<String, String>emptyMap());
-        EasyMock.expect(mMockBuildInfo.getBuildFlavor()).andReturn("FLAVOR");
-        EasyMock.expect(mMockBuildInfo.getBuildBranch()).andReturn("BRANCH");
-        EasyMock.expect(mMockBuildInfo.getBuildId()).andReturn("BUILDID");
-        EasyMock.replay(mMockBuildInfo);
+        IBuildInfo mMockBuildInfo = mock(IBuildInfo.class);
+        when(mMockBuildInfo.getBuildAttributes())
+                .thenReturn(Collections.<String, String>emptyMap());
+        when(mMockBuildInfo.getBuildFlavor()).thenReturn("FLAVOR");
+        when(mMockBuildInfo.getBuildBranch()).thenReturn("BRANCH");
+        when(mMockBuildInfo.getBuildId()).thenReturn("BUILDID");
+
         File reportFile = null;
         OptionSetter setter = new OptionSetter(mOptions);
         setter.setOptionValue("gce-driver-param", "--report-internal-ip");
@@ -325,7 +324,6 @@ public class GceManagerTest {
         } finally {
             FileUtil.deleteFile(reportFile);
         }
-        EasyMock.verify(mMockBuildInfo);
     }
 
     /** Ensure exception is thrown after a timeout from the acloud command. */
@@ -359,14 +357,13 @@ public class GceManagerTest {
         CommandResult cmd = new CommandResult();
         cmd.setStatus(CommandStatus.TIMED_OUT);
         cmd.setStdout("output err");
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.eq(1800000L),
-                                EasyMock.anyObject(),
-                                EasyMock.eq("--boot-timeout"),
-                                EasyMock.eq("1620")))
-                .andReturn(cmd);
-        EasyMock.replay(mMockRunUtil);
+        when(mMockRunUtil.runTimedCmd(
+                        Mockito.eq(1800000L),
+                        Mockito.any(),
+                        Mockito.eq("--boot-timeout"),
+                        Mockito.eq("1620")))
+                .thenReturn(cmd);
+
         doReturn(null).when(mMockDeviceDesc).toString();
         try {
             mGceManager.startGce();
@@ -374,19 +371,18 @@ public class GceManagerTest {
         } catch (TargetSetupError expected) {
             assertEquals(expectedException, expected.getMessage());
         }
-        EasyMock.verify(mMockRunUtil);
     }
 
     /** Test {@link GceManager#buildGceCmd(File, IBuildInfo, String)}. */
     @Test
     public void testBuildGceCommandWithKernelBuild() throws Exception {
-        IBuildInfo mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
-        EasyMock.expect(mMockBuildInfo.getBuildAttributes())
-                .andReturn(Collections.<String, String>emptyMap());
-        EasyMock.expect(mMockBuildInfo.getBuildFlavor()).andReturn("FLAVOR");
-        EasyMock.expect(mMockBuildInfo.getBuildBranch()).andReturn("BRANCH");
-        EasyMock.expect(mMockBuildInfo.getBuildId()).andReturn("BUILDID");
-        EasyMock.replay(mMockBuildInfo);
+        IBuildInfo mMockBuildInfo = mock(IBuildInfo.class);
+        when(mMockBuildInfo.getBuildAttributes())
+                .thenReturn(Collections.<String, String>emptyMap());
+        when(mMockBuildInfo.getBuildFlavor()).thenReturn("FLAVOR");
+        when(mMockBuildInfo.getBuildBranch()).thenReturn("BRANCH");
+        when(mMockBuildInfo.getBuildId()).thenReturn("BUILDID");
+
         File reportFile = null;
         try {
             OptionSetter setter = new OptionSetter(mOptions);
@@ -415,7 +411,6 @@ public class GceManagerTest {
         } finally {
             FileUtil.deleteFile(reportFile);
         }
-        EasyMock.verify(mMockBuildInfo);
     }
 
     /**
@@ -466,14 +461,10 @@ public class GceManagerTest {
         CommandResult cmd = new CommandResult();
         cmd.setStatus(CommandStatus.SUCCESS);
         cmd.setStdout("output");
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(), (String[]) EasyMock.anyObject()))
-                .andReturn(cmd);
+        when(mMockRunUtil.runTimedCmd(Mockito.anyLong(), (String[]) Mockito.any())).thenReturn(cmd);
 
-        EasyMock.replay(mMockRunUtil);
         GceAvdInfo res = mGceManager.startGce();
-        EasyMock.verify(mMockRunUtil);
+
         assertNotNull(res);
         assertEquals(GceStatus.SUCCESS, res.getStatus());
     }
@@ -509,18 +500,13 @@ public class GceManagerTest {
         CommandResult cmd = new CommandResult();
         cmd.setStatus(CommandStatus.FAILED);
         cmd.setStdout("output");
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(), (String[]) EasyMock.anyObject()))
-                .andReturn(cmd);
-        EasyMock.replay(mMockRunUtil);
+        when(mMockRunUtil.runTimedCmd(Mockito.anyLong(), (String[]) Mockito.any())).thenReturn(cmd);
+
         try {
             mGceManager.startGce();
             fail("Should have thrown an exception");
         } catch (TargetSetupError expected) {
-
         }
-        EasyMock.verify(mMockRunUtil);
     }
 
     /**
@@ -571,13 +557,10 @@ public class GceManagerTest {
         CommandResult cmd = new CommandResult();
         cmd.setStatus(CommandStatus.FAILED);
         cmd.setStdout("output");
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(), (String[]) EasyMock.anyObject()))
-                .andReturn(cmd);
-        EasyMock.replay(mMockRunUtil);
+        when(mMockRunUtil.runTimedCmd(Mockito.anyLong(), (String[]) Mockito.any())).thenReturn(cmd);
+
         GceAvdInfo res = mGceManager.startGce();
-        EasyMock.verify(mMockRunUtil);
+
         assertNotNull(res);
         assertEquals(GceStatus.BOOT_FAIL, res.getStatus());
     }
@@ -600,22 +583,20 @@ public class GceManagerTest {
         CommandResult cmd = new CommandResult();
         cmd.setStatus(CommandStatus.SUCCESS);
         cmd.setStdout("output");
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(),
-                                EasyMock.eq(mOptions.getAvdDriverBinary().getAbsolutePath()),
-                                EasyMock.eq("delete"),
-                                EasyMock.eq("--instance_names"),
-                                EasyMock.eq("instance1"),
-                                EasyMock.eq("--config_file"),
-                                EasyMock.contains(mGceManager.getAvdConfigFile().getAbsolutePath()),
-                                EasyMock.eq("--report_file"),
-                                EasyMock.anyObject()))
-                .andReturn(cmd);
+        when(mMockRunUtil.runTimedCmd(
+                        Mockito.anyLong(),
+                        Mockito.eq(mOptions.getAvdDriverBinary().getAbsolutePath()),
+                        Mockito.eq("delete"),
+                        Mockito.eq("--instance_names"),
+                        Mockito.eq("instance1"),
+                        Mockito.eq("--config_file"),
+                        Mockito.contains(mGceManager.getAvdConfigFile().getAbsolutePath()),
+                        Mockito.eq("--report_file"),
+                        Mockito.any()))
+                .thenReturn(cmd);
 
-        EasyMock.replay(mMockRunUtil);
         mGceManager.shutdownGce();
-        EasyMock.verify(mMockRunUtil);
+
         // Attributes are marked when successful
         assertTrue(
                 mMockBuildInfo
@@ -638,16 +619,11 @@ public class GceManagerTest {
         CommandResult cmd = new CommandResult();
         cmd.setStatus(CommandStatus.SUCCESS);
         cmd.setStdout("output");
-        Capture<List<String>> capture = new Capture<>();
-        EasyMock.expect(
-                        mMockRunUtil.runCmdInBackground(
-                                EasyMock.eq(Redirect.DISCARD),
-                                EasyMock.<List<String>>capture(capture)))
-                .andReturn(Mockito.mock(Process.class));
+        ArgumentCaptor<List<String>> capture = ArgumentCaptor.forClass(List.class);
+        when(mMockRunUtil.runCmdInBackground(Mockito.eq(Redirect.DISCARD), capture.capture()))
+                .thenReturn(Mockito.mock(Process.class));
 
-        EasyMock.replay(mMockRunUtil);
         mGceManager.shutdownGce();
-        EasyMock.verify(mMockRunUtil);
 
         List<String> args = capture.getValue();
         assertTrue(args.get(5).contains(mAvdBinary.getName()));
@@ -673,24 +649,21 @@ public class GceManagerTest {
         CommandResult cmd = new CommandResult();
         cmd.setStatus(CommandStatus.SUCCESS);
         cmd.setStdout("output");
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(),
-                                EasyMock.eq(mOptions.getAvdDriverBinary().getAbsolutePath()),
-                                EasyMock.eq("delete"),
-                                EasyMock.eq("--instance_names"),
-                                EasyMock.eq("instance1"),
-                                EasyMock.eq("--config_file"),
-                                EasyMock.contains(mGceManager.getAvdConfigFile().getAbsolutePath()),
-                                EasyMock.eq("--service_account_json_private_key_path"),
-                                EasyMock.eq("/path/to/key.json"),
-                                EasyMock.eq("--report_file"),
-                                EasyMock.anyObject()))
-                .andReturn(cmd);
+        when(mMockRunUtil.runTimedCmd(
+                        Mockito.anyLong(),
+                        Mockito.eq(mOptions.getAvdDriverBinary().getAbsolutePath()),
+                        Mockito.eq("delete"),
+                        Mockito.eq("--instance_names"),
+                        Mockito.eq("instance1"),
+                        Mockito.eq("--config_file"),
+                        Mockito.contains(mGceManager.getAvdConfigFile().getAbsolutePath()),
+                        Mockito.eq("--service_account_json_private_key_path"),
+                        Mockito.eq("/path/to/key.json"),
+                        Mockito.eq("--report_file"),
+                        Mockito.any()))
+                .thenReturn(cmd);
 
-        EasyMock.replay(mMockRunUtil);
         mGceManager.shutdownGce();
-        EasyMock.verify(mMockRunUtil);
     }
 
     /** Test a success case for collecting the bugreport with ssh. */
@@ -701,45 +674,42 @@ public class GceManagerTest {
         res.setStdout("bugreport success!\nOK:/bugreports/bugreport.zip\n");
         OutputStream stdout = null;
         OutputStream stderr = null;
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(),
-                                EasyMock.eq(stdout),
-                                EasyMock.eq(stderr),
-                                EasyMock.eq("ssh"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("UserKnownHostsFile=/dev/null"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("StrictHostKeyChecking=no"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("ServerAliveInterval=10"),
-                                EasyMock.eq("-i"),
-                                EasyMock.anyObject(),
-                                EasyMock.eq("root@127.0.0.1"),
-                                EasyMock.eq("bugreportz")))
-                .andReturn(res);
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(),
-                                EasyMock.eq("scp"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("UserKnownHostsFile=/dev/null"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("StrictHostKeyChecking=no"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("ServerAliveInterval=10"),
-                                EasyMock.eq("-i"),
-                                EasyMock.anyObject(),
-                                EasyMock.eq("root@127.0.0.1:/bugreports/bugreport.zip"),
-                                EasyMock.anyObject()))
-                .andReturn(res);
-        EasyMock.replay(mMockRunUtil);
+        when(mMockRunUtil.runTimedCmd(
+                        Mockito.anyLong(),
+                        Mockito.eq(stdout),
+                        Mockito.eq(stderr),
+                        Mockito.eq("ssh"),
+                        Mockito.eq("-o"),
+                        Mockito.eq("UserKnownHostsFile=/dev/null"),
+                        Mockito.eq("-o"),
+                        Mockito.eq("StrictHostKeyChecking=no"),
+                        Mockito.eq("-o"),
+                        Mockito.eq("ServerAliveInterval=10"),
+                        Mockito.eq("-i"),
+                        Mockito.any(),
+                        Mockito.eq("root@127.0.0.1"),
+                        Mockito.eq("bugreportz")))
+                .thenReturn(res);
+        when(mMockRunUtil.runTimedCmd(
+                        Mockito.anyLong(),
+                        Mockito.eq("scp"),
+                        Mockito.eq("-o"),
+                        Mockito.eq("UserKnownHostsFile=/dev/null"),
+                        Mockito.eq("-o"),
+                        Mockito.eq("StrictHostKeyChecking=no"),
+                        Mockito.eq("-o"),
+                        Mockito.eq("ServerAliveInterval=10"),
+                        Mockito.eq("-i"),
+                        Mockito.any(),
+                        Mockito.eq("root@127.0.0.1:/bugreports/bugreport.zip"),
+                        Mockito.any()))
+                .thenReturn(res);
+
         File bugreport = null;
         try {
             bugreport = GceManager.getBugreportzWithSsh(fakeInfo, mOptions, mMockRunUtil);
             assertNotNull(bugreport);
         } finally {
-            EasyMock.verify(mMockRunUtil);
             FileUtil.deleteFile(bugreport);
         }
     }
@@ -755,67 +725,63 @@ public class GceManagerTest {
         res.setStdout("bugreport success!\nOK:/bugreports/bugreport.zip\n");
         OutputStream stdout = null;
         OutputStream stderr = null;
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(),
-                                EasyMock.eq(stdout),
-                                EasyMock.eq(stderr),
-                                EasyMock.eq("ssh"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("UserKnownHostsFile=/dev/null"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("StrictHostKeyChecking=no"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("ServerAliveInterval=10"),
-                                EasyMock.eq("-i"),
-                                EasyMock.anyObject(),
-                                EasyMock.eq("root@127.0.0.1"),
-                                EasyMock.eq("./bin/adb"),
-                                EasyMock.eq("wait-for-device"),
-                                EasyMock.eq("shell"),
-                                EasyMock.eq("bugreportz")))
-                .andReturn(res);
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(),
-                                EasyMock.eq(stdout),
-                                EasyMock.eq(stderr),
-                                EasyMock.eq("ssh"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("UserKnownHostsFile=/dev/null"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("StrictHostKeyChecking=no"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("ServerAliveInterval=10"),
-                                EasyMock.eq("-i"),
-                                EasyMock.anyObject(),
-                                EasyMock.eq("root@127.0.0.1"),
-                                EasyMock.eq("./bin/adb"),
-                                EasyMock.eq("pull"),
-                                EasyMock.eq("/bugreports/bugreport.zip")))
-                .andReturn(res);
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(),
-                                EasyMock.eq("scp"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("UserKnownHostsFile=/dev/null"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("StrictHostKeyChecking=no"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("ServerAliveInterval=10"),
-                                EasyMock.eq("-i"),
-                                EasyMock.anyObject(),
-                                EasyMock.eq("root@127.0.0.1:./bugreport.zip"),
-                                EasyMock.anyObject()))
-                .andReturn(res);
-        EasyMock.replay(mMockRunUtil);
+        when(mMockRunUtil.runTimedCmd(
+                        Mockito.anyLong(),
+                        Mockito.eq(stdout),
+                        Mockito.eq(stderr),
+                        Mockito.eq("ssh"),
+                        Mockito.eq("-o"),
+                        Mockito.eq("UserKnownHostsFile=/dev/null"),
+                        Mockito.eq("-o"),
+                        Mockito.eq("StrictHostKeyChecking=no"),
+                        Mockito.eq("-o"),
+                        Mockito.eq("ServerAliveInterval=10"),
+                        Mockito.eq("-i"),
+                        Mockito.any(),
+                        Mockito.eq("root@127.0.0.1"),
+                        Mockito.eq("./bin/adb"),
+                        Mockito.eq("wait-for-device"),
+                        Mockito.eq("shell"),
+                        Mockito.eq("bugreportz")))
+                .thenReturn(res);
+        when(mMockRunUtil.runTimedCmd(
+                        Mockito.anyLong(),
+                        Mockito.eq(stdout),
+                        Mockito.eq(stderr),
+                        Mockito.eq("ssh"),
+                        Mockito.eq("-o"),
+                        Mockito.eq("UserKnownHostsFile=/dev/null"),
+                        Mockito.eq("-o"),
+                        Mockito.eq("StrictHostKeyChecking=no"),
+                        Mockito.eq("-o"),
+                        Mockito.eq("ServerAliveInterval=10"),
+                        Mockito.eq("-i"),
+                        Mockito.any(),
+                        Mockito.eq("root@127.0.0.1"),
+                        Mockito.eq("./bin/adb"),
+                        Mockito.eq("pull"),
+                        Mockito.eq("/bugreports/bugreport.zip")))
+                .thenReturn(res);
+        when(mMockRunUtil.runTimedCmd(
+                        Mockito.anyLong(),
+                        Mockito.eq("scp"),
+                        Mockito.eq("-o"),
+                        Mockito.eq("UserKnownHostsFile=/dev/null"),
+                        Mockito.eq("-o"),
+                        Mockito.eq("StrictHostKeyChecking=no"),
+                        Mockito.eq("-o"),
+                        Mockito.eq("ServerAliveInterval=10"),
+                        Mockito.eq("-i"),
+                        Mockito.any(),
+                        Mockito.eq("root@127.0.0.1:./bugreport.zip"),
+                        Mockito.any()))
+                .thenReturn(res);
+
         File bugreport = null;
         try {
             bugreport = GceManager.getNestedDeviceSshBugreportz(fakeInfo, mOptions, mMockRunUtil);
             assertNotNull(bugreport);
         } finally {
-            EasyMock.verify(mMockRunUtil);
             FileUtil.deleteFile(bugreport);
         }
     }
@@ -831,31 +797,29 @@ public class GceManagerTest {
         res.setStdout("bugreport failed!\n");
         OutputStream stdout = null;
         OutputStream stderr = null;
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(),
-                                EasyMock.eq(stdout),
-                                EasyMock.eq(stderr),
-                                EasyMock.eq("ssh"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("UserKnownHostsFile=/dev/null"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("StrictHostKeyChecking=no"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("ServerAliveInterval=10"),
-                                EasyMock.eq("-i"),
-                                EasyMock.anyObject(),
-                                EasyMock.eq("root@127.0.0.1"),
-                                EasyMock.eq("bugreportz")))
-                .andReturn(res);
-        EasyMock.replay(mMockRunUtil);
+        when(mMockRunUtil.runTimedCmd(
+                        Mockito.anyLong(),
+                        Mockito.eq(stdout),
+                        Mockito.eq(stderr),
+                        Mockito.eq("ssh"),
+                        Mockito.eq("-o"),
+                        Mockito.eq("UserKnownHostsFile=/dev/null"),
+                        Mockito.eq("-o"),
+                        Mockito.eq("StrictHostKeyChecking=no"),
+                        Mockito.eq("-o"),
+                        Mockito.eq("ServerAliveInterval=10"),
+                        Mockito.eq("-i"),
+                        Mockito.any(),
+                        Mockito.eq("root@127.0.0.1"),
+                        Mockito.eq("bugreportz")))
+                .thenReturn(res);
+
         File bugreport = null;
         try {
             bugreport = GceManager.getBugreportzWithSsh(fakeInfo, mOptions, mMockRunUtil);
             assertNull(bugreport);
         } finally {
             FileUtil.deleteFile(bugreport);
-            EasyMock.verify(mMockRunUtil);
         }
     }
 
@@ -904,34 +868,28 @@ public class GceManagerTest {
                         + "TE', 'type': 'PERSISTENT', 'boot': False, 'source': u'projects/andro"
                         + "id-treehugger/zones/us-c}]}");
         cmd.setStdout("output");
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(), (String[]) EasyMock.anyObject()))
-                .andReturn(cmd);
+        when(mMockRunUtil.runTimedCmd(Mockito.anyLong(), (String[]) Mockito.any())).thenReturn(cmd);
         // Ensure that the instance can be shutdown.
         CommandResult shutdownResult = new CommandResult();
         shutdownResult.setStatus(CommandStatus.SUCCESS);
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(),
-                                EasyMock.anyObject(),
-                                EasyMock.eq("delete"),
-                                EasyMock.eq("--instance_names"),
-                                EasyMock.eq("ins-fake-instance-linux"),
-                                EasyMock.eq("--config_file"),
-                                EasyMock.anyObject(),
-                                EasyMock.eq("--report_file"),
-                                EasyMock.anyObject()))
-                .andReturn(shutdownResult);
+        when(mMockRunUtil.runTimedCmd(
+                        Mockito.anyLong(),
+                        Mockito.any(),
+                        Mockito.eq("delete"),
+                        Mockito.eq("--instance_names"),
+                        Mockito.eq("ins-fake-instance-linux"),
+                        Mockito.eq("--config_file"),
+                        Mockito.any(),
+                        Mockito.eq("--report_file"),
+                        Mockito.any()))
+                .thenReturn(shutdownResult);
 
-        EasyMock.replay(mMockRunUtil);
         GceAvdInfo gceAvd = mGceManager.startGce();
         assertEquals(
                 "acloud errors: timeout after 1800000ms, acloud did not return",
                 gceAvd.getErrors());
         // If we attempt to clean up afterward
         mGceManager.shutdownGce();
-        EasyMock.verify(mMockRunUtil);
     }
 
     @Test

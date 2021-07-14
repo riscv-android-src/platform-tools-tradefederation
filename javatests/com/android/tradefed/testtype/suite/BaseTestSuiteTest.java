@@ -331,9 +331,11 @@ public class BaseTestSuiteTest {
             fail("Should have thrown exception");
         } catch (HarnessRuntimeException ex) {
             assertEquals(
-                    "Include filter '{arm64-v8a Doesntexist=[Doesntexist], armeabi-v7a "
-                            + "Doesntexist=[Doesntexist]}' was specified but resulted in "
-                            + "an empty test set.",
+                    "Include filter '{arm64-v8a Doesntexist=[Doesntexist], "
+                            + "armeabi-v7a Doesntexist=[Doesntexist], arm64-v8a suite/stub1=[], "
+                            + "armeabi-v7a suite/stub1=[], arm64-v8a suite/stub2=[], "
+                            + "armeabi-v7a suite/stub2=[]}' was specified but "
+                            + "resulted in an empty test set.",
                     ex.getMessage());
         }
     }

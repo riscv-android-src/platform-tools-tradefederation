@@ -1224,6 +1224,8 @@ public class Console extends Thread {
         console.setDaemon(true);
 
         GlobalConfiguration.getInstance().getCommandScheduler().setClearcutClient(client);
+        // Initialize the locks for the TF session
+        GlobalConfiguration.getInstance().getHostOptions().initConcurrentLocks();
 
         console.start();
 

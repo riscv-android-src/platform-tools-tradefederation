@@ -16,15 +16,20 @@
 package com.android.tradefed.result;
 
 import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.util.ArrayUtil;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.io.File;
 import java.util.HashMap;
@@ -34,12 +39,12 @@ import java.util.Map;
 /** Unit tests for {@link DeviceFileReporter}. */
 @RunWith(JUnit4.class)
 public class DeviceFileReporterTest {
-    DeviceFileReporter dfr = null;
-    ITestDevice mDevice = null;
-    ITestInvocationListener mListener = null;
+    private DeviceFileReporter dfr = null;
+    @Mock ITestDevice mDevice;
+    @Mock ITestInvocationListener mListener;
 
     // Used to control what ISS is returned
-    InputStreamSource mDfrIss = null;
+    private InputStreamSource mDfrIss = null;
 
     @SuppressWarnings("serial")
     private static class FakeFile extends File {
@@ -51,10 +56,12 @@ public class DeviceFileReporterTest {
             mName = name;
             mSize = size;
         }
+
         @Override
         public String toString() {
             return mName;
         }
+
         @Override
         public long length() {
             return mSize;
@@ -63,10 +70,10 @@ public class DeviceFileReporterTest {
 
     @Before
     public void setUp() throws Exception {
-        mDevice = EasyMock.createMock(ITestDevice.class);
-        EasyMock.expect(mDevice.getSerialNumber()).andStubReturn("serial");
+        MockitoAnnotations.initMocks(this);
 
-        mListener = EasyMock.createMock(ITestInvocationListener.class);
+        when(mDevice.getSerialNumber()).thenReturn("serial");
+
         dfr =
                 new DeviceFileReporter(mDevice, mListener) {
                     @Override
@@ -83,20 +90,18 @@ public class DeviceFileReporterTest {
         final String tombstone = "What do you want on your tombstone?";
         dfr.addPatterns("/data/tombstones/*");
 
-        EasyMock.expect(mDevice.executeShellCommand(EasyMock.eq("ls /data/tombstones/*")))
-          .andReturn(result);
+        when(mDevice.executeShellCommand(Mockito.eq("ls /data/tombstones/*"))).thenReturn(result);
         // This gets passed verbatim to createIssForFile above
-        EasyMock.expect(mDevice.pullFile(EasyMock.eq(filename)))
-                .andReturn(new FakeFile(filename, tombstone.length()));
+        when(mDevice.pullFile(Mockito.eq(filename)))
+                .thenReturn(new FakeFile(filename, tombstone.length()));
 
         mDfrIss = new ByteArrayInputStreamSource(tombstone.getBytes());
-        // FIXME: use captures here to make sure we get the string back out
-        mListener.testLog(EasyMock.eq(filename), EasyMock.eq(LogDataType.UNKNOWN),
-                EasyMock.eq(mDfrIss));
 
-        replayMocks();
         dfr.run();
-        verifyMocks();
+
+        verify(mListener)
+                .testLog(
+                        Mockito.eq(filename), Mockito.eq(LogDataType.UNKNOWN), Mockito.eq(mDfrIss));
     }
 
     /** Files' paths should be trimmed to remove white spaces at the end of the lines. */
@@ -109,20 +114,19 @@ public class DeviceFileReporterTest {
         final String tombstone = "What do you want on your tombstone?";
         dfr.addPatterns("/data/tombstones/*");
 
-        EasyMock.expect(mDevice.executeShellCommand(EasyMock.eq("ls /data/tombstones/*")))
-            .andReturn(result);
+        when(mDevice.executeShellCommand(Mockito.eq("ls /data/tombstones/*"))).thenReturn(result);
         // This gets passed verbatim to createIssForFile above
-        EasyMock.expect(mDevice.pullFile(EasyMock.eq(filename)))
-            .andReturn(new FakeFile(filename, tombstone.length()));
+        when(mDevice.pullFile(Mockito.eq(filename)))
+                .thenReturn(new FakeFile(filename, tombstone.length()));
 
         mDfrIss = new ByteArrayInputStreamSource(tombstone.getBytes());
-        mListener.testLog(EasyMock.eq(filename), EasyMock.eq(LogDataType.UNKNOWN),
-            EasyMock.eq(mDfrIss));
 
-        replayMocks();
         List<String> filenames = dfr.run();
         assertEquals(filename, filenames.get(0));
-        verifyMocks();
+
+        verify(mListener)
+                .testLog(
+                        Mockito.eq(filename), Mockito.eq(LogDataType.UNKNOWN), Mockito.eq(mDfrIss));
     }
 
     @Test
@@ -135,86 +139,99 @@ public class DeviceFileReporterTest {
         final String result = "/data/tombstones/tombstone_00  \r\n" + filename1 + "   " + filename2;
         dfr.addPatterns("/data/tombstones/*");
 
-        EasyMock.expect(mDevice.executeShellCommand(EasyMock.eq("ls /data/tombstones/*")))
-                .andReturn(result);
+        when(mDevice.executeShellCommand(Mockito.eq("ls /data/tombstones/*"))).thenReturn(result);
         // This gets passed verbatim to createIssForFile above
-        EasyMock.expect(mDevice.pullFile(EasyMock.eq(filename)))
-                .andReturn(new FakeFile(filename, tombstone.length()));
-        EasyMock.expect(mDevice.pullFile(EasyMock.eq(filename1)))
-                .andReturn(new FakeFile(filename1, tombstone.length()));
-        EasyMock.expect(mDevice.pullFile(EasyMock.eq(filename2)))
-                .andReturn(new FakeFile(filename2, tombstone.length()));
+        when(mDevice.pullFile(Mockito.eq(filename)))
+                .thenReturn(new FakeFile(filename, tombstone.length()));
+        when(mDevice.pullFile(Mockito.eq(filename1)))
+                .thenReturn(new FakeFile(filename1, tombstone.length()));
+        when(mDevice.pullFile(Mockito.eq(filename2)))
+                .thenReturn(new FakeFile(filename2, tombstone.length()));
 
         mDfrIss = new ByteArrayInputStreamSource(tombstone.getBytes());
-        mListener.testLog(
-                EasyMock.eq(filename), EasyMock.eq(LogDataType.UNKNOWN), EasyMock.eq(mDfrIss));
-        mListener.testLog(
-                EasyMock.eq(filename1), EasyMock.eq(LogDataType.UNKNOWN), EasyMock.eq(mDfrIss));
-        mListener.testLog(
-                EasyMock.eq(filename2), EasyMock.eq(LogDataType.UNKNOWN), EasyMock.eq(mDfrIss));
 
-        replayMocks();
         List<String> filenames = dfr.run();
         assertEquals(filename, filenames.get(0));
         assertEquals(filename1, filenames.get(1));
         assertEquals(filename2, filenames.get(2));
-        verifyMocks();
+
+        verify(mListener)
+                .testLog(
+                        Mockito.eq(filename), Mockito.eq(LogDataType.UNKNOWN), Mockito.eq(mDfrIss));
+        verify(mListener)
+                .testLog(
+                        Mockito.eq(filename1),
+                        Mockito.eq(LogDataType.UNKNOWN),
+                        Mockito.eq(mDfrIss));
+        verify(mListener)
+                .testLog(
+                        Mockito.eq(filename2),
+                        Mockito.eq(LogDataType.UNKNOWN),
+                        Mockito.eq(mDfrIss));
     }
 
     @Test
     public void testLineEnding_LF() throws Exception {
-        final String[] filenames = {"/data/tombstones/tombstone_00",
-                "/data/tombstones/tombstone_01",
-                "/data/tombstones/tombstone_02",
-                "/data/tombstones/tombstone_03",
-                "/data/tombstones/tombstone_04"};
-        String result = ArrayUtil.join("\n", (Object[])filenames);
+        final String[] filenames = {
+            "/data/tombstones/tombstone_00",
+            "/data/tombstones/tombstone_01",
+            "/data/tombstones/tombstone_02",
+            "/data/tombstones/tombstone_03",
+            "/data/tombstones/tombstone_04"
+        };
+        String result = ArrayUtil.join("\n", (Object[]) filenames);
         final String tombstone = "What do you want on your tombstone?";
         dfr.addPatterns("/data/tombstones/*");
 
-        EasyMock.expect(mDevice.executeShellCommand((String)EasyMock.anyObject()))
-                .andReturn(result);
+        when(mDevice.executeShellCommand((String) Mockito.any())).thenReturn(result);
         mDfrIss = new ByteArrayInputStreamSource(tombstone.getBytes());
         // This gets passed verbatim to createIssForFile above
         for (String filename : filenames) {
-            EasyMock.expect(mDevice.pullFile(EasyMock.eq(filename))).andReturn(
-                    new FakeFile(filename, tombstone.length()));
-
-            // FIXME: use captures here to make sure we get the string back out
-            mListener.testLog(EasyMock.eq(filename), EasyMock.eq(LogDataType.UNKNOWN),
-                    EasyMock.eq(mDfrIss));
+            when(mDevice.pullFile(Mockito.eq(filename)))
+                    .thenReturn(new FakeFile(filename, tombstone.length()));
         }
-        replayMocks();
+
         dfr.run();
-        verifyMocks();
+
+        for (String filename : filenames) {
+            verify(mListener)
+                    .testLog(
+                            Mockito.eq(filename),
+                            Mockito.eq(LogDataType.UNKNOWN),
+                            Mockito.eq(mDfrIss));
+        }
     }
 
     @Test
     public void testLineEnding_CRLF() throws Exception {
-        final String[] filenames = {"/data/tombstones/tombstone_00",
-                "/data/tombstones/tombstone_01",
-                "/data/tombstones/tombstone_02",
-                "/data/tombstones/tombstone_03",
-                "/data/tombstones/tombstone_04"};
-        String result = ArrayUtil.join("\r\n", (Object[])filenames);
+        final String[] filenames = {
+            "/data/tombstones/tombstone_00",
+            "/data/tombstones/tombstone_01",
+            "/data/tombstones/tombstone_02",
+            "/data/tombstones/tombstone_03",
+            "/data/tombstones/tombstone_04"
+        };
+        String result = ArrayUtil.join("\r\n", (Object[]) filenames);
         final String tombstone = "What do you want on your tombstone?";
         dfr.addPatterns("/data/tombstones/*");
 
-        EasyMock.expect(mDevice.executeShellCommand((String)EasyMock.anyObject()))
-                .andReturn(result);
+        when(mDevice.executeShellCommand((String) Mockito.any())).thenReturn(result);
         mDfrIss = new ByteArrayInputStreamSource(tombstone.getBytes());
         // This gets passed verbatim to createIssForFile above
         for (String filename : filenames) {
-            EasyMock.expect(mDevice.pullFile(EasyMock.eq(filename))).andReturn(
-                    new FakeFile(filename, tombstone.length()));
-
-            // FIXME: use captures here to make sure we get the string back out
-            mListener.testLog(EasyMock.eq(filename), EasyMock.eq(LogDataType.UNKNOWN),
-                    EasyMock.eq(mDfrIss));
+            when(mDevice.pullFile(Mockito.eq(filename)))
+                    .thenReturn(new FakeFile(filename, tombstone.length()));
         }
-        replayMocks();
+
         dfr.run();
-        verifyMocks();
+
+        for (String filename : filenames) {
+            verify(mListener)
+                    .testLog(
+                            Mockito.eq(filename),
+                            Mockito.eq(LogDataType.UNKNOWN),
+                            Mockito.eq(mDfrIss));
+        }
     }
 
     /**
@@ -253,24 +270,21 @@ public class DeviceFileReporterTest {
         // Set file listing pulling, and reporting expectations
         // Expect that we go through the entire process for the PNG file, and then go through
         // the entire process again for the XML file
-        EasyMock.expect(mDevice.executeShellCommand((String)EasyMock.anyObject()))
-                .andReturn(result1);
-        EasyMock.expect(mDevice.pullFile(EasyMock.eq(pngFilename)))
-                .andReturn(new FakeFile(pngFilename, pngContents.length()));
-        mListener.testLog(EasyMock.eq(pngFilename), EasyMock.eq(LogDataType.PNG),
-                EasyMock.eq(pngIss));
+        when(mDevice.executeShellCommand((String) Mockito.any())).thenReturn(result1, result2);
+        when(mDevice.pullFile(Mockito.eq(pngFilename)))
+                .thenReturn(new FakeFile(pngFilename, pngContents.length()));
+        when(mDevice.pullFile(Mockito.eq(xmlFilename)))
+                .thenReturn(new FakeFile(xmlFilename, xmlContents.length()));
 
-        EasyMock.expect(mDevice.executeShellCommand((String)EasyMock.anyObject()))
-                .andReturn(result2);
-        EasyMock.expect(mDevice.pullFile(EasyMock.eq(xmlFilename)))
-                .andReturn(new FakeFile(xmlFilename, xmlContents.length()));
-        mListener.testLog(EasyMock.eq(xmlFilename), EasyMock.eq(LogDataType.UNKNOWN),
-                EasyMock.eq(xmlIss));
-
-        replayMocks();
         dfr.run();
-        verifyMocks();
-        // FIXME: use captures here to make sure we get the string back out
+
+        verify(mListener)
+                .testLog(Mockito.eq(pngFilename), Mockito.eq(LogDataType.PNG), Mockito.eq(pngIss));
+        verify(mListener)
+                .testLog(
+                        Mockito.eq(xmlFilename),
+                        Mockito.eq(LogDataType.UNKNOWN),
+                        Mockito.eq(xmlIss));
     }
 
     /**
@@ -311,29 +325,32 @@ public class DeviceFileReporterTest {
         // Set file listing pulling, and reporting expectations
         // Expect that we go through the entire process for the PNG file, and then go through
         // the entire process again for the PNG file (again) and the XML file
-        EasyMock.expect(mDevice.executeShellCommand((String)EasyMock.anyObject()))
-                .andReturn(result1);
-        EasyMock.expect(mDevice.pullFile(EasyMock.eq(pngFilename)))
-                .andReturn(new FakeFile(pngFilename, pngContents.length()));
-        mListener.testLog(EasyMock.eq(pngFilename), EasyMock.eq(LogDataType.PNG),
-                EasyMock.eq(pngIss));
+        when(mDevice.executeShellCommand((String) Mockito.any())).thenReturn(result1);
+        when(mDevice.pullFile(Mockito.eq(pngFilename)))
+                .thenReturn(new FakeFile(pngFilename, pngContents.length()));
 
         // Note that the PNG file is picked up with the UNKNOWN data type this time
-        EasyMock.expect(mDevice.executeShellCommand((String)EasyMock.anyObject()))
-                .andReturn(result2);
-        EasyMock.expect(mDevice.pullFile(EasyMock.eq(pngFilename)))
-                .andReturn(new FakeFile(pngFilename, pngContents.length()));
-        mListener.testLog(EasyMock.eq(pngFilename), EasyMock.eq(LogDataType.UNKNOWN),
-                EasyMock.eq(pngIss));
-        EasyMock.expect(mDevice.pullFile(EasyMock.eq(xmlFilename)))
-                .andReturn(new FakeFile(xmlFilename, xmlContents.length()));
-        mListener.testLog(EasyMock.eq(xmlFilename), EasyMock.eq(LogDataType.UNKNOWN),
-                EasyMock.eq(xmlIss));
+        when(mDevice.executeShellCommand((String) Mockito.any())).thenReturn(result2);
+        when(mDevice.pullFile(Mockito.eq(pngFilename)))
+                .thenReturn(new FakeFile(pngFilename, pngContents.length()));
 
-        replayMocks();
+        when(mDevice.pullFile(Mockito.eq(xmlFilename)))
+                .thenReturn(new FakeFile(xmlFilename, xmlContents.length()));
+
         dfr.run();
-        verifyMocks();
-        // FIXME: use captures here to make sure we get the string back out
+
+        verify(mListener)
+                .testLog(Mockito.eq(pngFilename), Mockito.eq(LogDataType.PNG), Mockito.eq(pngIss));
+        verify(mListener)
+                .testLog(
+                        Mockito.eq(pngFilename),
+                        Mockito.eq(LogDataType.UNKNOWN),
+                        Mockito.eq(pngIss));
+        verify(mListener)
+                .testLog(
+                        Mockito.eq(xmlFilename),
+                        Mockito.eq(LogDataType.UNKNOWN),
+                        Mockito.eq(xmlIss));
     }
 
     /**
@@ -350,13 +367,12 @@ public class DeviceFileReporterTest {
         final String result = file + ": No such file or directory\r\n";
         dfr.addPatterns(file);
 
-        EasyMock.expect(mDevice.executeShellCommand((String)EasyMock.anyObject()))
-                .andReturn(result);
+        when(mDevice.executeShellCommand((String) Mockito.any())).thenReturn(result);
 
-        replayMocks();
         dfr.run();
         // No pull attempt should happen
-        verifyMocks();
+        verify(mDevice).executeShellCommand((String) Mockito.any());
+        verifyNoMoreInteractions(mDevice);
     }
 
     @Test
@@ -368,69 +384,63 @@ public class DeviceFileReporterTest {
         dfr.addPatterns("/data/tombstones/*");
 
         // Search the filesystem
-        EasyMock.expect(mDevice.executeShellCommand((String)EasyMock.anyObject()))
-                .andReturn(result);
+        when(mDevice.executeShellCommand((String) Mockito.any())).thenReturn(result);
 
         // Log the first file
         // This gets passed verbatim to createIssForFile above
-        EasyMock.expect(mDevice.pullFile(EasyMock.eq(filename1)))
-                .andReturn(new FakeFile(filename1, tombstone.length()));
+        when(mDevice.pullFile(Mockito.eq(filename1)))
+                .thenReturn(new FakeFile(filename1, tombstone.length()));
         mDfrIss = new ByteArrayInputStreamSource(tombstone.getBytes());
-        // FIXME: use captures here to make sure we get the string back out
-        mListener.testLog(EasyMock.eq(filename1), EasyMock.eq(LogDataType.UNKNOWN),
-                EasyMock.eq(mDfrIss));
 
         // Log the second file
         // This gets passed verbatim to createIssForFile above
-        EasyMock.expect(mDevice.pullFile(EasyMock.eq(filename2)))
-                .andReturn(new FakeFile(filename2, tombstone.length()));
-        // FIXME: use captures here to make sure we get the string back out
-        mListener.testLog(EasyMock.eq(filename2), EasyMock.eq(LogDataType.UNKNOWN),
-                EasyMock.eq(mDfrIss));
+        when(mDevice.pullFile(Mockito.eq(filename2)))
+                .thenReturn(new FakeFile(filename2, tombstone.length()));
 
-        replayMocks();
         dfr.run();
-        verifyMocks();
+
+        verify(mListener)
+                .testLog(
+                        Mockito.eq(filename1),
+                        Mockito.eq(LogDataType.UNKNOWN),
+                        Mockito.eq(mDfrIss));
+        verify(mListener)
+                .testLog(
+                        Mockito.eq(filename2),
+                        Mockito.eq(LogDataType.UNKNOWN),
+                        Mockito.eq(mDfrIss));
     }
 
     /** Make sure that data type inference works as expected */
     @Test
     public void testInferDataTypes() throws Exception {
-        final String result = "/data/files/file.png\r\n/data/files/file.xml\r\n" +
-                "/data/files/file.zip\r\n";
-        final String[] filenames = {"/data/files/file.png", "/data/files/file.xml",
-                "/data/files/file.zip"};
+        final String result =
+                "/data/files/file.png\r\n/data/files/file.xml\r\n" + "/data/files/file.zip\r\n";
+        final String[] filenames = {
+            "/data/files/file.png", "/data/files/file.xml", "/data/files/file.zip"
+        };
         final LogDataType[] expTypes = {LogDataType.PNG, LogDataType.XML, LogDataType.ZIP};
         dfr.addPatterns("/data/files/*");
 
         final String contents = "these are file contents";
         mDfrIss = new ByteArrayInputStreamSource(contents.getBytes());
 
-        EasyMock.expect(mDevice.executeShellCommand((String)EasyMock.anyObject()))
-                .andReturn(result);
+        when(mDevice.executeShellCommand((String) Mockito.any())).thenReturn(result);
         // This gets passed verbatim to createIssForFile above
         for (int i = 0; i < filenames.length; ++i) {
             final String filename = filenames[i];
             final LogDataType expType = expTypes[i];
-            EasyMock.expect(mDevice.pullFile(EasyMock.eq(filename)))
-                    .andReturn(new FakeFile(filename, contents.length()));
-
-            // FIXME: use captures here to make sure we get the string back out
-            mListener.testLog(EasyMock.eq(filename), EasyMock.eq(expType),
-                    EasyMock.eq(mDfrIss));
+            when(mDevice.pullFile(Mockito.eq(filename)))
+                    .thenReturn(new FakeFile(filename, contents.length()));
         }
 
-        replayMocks();
         dfr.run();
-        verifyMocks();
-    }
 
-
-    private void replayMocks() {
-        EasyMock.replay(mDevice, mListener);
-    }
-
-    private void verifyMocks() {
-        EasyMock.verify(mDevice, mListener);
+        for (int i = 0; i < filenames.length; ++i) {
+            final String filename = filenames[i];
+            final LogDataType expType = expTypes[i];
+            verify(mListener)
+                    .testLog(Mockito.eq(filename), Mockito.eq(expType), Mockito.eq(mDfrIss));
+        }
     }
 }

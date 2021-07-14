@@ -23,12 +23,12 @@ import com.android.tradefed.config.GlobalConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.DeviceUnresponsiveException;
-import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.NullDevice;
 import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.host.IHostOptions;
+import com.android.tradefed.host.IHostOptions.PermitLimitType;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
@@ -161,17 +161,6 @@ public abstract class DeviceFlashPreparer extends BaseTargetPreparer {
     }
 
     /**
-     * Getg a reference to the {@link IDeviceManager}
-     *
-     * Exposed for unit testing
-     *
-     * @return the {@link IDeviceManager} to use
-     */
-    IDeviceManager getDeviceManager() {
-        return GlobalConfiguration.getDeviceManagerInstance();
-    }
-
-    /**
      * Gets the {@link IHostOptions} instance to use.
      * <p/>
      * Exposed for unit testing
@@ -211,7 +200,6 @@ public abstract class DeviceFlashPreparer extends BaseTargetPreparer {
         }
         // don't allow interruptions during flashing operations.
         getRunUtil().allowInterrupt(false);
-        IDeviceManager deviceManager = getDeviceManager();
         long queueTime = -1;
         long flashingTime = -1;
         long start = -1;
@@ -223,7 +211,7 @@ public abstract class DeviceFlashPreparer extends BaseTargetPreparer {
             // only surround fastboot related operations with flashing permit restriction
             try {
                 start = System.currentTimeMillis();
-                deviceManager.takeFlashingPermit();
+                getHostOptions().takePermit(PermitLimitType.CONCURRENT_FLASHER);
                 queueTime = System.currentTimeMillis() - start;
                 CLog.v(
                         "Flashing permit obtained after %ds",
@@ -247,7 +235,7 @@ public abstract class DeviceFlashPreparer extends BaseTargetPreparer {
                 flasher.flash(device, deviceBuild);
             } finally {
                 flashingTime = System.currentTimeMillis() - start;
-                deviceManager.returnFlashingPermit();
+                getHostOptions().returnPermit(PermitLimitType.CONCURRENT_FLASHER);
                 // report flashing status
                 CommandStatus status = flasher.getSystemFlashingStatus();
                 if (status == null) {
