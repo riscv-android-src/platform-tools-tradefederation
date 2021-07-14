@@ -19,6 +19,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.android.ddmlib.FileListingService;
 import com.android.ddmlib.IShellOutputReceiver;
@@ -27,7 +31,7 @@ import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
-import com.android.tradefed.device.MockFileUtil;
+import com.android.tradefed.device.MockitoFileUtil;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -35,24 +39,25 @@ import com.android.tradefed.testtype.coverage.CoverageOptions;
 
 import com.google.common.collect.ImmutableList;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.io.File;
 import java.util.concurrent.TimeUnit;
-
 
 /** Unit tests for {@link GTest}. */
 @RunWith(JUnit4.class)
 public class GTestTest {
     private static final String GTEST_FLAG_FILTER = "--gtest_filter";
-    private IInvocationContext mMockContext = null;
-    private ITestInvocationListener mMockInvocationListener = null;
-    private IShellOutputReceiver mMockReceiver = null;
-    private ITestDevice mMockITestDevice = null;
+    @Mock IInvocationContext mMockContext;
+    @Mock ITestInvocationListener mMockInvocationListener;
+    @Mock IShellOutputReceiver mMockReceiver;
+    @Mock ITestDevice mMockITestDevice;
     private GTest mGTest;
     private OptionSetter mSetter;
 
@@ -64,15 +69,10 @@ public class GTestTest {
     /** Helper to initialize the various EasyMocks we'll need. */
     @Before
     public void setUp() throws Exception {
-        mMockContext = EasyMock.createMock(IInvocationContext.class);
-        mMockInvocationListener = EasyMock.createMock(ITestInvocationListener.class);
-        mMockReceiver = EasyMock.createMock(IShellOutputReceiver.class);
-        mMockITestDevice = EasyMock.createMock(ITestDevice.class);
-        mMockReceiver.flush();
-        EasyMock.expectLastCall().anyTimes();
-        EasyMock.expect(mMockITestDevice.getSerialNumber()).andStubReturn("serial");
-        EasyMock.expect(mMockContext.getDevices())
-                .andStubReturn(ImmutableList.of(mMockITestDevice));
+        MockitoAnnotations.initMocks(this);
+
+        when(mMockITestDevice.getSerialNumber()).thenReturn("serial");
+        when(mMockContext.getDevices()).thenReturn(ImmutableList.of(mMockITestDevice));
         mGTest =
                 new GTest() {
                     @Override
@@ -106,42 +106,26 @@ public class GTestTest {
         mTestInfo = TestInformation.newBuilder().setInvocationContext(mMockContext).build();
     }
 
-    /**
-     * Helper that replays all mocks.
-     */
-    private void replayMocks() {
-        EasyMock.replay(mMockContext, mMockInvocationListener, mMockITestDevice, mMockReceiver);
-    }
-
-    /**
-     * Helper that verifies all mocks.
-     */
-    private void verifyMocks() {
-        EasyMock.verify(mMockContext, mMockInvocationListener, mMockITestDevice, mMockReceiver);
-    }
-
     /** Test run when the test dir is not found on the device. */
     @Test
     public void testRun_noTestDir() throws DeviceNotAvailableException {
-        EasyMock.expect(mMockITestDevice.doesFileExist(GTest.DEFAULT_NATIVETEST_PATH))
-                .andReturn(false);
-        replayMocks();
+        when(mMockITestDevice.doesFileExist(GTest.DEFAULT_NATIVETEST_PATH)).thenReturn(false);
+
         mGTest.run(mTestInfo, mMockInvocationListener);
-        verifyMocks();
+        verify(mMockITestDevice).doesFileExist(GTest.DEFAULT_NATIVETEST_PATH);
     }
 
     /** Test run when no device is set should throw an exception. */
     @Test
     public void testRun_noDevice() throws DeviceNotAvailableException {
         mGTest.setDevice(null);
-        replayMocks();
+
         try {
             mGTest.run(mTestInfo, mMockInvocationListener);
             fail("an exception should have been thrown");
         } catch (IllegalArgumentException e) {
             // expected
         }
-        verifyMocks();
     }
 
     /** Test the run method for a couple tests */
@@ -153,36 +137,35 @@ public class GTestTest {
         final String testPath1 = String.format("%s/%s", nativeTestPath, test1);
         final String testPath2 = String.format("%s/%s", nativeTestPath, test2);
 
-
-        MockFileUtil.setMockDirContents(mMockITestDevice, nativeTestPath, test1, test2);
-        EasyMock.expect(mMockITestDevice.doesFileExist(nativeTestPath)).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath)).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isDirectory(testPath1)).andReturn(false);
+        MockitoFileUtil.setMockDirContents(mMockITestDevice, nativeTestPath, test1, test2);
+        when(mMockITestDevice.doesFileExist(nativeTestPath)).thenReturn(true);
+        when(mMockITestDevice.isDirectory(nativeTestPath)).thenReturn(true);
+        when(mMockITestDevice.isDirectory(testPath1)).thenReturn(false);
         // report the file as executable
-        EasyMock.expect(mMockITestDevice.isExecutable(testPath1)).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isDirectory(testPath2)).andReturn(false);
+        when(mMockITestDevice.isExecutable(testPath1)).thenReturn(true);
+        when(mMockITestDevice.isDirectory(testPath2)).thenReturn(false);
         // report the file as executable
-        EasyMock.expect(mMockITestDevice.isExecutable(testPath2)).andReturn(true);
+        when(mMockITestDevice.isExecutable(testPath2)).thenReturn(true);
 
         String[] files = new String[] {"test1", "test2"};
-        EasyMock.expect(mMockITestDevice.getChildren(nativeTestPath)).andReturn(files);
-        mMockITestDevice.executeShellCommand(
-                EasyMock.contains(test1),
-                EasyMock.same(mMockReceiver),
-                EasyMock.anyLong(),
-                (TimeUnit) EasyMock.anyObject(),
-                EasyMock.anyInt());
-        mMockITestDevice.executeShellCommand(
-                EasyMock.contains(test2),
-                EasyMock.same(mMockReceiver),
-                EasyMock.anyLong(),
-                (TimeUnit) EasyMock.anyObject(),
-                EasyMock.anyInt());
-
-        replayMocks();
+        when(mMockITestDevice.getChildren(nativeTestPath)).thenReturn(files);
 
         mGTest.run(mTestInfo, mMockInvocationListener);
-        verifyMocks();
+
+        verify(mMockITestDevice)
+                .executeShellCommand(
+                        Mockito.contains(test1),
+                        Mockito.same(mMockReceiver),
+                        Mockito.anyLong(),
+                        (TimeUnit) Mockito.any(),
+                        Mockito.anyInt());
+        verify(mMockITestDevice)
+                .executeShellCommand(
+                        Mockito.contains(test2),
+                        Mockito.same(mMockReceiver),
+                        Mockito.anyLong(),
+                        (TimeUnit) Mockito.any(),
+                        Mockito.anyInt());
     }
 
     @Test
@@ -191,58 +174,61 @@ public class GTestTest {
         final String test1 = "arm/test1";
         final String test2 = "arm64/test2";
         final String testPath2 = String.format("%s/%s", nativeTestPath, test2);
-        MockFileUtil.setMockDirContents(mMockITestDevice, nativeTestPath, test1, test2);
+        MockitoFileUtil.setMockDirContents(mMockITestDevice, nativeTestPath, test1, test2);
         mGTest.setAbi(new Abi("arm64-v8a", "64"));
 
-        EasyMock.expect(mMockITestDevice.doesFileExist(nativeTestPath)).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath)).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath + "/arm")).andReturn(true);
+        when(mMockITestDevice.doesFileExist(nativeTestPath)).thenReturn(true);
+        when(mMockITestDevice.isDirectory(nativeTestPath)).thenReturn(true);
+        when(mMockITestDevice.isDirectory(nativeTestPath + "/arm")).thenReturn(true);
 
-        EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath + "/arm64")).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isDirectory(testPath2)).andReturn(false);
+        when(mMockITestDevice.isDirectory(nativeTestPath + "/arm64")).thenReturn(true);
+        when(mMockITestDevice.isDirectory(testPath2)).thenReturn(false);
         // report the file as executable
-        EasyMock.expect(mMockITestDevice.isExecutable(testPath2)).andReturn(true);
+        when(mMockITestDevice.isExecutable(testPath2)).thenReturn(true);
 
         String[] dirs = new String[] {"arm", "arm64"};
-        EasyMock.expect(mMockITestDevice.getChildren(nativeTestPath)).andReturn(dirs);
+        when(mMockITestDevice.getChildren(nativeTestPath)).thenReturn(dirs);
         String[] testFiles = new String[] {"test2"};
-        EasyMock.expect(mMockITestDevice.getChildren(nativeTestPath + "/arm64"))
-                .andReturn(testFiles);
-        mMockITestDevice.executeShellCommand(
-                EasyMock.contains(test2),
-                EasyMock.same(mMockReceiver),
-                EasyMock.anyLong(),
-                (TimeUnit) EasyMock.anyObject(),
-                EasyMock.anyInt());
-
-        replayMocks();
+        when(mMockITestDevice.getChildren(nativeTestPath + "/arm64")).thenReturn(testFiles);
 
         mGTest.run(mTestInfo, mMockInvocationListener);
-        verifyMocks();
+
+        verify(mMockITestDevice)
+                .executeShellCommand(
+                        Mockito.contains(test2),
+                        Mockito.same(mMockReceiver),
+                        Mockito.anyLong(),
+                        (TimeUnit) Mockito.any(),
+                        Mockito.anyInt());
     }
 
     /** Test the run method when module name is specified */
     @Test
     public void testRun_moduleName() throws DeviceNotAvailableException {
         final String module = "test1";
-        final String modulePath = String.format("%s%s%s",
-                GTest.DEFAULT_NATIVETEST_PATH, FileListingService.FILE_SEPARATOR, module);
-        MockFileUtil.setMockDirContents(mMockITestDevice, modulePath, new String[] {});
+        final String modulePath =
+                String.format(
+                        "%s%s%s",
+                        GTest.DEFAULT_NATIVETEST_PATH, FileListingService.FILE_SEPARATOR, module);
+        MockitoFileUtil.setMockDirContents(mMockITestDevice, modulePath, new String[] {});
 
         mGTest.setModuleName(module);
 
-        EasyMock.expect(mMockITestDevice.doesFileExist(modulePath)).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isDirectory(modulePath)).andReturn(false);
-        mMockITestDevice.executeShellCommand(EasyMock.contains(modulePath),
-                EasyMock.same(mMockReceiver),
-                EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(), EasyMock.anyInt());
-        // report the file as executable
-        EasyMock.expect(mMockITestDevice.isExecutable(modulePath)).andReturn(true);
+        when(mMockITestDevice.doesFileExist(modulePath)).thenReturn(true);
+        when(mMockITestDevice.isDirectory(modulePath)).thenReturn(false);
 
-        replayMocks();
+        // report the file as executable
+        when(mMockITestDevice.isExecutable(modulePath)).thenReturn(true);
 
         mGTest.run(mTestInfo, mMockInvocationListener);
-        verifyMocks();
+
+        verify(mMockITestDevice)
+                .executeShellCommand(
+                        Mockito.contains(modulePath),
+                        Mockito.same(mMockReceiver),
+                        Mockito.anyLong(),
+                        (TimeUnit) Mockito.any(),
+                        Mockito.anyInt());
     }
 
     /** Test the run method for a test in a subdirectory */
@@ -251,31 +237,35 @@ public class GTestTest {
         final String nativeTestPath = GTest.DEFAULT_NATIVETEST_PATH;
         final String subFolderName = "subFolder";
         final String test1 = "test1";
-        final String test1Path = String.format("%s%s%s%s%s", nativeTestPath,
-                FileListingService.FILE_SEPARATOR,
-                subFolderName,
-                FileListingService.FILE_SEPARATOR, test1);
-        MockFileUtil.setMockDirPath(mMockITestDevice, nativeTestPath, subFolderName, test1);
-        EasyMock.expect(mMockITestDevice.doesFileExist(nativeTestPath)).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath)).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath + "/" + subFolderName))
-                .andReturn(true);
-        EasyMock.expect(mMockITestDevice.isDirectory(test1Path)).andReturn(false);
+        final String test1Path =
+                String.format(
+                        "%s%s%s%s%s",
+                        nativeTestPath,
+                        FileListingService.FILE_SEPARATOR,
+                        subFolderName,
+                        FileListingService.FILE_SEPARATOR,
+                        test1);
+        MockitoFileUtil.setMockDirPath(mMockITestDevice, nativeTestPath, subFolderName, test1);
+        when(mMockITestDevice.doesFileExist(nativeTestPath)).thenReturn(true);
+        when(mMockITestDevice.isDirectory(nativeTestPath)).thenReturn(true);
+        when(mMockITestDevice.isDirectory(nativeTestPath + "/" + subFolderName)).thenReturn(true);
+        when(mMockITestDevice.isDirectory(test1Path)).thenReturn(false);
         // report the file as executable
-        EasyMock.expect(mMockITestDevice.isExecutable(test1Path)).andReturn(true);
+        when(mMockITestDevice.isExecutable(test1Path)).thenReturn(true);
         String[] files = new String[] {subFolderName};
-        EasyMock.expect(mMockITestDevice.getChildren(nativeTestPath)).andReturn(files);
+        when(mMockITestDevice.getChildren(nativeTestPath)).thenReturn(files);
         String[] files2 = new String[] {"test1"};
-        EasyMock.expect(mMockITestDevice.getChildren(nativeTestPath + "/" + subFolderName))
-                .andReturn(files2);
-        mMockITestDevice.executeShellCommand(EasyMock.contains(test1Path),
-                EasyMock.same(mMockReceiver),
-                EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(), EasyMock.anyInt());
-
-        replayMocks();
+        when(mMockITestDevice.getChildren(nativeTestPath + "/" + subFolderName)).thenReturn(files2);
 
         mGTest.run(mTestInfo, mMockInvocationListener);
-        verifyMocks();
+
+        verify(mMockITestDevice)
+                .executeShellCommand(
+                        Mockito.contains(test1Path),
+                        Mockito.same(mMockReceiver),
+                        Mockito.anyLong(),
+                        (TimeUnit) Mockito.any(),
+                        Mockito.anyInt());
     }
 
     /**
@@ -288,21 +278,24 @@ public class GTestTest {
         String nativeTestPath = GTest.DEFAULT_NATIVETEST_PATH;
         String testPath = nativeTestPath + "/test1";
         // configure the mock file system to have a single test
-        MockFileUtil.setMockDirContents(mMockITestDevice, nativeTestPath, "test1");
-        EasyMock.expect(mMockITestDevice.doesFileExist(nativeTestPath)).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath)).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isDirectory(testPath)).andReturn(false);
+        MockitoFileUtil.setMockDirContents(mMockITestDevice, nativeTestPath, "test1");
+        when(mMockITestDevice.doesFileExist(nativeTestPath)).thenReturn(true);
+        when(mMockITestDevice.isDirectory(nativeTestPath)).thenReturn(true);
+        when(mMockITestDevice.isDirectory(testPath)).thenReturn(false);
         // report the file as executable
-        EasyMock.expect(mMockITestDevice.isExecutable(testPath)).andReturn(true);
+        when(mMockITestDevice.isExecutable(testPath)).thenReturn(true);
         String[] files = new String[] {"test1"};
-        EasyMock.expect(mMockITestDevice.getChildren(nativeTestPath)).andReturn(files);
-        mMockITestDevice.executeShellCommand(EasyMock.contains(filterString),
-                EasyMock.same(mMockReceiver), EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(),
-                EasyMock.anyInt());
-        replayMocks();
+        when(mMockITestDevice.getChildren(nativeTestPath)).thenReturn(files);
+
         mGTest.run(mTestInfo, mMockInvocationListener);
 
-        verifyMocks();
+        verify(mMockITestDevice)
+                .executeShellCommand(
+                        Mockito.contains(filterString),
+                        Mockito.same(mMockReceiver),
+                        Mockito.anyLong(),
+                        (TimeUnit) Mockito.any(),
+                        Mockito.anyInt());
     }
 
     /** Test the include filtering of test methods. */
@@ -326,8 +319,7 @@ public class GTestTest {
         mGTest.addIncludeFilter(includeFilter1.toString());
         mGTest.addIncludeFilter(includeFilter2);
 
-        EasyMock.expect(mMockITestDevice.pushFile(EasyMock.anyObject(), EasyMock.anyObject()))
-                .andReturn(true);
+        when(mMockITestDevice.pushFile(Mockito.any(), Mockito.any())).thenReturn(true);
 
         doTestFilter(String.format("%s=/data/local/tmp/flagfile", GTestBase.GTEST_FLAG_FILE));
     }
@@ -338,8 +330,7 @@ public class GTestTest {
         String excludeFilter1 = "*don?tRunMe*";
         mGTest.addExcludeFilter(excludeFilter1);
 
-        doTestFilter(String.format(
-                "%s=-%s", GTEST_FLAG_FILTER, excludeFilter1));
+        doTestFilter(String.format("%s=-%s", GTEST_FLAG_FILTER, excludeFilter1));
     }
 
     /** Test simultaneous include and exclude filtering of test methods. */
@@ -354,8 +345,14 @@ public class GTestTest {
         mGTest.addIncludeFilter(includeFilter2);
         mGTest.addExcludeFilter(excludeFilter2);
 
-        doTestFilter(String.format("%s=%s:%s-%s:%s", GTEST_FLAG_FILTER,
-              includeFilter1, includeFilter2, excludeFilter1, excludeFilter2));
+        doTestFilter(
+                String.format(
+                        "%s=%s:%s-%s:%s",
+                        GTEST_FLAG_FILTER,
+                        includeFilter1,
+                        includeFilter2,
+                        excludeFilter1,
+                        excludeFilter2));
     }
 
     /** Test behavior for command lines too long to be run by ADB */
@@ -372,43 +369,45 @@ public class GTestTest {
         String nativeTestPath = GTest.DEFAULT_NATIVETEST_PATH;
         String testPath = nativeTestPath + "/" + testName;
         // configure the mock file system to have a single test
-        MockFileUtil.setMockDirContents(mMockITestDevice, nativeTestPath, "test1");
-        EasyMock.expect(mMockITestDevice.doesFileExist(nativeTestPath)).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath)).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isDirectory(testPath)).andReturn(false);
+        MockitoFileUtil.setMockDirContents(mMockITestDevice, nativeTestPath, "test1");
+        when(mMockITestDevice.doesFileExist(nativeTestPath)).thenReturn(true);
+        when(mMockITestDevice.isDirectory(nativeTestPath)).thenReturn(true);
+        when(mMockITestDevice.isDirectory(testPath)).thenReturn(false);
         // report the file as executable
-        EasyMock.expect(mMockITestDevice.isExecutable(testPath)).andReturn(true);
+        when(mMockITestDevice.isExecutable(testPath)).thenReturn(true);
         String[] files = new String[] {testName};
-        EasyMock.expect(mMockITestDevice.getChildren(nativeTestPath)).andReturn(files);
+        when(mMockITestDevice.getChildren(nativeTestPath)).thenReturn(files);
         // Expect push of script file
-        EasyMock.expect(mMockITestDevice.pushString(EasyMock.<String>anyObject(),
-                EasyMock.eq(deviceScriptPath))).andReturn(Boolean.TRUE);
+        when(mMockITestDevice.pushString(Mockito.<String>any(), Mockito.eq(deviceScriptPath)))
+                .thenReturn(Boolean.TRUE);
         // chmod 755 for the shell script
-        EasyMock.expect(mMockITestDevice.executeShellCommand(EasyMock.contains("chmod")))
-                .andReturn("")
-                .times(1);
+        when(mMockITestDevice.executeShellCommand(Mockito.contains("chmod"))).thenReturn("");
         // Expect command to run shell script, rather than direct adb command
-        mMockITestDevice.executeShellCommand(EasyMock.eq(String.format("sh %s", deviceScriptPath)),
-                EasyMock.same(mMockReceiver), EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(),
-                EasyMock.anyInt());
+
         // Expect deletion of file on device
-        mMockITestDevice.deleteFile(deviceScriptPath);
-        replayMocks();
+
         mGTest.run(mTestInfo, mMockInvocationListener);
 
-        verifyMocks();
+        verify(mMockITestDevice, times(1)).executeShellCommand(Mockito.contains("chmod"));
+        verify(mMockITestDevice)
+                .executeShellCommand(
+                        Mockito.eq(String.format("sh %s", deviceScriptPath)),
+                        Mockito.same(mMockReceiver),
+                        Mockito.anyLong(),
+                        (TimeUnit) Mockito.any(),
+                        Mockito.anyInt());
+        verify(mMockITestDevice).deleteFile(deviceScriptPath);
     }
 
     /** Empty file exclusion regex filter should not skip any files */
     @Test
     public void testFileExclusionRegexFilter_emptyfilters() throws Exception {
         // report /test_file as executable
-        ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
-        EasyMock.expect(mockDevice.isExecutable("/test_file")).andReturn(true);
-        EasyMock.replay(mockDevice);
+        ITestDevice mockDevice = mock(ITestDevice.class);
+        when(mockDevice.isExecutable("/test_file")).thenReturn(true);
+
         mGTest.setDevice(mockDevice);
         assertFalse(mGTest.shouldSkipFile("/test_file"));
-        EasyMock.verify(mockDevice);
     }
 
     /** File exclusion regex filter should skip invalid filepath. */
@@ -422,12 +421,12 @@ public class GTestTest {
     @Test
     public void testFileExclusionRegexFilter_skipMatched() throws Exception {
         // report all files as executable
-        ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
-        EasyMock.expect(mockDevice.isExecutable("/some/path/file/run_me")).andReturn(true);
-        EasyMock.expect(mockDevice.isExecutable("/some/path/file/run_me2")).andReturn(true);
-        EasyMock.expect(mockDevice.isExecutable("/some/path/file/run_me.not")).andReturn(true);
-        EasyMock.expect(mockDevice.isExecutable("/some/path/file/run_me.so")).andReturn(true);
-        EasyMock.replay(mockDevice);
+        ITestDevice mockDevice = mock(ITestDevice.class);
+        when(mockDevice.isExecutable("/some/path/file/run_me")).thenReturn(true);
+        when(mockDevice.isExecutable("/some/path/file/run_me2")).thenReturn(true);
+        when(mockDevice.isExecutable("/some/path/file/run_me.not")).thenReturn(true);
+        when(mockDevice.isExecutable("/some/path/file/run_me.so")).thenReturn(true);
+
         mGTest.setDevice(mockDevice);
         // Skip files ending in .not
         mGTest.addFileExclusionFilterRegex(".*\\.not");
@@ -436,18 +435,17 @@ public class GTestTest {
         assertTrue(mGTest.shouldSkipFile("/some/path/file/run_me.not"));
         // Ensure that the default .so filter is present.
         assertTrue(mGTest.shouldSkipFile("/some/path/file/run_me.so"));
-        EasyMock.verify(mockDevice);
     }
 
     /** File exclusion regex filter for multi filters. */
     @Test
     public void testFileExclusionRegexFilter_skipMultiMatched() throws Exception {
         // report all files as executable
-        ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
-        EasyMock.expect(mockDevice.isExecutable("/some/path/file/run_me")).andReturn(true);
-        EasyMock.expect(mockDevice.isExecutable("/some/path/file/run_me.not")).andReturn(true);
-        EasyMock.expect(mockDevice.isExecutable("/some/path/file/run_me.not2")).andReturn(true);
-        EasyMock.replay(mockDevice);
+        ITestDevice mockDevice = mock(ITestDevice.class);
+        when(mockDevice.isExecutable("/some/path/file/run_me")).thenReturn(true);
+        when(mockDevice.isExecutable("/some/path/file/run_me.not")).thenReturn(true);
+        when(mockDevice.isExecutable("/some/path/file/run_me.not2")).thenReturn(true);
+
         mGTest.setDevice(mockDevice);
         // Skip files ending in .not
         mGTest.addFileExclusionFilterRegex(".*\\.not");
@@ -469,29 +467,37 @@ public class GTestTest {
         final String testPath1 = String.format("%s/%s", nativeTestPath, test1);
         final String testPath2 = String.format("%s/%s", nativeTestPath, test2);
 
-        MockFileUtil.setMockDirContents(mMockITestDevice, nativeTestPath, test1, test2);
-        EasyMock.expect(mMockITestDevice.doesFileExist(nativeTestPath)).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath)).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isDirectory(testPath1)).andReturn(false);
-        EasyMock.expect(mMockITestDevice.isExecutable(testPath1)).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isDirectory(testPath2)).andReturn(false);
-        EasyMock.expect(mMockITestDevice.isExecutable(testPath2)).andReturn(true);
+        MockitoFileUtil.setMockDirContents(mMockITestDevice, nativeTestPath, test1, test2);
+        when(mMockITestDevice.doesFileExist(nativeTestPath)).thenReturn(true);
+        when(mMockITestDevice.isDirectory(nativeTestPath)).thenReturn(true);
+        when(mMockITestDevice.isDirectory(testPath1)).thenReturn(false);
+        when(mMockITestDevice.isExecutable(testPath1)).thenReturn(true);
+        when(mMockITestDevice.isDirectory(testPath2)).thenReturn(false);
+        when(mMockITestDevice.isExecutable(testPath2)).thenReturn(true);
         String[] files = new String[] {"test1", "test2"};
-        EasyMock.expect(mMockITestDevice.getChildren(nativeTestPath)).andReturn(files);
-        mMockITestDevice.deleteFile(testPath1 + "_res.xml");
-        mMockITestDevice.deleteFile(testPath2 + "_res.xml");
-        EasyMock.expect(mMockITestDevice.pullFile((String)EasyMock.anyObject(),
-                (File)EasyMock.anyObject())).andStubReturn(true);
-        mMockITestDevice.executeShellCommand(EasyMock.contains(test1),
-                (CollectingOutputReceiver) EasyMock.anyObject(),
-                EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(), EasyMock.anyInt());
-        mMockITestDevice.executeShellCommand(EasyMock.contains(test2),
-                (CollectingOutputReceiver) EasyMock.anyObject(),
-                EasyMock.anyLong(), (TimeUnit)EasyMock.anyObject(), EasyMock.anyInt());
-        replayMocks();
+        when(mMockITestDevice.getChildren(nativeTestPath)).thenReturn(files);
+
+        when(mMockITestDevice.pullFile((String) Mockito.any(), (File) Mockito.any()))
+                .thenReturn(true);
 
         mGTest.run(mTestInfo, mMockInvocationListener);
-        verifyMocks();
+
+        verify(mMockITestDevice).deleteFile(testPath1 + "_res.xml");
+        verify(mMockITestDevice).deleteFile(testPath2 + "_res.xml");
+        verify(mMockITestDevice)
+                .executeShellCommand(
+                        Mockito.contains(test1),
+                        (CollectingOutputReceiver) Mockito.any(),
+                        Mockito.anyLong(),
+                        (TimeUnit) Mockito.any(),
+                        Mockito.anyInt());
+        verify(mMockITestDevice)
+                .executeShellCommand(
+                        Mockito.contains(test2),
+                        (CollectingOutputReceiver) Mockito.any(),
+                        Mockito.anyLong(),
+                        (TimeUnit) Mockito.any(),
+                        Mockito.anyInt());
     }
 
     @Test
@@ -515,19 +521,20 @@ public class GTestTest {
     public void testFileFilter() throws Exception {
         String fileFilter = "presubmit";
         mSetter.setOptionValue("test-filter-key", fileFilter);
-        String expectedFilterFile = String.format("%s/test1%s",
-                GTest.DEFAULT_NATIVETEST_PATH, GTest.FILTER_EXTENSION);
-        String fakeContent = "{\n" +
-                             "    \"presubmit\": {\n" +
-                             "        \"filter\": \"Foo1.*:Foo2.*\"\n" +
-                             "    },\n" +
-                             "    \"continuous\": {\n" +
-                             "        \"filter\": \"Foo1.*:Foo2.*:Bar.*\"\n" +
-                             "    }\n" +
-                             "}\n";
-        EasyMock.expect(mMockITestDevice.doesFileExist(expectedFilterFile)).andReturn(true);
-        EasyMock.expect(mMockITestDevice.executeShellCommand("cat \"" + expectedFilterFile + "\""))
-                .andReturn(fakeContent);
+        String expectedFilterFile =
+                String.format("%s/test1%s", GTest.DEFAULT_NATIVETEST_PATH, GTest.FILTER_EXTENSION);
+        String fakeContent =
+                "{\n"
+                        + "    \"presubmit\": {\n"
+                        + "        \"filter\": \"Foo1.*:Foo2.*\"\n"
+                        + "    },\n"
+                        + "    \"continuous\": {\n"
+                        + "        \"filter\": \"Foo1.*:Foo2.*:Bar.*\"\n"
+                        + "    }\n"
+                        + "}\n";
+        when(mMockITestDevice.doesFileExist(expectedFilterFile)).thenReturn(true);
+        when(mMockITestDevice.executeShellCommand("cat \"" + expectedFilterFile + "\""))
+                .thenReturn(fakeContent);
         doTestFilter(String.format("%s=%s", GTEST_FLAG_FILTER, "Foo1.*:Foo2.*"));
     }
 
@@ -546,9 +553,9 @@ public class GTestTest {
                         + "        \"filter\": \"Foo1.*:Foo2.*:Bar.*\"\n"
                         + "    }\n"
                         + "}\n";
-        EasyMock.expect(mMockITestDevice.doesFileExist(expectedFilterFile)).andReturn(true);
-        EasyMock.expect(mMockITestDevice.executeShellCommand("cat \"" + expectedFilterFile + "\""))
-                .andReturn(fakeContent);
+        when(mMockITestDevice.doesFileExist(expectedFilterFile)).thenReturn(true);
+        when(mMockITestDevice.executeShellCommand("cat \"" + expectedFilterFile + "\""))
+                .thenReturn(fakeContent);
         doTestFilter(String.format("%s=%s", GTEST_FLAG_FILTER, "Foo1.*-Foo2.*"));
     }
 
@@ -567,9 +574,9 @@ public class GTestTest {
                         + "        \"filter\": \"Foo1.*:Foo2.*:Bar.*\"\n"
                         + "    }\n"
                         + "}\n";
-        EasyMock.expect(mMockITestDevice.doesFileExist(expectedFilterFile)).andReturn(true);
-        EasyMock.expect(mMockITestDevice.executeShellCommand("cat \"" + expectedFilterFile + "\""))
-                .andReturn(fakeContent);
+        when(mMockITestDevice.doesFileExist(expectedFilterFile)).thenReturn(true);
+        when(mMockITestDevice.executeShellCommand("cat \"" + expectedFilterFile + "\""))
+                .thenReturn(fakeContent);
         doTestFilter(String.format("%s=%s", GTEST_FLAG_FILTER, "-Foo1.*:Foo2.*"));
     }
 
@@ -581,19 +588,20 @@ public class GTestTest {
     public void testFileFilter_notfound() throws Exception {
         String fileFilter = "garbage";
         mSetter.setOptionValue("test-filter-key", fileFilter);
-        String expectedFilterFile = String.format("%s/test1%s",
-                GTest.DEFAULT_NATIVETEST_PATH, GTest.FILTER_EXTENSION);
-        String fakeContent = "{\n" +
-                             "    \"presubmit\": {\n" +
-                             "        \"filter\": \"Foo1.*:Foo2.*\"\n" +
-                             "    },\n" +
-                             "    \"continuous\": {\n" +
-                             "        \"filter\": \"Foo1.*:Foo2.*:Bar.*\"\n" +
-                             "    }\n" +
-                             "}\n";
-        EasyMock.expect(mMockITestDevice.doesFileExist(expectedFilterFile)).andReturn(true);
-        EasyMock.expect(mMockITestDevice.executeShellCommand("cat \"" + expectedFilterFile + "\""))
-                .andReturn(fakeContent);
+        String expectedFilterFile =
+                String.format("%s/test1%s", GTest.DEFAULT_NATIVETEST_PATH, GTest.FILTER_EXTENSION);
+        String fakeContent =
+                "{\n"
+                        + "    \"presubmit\": {\n"
+                        + "        \"filter\": \"Foo1.*:Foo2.*\"\n"
+                        + "    },\n"
+                        + "    \"continuous\": {\n"
+                        + "        \"filter\": \"Foo1.*:Foo2.*:Bar.*\"\n"
+                        + "    }\n"
+                        + "}\n";
+        when(mMockITestDevice.doesFileExist(expectedFilterFile)).thenReturn(true);
+        when(mMockITestDevice.executeShellCommand("cat \"" + expectedFilterFile + "\""))
+                .thenReturn(fakeContent);
         doTestFilter("");
     }
 
@@ -616,14 +624,11 @@ public class GTestTest {
         }
         mGTest.addIncludeFilter(includeFilter1.toString());
         // Fail to push
-        EasyMock.expect(mMockITestDevice.pushFile(EasyMock.anyObject(), EasyMock.anyObject()))
-                .andReturn(false);
+        when(mMockITestDevice.pushFile(Mockito.any(), Mockito.any())).thenReturn(false);
 
-        EasyMock.replay(mMockITestDevice);
         String flag = mGTest.getGTestFilters("/path/");
         // We fallback to the original command line filter
         assertEquals("--gtest_filter=" + includeFilter1.toString(), flag);
-        EasyMock.verify(mMockITestDevice);
     }
 
     /**
