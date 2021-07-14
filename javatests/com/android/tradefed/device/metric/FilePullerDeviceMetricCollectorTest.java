@@ -159,6 +159,7 @@ public class FilePullerDeviceMetricCollectorTest {
     public void testMetricFileProcessingFlow() throws Exception {
         OptionSetter setter = new OptionSetter(mFilePuller);
         setter.setOptionValue("pull-pattern-keys", "coverageFile");
+        setter.setOptionValue("collect-on-run-ended-only", "false");
         HashMap<String, Metric> currentMetrics = new HashMap<>();
         currentMetrics.put("coverageFile", TfMetricProtoUtil.stringToMetric("/data/coverage"));
 
