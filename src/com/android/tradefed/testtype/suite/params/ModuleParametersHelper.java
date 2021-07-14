@@ -38,6 +38,9 @@ public class ModuleParametersHelper {
                 ModuleParameters.RUN_ON_WORK_PROFILE, new RunOnWorkProfileParameterHandler());
         sHandlerMap.put(
                 ModuleParameters.RUN_ON_SECONDARY_USER, new RunOnSecondaryUserParameterHandler());
+
+        sHandlerMap.put(ModuleParameters.NO_FOLDABLE_STATES, new NegativeHandler());
+        sHandlerMap.put(ModuleParameters.ALL_FOLDABLE_STATES, new FoldableExpandingHandler());
     }
 
     private static Map<ModuleParameters, Set<ModuleParameters>> sGroupMap = new HashMap<>();
@@ -66,16 +69,6 @@ public class ModuleParametersHelper {
     private static Map<ModuleParameters, Set<ModuleParameters>> sOptionalGroupMap = new HashMap<>();
 
     static {
-    }
-
-    /**
-     * Resolve a {@link ModuleParameters} from its {@link String} representation.
-     *
-     * @see #resolveParam(ModuleParameters, boolean)
-     */
-    public static Map<ModuleParameters, IModuleParameterHandler> resolveParam(
-            String param, boolean withOptional) {
-        return resolveParam(ModuleParameters.valueOf(param.toUpperCase()), withOptional);
     }
 
     /**

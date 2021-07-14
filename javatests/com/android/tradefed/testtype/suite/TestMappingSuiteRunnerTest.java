@@ -19,6 +19,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import com.android.ddmlib.IDevice;
 import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.Configuration;
@@ -40,6 +41,8 @@ import com.android.tradefed.testtype.IAbiReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.StubTest;
 import com.android.tradefed.util.AbiUtils;
+import com.android.tradefed.util.CommandResult;
+import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.ZipUtil;
 import com.android.tradefed.util.testmapping.TestInfo;
@@ -133,6 +136,13 @@ public class TestMappingSuiteRunnerTest {
         EasyMock.expect(mBuildInfo.getTestsDir()).andReturn(new File(NON_EXISTING_DIR)).anyTimes();
         EasyMock.expect(mMockDevice.getProperty(EasyMock.anyObject())).andReturn(ABI_1);
         EasyMock.expect(mMockDevice.getProperty(EasyMock.anyObject())).andReturn(ABI_2);
+        EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(EasyMock.createMock(IDevice.class));
+        CommandResult result = new CommandResult(CommandStatus.SUCCESS);
+        result.setStdout("Supported states: [\n" +
+                " DeviceState{identifier=0, name='DEFAULT'},\n" +
+                "]\n");
+        EasyMock.expect(mMockDevice.executeShellV2Command("cmd device_state print-states"))
+                .andReturn(result);
         EasyMock.replay(mBuildInfo, mMockDevice);
     }
 
@@ -671,16 +681,10 @@ public class TestMappingSuiteRunnerTest {
     public void testLoadTestsForMultiAbi() throws Exception {
         mOptionSetter.setOptionValue("include-filter", "suite/stubAbi");
 
-        ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
-        mRunner.setDevice(mockDevice);
-        EasyMock.replay(mockDevice);
-
         LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
-
         assertEquals(2, configMap.size());
         assertTrue(configMap.containsKey(ABI_1 + " suite/stubAbi"));
         assertTrue(configMap.containsKey(ABI_2 + " suite/stubAbi"));
-        EasyMock.verify(mockDevice);
     }
 
     /**
