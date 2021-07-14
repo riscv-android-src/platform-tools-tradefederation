@@ -34,7 +34,7 @@ public final class NativeCodeCoverageFlusher {
 
     private static final String EXTRACT_SIGCGT_FORMAT =
             "cat /proc/%d/status | grep SigCgt | awk '{ print $2 }'";
-    private static final long SIGNAL_37_BIT = 1 << (37 - 1);
+    private static final long SIGNAL_37_BIT = 1L << (37 - 1);
     private static final String COVERAGE_FLUSH_COMMAND_FORMAT = "kill -37 %s";
     private static final String CLEAR_CLANG_COVERAGE_FILES =
             "find /data/misc/trace -name '*.profraw' -delete";

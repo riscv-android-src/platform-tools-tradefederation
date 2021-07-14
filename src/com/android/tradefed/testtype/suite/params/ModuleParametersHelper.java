@@ -19,14 +19,13 @@ import com.android.tradefed.testtype.suite.params.multiuser.RunOnSecondaryUserPa
 import com.android.tradefed.testtype.suite.params.multiuser.RunOnWorkProfileParameterHandler;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-/** Helper to get the {@link IModuleParameter} associated with the parameter. */
+/** Helper to get the {@link IModuleParameterHandler} associated with the parameter. */
 public class ModuleParametersHelper {
 
-    private static Map<ModuleParameters, IModuleParameter> sHandlerMap = new HashMap<>();
+    private static Map<ModuleParameters, IModuleParameterHandler> sHandlerMap = new HashMap<>();
 
     static {
         sHandlerMap.put(ModuleParameters.INSTANT_APP, new InstantAppHandler());
@@ -57,7 +56,7 @@ public class ModuleParametersHelper {
      * set of parameterization that is less commonly requested to run. They could be upgraded to
      * main parameters in the future by moving them above.
      */
-    private static Map<ModuleParameters, IModuleParameter> sOptionalHandlerMap = new HashMap<>();
+    private static Map<ModuleParameters, IModuleParameterHandler> sOptionalHandlerMap = new HashMap<>();
 
     static {
         sOptionalHandlerMap.put(ModuleParameters.SECONDARY_USER, new SecondaryUserHandler());
@@ -70,25 +69,12 @@ public class ModuleParametersHelper {
     }
 
     /**
-     * Returns the {@link IModuleParameter} associated with the requested parameter.
-     *
-     * @param withOptional Whether or not to also check optional params.
-     */
-    public static IModuleParameter getParameterHandler(
-            ModuleParameters param, boolean withOptional) {
-        IModuleParameter value = sHandlerMap.get(param);
-        if (value == null && withOptional) {
-            return sOptionalHandlerMap.get(param);
-        }
-        return value;
-    }
-
-    /**
      * Resolve a {@link ModuleParameters} from its {@link String} representation.
      *
      * @see #resolveParam(ModuleParameters, boolean)
      */
-    public static Set<ModuleParameters> resolveParam(String param, boolean withOptional) {
+    public static Map<ModuleParameters, IModuleParameterHandler> resolveParam(
+            String param, boolean withOptional) {
         return resolveParam(ModuleParameters.valueOf(param.toUpperCase()), withOptional);
     }
 
@@ -104,19 +90,40 @@ public class ModuleParametersHelper {
      *
      * @param withOptional Whether or not to also check optional param groups.
      */
-    public static Set<ModuleParameters> resolveParam(ModuleParameters param, boolean withOptional) {
+    public static Map<ModuleParameters, IModuleParameterHandler> resolveParam(
+            ModuleParameters param, boolean withOptional) {
         Set<ModuleParameters> mappedParams = sGroupMap.get(param);
         if (mappedParams == null && withOptional) {
             mappedParams = sOptionalGroupMap.get(param);
         }
-        if (mappedParams != null) {
-            Set<ModuleParameters> resolvedParams = new HashSet<>();
-            for (ModuleParameters moduleParameters : mappedParams) {
-                resolvedParams.addAll(resolveParam(moduleParameters, withOptional));
+        if (mappedParams == null) {
+            IModuleParameterHandler handler = getParameterHandler(param, withOptional);
+            if (handler == null) {
+                // If the handler is not supported yet (for example, optional params) skip the
+                // param.
+                return new HashMap<>();
             }
-            return resolvedParams;
+            return Map.of(param, getParameterHandler(param, withOptional));
         }
+        // If the parameter is a group, expand it.
+        Map<ModuleParameters, IModuleParameterHandler> resolvedParams = new HashMap<>();
+        for (ModuleParameters moduleParameters : mappedParams) {
+            resolvedParams.put(moduleParameters, sHandlerMap.get(moduleParameters));
+        }
+        return resolvedParams;
+    }
 
-        return Set.of(param);
+    /**
+     * Returns the {@link IModuleParameterHandler} associated with the requested parameter.
+     *
+     * @param withOptional Whether or not to also check optional params.
+     */
+    private static IModuleParameterHandler getParameterHandler(
+            ModuleParameters param, boolean withOptional) {
+        IModuleParameterHandler value = sHandlerMap.get(param);
+        if (value == null && withOptional) {
+            return sOptionalHandlerMap.get(param);
+        }
+        return value;
     }
 }

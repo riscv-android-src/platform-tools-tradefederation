@@ -673,6 +673,8 @@ public class TestInvocationTest {
         IRemoteTest test = EasyMock.createMock(IRemoteTest.class);
         mMockDevice.setRecoveryMode(RecoveryMode.NONE);
         EasyMock.expectLastCall();
+        EasyMock.expect(mMockDevice.getRecoveryMode()).andReturn(RecoveryMode.AVAILABLE);
+        mMockDevice.setRecoveryMode(RecoveryMode.NONE);
         EasyMock.expect(
                         mMockDevice.logBugreport(
                                 EasyMock.startsWith("target_setup_error_bugreport"),
@@ -717,8 +719,11 @@ public class TestInvocationTest {
         mMockPreparer.setUp(EasyMock.anyObject());
         EasyMock.expectLastCall().andThrow(exception);
         setupMockFailureListeners(exception);
+        EasyMock.expect(mMockDevice.getRecoveryMode()).andReturn(RecoveryMode.AVAILABLE);
+        mMockDevice.setRecoveryMode(RecoveryMode.NONE);
         EasyMock.expect(mMockDevice.getBugreport())
                 .andReturn(new ByteArrayInputStreamSource(new byte[0]));
+        mMockDevice.setRecoveryMode(RecoveryMode.AVAILABLE);
         setEarlyDeviceReleaseExpectation();
         setupInvokeWithBuild();
 

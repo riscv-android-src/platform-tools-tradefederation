@@ -16,6 +16,10 @@
 
 package com.android.tradefed.targetprep;
 
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
@@ -23,11 +27,12 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import java.io.File;
 
@@ -35,15 +40,16 @@ import java.io.File;
 @RunWith(JUnit4.class)
 public class DeviceStringPusherTest {
     private DeviceStringPusher mDeviceStringPusher;
-    private ITestDevice mMockDevice;
-    private IBuildInfo mMockBuildInfo;
+    @Mock ITestDevice mMockDevice;
+    @Mock IBuildInfo mMockBuildInfo;
     private TestInformation mTestInfo;
 
     @Before
     public void setUp() {
+        MockitoAnnotations.initMocks(this);
+
         mDeviceStringPusher = new DeviceStringPusher();
-        mMockDevice = EasyMock.createMock(ITestDevice.class);
-        mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
+
         IInvocationContext context = new InvocationContext();
         context.addAllocatedDevice("device", mMockDevice);
         context.addDeviceBuildInfo("device", mMockBuildInfo);
@@ -55,12 +61,15 @@ public class DeviceStringPusherTest {
         OptionSetter optionSetter = new OptionSetter(mDeviceStringPusher);
         optionSetter.setOptionValue("file-path", "file");
         optionSetter.setOptionValue("file-content", "hi");
-        EasyMock.expect(mMockDevice.doesFileExist("file")).andReturn(false).once();
-        EasyMock.expect(mMockDevice.pushString("hi", "file")).andReturn(false).once();
-        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andReturn(null).once();
-        EasyMock.replay(mMockDevice, mMockBuildInfo);
+        when(mMockDevice.doesFileExist("file")).thenReturn(false);
+        when(mMockDevice.pushString("hi", "file")).thenReturn(false);
+        when(mMockDevice.getDeviceDescriptor()).thenReturn(null);
 
         mDeviceStringPusher.setUp(mTestInfo);
+
+        verify(mMockDevice, times(1)).doesFileExist("file");
+        verify(mMockDevice, times(1)).pushString("hi", "file");
+        verify(mMockDevice, times(1)).getDeviceDescriptor();
     }
 
     @Test
@@ -68,14 +77,15 @@ public class DeviceStringPusherTest {
         OptionSetter optionSetter = new OptionSetter(mDeviceStringPusher);
         optionSetter.setOptionValue("file-path", "file");
         optionSetter.setOptionValue("file-content", "hi");
-        EasyMock.expect(mMockDevice.doesFileExist("file")).andReturn(false).once();
-        EasyMock.expect(mMockDevice.pushString("hi", "file")).andReturn(true).once();
-        mMockDevice.deleteFile("file");
-        EasyMock.replay(mMockDevice, mMockBuildInfo);
+        when(mMockDevice.doesFileExist("file")).thenReturn(false);
+        when(mMockDevice.pushString("hi", "file")).thenReturn(true);
 
         mDeviceStringPusher.setUp(mTestInfo);
         mDeviceStringPusher.tearDown(mTestInfo, null);
-        EasyMock.verify(mMockBuildInfo, mMockDevice);
+
+        verify(mMockDevice, times(1)).doesFileExist("file");
+        verify(mMockDevice, times(1)).pushString("hi", "file");
+        verify(mMockDevice).deleteFile("file");
     }
 
     @Test
@@ -84,14 +94,17 @@ public class DeviceStringPusherTest {
         File file = new File("a");
         optionSetter.setOptionValue("file-path", "file");
         optionSetter.setOptionValue("file-content", "hi");
-        EasyMock.expect(mMockDevice.doesFileExist("file")).andReturn(true).once();
-        EasyMock.expect(mMockDevice.pullFile("file")).andReturn(file).once();
-        EasyMock.expect(mMockDevice.pushString("hi", "file")).andReturn(true).once();
-        EasyMock.expect(mMockDevice.pushFile(file, "file")).andReturn(true).once();
-        EasyMock.replay(mMockDevice, mMockBuildInfo);
+        when(mMockDevice.doesFileExist("file")).thenReturn(true);
+        when(mMockDevice.pullFile("file")).thenReturn(file);
+        when(mMockDevice.pushString("hi", "file")).thenReturn(true);
+        when(mMockDevice.pushFile(file, "file")).thenReturn(true);
 
         mDeviceStringPusher.setUp(mTestInfo);
         mDeviceStringPusher.tearDown(mTestInfo, null);
-        EasyMock.verify(mMockBuildInfo, mMockDevice);
+
+        verify(mMockDevice, times(1)).doesFileExist("file");
+        verify(mMockDevice, times(1)).pullFile("file");
+        verify(mMockDevice, times(1)).pushString("hi", "file");
+        verify(mMockDevice, times(1)).pushFile(file, "file");
     }
 }

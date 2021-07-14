@@ -22,13 +22,13 @@ import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.targetprep.RunOnSecondaryUserTargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestAnnotationFilterReceiver;
-import com.android.tradefed.testtype.suite.params.IModuleParameter;
+import com.android.tradefed.testtype.suite.params.IModuleParameterHandler;
 
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class RunOnSecondaryUserParameterHandler implements IModuleParameter {
+public class RunOnSecondaryUserParameterHandler implements IModuleParameterHandler {
 
     private static final String REQUIRE_RUN_ON_SECONDARY_USER_NAME =
             "com.android.bedstead.harrier.annotations.RequireRunOnSecondaryUser";

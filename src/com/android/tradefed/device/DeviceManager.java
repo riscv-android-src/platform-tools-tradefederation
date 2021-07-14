@@ -66,7 +66,6 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
@@ -114,15 +113,6 @@ public class DeviceManager implements IDeviceManager {
      * <p>serial2 offline
      */
     private static final String DEVICE_LIST_PATTERN = ".*\n(%s)\\s+(device|offline|recovery).*";
-
-    private Semaphore mConcurrentFlashLock = null;
-
-    /**
-     * This serves both as an indication of whether the flash lock should be used, and as an
-     * indicator of whether or not the flash lock has been initialized -- if this is true
-     * and {@code mConcurrentFlashLock} is {@code null}, then it has not yet been initialized.
-     */
-    private Boolean mShouldCheckFlashLock = true;
 
     protected DeviceMonitorMultiplexer mDvcMon = new DeviceMonitorMultiplexer();
     private Boolean mDvcMonRunning = false;
@@ -1589,86 +1579,6 @@ public class DeviceManager implements IDeviceManager {
             return "fastboot";
         }
         return mFastbootFile.getAbsolutePath();
-    }
-
-    /**
-     * Set the state of the concurrent flash limit implementation
-     *
-     * Exposed for unit testing
-     */
-    void setConcurrentFlashSettings(Semaphore flashLock, boolean shouldCheck) {
-        synchronized (mShouldCheckFlashLock) {
-            mConcurrentFlashLock = flashLock;
-            mShouldCheckFlashLock = shouldCheck;
-        }
-    }
-
-    Semaphore getConcurrentFlashLock() {
-        return mConcurrentFlashLock;
-    }
-
-    /** Initialize the concurrent flash lock semaphore **/
-    private void initConcurrentFlashLock() {
-        if (!mShouldCheckFlashLock) return;
-        // The logic below is to avoid multi-thread race conditions while initializing
-        // mConcurrentFlashLock when we hit this condition.
-        if (mConcurrentFlashLock == null) {
-            // null with mShouldCheckFlashLock == true means initialization hasn't been done yet
-            synchronized(mShouldCheckFlashLock) {
-                // Check all state again, since another thread might have gotten here first
-                if (!mShouldCheckFlashLock) return;
-
-                IHostOptions hostOptions = getHostOptions();
-                Integer concurrentFlashingLimit = hostOptions.getConcurrentFlasherLimit();
-
-                if (concurrentFlashingLimit == null) {
-                    mShouldCheckFlashLock = false;
-                    return;
-                }
-
-                if (mConcurrentFlashLock == null) {
-                    mConcurrentFlashLock = new Semaphore(concurrentFlashingLimit, true /* fair */);
-                }
-            }
-        }
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public int getAvailableFlashingPermits() {
-        initConcurrentFlashLock();
-        if (mConcurrentFlashLock != null) {
-            return mConcurrentFlashLock.availablePermits();
-        }
-        IHostOptions hostOptions = getHostOptions();
-        if (hostOptions.getConcurrentFlasherLimit() != null) {
-            return hostOptions.getConcurrentFlasherLimit();
-        }
-        return Integer.MAX_VALUE;
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public void takeFlashingPermit() {
-        initConcurrentFlashLock();
-        if (!mShouldCheckFlashLock) return;
-
-        IHostOptions hostOptions = getHostOptions();
-        Integer concurrentFlashingLimit = hostOptions.getConcurrentFlasherLimit();
-        CLog.i(
-                "Requesting a flashing permit out of the max limit of %s. Current queue "
-                        + "length: %s",
-                concurrentFlashingLimit,
-                mConcurrentFlashLock.getQueueLength());
-        mConcurrentFlashLock.acquireUninterruptibly();
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public void returnFlashingPermit() {
-        if (mConcurrentFlashLock != null) {
-            mConcurrentFlashLock.release();
-        }
     }
 
     /** {@inheritDoc} */

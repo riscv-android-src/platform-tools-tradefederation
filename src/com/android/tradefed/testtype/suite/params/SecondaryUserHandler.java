@@ -28,7 +28,7 @@ import java.util.List;
 import java.util.Set;
 
 /** Handler for {@link ModuleParameters#SECONDARY_USER}. */
-public class SecondaryUserHandler implements IModuleParameter {
+public class SecondaryUserHandler implements IModuleParameterHandler {
     @Override
     public String getParameterIdentifier() {
         return "secondary_user";
