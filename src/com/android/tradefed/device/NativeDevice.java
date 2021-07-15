@@ -5268,6 +5268,16 @@ public class NativeDevice implements IManagedTestDevice {
         return tombstones;
     }
 
+    @Override
+    public Set<DeviceFoldableState> getFoldableStates() throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for foldable states.");
+    }
+
+    @Override
+    public DeviceFoldableState getCurrentFoldableState() throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for foldable states.");
+    }
+
     /** Validate that pid is an integer and not empty. */
     private boolean checkValidPid(String output) {
         if (output.isEmpty()) {

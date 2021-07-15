@@ -20,15 +20,15 @@ package com.android.tradefed.device;
  */
 public class DeviceFoldableState implements Comparable<DeviceFoldableState> {
 
-    private final int mIdentifier;
+    private final long mIdentifier;
     private final String mName;
 
-    public DeviceFoldableState(int identifier, String name) {
+    public DeviceFoldableState(long identifier, String name) {
         mIdentifier = identifier;
         mName = name;
     }
 
-    public int getIdentifier() {
+    public long getIdentifier() {
         return mIdentifier;
     }
 
@@ -41,7 +41,7 @@ public class DeviceFoldableState implements Comparable<DeviceFoldableState> {
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = prime * result + mIdentifier;
+        result = prime * result + (int) (mIdentifier ^ (mIdentifier >>> 32));
         result = prime * result + ((mName == null) ? 0 : mName.hashCode());
         return result;
     }

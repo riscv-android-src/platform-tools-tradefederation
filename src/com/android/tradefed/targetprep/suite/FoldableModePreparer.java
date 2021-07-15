@@ -16,10 +16,12 @@
 package com.android.tradefed.targetprep.suite;
 
 import com.android.tradefed.config.Option;
+import com.android.tradefed.device.DeviceFoldableState;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.result.error.DeviceErrorIdentifier;
+import com.android.tradefed.result.error.TestErrorIdentifier;
 import com.android.tradefed.targetprep.BaseTargetPreparer;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.TargetSetupError;
@@ -34,6 +36,10 @@ public class FoldableModePreparer extends BaseTargetPreparer {
     @Option(name = "foldable-state-identifier",
             description = "The integer state identifier of the foldable mode.")
     private Long mStateIdentifier = null;
+
+    @Option(name = "enforce-state",
+            description = "Ensure the state wasn't changed between setup & teardown.")
+    private boolean mValidateSameState = true;
 
     public FoldableModePreparer() {}
 
@@ -64,6 +70,16 @@ public class FoldableModePreparer extends BaseTargetPreparer {
         if (mStateIdentifier == null) {
             return;
         }
+        if (mValidateSameState) {
+            DeviceFoldableState state = testInformation.getDevice().getCurrentFoldableState();
+            if (state == null || state.getIdentifier() != mStateIdentifier) {
+                throw new HarnessRuntimeException(
+                        String.format("Device foldable state changed to '%s', "
+                                + "it should have been '%s'", state, mStateIdentifier),
+                            TestErrorIdentifier.MODIFIED_FOLDABLE_STATE);
+            }
+        }
+
         CommandResult result = testInformation.getDevice().executeShellV2Command(
                 "cmd device_state state reset");
         if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
