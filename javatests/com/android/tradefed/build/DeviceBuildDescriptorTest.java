@@ -15,27 +15,31 @@
  */
 package com.android.tradefed.build;
 
+import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 
-import junit.framework.TestCase;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
-import org.easymock.EasyMock;
+/** Unit tests for {@link DeviceBuildDescriptor}. */
+@RunWith(JUnit4.class)
+public class DeviceBuildDescriptorTest {
 
-/**
- * Unit tests for {@link DeviceBuildDescriptor}.
- */
-public class DeviceBuildDescriptorTest extends TestCase {
-
+    @Test
     public void testDeviceBuildDescriptor() throws DeviceNotAvailableException {
         BuildInfo b = new BuildInfo();
-        ITestDevice d = EasyMock.createNiceMock(ITestDevice.class);
-        EasyMock.expect(d.getProperty("ro.product.name")).andReturn("yakju");
-        EasyMock.expect(d.getProperty("ro.build.type")).andReturn("userdebug");
-        EasyMock.expect(d.getProperty("ro.product.brand")).andReturn("google");
-        EasyMock.expect(d.getProperty("ro.product.model")).andReturn("Galaxy Nexus");
-        EasyMock.expect(d.getProperty("ro.build.version.release")).andReturn("4.2");
-        EasyMock.replay(d);
+        ITestDevice d = mock(ITestDevice.class);
+        when(d.getProperty("ro.product.name")).thenReturn("yakju");
+        when(d.getProperty("ro.build.type")).thenReturn("userdebug");
+        when(d.getProperty("ro.product.brand")).thenReturn("google");
+        when(d.getProperty("ro.product.model")).thenReturn("Galaxy Nexus");
+        when(d.getProperty("ro.build.version.release")).thenReturn("4.2");
+
         DeviceBuildDescriptor.injectDeviceAttributes(d, b);
         DeviceBuildDescriptor db = new DeviceBuildDescriptor(b);
         assertEquals("yakju-userdebug", db.getDeviceBuildFlavor());

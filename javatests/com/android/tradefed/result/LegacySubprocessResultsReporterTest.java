@@ -15,6 +15,9 @@
  */
 package com.android.tradefed.result;
 
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+
 import com.android.ddmlib.testrunner.TestIdentifier;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.invoker.InvocationContext;
@@ -22,11 +25,11 @@ import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.util.SubprocessTestResultsParser;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mockito;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -64,7 +67,7 @@ public class LegacySubprocessResultsReporterTest {
     public void testPrintEvent_printToSocket() throws Exception {
         TestIdentifier testId = new TestIdentifier("com.fakeclass", "faketest");
         TestDescription testDescrip = new TestDescription("com.fakeclass", "faketest");
-        ITestInvocationListener mMockListener = EasyMock.createMock(ITestInvocationListener.class);
+        ITestInvocationListener mMockListener = mock(ITestInvocationListener.class);
         SubprocessTestResultsParser receiver =
                 new SubprocessTestResultsParser(mMockListener, true, new InvocationContext());
         try {
@@ -72,19 +75,19 @@ public class LegacySubprocessResultsReporterTest {
             setter.setOptionValue(
                     "subprocess-report-port", Integer.toString(receiver.getSocketServerPort()));
             // mirror calls between receiver and sender.
-            mMockListener.testIgnored(testDescrip);
-            mMockListener.testAssumptionFailure(testDescrip, "fake trace");
-            mMockListener.testRunFailed(
-                    FailureDescription.create("no reason", FailureStatus.UNSET));
-            mMockListener.invocationFailed((Throwable) EasyMock.anyObject());
-            EasyMock.replay(mMockListener);
+
             mReporter.testIgnored(testId);
             mReporter.testAssumptionFailure(testId, "fake trace");
             mReporter.testRunFailed("no reason");
             mReporter.invocationFailed(new Throwable());
             mReporter.close();
             receiver.joinReceiver(500);
-            EasyMock.verify(mMockListener);
+
+            verify(mMockListener).testIgnored(testDescrip);
+            verify(mMockListener).testAssumptionFailure(testDescrip, "fake trace");
+            verify(mMockListener)
+                    .testRunFailed(FailureDescription.create("no reason", FailureStatus.UNSET));
+            verify(mMockListener).invocationFailed((Throwable) Mockito.any());
         } finally {
             receiver.close();
         }
@@ -96,7 +99,7 @@ public class LegacySubprocessResultsReporterTest {
      */
     @Test
     public void testPrintEvent_legacyMethodCalls() throws Exception {
-        ITestInvocationListener mMockListener = EasyMock.createMock(ITestInvocationListener.class);
+        ITestInvocationListener mMockListener = mock(ITestInvocationListener.class);
         SubprocessTestResultsParser receiver =
                 new SubprocessTestResultsParser(mMockListener, true, new InvocationContext());
         try {
@@ -107,15 +110,19 @@ public class LegacySubprocessResultsReporterTest {
             Map<String, String> map = new HashMap<>();
             map.put("key1", "value1");
             map.put("key2", "value2");
-            mMockListener.testRunStarted(
-                    EasyMock.eq("test run"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
-            mMockListener.testRunEnded(50, TfMetricProtoUtil.upgradeConvert(map));
-            EasyMock.replay(mMockListener);
+
             mReporter.testRunStarted("test run", 2);
             mReporter.testRunEnded(50, map);
             mReporter.close();
             receiver.joinReceiver(500);
-            EasyMock.verify(mMockListener);
+
+            verify(mMockListener)
+                    .testRunStarted(
+                            Mockito.eq("test run"),
+                            Mockito.eq(2),
+                            Mockito.eq(0),
+                            Mockito.anyLong());
+            verify(mMockListener).testRunEnded(50, TfMetricProtoUtil.upgradeConvert(map));
         } finally {
             receiver.close();
         }

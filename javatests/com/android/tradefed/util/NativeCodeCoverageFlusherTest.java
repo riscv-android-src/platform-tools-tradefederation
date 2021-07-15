@@ -62,7 +62,7 @@ public final class NativeCodeCoverageFlusherTest {
         doReturn(true).when(mMockDevice).isAdbRoot();
 
         CommandResult result = new CommandResult(CommandStatus.SUCCESS);
-        result.setStdout("ffffffffffff\n");
+        result.setStdout("1000000000\n");
         result.setExitCode(0);
 
         when(mMockDevice.executeShellV2Command(anyString())).thenReturn(result);
@@ -97,7 +97,7 @@ public final class NativeCodeCoverageFlusherTest {
         doReturn(true).when(mMockDevice).isAdbRoot();
 
         CommandResult result = new CommandResult(CommandStatus.SUCCESS);
-        result.setStdout("ffffffffffff\n");
+        result.setStdout("1000000000\n");
         result.setExitCode(0);
 
         when(mMockDevice.executeShellV2Command(anyString())).thenReturn(result);
@@ -117,7 +117,7 @@ public final class NativeCodeCoverageFlusherTest {
         doReturn(true).when(mMockDevice).isAdbRoot();
 
         CommandResult result = new CommandResult(CommandStatus.SUCCESS);
-        result.setStdout("ffffffffffff\n");
+        result.setStdout("1000000000\n");
         result.setExitCode(0);
 
         when(mMockDevice.executeShellV2Command(anyString())).thenReturn(result);
@@ -190,11 +190,11 @@ public final class NativeCodeCoverageFlusherTest {
         doReturn(true).when(mMockDevice).isAdbRoot();
 
         CommandResult resultNotHandled = new CommandResult(CommandStatus.SUCCESS);
-        resultNotHandled.setStdout("0000000000\n");
+        resultNotHandled.setStdout("8000000000000000\n");
         resultNotHandled.setExitCode(0);
 
         CommandResult resultHandled = new CommandResult(CommandStatus.SUCCESS);
-        resultHandled.setStdout("ffffffffffff\n");
+        resultHandled.setStdout("1000000000\n");
         resultHandled.setExitCode(0);
 
         CommandResult resultEmpty = new CommandResult(CommandStatus.SUCCESS);

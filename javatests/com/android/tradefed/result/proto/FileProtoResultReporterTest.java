@@ -18,6 +18,8 @@ package com.android.tradefed.result.proto;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.OptionSetter;
@@ -34,12 +36,14 @@ import com.android.tradefed.util.proto.TestRecordProtoUtil;
 
 import com.google.protobuf.Any;
 
-import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -53,14 +57,15 @@ public class FileProtoResultReporterTest {
     private FileProtoResultReporter mReporter;
     private File mOutput;
     private List<File> mToDelete = new ArrayList<>();
-    private ITestInvocationListener mMockListener;
+    @Mock ITestInvocationListener mMockListener;
 
     @Before
     public void setUp() throws Exception {
+        MockitoAnnotations.initMocks(this);
+
         mOutput = FileUtil.createTempFile("proto-file-reporter-test", ".pb");
         mReporter = new FileProtoResultReporter();
         mReporter.setFileOutput(mOutput);
-        mMockListener = EasyMock.createMock(ITestInvocationListener.class);
     }
 
     @After
@@ -123,30 +128,6 @@ public class FileProtoResultReporterTest {
             fail("Should have output at least one file");
         }
 
-        mMockListener.invocationStarted(EasyMock.anyObject());
-        mMockListener.testModuleStarted(EasyMock.anyObject());
-        mMockListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
-        mMockListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mMockListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mMockListener.testRunEnded(200L, new HashMap<String, Metric>());
-        mMockListener.testModuleEnded();
-        mMockListener.testModuleStarted(EasyMock.anyObject());
-        mMockListener.testModuleEnded();
-        mMockListener.testRunStarted(
-                EasyMock.eq("run2"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
-        mMockListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mMockListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mMockListener.testRunEnded(200L, new HashMap<String, Metric>());
-        mMockListener.invocationEnded(500L);
-
-        EasyMock.replay(mMockListener);
         ProtoResultParser parser = new ProtoResultParser(mMockListener, context, true);
         while (currentOutput.exists()) {
             mToDelete.add(currentOutput);
@@ -154,7 +135,24 @@ public class FileProtoResultReporterTest {
             index++;
             currentOutput = new File(mOutput.getAbsolutePath() + index);
         }
-        EasyMock.verify(mMockListener);
+
+        verify(mMockListener).invocationStarted(Mockito.any());
+        verify(mMockListener, times(2)).testModuleStarted(Mockito.any());
+        verify(mMockListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(1), Mockito.eq(0), Mockito.anyLong());
+        verify(mMockListener, times(2)).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        verify(mMockListener, times(2))
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        verify(mMockListener, times(2)).testRunEnded(200L, new HashMap<String, Metric>());
+        verify(mMockListener, times(2)).testModuleEnded();
+        verify(mMockListener)
+                .testRunStarted(
+                        Mockito.eq("run2"), Mockito.eq(1), Mockito.eq(0), Mockito.anyLong());
+        verify(mMockListener).invocationEnded(500L);
     }
 
     private IInvocationContext createModuleContext(String moduleId) {

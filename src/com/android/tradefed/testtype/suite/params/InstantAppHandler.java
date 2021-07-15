@@ -26,7 +26,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 /** Handler for {@link ModuleParameters#INSTANT_APP}. */
-public class InstantAppHandler implements IModuleParameter {
+public class InstantAppHandler implements IModuleParameterHandler {
 
     /** {@inheritDoc} */
     @Override

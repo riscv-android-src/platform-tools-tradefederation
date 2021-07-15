@@ -33,7 +33,7 @@ import com.android.tradefed.testtype.IAbiReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFileFilterReceiver;
 import com.android.tradefed.testtype.ITestFilterReceiver;
-import com.android.tradefed.testtype.suite.params.IModuleParameter;
+import com.android.tradefed.testtype.suite.params.IModuleParameterHandler;
 import com.android.tradefed.testtype.suite.params.MainlineModuleHandler;
 import com.android.tradefed.testtype.suite.params.ModuleParameters;
 import com.android.tradefed.testtype.suite.params.ModuleParametersHelper;
@@ -60,6 +60,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -259,21 +260,15 @@ public class SuiteModuleLoader {
             boolean primaryAbi = true;
             boolean shouldCreateMultiAbi = true;
             // If a particular parameter was requested to be run, find it.
-            Set<IModuleParameter> mForcedParameters = null;
+            Set<IModuleParameterHandler> mForcedParameters = null;
             Set<Class<?>> mForcedParameterClasses = null;
             if (mForcedModuleParameter != null) {
                 mForcedParameters = new HashSet<>();
-                Set<ModuleParameters> moduleParameters =
+                Map<ModuleParameters, IModuleParameterHandler> moduleParameters =
                         ModuleParametersHelper.resolveParam(
                                 mForcedModuleParameter, mAllowOptionalParameterizedModules);
-
-                for (ModuleParameters moduleParam : moduleParameters) {
-                    mForcedParameters.add(
-                            ModuleParametersHelper.getParameterHandler(
-                                    moduleParam, mAllowOptionalParameterizedModules));
-                }
                 mForcedParameterClasses = new HashSet<>();
-                for (IModuleParameter parameter : mForcedParameters) {
+                for (IModuleParameterHandler parameter : moduleParameters.values()) {
                     mForcedParameterClasses.add(parameter.getClass());
                 }
             }
@@ -312,7 +307,7 @@ public class SuiteModuleLoader {
                 }
 
                 boolean skipCreatingBaseConfig = false;
-                List<IModuleParameter> params = null;
+                List<IModuleParameterHandler> params = null;
                 List<String> mainlineParams = new ArrayList<>();
                 try {
                     params = getModuleParameters(name, config);
@@ -348,7 +343,7 @@ public class SuiteModuleLoader {
                     shouldCreateMultiAbi = shouldCreateMultiAbiForBase(params);
 
                     // If we find any parameterized combination.
-                    for (IModuleParameter param : params) {
+                    for (IModuleParameterHandler param : params) {
                         if (param instanceof NegativeHandler) {
                             if (mForcedParameters != null
                                     && !mForcedParameterClasses.contains(param.getClass())) {
@@ -516,7 +511,7 @@ public class SuiteModuleLoader {
             String baseModuleId,
             String parameterModuleId,
             String nameWithParam,
-            Set<IModuleParameter> forcedModuleParameters) {
+            Set<IModuleParameterHandler> forcedModuleParameters) {
         // Explicitly excluded
         LinkedHashSet<SuiteTestFilter> excluded = getFilterList(mExcludeFilters, parameterModuleId);
         LinkedHashSet<SuiteTestFilter> excludedParam = getFilterList(mExcludeFilters, nameWithParam);
@@ -665,10 +660,10 @@ public class SuiteModuleLoader {
         }
     }
 
-    /** Gets the list of {@link IModuleParameter}s associated with a module. */
-    private List<IModuleParameter> getModuleParameters(String moduleName, IConfiguration config)
+    /** Gets the list of {@link IModuleParameterHandler}s associated with a module. */
+    private List<IModuleParameterHandler> getModuleParameters(String moduleName, IConfiguration config)
             throws ConfigurationException {
-        List<IModuleParameter> params = new ArrayList<>();
+        List<IModuleParameterHandler> params = new ArrayList<>();
         Set<String> processedParameterArgs = new HashSet<>();
         // Track family of the parameters to make sure we have no duplicate.
         Map<String, ModuleParameters> duplicateModule = new LinkedHashMap<>();
@@ -683,7 +678,7 @@ public class SuiteModuleLoader {
         for (ModuleParameters moduleParameters : mExcludedModuleParameters) {
             expandedExcludedModuleParameters.addAll(
                     ModuleParametersHelper.resolveParam(
-                            moduleParameters, mAllowOptionalParameterizedModules));
+                            moduleParameters, mAllowOptionalParameterizedModules).keySet());
         }
 
         for (String p : parameters) {
@@ -691,10 +686,11 @@ public class SuiteModuleLoader {
                 // Avoid processing the same parameter twice
                 continue;
             }
-            Set<ModuleParameters> suiteParams =
+            Map<ModuleParameters, IModuleParameterHandler> suiteParams =
                     ModuleParametersHelper.resolveParam(
                             p.toUpperCase(), mAllowOptionalParameterizedModules);
-            for (ModuleParameters suiteParam : suiteParams) {
+            for (Entry<ModuleParameters, IModuleParameterHandler>  suiteParamEntry : suiteParams.entrySet()) {
+                ModuleParameters suiteParam = suiteParamEntry.getKey();
                 String family = suiteParam.getFamily();
                 if (duplicateModule.containsKey(family)) {
                     // Duplicate family members are not accepted.
@@ -712,13 +708,7 @@ public class SuiteModuleLoader {
                     continue;
                 }
 
-                IModuleParameter handler =
-                        ModuleParametersHelper.getParameterHandler(
-                                suiteParam, /* optionalParams */
-                                mAllowOptionalParameterizedModules);
-                if (handler != null) {
-                    params.add(handler);
-                }
+                params.add(suiteParamEntry.getValue());
             }
         }
         return params;
@@ -864,8 +854,8 @@ public class SuiteModuleLoader {
 
 
     /** Whether or not the base configuration should be created for all abis or not. */
-    private boolean shouldCreateMultiAbiForBase(List<IModuleParameter> params) {
-        for (IModuleParameter param : params) {
+    private boolean shouldCreateMultiAbiForBase(List<IModuleParameterHandler> params) {
+        for (IModuleParameterHandler param : params) {
             if (param instanceof NotMultiAbiHandler) {
                 return false;
             }

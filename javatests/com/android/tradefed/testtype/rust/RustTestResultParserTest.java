@@ -15,22 +15,23 @@
  */
 package com.android.tradefed.testtype.rust;
 
-import static org.easymock.EasyMock.createMock;
-import static org.easymock.EasyMock.replay;
-import static org.easymock.EasyMock.verify;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.ArrayUtil;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -40,11 +41,12 @@ import java.util.HashMap;
 public class RustTestResultParserTest extends RustParserTestBase {
 
     private RustTestResultParser mParser;
-    private ITestInvocationListener mMockListener;
+    @Mock ITestInvocationListener mMockListener;
 
     @Before
     public void setUp() throws Exception {
-        mMockListener = createMock(ITestInvocationListener.class);
+        MockitoAnnotations.initMocks(this);
+
         mParser = new RustTestResultParser(ArrayUtil.list(mMockListener), "test");
     }
 
@@ -151,63 +153,57 @@ public class RustTestResultParserTest extends RustParserTestBase {
     public void testParseRealOutput() {
         String[] contents = readInFile(RUST_OUTPUT_FILE_1);
 
-        for (int i = 0; i < 10; i++) {
-            mMockListener.testStarted(EasyMock.anyObject());
-            mMockListener.testEnded(
-                    EasyMock.anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
-        }
-
-        replay(mMockListener);
         mParser.processNewLines(contents);
         mParser.done();
-        verify(mMockListener);
+
+        verify(mMockListener, times(10)).testStarted(Mockito.any());
+        verify(mMockListener, times(10))
+                .testEnded(Mockito.any(), Mockito.<HashMap<String, Metric>>any());
     }
 
     @Test
     public void testParseRealOutput2() {
         String[] contents = readInFile(RUST_OUTPUT_FILE_2);
-        for (int i = 0; i < 23; i++) {
-            mMockListener.testStarted(EasyMock.anyObject());
-            mMockListener.testEnded(
-                    EasyMock.anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
-        }
         String identsTrace =
                 String.join(
                         "\n",
                         "thread 'idents' panicked at 'assertion failed: `(left == right)`",
                         "  left: `\"_\"`,",
                         " right: `\"_abc\"`', external/rust/crates/proc-macro2/tests/test.rs:13:5");
-        mMockListener.testFailed(
-                EasyMock.eq(new TestDescription("test", "idents")), EasyMock.eq(identsTrace));
+
         String literalStringTrace =
                 String.join(
                         "\n",
                         "thread 'literal_string' panicked at 'assertion failed: `(left == right)`",
                         "  left: `\"\\\"didn\\'t\\\"\"`,",
                         " right: `\"fake\"`', external/rust/crates/proc-macro2/tests/test.rs:86:5");
-        mMockListener.testFailed(
-                EasyMock.eq(new TestDescription("test", "literal_string")),
-                EasyMock.eq(literalStringTrace));
-        replay(mMockListener);
+
         mParser.processNewLines(contents);
         mParser.done();
-        verify(mMockListener);
+
+        verify(mMockListener, times(23)).testStarted(Mockito.any());
+        verify(mMockListener, times(23))
+                .testEnded(Mockito.any(), Mockito.<HashMap<String, Metric>>any());
+        verify(mMockListener)
+                .testFailed(
+                        Mockito.eq(new TestDescription("test", "idents")), Mockito.eq(identsTrace));
+        verify(mMockListener)
+                .testFailed(
+                        Mockito.eq(new TestDescription("test", "literal_string")),
+                        Mockito.eq(literalStringTrace));
     }
 
     @Test
     public void testParseRealOutput3() {
         String[] contents = readInFile(RUST_OUTPUT_FILE_3);
-        for (int i = 0; i < 1; i++) {
-            mMockListener.testStarted(EasyMock.anyObject());
-            mMockListener.testEnded(
-                    EasyMock.anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
-        }
-        mMockListener.testIgnored(
-                EasyMock.eq(new TestDescription("test", "make_sure_no_proc_macro")));
-        replay(mMockListener);
+
         mParser.processNewLines(contents);
         mParser.done();
-        verify(mMockListener);
+
+        verify(mMockListener).testStarted(Mockito.any());
+        verify(mMockListener).testEnded(Mockito.any(), Mockito.<HashMap<String, Metric>>any());
+        verify(mMockListener)
+                .testIgnored(Mockito.eq(new TestDescription("test", "make_sure_no_proc_macro")));
     }
 
     /**
@@ -217,47 +213,45 @@ public class RustTestResultParserTest extends RustParserTestBase {
     @Test
     public void testParsePartialOutput() {
         String[] contents = readInFile(RUST_OUTPUT_FILE_1);
-        for (int i = 0; i < 10; i++) {
-            mMockListener.testStarted(EasyMock.anyObject());
-            mMockListener.testEnded(
-                    EasyMock.anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
-        }
-        replay(mMockListener);
+
         mParser.processNewLines(Arrays.copyOfRange(contents, 0, 4));
         mParser.processNewLines(Arrays.copyOfRange(contents, 4, 7));
         mParser.processNewLines(Arrays.copyOfRange(contents, 4, contents.length));
         mParser.done();
-        verify(mMockListener);
+
+        verify(mMockListener, times(10)).testStarted(Mockito.any());
+        verify(mMockListener, times(10))
+                .testEnded(Mockito.any(), Mockito.<HashMap<String, Metric>>any());
     }
 
     @Test
     public void testParseLinkError() {
         String[] contents = readInFile(RUST_OUTPUT_FILE_4);
-        mMockListener.testRunFailed(
-                EasyMock.eq(
-                        "test did not report any run:\n"
-                            + "CANNOT LINK EXECUTABLE"
-                            + " \"/data/local/tmp/keystore2_test/x86_64/keystore2_test\": library"
-                            + " \"libkeystore2_crypto.so\" not found: needed by main executable"));
-        replay(mMockListener);
+
         mParser.processNewLines(contents);
         mParser.done();
-        verify(mMockListener);
+
+        verify(mMockListener)
+                .testRunFailed(
+                        Mockito.eq(
+                                "test did not report any run:\n"
+                                    + "CANNOT LINK EXECUTABLE"
+                                    + " \"/data/local/tmp/keystore2_test/x86_64/keystore2_test\":"
+                                    + " library \"libkeystore2_crypto.so\" not found: needed by"
+                                    + " main executable"));
     }
 
     @Test
     public void testParseTimeout() {
         String[] contents = readInFile(RUST_OUTPUT_FILE_5);
-        for (int i = 0; i < 9; i++) {
-            mMockListener.testStarted(EasyMock.anyObject());
-            mMockListener.testEnded(
-                    EasyMock.anyObject(), EasyMock.<HashMap<String, Metric>>anyObject());
-        }
-        mMockListener.testRunFailed(
-                EasyMock.eq("Test run incomplete. Started 10 tests, finished 9"));
-        replay(mMockListener);
+
         mParser.processNewLines(contents);
         mParser.done();
-        verify(mMockListener);
+
+        verify(mMockListener, times(9)).testStarted(Mockito.any());
+        verify(mMockListener, times(9))
+                .testEnded(Mockito.any(), Mockito.<HashMap<String, Metric>>any());
+        verify(mMockListener)
+                .testRunFailed(Mockito.eq("Test run incomplete. Started 10 tests, finished 9"));
     }
 }

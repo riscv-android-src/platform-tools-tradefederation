@@ -175,12 +175,8 @@ import com.android.tradefed.result.CollectingTestListenerTest;
 import com.android.tradefed.result.ConsoleResultReporterTest;
 import com.android.tradefed.result.CountingTestResultListenerTest;
 import com.android.tradefed.result.DeviceFileReporterTest;
-import com.android.tradefed.result.DeviceUnavailEmailResultReporterTest;
-import com.android.tradefed.result.EmailResultReporterTest;
 import com.android.tradefed.result.FailureDescriptionTest;
-import com.android.tradefed.result.FailureEmailResultReporterTest;
 import com.android.tradefed.result.FileSystemLogSaverTest;
-import com.android.tradefed.result.InvocationFailureEmailResultReporterTest;
 import com.android.tradefed.result.InvocationToJUnitResultForwarderTest;
 import com.android.tradefed.result.JUnitToInvocationResultForwarderTest;
 import com.android.tradefed.result.JsonHttpTestResultReporterTest;
@@ -194,7 +190,6 @@ import com.android.tradefed.result.ReportPassedTestsTest;
 import com.android.tradefed.result.SnapshotInputStreamSourceTest;
 import com.android.tradefed.result.SubprocessResultsReporterTest;
 import com.android.tradefed.result.TestDescriptionTest;
-import com.android.tradefed.result.TestFailureEmailResultReporterTest;
 import com.android.tradefed.result.TestResultListenerTest;
 import com.android.tradefed.result.TestResultTest;
 import com.android.tradefed.result.TestRunResultTest;
@@ -660,12 +655,8 @@ import org.junit.runners.Suite.SuiteClasses;
     ConsoleResultReporterTest.class,
     CountingTestResultListenerTest.class,
     DeviceFileReporterTest.class,
-    DeviceUnavailEmailResultReporterTest.class,
-    EmailResultReporterTest.class,
     FailureDescriptionTest.class,
-    FailureEmailResultReporterTest.class,
     FileSystemLogSaverTest.class,
-    InvocationFailureEmailResultReporterTest.class,
     InvocationToJUnitResultForwarderTest.class,
     JsonHttpTestResultReporterTest.class,
     JUnitToInvocationResultForwarderTest.class,
@@ -676,7 +667,6 @@ import org.junit.runners.Suite.SuiteClasses;
     MultiFailureDescriptionTest.class,
     SnapshotInputStreamSourceTest.class,
     SubprocessResultsReporterTest.class,
-    TestFailureEmailResultReporterTest.class,
     PassingTestFileReporterTest.class,
     ReportPassedTestsTest.class,
     TestDescriptionTest.class,
