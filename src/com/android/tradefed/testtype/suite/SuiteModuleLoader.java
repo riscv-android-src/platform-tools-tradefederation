@@ -24,6 +24,7 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationFactory;
 import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.config.OptionDef;
+import com.android.tradefed.device.DeviceFoldableState;
 import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.log.LogUtil.CLog;
@@ -33,6 +34,7 @@ import com.android.tradefed.testtype.IAbiReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFileFilterReceiver;
 import com.android.tradefed.testtype.ITestFilterReceiver;
+import com.android.tradefed.testtype.suite.params.FoldableExpandingHandler;
 import com.android.tradefed.testtype.suite.params.IModuleParameterHandler;
 import com.android.tradefed.testtype.suite.params.MainlineModuleHandler;
 import com.android.tradefed.testtype.suite.params.ModuleParameters;
@@ -87,6 +89,7 @@ public class SuiteModuleLoader {
     private boolean mAllowOptionalParameterizedModules = false;
     private ModuleParameters mForcedModuleParameter = null;
     private Set<ModuleParameters> mExcludedModuleParameters = new HashSet<>();
+    private Set<DeviceFoldableState> mFoldableStates = new LinkedHashSet<>();
     // Check the mainline parameter configured in a test config must end with .apk, .apks, or .apex.
     private static final Set<String> MAINLINE_PARAMETERS_TO_VALIDATE =
             new HashSet<>(Arrays.asList(".apk", ".apks", ".apex"));
@@ -149,6 +152,11 @@ public class SuiteModuleLoader {
     /** Sets the set of {@link ModuleParameters} that should not be considered at all. */
     public final void setExcludedModuleParameters(Set<ModuleParameters> excludedParams) {
         mExcludedModuleParameters = excludedParams;
+    }
+
+    /** Sets the set of {@link DeviceFoldableState} that should be run. */
+    public final void setFoldableStates(Set<DeviceFoldableState> foldableStates) {
+        mFoldableStates = foldableStates;
     }
 
     /** Main loading of configurations, looking into the specified files */
@@ -678,7 +686,8 @@ public class SuiteModuleLoader {
         for (ModuleParameters moduleParameters : mExcludedModuleParameters) {
             expandedExcludedModuleParameters.addAll(
                     ModuleParametersHelper.resolveParam(
-                            moduleParameters, mAllowOptionalParameterizedModules).keySet());
+                            moduleParameters,
+                            mAllowOptionalParameterizedModules).keySet());
         }
 
         for (String p : parameters) {
@@ -688,7 +697,8 @@ public class SuiteModuleLoader {
             }
             Map<ModuleParameters, IModuleParameterHandler> suiteParams =
                     ModuleParametersHelper.resolveParam(
-                            p.toUpperCase(), mAllowOptionalParameterizedModules);
+                            ModuleParameters.valueOf(p.toUpperCase()),
+                            mAllowOptionalParameterizedModules);
             for (Entry<ModuleParameters, IModuleParameterHandler>  suiteParamEntry : suiteParams.entrySet()) {
                 ModuleParameters suiteParam = suiteParamEntry.getKey();
                 String family = suiteParam.getFamily();
@@ -708,7 +718,14 @@ public class SuiteModuleLoader {
                     continue;
                 }
 
-                params.add(suiteParamEntry.getValue());
+                if (suiteParamEntry instanceof FoldableExpandingHandler) {
+                    List<IModuleParameterHandler> foldableHandlers =
+                            ((FoldableExpandingHandler) suiteParamEntry)
+                                .expandHandler(mFoldableStates);
+                    params.addAll(foldableHandlers);
+                } else {
+                    params.add(suiteParamEntry.getValue());
+                }
             }
         }
         return params;

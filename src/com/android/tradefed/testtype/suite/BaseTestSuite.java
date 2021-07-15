@@ -21,7 +21,10 @@ import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
+import com.android.tradefed.device.DeviceFoldableState;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.FileInputStreamSource;
@@ -31,11 +34,14 @@ import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFileFilterReceiver;
 import com.android.tradefed.testtype.ITestFilterReceiver;
+import com.android.tradefed.testtype.suite.params.FoldableExpandingHandler;
 import com.android.tradefed.testtype.suite.params.IModuleParameterHandler;
 import com.android.tradefed.testtype.suite.params.ModuleParameters;
 import com.android.tradefed.testtype.suite.params.ModuleParametersHelper;
 import com.android.tradefed.testtype.suite.params.NegativeHandler;
 import com.android.tradefed.util.ArrayUtil;
+import com.android.tradefed.util.CommandResult;
+import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -51,6 +57,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /** A Test for running Compatibility Test Suite with new suite system. */
 @OptionClass(alias = "base-suite")
@@ -223,12 +231,14 @@ public class BaseTestSuite extends ITestSuite {
     private Map<String, LinkedHashSet<SuiteTestFilter>> mExcludeFiltersParsed = new LinkedHashMap<>();
     private List<File> mConfigPaths = new ArrayList<>();
     private Set<IAbi> mAbis = new LinkedHashSet<>();
+    private Set<DeviceFoldableState> mFoldableStates = new LinkedHashSet<>();
 
     /** {@inheritDoc} */
     @Override
     public LinkedHashMap<String, IConfiguration> loadTests() {
         try {
             File testsDir = getTestsDir();
+            mFoldableStates = getFoldableStates(getDevice());
             setupFilters(testsDir);
             mAbis = getAbis(getDevice());
 
@@ -324,6 +334,7 @@ public class BaseTestSuite extends ITestSuite {
             mModuleRepo.setOptionalParameterizedModules(mEnableOptionalParameter);
             mModuleRepo.setModuleParameter(mForceParameter);
             mModuleRepo.setExcludedModuleParameters(mExcludedModuleParameters);
+            mModuleRepo.setFoldableStates(mFoldableStates);
 
             List<File> testsDirectories = new ArrayList<>();
 
@@ -551,6 +562,21 @@ public class BaseTestSuite extends ITestSuite {
                         if (moduleParam.getValue() instanceof NegativeHandler) {
                             continue;
                         }
+                        if (moduleParam.getValue() instanceof FoldableExpandingHandler) {
+                            List<IModuleParameterHandler> foldableHandlers =
+                                    ((FoldableExpandingHandler) moduleParam.getValue())
+                                        .expandHandler(mFoldableStates);
+                            for (IModuleParameterHandler foldableHandler : foldableHandlers) {
+                                String paramModuleName =
+                                        String.format(
+                                                "%s[%s]", moduleName,
+                                                foldableHandler.getParameterIdentifier());
+                                mIncludeFilters.add(
+                                        new SuiteTestFilter(getRequestedAbi(), paramModuleName,
+                                                            mTestName).toString());
+                            }
+                            continue;
+                        }
                         String paramModuleName =
                                 String.format(
                                         "%s[%s]", moduleName,
@@ -659,5 +685,34 @@ public class BaseTestSuite extends ITestSuite {
             }
         }
         return true;
+    }
+
+    /**
+     * TODO: Move to ITestDevice directly.
+     */
+    protected Set<DeviceFoldableState> getFoldableStates(ITestDevice device)
+            throws DeviceNotAvailableException {
+        if (device.getIDevice() instanceof StubDevice) {
+            return mFoldableStates;
+        }
+        if (!mFoldableStates.isEmpty()) {
+            return mFoldableStates;
+        }
+        CommandResult result = device.executeShellV2Command("cmd device_state print-states");
+        if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
+            // Can't throw an exception since it would fail on non-supported version
+            CLog.w("Failed to enumerate foldable configurations. stderr: %s", result.getStderr());
+            return mFoldableStates;
+        }
+        Pattern deviceStatePattern =
+                Pattern.compile("DeviceState\\{identifier=(\\d+), name='(\\S+)'\\}\\S*");
+        for (String line : result.getStdout().split("\n")) {
+            Matcher m = deviceStatePattern.matcher(line.trim());
+            if (m.matches()) {
+                mFoldableStates.add(
+                        new DeviceFoldableState(Integer.parseInt(m.group(1)), m.group(2)));
+            }
+        }
+        return mFoldableStates;
     }
 }

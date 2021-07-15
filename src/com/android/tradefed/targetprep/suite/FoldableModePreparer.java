@@ -31,7 +31,8 @@ import com.android.tradefed.util.CommandStatus;
  */
 public class FoldableModePreparer extends BaseTargetPreparer {
 
-    @Option(name = "foldable-state-identifier", description = "The integer state identifier of the foldable mode.")
+    @Option(name = "foldable-state-identifier",
+            description = "The integer state identifier of the foldable mode.")
     private Long mStateIdentifier = null;
 
     public FoldableModePreparer() {}

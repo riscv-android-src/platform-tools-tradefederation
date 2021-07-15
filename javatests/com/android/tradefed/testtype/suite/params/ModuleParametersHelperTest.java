@@ -82,7 +82,7 @@ public class ModuleParametersHelperTest {
     public void resolveParamString_notGroupParam_returnsSetOfSameParam() {
         Map<ModuleParameters, IModuleParameterHandler> resolvedParams =
                 ModuleParametersHelper.resolveParam(
-                        ModuleParameters.INSTANT_APP.toString(), /* withOptional= */ true);
+                        ModuleParameters.INSTANT_APP, /* withOptional= */ true);
 
         assertEquals(resolvedParams.size(), 1);
         assertEquals(resolvedParams.keySet().iterator().next(), ModuleParameters.INSTANT_APP);
@@ -92,7 +92,7 @@ public class ModuleParametersHelperTest {
     public void resolveParamString_groupParam_returnsSetOfMultipleParams() {
         Map<ModuleParameters, IModuleParameterHandler> resolvedParams =
                 ModuleParametersHelper.resolveParam(
-                        ModuleParameters.MULTIUSER.toString(), /* withOptional= */ true);
+                        ModuleParameters.MULTIUSER, /* withOptional= */ true);
 
         assertNotEquals(resolvedParams.size(), 1);
         assertFalse(resolvedParams.keySet().contains(ModuleParameters.MULTIUSER));
