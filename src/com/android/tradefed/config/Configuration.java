@@ -41,7 +41,6 @@ import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.sandbox.SandboxOptions;
 import com.android.tradefed.suite.checker.ISystemStatusChecker;
 import com.android.tradefed.targetprep.ITargetPreparer;
-import com.android.tradefed.targetprep.ILabPreparer;
 import com.android.tradefed.targetprep.multi.IMultiTargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.StubTest;
@@ -158,7 +157,7 @@ public class Configuration implements IConfiguration {
             sObjTypeMap.put(BUILD_PROVIDER_TYPE_NAME, new ObjTypeInfo(IBuildProvider.class, false));
             sObjTypeMap.put(TARGET_PREPARER_TYPE_NAME,
                     new ObjTypeInfo(ITargetPreparer.class, true));
-            sObjTypeMap.put(LAB_PREPARER_TYPE_NAME, new ObjTypeInfo(ILabPreparer.class, true));
+            sObjTypeMap.put(LAB_PREPARER_TYPE_NAME, new ObjTypeInfo(ITargetPreparer.class, true));
             sObjTypeMap.put(
                     MULTI_PRE_TARGET_PREPARER_TYPE_NAME,
                     new ObjTypeInfo(IMultiTargetPreparer.class, true));
@@ -330,7 +329,7 @@ public class Configuration implements IConfiguration {
     /** {@inheritDoc} */
     @SuppressWarnings("unchecked")
     @Override
-    public List<ILabPreparer> getLabPreparers() {
+    public List<ITargetPreparer> getLabPreparers() {
         notAllowedInMultiMode("getLabPreparers");
         return ((List<IDeviceConfiguration>) getConfigurationObjectList(DEVICE_NAME))
                 .get(0)
@@ -772,7 +771,7 @@ public class Configuration implements IConfiguration {
                             cloneListTFObject(deepCopyConfig.getAllObjectOfType(objType));
                     clonedConfig.getDeviceConfig().get(i).removeObjectType(objType);
                     for (Object o : listOfType) {
-                        clonedConfig.getDeviceConfig().get(i).addSpecificConfig(o);
+                        clonedConfig.getDeviceConfig().get(i).addSpecificConfig(o, objType);
                     }
                 }
             } else {
@@ -811,6 +810,16 @@ public class Configuration implements IConfiguration {
     private void addToDefaultDeviceConfig(Object obj) {
         try {
             getDeviceConfigByName(ConfigurationDef.DEFAULT_DEVICE_NAME).addSpecificConfig(obj);
+        } catch (ConfigurationException e) {
+            // should never happen
+            throw new IllegalArgumentException(e);
+        }
+    }
+
+    private void addToDefaultDeviceConfig(Object obj, String type) {
+        try {
+            getDeviceConfigByName(ConfigurationDef.DEFAULT_DEVICE_NAME)
+                    .addSpecificConfig(obj, type);
         } catch (ConfigurationException e) {
             // should never happen
             throw new IllegalArgumentException(e);
@@ -972,7 +981,7 @@ public class Configuration implements IConfiguration {
     @Override
     public void setTargetPreparer(ITargetPreparer preparer) {
         notAllowedInMultiMode("setTargetPreparer");
-        addToDefaultDeviceConfig(preparer);
+        addToDefaultDeviceConfig(preparer, TARGET_PREPARER_TYPE_NAME);
     }
 
     /** {@inheritDoc} */
@@ -981,24 +990,24 @@ public class Configuration implements IConfiguration {
         notAllowedInMultiMode("setTargetPreparers");
         getDeviceConfigByName(ConfigurationDef.DEFAULT_DEVICE_NAME).getTargetPreparers().clear();
         for (ITargetPreparer prep : preparers) {
-            addToDefaultDeviceConfig(prep);
+            addToDefaultDeviceConfig(prep, TARGET_PREPARER_TYPE_NAME);
         }
     }
 
     /** {@inheritDoc} */
     @Override
-    public void setLabPreparer(ILabPreparer preparer) {
+    public void setLabPreparer(ITargetPreparer preparer) {
         notAllowedInMultiMode("setLabPreparer");
-        addToDefaultDeviceConfig(preparer);
+        addToDefaultDeviceConfig(preparer, LAB_PREPARER_TYPE_NAME);
     }
 
     /** {@inheritDoc} */
     @Override
-    public void setLabPreparers(List<ILabPreparer> preparers) {
+    public void setLabPreparers(List<ITargetPreparer> preparers) {
         notAllowedInMultiMode("setLabPreparers");
         getDeviceConfigByName(ConfigurationDef.DEFAULT_DEVICE_NAME).getLabPreparers().clear();
-        for (ILabPreparer prep : preparers) {
-            addToDefaultDeviceConfig(prep);
+        for (ITargetPreparer prep : preparers) {
+            addToDefaultDeviceConfig(prep, LAB_PREPARER_TYPE_NAME);
         }
     }
 
@@ -1428,10 +1437,10 @@ public class Configuration implements IConfiguration {
                             printDeprecatedOptions,
                             printUnchangedOptions);
                 }
-                for (ILabPreparer preparer : deviceConfig.getLabPreparers()) {
+                for (ITargetPreparer preparer : deviceConfig.getLabPreparers()) {
                     ConfigurationUtil.dumpClassToXml(
                             serializer,
-                            TARGET_PREPARER_TYPE_NAME,
+                            LAB_PREPARER_TYPE_NAME,
                             preparer,
                             excludeFilters,
                             printDeprecatedOptions,
@@ -1478,10 +1487,10 @@ public class Configuration implements IConfiguration {
                         printDeprecatedOptions,
                         printUnchangedOptions);
             }
-            for (ILabPreparer preparer : getLabPreparers()) {
+            for (ITargetPreparer preparer : getLabPreparers()) {
                 ConfigurationUtil.dumpClassToXml(
                         serializer,
-                        TARGET_PREPARER_TYPE_NAME,
+                        LAB_PREPARER_TYPE_NAME,
                         preparer,
                         excludeFilters,
                         printDeprecatedOptions,
