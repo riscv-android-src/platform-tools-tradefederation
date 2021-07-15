@@ -41,8 +41,6 @@ import com.android.tradefed.testtype.IAbiReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.StubTest;
 import com.android.tradefed.util.AbiUtils;
-import com.android.tradefed.util.CommandResult;
-import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.ZipUtil;
 import com.android.tradefed.util.testmapping.TestInfo;
@@ -137,12 +135,7 @@ public class TestMappingSuiteRunnerTest {
         EasyMock.expect(mMockDevice.getProperty(EasyMock.anyObject())).andReturn(ABI_1);
         EasyMock.expect(mMockDevice.getProperty(EasyMock.anyObject())).andReturn(ABI_2);
         EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(EasyMock.createMock(IDevice.class));
-        CommandResult result = new CommandResult(CommandStatus.SUCCESS);
-        result.setStdout("Supported states: [\n" +
-                " DeviceState{identifier=0, name='DEFAULT'},\n" +
-                "]\n");
-        EasyMock.expect(mMockDevice.executeShellV2Command("cmd device_state print-states"))
-                .andReturn(result);
+        EasyMock.expect(mMockDevice.getFoldableStates()).andStubReturn(new HashSet<>());
         EasyMock.replay(mBuildInfo, mMockDevice);
     }
 

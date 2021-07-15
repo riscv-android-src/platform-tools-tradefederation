@@ -23,7 +23,6 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import static org.mockito.Mockito.when;
 
 import com.android.ddmlib.IDevice;
 import com.android.tradefed.build.DeviceBuildInfo;
@@ -31,7 +30,6 @@ import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.OptionSetter;
-import com.android.tradefed.device.DeviceFoldableState;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.error.HarnessRuntimeException;
@@ -45,8 +43,6 @@ import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.suite.params.ModuleParameters;
 import com.android.tradefed.util.AbiUtils;
-import com.android.tradefed.util.CommandResult;
-import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 
 import org.easymock.EasyMock;
@@ -54,7 +50,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
@@ -91,12 +86,7 @@ public class BaseTestSuiteTest {
         EasyMock.expect(mMockDevice.getProperty(EasyMock.anyObject())).andReturn("arm64-v8a");
         EasyMock.expect(mMockDevice.getProperty(EasyMock.anyObject())).andReturn("armeabi-v7a");
         EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(EasyMock.createMock(IDevice.class));
-        CommandResult result = new CommandResult(CommandStatus.SUCCESS);
-        result.setStdout("Supported states: [\n" +
-                " DeviceState{identifier=0, name='DEFAULT'},\n" +
-                "]\n");
-        EasyMock.expect(mMockDevice.executeShellV2Command("cmd device_state print-states"))
-                .andReturn(result);
+        EasyMock.expect(mMockDevice.getFoldableStates()).andStubReturn(new HashSet<>());
         EasyMock.replay(mMockDevice);
     }
 
@@ -814,21 +804,6 @@ public class BaseTestSuiteTest {
         reuseTestUser.setAccessible(true);
         assertTrue(reuseTestUser.getBoolean(config.getTargetPreparers().get(0)));
         reuseTestUser.setAccessible(false);
-    }
-
-    @Test
-    public void testFoldableState() throws Exception {
-        ITestDevice mockDevice = Mockito.mock(ITestDevice.class);
-        CommandResult result = new CommandResult(CommandStatus.SUCCESS);
-        result.setStdout("Supported states: [\n" +
-                " DeviceState{identifier=0, name='CLOSED'},\n" +
-                " DeviceState{identifier=1, name='HALF_OPENED'},\n" +
-                " DeviceState{identifier=2, name='OPENED'},\n" +
-                "]\n");
-        when(mockDevice.executeShellV2Command("cmd device_state print-states")).thenReturn(result);
-
-        Set<DeviceFoldableState> states = mRunner.getFoldableStates(mockDevice);
-        assertEquals(3, states.size());
     }
 
     private void createConfig(File tmpDir, String name) throws IOException {

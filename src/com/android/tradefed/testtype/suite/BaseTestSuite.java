@@ -40,8 +40,6 @@ import com.android.tradefed.testtype.suite.params.ModuleParameters;
 import com.android.tradefed.testtype.suite.params.ModuleParametersHelper;
 import com.android.tradefed.testtype.suite.params.NegativeHandler;
 import com.android.tradefed.util.ArrayUtil;
-import com.android.tradefed.util.CommandResult;
-import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -57,8 +55,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /** A Test for running Compatibility Test Suite with new suite system. */
 @OptionClass(alias = "base-suite")
@@ -687,9 +683,6 @@ public class BaseTestSuite extends ITestSuite {
         return true;
     }
 
-    /**
-     * TODO: Move to ITestDevice directly.
-     */
     protected Set<DeviceFoldableState> getFoldableStates(ITestDevice device)
             throws DeviceNotAvailableException {
         if (device.getIDevice() instanceof StubDevice) {
@@ -698,21 +691,7 @@ public class BaseTestSuite extends ITestSuite {
         if (!mFoldableStates.isEmpty()) {
             return mFoldableStates;
         }
-        CommandResult result = device.executeShellV2Command("cmd device_state print-states");
-        if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
-            // Can't throw an exception since it would fail on non-supported version
-            CLog.w("Failed to enumerate foldable configurations. stderr: %s", result.getStderr());
-            return mFoldableStates;
-        }
-        Pattern deviceStatePattern =
-                Pattern.compile("DeviceState\\{identifier=(\\d+), name='(\\S+)'\\}\\S*");
-        for (String line : result.getStdout().split("\n")) {
-            Matcher m = deviceStatePattern.matcher(line.trim());
-            if (m.matches()) {
-                mFoldableStates.add(
-                        new DeviceFoldableState(Integer.parseInt(m.group(1)), m.group(2)));
-            }
-        }
+        mFoldableStates = device.getFoldableStates();
         return mFoldableStates;
     }
 }
