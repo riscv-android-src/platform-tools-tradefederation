@@ -49,7 +49,7 @@ public class FuseUtil {
     public boolean canMountZip() {
         if (sCanMountZip == null) {
             CommandResult res =
-                    getRunUtil().runTimedCmd(FUSE_ZIP_TIMEOUT_MILLIS, "test", "/dev/fuse");
+                    getRunUtil().runTimedCmd(FUSE_ZIP_TIMEOUT_MILLIS, "test", "-c", "/dev/fuse");
             CommandResult res2 =
                     getRunUtil().runTimedCmd(FUSE_ZIP_TIMEOUT_MILLIS, "fuse-zip", "-h");
             sCanMountZip =

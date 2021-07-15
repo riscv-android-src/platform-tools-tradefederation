@@ -44,6 +44,8 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.MockDeviceManager;
 import com.android.tradefed.device.NoDeviceException;
 import com.android.tradefed.device.StubDevice;
+import com.android.tradefed.host.IHostOptions;
+import com.android.tradefed.host.IHostOptions.PermitLimitType;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
@@ -121,6 +123,7 @@ public class ClusterCommandSchedulerTest {
     @Rule public TestLogData mTestLog = new TestLogData();
 
     private IDeviceManager mMockDeviceManager;
+    private IHostOptions mMockHostOptions;
     private IRestApiHelper mMockApiHelper;
     private IClusterClient mMockClusterClient;
     private ClusterOptions mMockClusterOptions;
@@ -147,6 +150,7 @@ public class ClusterCommandSchedulerTest {
     public void setUp() throws Exception {
         mMockHostUploader = EasyMock.createMock(IClusterEventUploader.class);
         mMockDeviceManager = EasyMock.createMock(IDeviceManager.class);
+        mMockHostOptions = EasyMock.createMock(IHostOptions.class);
         mMockApiHelper = EasyMock.createMock(IRestApiHelper.class);
         mMockEventUploader = EasyMock.createMock(ICommandEventUploader.class);
         mMockClusterOptions = new ClusterOptions();
@@ -191,6 +195,11 @@ public class ClusterCommandSchedulerTest {
                     @Override
                     protected IDeviceManager getDeviceManager() {
                         return mMockDeviceManager;
+                    }
+
+                    @Override
+                    protected IHostOptions getHostOptions() {
+                        return mMockHostOptions;
                     }
 
                     @Override
@@ -465,10 +474,11 @@ public class ClusterCommandSchedulerTest {
                                                 Integer.toString(1))),
                                 EasyMock.capture(capture)))
                 .andReturn(buildHttpResponse(product1Response.toString()));
-        EasyMock.expect(mMockDeviceManager.getAvailableFlashingPermits()).andReturn(1);
+        EasyMock.expect(mMockHostOptions.getAvailablePermits(PermitLimitType.CONCURRENT_FLASHER))
+                .andReturn(1);
 
         // Actually fetch commands
-        EasyMock.replay(mMockApiHelper, mMockEventUploader, mMockDeviceManager);
+        EasyMock.replay(mMockApiHelper, mMockEventUploader, mMockDeviceManager, mMockHostOptions);
         final List<ClusterCommand> commands = mScheduler.fetchHostCommands(deviceMap);
         assertEquals(1, commands.size());
         ClusterCommand command = commands.get(0);

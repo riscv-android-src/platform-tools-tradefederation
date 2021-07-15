@@ -38,7 +38,6 @@ import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
-import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.ZipUtil;
 
 import org.easymock.Capture;
@@ -56,7 +55,6 @@ import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
 /** Unit tests for {@link DeviceManager}. */
@@ -1391,123 +1389,6 @@ public class DeviceManagerTest {
         manager.restartAdbBridge();
         manager.terminateDeviceMonitor();
         verifyMocks(mockMonitor);
-    }
-
-    /** Ensure that the flasher instance limiting machinery is working as expected. */
-    @Test
-    public void testFlashLimit() throws Exception {
-        setCheckAvailableDeviceExpectations();
-        replayMocks();
-        final DeviceManager manager = createDeviceManager(null, mMockIDevice);
-        try {
-            Thread waiter = new Thread() {
-                @Override
-                public void run() {
-                    manager.takeFlashingPermit();
-                    manager.returnFlashingPermit();
-                }
-            };
-            EasyMock.expect(mMockHostOptions.getConcurrentFlasherLimit())
-                .andReturn(null).anyTimes();
-            EasyMock.replay(mMockHostOptions);
-            manager.setConcurrentFlashSettings(new Semaphore(1), true);
-            // take the permit; the next attempt to take the permit should block
-            manager.takeFlashingPermit();
-            assertFalse(manager.getConcurrentFlashLock().hasQueuedThreads());
-
-            waiter.start();
-            RunUtil.getDefault().sleep(200); // Thread start should take <200ms
-            assertTrue("Invalid state: waiter thread is not alive", waiter.isAlive());
-            assertTrue("No queued threads", manager.getConcurrentFlashLock().hasQueuedThreads());
-
-            manager.returnFlashingPermit();
-            RunUtil.getDefault().sleep(200); // Thread start should take <200ms
-            assertFalse("Unexpected queued threads",
-                    manager.getConcurrentFlashLock().hasQueuedThreads());
-
-            waiter.join(1000);
-            assertFalse("waiter thread has not returned", waiter.isAlive());
-        } finally {
-            // Attempt to reset concurrent flash settings to defaults
-            manager.setConcurrentFlashSettings(null, true);
-        }
-    }
-
-    /** Ensure that the flasher limiting respects {@link IHostOptions}. */
-    @Test
-    public void testFlashLimit_withHostOptions() throws Exception {
-        setCheckAvailableDeviceExpectations();
-        replayMocks();
-        final DeviceManager manager = createDeviceManager(null, mMockIDevice);
-        try {
-            Thread waiter = new Thread() {
-                @Override
-                public void run() {
-                    manager.takeFlashingPermit();
-                    manager.returnFlashingPermit();
-                }
-            };
-            EasyMock.expect(mMockHostOptions.getConcurrentFlasherLimit()).andReturn(1).anyTimes();
-            EasyMock.replay(mMockHostOptions);
-            // take the permit; the next attempt to take the permit should block
-            manager.takeFlashingPermit();
-            assertFalse(manager.getConcurrentFlashLock().hasQueuedThreads());
-
-            waiter.start();
-            RunUtil.getDefault().sleep(100);  // Thread start should take <100ms
-            assertTrue("Invalid state: waiter thread is not alive", waiter.isAlive());
-            assertTrue("No queued threads", manager.getConcurrentFlashLock().hasQueuedThreads());
-
-            manager.returnFlashingPermit();
-            RunUtil.getDefault().sleep(100);  // Thread start should take <100ms
-            assertFalse("Unexpected queued threads",
-                    manager.getConcurrentFlashLock().hasQueuedThreads());
-
-            waiter.join(1000);
-            assertFalse("waiter thread has not returned", waiter.isAlive());
-            EasyMock.verify(mMockHostOptions);
-        } finally {
-            // Attempt to reset concurrent flash settings to defaults
-            manager.setConcurrentFlashSettings(null, true);
-        }
-    }
-
-    /** Ensure that the flasher instance limiting machinery is working as expected. */
-    @Test
-    public void testUnlimitedFlashLimit() throws Exception {
-        setCheckAvailableDeviceExpectations();
-        replayMocks();
-        final DeviceManager manager = createDeviceManager(null, mMockIDevice);
-        try {
-            Thread waiter = new Thread() {
-                @Override
-                public void run() {
-                    manager.takeFlashingPermit();
-                    manager.returnFlashingPermit();
-                }
-            };
-            manager.setConcurrentFlashSettings(null, true);
-            // take a permit; the next attempt to take the permit should proceed without blocking
-            manager.takeFlashingPermit();
-            assertNull("Flash lock is non-null", manager.getConcurrentFlashLock());
-
-            waiter.start();
-            RunUtil.getDefault().sleep(100);  // Thread start should take <100ms
-            Thread.State waiterState = waiter.getState();
-            assertTrue("Invalid state: waiter thread hasn't started",
-                    waiter.isAlive() || Thread.State.TERMINATED.equals(waiterState));
-            assertNull("Flash lock is non-null", manager.getConcurrentFlashLock());
-
-            manager.returnFlashingPermit();
-            RunUtil.getDefault().sleep(100);  // Thread start should take <100ms
-            assertNull("Flash lock is non-null", manager.getConcurrentFlashLock());
-
-            waiter.join(1000);
-            assertFalse("waiter thread has not returned", waiter.isAlive());
-        } finally {
-            // Attempt to reset concurrent flash settings to defaults
-            manager.setConcurrentFlashSettings(null, true);
-        }
     }
 
     /** Test the command fails without execution when the device is not available. */

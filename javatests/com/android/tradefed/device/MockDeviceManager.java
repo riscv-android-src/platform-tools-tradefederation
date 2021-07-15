@@ -438,21 +438,6 @@ public class MockDeviceManager implements IDeviceManager {
     }
 
     @Override
-    public int getAvailableFlashingPermits() {
-        return 0;
-    }
-
-    @Override
-    public void takeFlashingPermit() {
-        // ignore
-    }
-
-    @Override
-    public void returnFlashingPermit() {
-        // ignore
-    }
-
-    @Override
     public CommandResult executeCmdOnAvailableDevice(
             String serial, String command, long timeout, TimeUnit timeUnit) {
         return null;

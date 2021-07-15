@@ -31,7 +31,7 @@ import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFileFilterReceiver;
 import com.android.tradefed.testtype.ITestFilterReceiver;
-import com.android.tradefed.testtype.suite.params.IModuleParameter;
+import com.android.tradefed.testtype.suite.params.IModuleParameterHandler;
 import com.android.tradefed.testtype.suite.params.ModuleParameters;
 import com.android.tradefed.testtype.suite.params.ModuleParametersHelper;
 import com.android.tradefed.testtype.suite.params.NegativeHandler;
@@ -49,6 +49,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 /** A Test for running Compatibility Test Suite with new suite system. */
@@ -244,10 +245,10 @@ public class BaseTestSuite extends ITestSuite {
             SuiteModuleLoader.addFilters(mIncludeFilters, mIncludeFiltersParsed, mAbis);
             SuiteModuleLoader.addFilters(mExcludeFilters, mExcludeFiltersParsed, mAbis);
 
-            String includeFilter = mIncludeFiltersParsed.toString();
+            String includeFilters = "";
             if (mIncludeFiltersParsed.size() > MAX_FILTER_DISPLAY) {
                 if (isSplitting()) {
-                    includeFilter = includeFilter.substring(0, 100) + "...";
+                    includeFilters = "Includes: <too long to display>";
                 } else {
                     File suiteIncludeFilters = null;
                     try {
@@ -258,7 +259,8 @@ public class BaseTestSuite extends ITestSuite {
                                 suiteIncludeFilters,
                                 suiteIncludeFilters.getName(),
                                 LogDataType.TEXT);
-                        includeFilter = String.format("See %s", suiteIncludeFilters.getName());
+                        includeFilters =
+                                String.format("Includes: See %s", suiteIncludeFilters.getName());
                     } catch (IOException e) {
                         CLog.e(e);
                     } finally {
@@ -267,10 +269,10 @@ public class BaseTestSuite extends ITestSuite {
                 }
             }
 
-            String excludeFilter = mExcludeFiltersParsed.toString();
+            String excludeFilters = "";
             if (mExcludeFiltersParsed.size() > MAX_FILTER_DISPLAY) {
                 if (isSplitting()) {
-                    excludeFilter = excludeFilter.substring(0, 100) + "...";
+                    excludeFilters = "Excludes: <too long to display>";
                 } else {
                     File suiteExcludeFilters = null;
                     try {
@@ -281,7 +283,8 @@ public class BaseTestSuite extends ITestSuite {
                                 suiteExcludeFilters,
                                 suiteExcludeFilters.getName(),
                                 LogDataType.TEXT);
-                        excludeFilter = String.format("See %s", suiteExcludeFilters.getName());
+                        excludeFilters =
+                                String.format("Excludes: See %s", suiteExcludeFilters.getName());
                     } catch (IOException e) {
                         CLog.e(e);
                     } finally {
@@ -292,8 +295,8 @@ public class BaseTestSuite extends ITestSuite {
 
             CLog.d(
                     "Initializing ModuleRepo\nABIs:%s\n"
-                            + "Test Args:%s\nModule Args:%s\nIncludes:%s\nExcludes:%s",
-                            mAbis, mTestArgs, mModuleArgs, includeFilter, excludeFilter);
+                            + "Test Args:%s\nModule Args:%s\n%s\n%s",
+                            mAbis, mTestArgs, mModuleArgs, includeFilters, excludeFilters);
 
             mModuleRepo =
                     createModuleLoader(
@@ -351,7 +354,7 @@ public class BaseTestSuite extends ITestSuite {
                         String.format(
                                 "Include filter '%s' was specified"
                                         + " but resulted in an empty test set.",
-                                includeFilter),
+                                        mIncludeFiltersParsed.toString()),
                         InfraErrorIdentifier.OPTION_CONFIGURATION_ERROR);
             }
             return loadedTests;
@@ -538,21 +541,24 @@ public class BaseTestSuite extends ITestSuite {
             // Create the matching filters for the parameterized version of it if needed.
             if (mEnableParameter) {
                 for (ModuleParameters param : ModuleParameters.values()) {
-                    IModuleParameter moduleParam =
-                            ModuleParametersHelper.getParameterHandler(
-                                    param, mEnableOptionalParameter);
-                    if (moduleParam == null) {
+                    Map<ModuleParameters, IModuleParameterHandler> moduleParamExpanded =
+                            ModuleParametersHelper.resolveParam(param, mEnableOptionalParameter);
+                    if (moduleParamExpanded == null) {
                         continue;
                     }
-                    if (moduleParam instanceof NegativeHandler) {
-                        continue;
+                    for (Entry<ModuleParameters, IModuleParameterHandler> moduleParam :
+                            moduleParamExpanded.entrySet()) {
+                        if (moduleParam.getValue() instanceof NegativeHandler) {
+                            continue;
+                        }
+                        String paramModuleName =
+                                String.format(
+                                        "%s[%s]", moduleName,
+                                        moduleParam.getValue().getParameterIdentifier());
+                        mIncludeFilters.add(
+                                new SuiteTestFilter(getRequestedAbi(), paramModuleName, mTestName)
+                                        .toString());
                     }
-                    String paramModuleName =
-                            String.format(
-                                    "%s[%s]", moduleName, moduleParam.getParameterIdentifier());
-                    mIncludeFilters.add(
-                            new SuiteTestFilter(getRequestedAbi(), paramModuleName, mTestName)
-                                    .toString());
                 }
             }
         }

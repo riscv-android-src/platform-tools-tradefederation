@@ -19,6 +19,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
 
 import com.android.ddmlib.IShellOutputReceiver;
 import com.android.tradefed.config.ConfigurationException;
@@ -28,7 +29,6 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.result.ITestInvocationListener;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -130,8 +130,7 @@ public class GTestBaseTest {
         gTestBase.addExcludeFilter("test1.filter3");
         gTestBase.addExcludeFilter("test1.filter4");
         mSetter.setOptionValue("prepend-filename", "true");
-        ITestInvocationListener listener = EasyMock.createNiceMock(ITestInvocationListener.class);
-        EasyMock.replay(listener);
+        ITestInvocationListener listener = mock(ITestInvocationListener.class);
 
         gTestBase.createResultParser("test1", listener);
 
@@ -139,8 +138,6 @@ public class GTestBaseTest {
         assertEquals(
                 String.format("--gtest_filter=%s-%s", "filter1:filter2", "filter3:filter4"),
                 filters);
-
-        EasyMock.verify(listener);
     }
 
     /** Test the return instance type of createResultParser. */
@@ -148,8 +145,7 @@ public class GTestBaseTest {
     public void testCreateResultParser() throws ConfigurationException {
         GTestBase gTestBase = new GTestBaseImpl();
         mSetter = new OptionSetter(gTestBase);
-        ITestInvocationListener listener = EasyMock.createNiceMock(ITestInvocationListener.class);
-        EasyMock.replay(listener);
+        ITestInvocationListener listener = mock(ITestInvocationListener.class);
 
         IShellOutputReceiver receiver = gTestBase.createResultParser("test1", listener);
         assertTrue(receiver instanceof GTestResultParser);
@@ -157,8 +153,6 @@ public class GTestBaseTest {
         mSetter.setOptionValue("collect-tests-only", "true");
         receiver = gTestBase.createResultParser("test1", listener);
         assertTrue(receiver instanceof GTestListTestParser);
-
-        EasyMock.verify(listener);
     }
 
     /**

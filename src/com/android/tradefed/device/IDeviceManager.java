@@ -289,24 +289,6 @@ public interface IDeviceManager {
      */
     public boolean waitForFirstDeviceAdded(long timeout);
 
-    /**
-     * Get the number of available flashing permits
-     *
-     * @return Number of available flashing permits or Integer.MAX_VALUE if not available.
-     */
-    public int getAvailableFlashingPermits();
-
-    /**
-     * Request permission to flash.  If the number of concurrent flashers is limited, this will
-     * wait in line in order to remain under the flash limit count.
-     */
-    public void takeFlashingPermit();
-
-    /**
-     * Restore a flashing permit that we acquired previously
-     */
-    public void returnFlashingPermit();
-
     /** Get the adb version currently in use by the device manager. */
     public String getAdbVersion();
 

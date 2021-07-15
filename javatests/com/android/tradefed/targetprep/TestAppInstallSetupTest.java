@@ -23,14 +23,14 @@ import static com.android.tradefed.targetprep.TestAppInstallSetup.THROW_IF_NOT_F
 
 import static com.google.common.truth.Truth.assertThat;
 
-import static org.easymock.EasyMock.anyBoolean;
-import static org.easymock.EasyMock.anyObject;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.android.incfs.install.IncrementalInstallSession;
 import com.android.incfs.install.IncrementalInstallSession.Builder;
@@ -50,13 +50,14 @@ import com.android.tradefed.util.FileUtil;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 
-import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
 import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.io.File;
 import java.io.IOException;
@@ -84,8 +85,8 @@ public class TestAppInstallSetupTest {
     private AaptParser mMockAaptParser;
     private TestAppInstallSetup mPrep;
     private TestInformation mTestInfo;
-    private IDeviceBuildInfo mMockBuildInfo;
-    private ITestDevice mMockTestDevice;
+    @Mock IDeviceBuildInfo mMockBuildInfo;
+    @Mock ITestDevice mMockTestDevice;
     private IncrementalInstallSession.Builder mMockIncrementalInstallSessionBuilder;
     private IncrementalInstallSession mMockIncrementalInstallSession;
     private File mTestDir;
@@ -96,6 +97,8 @@ public class TestAppInstallSetupTest {
 
     @Before
     public void setUp() throws Exception {
+        MockitoAnnotations.initMocks(this);
+
         mTestDir = FileUtil.createTempDir("TestAppSetupTest");
         mBuildTestDir = FileUtil.createTempDir("TestAppBuildTestDir");
         mTemporaryFolder = FileUtil.createTempDir("TestAppInstallSetupTest-tmp");
@@ -143,15 +146,14 @@ public class TestAppInstallSetupTest {
         mTestSplitApkFiles.add(fakeApk);
         mTestSplitApkFiles.add(fakeApk2);
 
-        mMockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
         mMockAaptParser = Mockito.mock(AaptParser.class);
-        mMockTestDevice = EasyMock.createMock(ITestDevice.class);
+
         mMockIncrementalInstallSessionBuilder =
                 Mockito.mock(IncrementalInstallSession.Builder.class);
         mMockIncrementalInstallSession = Mockito.mock(IncrementalInstallSession.class);
-        EasyMock.expect(mMockTestDevice.getSerialNumber()).andStubReturn(SERIAL);
-        EasyMock.expect(mMockTestDevice.getDeviceDescriptor()).andStubReturn(null);
-        EasyMock.expect(mMockTestDevice.isAppEnumerationSupported()).andStubReturn(false);
+        when(mMockTestDevice.getSerialNumber()).thenReturn(SERIAL);
+        when(mMockTestDevice.getDeviceDescriptor()).thenReturn(null);
+        when(mMockTestDevice.isAppEnumerationSupported()).thenReturn(false);
         IInvocationContext context = new InvocationContext();
         context.addAllocatedDevice("device", mMockTestDevice);
         context.addDeviceBuildInfo("device", mMockBuildInfo);
@@ -167,15 +169,14 @@ public class TestAppInstallSetupTest {
 
     @Test
     public void testSetupAndTeardown() throws Exception {
-        EasyMock.expect(mMockTestDevice.installPackage(EasyMock.eq(fakeApk), EasyMock.eq(true)))
-                .andReturn(null);
-        EasyMock.expect(
-                        mMockTestDevice.installPackages(
-                                EasyMock.eq(mTestSplitApkFiles), EasyMock.eq(true)))
-                .andReturn(null);
-        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
+        when(mMockTestDevice.installPackage(Mockito.eq(fakeApk), Mockito.eq(true)))
+                .thenReturn(null);
+        when(mMockTestDevice.installPackages(Mockito.eq(mTestSplitApkFiles), Mockito.eq(true)))
+                .thenReturn(null);
+
         mPrep.setUp(mTestInfo);
-        EasyMock.verify(mMockBuildInfo, mMockTestDevice);
+        verify(mMockTestDevice, atLeastOnce())
+                .installPackages(Mockito.eq(mTestSplitApkFiles), Mockito.eq(true));
     }
 
     @Test
@@ -197,24 +198,24 @@ public class TestAppInstallSetupTest {
         mSetter = new OptionSetter(mPrep);
         mSetter.setOptionValue("cleanup-apks", "true");
         mSetter.setOptionValue("test-file-name", APK_NAME);
-        EasyMock.expect(mMockTestDevice.installPackage(EasyMock.eq(fakeApk), EasyMock.eq(true)))
-                .andReturn(null);
-        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
+        when(mMockTestDevice.installPackage(Mockito.eq(fakeApk), Mockito.eq(true)))
+                .thenReturn(null);
+
         mPrep.setUp(mTestInfo);
-        EasyMock.verify(mMockBuildInfo, mMockTestDevice);
+        verify(mMockTestDevice, atLeastOnce())
+                .installPackage(Mockito.eq(fakeApk), Mockito.eq(true));
     }
 
     @Test
     public void testSetupAndTeardown_install_packages_only() throws Exception {
         mPrep.clearTestFile();
         mSetter.setOptionValue("cleanup-apks", "true");
-        EasyMock.expect(
-                        mMockTestDevice.installPackages(
-                                EasyMock.eq(mTestSplitApkFiles), EasyMock.eq(true)))
-                .andReturn(null);
-        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
+        when(mMockTestDevice.installPackages(Mockito.eq(mTestSplitApkFiles), Mockito.eq(true)))
+                .thenReturn(null);
+
         mPrep.setUp(mTestInfo);
-        EasyMock.verify(mMockBuildInfo, mMockTestDevice);
+        verify(mMockTestDevice, atLeastOnce())
+                .installPackages(Mockito.eq(mTestSplitApkFiles), Mockito.eq(true));
     }
 
     @Test
@@ -239,32 +240,30 @@ public class TestAppInstallSetupTest {
         mSetter.setOptionValue("test-file-name", APK_NAME);
         mTestInfo.properties().put(RUN_TESTS_AS_USER_KEY, Integer.toString(userId));
 
-        EasyMock.expect(
-                        mMockTestDevice.installPackageForUser(
-                                EasyMock.eq(fakeApk), EasyMock.eq(true), EasyMock.eq(userId)))
-                .andReturn(null);
-        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
+        when(mMockTestDevice.installPackageForUser(
+                        Mockito.eq(fakeApk), Mockito.eq(true), Mockito.eq(userId)))
+                .thenReturn(null);
+
         mPrep.setUp(mTestInfo);
-        EasyMock.verify(mMockBuildInfo, mMockTestDevice);
+        verify(mMockTestDevice, atLeastOnce())
+                .installPackageForUser(Mockito.eq(fakeApk), Mockito.eq(true), Mockito.eq(userId));
     }
 
     @Test
     public void testSetup_instantMode() throws Exception {
         OptionSetter setter = new OptionSetter(mPrep);
         setter.setOptionValue("instant-mode", "true");
-        EasyMock.expect(
-                        mMockTestDevice.installPackage(
-                                EasyMock.eq(fakeApk), EasyMock.eq(true), EasyMock.eq("--instant")))
-                .andReturn(null);
-        EasyMock.expect(
-                        mMockTestDevice.installPackages(
-                                EasyMock.eq(mTestSplitApkFiles),
-                                EasyMock.eq(true),
-                                EasyMock.eq("--instant")))
-                .andReturn(null);
-        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
+        when(mMockTestDevice.installPackage(
+                        Mockito.eq(fakeApk), Mockito.eq(true), Mockito.eq("--instant")))
+                .thenReturn(null);
+        when(mMockTestDevice.installPackages(
+                        Mockito.eq(mTestSplitApkFiles), Mockito.eq(true), Mockito.eq("--instant")))
+                .thenReturn(null);
+
         mPrep.setUp(mTestInfo);
-        EasyMock.verify(mMockBuildInfo, mMockTestDevice);
+        verify(mMockTestDevice, atLeastOnce())
+                .installPackages(
+                        Mockito.eq(mTestSplitApkFiles), Mockito.eq(true), Mockito.eq("--instant"));
     }
 
     /**
@@ -276,23 +275,19 @@ public class TestAppInstallSetupTest {
         // Install the apk twice
         mSetter.setOptionValue("test-file-name", APK_NAME);
         mPrep.setAbi(new Abi("arm32", "32"));
-        EasyMock.expect(mMockTestDevice.getApiLevel()).andReturn(25);
-        EasyMock.expect(
-                        mMockTestDevice.installPackage(
-                                EasyMock.eq(fakeApk),
-                                EasyMock.eq(true),
-                                EasyMock.eq("--abi arm32")))
-                .andReturn(null)
-                .times(2);
-        EasyMock.expect(
-                        mMockTestDevice.installPackages(
-                                EasyMock.eq(mTestSplitApkFiles),
-                                EasyMock.eq(true),
-                                EasyMock.eq("--abi arm32")))
-                .andReturn(null);
-        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
+        when(mMockTestDevice.getApiLevel()).thenReturn(25);
+        when(mMockTestDevice.installPackage(
+                        Mockito.eq(fakeApk), Mockito.eq(true), Mockito.eq("--abi arm32")))
+                .thenReturn(null);
+        when(mMockTestDevice.installPackages(
+                        Mockito.eq(mTestSplitApkFiles),
+                        Mockito.eq(true),
+                        Mockito.eq("--abi arm32")))
+                .thenReturn(null);
+
         mPrep.setUp(mTestInfo);
-        EasyMock.verify(mMockBuildInfo, mMockTestDevice);
+        verify(mMockTestDevice, times(2))
+                .installPackage(Mockito.eq(fakeApk), Mockito.eq(true), Mockito.eq("--abi arm32"));
     }
 
     /**
@@ -304,45 +299,48 @@ public class TestAppInstallSetupTest {
         OptionSetter setter = new OptionSetter(mPrep);
         setter.setOptionValue("instant-mode", "true");
         setter.setOptionValue("force-install-mode", "FULL");
-        EasyMock.expect(mMockTestDevice.installPackage(EasyMock.eq(fakeApk), EasyMock.eq(true)))
-                .andReturn(null);
-        EasyMock.expect(
-                        mMockTestDevice.installPackages(
-                                EasyMock.eq(mTestSplitApkFiles), EasyMock.eq(true)))
-                .andReturn(null);
-        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
+        when(mMockTestDevice.installPackage(Mockito.eq(fakeApk), Mockito.eq(true)))
+                .thenReturn(null);
+        when(mMockTestDevice.installPackages(Mockito.eq(mTestSplitApkFiles), Mockito.eq(true)))
+                .thenReturn(null);
+
         mPrep.setUp(mTestInfo);
-        EasyMock.verify(mMockBuildInfo, mMockTestDevice);
+        verify(mMockTestDevice, atLeastOnce())
+                .installPackages(Mockito.eq(mTestSplitApkFiles), Mockito.eq(true));
     }
 
     @Test
     public void testSetup_forceQueryable() throws Exception {
-        EasyMock.expect(mMockTestDevice.isAppEnumerationSupported()).andReturn(true);
-        EasyMock.expect(mMockTestDevice.installPackage(
-                EasyMock.eq(fakeApk), EasyMock.eq(true), EasyMock.eq("--force-queryable")))
-                .andReturn(null);
-        EasyMock.expect(
-                mMockTestDevice.installPackages(
-                        EasyMock.eq(mTestSplitApkFiles), EasyMock.eq(true),
-                        EasyMock.eq("--force-queryable")))
-                .andReturn(null);
-        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
+        when(mMockTestDevice.isAppEnumerationSupported()).thenReturn(true);
+        when(mMockTestDevice.installPackage(
+                        Mockito.eq(fakeApk), Mockito.eq(true), Mockito.eq("--force-queryable")))
+                .thenReturn(null);
+        when(mMockTestDevice.installPackages(
+                        Mockito.eq(mTestSplitApkFiles),
+                        Mockito.eq(true),
+                        Mockito.eq("--force-queryable")))
+                .thenReturn(null);
+
         mPrep.setUp(mTestInfo);
-        EasyMock.verify(mMockBuildInfo, mMockTestDevice);
+        verify(mMockTestDevice, atLeastOnce())
+                .installPackages(
+                        Mockito.eq(mTestSplitApkFiles),
+                        Mockito.eq(true),
+                        Mockito.eq("--force-queryable"));
     }
 
     @Test
     public void testSetup_forceQueryableIsFalse() throws Exception {
-        EasyMock.expect(mMockTestDevice.isAppEnumerationSupported()).andStubReturn(true);
-        EasyMock.expect(mMockTestDevice.installPackage(
-                EasyMock.eq(fakeApk), EasyMock.eq(true))).andReturn(null);
-        EasyMock.expect(
-                mMockTestDevice.installPackages(
-                        EasyMock.eq(mTestSplitApkFiles), EasyMock.eq(true))).andReturn(null);
-        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
+        when(mMockTestDevice.isAppEnumerationSupported()).thenReturn(true);
+        when(mMockTestDevice.installPackage(Mockito.eq(fakeApk), Mockito.eq(true)))
+                .thenReturn(null);
+        when(mMockTestDevice.installPackages(Mockito.eq(mTestSplitApkFiles), Mockito.eq(true)))
+                .thenReturn(null);
+
         mPrep.setForceQueryable(false);
         mPrep.setUp(mTestInfo);
-        EasyMock.verify(mMockBuildInfo, mMockTestDevice);
+        verify(mMockTestDevice, atLeastOnce())
+                .installPackages(Mockito.eq(mTestSplitApkFiles), Mockito.eq(true));
     }
 
     /**
@@ -394,9 +392,8 @@ public class TestAppInstallSetupTest {
         setter.setOptionValue("incremental", "true");
         setter.setOptionValue("test-file-name", APK_NAME);
 
-        EasyMock.replay(mMockTestDevice, mMockBuildInfo);
         mPrep.setUp(mTestInfo);
-        EasyMock.verify(mMockTestDevice, mMockBuildInfo);
+
         Mockito.verify(mMockIncrementalInstallSessionBuilder)
                 .addApk(fakeApk.toPath(), fakeApkSignature.toPath());
     }
@@ -447,7 +444,6 @@ public class TestAppInstallSetupTest {
         setter.setOptionValue("incremental", "true");
         setter.setOptionValue("test-file-name", APK_NAME);
 
-        EasyMock.replay(mMockTestDevice, mMockBuildInfo);
         try {
             mPrep.setUp(mTestInfo);
             fail("Expected TargetSetupError");
@@ -455,7 +451,6 @@ public class TestAppInstallSetupTest {
             assertThat(e).hasMessageThat().contains(APK_NAME);
             assertThat(e).hasMessageThat().contains(failure);
         }
-        EasyMock.verify(mMockTestDevice, mMockBuildInfo);
     }
 
     /**
@@ -502,18 +497,17 @@ public class TestAppInstallSetupTest {
         setter.setOptionValue("incremental", "true");
         setter.setOptionValue("test-file-name", APK_NAME);
 
-        EasyMock.replay(mMockTestDevice, mMockBuildInfo);
         mPrep.setUp(mTestInfo);
-        EasyMock.verify(mMockTestDevice, mMockBuildInfo);
+
         Mockito.verify(mMockIncrementalInstallSessionBuilder).build();
     }
 
     @Test
     public void testInstallFailure() throws Exception {
         final String failure = "INSTALL_PARSE_FAILED_MANIFEST_MALFORMED";
-        EasyMock.expect(mMockTestDevice.installPackage(EasyMock.eq(fakeApk), EasyMock.eq(true)))
-                .andReturn(failure);
-        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
+        when(mMockTestDevice.installPackage(Mockito.eq(fakeApk), Mockito.eq(true)))
+                .thenReturn(failure);
+
         try {
             mPrep.setUp(mTestInfo);
             fail("Expected TargetSetupError");
@@ -523,29 +517,25 @@ public class TestAppInstallSetupTest {
             assertThat(e).hasMessageThat().contains(SERIAL);
             assertThat(e).hasMessageThat().contains(failure);
         }
-        EasyMock.verify(mMockBuildInfo, mMockTestDevice);
     }
 
     @Test
     public void testInstallFailedUpdateIncompatible() throws Exception {
         final String failure = "INSTALL_FAILED_UPDATE_INCOMPATIBLE";
-        EasyMock.expect(mMockTestDevice.installPackage(EasyMock.eq(fakeApk), EasyMock.eq(true)))
-                .andReturn(failure);
-        EasyMock.expect(mMockTestDevice.uninstallPackage(PACKAGE_NAME)).andReturn(null);
-        EasyMock.expect(mMockTestDevice.installPackage(EasyMock.eq(fakeApk), EasyMock.eq(true)))
-                .andReturn(null);
-        EasyMock.expect(
-                        mMockTestDevice.installPackages(
-                                EasyMock.eq(mTestSplitApkFiles), EasyMock.eq(true)))
-                .andReturn(failure);
-        EasyMock.expect(mMockTestDevice.uninstallPackage(PACKAGE_NAME)).andReturn(null);
-        EasyMock.expect(
-                        mMockTestDevice.installPackages(
-                                EasyMock.eq(mTestSplitApkFiles), EasyMock.eq(true)))
-                .andReturn(null);
-        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
+        when(mMockTestDevice.installPackage(Mockito.eq(fakeApk), Mockito.eq(true)))
+                .thenReturn(failure);
+        when(mMockTestDevice.uninstallPackage(PACKAGE_NAME)).thenReturn(null);
+        when(mMockTestDevice.installPackage(Mockito.eq(fakeApk), Mockito.eq(true)))
+                .thenReturn(null);
+        when(mMockTestDevice.installPackages(Mockito.eq(mTestSplitApkFiles), Mockito.eq(true)))
+                .thenReturn(failure);
+        when(mMockTestDevice.uninstallPackage(PACKAGE_NAME)).thenReturn(null);
+        when(mMockTestDevice.installPackages(Mockito.eq(mTestSplitApkFiles), Mockito.eq(true)))
+                .thenReturn(null);
+
         mPrep.setUp(mTestInfo);
-        EasyMock.verify(mMockBuildInfo, mMockTestDevice);
+        verify(mMockTestDevice, atLeastOnce())
+                .installPackages(Mockito.eq(mTestSplitApkFiles), Mockito.eq(true));
     }
 
     /**
@@ -555,14 +545,13 @@ public class TestAppInstallSetupTest {
     @Test
     public void testMissingApk() throws Exception {
         fakeApk = null; // Apk doesn't exist
-        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
+
         try {
             mPrep.setUp(mTestInfo);
             fail("TestAppInstallSetup#setUp() did not raise TargetSetupError with missing apk.");
         } catch (TargetSetupError e) {
             assertTrue(e.getMessage().contains("not found"));
         }
-        EasyMock.verify(mMockBuildInfo, mMockTestDevice);
     }
 
     /**
@@ -572,14 +561,13 @@ public class TestAppInstallSetupTest {
     @Test
     public void testUnreadableApk() throws Exception {
         fakeApk.delete(); // Apk cannot be read
-        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
+
         try {
             mPrep.setUp(mTestInfo);
             fail("TestAppInstallSetup#setUp() did not raise TargetSetupError with unreadable apk.");
         } catch (TargetSetupError e) {
             assertTrue(e.getMessage().contains("not read"));
         }
-        EasyMock.verify(mMockBuildInfo, mMockTestDevice);
     }
 
     /**
@@ -591,9 +579,8 @@ public class TestAppInstallSetupTest {
         fakeApk = null; // Apk doesn't exist
         mPrep.clearSplitApkFileNames();
         mSetter.setOptionValue("throw-if-not-found", "false");
-        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
+
         mPrep.setUp(mTestInfo);
-        EasyMock.verify(mMockBuildInfo, mMockTestDevice);
     }
 
     /**
@@ -605,9 +592,8 @@ public class TestAppInstallSetupTest {
         fakeApk.delete(); // Apk cannot be read
         mPrep.clearSplitApkFileNames();
         mSetter.setOptionValue("throw-if-not-found", "false");
-        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
+
         mPrep.setUp(mTestInfo);
-        EasyMock.verify(mMockBuildInfo, mMockTestDevice);
     }
 
     /**
@@ -630,17 +616,16 @@ public class TestAppInstallSetupTest {
         setter.setOptionValue("install-arg", "-d");
         setter.setOptionValue("test-file-name", APK_NAME);
 
-        EasyMock.expect(mMockTestDevice.getDeviceDescriptor()).andStubReturn(null);
-        EasyMock.expect(mMockBuildInfo.getTestsDir()).andStubReturn(mBuildTestDir);
+        when(mMockTestDevice.getDeviceDescriptor()).thenReturn(null);
+        when(mMockBuildInfo.getTestsDir()).thenReturn(mBuildTestDir);
 
-        EasyMock.expect(
-                        mMockTestDevice.installPackage(
-                                EasyMock.eq(fakeApk), EasyMock.anyBoolean(), EasyMock.eq("-d")))
-                .andReturn(null);
+        when(mMockTestDevice.installPackage(
+                        Mockito.eq(fakeApk), Mockito.anyBoolean(), Mockito.eq("-d")))
+                .thenReturn(null);
 
-        EasyMock.replay(mMockTestDevice, mMockBuildInfo);
         mPrep.setUp(mTestInfo);
-        EasyMock.verify(mMockTestDevice, mMockBuildInfo);
+        verify(mMockTestDevice, atLeastOnce())
+                .installPackage(Mockito.eq(fakeApk), Mockito.anyBoolean(), Mockito.eq("-d"));
     }
 
     /**
@@ -661,19 +646,16 @@ public class TestAppInstallSetupTest {
         setter.setOptionValue("install-arg", "-d");
         setter.setOptionValue("test-file-name", APK_NAME);
 
-        EasyMock.expect(mMockTestDevice.getDeviceDescriptor()).andStubReturn(null);
-        EasyMock.expect(mMockBuildInfo.getTestsDir()).andStubReturn(mBuildTestDir);
+        when(mMockTestDevice.getDeviceDescriptor()).thenReturn(null);
+        when(mMockBuildInfo.getTestsDir()).thenReturn(mBuildTestDir);
 
-        EasyMock.expect(
-                        mMockTestDevice.installPackage(
-                                EasyMock.eq(mFakeBuildApk),
-                                EasyMock.anyBoolean(),
-                                EasyMock.eq("-d")))
-                .andReturn(null);
+        when(mMockTestDevice.installPackage(
+                        Mockito.eq(mFakeBuildApk), Mockito.anyBoolean(), Mockito.eq("-d")))
+                .thenReturn(null);
 
-        EasyMock.replay(mMockTestDevice, mMockBuildInfo);
         mPrep.setUp(mTestInfo);
-        EasyMock.verify(mMockTestDevice, mMockBuildInfo);
+        verify(mMockTestDevice, atLeastOnce())
+                .installPackage(Mockito.eq(mFakeBuildApk), Mockito.anyBoolean(), Mockito.eq("-d"));
     }
 
     @Test
@@ -821,7 +803,7 @@ public class TestAppInstallSetupTest {
         files.add(fakeApk);
         OptionSetter setter = new OptionSetter(mPrep);
         setter.setOptionValue(CHECK_MIN_SDK_OPTION, "true");
-        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
+
         try {
             mPrep.resolveApkFiles(mTestInfo, files);
             fail("Should have thrown an exception");
@@ -830,7 +812,6 @@ public class TestAppInstallSetupTest {
                     String.format("Failed to extract info from `%s` using aapt", fakeApk.getName()),
                     expected.getMessage());
         } finally {
-            EasyMock.verify(mMockBuildInfo, mMockTestDevice);
         }
     }
 
@@ -854,17 +835,15 @@ public class TestAppInstallSetupTest {
         files.add(fakeApk);
         OptionSetter setter = new OptionSetter(mPrep);
         setter.setOptionValue(CHECK_MIN_SDK_OPTION, "true");
-        EasyMock.expect(mMockTestDevice.getSerialNumber()).andStubReturn(SERIAL);
-        EasyMock.expect(mMockTestDevice.getApiLevel()).andReturn(21).times(2);
+        when(mMockTestDevice.getSerialNumber()).thenReturn(SERIAL);
+        when(mMockTestDevice.getApiLevel()).thenReturn(21);
         doReturn(22).when(mMockAaptParser).getSdkVersion();
 
         Map<File, String> expected = new LinkedHashMap<>();
 
-        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
-
         Map<File, String> result = mPrep.resolveApkFiles(mTestInfo, files);
 
-        EasyMock.verify(mMockBuildInfo, mMockTestDevice);
+        verify(mMockTestDevice, times(2)).getApiLevel();
         Mockito.verify(mMockAaptParser, times(2)).getSdkVersion();
         assertEquals(expected, result);
     }
@@ -889,19 +868,17 @@ public class TestAppInstallSetupTest {
         files.add(fakeApk);
         OptionSetter setter = new OptionSetter(mPrep);
         setter.setOptionValue(CHECK_MIN_SDK_OPTION, "true");
-        EasyMock.expect(mMockTestDevice.getSerialNumber()).andStubReturn(SERIAL);
-        EasyMock.expect(mMockTestDevice.getApiLevel()).andReturn(23);
+        when(mMockTestDevice.getSerialNumber()).thenReturn(SERIAL);
+        when(mMockTestDevice.getApiLevel()).thenReturn(23);
         doReturn(22).when(mMockAaptParser).getSdkVersion();
 
         Map<File, String> expected = new LinkedHashMap<>();
         expected.put(fakeApk, "fakePackageName");
 
-        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
-
         Map<File, String> result = mPrep.resolveApkFiles(mTestInfo, files);
 
         Mockito.verify(mMockAaptParser).getSdkVersion();
-        EasyMock.verify(mMockBuildInfo, mMockTestDevice);
+
         assertEquals(result, expected);
     }
 
@@ -933,23 +910,21 @@ public class TestAppInstallSetupTest {
             throws TargetSetupError, DeviceNotAvailableException, BuildError {
         ImmutableSet.Builder<Set<File>> installs = ImmutableSet.builder();
 
-        EasyMock.expect(mMockTestDevice.installPackage(anyObject(), anyBoolean()))
-                .andStubAnswer(
-                        () -> {
-                            File apkFile = (File) EasyMock.getCurrentArguments()[0];
+        when(mMockTestDevice.installPackage(Mockito.any(), Mockito.anyBoolean()))
+                .thenAnswer(
+                        invocation -> {
+                            File apkFile = (File) invocation.getArguments()[0];
                             installs.add(ImmutableSet.of(apkFile));
                             return null;
                         });
 
-        EasyMock.expect(mMockTestDevice.installPackages(anyObject(), anyBoolean()))
-                .andStubAnswer(
-                        () -> {
-                            List<File> apkFiles = (List<File>) EasyMock.getCurrentArguments()[0];
+        when(mMockTestDevice.installPackages(Mockito.any(), Mockito.anyBoolean()))
+                .thenAnswer(
+                        invocation -> {
+                            List<File> apkFiles = (List<File>) invocation.getArguments()[0];
                             installs.add(ImmutableSet.copyOf(apkFiles));
                             return null;
                         });
-
-        EasyMock.replay(mMockBuildInfo, mMockTestDevice);
 
         preparer.setUp(mTestInfo);
 

@@ -23,6 +23,7 @@ import com.android.tradefed.config.Option;
 import com.android.tradefed.config.Option.Importance;
 import com.android.tradefed.config.OptionClass;
 import com.android.tradefed.device.DeviceNotAvailableException;
+import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.invoker.logger.CurrentInvocation;
 import com.android.tradefed.isolation.FilterSpec;
@@ -38,6 +39,7 @@ import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.RunUtil;
@@ -154,7 +156,7 @@ public class IsolatedHostTest
             description =
                     "The android-all resource jar to be used, e.g."
                             + " 'android-all-R-robolectric-r0.jar'")
-    private String mAndroidAllName = "android-all-S-robolectric-r0.jar";
+    private String mAndroidAllName = "android-all-T-robolectric-r0.jar";
 
     @Option(
             name = TestTimeoutEnforcer.TEST_CASE_TIMEOUT_OPTION,
@@ -380,8 +382,9 @@ public class IsolatedHostTest
                 // This is contingent on the current android-all version.
                 File androidAllJar = FileUtil.findFile(testDir, mAndroidAllName);
                 if (androidAllJar == null) {
-                    throw new RuntimeException(
-                            "Could not find android-all jar needed for test execution.");
+                    throw new HarnessRuntimeException(
+                            "Could not find android-all jar needed for test execution.",
+                            InfraErrorIdentifier.ARTIFACT_NOT_FOUND);
                 }
                 paths.add(androidAllJar.getAbsolutePath());
             }

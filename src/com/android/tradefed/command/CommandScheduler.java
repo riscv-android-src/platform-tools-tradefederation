@@ -58,6 +58,7 @@ import com.android.tradefed.device.ITestDevice.RecoveryMode;
 import com.android.tradefed.device.NoDeviceException;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.TestDeviceState;
+import com.android.tradefed.host.IHostOptions;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.IRescheduler;
 import com.android.tradefed.invoker.ITestInvocation;
@@ -1006,14 +1007,18 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
         return GlobalConfiguration.getDeviceManagerInstance();
     }
 
-     /**
-      * Factory method for getting a reference to the {@link IHostMonitor}
-      *
-      * @return the {@link IHostMonitor} to use
-      */
-     List<IHostMonitor> getHostMonitor() {
-         return GlobalConfiguration.getHostMonitorInstances();
-     }
+    protected IHostOptions getHostOptions() {
+        return GlobalConfiguration.getInstance().getHostOptions();
+    }
+
+    /**
+     * Factory method for getting a reference to the {@link IHostMonitor}
+     *
+     * @return the {@link IHostMonitor} to use
+     */
+    List<IHostMonitor> getHostMonitor() {
+        return GlobalConfiguration.getHostMonitorInstances();
+    }
 
     /**
      * Factory method for getting a reference to the {@link IConfigurationFactory}
