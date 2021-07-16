@@ -159,6 +159,7 @@ public class RustBinaryHostTestTest {
     }
 
     private void mockTestRunExpect(File binary, CommandResult res) throws Exception {
+        mMockRunUtil.setWorkingDir(binary.getParentFile());
         EasyMock.expect(
                         mMockRunUtil.runTimedCmd(
                                 EasyMock.anyLong(), EasyMock.eq(binary.getAbsolutePath())))
@@ -167,6 +168,7 @@ public class RustBinaryHostTestTest {
 
     private void mockBenchmarkRunExpect(File binary, String output) throws Exception {
         CommandResult res = newCommandResult(CommandStatus.SUCCESS, "", "");
+        mMockRunUtil.setWorkingDir(binary.getParentFile());
         EasyMock.expect(
                         mMockRunUtil.runTimedCmd(
                                 EasyMock.anyLong(),
@@ -328,6 +330,7 @@ public class RustBinaryHostTestTest {
             mockListenerStarted(binary, 9);
             mockListenerLog(binary, false);
             CommandResult res = successResult("", resultCount(6, 1, 2));
+            mMockRunUtil.setWorkingDir(binary.getParentFile());
             EasyMock.expect(
                             mMockRunUtil.runTimedCmd(
                                     EasyMock.anyLong(),
@@ -372,6 +375,7 @@ public class RustBinaryHostTestTest {
 
             mockListenerLog(binary, false);
             CommandResult res = successResult("", resultCount(3, 0, 0));
+            mMockRunUtil.setWorkingDir(binary.getParentFile());
             EasyMock.expect(
                             mMockRunUtil.runTimedCmd(
                                     EasyMock.anyLong(),
@@ -433,6 +437,7 @@ public class RustBinaryHostTestTest {
             // Multiple include filters are run one by one.
             mockListenerLog(binary, false);
             CommandResult res = successResult("", resultCount(2, 0, 0));
+            mMockRunUtil.setWorkingDir(binary.getParentFile());
             EasyMock.expect(
                             mMockRunUtil.runTimedCmd(
                                     EasyMock.anyLong(),
@@ -446,6 +451,7 @@ public class RustBinaryHostTestTest {
             mMockListener.testRunFailed("Test run incomplete. Started 2 tests, finished 0");
             mockListenerLog(binary, false);
             res = successResult("", resultCount(3, 0, 0));
+            mMockRunUtil.setWorkingDir(binary.getParentFile());
             EasyMock.expect(
                             mMockRunUtil.runTimedCmd(
                                     EasyMock.anyLong(),
