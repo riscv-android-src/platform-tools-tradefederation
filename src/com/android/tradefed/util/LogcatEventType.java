@@ -27,6 +27,7 @@ public enum LogcatEventType {
     INSTALL_PROGRESS_UPDATE,
     UPDATE_COMPLETE,
     UPDATE_COMPLETE_NOT_ACTIVE,
+    UPDATE_CLEANED_UP,
     // error found in logcat output
     ERROR,
     // error found in logcat output, but doesn't necessarily indicate OTA failure. Should retry.
