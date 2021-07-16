@@ -415,8 +415,12 @@ public class ClusterCommandSchedulerTest {
                                                 Integer.toString(3))),
                                 EasyMock.capture(capture)))
                 .andReturn(buildHttpResponse(product1Response.toString()));
+        EasyMock.expect(mMockHostOptions.getAvailablePermits(PermitLimitType.CONCURRENT_FLASHER))
+                .andReturn(1);
+        EasyMock.expect(mMockHostOptions.getAvailablePermits(PermitLimitType.CONCURRENT_DOWNLOAD))
+                .andReturn(5);
         // Actually fetch commands
-        EasyMock.replay(mMockApiHelper, mMockEventUploader);
+        EasyMock.replay(mMockApiHelper, mMockEventUploader, mMockHostOptions);
         final List<ClusterCommand> commands = mScheduler.fetchHostCommands(deviceMap);
 
         // Verity the http request body is correct.
@@ -431,7 +435,7 @@ public class ClusterCommandSchedulerTest {
         assertEquals("cluster2", clusterIds.getString(0));
         assertEquals("cluster3", clusterIds.getString(1));
         // Verify that the commands were fetched
-        EasyMock.verify(mMockApiHelper, mMockEventUploader);
+        EasyMock.verify(mMockApiHelper, mMockEventUploader, mMockHostOptions);
         // expect 1 command allocated per device type based on availability and fetching algorithm
         assertEquals("commands size mismatch", 1, commands.size());
         ClusterCommand command = commands.get(0);
@@ -476,6 +480,8 @@ public class ClusterCommandSchedulerTest {
                 .andReturn(buildHttpResponse(product1Response.toString()));
         EasyMock.expect(mMockHostOptions.getAvailablePermits(PermitLimitType.CONCURRENT_FLASHER))
                 .andReturn(1);
+        EasyMock.expect(mMockHostOptions.getAvailablePermits(PermitLimitType.CONCURRENT_DOWNLOAD))
+                .andReturn(5);
 
         // Actually fetch commands
         EasyMock.replay(mMockApiHelper, mMockEventUploader, mMockDeviceManager, mMockHostOptions);
