@@ -75,13 +75,18 @@ public class FilePullerLogCollectorTest {
         metrics.put("another_metrics", "57");
 
         Capture<HashMap<String, Metric>> capture = new Capture<>();
+        mMockListener.testRunStarted(
+                EasyMock.eq("runName"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         mMockListener.testStarted(test, 0L);
         EasyMock.expect(mMockDevice.getIDevice()).andReturn(new StubDevice("serial"));
         mMockListener.testEnded(EasyMock.eq(test), EasyMock.eq(50L), EasyMock.capture(capture));
+        mMockListener.testRunEnded(100L, new HashMap<String, Metric>());
 
         EasyMock.replay(mMockDevice, mMockListener);
+        listener.testRunStarted("runName", 1);
         listener.testStarted(test, 0L);
         listener.testEnded(test, 50L, TfMetricProtoUtil.upgradeConvert(metrics));
+        listener.testRunEnded(100L, new HashMap<String, Metric>());
         EasyMock.verify(mMockDevice, mMockListener);
         HashMap<String, Metric> metricCaptured = capture.getValue();
         assertEquals(
@@ -105,6 +110,8 @@ public class FilePullerLogCollectorTest {
         metrics.put("another_metrics", "57");
 
         Capture<HashMap<String, Metric>> capture = new Capture<>();
+        mMockListener.testRunStarted(
+                EasyMock.eq("runName"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         mMockListener.testStarted(test, 0L);
         EasyMock.expect(mMockDevice.getIDevice()).andReturn(mMockIDevice);
         EasyMock.expect(mMockDevice.pullFile("/data/local/tmp/log1.txt"))
@@ -113,10 +120,13 @@ public class FilePullerLogCollectorTest {
         mMockListener.testLog(
                 EasyMock.eq("file"), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
         mMockListener.testEnded(EasyMock.eq(test), EasyMock.eq(50L), EasyMock.capture(capture));
+        mMockListener.testRunEnded(100L, new HashMap<String, Metric>());
 
         EasyMock.replay(mMockDevice, mMockListener);
+        listener.testRunStarted("runName", 1);
         listener.testStarted(test, 0L);
         listener.testEnded(test, 50L, TfMetricProtoUtil.upgradeConvert(metrics));
+        listener.testRunEnded(100L, new HashMap<String, Metric>());
         EasyMock.verify(mMockDevice, mMockListener);
         HashMap<String, Metric> metricCaptured = capture.getValue();
         assertEquals(
@@ -170,6 +180,8 @@ public class FilePullerLogCollectorTest {
         metrics.put("log1", "/data/local/tmp/log1.txt");
 
         Capture<HashMap<String, Metric>> capture = new Capture<>();
+        mMockListener.testRunStarted(
+                EasyMock.eq("runName"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         mMockListener.testStarted(test, 0L);
         EasyMock.expect(mMockDevice.getIDevice()).andReturn(mMockIDevice);
         EasyMock.expect(mMockDevice.pullFile("/data/local/tmp/log1.txt"))
@@ -178,10 +190,13 @@ public class FilePullerLogCollectorTest {
         mMockListener.testLog(
                 EasyMock.eq("file"), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
         mMockListener.testEnded(EasyMock.eq(test), EasyMock.eq(50L), EasyMock.capture(capture));
+        mMockListener.testRunEnded(100L, new HashMap<String, Metric>());
 
         EasyMock.replay(mMockDevice, mMockListener);
+        listener.testRunStarted("runName", 1);
         listener.testStarted(test, 0L);
         listener.testEnded(test, 50L, TfMetricProtoUtil.upgradeConvert(metrics));
+        listener.testRunEnded(100L, new HashMap<String, Metric>());
         EasyMock.verify(mMockDevice, mMockListener);
 
         // Assert the post processor was called and completed.
@@ -203,6 +218,8 @@ public class FilePullerLogCollectorTest {
         metrics.put("log1", "data/local/tmp");
 
         Capture<HashMap<String, Metric>> capture = new Capture<>();
+        mMockListener.testRunStarted(
+                EasyMock.eq("runName"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         mMockListener.testStarted(test, 0L);
         EasyMock.expect(mMockDevice.getIDevice()).andReturn(mMockIDevice);
         EasyMock.expect(mMockDevice.pullDir(EasyMock.anyObject(), EasyMock.anyObject()))
@@ -213,10 +230,13 @@ public class FilePullerLogCollectorTest {
         mMockListener.testLog(EasyMock.startsWith("tmp"), EasyMock.eq(LogDataType.ZIP),
                 EasyMock.anyObject());
         mMockListener.testEnded(EasyMock.eq(test), EasyMock.eq(50L), EasyMock.capture(capture));
+        mMockListener.testRunEnded(100L, new HashMap<String, Metric>());
 
         EasyMock.replay(mMockDevice, mMockListener);
+        listener.testRunStarted("runName", 1);
         listener.testStarted(test, 0L);
         listener.testEnded(test, 50L, TfMetricProtoUtil.upgradeConvert(metrics));
+        listener.testRunEnded(100L, new HashMap<String, Metric>());
         EasyMock.verify(mMockDevice, mMockListener);
 
         // Assert the post processor was called and completed for the compressed zip file.
