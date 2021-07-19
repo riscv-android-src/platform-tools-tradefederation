@@ -47,6 +47,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -1950,5 +1951,47 @@ public class TestDevice extends NativeDevice {
         }
 
         return displays;
+    }
+
+    @Override
+    public Set<DeviceFoldableState> getFoldableStates() throws DeviceNotAvailableException {
+        if (getIDevice() instanceof StubDevice) {
+            return new HashSet<>();
+        }
+        CommandResult result = executeShellV2Command("cmd device_state print-states");
+        if (!CommandStatus.SUCCESS.equals(result.getStatus())) {
+            // Can't throw an exception since it would fail on non-supported version
+            CLog.w("Failed to enumerate foldable configurations. stderr: %s", result.getStderr());
+            return new HashSet<>();
+        }
+        Set<DeviceFoldableState> foldableStates = new LinkedHashSet<>();
+        Pattern deviceStatePattern =
+                Pattern.compile("DeviceState\\{identifier=(\\d+), name='(\\S+)'\\}\\S*");
+        for (String line : result.getStdout().split("\n")) {
+            Matcher m = deviceStatePattern.matcher(line.trim());
+            if (m.matches()) {
+                foldableStates.add(
+                        new DeviceFoldableState(Integer.parseInt(m.group(1)), m.group(2)));
+            }
+        }
+        return foldableStates;
+    }
+
+    @Override
+    public DeviceFoldableState getCurrentFoldableState() throws DeviceNotAvailableException {
+        if (getIDevice() instanceof StubDevice) {
+            return null;
+        }
+        CommandResult result = executeShellV2Command("cmd device_state state");
+        Pattern deviceStatePattern =
+                Pattern.compile(
+                        "Committed state: DeviceState\\{identifier=(\\d+), name='(\\S+)'\\}\\S*");
+        for (String line : result.getStdout().split("\n")) {
+            Matcher m = deviceStatePattern.matcher(line.trim());
+            if (m.matches()) {
+                return new DeviceFoldableState(Integer.parseInt(m.group(1)), m.group(2));
+            }
+        }
+        return null;
     }
 }

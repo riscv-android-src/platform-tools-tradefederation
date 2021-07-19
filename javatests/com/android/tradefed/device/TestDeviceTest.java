@@ -5019,6 +5019,40 @@ public class TestDeviceTest extends TestCase {
         }
     }
 
+    public void testGetFoldableStates() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public CommandResult executeShellV2Command(String cmd)
+                    throws DeviceNotAvailableException {
+                CommandResult result = new CommandResult(CommandStatus.SUCCESS);
+                result.setStdout("Supported states: [\n" +
+                        " DeviceState{identifier=0, name='CLOSED'},\n" +
+                        " DeviceState{identifier=1, name='HALF_OPENED'},\n" +
+                        " DeviceState{identifier=2, name='OPENED'},\n" +
+                        "]\n");
+                return result;
+            }
+        };
+
+        Set<DeviceFoldableState> states = mTestDevice.getFoldableStates();
+        assertEquals(3, states.size());
+    }
+
+    public void testGetCurrentFoldableState() throws Exception {
+        mTestDevice = new TestableTestDevice() {
+            @Override
+            public CommandResult executeShellV2Command(String cmd)
+                    throws DeviceNotAvailableException {
+                CommandResult result = new CommandResult(CommandStatus.SUCCESS);
+                result.setStdout("Committed state: DeviceState{identifier=2, name='DEFAULT'}\n");
+                return result;
+            }
+        };
+
+        DeviceFoldableState state = mTestDevice.getCurrentFoldableState();
+        assertEquals(2, state.getIdentifier());
+    }
+
     private IExpectationSetters<CommandResult> setGetPropertyExpectation(
             String property, String value) {
         CommandResult stubResult = new CommandResult(CommandStatus.SUCCESS);
