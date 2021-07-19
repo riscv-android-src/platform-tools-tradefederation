@@ -17,15 +17,16 @@ package com.android.tradefed.device.recovery;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.when;
 
 import com.android.ddmlib.IDevice;
 import com.android.tradefed.device.IManagedTestDevice;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mockito;
 
 /** Unit tests for {@link BatteryUnavailableDeviceRecovery} */
 @RunWith(JUnit4.class)
@@ -37,35 +38,32 @@ public class BatteryUnavailableDeviceRecoveryTest {
     @Before
     public void setUp() {
         mRecoverer = new BatteryUnavailableDeviceRecovery();
-        mMockDevice = EasyMock.createMock(IManagedTestDevice.class);
-        mMockIDevice = EasyMock.createMock(IDevice.class);
-        EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(mMockIDevice);
+        mMockDevice = Mockito.mock(IManagedTestDevice.class);
+        mMockIDevice = Mockito.mock(IDevice.class);
+        when(mMockDevice.getIDevice()).thenReturn(mMockIDevice);
     }
 
     @Test
     public void testShouldSkip() {
-        EasyMock.expect(mMockDevice.isStateBootloaderOrFastbootd()).andReturn(false);
-        EasyMock.expect(mMockDevice.getBattery()).andReturn(50);
-        EasyMock.replay(mMockDevice);
+        when(mMockDevice.isStateBootloaderOrFastbootd()).thenReturn(false);
+        when(mMockDevice.getBattery()).thenReturn(50);
+
         assertTrue(mRecoverer.shouldSkip(mMockDevice));
-        EasyMock.verify(mMockDevice);
     }
 
     @Test
     public void testShouldSkip_fastboot() {
-        EasyMock.expect(mMockDevice.isStateBootloaderOrFastbootd()).andReturn(true);
-        EasyMock.replay(mMockDevice);
+        when(mMockDevice.isStateBootloaderOrFastbootd()).thenReturn(true);
+
         assertTrue(mRecoverer.shouldSkip(mMockDevice));
-        EasyMock.verify(mMockDevice);
     }
 
     @Test
     public void testShouldSkip_recovery() {
-        EasyMock.expect(mMockDevice.isStateBootloaderOrFastbootd()).andReturn(false);
-        EasyMock.expect(mMockDevice.getBattery()).andReturn(null);
-        EasyMock.replay(mMockDevice);
+        when(mMockDevice.isStateBootloaderOrFastbootd()).thenReturn(false);
+        when(mMockDevice.getBattery()).thenReturn(null);
+
         // Recovery is needed, we don't skip
         assertFalse(mRecoverer.shouldSkip(mMockDevice));
-        EasyMock.verify(mMockDevice);
     }
 }
