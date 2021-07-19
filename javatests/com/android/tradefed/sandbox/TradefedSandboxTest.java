@@ -20,6 +20,10 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.android.tradefed.command.CommandOptions;
 import com.android.tradefed.config.Configuration;
@@ -39,12 +43,14 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.IRunUtil.EnvPriority;
 
-import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.io.File;
 
@@ -56,14 +62,16 @@ public class TradefedSandboxTest {
     private File mTmpFolder;
 
     private TradefedSandbox mSandbox;
-    private ITestInvocationListener mMockListener;
-    private IConfiguration mMockConfig;
     private IInvocationContext mMockContext;
-    private IRunUtil mMockRunUtil;
+
+    @Mock ITestInvocationListener mMockListener;
+    @Mock IConfiguration mMockConfig;
+    @Mock IRunUtil mMockRunUtil;
 
     @Before
     public void setUp() throws Exception {
-        mMockRunUtil = EasyMock.createMock(IRunUtil.class);
+        MockitoAnnotations.initMocks(this);
+
         mSandbox =
                 new TradefedSandbox() {
                     @Override
@@ -71,12 +79,12 @@ public class TradefedSandboxTest {
                         return mMockRunUtil;
                     }
                 };
-        mMockListener = EasyMock.createMock(ITestInvocationListener.class);
-        mMockConfig = EasyMock.createMock(IConfiguration.class);
-        EasyMock.expect(mMockConfig.getConfigurationObject(Configuration.SANBOX_OPTIONS_TYPE_NAME))
-                .andStubReturn(new SandboxOptions());
-        EasyMock.expect(mMockConfig.getConfigurationDescription())
-                .andStubReturn(new ConfigurationDescriptor());
+
+        doReturn(new SandboxOptions())
+                .when(mMockConfig)
+                .getConfigurationObject(Configuration.SANBOX_OPTIONS_TYPE_NAME);
+        doReturn(new ConfigurationDescriptor()).when(mMockConfig).getConfigurationDescription();
+
         mMockContext = new InvocationContext();
         mMockContext.setConfigurationDescriptor(new ConfigurationDescriptor());
 
@@ -109,40 +117,42 @@ public class TradefedSandboxTest {
      */
     @Test
     public void testPrepareEnvironment() throws Exception {
-        mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
-        EasyMock.expectLastCall().times(2);
-        mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
-        EasyMock.expectLastCall().times(2);
-        mMockRunUtil.unsetEnvVariable(AutomatedReporters.PROTO_REPORTING_PORT);
-        EasyMock.expectLastCall().times(2);
-        mMockRunUtil.setEnvVariable(
-                EasyMock.eq(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE), EasyMock.anyObject());
-        mMockRunUtil.setEnvVariablePriority(EnvPriority.SET);
-        mMockListener.testLog(
-                EasyMock.eq("sandbox-global-config"),
-                EasyMock.eq(LogDataType.HARNESS_CONFIG),
-                EasyMock.anyObject());
+        stubPrepareConfigurationMethods();
         CommandResult result = new CommandResult();
         result.setStatus(CommandStatus.SUCCESS);
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(),
-                                EasyMock.endsWith("/java"),
-                                EasyMock.contains("-Djava.io.tmpdir="),
-                                EasyMock.eq("-cp"),
-                                EasyMock.anyObject(),
-                                EasyMock.eq(SandboxConfigDump.class.getCanonicalName()),
-                                EasyMock.eq("RUN_CONFIG"),
-                                EasyMock.anyObject(),
-                                EasyMock.eq("empty"),
-                                EasyMock.eq("--arg"),
-                                EasyMock.eq("1"),
-                                EasyMock.eq("--use-proto-reporter")))
-                .andReturn(result);
-        setPrepareConfigurationExpectations();
-        EasyMock.replay(mMockConfig, mMockListener, mMockRunUtil);
+        doReturn(result)
+                .when(mMockRunUtil)
+                .runTimedCmd(
+                        Mockito.anyLong(),
+                        Mockito.endsWith("/java"),
+                        Mockito.contains("-Djava.io.tmpdir="),
+                        Mockito.eq("-cp"),
+                        Mockito.anyObject(),
+                        Mockito.eq(SandboxConfigDump.class.getCanonicalName()),
+                        Mockito.eq("RUN_CONFIG"),
+                        Mockito.anyObject(),
+                        Mockito.eq("empty"),
+                        Mockito.eq("--arg"),
+                        Mockito.eq("1"),
+                        Mockito.eq("--use-proto-reporter"));
+
         Exception res = mSandbox.prepareEnvironment(mMockContext, mMockConfig, mMockListener);
-        EasyMock.verify(mMockConfig, mMockListener, mMockRunUtil);
+
+        verify(mMockRunUtil, times(2)).unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
+        verify(mMockRunUtil, times(2))
+                .unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
+        verify(mMockRunUtil, times(2)).unsetEnvVariable(AutomatedReporters.PROTO_REPORTING_PORT);
+        verify(mMockRunUtil)
+                .setEnvVariable(
+                        Mockito.eq(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE),
+                        Mockito.anyObject());
+        verify(mMockRunUtil).setEnvVariablePriority(EnvPriority.SET);
+        verify(mMockListener)
+                .testLog(
+                        Mockito.eq("sandbox-global-config"),
+                        Mockito.eq(LogDataType.HARNESS_CONFIG),
+                        Mockito.anyObject());
+        verifyPrepareConfigurationExpectations();
         assertNull(res);
     }
 
@@ -154,41 +164,44 @@ public class TradefedSandboxTest {
      */
     @Test
     public void testPrepareEnvironment_dumpConfigFail() throws Exception {
-        mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
-        EasyMock.expectLastCall().times(2);
-        mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
-        EasyMock.expectLastCall().times(2);
-        mMockRunUtil.unsetEnvVariable(AutomatedReporters.PROTO_REPORTING_PORT);
-        EasyMock.expectLastCall().times(2);
-        mMockRunUtil.setEnvVariable(
-                EasyMock.eq(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE), EasyMock.anyObject());
-        mMockRunUtil.setEnvVariablePriority(EnvPriority.SET);
-        mMockListener.testLog(
-                EasyMock.eq("sandbox-global-config"),
-                EasyMock.eq(LogDataType.HARNESS_CONFIG),
-                EasyMock.anyObject());
+
         CommandResult result = new CommandResult();
         result.setStatus(CommandStatus.FAILED);
         result.setStderr("Ouch I failed.");
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(),
-                                EasyMock.endsWith("/java"),
-                                EasyMock.contains("-Djava.io.tmpdir="),
-                                EasyMock.eq("-cp"),
-                                EasyMock.anyObject(),
-                                EasyMock.eq(SandboxConfigDump.class.getCanonicalName()),
-                                EasyMock.eq("RUN_CONFIG"),
-                                EasyMock.anyObject(),
-                                EasyMock.eq("empty"),
-                                EasyMock.eq("--arg"),
-                                EasyMock.eq("1"),
-                                EasyMock.eq("--use-proto-reporter")))
-                .andReturn(result);
-        setPrepareConfigurationExpectations();
-        EasyMock.replay(mMockConfig, mMockListener, mMockRunUtil);
+        when(mMockRunUtil.runTimedCmd(
+                        Mockito.anyLong(),
+                        Mockito.endsWith("/java"),
+                        Mockito.contains("-Djava.io.tmpdir="),
+                        Mockito.eq("-cp"),
+                        Mockito.anyObject(),
+                        Mockito.eq(SandboxConfigDump.class.getCanonicalName()),
+                        Mockito.eq("RUN_CONFIG"),
+                        Mockito.anyObject(),
+                        Mockito.eq("empty"),
+                        Mockito.eq("--arg"),
+                        Mockito.eq("1"),
+                        Mockito.eq("--use-proto-reporter")))
+                .thenReturn(result);
+        stubPrepareConfigurationMethods();
+
         Exception res = mSandbox.prepareEnvironment(mMockContext, mMockConfig, mMockListener);
-        EasyMock.verify(mMockConfig, mMockListener, mMockRunUtil);
+
+        verify(mMockRunUtil, times(2)).unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
+        verify(mMockRunUtil, times(2))
+                .unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
+        verify(mMockRunUtil, times(2)).unsetEnvVariable(AutomatedReporters.PROTO_REPORTING_PORT);
+        verify(mMockRunUtil)
+                .setEnvVariable(
+                        Mockito.eq(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE),
+                        Mockito.anyObject());
+        verify(mMockRunUtil).setEnvVariablePriority(EnvPriority.SET);
+        verify(mMockListener)
+                .testLog(
+                        Mockito.eq("sandbox-global-config"),
+                        Mockito.eq(LogDataType.HARNESS_CONFIG),
+                        Mockito.anyObject());
+        verifyPrepareConfigurationExpectations();
+
         assertNotNull(res);
         assertTrue(res instanceof ConfigurationException);
         assertEquals("Error when dumping the config. stderr: Ouch I failed.", res.getMessage());
@@ -197,41 +210,43 @@ public class TradefedSandboxTest {
     /** Test that the fallback dump config also attempt to parse the config. */
     @Test
     public void testPrepareEnvironment_dumpConfigFail_fallback_fail() throws Exception {
-        mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
-        EasyMock.expectLastCall().times(2);
-        mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
-        EasyMock.expectLastCall().times(2);
-        mMockRunUtil.unsetEnvVariable(AutomatedReporters.PROTO_REPORTING_PORT);
-        EasyMock.expectLastCall().times(2);
-        mMockRunUtil.setEnvVariable(
-                EasyMock.eq(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE), EasyMock.anyObject());
-        mMockRunUtil.setEnvVariablePriority(EnvPriority.SET);
-        mMockListener.testLog(
-                EasyMock.eq("sandbox-global-config"),
-                EasyMock.eq(LogDataType.HARNESS_CONFIG),
-                EasyMock.anyObject());
         CommandResult result = new CommandResult();
         result.setStatus(CommandStatus.FAILED);
         result.setStderr("Could not find configuration 'empty'");
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(),
-                                EasyMock.endsWith("/java"),
-                                EasyMock.contains("-Djava.io.tmpdir="),
-                                EasyMock.eq("-cp"),
-                                EasyMock.anyObject(),
-                                EasyMock.eq(SandboxConfigDump.class.getCanonicalName()),
-                                EasyMock.eq("RUN_CONFIG"),
-                                EasyMock.anyObject(),
-                                EasyMock.eq("empty"),
-                                EasyMock.eq("--arg"),
-                                EasyMock.eq("1"),
-                                EasyMock.eq("--use-proto-reporter")))
-                .andReturn(result);
-        setPrepareConfigurationExpectations();
-        EasyMock.replay(mMockConfig, mMockListener, mMockRunUtil);
+        when(mMockRunUtil.runTimedCmd(
+                        Mockito.anyLong(),
+                        Mockito.endsWith("/java"),
+                        Mockito.contains("-Djava.io.tmpdir="),
+                        Mockito.eq("-cp"),
+                        Mockito.anyObject(),
+                        Mockito.eq(SandboxConfigDump.class.getCanonicalName()),
+                        Mockito.eq("RUN_CONFIG"),
+                        Mockito.anyObject(),
+                        Mockito.eq("empty"),
+                        Mockito.eq("--arg"),
+                        Mockito.eq("1"),
+                        Mockito.eq("--use-proto-reporter")))
+                .thenReturn(result);
+        stubPrepareConfigurationMethods();
+
         Exception res = mSandbox.prepareEnvironment(mMockContext, mMockConfig, mMockListener);
-        EasyMock.verify(mMockConfig, mMockListener, mMockRunUtil);
+
+        verify(mMockRunUtil, times(2)).unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
+        verify(mMockRunUtil, times(2))
+                .unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
+        verify(mMockRunUtil, times(2)).unsetEnvVariable(AutomatedReporters.PROTO_REPORTING_PORT);
+        verify(mMockRunUtil)
+                .setEnvVariable(
+                        Mockito.eq(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE),
+                        Mockito.anyObject());
+        verify(mMockRunUtil).setEnvVariablePriority(EnvPriority.SET);
+        verify(mMockListener)
+                .testLog(
+                        Mockito.eq("sandbox-global-config"),
+                        Mockito.eq(LogDataType.HARNESS_CONFIG),
+                        Mockito.anyObject());
+        verifyPrepareConfigurationExpectations();
+
         assertNotNull(res);
         assertTrue(res instanceof ConfigurationException);
         assertEquals(
@@ -246,24 +261,31 @@ public class TradefedSandboxTest {
      */
     @Test
     public void testPrepareEnvironment_noTfDirJar() throws Exception {
-        mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
-        mMockRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
-        mMockRunUtil.unsetEnvVariable(AutomatedReporters.PROTO_REPORTING_PORT);
-        EasyMock.expect(mMockConfig.getCommandLine()).andReturn("empty --arg 1");
-        EasyMock.expect(mMockConfig.getCommandOptions()).andStubReturn(new CommandOptions());
+        when(mMockConfig.getCommandLine()).thenReturn("empty --arg 1");
+        when(mMockConfig.getCommandOptions()).thenReturn(new CommandOptions());
         System.setProperty(TF_JAR_DIR, "");
-        EasyMock.replay(mMockConfig, mMockListener, mMockRunUtil);
+
         Exception res = mSandbox.prepareEnvironment(mMockContext, mMockConfig, mMockListener);
-        EasyMock.verify(mMockConfig, mMockListener, mMockRunUtil);
+
+        verify(mMockRunUtil).unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
+        verify(mMockRunUtil)
+                .unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
+        verify(mMockRunUtil).unsetEnvVariable(AutomatedReporters.PROTO_REPORTING_PORT);
+
         assertNotNull(res);
         assertTrue(res instanceof ConfigurationException);
         assertEquals(
                 "Could not read TF_JAR_DIR to get current Tradefed instance.", res.getMessage());
     }
 
-    private void setPrepareConfigurationExpectations() throws Exception {
-        EasyMock.expect(mMockConfig.getCommandLine()).andReturn("empty --arg 1").times(2);
-        EasyMock.expect(mMockConfig.getCommandOptions()).andStubReturn(new CommandOptions());
+    private void verifyPrepareConfigurationExpectations() throws Exception {
+        verify(mMockConfig, times(2)).getCommandLine();
+        verify(mMockConfig, Mockito.atLeast(1)).getCommandOptions();
+    }
+
+    private void stubPrepareConfigurationMethods() throws Exception {
+        when(mMockConfig.getCommandLine()).thenReturn("empty --arg 1");
+        when(mMockConfig.getCommandOptions()).thenReturn(new CommandOptions());
     }
 
     /**
@@ -281,11 +303,9 @@ public class TradefedSandboxTest {
             setter.setOptionValue("sandbox:tf-location", tmpDir.getAbsolutePath());
             mMockConfig.setConfigurationObject(Configuration.SANBOX_OPTIONS_TYPE_NAME, options);
 
-            EasyMock.replay(mMockListener, mMockRunUtil);
             File res =
                     mSandbox.getTradefedSandboxEnvironment(
                             mMockContext, mMockConfig, new String[] {"empty", "--arg", "1"});
-            EasyMock.verify(mMockListener, mMockRunUtil);
             assertEquals(tmpDir, res);
         } finally {
             FileUtil.recursiveDelete(tmpDir);
@@ -308,7 +328,6 @@ public class TradefedSandboxTest {
             setter.setOptionValue("sandbox:sandbox-build-id", "9999");
             mMockConfig.setConfigurationObject(Configuration.SANBOX_OPTIONS_TYPE_NAME, options);
 
-            EasyMock.replay(mMockListener, mMockRunUtil);
             try {
                 mSandbox.getTradefedSandboxEnvironment(
                         mMockContext, mMockConfig, new String[] {"empty", "--arg", "1"});
@@ -319,7 +338,6 @@ public class TradefedSandboxTest {
                                 + "the same time",
                         expected.getMessage());
             }
-            EasyMock.verify(mMockListener, mMockRunUtil);
         } finally {
             FileUtil.recursiveDelete(tmpDir);
         }
