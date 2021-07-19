@@ -186,6 +186,7 @@ class GenericLogcatEventParser<LogcatEventType> implements Closeable {
 
     /** Start listening to logcat and parsing events. */
     public void start() {
+        mCancelled = false;
         if (mLogcatTags.isEmpty()) {
             throw new RuntimeException("LogcatEventParser started with no event triggers.");
         }
