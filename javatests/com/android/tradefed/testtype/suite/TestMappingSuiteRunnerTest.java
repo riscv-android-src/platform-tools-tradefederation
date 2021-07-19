@@ -19,6 +19,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import com.android.ddmlib.IDevice;
 import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.config.Configuration;
@@ -133,6 +134,8 @@ public class TestMappingSuiteRunnerTest {
         EasyMock.expect(mBuildInfo.getTestsDir()).andReturn(new File(NON_EXISTING_DIR)).anyTimes();
         EasyMock.expect(mMockDevice.getProperty(EasyMock.anyObject())).andReturn(ABI_1);
         EasyMock.expect(mMockDevice.getProperty(EasyMock.anyObject())).andReturn(ABI_2);
+        EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(EasyMock.createMock(IDevice.class));
+        EasyMock.expect(mMockDevice.getFoldableStates()).andStubReturn(new HashSet<>());
         EasyMock.replay(mBuildInfo, mMockDevice);
     }
 
@@ -671,16 +674,10 @@ public class TestMappingSuiteRunnerTest {
     public void testLoadTestsForMultiAbi() throws Exception {
         mOptionSetter.setOptionValue("include-filter", "suite/stubAbi");
 
-        ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
-        mRunner.setDevice(mockDevice);
-        EasyMock.replay(mockDevice);
-
         LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
-
         assertEquals(2, configMap.size());
         assertTrue(configMap.containsKey(ABI_1 + " suite/stubAbi"));
         assertTrue(configMap.containsKey(ABI_2 + " suite/stubAbi"));
-        EasyMock.verify(mockDevice);
     }
 
     /**

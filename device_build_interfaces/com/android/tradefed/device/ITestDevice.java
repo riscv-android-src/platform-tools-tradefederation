@@ -977,4 +977,19 @@ public interface ITestDevice extends INativeDevice {
      * @throws DeviceNotAvailableException
      */
     public Set<Long> listDisplayIds() throws DeviceNotAvailableException;
+
+    /**
+     * Returns the list of foldable states on the device. Can be obtained with
+     * "cmd device_state print-states".
+     *
+     * @throws DeviceNotAvailableException
+     */
+    public Set<DeviceFoldableState> getFoldableStates() throws DeviceNotAvailableException;
+
+    /**
+     * Returns the current foldable state of the device or null if some issues occurred.
+     *
+     * @throws DeviceNotAvailableException
+     */
+    public DeviceFoldableState getCurrentFoldableState() throws DeviceNotAvailableException;
 }

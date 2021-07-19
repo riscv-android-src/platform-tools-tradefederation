@@ -41,7 +41,7 @@ import java.util.concurrent.TimeUnit;
  * <p>This class interprets logcat messages and can inform the listener of events in both a blocking
  * and polling fashion.
  */
-public class LogcatEventParser implements Closeable {
+class GenericLogcatEventParser<LogcatEventType> implements Closeable {
 
     // define a custom logcat parser category for events of interest
     private static final String CUSTOM_CATEGORY = "parserEvent";
@@ -58,7 +58,7 @@ public class LogcatEventParser implements Closeable {
     private boolean mCancelled = false;
 
     /** Struct to hold a logcat event with the event type and triggering logcat message */
-    public static class LogcatEvent {
+    public class LogcatEvent {
         private LogcatEventType eventType;
         private String msg;
 
@@ -121,7 +121,7 @@ public class LogcatEventParser implements Closeable {
      *
      * @param device to read logcat from
      */
-    public LogcatEventParser(ITestDevice device) {
+    public GenericLogcatEventParser(ITestDevice device) {
         mDevice = device;
     }
 
@@ -207,5 +207,11 @@ public class LogcatEventParser implements Closeable {
         if (mDeviceAction != null) {
             mDeviceAction.cancel();
         }
+    }
+}
+
+public class LogcatEventParser extends GenericLogcatEventParser<LogcatEventType> {
+    public LogcatEventParser(ITestDevice device) {
+        super(device);
     }
 }

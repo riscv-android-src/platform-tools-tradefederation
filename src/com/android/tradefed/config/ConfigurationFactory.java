@@ -605,6 +605,19 @@ public class ConfigurationFactory implements IConfigurationFactory {
 
         Map<String, String> uniqueMap =
                 extractTemplates(configName, listArgs, optionArgsRef, keyStoreClient);
+        if (allowedObjects != null && !allowedObjects.isEmpty()) {
+            ConfigLoader tmpLoader = new ConfigLoader(false);
+            // For partial loading be lenient about templates and let the delegate deal with it.
+            // In some cases this won't be 100% correct but it's better than failing on all new
+            // configs.
+            for (String key : uniqueMap.keySet()) {
+                try {
+                    tmpLoader.findConfigName(uniqueMap.get(key), null);
+                } catch (ConfigurationException e) {
+                    uniqueMap.put(key, "empty");
+                }
+            }
+        }
         ConfigurationDef configDef = getConfigurationDef(configName, false, uniqueMap);
         if (!uniqueMap.isEmpty()) {
             // remove the bad ConfigDef from the cache.
