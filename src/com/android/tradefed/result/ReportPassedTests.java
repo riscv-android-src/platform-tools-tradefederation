@@ -174,9 +174,6 @@ public class ReportPassedTests extends CollectingTestListener implements IConfig
 
     private void gatherPassedTests(
             TestRunResult runResult, String baseName, boolean invocationFailure) {
-        if (mShardIndex != null) {
-            baseName = "shard_" + mShardIndex + " " + baseName;
-        }
         StringBuilder sb = new StringBuilder();
         sb.append(createFilters(runResult, baseName, invocationFailure));
         if (sb.length() == 0L) {
