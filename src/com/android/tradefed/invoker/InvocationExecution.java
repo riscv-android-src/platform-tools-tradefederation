@@ -541,6 +541,9 @@ public class InvocationExecution implements IInvocationExecution {
         }
 
         // Extra tear down step for the device
+        if (exception == null) {
+            exception = deferredThrowable;
+        }
         runDevicePostInvocationTearDown(context, config, exception);
 
         // After all, run the multi_pre_target_preparer tearDown.
