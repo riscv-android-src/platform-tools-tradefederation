@@ -17,6 +17,7 @@ package com.android.tradefed.result.proto;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.mockito.Mockito.verify;
 
 import com.android.tradefed.config.ConfigurationDescriptor;
 import com.android.tradefed.config.OptionSetter;
@@ -31,33 +32,35 @@ import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
 import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
-import org.easymock.Capture;
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.util.HashMap;
 
-/**
- * Unit tests for {@link StreamProtoResultReporter}.
- */
+/** Unit tests for {@link StreamProtoResultReporter}. */
 @RunWith(JUnit4.class)
 public class StreamProtoResultReporterTest {
 
     private StreamProtoResultReporter mReporter;
     private IInvocationContext mInvocationContext;
     private IInvocationContext mMainInvocationContext;
-    private ITestInvocationListener mMockListener;
+    @Mock ITestInvocationListener mMockListener;
 
     @Before
     public void setUp() {
+        MockitoAnnotations.initMocks(this);
+
         mReporter = new StreamProtoResultReporter();
         mInvocationContext = new InvocationContext();
         mMainInvocationContext = new InvocationContext();
         mInvocationContext.setConfigurationDescriptor(new ConfigurationDescriptor());
-        mMockListener = EasyMock.createStrictMock(ITestInvocationListener.class);
     }
 
     @Test
@@ -65,35 +68,15 @@ public class StreamProtoResultReporterTest {
         StreamProtoReceiver receiver =
                 new StreamProtoReceiver(mMockListener, mMainInvocationContext, true);
         OptionSetter setter = new OptionSetter(mReporter);
+        TestDescription test1 = new TestDescription("class1", "test1");
+        TestDescription test2 = new TestDescription("class1", "test2");
         try {
             setter.setOptionValue(
                     "proto-report-port", Integer.toString(receiver.getSocketServerPort()));
-            TestDescription test1 = new TestDescription("class1", "test1");
-            TestDescription test2 = new TestDescription("class1", "test2");
             HashMap<String, Metric> metrics = new HashMap<String, Metric>();
             metrics.put("metric1", TfMetricProtoUtil.stringToMetric("value1"));
             // Verify mocks
-            mMockListener.invocationStarted(EasyMock.anyObject());
 
-            mMockListener.testModuleStarted(EasyMock.anyObject());
-            mMockListener.testRunStarted(
-                    EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
-            mMockListener.testStarted(test1, 5L);
-            mMockListener.testEnded(test1, 10L, new HashMap<String, Metric>());
-
-            mMockListener.testStarted(test2, 11L);
-            mMockListener.testFailed(test2, FailureDescription.create("I failed"));
-            mMockListener.testEnded(
-                    EasyMock.eq(test2),
-                    EasyMock.anyLong(),
-                    EasyMock.<HashMap<String, Metric>>anyObject());
-            mMockListener.testRunEnded(
-                    EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-            mMockListener.testModuleEnded();
-
-            mMockListener.invocationEnded(500L);
-
-            EasyMock.replay(mMockListener);
             mReporter.invocationStarted(mInvocationContext);
             // Run modules
             mReporter.testModuleStarted(createModuleContext("arm64 module1"));
@@ -121,7 +104,44 @@ public class StreamProtoResultReporterTest {
             receiver.joinReceiver(5000);
             receiver.close();
         }
-        EasyMock.verify(mMockListener);
+        InOrder inOrder = Mockito.inOrder(mMockListener);
+        inOrder.verify(mMockListener).invocationStarted(Mockito.any());
+        inOrder.verify(mMockListener).testModuleStarted(Mockito.any());
+        inOrder.verify(mMockListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(0), Mockito.anyLong());
+        inOrder.verify(mMockListener).testStarted(test1, 5L);
+        inOrder.verify(mMockListener).testEnded(test1, 10L, new HashMap<String, Metric>());
+        inOrder.verify(mMockListener).testStarted(test2, 11L);
+        inOrder.verify(mMockListener).testFailed(test2, FailureDescription.create("I failed"));
+        inOrder.verify(mMockListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mMockListener)
+                .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mMockListener).testModuleEnded();
+        inOrder.verify(mMockListener).invocationEnded(500L);
+
+        verify(mMockListener).invocationStarted(Mockito.any());
+        verify(mMockListener).testModuleStarted(Mockito.any());
+        verify(mMockListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(0), Mockito.anyLong());
+        verify(mMockListener).testStarted(test1, 5L);
+        verify(mMockListener).testEnded(test1, 10L, new HashMap<String, Metric>());
+        verify(mMockListener).testStarted(test2, 11L);
+        verify(mMockListener).testFailed(test2, FailureDescription.create("I failed"));
+        verify(mMockListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        verify(mMockListener)
+                .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
+        verify(mMockListener).testModuleEnded();
+        verify(mMockListener).invocationEnded(500L);
         assertNull(receiver.getError());
     }
 
@@ -135,7 +155,7 @@ public class StreamProtoResultReporterTest {
             setter.setOptionValue(
                     "proto-report-port", Integer.toString(receiver.getSocketServerPort()));
             // No calls on the mocks
-            EasyMock.replay(mMockListener);
+
             // If we join, then we will stop parsing events
             receiver.joinReceiver(100);
             mReporter.invocationStarted(mInvocationContext);
@@ -144,7 +164,7 @@ public class StreamProtoResultReporterTest {
         } finally {
             receiver.close();
         }
-        EasyMock.verify(mMockListener);
+
         assertNull(receiver.getError());
     }
 
@@ -157,31 +177,15 @@ public class StreamProtoResultReporterTest {
                         /** No invocation reporting */
                         false);
         OptionSetter setter = new OptionSetter(mReporter);
+        TestDescription test1 = new TestDescription("class1", "test1");
+        TestDescription test2 = new TestDescription("class1", "test2");
         try {
             setter.setOptionValue(
                     "proto-report-port", Integer.toString(receiver.getSocketServerPort()));
-            TestDescription test1 = new TestDescription("class1", "test1");
-            TestDescription test2 = new TestDescription("class1", "test2");
             HashMap<String, Metric> metrics = new HashMap<String, Metric>();
             metrics.put("metric1", TfMetricProtoUtil.stringToMetric("value1"));
             // Verify mocks
-            mMockListener.testModuleStarted(EasyMock.anyObject());
-            mMockListener.testRunStarted(
-                    EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
-            mMockListener.testStarted(test1, 5L);
-            mMockListener.testEnded(test1, 10L, new HashMap<String, Metric>());
 
-            mMockListener.testStarted(test2, 11L);
-            mMockListener.testFailed(test2, FailureDescription.create("I failed"));
-            mMockListener.testEnded(
-                    EasyMock.eq(test2),
-                    EasyMock.anyLong(),
-                    EasyMock.<HashMap<String, Metric>>anyObject());
-            mMockListener.testRunEnded(
-                    EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-            mMockListener.testModuleEnded();
-
-            EasyMock.replay(mMockListener);
             mReporter.invocationStarted(mInvocationContext);
             // Run modules
             mReporter.testModuleStarted(createModuleContext("arm64 module1"));
@@ -209,7 +213,23 @@ public class StreamProtoResultReporterTest {
             receiver.joinReceiver(5000);
             receiver.close();
         }
-        EasyMock.verify(mMockListener);
+
+        verify(mMockListener).testModuleStarted(Mockito.any());
+        verify(mMockListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(0), Mockito.anyLong());
+        verify(mMockListener).testStarted(test1, 5L);
+        verify(mMockListener).testEnded(test1, 10L, new HashMap<String, Metric>());
+        verify(mMockListener).testStarted(test2, 11L);
+        verify(mMockListener).testFailed(test2, FailureDescription.create("I failed"));
+        verify(mMockListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        verify(mMockListener)
+                .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
+        verify(mMockListener).testModuleEnded();
         assertNull(receiver.getError());
     }
 
@@ -218,21 +238,13 @@ public class StreamProtoResultReporterTest {
         StreamProtoReceiver receiver =
                 new StreamProtoReceiver(mMockListener, mMainInvocationContext, true);
         OptionSetter setter = new OptionSetter(mReporter);
-        Capture<FailureDescription> capture = new Capture<>();
+        ArgumentCaptor<FailureDescription> capture =
+                ArgumentCaptor.forClass(FailureDescription.class);
         try {
             setter.setOptionValue(
                     "proto-report-port", Integer.toString(receiver.getSocketServerPort()));
             // Verify mocks
-            mMockListener.invocationStarted(EasyMock.anyObject());
 
-            mMockListener.testModuleStarted(EasyMock.anyObject());
-            mMockListener.testRunStarted(EasyMock.eq("arm64 module1"), EasyMock.eq(0));
-            mMockListener.testRunFailed(EasyMock.capture(capture));
-            mMockListener.testRunEnded(
-                    EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-            mMockListener.testModuleEnded();
-
-            EasyMock.replay(mMockListener);
             mReporter.invocationStarted(mInvocationContext);
             // Run modules
             mReporter.testModuleStarted(createModuleContext("arm64 module1"));
@@ -242,7 +254,14 @@ public class StreamProtoResultReporterTest {
             receiver.close();
             receiver.completeModuleEvents();
         }
-        EasyMock.verify(mMockListener);
+
+        verify(mMockListener).invocationStarted(Mockito.any());
+        verify(mMockListener).testModuleStarted(Mockito.any());
+        verify(mMockListener).testRunStarted(Mockito.eq("arm64 module1"), Mockito.eq(0));
+        verify(mMockListener).testRunFailed(capture.capture());
+        verify(mMockListener)
+                .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
+        verify(mMockListener).testModuleEnded();
         assertNull(receiver.getError());
         assertEquals(
                 "Module was interrupted after starting, results are incomplete.",
