@@ -50,6 +50,8 @@ import com.android.tradefed.testtype.IDeviceTest;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.IReportNotExecuted;
+import com.android.tradefed.testtype.ITestFilterReceiver;
+import com.android.tradefed.testtype.suite.BaseTestSuite;
 import com.android.tradefed.util.StreamUtil;
 import com.android.tradefed.util.TimeUtil;
 
@@ -203,6 +205,12 @@ public final class TestsPoolPoller
                 if (test instanceof ISystemStatusCheckerReceiver) {
                     ((ISystemStatusCheckerReceiver) test)
                             .setSystemStatusChecker(mSystemStatusCheckers);
+                }
+                if (test instanceof ITestFilterReceiver) {
+                    mConfig.getGlobalFilters().applyFiltersToTest((ITestFilterReceiver) test);
+                } else if (test instanceof BaseTestSuite) {
+                    CLog.d("Applying global filters to BaseTestSuite");
+                    mConfig.getGlobalFilters().applyFiltersToTest((BaseTestSuite) test);
                 }
                 IConfiguration validationConfig = new Configuration("validation", "validation");
                 try {
