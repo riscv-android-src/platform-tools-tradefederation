@@ -32,6 +32,7 @@ import com.android.tradefed.config.IDeviceConfiguration;
 import com.android.tradefed.config.filter.GetPreviousPassedHelper;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
+import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.metric.AutoLogCollector;
 import com.android.tradefed.device.metric.CollectorHelper;
 import com.android.tradefed.device.metric.CountTestCasesCollector;
@@ -257,6 +258,8 @@ public class InvocationExecution implements IInvocationExecution {
                     listener,
                     testInfo,
                     "multi target preparer setup");
+            // Collect some info automatically after setup
+            collectAutoInfo(config, testInfo);
         } finally {
             // Note: These metrics are handled in a try in case of a kernel reset or device issue.
             // Setup timing metric. It does not include flashing time on boot tests.
@@ -1071,5 +1074,26 @@ public class InvocationExecution implements IInvocationExecution {
     /** Returns the adb version in use for the invocation. */
     protected String getAdbVersion() {
         return GlobalConfiguration.getDeviceManagerInstance().getAdbVersion();
+    }
+
+    /**
+     * Collect automatically some information on the primary device under test.
+     */
+    protected void collectAutoInfo(IConfiguration config, TestInformation info)
+            throws DeviceNotAvailableException {
+        if (config.getCommandOptions().getInvocationData().containsKey("subprocess")) {
+            // Avoid logging in the subprocess
+            return;
+        }
+        ITestDevice device = info.getDevice();
+        if (device instanceof StubDevice) {
+            return;
+        }
+        CommandResult kernelInfoResult = device.executeShellV2Command("uname -a");
+        if (kernelInfoResult != null &&
+                CommandStatus.SUCCESS.equals(kernelInfoResult.getStatus())) {
+            info.getBuildInfo().addBuildAttribute(
+                    "device_kernel_info", kernelInfoResult.getStdout().trim());
+        }
     }
 }

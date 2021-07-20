@@ -317,6 +317,12 @@ public class TestInvocationTest {
                             }
 
                             @Override
+                            protected void collectAutoInfo(IConfiguration config,
+                                    TestInformation info) throws DeviceNotAvailableException {
+                                // Inop for the command test case.
+                            }
+
+                            @Override
                             protected void logHostAdb(IConfiguration config, ITestLogger logger) {
                                 // inop for the common test case.
                             }
@@ -1693,6 +1699,12 @@ public class TestInvocationTest {
                             protected void logHostAdb(IConfiguration config, ITestLogger logger) {
                                 // inop for the common test case.
                             }
+
+                            @Override
+                            protected void collectAutoInfo(IConfiguration config,
+                                    TestInformation info) throws DeviceNotAvailableException {
+                                // Inop for the command test case.
+                            }
                         };
                     }
 
@@ -1782,6 +1794,12 @@ public class TestInvocationTest {
                                 protected void logHostAdb(
                                         IConfiguration config, ITestLogger logger) {
                                     // inop for the common test case.
+                                }
+
+                                @Override
+                                protected void collectAutoInfo(IConfiguration config,
+                                        TestInformation info) throws DeviceNotAvailableException {
+                                    // Inop for the command test case.
                                 }
                             };
                         }
@@ -1890,6 +1908,12 @@ public class TestInvocationTest {
                                 protected void logHostAdb(
                                         IConfiguration config, ITestLogger logger) {
                                     // inop for the common test case.
+                                }
+
+                                @Override
+                                protected void collectAutoInfo(IConfiguration config,
+                                        TestInformation info) throws DeviceNotAvailableException {
+                                    // Inop for the command test case.
                                 }
                             };
                         }
