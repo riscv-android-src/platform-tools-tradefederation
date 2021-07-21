@@ -199,6 +199,8 @@ public class RunHostScriptTargetPreparer extends BaseTargetPreparer {
             case EXCEPTION:
                 throw new TargetSetupError(
                         "Exception during script execution", device.getDeviceDescriptor());
+            case SUCCESS:
+                break;
         }
     }
 }
