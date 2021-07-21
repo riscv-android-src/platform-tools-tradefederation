@@ -66,7 +66,6 @@ import com.android.tradefed.util.ListInstrumentationParser.InstrumentationTarget
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
-import org.easymock.IAnswer;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -121,7 +120,7 @@ public class InstrumentationTestTest {
     @Captor private ArgumentCaptor<HashMap<String, Metric>> runCapture;
 
     /**
-     * Helper class for providing an {@link IAnswer} to a {@link
+     * Helper class for providing an {@link Answer} to a {@link
      * ITestDevice#runInstrumentationTests(IRemoteAndroidTestRunner, ITestInvocationListener...)}
      * call.
      */
