@@ -69,7 +69,7 @@ public class DeviceFoldableState implements Comparable<DeviceFoldableState> {
     public int compareTo(DeviceFoldableState o) {
         if (this.mIdentifier == o.mIdentifier) {
             return 0;
-        } else if (this.mIdentifier < o.mIdentifier) {
+        } else if (this.mIdentifier > o.mIdentifier) {
             return 1;
         }
         return -1;

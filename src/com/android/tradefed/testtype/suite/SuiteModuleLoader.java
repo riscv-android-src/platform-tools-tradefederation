@@ -718,9 +718,9 @@ public class SuiteModuleLoader {
                     continue;
                 }
 
-                if (suiteParamEntry instanceof FoldableExpandingHandler) {
+                if (suiteParamEntry.getValue() instanceof FoldableExpandingHandler) {
                     List<IModuleParameterHandler> foldableHandlers =
-                            ((FoldableExpandingHandler) suiteParamEntry)
+                            ((FoldableExpandingHandler) suiteParamEntry.getValue())
                                 .expandHandler(mFoldableStates);
                     params.addAll(foldableHandlers);
                 } else {
