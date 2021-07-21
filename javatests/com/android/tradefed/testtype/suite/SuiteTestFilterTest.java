@@ -56,6 +56,16 @@ public class SuiteTestFilterTest {
     }
 
     @Test
+    public void testParseFilter_moduleParam() {
+        SuiteTestFilter filter = SuiteTestFilter.createFrom("x86_64 module[instant]");
+        assertEquals("x86_64", filter.getAbi());
+        assertEquals("module", filter.getBaseName());
+        assertEquals("instant", filter.getParameterName());
+        assertNull(filter.getTest());
+        assertEquals("x86_64 module[instant]", filter.toString());
+    }
+
+    @Test
     public void testEquals() {
         SuiteTestFilter filter1 = SuiteTestFilter.createFrom("x86 module class#method");
         SuiteTestFilter filter2 = SuiteTestFilter.createFrom("x86 module class#method");

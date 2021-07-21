@@ -167,6 +167,18 @@ public class SuiteTestFilter {
         return mName;
     }
 
+    /**
+     * If the module is parameterized, returns the parameter value. Null if not parameterized.
+     */
+    public String getParameterName() {
+        // If the module looks parameterized, return the parameter name.
+        Matcher m = PARAMETERIZED_TEST_REGEX.matcher(mName);
+        if (m.find()) {
+            return m.group(2);
+        }
+        return null;
+    }
+
     /** @return the test identifier of this filter, or null if not specified. */
     public String getTest() {
         return mTest;

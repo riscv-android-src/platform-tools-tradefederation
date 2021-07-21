@@ -248,8 +248,10 @@ public class BaseTestSuite extends ITestSuite {
             }
 
             // Create and populate the filters here
-            SuiteModuleLoader.addFilters(mIncludeFilters, mIncludeFiltersParsed, mAbis);
-            SuiteModuleLoader.addFilters(mExcludeFilters, mExcludeFiltersParsed, mAbis);
+            SuiteModuleLoader.addFilters(
+                    mIncludeFilters, mIncludeFiltersParsed, mAbis, mFoldableStates);
+            SuiteModuleLoader.addFilters(
+                    mExcludeFilters, mExcludeFiltersParsed, mAbis, mFoldableStates);
 
             String includeFilters = "";
             if (mIncludeFiltersParsed.size() > MAX_FILTER_DISPLAY) {
@@ -446,8 +448,10 @@ public class BaseTestSuite extends ITestSuite {
     }
 
     public void reevaluateFilters() {
-        SuiteModuleLoader.addFilters(mIncludeFilters, mIncludeFiltersParsed, mAbis);
-        SuiteModuleLoader.addFilters(mExcludeFilters, mExcludeFiltersParsed, mAbis);
+        SuiteModuleLoader.addFilters(
+                mIncludeFilters, mIncludeFiltersParsed, mAbis, mFoldableStates);
+        SuiteModuleLoader.addFilters(
+                mExcludeFilters, mExcludeFiltersParsed, mAbis, mFoldableStates);
     }
 
     /** Adds module args */

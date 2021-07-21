@@ -474,18 +474,42 @@ public class SuiteModuleLoader {
      * @param abis The Abis to consider in the filtering.
      */
     public static void addFilters(
-            Set<String> stringFilters, Map<String, LinkedHashSet<SuiteTestFilter>> filters, Set<IAbi> abis) {
+            Set<String> stringFilters, Map<String, LinkedHashSet<SuiteTestFilter>> filters,
+            Set<IAbi> abis, Set<DeviceFoldableState> foldableStates) {
         for (String filterString : stringFilters) {
-            SuiteTestFilter filter = SuiteTestFilter.createFrom(filterString);
-            String abi = filter.getAbi();
-            if (abi == null) {
-                for (IAbi a : abis) {
-                    addFilter(a.getName(), filter, filters);
+            SuiteTestFilter parentFilter = SuiteTestFilter.createFrom(filterString);
+            List<SuiteTestFilter> expanded = expandFoldableFilters(parentFilter, foldableStates);
+            for (SuiteTestFilter filter : expanded) {
+                String abi = filter.getAbi();
+                if (abi == null) {
+                    for (IAbi a : abis) {
+                        addFilter(a.getName(), filter, filters);
+                    }
+                } else {
+                    addFilter(abi, filter, filters);
                 }
-            } else {
-                addFilter(abi, filter, filters);
             }
         }
+    }
+
+    private static List<SuiteTestFilter> expandFoldableFilters(
+            SuiteTestFilter filter, Set<DeviceFoldableState> foldableStates) {
+        List<SuiteTestFilter> expandedFilters = new ArrayList<>();
+        if (foldableStates == null || foldableStates.isEmpty()) {
+            expandedFilters.add(filter);
+            return expandedFilters;
+        }
+        if (!ModuleParameters.ALL_FOLDABLE_STATES.toString().equals(filter.getParameterName())) {
+            expandedFilters.add(filter);
+            return expandedFilters;
+        }
+        for (DeviceFoldableState state : foldableStates) {
+            String name = filter.getBaseName() + "[" + state.toString() + "]";
+            expandedFilters.add(
+                    new SuiteTestFilter(
+                            filter.getShardIndex(), filter.getAbi(), name, filter.getTest()));
+        }
+        return expandedFilters;
     }
 
     private static void addFilter(
