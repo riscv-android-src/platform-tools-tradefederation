@@ -17,17 +17,20 @@ package com.android.tradefed.testtype;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 
-import org.easymock.Capture;
-import org.easymock.EasyMock;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
 
 import java.util.HashMap;
 
@@ -38,239 +41,148 @@ public class GTestResultParserTest extends GTestParserTestBase {
     /** Tests the parser for a simple test run output with 11 tests. */
     @Test
     public void testParseSimpleFile() throws Exception {
-        String[] contents =  readInFile(GTEST_OUTPUT_FILE_1);
-        ITestInvocationListener mockRunListener =
-                EasyMock.createMock(ITestInvocationListener.class);
-        mockRunListener.testRunStarted(TEST_MODULE_NAME, 11);
-        // 11 passing test cases in this run
-        for (int i=0; i<11; ++i) {
-            mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
-            mockRunListener.testEnded(
-                    (TestDescription) EasyMock.anyObject(),
-                    EasyMock.anyLong(),
-                    EasyMock.<HashMap<String, Metric>>anyObject());
-        }
-        // TODO: validate param values
-        mockRunListener.testRunEnded(
-                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-        EasyMock.replay(mockRunListener);
+        String[] contents = readInFile(GTEST_OUTPUT_FILE_1);
+        ITestInvocationListener mockRunListener = mock(ITestInvocationListener.class);
         GTestResultParser resultParser = new GTestResultParser(TEST_MODULE_NAME, mockRunListener);
         resultParser.processNewLines(contents);
         resultParser.flush();
-        EasyMock.verify(mockRunListener);
+
+        verify(mockRunListener).testRunStarted(TEST_MODULE_NAME, 11);
+        verify(mockRunListener, times(11)).testStarted(Mockito.any(), Mockito.anyLong());
+        verify(mockRunListener, times(11))
+                .testEnded(
+                        (TestDescription) Mockito.any(),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        verify(mockRunListener)
+                .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
     }
 
     /** Tests the parser for a simple test run output with 53 tests and no times. */
     @Test
     public void testParseSimpleFileNoTimes() throws Exception {
-        String[] contents =  readInFile(GTEST_OUTPUT_FILE_2);
-        ITestInvocationListener mockRunListener =
-                EasyMock.createMock(ITestInvocationListener.class);
-        mockRunListener.testRunStarted(TEST_MODULE_NAME, 53);
-        // 53 passing test cases in this run
-        for (int i=0; i<53; ++i) {
-            mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
-            mockRunListener.testEnded(
-                    (TestDescription) EasyMock.anyObject(),
-                    EasyMock.anyLong(),
-                    EasyMock.<HashMap<String, Metric>>anyObject());
-        }
-        // TODO: validate param values
-        mockRunListener.testRunEnded(
-                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-        EasyMock.replay(mockRunListener);
+        String[] contents = readInFile(GTEST_OUTPUT_FILE_2);
+        ITestInvocationListener mockRunListener = mock(ITestInvocationListener.class);
+
         GTestResultParser resultParser = new GTestResultParser(TEST_MODULE_NAME, mockRunListener);
         resultParser.processNewLines(contents);
         resultParser.flush();
-        EasyMock.verify(mockRunListener);
+
+        verify(mockRunListener).testRunStarted(TEST_MODULE_NAME, 53);
+        verify(mockRunListener, times(53)).testStarted(Mockito.any(), Mockito.anyLong());
+        verify(mockRunListener, times(53))
+                .testEnded(
+                        (TestDescription) Mockito.any(),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        verify(mockRunListener)
+                .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
     }
 
     /** Tests the parser for a simple test run output with 0 tests and no times. */
     @Test
     public void testParseNoTests() throws Exception {
-        String[] contents =  readInFile(GTEST_OUTPUT_FILE_3);
+        String[] contents = readInFile(GTEST_OUTPUT_FILE_3);
         HashMap<String, Metric> expected = new HashMap<>();
-        ITestInvocationListener mockRunListener =
-                EasyMock.createMock(ITestInvocationListener.class);
-        mockRunListener.testRunStarted(TEST_MODULE_NAME, 0);
-        mockRunListener.testRunEnded(EasyMock.anyLong(), EasyMock.eq(expected));
-        EasyMock.replay(mockRunListener);
+        ITestInvocationListener mockRunListener = mock(ITestInvocationListener.class);
+
         GTestResultParser resultParser = new GTestResultParser(TEST_MODULE_NAME, mockRunListener);
         resultParser.processNewLines(contents);
         resultParser.flush();
-        EasyMock.verify(mockRunListener);
+
+        verify(mockRunListener).testRunStarted(TEST_MODULE_NAME, 0);
+        verify(mockRunListener).testRunEnded(Mockito.anyLong(), Mockito.eq(expected));
     }
 
     /** Tests the parser for a run with 268 tests. */
     @Test
     public void testParseLargerFile() throws Exception {
-        String[] contents =  readInFile(GTEST_OUTPUT_FILE_4);
-        ITestInvocationListener mockRunListener =
-                EasyMock.createMock(ITestInvocationListener.class);
-        mockRunListener.testRunStarted(TEST_MODULE_NAME, 268);
-        // 268 passing test cases in this run
-        for (int i=0; i<268; ++i) {
-            mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
-            mockRunListener.testEnded(
-                    (TestDescription) EasyMock.anyObject(),
-                    EasyMock.anyLong(),
-                    EasyMock.<HashMap<String, Metric>>anyObject());
-        }
-        // TODO: validate param values
-        mockRunListener.testRunEnded(
-                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-        EasyMock.replay(mockRunListener);
+        String[] contents = readInFile(GTEST_OUTPUT_FILE_4);
+        ITestInvocationListener mockRunListener = mock(ITestInvocationListener.class);
+
         GTestResultParser resultParser = new GTestResultParser(TEST_MODULE_NAME, mockRunListener);
         resultParser.processNewLines(contents);
         resultParser.flush();
-        EasyMock.verify(mockRunListener);
+
+        verify(mockRunListener).testRunStarted(TEST_MODULE_NAME, 268);
+        verify(mockRunListener, times(268)).testStarted(Mockito.any(), Mockito.anyLong());
+        verify(mockRunListener, times(268))
+                .testEnded(
+                        (TestDescription) Mockito.any(),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        verify(mockRunListener)
+                .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
     }
 
     /** Tests the parser for a run with test failures. */
     @Test
     public void testParseWithFailures() throws Exception {
-        String MESSAGE_OUTPUT =
-                "This is some random text that should get captured by the parser.";
-        String[] contents =  readInFile(GTEST_OUTPUT_FILE_5);
-        ITestInvocationListener mockRunListener =
-                EasyMock.createMock(ITestInvocationListener.class);
+        String MESSAGE_OUTPUT = "This is some random text that should get captured by the parser.";
+        String[] contents = readInFile(GTEST_OUTPUT_FILE_5);
+        ITestInvocationListener mockRunListener = mock(ITestInvocationListener.class);
         // 13 test cases in this run
-        mockRunListener.testRunStarted(TEST_MODULE_NAME, 13);
-        mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
-        mockRunListener.testEnded(
-                (TestDescription) EasyMock.anyObject(),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        // test failure
-        mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
-        mockRunListener.testFailed(
-                (TestDescription) EasyMock.anyObject(), (String) EasyMock.anyObject());
-        mockRunListener.testEnded(
-                (TestDescription) EasyMock.anyObject(),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        // 4 passing tests
-        for (int i=0; i<4; ++i) {
-            mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
-            mockRunListener.testEnded(
-                    (TestDescription) EasyMock.anyObject(),
-                    EasyMock.anyLong(),
-                    EasyMock.<HashMap<String, Metric>>anyObject());
-        }
-        // 2 consecutive test failures
-        mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
-        mockRunListener.testFailed(
-                (TestDescription) EasyMock.anyObject(), (String) EasyMock.anyObject());
-        mockRunListener.testEnded(
-                (TestDescription) EasyMock.anyObject(),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-
-        mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
-        mockRunListener.testFailed(
-                (TestDescription) EasyMock.anyObject(), EasyMock.matches(MESSAGE_OUTPUT));
-        mockRunListener.testEnded(
-                (TestDescription) EasyMock.anyObject(),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-
-        // 5 passing tests
-        for (int i=0; i<5; ++i) {
-            mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
-            mockRunListener.testEnded(
-                    (TestDescription) EasyMock.anyObject(),
-                    EasyMock.anyLong(),
-                    EasyMock.<HashMap<String, Metric>>anyObject());
-        }
-
-        // TODO: validate param values
-        mockRunListener.testRunEnded(
-                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-        EasyMock.replay(mockRunListener);
         GTestResultParser resultParser = new GTestResultParser(TEST_MODULE_NAME, mockRunListener);
         resultParser.processNewLines(contents);
         resultParser.flush();
-        EasyMock.verify(mockRunListener);
+
+        verify(mockRunListener).testRunStarted(TEST_MODULE_NAME, 13);
+        verify(mockRunListener, times(13))
+                .testStarted((TestDescription) Mockito.any(), Mockito.anyLong());
+        verify(mockRunListener, times(3))
+                .testFailed((TestDescription) Mockito.any(), (String) Mockito.any());
+        verify(mockRunListener)
+                .testFailed((TestDescription) Mockito.any(), Mockito.matches(MESSAGE_OUTPUT));
+        verify(mockRunListener, times(13))
+                .testEnded(
+                        (TestDescription) Mockito.any(),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        verify(mockRunListener)
+                .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
     }
 
     /** Tests the parser for a run with test errors. */
     @Test
     public void testParseWithErrors() throws Exception {
-        String[] contents =  readInFile(GTEST_OUTPUT_FILE_6);
-        ITestInvocationListener mockRunListener =
-                EasyMock.createMock(ITestInvocationListener.class);
-        // 10 test cases in this run
-        mockRunListener.testRunStarted(TEST_MODULE_NAME, 10);
-        mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
-        mockRunListener.testEnded(
-                (TestDescription) EasyMock.anyObject(),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        // test failure
-        mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
-        mockRunListener.testFailed(
-                (TestDescription) EasyMock.anyObject(), (String) EasyMock.anyObject());
-        mockRunListener.testEnded(
-                (TestDescription) EasyMock.anyObject(),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        // 5 passing tests
-        for (int i=0; i<5; ++i) {
-            mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
-            mockRunListener.testEnded(
-                    (TestDescription) EasyMock.anyObject(),
-                    EasyMock.anyLong(),
-                    EasyMock.<HashMap<String, Metric>>anyObject());
-        }
-        // another test error
-        mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
-        mockRunListener.testFailed(
-                (TestDescription) EasyMock.anyObject(), (String) EasyMock.anyObject());
-        mockRunListener.testEnded(
-                (TestDescription) EasyMock.anyObject(),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        // 2 passing tests
-        for (int i=0; i<2; ++i) {
-            mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
-            mockRunListener.testEnded(
-                    (TestDescription) EasyMock.anyObject(),
-                    EasyMock.anyLong(),
-                    EasyMock.<HashMap<String, Metric>>anyObject());
-        }
+        String[] contents = readInFile(GTEST_OUTPUT_FILE_6);
+        ITestInvocationListener mockRunListener = mock(ITestInvocationListener.class);
 
-        // TODO: validate param values
-        mockRunListener.testRunEnded(
-                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-        EasyMock.replay(mockRunListener);
         GTestResultParser resultParser = new GTestResultParser(TEST_MODULE_NAME, mockRunListener);
         resultParser.processNewLines(contents);
         resultParser.flush();
-        EasyMock.verify(mockRunListener);
+
+        verify(mockRunListener).testRunStarted(TEST_MODULE_NAME, 10);
+        verify(mockRunListener, times(10)).testStarted(Mockito.any(), Mockito.anyLong());
+        verify(mockRunListener, times(10))
+                .testEnded(
+                        (TestDescription) Mockito.any(),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        verify(mockRunListener, times(2)).testFailed(Mockito.any(), (String) Mockito.any());
+        verify(mockRunListener)
+                .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
     }
 
     /** Tests the parser for a run with 11 tests. */
     @Test
     public void testParseNonAlignedTag() throws Exception {
-        String[] contents =  readInFile(GTEST_OUTPUT_FILE_7);
-        ITestInvocationListener mockRunListener =
-                EasyMock.createMock(ITestInvocationListener.class);
-        mockRunListener.testRunStarted(TEST_MODULE_NAME, 11);
-        // 11 passing test cases in this run
-        for (int i=0; i<11; ++i) {
-            mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
-            mockRunListener.testEnded(
-                    (TestDescription) EasyMock.anyObject(),
-                    EasyMock.anyLong(),
-                    EasyMock.<HashMap<String, Metric>>anyObject());
-        }
-        mockRunListener.testRunEnded(
-                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-        EasyMock.replay(mockRunListener);
+        String[] contents = readInFile(GTEST_OUTPUT_FILE_7);
+        ITestInvocationListener mockRunListener = mock(ITestInvocationListener.class);
+
         GTestResultParser resultParser = new GTestResultParser(TEST_MODULE_NAME, mockRunListener);
         resultParser.processNewLines(contents);
         resultParser.flush();
-        EasyMock.verify(mockRunListener);
+
+        verify(mockRunListener).testRunStarted(TEST_MODULE_NAME, 11);
+        verify(mockRunListener, times(11)).testStarted(Mockito.any(), Mockito.anyLong());
+        verify(mockRunListener, times(11))
+                .testEnded(
+                        (TestDescription) Mockito.any(),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        verify(mockRunListener)
+                .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
     }
 
     /**
@@ -279,80 +191,42 @@ public class GTestResultParserTest extends GTestParserTestBase {
      */
     @Test
     public void testParseSimpleFile_AltFormat() throws Exception {
-        String[] contents =  readInFile(GTEST_OUTPUT_FILE_8);
-        ITestInvocationListener mockRunListener =
-                EasyMock.createMock(ITestInvocationListener.class);
-        mockRunListener.testRunStarted(TEST_MODULE_NAME, 18);
-        // 13 passing tests
-        for (int i = 0; i < 13; ++i) {
-            mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
-            mockRunListener.testEnded(
-                    (TestDescription) EasyMock.anyObject(),
-                    EasyMock.anyLong(),
-                    EasyMock.<HashMap<String, Metric>>anyObject());
-        }
-        // 3 consecutive test failures
-        mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
-        mockRunListener.testFailed(
-                (TestDescription) EasyMock.anyObject(), (String) EasyMock.anyObject());
-        mockRunListener.testEnded(
-                (TestDescription) EasyMock.anyObject(),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
-        mockRunListener.testFailed(
-                (TestDescription) EasyMock.anyObject(), (String) EasyMock.anyObject());
-        mockRunListener.testEnded(
-                (TestDescription) EasyMock.anyObject(),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
+        String[] contents = readInFile(GTEST_OUTPUT_FILE_8);
+        ITestInvocationListener mockRunListener = mock(ITestInvocationListener.class);
 
-        mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
-        mockRunListener.testFailed(
-                (TestDescription) EasyMock.anyObject(), (String) EasyMock.anyObject());
-        mockRunListener.testEnded(
-                (TestDescription) EasyMock.anyObject(),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        // 1 passing test
-        mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
-        mockRunListener.testEnded(
-                (TestDescription) EasyMock.anyObject(),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        // 1 ignored test
-        mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
-        mockRunListener.testIgnored((TestDescription) EasyMock.anyObject());
-        mockRunListener.testEnded(
-                (TestDescription) EasyMock.anyObject(),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-
-        mockRunListener.testRunEnded(
-                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-        EasyMock.replay(mockRunListener);
         GTestResultParser resultParser = new GTestResultParser(TEST_MODULE_NAME, mockRunListener);
         resultParser.processNewLines(contents);
         resultParser.flush();
-        EasyMock.verify(mockRunListener);
+
+        verify(mockRunListener).testRunStarted(TEST_MODULE_NAME, 18);
+        verify(mockRunListener, times(18)).testStarted(Mockito.any(), Mockito.anyLong());
+        verify(mockRunListener, times(18))
+                .testEnded(
+                        (TestDescription) Mockito.any(),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        verify(mockRunListener, times(3)).testFailed(Mockito.any(), (String) Mockito.any());
+        verify(mockRunListener)
+                .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
     }
 
     /** Tests the parser for a simple test run output with a link error. */
     @Test
     public void testParseSimpleFile_LinkError() throws Exception {
         String[] contents = readInFile(GTEST_OUTPUT_FILE_9);
-        ITestInvocationListener mockRunListener =
-                EasyMock.createMock(ITestInvocationListener.class);
-        mockRunListener.testRunStarted(TEST_MODULE_NAME, 0);
-        Capture<FailureDescription> captured = new Capture<>();
-        mockRunListener.testRunFailed(EasyMock.capture(captured));
-        mockRunListener.testRunEnded(
-                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-        EasyMock.replay(mockRunListener);
+        ITestInvocationListener mockRunListener = mock(ITestInvocationListener.class);
+
+        ArgumentCaptor<FailureDescription> captured =
+                ArgumentCaptor.forClass(FailureDescription.class);
+
         GTestResultParser resultParser = new GTestResultParser(TEST_MODULE_NAME, mockRunListener);
         resultParser.processNewLines(contents);
         resultParser.flush();
-        EasyMock.verify(mockRunListener);
+
+        verify(mockRunListener).testRunStarted(TEST_MODULE_NAME, 0);
+        verify(mockRunListener).testRunFailed(captured.capture());
+        verify(mockRunListener)
+                .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
         assertTrue(
                 captured.getValue()
                         .getErrorMessage()
@@ -369,18 +243,19 @@ public class GTestResultParserTest extends GTestParserTestBase {
     @Test
     public void testParseSimpleFile_earlyError() throws Exception {
         String[] contents = readInFile(GTEST_OUTPUT_FILE_10);
-        ITestInvocationListener mockRunListener =
-                EasyMock.createMock(ITestInvocationListener.class);
-        mockRunListener.testRunStarted(TEST_MODULE_NAME, 0);
-        Capture<FailureDescription> captured = new Capture<>();
-        mockRunListener.testRunFailed(EasyMock.capture(captured));
-        mockRunListener.testRunEnded(
-                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-        EasyMock.replay(mockRunListener);
+        ITestInvocationListener mockRunListener = mock(ITestInvocationListener.class);
+
+        ArgumentCaptor<FailureDescription> captured =
+                ArgumentCaptor.forClass(FailureDescription.class);
+
         GTestResultParser resultParser = new GTestResultParser(TEST_MODULE_NAME, mockRunListener);
         resultParser.processNewLines(contents);
         resultParser.flush();
-        EasyMock.verify(mockRunListener);
+
+        verify(mockRunListener).testRunStarted(TEST_MODULE_NAME, 0);
+        verify(mockRunListener).testRunFailed(captured.capture());
+        verify(mockRunListener)
+                .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
         assertTrue(
                 captured.getValue()
                         .getErrorMessage()
@@ -393,52 +268,46 @@ public class GTestResultParserTest extends GTestParserTestBase {
     @Test
     public void testParseSimpleFileWithSkips() throws Exception {
         String[] contents = readInFile(GTEST_OUTPUT_FILE_11);
-        ITestInvocationListener mockRunListener =
-                EasyMock.createMock(ITestInvocationListener.class);
-        mockRunListener.testRunStarted(TEST_MODULE_NAME, 11);
-        // 11 tests run, with the fifth and sixth tests being ignored
-        for (int i = 0; i < 11; ++i) {
-            mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
-            if (i == 4 || i == 5) {
-                mockRunListener.testIgnored((TestDescription) EasyMock.anyObject());
-            }
-            mockRunListener.testEnded(
-                    (TestDescription) EasyMock.anyObject(),
-                    EasyMock.anyLong(),
-                    EasyMock.<HashMap<String, Metric>>anyObject());
-        }
-        // TODO: validate param values
-        mockRunListener.testRunEnded(
-                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-        EasyMock.replay(mockRunListener);
+        ITestInvocationListener mockRunListener = mock(ITestInvocationListener.class);
+
         GTestResultParser resultParser = new GTestResultParser(TEST_MODULE_NAME, mockRunListener);
         resultParser.processNewLines(contents);
         resultParser.flush();
-        EasyMock.verify(mockRunListener);
+
+        verify(mockRunListener).testRunStarted(TEST_MODULE_NAME, 11);
+        verify(mockRunListener, times(11)).testStarted(Mockito.any(), Mockito.anyLong());
+        verify(mockRunListener, times(2)).testIgnored((TestDescription) Mockito.any());
+        verify(mockRunListener, times(11))
+                .testEnded(
+                        (TestDescription) Mockito.any(),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        verify(mockRunListener)
+                .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
     }
 
     /** Tests the parser for a test runs but doesn't finish run completely. */
     @Test
     public void testParseSimpleFileWithoutRunComplete() throws Exception {
         String[] contents = readInFile(GTEST_OUTPUT_FILE_12);
-        ITestInvocationListener mockRunListener =
-                EasyMock.createMock(ITestInvocationListener.class);
-        mockRunListener.testRunStarted(TEST_MODULE_NAME, 11);
-        mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
-        mockRunListener.testFailed(
-                (TestDescription) EasyMock.anyObject(), (FailureDescription) EasyMock.anyObject());
-        mockRunListener.testEnded(
-                (TestDescription) EasyMock.anyObject(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        Capture<FailureDescription> captured = new Capture<>();
-        mockRunListener.testRunFailed(EasyMock.capture(captured));
-        mockRunListener.testRunEnded(
-                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-        EasyMock.replay(mockRunListener);
+        ITestInvocationListener mockRunListener = mock(ITestInvocationListener.class);
+
+        ArgumentCaptor<FailureDescription> captured =
+                ArgumentCaptor.forClass(FailureDescription.class);
+
         GTestResultParser resultParser = new GTestResultParser(TEST_MODULE_NAME, mockRunListener);
         resultParser.processNewLines(contents);
         resultParser.flush();
-        EasyMock.verify(mockRunListener);
+
+        verify(mockRunListener).testRunStarted(TEST_MODULE_NAME, 11);
+        verify(mockRunListener).testStarted((TestDescription) Mockito.any(), Mockito.anyLong());
+        verify(mockRunListener)
+                .testFailed((TestDescription) Mockito.any(), (FailureDescription) Mockito.any());
+        verify(mockRunListener)
+                .testEnded((TestDescription) Mockito.any(), Mockito.<HashMap<String, Metric>>any());
+        verify(mockRunListener).testRunFailed(captured.capture());
+        verify(mockRunListener)
+                .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
         FailureDescription cap = captured.getValue();
         assertEquals("Test run incomplete. Expected 11 tests, received 0", cap.getErrorMessage());
     }
