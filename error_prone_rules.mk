@@ -29,6 +29,7 @@ LOCAL_ERROR_PRONE_FLAGS:= -XDandroidCompatible=false \
                           -Xep:JUnit4TestNotRun:ERROR \
                           -Xep:JUnit4ClassUsedInJUnit3:ERROR \
                           -Xep:JUnitAmbiguousTestClass:ERROR \
+                          -Xep:LongLiteralLowerCaseSuffix:ERROR \
                           -Xep:MissingFail:ERROR \
                           -Xep:MissingOverride:ERROR \
                           -Xep:ModifiedButNotUsed:ERROR \
