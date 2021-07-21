@@ -80,7 +80,7 @@ public class BaseHostJUnit4TestTest {
             TestDescription tid = new TestDescription("class", "test1");
             listener.testStarted(tid);
             listener.testEnded(tid, new HashMap<String, Metric>());
-            listener.testRunEnded(500l, new HashMap<String, Metric>());
+            listener.testRunEnded(500L, new HashMap<String, Metric>());
             return listener;
         }
 

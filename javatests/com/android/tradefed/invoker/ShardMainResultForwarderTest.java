@@ -94,8 +94,8 @@ public class ShardMainResultForwarderTest {
         mShardPrimary.invocationStarted(main);
         mShardPrimary.invocationStarted(shard1);
         mShardPrimary.invocationStarted(shard2);
-        mShardPrimary.invocationEnded(0l);
-        mShardPrimary.invocationEnded(1l);
+        mShardPrimary.invocationEnded(0L);
+        mShardPrimary.invocationEnded(1L);
 
         assertEquals("value1", mainBuild.getBuildAttributes().get("shard1"));
         assertEquals("value2", mainBuild.getBuildAttributes().get("shard2"));
@@ -143,8 +143,8 @@ public class ShardMainResultForwarderTest {
         mShardPrimary.invocationStarted(main);
         mShardPrimary.invocationStarted(shard1);
         mShardPrimary.invocationStarted(shard2);
-        mShardPrimary.invocationEnded(0l);
-        mShardPrimary.invocationEnded(1l);
+        mShardPrimary.invocationEnded(0L);
+        mShardPrimary.invocationEnded(1L);
 
         assertEquals("value1", mainBuild1.getBuildAttributes().get("shard1"));
         assertEquals("value2", mainBuild1.getBuildAttributes().get("shard2"));
@@ -218,8 +218,8 @@ public class ShardMainResultForwarderTest {
         mShardPrimary.invocationStarted(main);
         mShardPrimary.invocationStarted(shard1);
         mShardPrimary.invocationStarted(shard2);
-        mShardPrimary.invocationEnded(0l, shard1);
-        mShardPrimary.invocationEnded(1l, shard2);
+        mShardPrimary.invocationEnded(0L, shard1);
+        mShardPrimary.invocationEnded(1L, shard2);
 
         Map<String, String> attributes = main.getAttributes().getUniqueMap();
         assertEquals(

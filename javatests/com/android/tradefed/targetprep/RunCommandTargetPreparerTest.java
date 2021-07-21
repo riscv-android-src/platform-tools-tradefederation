@@ -96,7 +96,7 @@ public class RunCommandTargetPreparerTest {
         EasyMock.expect(
                         mMockDevice.executeShellV2Command(
                                 EasyMock.eq(command),
-                                EasyMock.eq(100l),
+                                EasyMock.eq(100L),
                                 EasyMock.eq(TimeUnit.MILLISECONDS),
                                 EasyMock.eq(0)))
                 .andReturn(res);

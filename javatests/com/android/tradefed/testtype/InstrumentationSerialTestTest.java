@@ -76,7 +76,7 @@ public class InstrumentationSerialTestTest {
                     public void run(TestInformation testInfo, ITestInvocationListener listener) {
                         listener.testRunStarted(packageName, 1);
                         listener.testStarted(test);
-                        listener.testEnded(test, 10l, new HashMap<String, Metric>());
+                        listener.testEnded(test, 10L, new HashMap<String, Metric>());
                         listener.testRunEnded(0, new HashMap<String, Metric>());
                     }
                 };
@@ -97,7 +97,7 @@ public class InstrumentationSerialTestTest {
         mMockListener.testRunStarted(packageName, 0, 1);
         mMockListener.testStarted(EasyMock.eq(test), EasyMock.anyLong());
         mMockListener.testEnded(
-                EasyMock.eq(test), EasyMock.eq(10l), EasyMock.eq(new HashMap<String, Metric>()));
+                EasyMock.eq(test), EasyMock.eq(10L), EasyMock.eq(new HashMap<String, Metric>()));
         mMockListener.testRunEnded(0, new HashMap<String, Metric>());
 
         EasyMock.replay(mMockListener, mMockTestDevice);
@@ -196,7 +196,7 @@ public class InstrumentationSerialTestTest {
                     public void run(TestInformation testInfo, ITestInvocationListener listener) {
                         listener.testRunStarted(packageName, 1);
                         listener.testStarted(test);
-                        listener.testEnded(test, 10l, new HashMap<String, Metric>());
+                        listener.testEnded(test, 10L, new HashMap<String, Metric>());
                         listener.testRunEnded(0, new HashMap<String, Metric>());
                     }
                 };
@@ -219,7 +219,7 @@ public class InstrumentationSerialTestTest {
         mMockListener.testRunStarted(packageName, 0, 1);
         mMockListener.testStarted(EasyMock.eq(test), EasyMock.anyLong());
         mMockListener.testEnded(
-                EasyMock.eq(test), EasyMock.eq(10l), EasyMock.eq(new HashMap<String, Metric>()));
+                EasyMock.eq(test), EasyMock.eq(10L), EasyMock.eq(new HashMap<String, Metric>()));
         mMockListener.testRunEnded(0, new HashMap<String, Metric>());
 
         EasyMock.replay(mMockListener, mMockTestDevice);

@@ -1196,7 +1196,7 @@ public abstract class ITestSuite
                     TimeUtil.formatElapsedTime(mDirectModule.getRuntimeHint()));
             return mDirectModule.getRuntimeHint();
         }
-        return 0l;
+        return 0L;
     }
 
     /** {@inheritDoc} */
