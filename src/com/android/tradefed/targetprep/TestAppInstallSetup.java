@@ -20,7 +20,6 @@ import com.android.incfs.install.adb.ddmlib.DeviceConnection;
 import com.android.incfs.install.adb.ddmlib.DeviceLogger;
 import com.android.incfs.install.IncrementalInstallSession;
 import com.android.incfs.install.IncrementalInstallSession.Builder;
-import com.android.incfs.install.PendingBlock;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.command.remote.DeviceDescriptor;
@@ -59,7 +58,6 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -83,7 +81,7 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
         INSTANT,
     }
 
-    private static final int INCREMENTAL_INSTALL_TIMEOUT_SECONDS = 240;
+    private static final int INCREMENTAL_INSTALL_TIMEOUT_SECONDS = 1800;
 
     public static final String RUN_TESTS_AS_USER_KEY = "RUN_TESTS_AS_USER";
 
@@ -770,15 +768,10 @@ public class TestAppInstallSetup extends BaseTargetPreparer implements IAbiRecei
             mInstallArgs.add(Integer.toString(mUserId));
         }
 
-        Random randomBlock = new Random();
         Builder incrementalInstallSessionBuilder =
                 new Builder()
                         .setLogger(new DeviceLogger(new StdLogger(StdLogger.Level.ERROR)))
-                        .addExtraArgs(mInstallArgs.toArray(new String[] {}))
-                        .setBlockFilter(
-                                (PendingBlock b) ->
-                                        (b.getBlockIndex()
-                                                != randomBlock.nextInt(b.getFileBlockCount())));
+                        .addExtraArgs(mInstallArgs.toArray(new String[] {}));
         return incrementalInstallSessionBuilder;
     }
 }

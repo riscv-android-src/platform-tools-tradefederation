@@ -51,7 +51,6 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.sandbox.ISandbox;
-import com.android.tradefed.targetprep.ILabPreparer;
 import com.android.tradefed.targetprep.ITargetCleaner;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.testtype.IInvocationContextReceiver;
@@ -80,7 +79,7 @@ public class SandboxedInvocationExecutionTest {
     @Mock ITestInvocationListener mMockListener;
     @Mock ILogSaver mMockLogSaver;
     @Mock TestBuildProviderInterface mMockProvider;
-    @Mock ILabPreparer mMockLabPreparer;
+    @Mock ITargetPreparer mMockLabPreparer;
     @Mock ITargetPreparer mMockPreparer;
     @Mock ITargetCleaner mMockCleaner;
     @Mock ITestDevice mMockDevice;

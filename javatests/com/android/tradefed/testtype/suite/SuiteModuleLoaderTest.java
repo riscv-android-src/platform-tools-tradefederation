@@ -30,6 +30,7 @@ import com.android.tradefed.config.ConfigurationFactory;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionClass;
+import com.android.tradefed.device.DeviceFoldableState;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
@@ -79,6 +80,12 @@ public class SuiteModuleLoaderTest {
                     + "    <option name=\"config-descriptor:metadata\" key=\"parameter\" value=\"instant_app\" />"
                     // Duplicate parameter should not have impact
                     + "    <option name=\"config-descriptor:metadata\" key=\"parameter\" value=\"instant_app\" />"
+                    + "    <test class=\"com.android.tradefed.testtype.suite.TestSuiteStub\" />\n"
+                    + "</configuration>";
+
+    private static final String TEST_FOLDABLE_CONFIG =
+            "<configuration description=\"Runs a stub tests part of some suite\">\n"
+                    + "    <option name=\"config-descriptor:metadata\" key=\"parameter\" value=\"all_foldable_states\" />"
                     + "    <test class=\"com.android.tradefed.testtype.suite.TestSuiteStub\" />\n"
                     + "</configuration>";
 
@@ -132,6 +139,11 @@ public class SuiteModuleLoaderTest {
     private void createInstantModuleConfig(String moduleName) throws IOException {
         File module = new File(mTestsDir, moduleName + SuiteModuleLoader.CONFIG_EXT);
         FileUtil.writeToFile(TEST_INSTANT_CONFIG, module);
+    }
+
+    private void createFoldableModuleConfig(String moduleName) throws IOException {
+        File module = new File(mTestsDir, moduleName + SuiteModuleLoader.CONFIG_EXT);
+        FileUtil.writeToFile(TEST_FOLDABLE_CONFIG, module);
     }
 
     private void createMainlineModuleConfig(String moduleName) throws IOException {
@@ -425,6 +437,77 @@ public class SuiteModuleLoaderTest {
         assertEquals(
                 "instant",
                 descriptor
+                        .getAllMetaData()
+                        .getUniqueMap()
+                        .get(ConfigurationDescriptor.ACTIVE_PARAMETER_KEY));
+        assertEquals("armeabi-v7a", descriptor.getAbi().getName());
+    }
+
+    @Test
+    public void testLoad_foldable() throws Exception {
+        Map<String, LinkedHashSet<SuiteTestFilter>> excludeFilters = new LinkedHashMap<>();
+        createFoldableModuleConfig("basemodule");
+        Set<String> excludeFilterString = new LinkedHashSet<>();
+        excludeFilterString.add("armeabi-v7a basemodule");
+        excludeFilterString.add(
+                "armeabi-v7a basemodule[foldable:1:CLOSED] NativeDnsAsyncTest#Async_Cancel");
+        SuiteModuleLoader.addFilters(excludeFilterString, excludeFilters, null);
+
+        mRepo =
+                new SuiteModuleLoader(
+                        new LinkedHashMap<String, LinkedHashSet<SuiteTestFilter>>(),
+                        excludeFilters,
+                        new ArrayList<>(),
+                        new ArrayList<>());
+        mRepo.setParameterizedModules(true);
+        Set<DeviceFoldableState> foldableStates = new LinkedHashSet<>();
+        foldableStates.add(new DeviceFoldableState(0, "DEFAULT"));
+        foldableStates.add(new DeviceFoldableState(1, "CLOSED"));
+        foldableStates.add(new DeviceFoldableState(2, "OPEN"));
+        mRepo.setFoldableStates(foldableStates);
+
+        List<String> patterns = new ArrayList<>();
+        patterns.add(".*.config");
+        patterns.add(".*.xml");
+        LinkedHashMap<String, IConfiguration> res =
+                mRepo.loadConfigsFromDirectory(
+                        Arrays.asList(mTestsDir), mAbis, null, null, patterns);
+        assertEquals(2, res.size());
+        // Full module was excluded completely, only foldable are created
+        IConfiguration foldable1 = res.get("armeabi-v7a basemodule[foldable:1:CLOSED]");
+        assertNotNull(foldable1);
+        TestSuiteStub stubTest = (TestSuiteStub) foldable1.getTests().get(0);
+        assertEquals(1, stubTest.getExcludeFilters().size());
+        assertEquals(
+                "NativeDnsAsyncTest#Async_Cancel", stubTest.getExcludeFilters().iterator().next());
+        // Ensure that appropriate metadata are set on the module config descriptor
+        ConfigurationDescriptor descriptor = foldable1.getConfigurationDescription();
+        assertEquals(
+                1,
+                descriptor
+                        .getAllMetaData()
+                        .get(ConfigurationDescriptor.ACTIVE_PARAMETER_KEY)
+                        .size());
+        assertEquals(
+                "foldable:1:CLOSED",
+                descriptor
+                        .getAllMetaData()
+                        .getUniqueMap()
+                        .get(ConfigurationDescriptor.ACTIVE_PARAMETER_KEY));
+        assertEquals("armeabi-v7a", descriptor.getAbi().getName());
+
+        IConfiguration foldable2 = res.get("armeabi-v7a basemodule[foldable:2:OPEN]");
+        assertNotNull(foldable2);
+        ConfigurationDescriptor descriptor2 = foldable2.getConfigurationDescription();
+        assertEquals(
+                1,
+                descriptor2
+                        .getAllMetaData()
+                        .get(ConfigurationDescriptor.ACTIVE_PARAMETER_KEY)
+                        .size());
+        assertEquals(
+                "foldable:2:OPEN",
+                descriptor2
                         .getAllMetaData()
                         .getUniqueMap()
                         .get(ConfigurationDescriptor.ACTIVE_PARAMETER_KEY));

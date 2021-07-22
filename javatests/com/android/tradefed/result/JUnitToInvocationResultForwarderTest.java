@@ -17,6 +17,7 @@ package com.android.tradefed.result;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.verify;
 
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.testtype.DeviceTestCase;
@@ -24,12 +25,14 @@ import com.android.tradefed.testtype.DeviceTestCase;
 import junit.framework.AssertionFailedError;
 import junit.framework.TestCase;
 
-import org.easymock.Capture;
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Inherited;
@@ -42,12 +45,13 @@ import java.util.HashMap;
 @RunWith(JUnit4.class)
 public class JUnitToInvocationResultForwarderTest {
 
-    private ITestInvocationListener mListener;
+    @Mock ITestInvocationListener mListener;
     private JUnitToInvocationResultForwarder mForwarder;
 
     @Before
     public void setUp() throws Exception {
-        mListener = EasyMock.createMock(ITestInvocationListener.class);
+        MockitoAnnotations.initMocks(this);
+
         mForwarder = new JUnitToInvocationResultForwarder(mListener);
     }
 
@@ -73,40 +77,50 @@ public class JUnitToInvocationResultForwarderTest {
     @Test
     public void testAddFailure() {
         final AssertionFailedError a = new AssertionFailedError();
-        mListener.testFailed(
-                EasyMock.eq(new TestDescription(DeviceTestCase.class.getName(), "testAddFailure")),
-                (String) EasyMock.anyObject());
-        EasyMock.replay(mListener);
+
         DeviceTestCase test = new DeviceTestCase();
         test.setName("testAddFailure");
         mForwarder.addFailure(test, a);
-        EasyMock.verify(mListener);
+
+        verify(mListener)
+                .testFailed(
+                        Mockito.eq(
+                                new TestDescription(
+                                        DeviceTestCase.class.getName(), "testAddFailure")),
+                        (String) Mockito.any());
     }
 
     /** Test method for {@link JUnitToInvocationResultForwarder#endTest(junit.framework.Test)}. */
     @Test
     public void testEndTest() {
         HashMap<String, Metric> emptyMap = new HashMap<>();
-        mListener.testEnded(
-                EasyMock.eq(new TestDescription(DeviceTestCase.class.getName(), "testEndTest")),
-                EasyMock.eq(emptyMap));
+
         DeviceTestCase test = new DeviceTestCase();
         test.setName("testEndTest");
-        EasyMock.replay(mListener);
+
         mForwarder.endTest(test);
-        EasyMock.verify(mListener);
+
+        verify(mListener)
+                .testEnded(
+                        Mockito.eq(
+                                new TestDescription(DeviceTestCase.class.getName(), "testEndTest")),
+                        Mockito.eq(emptyMap));
     }
 
     /** Test method for {@link JUnitToInvocationResultForwarder#startTest(junit.framework.Test)}. */
     @Test
     public void testStartTest() {
-        mListener.testStarted(
-                EasyMock.eq(new TestDescription(DeviceTestCase.class.getName(), "testStartTest")));
+
         DeviceTestCase test = new DeviceTestCase();
         test.setName("testStartTest");
-        EasyMock.replay(mListener);
+
         mForwarder.startTest(test);
-        EasyMock.verify(mListener);
+
+        verify(mListener)
+                .testStarted(
+                        Mockito.eq(
+                                new TestDescription(
+                                        DeviceTestCase.class.getName(), "testStartTest")));
     }
 
     /**
@@ -115,13 +129,14 @@ public class JUnitToInvocationResultForwarderTest {
      */
     @Test
     public void testStartTest_annotations() {
-        Capture<TestDescription> capture = new Capture<>();
-        mListener.testStarted(EasyMock.capture(capture));
+        ArgumentCaptor<TestDescription> capture = ArgumentCaptor.forClass(TestDescription.class);
+
         InheritingClass test = new InheritingClass();
         test.setName("testbaseWithAnnotation");
-        EasyMock.replay(mListener);
+
         mForwarder.startTest(test);
-        EasyMock.verify(mListener);
+
+        verify(mListener).testStarted(capture.capture());
         TestDescription desc = capture.getValue();
         assertEquals(InheritingClass.class.getName(), desc.getClassName());
         assertEquals("testbaseWithAnnotation", desc.getTestName());

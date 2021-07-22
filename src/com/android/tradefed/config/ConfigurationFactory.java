@@ -728,10 +728,11 @@ public class ConfigurationFactory implements IConfigurationFactory {
         SortedSet<ConfigurationDef> configDefs = new TreeSet<ConfigurationDef>(
                 new ConfigDefComparator());
         configDefs.addAll(mConfigDefMap.values());
+        StringBuilder sb = new StringBuilder();
         for (ConfigurationDef def : configDefs) {
-            out.printf("  %s: %s", def.getName(), def.getDescription());
-            out.println();
+            sb.append(String.format("  %s: %s\n", def.getName(), def.getDescription()));
         }
+        out.printf(sb.toString());
     }
 
     /**

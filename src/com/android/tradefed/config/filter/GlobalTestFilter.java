@@ -83,6 +83,9 @@ public final class GlobalTestFilter {
     }
 
     public void addPreviousPassedTests(Set<String> previousPassed) {
+        if (!previousPassed.isEmpty()) {
+            CLog.d("Adding following exclusion to GlobalTestFilter: %s", previousPassed);
+        }
         mExcludeFilters.addAll(previousPassed);
     }
 
