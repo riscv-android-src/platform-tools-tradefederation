@@ -378,6 +378,14 @@ public interface IRunUtil {
     public void setEnvVariablePriority(EnvPriority priority);
 
     /**
+     * Allow to use linux 'kill' interruption on process running through #runTimed methods when it
+     * reaches a timeout.
+     *
+     * Cannot be used on the default {@link IRunUtil} instance.
+     */
+    public void setLinuxInterruptProcess(boolean interrupt);
+
+    /**
      * Enum that defines whether setting or unsetting a particular env. variable has priority.
      */
     public enum EnvPriority {
