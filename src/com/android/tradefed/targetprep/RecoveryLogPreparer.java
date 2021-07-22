@@ -19,6 +19,8 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.TestDeviceState;
 import com.android.tradefed.invoker.TestInformation;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.FileInputStreamSource;
@@ -48,8 +50,11 @@ public class RecoveryLogPreparer extends BaseTargetPreparer implements ITestLogg
         ITestDevice device = testInformation.getDevice();
 
         if (TestDeviceState.RECOVERY.equals(device.getDeviceState())) {
+            // Track we entered the recovery mode handling
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.AUTO_RECOVERY_MODE_COUNT, 1);
+            device.enableAdbRoot();
             File recoveryLog = device.pullFile(RECOVERY_LOG);
-            // TODO: Need device in root to pull that log
             if (recoveryLog == null) {
                 CLog.w("Failed to pull recovery.log file.");
             } else {
@@ -57,8 +62,13 @@ public class RecoveryLogPreparer extends BaseTargetPreparer implements ITestLogg
                     mLogger.testLog(RECOVERY_LOG_NAME, LogDataType.RECOVERY_MODE_LOG, source);
                 }
             }
-            // Turn device into bootloader for the rest of recovery
-            device.rebootIntoBootloader();
+            rebootDevice(testInformation);
         }
+    }
+
+    protected void rebootDevice(TestInformation testInformation)
+            throws DeviceNotAvailableException {
+        // Turn device into bootloader for the rest of recovery
+        testInformation.getDevice().rebootIntoBootloader();
     }
 }
