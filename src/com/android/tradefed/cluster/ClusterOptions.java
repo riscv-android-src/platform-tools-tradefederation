@@ -101,6 +101,11 @@ public class ClusterOptions implements IClusterOptions {
     private boolean mCheckFlashingPermitsOnLease = true;
 
     @Option(
+            name = "check-permits-on-lease",
+            description = "Check all available permits types when leasing tasks")
+    private boolean mCheckPermitsOnLease = true;
+
+    @Option(
             name = "invocation-heartbeat-interval",
             isTimeVal = true,
             description = "The time interval between invocation heartbeats")
@@ -165,6 +170,12 @@ public class ClusterOptions implements IClusterOptions {
     @Override
     public boolean checkFlashingPermitsOnLease() {
         return mCheckFlashingPermitsOnLease;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean checkPermitsOnLease() {
+        return mCheckPermitsOnLease;
     }
 
     /** {@inheritDoc} */

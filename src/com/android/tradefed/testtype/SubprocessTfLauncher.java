@@ -29,6 +29,7 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
@@ -495,7 +496,7 @@ public abstract class SubprocessTfLauncher
                     String.format(
                             "Found some output in stderr:\n%s",
                             FileUtil.readStringFromFile(stdErrFile));
-            listener.testFailed(tid, trace);
+            listener.testFailed(tid, FailureDescription.create(trace));
         }
         listener.testEnded(tid, new HashMap<String, Metric>());
         listener.testRunEnded(0, new HashMap<String, Metric>());

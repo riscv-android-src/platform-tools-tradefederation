@@ -72,6 +72,7 @@ public enum LogDataType {
     HARNESS_CONFIG("xml", "text/xml", false, true),
     ADB_HOST_LOG("txt", "text/plain", false, true),
     PASSED_TESTS("txt", "text/plain", false, true),
+    RECOVERY_MODE_LOG("txt", "text/plain", false, true),
     /* Unknown file type */
     UNKNOWN("dat", "text/plain", false, false);
 

@@ -40,7 +40,6 @@ import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.ITestLogger;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.sandbox.SandboxOptions;
-import com.android.tradefed.targetprep.ILabPreparer;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
@@ -66,7 +65,7 @@ public class ParentSandboxInvocationExecutionTest {
     private IConfigurationFactory mMockFactory;
     private SandboxOptions mOptions;
     private ITargetPreparer mMockPreparer;
-    private ILabPreparer mMockLabPreparer;
+    private ITargetPreparer mMockLabPreparer;
     private ITestDevice mMockDevice;
     private ITestLogger mMockLogger;
     private IRunUtil mMockRunUtil;
@@ -78,7 +77,7 @@ public class ParentSandboxInvocationExecutionTest {
         mMockDevice = Mockito.mock(ITestDevice.class);
         mMockLogger = Mockito.mock(ITestLogger.class);
         mMockRunUtil = Mockito.mock(IRunUtil.class);
-        mMockLabPreparer = Mockito.mock(ILabPreparer.class);
+        mMockLabPreparer = Mockito.mock(ITargetPreparer.class);
 
         mParentSandbox =
                 new ParentSandboxInvocationExecution() {

@@ -23,7 +23,6 @@ import com.android.tradefed.device.IDeviceSelection;
 import com.android.tradefed.device.TestDeviceOptions;
 import com.android.tradefed.device.WaitDeviceRecovery;
 import com.android.tradefed.log.LogUtil.CLog;
-import com.android.tradefed.targetprep.ILabPreparer;
 import com.android.tradefed.targetprep.ITargetPreparer;
 
 import java.util.ArrayList;
@@ -42,7 +41,7 @@ public class DeviceConfigurationHolder implements IDeviceConfiguration {
 
     private IBuildProvider mBuildProvider = new StubBuildProvider();
     private List<ITargetPreparer> mListTargetPreparer = new ArrayList<>();
-    private List<ILabPreparer> mListLabPreparer = new ArrayList<>();
+    private List<ITargetPreparer> mListLabPreparer = new ArrayList<>();
     private IDeviceRecovery mDeviceRecovery = new WaitDeviceRecovery();
     private IDeviceSelection mDeviceSelection = new DeviceSelectionOptions();
     private TestDeviceOptions mTestDeviceOption = new TestDeviceOptions();
@@ -83,12 +82,6 @@ public class DeviceConfigurationHolder implements IDeviceConfiguration {
     public void addSpecificConfig(Object config) throws ConfigurationException {
         if (config instanceof IBuildProvider) {
             mBuildProvider = (IBuildProvider) config;
-        } else if (config instanceof ILabPreparer) {
-            if (isFake()) {
-                throw new ConfigurationException(
-                        "cannot specify a lab_preparer for a isFake=true device.");
-            }
-            mListLabPreparer.add((ILabPreparer) config);
         } else if (config instanceof ITargetPreparer){
             if (isFake()) {
                 throw new ConfigurationException(
@@ -104,6 +97,43 @@ public class DeviceConfigurationHolder implements IDeviceConfiguration {
         } else {
             throw new ConfigurationException(String.format("Cannot add %s class "
                     + "to a device specific definition", config.getClass()));
+        }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void addSpecificConfig(Object config, String type) throws ConfigurationException {
+        if (config instanceof IBuildProvider
+                && Configuration.BUILD_PROVIDER_TYPE_NAME.equals(type)) {
+            mBuildProvider = (IBuildProvider) config;
+        } else if (config instanceof ITargetPreparer
+                && Configuration.LAB_PREPARER_TYPE_NAME.equals(type)) {
+            if (isFake()) {
+                throw new ConfigurationException(
+                        "cannot specify a lab_preparer for a isFake=true device.");
+            }
+            mListLabPreparer.add((ITargetPreparer) config);
+        } else if (config instanceof ITargetPreparer
+                && Configuration.TARGET_PREPARER_TYPE_NAME.equals(type)) {
+            if (isFake()) {
+                throw new ConfigurationException(
+                        "cannot specify a target_preparer for a isFake=true device.");
+            }
+            mListTargetPreparer.add((ITargetPreparer) config);
+        } else if (config instanceof IDeviceRecovery
+                && Configuration.DEVICE_RECOVERY_TYPE_NAME.equals(type)) {
+            mDeviceRecovery = (IDeviceRecovery) config;
+        } else if (config instanceof IDeviceSelection
+                && Configuration.DEVICE_REQUIREMENTS_TYPE_NAME.equals(type)) {
+            mDeviceSelection = (IDeviceSelection) config;
+        } else if (config instanceof TestDeviceOptions
+                && Configuration.DEVICE_OPTIONS_TYPE_NAME.equals(type)) {
+            mTestDeviceOption = (TestDeviceOptions) config;
+        } else {
+            throw new ConfigurationException(
+                    String.format(
+                            "Cannot add %s class " + "to a device specific definition",
+                            config.getClass()));
         }
     }
 
@@ -190,7 +220,7 @@ public class DeviceConfigurationHolder implements IDeviceConfiguration {
 
     /** {@inheritDoc} */
     @Override
-    public List<ILabPreparer> getLabPreparers() {
+    public List<ITargetPreparer> getLabPreparers() {
         return mListLabPreparer;
     }
 

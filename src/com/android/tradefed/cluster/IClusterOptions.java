@@ -39,7 +39,10 @@ public interface IClusterOptions {
     public Map<String, String> getDeviceTag();
 
     /** Check if it should check for available flashing permits before leasing. */
-    boolean checkFlashingPermitsOnLease();
+    public boolean checkFlashingPermitsOnLease();
+
+    /** Check some available permits before leasing. */
+    public boolean checkPermitsOnLease();
 
     /** Get the format for labelling run targets. */
     public String getRunTargetFormat();

@@ -1092,6 +1092,13 @@ public class CommandScheduler extends Thread implements ICommandScheduler, IComm
             // potentially create more invocations.
             manager.terminateDeviceRecovery();
             manager.terminateDeviceMonitor();
+            if (getFeatureServer() != null) {
+                try {
+                    getFeatureServer().shutdown();
+                } catch (InterruptedException e) {
+                    CLog.e(e);
+                }
+            }
             CLog.i("Waiting for invocation threads to complete");
             waitForAllInvocationThreads();
             closeRemoteClient();

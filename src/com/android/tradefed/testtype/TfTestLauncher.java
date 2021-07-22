@@ -19,6 +19,7 @@ import com.android.tradefed.build.IFolderBuildInfo;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.InputStreamSource;
@@ -375,7 +376,7 @@ public class TfTestLauncher extends SubprocessTfLauncher {
                             "Found '%d' unexpected temporary files: %s.\nOnly "
                                     + "expected files are: %s. And each should appears only once.",
                             unmatchedFiles.size(), unmatchedFiles, patterns);
-            listener.testFailed(tid, trace);
+            listener.testFailed(tid, FailureDescription.create(trace));
         }
         listener.testEnded(tid, new HashMap<String, Metric>());
         listener.testRunEnded(0, new HashMap<String, Metric>());

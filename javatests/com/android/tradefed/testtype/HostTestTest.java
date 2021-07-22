@@ -15,7 +15,16 @@
  */
 package com.android.tradefed.testtype;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.ConfigurationException;
@@ -50,12 +59,9 @@ import com.android.tradefed.util.proto.TfMetricProtoUtil;
 
 import com.google.common.collect.ImmutableMap;
 
-import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
-import org.easymock.Capture;
-import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -64,13 +70,18 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Rule;
+import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.BlockJUnit4ClassRunner;
 import org.junit.runners.JUnit4;
 import org.junit.runners.Suite;
 import org.junit.runners.Suite.SuiteClasses;
 import org.junit.runners.model.InitializationError;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
+import org.mockito.Mock;
 import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.io.File;
 import java.lang.annotation.Retention;
@@ -82,18 +93,17 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Unit tests for {@link HostTest}.
- */
+/** Unit tests for {@link HostTest}. */
 @SuppressWarnings("unchecked")
-public class HostTestTest extends TestCase {
+@RunWith(JUnit4.class)
+public class HostTestTest {
 
     private static final File FAKE_REMOTE_FILE_PATH = new File("gs://bucket/path/file");
 
     private HostTest mHostTest;
-    private ITestInvocationListener mListener;
-    private ITestDevice mMockDevice;
-    private IBuildInfo mMockBuildInfo;
+    @Mock ITestInvocationListener mListener;
+    @Mock ITestDevice mMockDevice;
+    @Mock IBuildInfo mMockBuildInfo;
     private TestInformation mTestInfo;
 
     private IRemoteFileResolver mMockResolver;
@@ -109,13 +119,11 @@ public class HostTestTest extends TestCase {
         }
 
         @MyAnnotation
-        public void testPass() {
-        }
+        public void testPass() {}
 
         @MyAnnotation
         @MyAnnotation2
-        public void testPass2() {
-        }
+        public void testPass2() {}
     }
 
     public static class DynamicTestCase extends TestCase {
@@ -178,8 +186,7 @@ public class HostTestTest extends TestCase {
 
     @MyAnnotation
     public static class AnotherTestCase extends TestCase {
-        public AnotherTestCase() {
-        }
+        public AnotherTestCase() {}
 
         public AnotherTestCase(String name) {
             super(name);
@@ -191,8 +198,7 @@ public class HostTestTest extends TestCase {
         public void testPass3() {}
 
         @MyAnnotation
-        public void testPass4() {
-        }
+        public void testPass4() {}
     }
 
     /**
@@ -360,8 +366,7 @@ public class HostTestTest extends TestCase {
         Junit4TestClass.class,
         SuccessTestCase.class,
     })
-    public class Junit4SuiteClass {
-    }
+    public class Junit4SuiteClass {}
 
     @RunWith(Suite.class)
     @SuiteClasses({
@@ -397,12 +402,9 @@ public class HostTestTest extends TestCase {
         public void testPass() {}
     }
 
-    /**
-     * Malformed on purpose test class.
-     */
+    /** Malformed on purpose test class. */
     public static class Junit4MalformedTestClass {
-        public Junit4MalformedTestClass() {
-        }
+        public Junit4MalformedTestClass() {}
 
         @Before
         protected void setUp() {
@@ -410,23 +412,16 @@ public class HostTestTest extends TestCase {
         }
 
         @org.junit.Test
-        public void testPass() {
-        }
+        public void testPass() {}
     }
 
-    /**
-     * Simple Annotation class for testing
-     */
+    /** Simple Annotation class for testing */
     @Retention(RetentionPolicy.RUNTIME)
-    public @interface MyAnnotation {
-    }
+    public @interface MyAnnotation {}
 
-    /**
-     * Simple Annotation class for testing
-     */
+    /** Simple Annotation class for testing */
     @Retention(RetentionPolicy.RUNTIME)
-    public @interface MyAnnotation2 {
-    }
+    public @interface MyAnnotation2 {}
 
     /** Simple Annotation class for testing */
     @Retention(RetentionPolicy.RUNTIME)
@@ -510,8 +505,7 @@ public class HostTestTest extends TestCase {
     /** Non-public class; should fail to load. */
     private static class PrivateTest extends TestCase {
         @SuppressWarnings("unused")
-        public void testPrivate() {
-        }
+        public void testPrivate() {}
     }
 
     /** class without default constructor; should fail to load */
@@ -519,8 +513,8 @@ public class HostTestTest extends TestCase {
         public NoConstructorTest(String name) {
             super(name);
         }
-        public void testNoConstructor() {
-        }
+
+        public void testNoConstructor() {}
     }
 
     public static class OptionEscapeColonTestCase extends TestCase {
@@ -587,17 +581,14 @@ public class HostTestTest extends TestCase {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    protected void setUp() throws Exception {
-        super.setUp();
+    /** {@inheritDoc} */
+    @Before
+    public void setUp() throws Exception {
+        MockitoAnnotations.initMocks(this);
+
         mMockResolver = Mockito.mock(IRemoteFileResolver.class);
         mHostTest = new TestableHostTest(mMockResolver);
-        mListener = EasyMock.createMock(ITestInvocationListener.class);
-        mMockDevice = EasyMock.createMock(ITestDevice.class);
-        mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
+
         IInvocationContext context = new InvocationContext();
         context.addAllocatedDevice("device", mMockDevice);
         context.addDeviceBuildInfo("device", mMockBuildInfo);
@@ -613,76 +604,80 @@ public class HostTestTest extends TestCase {
      * Test success case for {@link HostTest#run(TestInformation, ITestInvocationListener)}, where
      * test to run is a {@link TestCase}.
      */
+    @org.junit.Test
     public void testRun_testcase() throws Exception {
         mHostTest.setClassName(SuccessTestCase.class.getName());
         TestDescription test1 = new TestDescription(SuccessTestCase.class.getName(), "testPass");
         TestDescription test2 = new TestDescription(SuccessTestCase.class.getName(), "testPass2");
-        mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(2));
-        mListener.testStarted(EasyMock.eq(test1));
-        mListener.testEnded(EasyMock.eq(test1), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testStarted(EasyMock.eq(test2));
-        mListener.testEnded(EasyMock.eq(test2), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
+
         mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(2));
+        verify(mListener).testStarted(Mockito.eq(test1));
+        verify(mListener).testEnded(Mockito.eq(test1), (HashMap<String, Metric>) Mockito.any());
+        verify(mListener).testStarted(Mockito.eq(test2));
+        verify(mListener).testEnded(Mockito.eq(test2), (HashMap<String, Metric>) Mockito.any());
+        verify(mListener).testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
     }
 
     /**
      * Test success case for {@link HostTest#run(TestInformation, ITestInvocationListener)}, where
      * test to run is a {@link MetricTestCase}.
      */
+    @org.junit.Test
     public void testRun_MetricTestCase() throws Exception {
         mHostTest.setClassName(TestMetricTestCase.class.getName());
         TestDescription test1 = new TestDescription(TestMetricTestCase.class.getName(), "testPass");
         TestDescription test2 =
                 new TestDescription(TestMetricTestCase.class.getName(), "testPass2");
-        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(2));
-        mListener.testStarted(EasyMock.eq(test1));
+
+        mHostTest.run(mTestInfo, mListener);
+
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(2));
+        verify(mListener).testStarted(Mockito.eq(test1));
         // test1 should only have its metrics
         Map<String, String> metric1 = new HashMap<>();
         metric1.put("key1", "metric1");
-        mListener.testEnded(test1, TfMetricProtoUtil.upgradeConvert(metric1));
+        verify(mListener).testEnded(test1, TfMetricProtoUtil.upgradeConvert(metric1));
+        verify(mListener).testStarted(Mockito.eq(test2));
         // test2 should only have its metrics
-        mListener.testStarted(EasyMock.eq(test2));
         Map<String, String> metric2 = new HashMap<>();
         metric2.put("key2", "metric2");
-        mListener.testEnded(test2, TfMetricProtoUtil.upgradeConvert(metric2));
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
-        mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+        verify(mListener).testEnded(test2, TfMetricProtoUtil.upgradeConvert(metric2));
+        verify(mListener).testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
     }
 
     /**
      * Test a case where a test use {@link MetricTestCase#addTestLog(String, LogDataType,
      * InputStreamSource)} in order to log data for all the reporters to know about.
      */
+    @org.junit.Test
     public void testRun_LogMetricTestCase() throws Exception {
         mHostTest.setClassName(LogMetricTestCase.class.getName());
         TestDescription test1 = new TestDescription(LogMetricTestCase.class.getName(), "testPass");
         TestDescription test2 = new TestDescription(LogMetricTestCase.class.getName(), "testPass2");
-        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(2));
-        mListener.testStarted(EasyMock.eq(test1));
+
+        mHostTest.run(mTestInfo, mListener);
+
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(2));
+        verify(mListener).testStarted(Mockito.eq(test1));
         // test1 should only have its metrics
-        mListener.testEnded(test1, new HashMap<String, Metric>());
+        verify(mListener).testEnded(test1, new HashMap<String, Metric>());
+        verify(mListener).testStarted(Mockito.eq(test2));
+        verify(mListener)
+                .testLog(Mockito.eq("test2_log"), Mockito.eq(LogDataType.TEXT), Mockito.any());
         // test2 should only have its metrics
-        mListener.testStarted(EasyMock.eq(test2));
         Map<String, String> metric2 = new HashMap<>();
         metric2.put("key2", "metric2");
-        mListener.testLog(
-                EasyMock.eq("test2_log"), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
-        mListener.testEnded(test2, TfMetricProtoUtil.upgradeConvert(metric2));
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
-        mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+        verify(mListener).testEnded(test2, TfMetricProtoUtil.upgradeConvert(metric2));
+        verify(mListener).testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
     }
 
     /**
      * Test success case for {@link HostTest#run(TestInformation, ITestInvocationListener)}, where
      * test to run is a {@link MetricTestCase} and where an option is set to get extra metrics.
      */
+    @org.junit.Test
     public void testRun_MetricTestCase_withOption() throws Exception {
         OptionSetter setter = new OptionSetter(mHostTest);
         setter.setOptionValue("set-option", "test-option:test");
@@ -695,112 +690,117 @@ public class HostTestTest extends TestCase {
         TestDescription test1 = new TestDescription(TestMetricTestCase.class.getName(), "testPass");
         TestDescription test2 =
                 new TestDescription(TestMetricTestCase.class.getName(), "testPass2");
-        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(2));
-        mListener.testStarted(EasyMock.eq(test1));
+
+        mHostTest.run(mTestInfo, mListener);
+
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(2));
+        verify(mListener).testStarted(Mockito.eq(test1));
         // test1 should only have its metrics
         Map<String, String> metric1 = new HashMap<>();
         metric1.put("key1", "metric1");
-        mListener.testEnded(test1, TfMetricProtoUtil.upgradeConvert(metric1));
+        verify(mListener).testEnded(test1, TfMetricProtoUtil.upgradeConvert(metric1));
+        verify(mListener).testStarted(Mockito.eq(test2));
         // test2 should only have its metrics
-        mListener.testStarted(EasyMock.eq(test2));
         Map<String, String> metric2 = new HashMap<>();
         metric2.put("key2", "metric2");
         metric2.put("test-option", "test");
         metric2.put("list-option", "[test1, test2]");
         metric2.put("map-option", "{key=value}");
-        mListener.testEnded(test2, TfMetricProtoUtil.upgradeConvert(metric2));
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
-        mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+        verify(mListener).testEnded(test2, TfMetricProtoUtil.upgradeConvert(metric2));
+        verify(mListener).testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
     }
 
     /**
      * Test success case for {@link HostTest#run(TestInformation, ITestInvocationListener)}, where
      * test to run is a {@link TestSuite}.
      */
+    @org.junit.Test
     public void testRun_testSuite() throws Exception {
         mHostTest.setClassName(SuccessTestSuite.class.getName());
         TestDescription test1 = new TestDescription(SuccessTestCase.class.getName(), "testPass");
         TestDescription test2 = new TestDescription(SuccessTestCase.class.getName(), "testPass2");
-        mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(2));
-        mListener.testStarted(EasyMock.eq(test1));
-        mListener.testEnded(EasyMock.eq(test1), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testStarted(EasyMock.eq(test2));
-        mListener.testEnded(EasyMock.eq(test2), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
+
         mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(2));
+        verify(mListener).testStarted(Mockito.eq(test1));
+        verify(mListener).testEnded(Mockito.eq(test1), (HashMap<String, Metric>) Mockito.any());
+        verify(mListener).testStarted(Mockito.eq(test2));
+        verify(mListener).testEnded(Mockito.eq(test2), (HashMap<String, Metric>) Mockito.any());
+        verify(mListener).testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
     }
 
     /**
      * Test success case for {@link HostTest#run(TestInformation, ITestInvocationListener)}, where
      * test to run is a {@link TestSuite} and has dynamic options.
      */
+    @org.junit.Test
     public void testRun_junit3TestSuite_dynamicOptions() throws Exception {
         doReturn(new ResolvedFile(new File("/downloaded/somewhere")))
                 .when(mMockResolver)
                 .resolveRemoteFile((RemoteFileResolverArgs) Mockito.any());
         mHostTest.setClassName(DynamicTestCase.class.getName());
-        TestDescription test1 = new TestDescription(DynamicTestCase.class.getName(), "testPass");
-        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
-        mListener.testStarted(EasyMock.eq(test1));
-        mListener.testEnded(EasyMock.eq(test1), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
+
         mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(1));
+        TestDescription test1 = new TestDescription(DynamicTestCase.class.getName(), "testPass");
+        verify(mListener).testStarted(Mockito.eq(test1));
+        verify(mListener).testEnded(Mockito.eq(test1), (HashMap<String, Metric>) Mockito.any());
+        verify(mListener).testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
     }
 
     /**
      * Test success case for {@link HostTest#run(TestInformation, ITestInvocationListener)}, where
      * test to run is a hierarchy of {@link TestSuite}s.
      */
+    @org.junit.Test
     public void testRun_testHierarchySuite() throws Exception {
         mHostTest.setClassName(SuccessHierarchySuite.class.getName());
-        TestDescription test1 = new TestDescription(SuccessTestCase.class.getName(), "testPass");
-        TestDescription test2 = new TestDescription(SuccessTestCase.class.getName(), "testPass2");
-        mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(2));
-        mListener.testStarted(EasyMock.eq(test1));
-        mListener.testEnded(EasyMock.eq(test1), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testStarted(EasyMock.eq(test2));
-        mListener.testEnded(EasyMock.eq(test2), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
+
         mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(2));
+        TestDescription test1 = new TestDescription(SuccessTestCase.class.getName(), "testPass");
+        verify(mListener).testStarted(Mockito.eq(test1));
+        verify(mListener).testEnded(Mockito.eq(test1), (HashMap<String, Metric>) Mockito.any());
+        TestDescription test2 = new TestDescription(SuccessTestCase.class.getName(), "testPass2");
+        verify(mListener).testStarted(Mockito.eq(test2));
+        verify(mListener).testEnded(Mockito.eq(test2), (HashMap<String, Metric>) Mockito.any());
+        verify(mListener).testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
     }
 
     /**
      * Test success case for {@link HostTest#run(TestInformation, ITestInvocationListener)}, where
      * test to run is a {@link TestCase} and methodName is set.
      */
+    @org.junit.Test
     public void testRun_testMethod() throws Exception {
         mHostTest.setClassName(SuccessTestCase.class.getName());
         mHostTest.setMethodName("testPass");
-        TestDescription test1 = new TestDescription(SuccessTestCase.class.getName(), "testPass");
-        mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(1));
-        mListener.testStarted(EasyMock.eq(test1));
-        mListener.testEnded(EasyMock.eq(test1), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
+
         mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(1));
+        TestDescription test1 = new TestDescription(SuccessTestCase.class.getName(), "testPass");
+        verify(mListener).testStarted(Mockito.eq(test1));
+        verify(mListener).testEnded(Mockito.eq(test1), (HashMap<String, Metric>) Mockito.any());
+        verify(mListener).testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
     }
 
     /**
      * Test for {@link HostTest#run(TestInformation, ITestInvocationListener)}, where className is
      * not set.
      */
+    @org.junit.Test
     public void testRun_missingClass() throws Exception {
-        mListener.testRunStarted(TestableHostTest.class.getCanonicalName(), 0);
-        Capture<FailureDescription> captured = new Capture<>();
-        mListener.testRunFailed(EasyMock.capture(captured));
-        mListener.testRunEnded(0L, new HashMap<String, Metric>());
-        EasyMock.replay(mListener);
         mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+
+        verify(mListener).testRunStarted(TestableHostTest.class.getCanonicalName(), 0);
+        ArgumentCaptor<FailureDescription> captured =
+                ArgumentCaptor.forClass(FailureDescription.class);
+        verify(mListener).testRunFailed(captured.capture());
+        verify(mListener).testRunEnded(0L, new HashMap<String, Metric>());
         assertTrue(
                 captured.getValue()
                         .getErrorMessage()
@@ -811,15 +811,17 @@ public class HostTestTest extends TestCase {
      * Test for {@link HostTest#run(TestInformation, ITestInvocationListener)}, for an invalid
      * class.
      */
+    @org.junit.Test
     public void testRun_invalidClass() throws Exception {
-        mListener.testRunStarted(TestableHostTest.class.getCanonicalName(), 0);
-        Capture<FailureDescription> captured = new Capture<>();
-        mListener.testRunFailed(EasyMock.capture(captured));
-        mListener.testRunEnded(0L, new HashMap<String, Metric>());
         mHostTest.setClassName("foo");
-        EasyMock.replay(mListener);
+
         mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+
+        verify(mListener).testRunStarted(TestableHostTest.class.getCanonicalName(), 0);
+        ArgumentCaptor<FailureDescription> captured =
+                ArgumentCaptor.forClass(FailureDescription.class);
+        verify(mListener).testRunFailed(captured.capture());
+        verify(mListener).testRunEnded(0L, new HashMap<String, Metric>());
         assertTrue(captured.getValue().getErrorMessage().contains("Could not load Test class foo"));
     }
 
@@ -827,6 +829,7 @@ public class HostTestTest extends TestCase {
      * Test for {@link HostTest#run(TestInformation, ITestInvocationListener)}, for a valid class
      * that is not a {@link Test}.
      */
+    @org.junit.Test
     public void testRun_notTestClass() throws Exception {
         try {
             mHostTest.setClassName(String.class.getName());
@@ -840,6 +843,7 @@ public class HostTestTest extends TestCase {
     /**
      * Test for {@link HostTest#run(TestInformation, ITestInvocationListener)}, for a private class.
      */
+    @org.junit.Test
     public void testRun_privateClass() throws Exception {
         try {
             mHostTest.setClassName(PrivateTest.class.getName());
@@ -854,6 +858,7 @@ public class HostTestTest extends TestCase {
      * Test for {@link HostTest#run(TestInformation, ITestInvocationListener)}, for a test class
      * with no default constructor.
      */
+    @org.junit.Test
     public void testRun_noConstructorClass() throws Exception {
         try {
             mHostTest.setClassName(NoConstructorTest.class.getName());
@@ -868,47 +873,49 @@ public class HostTestTest extends TestCase {
      * Test for {@link HostTest#run(TestInformation, ITestInvocationListener)}, for multiple test
      * classes.
      */
+    @org.junit.Test
     public void testRun_multipleClass() throws Exception {
         OptionSetter setter = new OptionSetter(mHostTest);
         setter.setOptionValue("class", SuccessTestCase.class.getName());
         setter.setOptionValue("class", AnotherTestCase.class.getName());
-        TestDescription test1 = new TestDescription(SuccessTestCase.class.getName(), "testPass");
-        TestDescription test2 = new TestDescription(SuccessTestCase.class.getName(), "testPass2");
-        TestDescription test3 = new TestDescription(AnotherTestCase.class.getName(), "testPass3");
-        TestDescription test4 = new TestDescription(AnotherTestCase.class.getName(), "testPass4");
-        mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(2));
-        mListener.testStarted(EasyMock.eq(test1));
-        mListener.testEnded(EasyMock.eq(test1), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testStarted(EasyMock.eq(test2));
-        mListener.testEnded(EasyMock.eq(test2), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(2));
-        mListener.testStarted(EasyMock.eq(test3));
-        mListener.testEnded(EasyMock.eq(test3), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testStarted(EasyMock.eq(test4));
-        mListener.testEnded(EasyMock.eq(test4), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
+
         mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+
+        verify(mListener, times(2)).testRunStarted((String) Mockito.any(), Mockito.eq(2));
+        TestDescription test1 = new TestDescription(SuccessTestCase.class.getName(), "testPass");
+        verify(mListener).testStarted(Mockito.eq(test1));
+        verify(mListener).testEnded(Mockito.eq(test1), (HashMap<String, Metric>) Mockito.any());
+        TestDescription test2 = new TestDescription(SuccessTestCase.class.getName(), "testPass2");
+        verify(mListener).testStarted(Mockito.eq(test2));
+        verify(mListener).testEnded(Mockito.eq(test2), (HashMap<String, Metric>) Mockito.any());
+        verify(mListener, times(2))
+                .testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
+        TestDescription test3 = new TestDescription(AnotherTestCase.class.getName(), "testPass3");
+        verify(mListener).testStarted(Mockito.eq(test3));
+        verify(mListener).testEnded(Mockito.eq(test3), (HashMap<String, Metric>) Mockito.any());
+        TestDescription test4 = new TestDescription(AnotherTestCase.class.getName(), "testPass4");
+        verify(mListener).testStarted(Mockito.eq(test4));
+        verify(mListener).testEnded(Mockito.eq(test4), (HashMap<String, Metric>) Mockito.any());
     }
 
     /**
      * Test for {@link HostTest#run(TestInformation, ITestInvocationListener)}, for multiple test
      * classes with a method name.
      */
+    @org.junit.Test
     public void testRun_multipleClassAndMethodName() throws Exception {
         OptionSetter setter = new OptionSetter(mHostTest);
         setter.setOptionValue("class", SuccessTestCase.class.getName());
         setter.setOptionValue("class", AnotherTestCase.class.getName());
         mHostTest.setMethodName("testPass3");
-        mListener.testRunStarted(TestableHostTest.class.getCanonicalName(), 0);
-        Capture<FailureDescription> captured = new Capture<>();
-        mListener.testRunFailed(EasyMock.capture(captured));
-        mListener.testRunEnded(0L, new HashMap<String, Metric>());
-        EasyMock.replay(mListener);
+
         mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+
+        verify(mListener).testRunStarted(TestableHostTest.class.getCanonicalName(), 0);
+        ArgumentCaptor<FailureDescription> captured =
+                ArgumentCaptor.forClass(FailureDescription.class);
+        verify(mListener).testRunFailed(captured.capture());
+        verify(mListener).testRunEnded(0L, new HashMap<String, Metric>());
         assertTrue(
                 captured.getValue()
                         .getErrorMessage()
@@ -921,30 +928,32 @@ public class HostTestTest extends TestCase {
      * Test for {@link HostTest#run(TestInformation, ITestInvocationListener)}, for a {@link
      * IDeviceTest}.
      */
+    @org.junit.Test
     public void testRun_deviceTest() throws Exception {
-        final ITestDevice device = EasyMock.createMock(ITestDevice.class);
+        final ITestDevice device = mock(ITestDevice.class);
         mHostTest.setClassName(SuccessDeviceTest.class.getName());
         mHostTest.setDevice(device);
         OptionSetter setter = new OptionSetter(mHostTest);
         setter.setOptionValue("set-option", "option:value");
 
+        mHostTest.run(mTestInfo, mListener);
+
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(1));
         TestDescription test1 = new TestDescription(SuccessDeviceTest.class.getName(), "testPass");
-        mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(1));
-        mListener.testStarted(EasyMock.eq(test1));
+        verify(mListener).testStarted(Mockito.eq(test1));
         Map<String, String> expected = new HashMap<>();
         expected.put("option", "value");
-        mListener.testEnded(
-                EasyMock.eq(test1), EasyMock.eq(TfMetricProtoUtil.upgradeConvert(expected)));
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
-        mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+        verify(mListener)
+                .testEnded(
+                        Mockito.eq(test1), Mockito.eq(TfMetricProtoUtil.upgradeConvert(expected)));
+        verify(mListener).testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
     }
 
     /**
      * Test for {@link HostTest#run(TestInformation, ITestInvocationListener)}, for a {@link
      * IDeviceTest} where no device has been provided.
      */
+    @org.junit.Test
     public void testRun_missingDevice() throws Exception {
         mHostTest.setClassName(SuccessDeviceTest.class.getName());
         mHostTest.setDevice(null);
@@ -956,15 +965,15 @@ public class HostTestTest extends TestCase {
         }
     }
 
-    /**
-     * Test for {@link HostTest#countTestCases()}
-     */
+    /** Test for {@link HostTest#countTestCases()} */
+    @org.junit.Test
     public void testCountTestCases() throws Exception {
         mHostTest.setClassName(SuccessTestCase.class.getName());
         assertEquals("Incorrect test case count", 2, mHostTest.countTestCases());
     }
 
     /** Test for {@link HostTest#countTestCases()} */
+    @org.junit.Test
     public void testCountTestCases_dirtyCount() throws Exception {
         mHostTest.setClassName(SuccessTestCase.class.getName());
         assertEquals("Incorrect test case count", 2, mHostTest.countTestCases());
@@ -973,9 +982,8 @@ public class HostTestTest extends TestCase {
         assertEquals("Incorrect test case count", 1, mHostTest.countTestCases());
     }
 
-    /**
-     * Test for {@link HostTest#countTestCases()} with filtering on JUnit4 tests
-     */
+    /** Test for {@link HostTest#countTestCases()} with filtering on JUnit4 tests */
+    @org.junit.Test
     public void testCountTestCasesJUnit4WithFiltering() throws Exception {
         mHostTest.setClassName(Junit4TestClass.class.getName());
         mHostTest.addIncludeFilter(
@@ -984,18 +992,19 @@ public class HostTestTest extends TestCase {
     }
 
     /**
-     * Test for {@link HostTest#countTestCases()}, if JUnit4 test class is malformed it will
-     * count as 1 in the total number of tests.
+     * Test for {@link HostTest#countTestCases()}, if JUnit4 test class is malformed it will count
+     * as 1 in the total number of tests.
      */
+    @org.junit.Test
     public void testCountTestCasesJUnit4Malformed() throws Exception {
         mHostTest.setClassName(Junit4MalformedTestClass.class.getName());
         assertEquals("Incorrect test case count", 1, mHostTest.countTestCases());
     }
 
     /**
-     * Test for {@link HostTest#countTestCases()} with filtering on JUnit4 tests and no test
-     * remain.
+     * Test for {@link HostTest#countTestCases()} with filtering on JUnit4 tests and no test remain.
      */
+    @org.junit.Test
     public void testCountTestCasesJUnit4WithFiltering_no_more_tests() throws Exception {
         mHostTest.setClassName(Junit4TestClass.class.getName());
         mHostTest.addExcludeFilter(
@@ -1005,9 +1014,8 @@ public class HostTestTest extends TestCase {
         assertEquals("Incorrect test case count", 0, mHostTest.countTestCases());
     }
 
-    /**
-     * Test for {@link HostTest#countTestCases()} with tests of varying JUnit versions
-     */
+    /** Test for {@link HostTest#countTestCases()} with tests of varying JUnit versions */
+    @org.junit.Test
     public void testCountTestCasesJUnitVersionMixed() throws Exception {
         OptionSetter setter = new OptionSetter(mHostTest);
         setter.setOptionValue("class", SuccessTestCase.class.getName()); // 2 tests
@@ -1019,6 +1027,7 @@ public class HostTestTest extends TestCase {
     /**
      * Test for {@link HostTest#countTestCases()} with filtering on tests of varying JUnit versions
      */
+    @org.junit.Test
     public void testCountTestCasesJUnitVersionMixedWithFiltering() throws Exception {
         OptionSetter setter = new OptionSetter(mHostTest);
         setter.setOptionValue("class", SuccessTestCase.class.getName()); // 2 tests
@@ -1030,9 +1039,8 @@ public class HostTestTest extends TestCase {
         assertEquals("Incorrect test case count", 2, mHostTest.countTestCases());
     }
 
-    /**
-     * Test for {@link HostTest#countTestCases()} with annotation filtering
-     */
+    /** Test for {@link HostTest#countTestCases()} with annotation filtering */
+    @org.junit.Test
     public void testCountTestCasesAnnotationFiltering() throws Exception {
         mHostTest.setClassName(SuccessTestCase.class.getName());
         mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation2");
@@ -1043,57 +1051,60 @@ public class HostTestTest extends TestCase {
      * Test success case for {@link HostTest#run(TestInformation, ITestInvocationListener)}, where
      * test to run is a {@link TestCase} with annotation filtering.
      */
+    @org.junit.Test
     public void testRun_testcaseAnnotationFiltering() throws Exception {
         mHostTest.setClassName(SuccessTestCase.class.getName());
         mHostTest.addIncludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation");
-        TestDescription test1 = new TestDescription(SuccessTestCase.class.getName(), "testPass");
-        TestDescription test2 = new TestDescription(SuccessTestCase.class.getName(), "testPass2");
-        mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(2));
-        mListener.testStarted(EasyMock.eq(test1));
-        mListener.testEnded(EasyMock.eq(test1), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testStarted(EasyMock.eq(test2));
-        mListener.testEnded(EasyMock.eq(test2), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
+
         mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(2));
+        TestDescription test1 = new TestDescription(SuccessTestCase.class.getName(), "testPass");
+        verify(mListener).testStarted(Mockito.eq(test1));
+        verify(mListener).testEnded(Mockito.eq(test1), (HashMap<String, Metric>) Mockito.any());
+        TestDescription test2 = new TestDescription(SuccessTestCase.class.getName(), "testPass2");
+        verify(mListener).testStarted(Mockito.eq(test2));
+        verify(mListener).testEnded(Mockito.eq(test2), (HashMap<String, Metric>) Mockito.any());
+        verify(mListener).testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
     }
 
     /**
      * Test success case for {@link HostTest#run(TestInformation, ITestInvocationListener)}, where
      * test to run is a {@link TestCase} with notAnnotationFiltering
      */
+    @org.junit.Test
     public void testRun_testcaseNotAnnotationFiltering() throws Exception {
         mHostTest.setClassName(SuccessTestCase.class.getName());
         mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation2");
-        TestDescription test1 = new TestDescription(SuccessTestCase.class.getName(), "testPass");
-        // Only test1 will run, test2 should be filtered out.
-        mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(1));
-        mListener.testStarted(EasyMock.eq(test1));
-        mListener.testEnded(EasyMock.eq(test1), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
+
         mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+
+        // Only test1 will run, test2 should be filtered out.
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(1));
+        TestDescription test1 = new TestDescription(SuccessTestCase.class.getName(), "testPass");
+        verify(mListener).testStarted(Mockito.eq(test1));
+        verify(mListener).testEnded(Mockito.eq(test1), (HashMap<String, Metric>) Mockito.any());
+        verify(mListener).testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
     }
 
     /**
      * Test success case for {@link HostTest#run(TestInformation, ITestInvocationListener)}, where
      * test to run is a {@link TestCase} with both annotation filtering.
      */
+    @org.junit.Test
     public void testRun_testcaseBothAnnotationFiltering() throws Exception {
         mHostTest.setClassName(AnotherTestCase.class.getName());
         mHostTest.addIncludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation");
         mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation2");
-        TestDescription test4 = new TestDescription(AnotherTestCase.class.getName(), "testPass4");
-        // Only a test with MyAnnotation and Without MyAnnotation2 will run. Here testPass4
-        mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(1));
-        mListener.testStarted(EasyMock.eq(test4));
-        mListener.testEnded(EasyMock.eq(test4), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
+
         mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+
+        // Only a test with MyAnnotation and Without MyAnnotation2 will run. Here testPass4
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(1));
+        TestDescription test4 = new TestDescription(AnotherTestCase.class.getName(), "testPass4");
+        verify(mListener).testStarted(Mockito.eq(test4));
+        verify(mListener).testEnded(Mockito.eq(test4), (HashMap<String, Metric>) Mockito.any());
+        verify(mListener).testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
     }
 
     /**
@@ -1101,25 +1112,27 @@ public class HostTestTest extends TestCase {
      * test to run is a {@link TestCase} with multiple include annotation, test must contains them
      * all.
      */
+    @org.junit.Test
     public void testRun_testcaseMultiInclude() throws Exception {
         mHostTest.setClassName(AnotherTestCase.class.getName());
         mHostTest.addIncludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation");
         mHostTest.addIncludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation2");
-        TestDescription test3 = new TestDescription(AnotherTestCase.class.getName(), "testPass3");
-        // Only a test with MyAnnotation and with MyAnnotation2 will run. Here testPass3
-        mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(1));
-        mListener.testStarted(EasyMock.eq(test3));
-        mListener.testEnded(EasyMock.eq(test3), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
+
         mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+
+        // Only a test with MyAnnotation and with MyAnnotation2 will run. Here testPass3
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(1));
+        TestDescription test3 = new TestDescription(AnotherTestCase.class.getName(), "testPass3");
+        verify(mListener).testStarted(Mockito.eq(test3));
+        verify(mListener).testEnded(Mockito.eq(test3), (HashMap<String, Metric>) Mockito.any());
+        verify(mListener).testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
     }
 
     /**
      * Test success case for {@link HostTest#shouldTestRun(AnnotatedElement)}, where a class is
      * properly annotated to run.
      */
+    @org.junit.Test
     public void testRun_shouldTestRun_Success() throws Exception {
         mHostTest.addIncludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation");
         assertTrue(mHostTest.shouldTestRun(SuccessTestCase.class));
@@ -1129,6 +1142,7 @@ public class HostTestTest extends TestCase {
      * Test success case for {@link HostTest#shouldTestRun(AnnotatedElement)}, where a class is
      * properly annotated to run with multiple annotation expected.
      */
+    @org.junit.Test
     public void testRun_shouldTestRunMulti_Success() throws Exception {
         mHostTest.addIncludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation");
         mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation2");
@@ -1136,24 +1150,27 @@ public class HostTestTest extends TestCase {
     }
 
     /**
-     * Test case for {@link HostTest#shouldTestRun(AnnotatedElement)}, where a class is
-     * properly annotated to be filtered.
+     * Test case for {@link HostTest#shouldTestRun(AnnotatedElement)}, where a class is properly
+     * annotated to be filtered.
      */
+    @org.junit.Test
     public void testRun_shouldNotRun() throws Exception {
         mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation");
         assertFalse(mHostTest.shouldTestRun(SuccessTestCase.class));
     }
 
     /**
-     * Test case for {@link HostTest#shouldTestRun(AnnotatedElement)}, where a class is
-     * properly annotated to be filtered because one of its two annotations is part of the exclude.
+     * Test case for {@link HostTest#shouldTestRun(AnnotatedElement)}, where a class is properly
+     * annotated to be filtered because one of its two annotations is part of the exclude.
      */
+    @org.junit.Test
     public void testRun_shouldNotRunMulti() throws Exception {
         mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation");
         assertFalse(mHostTest.shouldTestRun(SuccessTestCase.class));
         mHostTest = new HostTest();
         // If only the other annotation is excluded.
         mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation3");
+
         assertFalse(mHostTest.shouldTestRun(SuccessTestCase.class));
     }
 
@@ -1161,6 +1178,7 @@ public class HostTestTest extends TestCase {
      * Test success case for {@link HostTest#shouldTestRun(AnnotatedElement)}, where a class is
      * annotated with a different annotation from the exclude filter.
      */
+    @org.junit.Test
     public void testRun_shouldRun_exclude() throws Exception {
         mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation2");
         assertTrue(mHostTest.shouldTestRun(SuccessTestCase.class));
@@ -1170,38 +1188,35 @@ public class HostTestTest extends TestCase {
      * Test success case for {@link HostTest#run(TestInformation, ITestInvocationListener)}, where
      * test to run is a {@link TestCase} with annotation filtering.
      */
+    @org.junit.Test
     public void testRun_testcaseCollectMode() throws Exception {
         mHostTest.setClassName(SuccessTestCase.class.getName());
         mHostTest.setCollectTestsOnly(true);
-        mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(2));
-        mListener.testStarted((TestDescription) EasyMock.anyObject());
-        mListener.testEnded(
-                (TestDescription) EasyMock.anyObject(),
-                (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testStarted((TestDescription) EasyMock.anyObject());
-        mListener.testEnded(
-                (TestDescription) EasyMock.anyObject(),
-                (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
+
         mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(2));
+        verify(mListener, times(2)).testStarted((TestDescription) Mockito.any());
+        verify(mListener, times(2))
+                .testEnded(
+                        (TestDescription) Mockito.any(), (HashMap<String, Metric>) Mockito.any());
+        verify(mListener).testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
     }
 
     /**
      * Test success case for {@link HostTest#run(TestInformation, ITestInvocationListener)}, where
      * the {@link IRemoteTest} does not implements {@link ITestCollector}
      */
+    @org.junit.Test
     public void testRun_testcaseCollectMode_IRemotedevice() throws Exception {
-        final ITestDevice device = EasyMock.createMock(ITestDevice.class);
+        final ITestDevice device = mock(ITestDevice.class);
         mHostTest.setClassName(TestRemoteNotCollector.class.getName());
         mHostTest.setDevice(device);
         mHostTest.setCollectTestsOnly(true);
-        EasyMock.replay(mListener);
+
         try {
             mHostTest.run(mTestInfo, mListener);
         } catch (IllegalArgumentException expected) {
-            EasyMock.verify(mListener);
             return;
         }
         fail("HostTest run() should have thrown an exception.");
@@ -1211,102 +1226,108 @@ public class HostTestTest extends TestCase {
      * Test for {@link HostTest#run(TestInformation, ITestInvocationListener)}, for test with Junit4
      * style.
      */
+    @org.junit.Test
     public void testRun_junit4style() throws Exception {
         mHostTest.setClassName(Junit4TestClass.class.getName());
         TestDescription test1 = new TestDescription(Junit4TestClass.class.getName(), "testPass5");
         TestDescription test2 = new TestDescription(Junit4TestClass.class.getName(), "testPass6");
-        mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(2));
-        mListener.testStarted(EasyMock.eq(test1));
+
+        mHostTest.run(mTestInfo, mListener);
+
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(2));
+        verify(mListener).testStarted(Mockito.eq(test1));
         Map<String, String> metrics = new HashMap<>();
         metrics.put("key", "value");
-        mListener.testEnded(test1, TfMetricProtoUtil.upgradeConvert(metrics));
-        mListener.testStarted(EasyMock.eq(test2));
+        verify(mListener).testEnded(test1, TfMetricProtoUtil.upgradeConvert(metrics));
+        verify(mListener).testStarted(Mockito.eq(test2));
         // test cases do not share metrics.
         Map<String, String> metrics2 = new HashMap<>();
         metrics2.put("key2", "value2");
-        mListener.testEnded(
-                EasyMock.eq(test2), EasyMock.eq(TfMetricProtoUtil.upgradeConvert(metrics2)));
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
-        mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+        verify(mListener)
+                .testEnded(
+                        Mockito.eq(test2), Mockito.eq(TfMetricProtoUtil.upgradeConvert(metrics2)));
+        verify(mListener).testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
     }
 
     /**
      * Test for {@link HostTest#run(TestInformation, ITestInvocationListener)}, for test with Junit4
      * style and handling of @Ignored.
      */
+    @org.junit.Test
     public void testRun_junit4style_ignored() throws Exception {
         mHostTest.setClassName(Junit4TestClassWithIgnore.class.getName());
+
+        mHostTest.run(mTestInfo, mListener);
+
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(2));
         TestDescription test1 =
                 new TestDescription(Junit4TestClassWithIgnore.class.getName(), "testPass5");
+        verify(mListener).testStarted(Mockito.eq(test1));
+        verify(mListener).testEnded(Mockito.eq(test1), (HashMap<String, Metric>) Mockito.any());
         TestDescription test2 =
                 new TestDescription(Junit4TestClassWithIgnore.class.getName(), "testPass6");
-        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(2));
-        mListener.testStarted(EasyMock.eq(test1));
-        mListener.testEnded(EasyMock.eq(test1), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testStarted(EasyMock.eq(test2));
-        mListener.testIgnored(EasyMock.eq(test2));
-        mListener.testEnded(EasyMock.eq(test2), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
-        mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+        verify(mListener).testStarted(Mockito.eq(test2));
+        verify(mListener).testIgnored(Mockito.eq(test2));
+        verify(mListener).testEnded(Mockito.eq(test2), (HashMap<String, Metric>) Mockito.any());
+        verify(mListener).testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
     }
 
     /**
      * Test for {@link HostTest#run(TestInformation, ITestInvocationListener)}, for test with Junit4
      * style and handling of @Ignored on the class.
      */
+    @org.junit.Test
     public void testRun_junit4style_class_ignored() throws Exception {
         mHostTest.setClassName(Junit4IgnoredClass.class.getName());
-        TestDescription test1 = new TestDescription(Junit4IgnoredClass.class.getName(), "No Tests");
-        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
-        mListener.testStarted(EasyMock.eq(test1));
-        mListener.testIgnored(EasyMock.eq(test1));
-        mListener.testEnded(EasyMock.eq(test1), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
         assertEquals(1, mHostTest.countTestCases());
+
         mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(1));
+        TestDescription test1 = new TestDescription(Junit4IgnoredClass.class.getName(), "No Tests");
+        verify(mListener).testStarted(Mockito.eq(test1));
+        verify(mListener).testIgnored(Mockito.eq(test1));
+        verify(mListener).testEnded(Mockito.eq(test1), (HashMap<String, Metric>) Mockito.any());
+        verify(mListener).testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
     }
 
     /**
      * Test for {@link HostTest#run(TestInformation, ITestInvocationListener)}, for test with Junit4
      * style and handling of @Ignored on the class and collect-tests-only.
      */
+    @org.junit.Test
     public void testRun_junit4style_class_ignored_collect() throws Exception {
         mHostTest.setCollectTestsOnly(true);
         mHostTest.setClassName(Junit4IgnoredClass.class.getName());
-        TestDescription test1 = new TestDescription(Junit4IgnoredClass.class.getName(), "No Tests");
-        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
-        mListener.testStarted(EasyMock.eq(test1));
-        mListener.testIgnored(EasyMock.eq(test1));
-        mListener.testEnded(EasyMock.eq(test1), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
         assertEquals(1, mHostTest.countTestCases());
+
         mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(1));
+        TestDescription test1 = new TestDescription(Junit4IgnoredClass.class.getName(), "No Tests");
+        verify(mListener).testStarted(Mockito.eq(test1));
+        verify(mListener).testIgnored(Mockito.eq(test1));
+        verify(mListener).testEnded(Mockito.eq(test1), (HashMap<String, Metric>) Mockito.any());
+        verify(mListener).testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
     }
 
     /**
      * Test for {@link HostTest#run(TestInformation, ITestInvocationListener)}, for test with Junit4
      * style and handling of Assume.
      */
+    @org.junit.Test
     public void testRun_junit4style_assumeFailure() throws Exception {
         mHostTest.setClassName(JUnit4TestClassAssume.class.getName());
+
+        mHostTest.run(mTestInfo, mListener);
+
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(1));
         TestDescription test1 =
                 new TestDescription(JUnit4TestClassAssume.class.getName(), "testPass5");
-        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
-        mListener.testStarted(EasyMock.eq(test1));
-        mListener.testAssumptionFailure(EasyMock.eq(test1), (String) EasyMock.anyObject());
-        mListener.testEnded(EasyMock.eq(test1), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
-        mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+        verify(mListener).testStarted(Mockito.eq(test1));
+        verify(mListener).testAssumptionFailure(Mockito.eq(test1), (String) Mockito.any());
+        verify(mListener).testEnded(Mockito.eq(test1), (HashMap<String, Metric>) Mockito.any());
+        verify(mListener).testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
     }
 
     /**
@@ -1314,45 +1335,77 @@ public class HostTestTest extends TestCase {
      * style and handling of Multiple exception one from @Test one from @After. Junit replay both as
      * failure.
      */
+    @org.junit.Test
     public void testRun_junit4style_multiException() throws Exception {
-        mListener = EasyMock.createStrictMock(ITestInvocationListener.class);
+        mListener = mock(ITestInvocationListener.class);
         mHostTest.setClassName(JUnit4TestClassMultiException.class.getName());
+
+        mHostTest.run(mTestInfo, mListener);
+
         TestDescription test1 =
                 new TestDescription(JUnit4TestClassMultiException.class.getName(), "testPass5");
-        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
-        mListener.testStarted(EasyMock.eq(test1));
-        mListener.testFailed(
-                EasyMock.eq(test1),
-                EasyMock.contains("MultipleFailureException, There were 2 errors:"));
-        mListener.testEnded(EasyMock.eq(test1), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
-        mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+        InOrder inOrder = Mockito.inOrder(mListener);
+
+        inOrder.verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(1));
+        inOrder.verify(mListener).testStarted(Mockito.eq(test1));
+        inOrder.verify(mListener)
+                .testFailed(
+                        Mockito.eq(test1),
+                        Mockito.contains("MultipleFailureException, There were 2 errors:"));
+        inOrder.verify(mListener)
+                .testEnded(Mockito.eq(test1), (HashMap<String, Metric>) Mockito.any());
+        inOrder.verify(mListener)
+                .testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
+
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(1));
+        verify(mListener).testStarted(Mockito.eq(test1));
+        verify(mListener)
+                .testFailed(
+                        Mockito.eq(test1),
+                        Mockito.contains("MultipleFailureException, There were 2 errors:"));
+        verify(mListener).testEnded(Mockito.eq(test1), (HashMap<String, Metric>) Mockito.any());
+        verify(mListener).testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
     }
 
+    @org.junit.Test
     public void testRun_junit4style_multiException_dnae() throws Exception {
-        mListener = EasyMock.createStrictMock(ITestInvocationListener.class);
+        mListener = mock(ITestInvocationListener.class);
         mHostTest.setClassName(JUnit4TestClassMultiExceptionDnae.class.getName());
-        TestDescription test1 =
-                new TestDescription(JUnit4TestClassMultiExceptionDnae.class.getName(), "testPass5");
-        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
-        mListener.testStarted(EasyMock.eq(test1));
-        mListener.testFailed(
-                EasyMock.eq(test1),
-                EasyMock.contains("MultipleFailureException, There were 2 errors:"));
-        mListener.testEnded(EasyMock.eq(test1), (HashMap<String, Metric>) EasyMock.anyObject());
-        Capture<FailureDescription> captureRunFailure = new Capture<>();
-        mListener.testRunFailed(EasyMock.capture(captureRunFailure));
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
+
         try {
             mHostTest.run(mTestInfo, mListener);
             fail("Should have thrown an exception.");
         } catch (DeviceNotAvailableException expected) {
             // Expected
         }
-        EasyMock.verify(mListener);
+
+        TestDescription test1 =
+                new TestDescription(JUnit4TestClassMultiExceptionDnae.class.getName(), "testPass5");
+
+        InOrder inOrder = Mockito.inOrder(mListener);
+        inOrder.verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(1));
+        inOrder.verify(mListener).testStarted(Mockito.eq(test1));
+        inOrder.verify(mListener)
+                .testFailed(
+                        Mockito.eq(test1),
+                        Mockito.contains("MultipleFailureException, There were 2 errors:"));
+        inOrder.verify(mListener)
+                .testEnded(Mockito.eq(test1), (HashMap<String, Metric>) Mockito.any());
+        inOrder.verify(mListener).testRunFailed((FailureDescription) Mockito.any());
+        inOrder.verify(mListener)
+                .testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
+
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(1));
+        verify(mListener).testStarted(Mockito.eq(test1));
+        verify(mListener)
+                .testFailed(
+                        Mockito.eq(test1),
+                        Mockito.contains("MultipleFailureException, There were 2 errors:"));
+        verify(mListener).testEnded(Mockito.eq(test1), (HashMap<String, Metric>) Mockito.any());
+        ArgumentCaptor<FailureDescription> captureRunFailure =
+                ArgumentCaptor.forClass(FailureDescription.class);
+        verify(mListener).testRunFailed(captureRunFailure.capture());
+        verify(mListener).testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
         FailureDescription failure = captureRunFailure.getValue();
         assertTrue(
                 failure.getErrorMessage()
@@ -1367,23 +1420,25 @@ public class HostTestTest extends TestCase {
      * Test for {@link HostTest#run(TestInformation, ITestInvocationListener)}, for test with Junit4
      * style and with method filtering. Only run the expected method.
      */
+    @org.junit.Test
     public void testRun_junit4_withMethodFilter() throws Exception {
         mHostTest.setClassName(Junit4TestClass.class.getName());
-        TestDescription test2 = new TestDescription(Junit4TestClass.class.getName(), "testPass6");
         mHostTest.setMethodName("testPass6");
-        mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(1));
-        mListener.testStarted(EasyMock.eq(test2));
-        mListener.testEnded(EasyMock.eq(test2), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
+
         mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(1));
+        TestDescription test2 = new TestDescription(Junit4TestClass.class.getName(), "testPass6");
+        verify(mListener).testStarted(Mockito.eq(test2));
+        verify(mListener).testEnded(Mockito.eq(test2), (HashMap<String, Metric>) Mockito.any());
+        verify(mListener).testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
     }
 
     /**
      * Test for {@link HostTest#run(TestInformation, ITestInvocationListener)}, for a mix of test
      * junit3 and 4
      */
+    @org.junit.Test
     public void testRun_junit_version_mix() throws Exception {
         OptionSetter setter = new OptionSetter(mHostTest);
         setter.setOptionValue("class", SuccessTestCase.class.getName());
@@ -1395,6 +1450,7 @@ public class HostTestTest extends TestCase {
      * Test for {@link HostTest#run(TestInformation, ITestInvocationListener)}, for a mix of test
      * junit3 and 4 in collect only mode
      */
+    @org.junit.Test
     public void testRun_junit_version_mix_collect() throws Exception {
         OptionSetter setter = new OptionSetter(mHostTest);
         setter.setOptionValue("class", SuccessTestCase.class.getName());
@@ -1407,6 +1463,7 @@ public class HostTestTest extends TestCase {
      * Test for {@link HostTest#run(TestInformation, ITestInvocationListener)}, for a mix of test
      * junit3 and 4 in a Junit 4 suite class.
      */
+    @org.junit.Test
     public void testRun_junit_suite_mix() throws Exception {
         OptionSetter setter = new OptionSetter(mHostTest);
         setter.setOptionValue("class", Junit4SuiteClass.class.getName());
@@ -1417,6 +1474,7 @@ public class HostTestTest extends TestCase {
      * Test for {@link HostTest#run(TestInformation, ITestInvocationListener)}, for a mix of test
      * junit3 and 4 in a Junit 4 suite class, in collect only mode.
      */
+    @org.junit.Test
     public void testRun_junit_suite_mix_collect() throws Exception {
         OptionSetter setter = new OptionSetter(mHostTest);
         setter.setOptionValue("class", Junit4SuiteClass.class.getName());
@@ -1424,102 +1482,104 @@ public class HostTestTest extends TestCase {
         runMixJunitTest(mHostTest, 4, 1);
     }
 
-    /**
-     * Helper for test option variation and avoid repeating the same setup
-     */
+    /** Helper for test option variation and avoid repeating the same setup */
     private void runMixJunitTest(HostTest hostTest, int expectedTest, int expectedRun)
             throws Exception {
-        TestDescription test1 = new TestDescription(SuccessTestCase.class.getName(), "testPass");
-        TestDescription test2 = new TestDescription(SuccessTestCase.class.getName(), "testPass2");
-        TestDescription test3 = new TestDescription(Junit4TestClass.class.getName(), "testPass5");
-        TestDescription test4 = new TestDescription(Junit4TestClass.class.getName(), "testPass6");
-        mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(expectedTest));
-        EasyMock.expectLastCall().times(expectedRun);
-        mListener.testStarted(EasyMock.eq(test1));
-        mListener.testEnded(EasyMock.eq(test1), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testStarted(EasyMock.eq(test2));
-        mListener.testEnded(EasyMock.eq(test2), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testStarted(EasyMock.eq(test3));
-        mListener.testEnded(EasyMock.eq(test3), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testStarted(EasyMock.eq(test4));
-        mListener.testEnded(EasyMock.eq(test4), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.expectLastCall().times(expectedRun);
-        EasyMock.replay(mListener);
+
         hostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+        verify(mListener, times(expectedRun))
+                .testRunStarted((String) Mockito.any(), Mockito.eq(expectedTest));
+        verify(mListener, times(expectedRun))
+                .testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
+        TestDescription test1 = new TestDescription(SuccessTestCase.class.getName(), "testPass");
+        verify(mListener).testStarted(Mockito.eq(test1));
+        verify(mListener).testEnded(Mockito.eq(test1), (HashMap<String, Metric>) Mockito.any());
+        TestDescription test2 = new TestDescription(SuccessTestCase.class.getName(), "testPass2");
+        verify(mListener).testStarted(Mockito.eq(test2));
+        verify(mListener).testEnded(Mockito.eq(test2), (HashMap<String, Metric>) Mockito.any());
+        TestDescription test3 = new TestDescription(Junit4TestClass.class.getName(), "testPass5");
+        verify(mListener).testStarted(Mockito.eq(test3));
+        verify(mListener).testEnded(Mockito.eq(test3), (HashMap<String, Metric>) Mockito.any());
+        TestDescription test4 = new TestDescription(Junit4TestClass.class.getName(), "testPass6");
+        verify(mListener).testStarted(Mockito.eq(test4));
+        verify(mListener).testEnded(Mockito.eq(test4), (HashMap<String, Metric>) Mockito.any());
     }
 
     /** Test a Junit4 suite with Ignored class in it. */
+    @org.junit.Test
     public void testRun_junit_suite_mix_ignored() throws Exception {
         mHostTest.setClassName(Junit4SuiteClassWithIgnored.class.getName());
-        TestDescription test1 = new TestDescription(Junit4TestClass.class.getName(), "testPass5");
-        TestDescription test2 = new TestDescription(Junit4TestClass.class.getName(), "testPass6");
-        TestDescription test3 = new TestDescription(Junit4IgnoredClass.class.getName(), "No Tests");
-        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(3));
-        mListener.testStarted(EasyMock.eq(test1));
-        mListener.testEnded(EasyMock.eq(test1), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testStarted(EasyMock.eq(test2));
-        mListener.testEnded(EasyMock.eq(test2), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testStarted(EasyMock.eq(test3));
-        mListener.testIgnored(test3);
-        mListener.testEnded(EasyMock.eq(test3), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
+
         assertEquals(3, mHostTest.countTestCases());
         mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(3));
+        TestDescription test1 = new TestDescription(Junit4TestClass.class.getName(), "testPass5");
+        verify(mListener).testStarted(Mockito.eq(test1));
+        verify(mListener).testEnded(Mockito.eq(test1), (HashMap<String, Metric>) Mockito.any());
+        TestDescription test2 = new TestDescription(Junit4TestClass.class.getName(), "testPass6");
+        verify(mListener).testStarted(Mockito.eq(test2));
+        verify(mListener).testEnded(Mockito.eq(test2), (HashMap<String, Metric>) Mockito.any());
+        TestDescription test3 = new TestDescription(Junit4IgnoredClass.class.getName(), "No Tests");
+        verify(mListener).testStarted(Mockito.eq(test3));
+        verify(mListener).testIgnored(test3);
+        verify(mListener).testEnded(Mockito.eq(test3), (HashMap<String, Metric>) Mockito.any());
+        verify(mListener).testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
     }
 
+    @org.junit.Test
     public void testRun_junit_suite_annotation() throws Exception {
         mHostTest.setClassName(Junit4SuiteClassWithAnnotation.class.getName());
         mHostTest.addExcludeAnnotation(MyAnnotation.class.getName());
-        TestDescription test1 =
-                new TestDescription(Junit4TestClassWithIgnore.class.getName(), "testPass5");
-        TestDescription test2 =
-                new TestDescription(Junit4TestClassWithIgnore.class.getName(), "testPass6");
-        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(2));
-        mListener.testStarted(EasyMock.eq(test1));
-        mListener.testEnded(EasyMock.eq(test1), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testStarted(EasyMock.eq(test2));
-        mListener.testIgnored(test2);
-        mListener.testEnded(EasyMock.eq(test2), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
+
         assertEquals(2, mHostTest.countTestCases());
         mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(2));
+        TestDescription test1 =
+                new TestDescription(Junit4TestClassWithIgnore.class.getName(), "testPass5");
+        verify(mListener).testStarted(Mockito.eq(test1));
+        verify(mListener).testEnded(Mockito.eq(test1), (HashMap<String, Metric>) Mockito.any());
+        TestDescription test2 =
+                new TestDescription(Junit4TestClassWithIgnore.class.getName(), "testPass6");
+        verify(mListener).testStarted(Mockito.eq(test2));
+        verify(mListener).testIgnored(test2);
+        verify(mListener).testEnded(Mockito.eq(test2), (HashMap<String, Metric>) Mockito.any());
+        verify(mListener).testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
     }
 
     /**
      * Test success case for {@link HostTest#run(TestInformation, ITestInvocationListener)} with a
      * filtering and junit 4 handling.
      */
+    @org.junit.Test
     public void testRun_testcase_Junit4TestNotAnnotationFiltering() throws Exception {
         mHostTest.setClassName(Junit4TestClass.class.getName());
         mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation2");
         OptionSetter setter = new OptionSetter(mHostTest);
         setter.setOptionValue("set-option", "junit4-option:true");
-        TestDescription test1 = new TestDescription(Junit4TestClass.class.getName(), "testPass6");
+
+        mHostTest.run(mTestInfo, mListener);
+
         // Only test1 will run, test2 should be filtered out.
-        mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(1));
-        mListener.testStarted(EasyMock.eq(test1));
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(1));
+        TestDescription test1 = new TestDescription(Junit4TestClass.class.getName(), "testPass6");
+        verify(mListener).testStarted(Mockito.eq(test1));
         Map<String, String> metrics = new HashMap<>();
         metrics.put("key2", "value2");
         // If the option was correctly set, this metric should be true.
         metrics.put("junit4-option", "true");
-        mListener.testEnded(
-                EasyMock.eq(test1), EasyMock.eq(TfMetricProtoUtil.upgradeConvert(metrics)));
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
-        mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+        verify(mListener)
+                .testEnded(
+                        Mockito.eq(test1), Mockito.eq(TfMetricProtoUtil.upgradeConvert(metrics)));
+        verify(mListener).testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
     }
 
     /**
      * Test success case for {@link HostTest#run(TestInformation, ITestInvocationListener)} when
      * passing a dedicated option to it.
      */
+    @org.junit.Test
     public void testRun_testcase_TargetedOptionPassing() throws Exception {
         mHostTest.setClassName(Junit4TestClass.class.getName());
         mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation2");
@@ -1528,21 +1588,22 @@ public class HostTestTest extends TestCase {
                 "set-option", Junit4TestClass.class.getName() + ":junit4-option:true");
         setter.setOptionValue(
                 "set-option", Junit4TestClass.class.getName() + ":map-option:key=test");
-        TestDescription test1 = new TestDescription(Junit4TestClass.class.getName(), "testPass6");
+
+        mHostTest.run(mTestInfo, mListener);
+
         // Only test1 will run, test2 should be filtered out.
-        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
-        mListener.testStarted(EasyMock.eq(test1));
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(1));
+        TestDescription test1 = new TestDescription(Junit4TestClass.class.getName(), "testPass6");
+        verify(mListener).testStarted(Mockito.eq(test1));
         Map<String, String> metrics = new HashMap<>();
         metrics.put("key2", "value2");
         // If the option was correctly set, this metric should be true.
         metrics.put("junit4-option", "true");
         metrics.put("map-option", "[test]");
-        mListener.testEnded(
-                EasyMock.eq(test1), EasyMock.eq(TfMetricProtoUtil.upgradeConvert(metrics)));
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
-        mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+        verify(mListener)
+                .testEnded(
+                        Mockito.eq(test1), Mockito.eq(TfMetricProtoUtil.upgradeConvert(metrics)));
+        verify(mListener).testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
     }
 
     /**
@@ -1550,6 +1611,7 @@ public class HostTestTest extends TestCase {
      * passing a dedicated option to it. The class without the option doesn't throw an exception
      * since it's not targeted.
      */
+    @org.junit.Test
     public void testRun_testcase_multiTargetedOptionPassing() throws Exception {
         mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation2");
         OptionSetter setter = new OptionSetter(mHostTest);
@@ -1558,75 +1620,77 @@ public class HostTestTest extends TestCase {
         setter.setOptionValue(
                 "set-option", Junit4TestClass.class.getName() + ":junit4-option:true");
 
+        mHostTest.run(mTestInfo, mListener);
+
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(2));
         TestDescription test1 =
                 new TestDescription(Junit4TestLogClass.class.getName(), "testPass1");
+        verify(mListener).testStarted(Mockito.eq(test1));
+        verify(mListener).testLog(Mockito.eq("TEST"), Mockito.eq(LogDataType.TEXT), Mockito.any());
+        verify(mListener).testEnded(test1, new HashMap<String, Metric>());
         TestDescription test2 =
                 new TestDescription(Junit4TestLogClass.class.getName(), "testPass2");
-        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(2));
-        mListener.testStarted(EasyMock.eq(test1));
-        mListener.testLog(EasyMock.eq("TEST"), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
-        mListener.testEnded(test1, new HashMap<String, Metric>());
-        mListener.testStarted(EasyMock.eq(test2));
+        verify(mListener).testStarted(Mockito.eq(test2));
         // test cases do not share logs, only the second test logs are seen.
-        mListener.testLog(
-                EasyMock.eq("TEST2"), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
-        mListener.testEnded(test2, new HashMap<String, Metric>());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-
+        verify(mListener).testLog(Mockito.eq("TEST2"), Mockito.eq(LogDataType.TEXT), Mockito.any());
+        verify(mListener).testEnded(test2, new HashMap<String, Metric>());
+        verify(mListener, times(2))
+                .testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
         TestDescription test6 = new TestDescription(Junit4TestClass.class.getName(), "testPass6");
         // Only test1 will run, test2 should be filtered out.
-        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
-        mListener.testStarted(EasyMock.eq(test6));
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(1));
+        verify(mListener).testStarted(Mockito.eq(test6));
         Map<String, String> metrics = new HashMap<>();
         metrics.put("key2", "value2");
         // If the option was correctly set, this metric should be true.
         metrics.put("junit4-option", "true");
-        mListener.testEnded(
-                EasyMock.eq(test6), EasyMock.eq(TfMetricProtoUtil.upgradeConvert(metrics)));
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
-        mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+        verify(mListener)
+                .testEnded(
+                        Mockito.eq(test6), Mockito.eq(TfMetricProtoUtil.upgradeConvert(metrics)));
     }
 
     /**
      * Test success case for {@link HostTest#run(TestInformation, ITestInvocationListener)}, where
      * filtering is applied and results in 0 tests to run.
      */
+    @org.junit.Test
     public void testRun_testcase_Junit4Test_filtering_no_more_tests() throws Exception {
         mHostTest.setClassName(Junit4TestClass.class.getName());
         mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation");
-        mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(0));
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
+
         mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(0));
+        verify(mListener).testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
     }
 
     /**
      * Test that in case the class attempted to be ran is malformed we bubble up the test failure.
      */
+    @org.junit.Test
     public void testRun_Junit4Test_malformed() throws Exception {
         mHostTest.setClassName(Junit4MalformedTestClass.class.getName());
-        mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(1));
-        Capture<TestDescription> captured = new Capture<>();
-        mListener.testStarted(EasyMock.capture(captured));
-        mListener.testFailed((TestDescription) EasyMock.anyObject(), (String) EasyMock.anyObject());
-        mListener.testEnded(
-                (TestDescription) EasyMock.anyObject(),
-                (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
+
         mHostTest.run(mTestInfo, mListener);
+
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(1));
+        ArgumentCaptor<TestDescription> captured = ArgumentCaptor.forClass(TestDescription.class);
+        verify(mListener).testStarted(captured.capture());
+        verify(mListener).testFailed((TestDescription) Mockito.any(), (String) Mockito.any());
+        verify(mListener)
+                .testEnded(
+                        (TestDescription) Mockito.any(), (HashMap<String, Metric>) Mockito.any());
+        verify(mListener).testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
+
         assertEquals(Junit4MalformedTestClass.class.getName(), captured.getValue().getClassName());
         assertEquals("initializationError", captured.getValue().getTestName());
-        EasyMock.verify(mListener);
     }
 
     /**
      * Test for {@link HostTest#run(TestInformation, ITestInvocationListener)}, for a mix of test
      * junit3 and 4 in a Junit 4 suite class, and filtering is applied.
      */
+    @org.junit.Test
     public void testRun_junit_suite_mix_filtering() throws Exception {
         OptionSetter setter = new OptionSetter(mHostTest);
         setter.setOptionValue("class", Junit4SuiteClass.class.getName());
@@ -1637,6 +1701,7 @@ public class HostTestTest extends TestCase {
      * Test for {@link HostTest#run(TestInformation, ITestInvocationListener)}, for a mix of test
      * junit3 and 4 in a Junit 4 suite class, and filtering is applied, in collect mode
      */
+    @org.junit.Test
     public void testRun_junit_suite_mix_filtering_collect() throws Exception {
         OptionSetter setter = new OptionSetter(mHostTest);
         setter.setOptionValue("class", Junit4SuiteClass.class.getName());
@@ -1644,30 +1709,28 @@ public class HostTestTest extends TestCase {
         runMixJunitTestWithFilter(mHostTest);
     }
 
-    /**
-     * Helper for test option variation and avoid repeating the same setup
-     */
+    /** Helper for test option variation and avoid repeating the same setup */
     private void runMixJunitTestWithFilter(HostTest hostTest) throws Exception {
         hostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation2");
-        TestDescription test1 = new TestDescription(SuccessTestCase.class.getName(), "testPass");
-        TestDescription test4 = new TestDescription(Junit4TestClass.class.getName(), "testPass6");
-        mListener.testRunStarted((String)EasyMock.anyObject(), EasyMock.eq(2));
-        EasyMock.expectLastCall().times(1);
-        mListener.testStarted(EasyMock.eq(test1));
-        mListener.testEnded(EasyMock.eq(test1), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testStarted(EasyMock.eq(test4));
-        mListener.testEnded(EasyMock.eq(test4), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.expectLastCall().times(1);
-        EasyMock.replay(mListener);
+
         hostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+
+        verify(mListener, times(1)).testRunStarted((String) Mockito.any(), Mockito.eq(2));
+        TestDescription test1 = new TestDescription(SuccessTestCase.class.getName(), "testPass");
+        verify(mListener, times(1))
+                .testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
+        verify(mListener).testStarted(Mockito.eq(test1));
+        verify(mListener).testEnded(Mockito.eq(test1), (HashMap<String, Metric>) Mockito.any());
+        TestDescription test4 = new TestDescription(Junit4TestClass.class.getName(), "testPass6");
+        verify(mListener).testStarted(Mockito.eq(test4));
+        verify(mListener).testEnded(Mockito.eq(test4), (HashMap<String, Metric>) Mockito.any());
     }
 
     /**
      * Test for {@link HostTest#split(int)} making sure each test type is properly handled and added
      * with a container or directly.
      */
+    @org.junit.Test
     public void testRun_junit_suite_split() throws Exception {
         OptionSetter setter = new OptionSetter(mHostTest);
         mHostTest.setDevice(mMockDevice);
@@ -1688,35 +1751,34 @@ public class HostTestTest extends TestCase {
                 "com.android.tradefed.testtype.HostTestTest$TestableHostTest",
                 list.get(2).getClass().getName());
 
+        // Run the JUnit4 Container
+        ((IBuildReceiver) list.get(0)).setBuild(mMockBuildInfo);
+        ((IDeviceTest) list.get(0)).setDevice(mMockDevice);
+        list.get(0).run(mTestInfo, mListener);
+
         // We expect all the test from the JUnit4 suite to run under the original suite classname
         // not under the container class name.
-        mListener.testRunStarted(
-                EasyMock.eq("com.android.tradefed.testtype.HostTestTest$Junit4SuiteClass"),
-                EasyMock.eq(4));
+        verify(mListener)
+                .testRunStarted(
+                        Mockito.eq("com.android.tradefed.testtype.HostTestTest$Junit4SuiteClass"),
+                        Mockito.eq(4));
         TestDescription test1 = new TestDescription(Junit4TestClass.class.getName(), "testPass5");
+        verify(mListener).testStarted(test1);
+        verify(mListener).testEnded(Mockito.eq(test1), (HashMap<String, Metric>) Mockito.any());
         TestDescription test2 = new TestDescription(SuccessTestCase.class.getName(), "testPass");
+        verify(mListener).testStarted(Mockito.eq(test2));
+        verify(mListener).testEnded(Mockito.eq(test2), (HashMap<String, Metric>) Mockito.any());
         TestDescription test3 = new TestDescription(SuccessTestCase.class.getName(), "testPass2");
+        verify(mListener).testStarted(Mockito.eq(test3));
+        verify(mListener).testEnded(Mockito.eq(test3), (HashMap<String, Metric>) Mockito.any());
         TestDescription test4 = new TestDescription(Junit4TestClass.class.getName(), "testPass6");
-        mListener.testStarted(test1);
-        mListener.testEnded(EasyMock.eq(test1), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testStarted(EasyMock.eq(test2));
-        mListener.testEnded(EasyMock.eq(test2), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testStarted(EasyMock.eq(test3));
-        mListener.testEnded(EasyMock.eq(test3), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testStarted(EasyMock.eq(test4));
-        mListener.testEnded(EasyMock.eq(test4), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
-        // Run the JUnit4 Container
-        ((IBuildReceiver)list.get(0)).setBuild(mMockBuildInfo);
-        ((IDeviceTest)list.get(0)).setDevice(mMockDevice);
-        list.get(0).run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+        verify(mListener).testStarted(Mockito.eq(test4));
+        verify(mListener).testEnded(Mockito.eq(test4), (HashMap<String, Metric>) Mockito.any());
+        verify(mListener).testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
     }
 
-    /**
-     * Similar to {@link #testRun_junit_suite_split()} but with shard-unit set to method
-     */
+    /** Similar to {@link #testRun_junit_suite_split()} but with shard-unit set to method */
+    @org.junit.Test
     public void testRun_junit_suite_split_by_method() throws Exception {
         OptionSetter setter = new OptionSetter(mHostTest);
         mHostTest.setDevice(mMockDevice);
@@ -1725,45 +1787,44 @@ public class HostTestTest extends TestCase {
         setter.setOptionValue("class", SuccessTestSuite.class.getName());
         setter.setOptionValue("class", TestRemoteNotCollector.class.getName());
         setter.setOptionValue("shard-unit", "method");
-        final Class<?>[] expectedTestCaseClasses = new Class<?>[] {
-            Junit4TestClass.class,
-            Junit4TestClass.class,
-            SuccessTestCase.class,
-            SuccessTestCase.class,
-            SuccessTestSuite.class,
-            SuccessTestSuite.class,
-            TestRemoteNotCollector.class,
-        };
+        final Class<?>[] expectedTestCaseClasses =
+                new Class<?>[] {
+                    Junit4TestClass.class,
+                    Junit4TestClass.class,
+                    SuccessTestCase.class,
+                    SuccessTestCase.class,
+                    SuccessTestSuite.class,
+                    SuccessTestSuite.class,
+                    TestRemoteNotCollector.class,
+                };
         List<IRemoteTest> list =
                 (ArrayList<IRemoteTest>) mHostTest.split(expectedTestCaseClasses.length, mTestInfo);
         assertEquals(expectedTestCaseClasses.length, list.size());
         for (int i = 0; i < expectedTestCaseClasses.length; i++) {
             IRemoteTest shard = list.get(i);
             assertTrue(HostTest.class.isInstance(shard));
-            HostTest hostTest = (HostTest)shard;
+            HostTest hostTest = (HostTest) shard;
             assertEquals(1, hostTest.getClasses().size());
             assertEquals(1, hostTest.countTestCases());
             assertEquals(expectedTestCaseClasses[i], hostTest.getClasses().get(0));
         }
 
+        // Run the JUnit4 Container
+        ((IBuildReceiver) list.get(0)).setBuild(mMockBuildInfo);
+        ((IDeviceTest) list.get(0)).setDevice(mMockDevice);
+        list.get(0).run(mTestInfo, mListener);
+
         // We expect all the test from the JUnit4 suite to run under the original suite classname
         // not under the container class name.
         TestDescription test = new TestDescription(Junit4TestClass.class.getName(), "testPass5");
-        mListener.testRunStarted(test.getClassName(), 1);
-        mListener.testStarted(test);
-        mListener.testEnded(EasyMock.eq(test), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
-        // Run the JUnit4 Container
-        ((IBuildReceiver)list.get(0)).setBuild(mMockBuildInfo);
-        ((IDeviceTest)list.get(0)).setDevice(mMockDevice);
-        list.get(0).run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+        verify(mListener).testRunStarted(test.getClassName(), 1);
+        verify(mListener).testStarted(test);
+        verify(mListener).testEnded(Mockito.eq(test), (HashMap<String, Metric>) Mockito.any());
+        verify(mListener).testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
     }
 
-    /**
-     * Test for {@link HostTest#split(int)} when no class is specified throws an exception
-     */
+    /** Test for {@link HostTest#split(int)} when no class is specified throws an exception */
+    @org.junit.Test
     public void testSplit_noClass() throws Exception {
         try {
             mHostTest.split(1, mTestInfo);
@@ -1777,6 +1838,7 @@ public class HostTestTest extends TestCase {
      * Test for {@link HostTest#split(int)} when multiple classes are specified with a method option
      * too throws an exception
      */
+    @org.junit.Test
     public void testSplit_methodAndMultipleClass() throws Exception {
         OptionSetter setter = new OptionSetter(mHostTest);
         setter.setOptionValue("class", Junit4SuiteClass.class.getName());
@@ -1794,6 +1856,7 @@ public class HostTestTest extends TestCase {
      * Test for {@link HostTest#split(int)} when a single class is specified, no splitting can occur
      * and it returns null.
      */
+    @org.junit.Test
     public void testSplit_singleClass() throws Exception {
         OptionSetter setter = new OptionSetter(mHostTest);
         setter.setOptionValue("class", SuccessTestSuite.class.getName());
@@ -1802,8 +1865,9 @@ public class HostTestTest extends TestCase {
     }
 
     /** Test {@link IShardableTest} interface and check the sharding is correct. */
+    @org.junit.Test
     public void testGetTestShardable_wrapping_shardUnit_method() throws Exception {
-        final ITestDevice device = EasyMock.createMock(ITestDevice.class);
+        final ITestDevice device = mock(ITestDevice.class);
         mHostTest.setDevice(device);
         OptionSetter setter = new OptionSetter(mHostTest);
         setter.setOptionValue("class", Junit4SuiteClass.class.getName());
@@ -1813,27 +1877,28 @@ public class HostTestTest extends TestCase {
         setter.setOptionValue("class", SuccessDeviceTest.class.getName());
         setter.setOptionValue("runtime-hint", "2m");
         setter.setOptionValue("shard-unit", "method");
-        final Class<?>[] expectedTestCaseClasses = new Class<?>[] {
-            Junit4TestClass.class,
-            SuccessTestCase.class,
-            TestRemoteNotCollector.class,
-            SuccessDeviceTest.class,
-            Junit4TestClass.class,
-            SuccessTestSuite.class,
-            SuccessHierarchySuite.class,
-            SuccessTestCase.class,
-            SuccessTestSuite.class,
-            SuccessHierarchySuite.class,
-        };
+        final Class<?>[] expectedTestCaseClasses =
+                new Class<?>[] {
+                    Junit4TestClass.class,
+                    SuccessTestCase.class,
+                    TestRemoteNotCollector.class,
+                    SuccessDeviceTest.class,
+                    Junit4TestClass.class,
+                    SuccessTestSuite.class,
+                    SuccessHierarchySuite.class,
+                    SuccessTestCase.class,
+                    SuccessTestSuite.class,
+                    SuccessHierarchySuite.class,
+                };
         final int numShards = 3;
         final long runtimeHint = 2 * 60 * 1000; // 2 minutes in microseconds
         int numTestCases = mHostTest.countTestCases();
         assertEquals(expectedTestCaseClasses.length, numTestCases);
-        for (int i = 0, j = 0; i < numShards ; i++) {
+        for (int i = 0, j = 0; i < numShards; i++) {
             IRemoteTest shard;
             shard = new ArrayList<>(mHostTest.split(numShards, mTestInfo)).get(i);
             assertTrue(shard instanceof HostTest);
-            HostTest hostTest = (HostTest)shard;
+            HostTest hostTest = (HostTest) shard;
             int q = numTestCases / numShards;
             int r = numTestCases % numShards;
             int n = q + (i < r ? 1 : 0);
@@ -1847,158 +1912,165 @@ public class HostTestTest extends TestCase {
     }
 
     /** An annotation on the class exclude it. All the method of the class should be excluded. */
+    @org.junit.Test
     public void testClassAnnotation_excludeAll() throws Exception {
         mHostTest.setClassName(SuccessTestCase.class.getName());
         mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation3");
         assertEquals(0, mHostTest.countTestCases());
         // nothing run.
-        EasyMock.replay(mListener);
+
         mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
     }
 
     /** An annotation on the class include it. We include all the method inside it. */
+    @org.junit.Test
     public void testClassAnnotation_includeAll() throws Exception {
         mHostTest.setClassName(SuccessTestCase.class.getName());
         mHostTest.addIncludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation3");
         assertEquals(2, mHostTest.countTestCases());
-        TestDescription test1 = new TestDescription(SuccessTestCase.class.getName(), "testPass");
-        TestDescription test2 = new TestDescription(SuccessTestCase.class.getName(), "testPass2");
-        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(2));
-        mListener.testStarted(EasyMock.eq(test1));
-        mListener.testEnded(EasyMock.eq(test1), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testStarted(EasyMock.eq(test2));
-        mListener.testEnded(EasyMock.eq(test2), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
+
         mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(2));
+        TestDescription test1 = new TestDescription(SuccessTestCase.class.getName(), "testPass");
+        verify(mListener).testStarted(Mockito.eq(test1));
+        verify(mListener).testEnded(Mockito.eq(test1), (HashMap<String, Metric>) Mockito.any());
+        TestDescription test2 = new TestDescription(SuccessTestCase.class.getName(), "testPass2");
+        verify(mListener).testStarted(Mockito.eq(test2));
+        verify(mListener).testEnded(Mockito.eq(test2), (HashMap<String, Metric>) Mockito.any());
+        verify(mListener).testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
     }
 
     /**
      * An annotation on the method (no annotation on class) exclude it. This method does not run.
      */
+    @org.junit.Test
     public void testMethodAnnotation_excludeAll() throws Exception {
         mHostTest.setClassName(AnotherTestCase.class.getName());
         mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation3");
         assertEquals(1, mHostTest.countTestCases());
-        TestDescription test1 = new TestDescription(AnotherTestCase.class.getName(), "testPass4");
-        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
-        mListener.testStarted(EasyMock.eq(test1));
-        mListener.testEnded(EasyMock.eq(test1), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
+
         mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+
+        TestDescription test1 = new TestDescription(AnotherTestCase.class.getName(), "testPass4");
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(1));
+        verify(mListener).testStarted(Mockito.eq(test1));
+        verify(mListener).testEnded(Mockito.eq(test1), (HashMap<String, Metric>) Mockito.any());
+        verify(mListener).testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
     }
 
     /** An annotation on the method (no annotation on class) include it. Only this method run. */
+    @org.junit.Test
     public void testMethodAnnotation_includeAll() throws Exception {
         mHostTest.setClassName(AnotherTestCase.class.getName());
         mHostTest.addIncludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation3");
         assertEquals(1, mHostTest.countTestCases());
-        TestDescription test1 = new TestDescription(AnotherTestCase.class.getName(), "testPass3");
-        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
-        mListener.testStarted(EasyMock.eq(test1));
-        mListener.testEnded(EasyMock.eq(test1), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
+
         mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+
+        TestDescription test1 = new TestDescription(AnotherTestCase.class.getName(), "testPass3");
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(1));
+        verify(mListener).testStarted(Mockito.eq(test1));
+        verify(mListener).testEnded(Mockito.eq(test1), (HashMap<String, Metric>) Mockito.any());
+        verify(mListener).testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
     }
 
     /**
      * Check that a method annotation in a {@link DeviceTestCase} is properly included with an
      * include filter during collect-tests-only
      */
+    @org.junit.Test
     public void testMethodAnnotation_includeAll_collect() throws Exception {
         mHostTest.setCollectTestsOnly(true);
         mHostTest.setClassName(SuccessDeviceTest2.class.getName());
         mHostTest.addIncludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation3");
         assertEquals(1, mHostTest.countTestCases());
+
+        mHostTest.run(mTestInfo, mListener);
+
         TestDescription test1 =
                 new TestDescription(SuccessDeviceTest2.class.getName(), "testPass1");
-        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
-        mListener.testStarted(EasyMock.eq(test1));
-        mListener.testEnded(EasyMock.eq(test1), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
-        mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(1));
+        verify(mListener).testStarted(Mockito.eq(test1));
+        verify(mListener).testEnded(Mockito.eq(test1), (HashMap<String, Metric>) Mockito.any());
+        verify(mListener).testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
     }
 
     /**
      * Test that a method annotated and overridden is not included because the child method is not
      * annotated (annotation are not inherited).
      */
+    @org.junit.Test
     public void testMethodAnnotation_inherited() throws Exception {
         mHostTest.setCollectTestsOnly(true);
         mHostTest.setClassName(InheritedDeviceTest3.class.getName());
         mHostTest.addIncludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation3");
         assertEquals(1, mHostTest.countTestCases());
+
+        mHostTest.run(mTestInfo, mListener);
+
         TestDescription test1 =
                 new TestDescription(InheritedDeviceTest3.class.getName(), "testPass3");
-        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
-        mListener.testStarted(EasyMock.eq(test1));
-        mListener.testEnded(EasyMock.eq(test1), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
-        mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(1));
+        verify(mListener).testStarted(Mockito.eq(test1));
+        verify(mListener).testEnded(Mockito.eq(test1), (HashMap<String, Metric>) Mockito.any());
+        verify(mListener).testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
     }
 
     /**
      * Test that a method annotated and overridden is not excluded if the child method does not have
      * the annotation.
      */
+    @org.junit.Test
     public void testMethodAnnotation_inherited_exclude() throws Exception {
         mHostTest.setCollectTestsOnly(true);
         mHostTest.setClassName(InheritedDeviceTest3.class.getName());
         mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation3");
         assertEquals(2, mHostTest.countTestCases());
+
+        mHostTest.run(mTestInfo, mListener);
+
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(2));
         TestDescription test1 =
                 new TestDescription(InheritedDeviceTest3.class.getName(), "testPass1");
+        verify(mListener).testStarted(Mockito.eq(test1));
+        verify(mListener).testEnded(Mockito.eq(test1), (HashMap<String, Metric>) Mockito.any());
         TestDescription test2 =
                 new TestDescription(InheritedDeviceTest3.class.getName(), "testPass2");
-        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(2));
-        mListener.testStarted(EasyMock.eq(test1));
-        mListener.testEnded(EasyMock.eq(test1), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testStarted(EasyMock.eq(test2));
-        mListener.testEnded(EasyMock.eq(test2), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
-        mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+        verify(mListener).testStarted(Mockito.eq(test2));
+        verify(mListener).testEnded(Mockito.eq(test2), (HashMap<String, Metric>) Mockito.any());
+        verify(mListener).testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
     }
 
     /** Check that a {@link DeviceTestCase} is properly excluded when the class is excluded. */
+    @org.junit.Test
     public void testDeviceTestCase_excludeClass() throws Exception {
         mHostTest.setClassName(SuccessDeviceTest2.class.getName());
         mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation");
         assertEquals(0, mHostTest.countTestCases());
-        EasyMock.replay(mListener);
+
         mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
     }
 
     /**
      * Check that a {@link DeviceTestCase} is properly excluded when the class is excluded in
      * collect-tests-only mode (yielding the same result as above).
      */
+    @org.junit.Test
     public void testDeviceTestCase_excludeClass_collect() throws Exception {
         mHostTest.setCollectTestsOnly(true);
         mHostTest.setClassName(SuccessDeviceTest2.class.getName());
         mHostTest.addExcludeAnnotation("com.android.tradefed.testtype.HostTestTest$MyAnnotation");
         assertEquals(0, mHostTest.countTestCases());
-        EasyMock.replay(mListener);
+
         mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
     }
 
     /**
-     * Test for {@link HostTest#split(int)} when the exclude-filter is set, it should be carried over
-     * to shards.
+     * Test for {@link HostTest#split(int)} when the exclude-filter is set, it should be carried
+     * over to shards.
      */
+    @org.junit.Test
     public void testSplit_withExclude() throws Exception {
         OptionSetter setter = new OptionSetter(mHostTest);
         setter.setOptionValue("class", SuccessTestCase.class.getName());
@@ -2009,121 +2081,122 @@ public class HostTestTest extends TestCase {
         // split by class; numShards parameter should be ignored
         assertEquals(2, res.size());
 
-        // only one tests in the SuccessTestCase because it's been filtered out.
-        mListener.testRunStarted(
-                EasyMock.eq("com.android.tradefed.testtype.HostTestTest$SuccessTestCase"),
-                EasyMock.eq(1));
-        TestDescription tid2 =
-                new TestDescription(
-                        "com.android.tradefed.testtype.HostTestTest$SuccessTestCase", "testPass2");
-        mListener.testStarted(tid2);
-        mListener.testEnded(tid2, new HashMap<String, Metric>());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-
-        mListener.testRunStarted(
-                EasyMock.eq("com.android.tradefed.testtype.HostTestTest$AnotherTestCase"),
-                EasyMock.eq(2));
-        TestDescription tid3 =
-                new TestDescription(
-                        "com.android.tradefed.testtype.HostTestTest$AnotherTestCase", "testPass3");
-        mListener.testStarted(tid3);
-        mListener.testEnded(tid3, new HashMap<String, Metric>());
-        TestDescription tid4 =
-                new TestDescription(
-                        "com.android.tradefed.testtype.HostTestTest$AnotherTestCase", "testPass4");
-        mListener.testStarted(tid4);
-        mListener.testEnded(tid4, new HashMap<String, Metric>());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-
-        EasyMock.replay(mListener, mMockDevice);
         for (IRemoteTest test : res) {
             assertTrue(test instanceof HostTest);
             ((HostTest) test).setDevice(mMockDevice);
             test.run(mTestInfo, mListener);
         }
-        EasyMock.verify(mListener, mMockDevice);
+
+        // only one tests in the SuccessTestCase because it's been filtered out.
+        verify(mListener)
+                .testRunStarted(
+                        Mockito.eq("com.android.tradefed.testtype.HostTestTest$SuccessTestCase"),
+                        Mockito.eq(1));
+        TestDescription tid2 =
+                new TestDescription(
+                        "com.android.tradefed.testtype.HostTestTest$SuccessTestCase", "testPass2");
+        verify(mListener).testStarted(tid2);
+        verify(mListener).testEnded(tid2, new HashMap<String, Metric>());
+        verify(mListener, times(2))
+                .testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
+        verify(mListener)
+                .testRunStarted(
+                        Mockito.eq("com.android.tradefed.testtype.HostTestTest$AnotherTestCase"),
+                        Mockito.eq(2));
+        TestDescription tid3 =
+                new TestDescription(
+                        "com.android.tradefed.testtype.HostTestTest$AnotherTestCase", "testPass3");
+        verify(mListener).testStarted(tid3);
+        verify(mListener).testEnded(tid3, new HashMap<String, Metric>());
+        TestDescription tid4 =
+                new TestDescription(
+                        "com.android.tradefed.testtype.HostTestTest$AnotherTestCase", "testPass4");
+        verify(mListener).testStarted(tid4);
+        verify(mListener).testEnded(tid4, new HashMap<String, Metric>());
     }
 
     /**
      * Test that when the 'set-option' format is not respected, an exception is thrown. Only one '='
      * is allowed in the value.
      */
+    @org.junit.Test
     public void testRun_setOption_invalid() throws Exception {
         OptionSetter setter = new OptionSetter(mHostTest);
         // Map option with invalid format
         setter.setOptionValue("set-option", "map-option:key=value=2");
         mHostTest.setClassName(TestMetricTestCase.class.getName());
-        EasyMock.replay(mListener);
+
         try {
             mHostTest.run(mTestInfo, mListener);
             fail("Should have thrown an exception.");
         } catch (RuntimeException expected) {
             // expected
         }
-        EasyMock.verify(mListener);
     }
 
     /**
      * Test that when a JUnit runner implements {@link ISetOptionReceiver} we attempt to pass it the
      * hostTest set-option.
      */
+    @org.junit.Test
     public void testSetOption_regularJUnit4_fail() throws Exception {
         OptionSetter setter = new OptionSetter(mHostTest);
         // Map option with invalid format
         setter.setOptionValue("set-option", "option:value");
         mHostTest.setClassName(Junit4RegularClass.class.getName());
-        mListener.testRunStarted(
-                EasyMock.eq("com.android.tradefed.testtype.HostTestTest$Junit4RegularClass"),
-                EasyMock.eq(1));
-        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-        EasyMock.replay(mListener);
+
         try {
             mHostTest.run(mTestInfo, mListener);
             fail("Should have thrown an exception.");
         } catch (RuntimeException expected) {
             // expected
         }
-        EasyMock.verify(mListener);
+
+        verify(mListener)
+                .testRunStarted(
+                        Mockito.eq("com.android.tradefed.testtype.HostTestTest$Junit4RegularClass"),
+                        Mockito.eq(1));
+        verify(mListener).testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
     }
 
     /**
      * Test for {@link HostTest#run(TestInformation, ITestInvocationListener)}, for test with Junit4
      * style that log some data.
      */
+    @org.junit.Test
     public void testRun_junit4style_log() throws Exception {
         mHostTest.setClassName(Junit4TestLogClass.class.getName());
+
+        mHostTest.run(mTestInfo, mListener);
+
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(2));
         TestDescription test1 =
                 new TestDescription(Junit4TestLogClass.class.getName(), "testPass1");
+        verify(mListener).testStarted(Mockito.eq(test1));
+        verify(mListener).testLog(Mockito.eq("TEST"), Mockito.eq(LogDataType.TEXT), Mockito.any());
+        verify(mListener).testEnded(test1, new HashMap<String, Metric>());
         TestDescription test2 =
                 new TestDescription(Junit4TestLogClass.class.getName(), "testPass2");
-        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(2));
-        mListener.testStarted(EasyMock.eq(test1));
-        mListener.testLog(EasyMock.eq("TEST"), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
-        mListener.testEnded(test1, new HashMap<String, Metric>());
-        mListener.testStarted(EasyMock.eq(test2));
+        verify(mListener).testStarted(Mockito.eq(test2));
         // test cases do not share logs, only the second test logs are seen.
-        mListener.testLog(
-                EasyMock.eq("TEST2"), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
-        mListener.testEnded(test2, new HashMap<String, Metric>());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
-        mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+        verify(mListener).testLog(Mockito.eq("TEST2"), Mockito.eq(LogDataType.TEXT), Mockito.any());
+        verify(mListener).testEnded(test2, new HashMap<String, Metric>());
+        verify(mListener).testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
     }
 
+    @org.junit.Test
     public void testRun_junit4style_excluded() throws Exception {
         mHostTest.setClassName(Junit4TestLogClass.class.getName());
         mHostTest.addExcludeAnnotation(MyAnnotation.class.getName());
-        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(0));
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        EasyMock.replay(mListener);
+
         mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(0));
+        verify(mListener).testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
     }
 
-    /**
-     * Similar to {@link #testSplit_withExclude()} but with shard-unit set to method
-     */
+    /** Similar to {@link #testSplit_withExclude()} but with shard-unit set to method */
+    @org.junit.Test
     public void testSplit_excludeTestCase_shardUnit_method() throws Exception {
         OptionSetter setter = new OptionSetter(mHostTest);
         setter.setOptionValue("class", SuccessTestCase.class.getName());
@@ -2138,9 +2211,8 @@ public class HostTestTest extends TestCase {
                 new TestDescription[] {tid2, tid3, tid4});
     }
 
-    /**
-     * Similar to {@link #testSplit_excludeTestCase_shardUnit_method()} but exclude class
-     */
+    /** Similar to {@link #testSplit_excludeTestCase_shardUnit_method()} but exclude class */
+    @org.junit.Test
     public void testSplit_excludeTestClass_shardUnit_method() throws Exception {
         OptionSetter setter = new OptionSetter(mHostTest);
         setter.setOptionValue("class", SuccessTestCase.class.getName());
@@ -2162,21 +2234,25 @@ public class HostTestTest extends TestCase {
         Collection<IRemoteTest> res = mHostTest.split(expectedTids.length, mTestInfo);
         assertEquals(expectedTids.length, res.size());
 
-        for (TestDescription tid : expectedTids) {
-            mListener.testRunStarted(tid.getClassName(), 1);
-            mListener.testStarted(tid);
-            mListener.testEnded(tid, new HashMap<String, Metric>());
-            mListener.testRunEnded(
-                    EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-        }
-
-        EasyMock.replay(mListener, mMockDevice);
         for (IRemoteTest test : res) {
             assertTrue(test instanceof HostTest);
             ((HostTest) test).setDevice(mMockDevice);
             test.run(mTestInfo, mListener);
         }
-        EasyMock.verify(mListener, mMockDevice);
+
+        HashMap<String, Integer> testClassRunCounts = new HashMap<>();
+        for (TestDescription tid : expectedTids) {
+            Integer count = testClassRunCounts.getOrDefault(tid.getClassName(), 0);
+            count = count + 1;
+            testClassRunCounts.put(tid.getClassName(), count);
+            verify(mListener).testStarted(tid);
+            verify(mListener).testEnded(tid, new HashMap<String, Metric>());
+        }
+        for (Map.Entry<String, Integer> entry : testClassRunCounts.entrySet()) {
+            verify(mListener, times(entry.getValue())).testRunStarted(entry.getKey(), 1);
+        }
+        verify(mListener, times(expectedTids.length))
+                .testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
     }
 
     /** JUnit 4 class that throws within its @BeforeClass */
@@ -2195,30 +2271,30 @@ public class HostTestTest extends TestCase {
      * Test that when an exception is thrown from within @BeforeClass, we correctly report a failure
      * since we cannot run each individual test.
      */
+    @org.junit.Test
     public void testRun_junit4ExceptionBeforeClass() throws Exception {
         OptionSetter setter = new OptionSetter(mHostTest);
         setter.setOptionValue("class", JUnit4FailedBeforeClass.class.getName());
         setter.setOptionValue("class", Junit4TestClass.class.getName());
-        // First class fail with the run failure
-        mListener.testRunStarted(EasyMock.anyObject(), EasyMock.eq(1));
-        Capture<FailureDescription> capture = new Capture<>();
-        mListener.testRunFailed(EasyMock.capture(capture));
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
 
-        // Second class run properly
-        mListener.testRunStarted(EasyMock.anyObject(), EasyMock.eq(2));
-        TestDescription tid2 = new TestDescription(Junit4TestClass.class.getName(), "testPass5");
-        mListener.testStarted(EasyMock.eq(tid2));
-        mListener.testEnded(EasyMock.eq(tid2), (HashMap<String, Metric>) EasyMock.anyObject());
-        TestDescription tid3 = new TestDescription(Junit4TestClass.class.getName(), "testPass6");
-        mListener.testStarted(EasyMock.eq(tid3));
-        mListener.testEnded(EasyMock.eq(tid3), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-
-        EasyMock.replay(mListener);
         assertEquals(3, mHostTest.countTestCases());
         mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+
+        // First class fail with the run failure
+        verify(mListener).testRunStarted(Mockito.any(), Mockito.eq(1));
+        ArgumentCaptor<FailureDescription> capture =
+                ArgumentCaptor.forClass(FailureDescription.class);
+        verify(mListener).testRunFailed(capture.capture());
+        verify(mListener, times(2))
+                .testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
+        // Second class run properly
+        verify(mListener).testRunStarted(Mockito.any(), Mockito.eq(2));
+        TestDescription tid2 = new TestDescription(Junit4TestClass.class.getName(), "testPass5");
+        verify(mListener).testStarted(Mockito.eq(tid2));
+        verify(mListener).testEnded(Mockito.eq(tid2), (HashMap<String, Metric>) Mockito.any());
+        TestDescription tid3 = new TestDescription(Junit4TestClass.class.getName(), "testPass6");
+        verify(mListener).testStarted(Mockito.eq(tid3));
+        verify(mListener).testEnded(Mockito.eq(tid3), (HashMap<String, Metric>) Mockito.any());
         FailureDescription failure = capture.getValue();
         assertEquals("Exception with no error message", failure.getErrorMessage());
     }
@@ -2239,38 +2315,38 @@ public class HostTestTest extends TestCase {
      * Test that when an exception is thrown within @Before, the test are reported and failed with
      * the exception.
      */
+    @org.junit.Test
     public void testRun_junit4ExceptionBefore() throws Exception {
         OptionSetter setter = new OptionSetter(mHostTest);
         setter.setOptionValue("class", JUnit4FailedBefore.class.getName());
         setter.setOptionValue("class", Junit4TestClass.class.getName());
-        // First class has a test failure because of the @Before
-        mListener.testRunStarted(EasyMock.anyObject(), EasyMock.eq(1));
-        TestDescription tid = new TestDescription(JUnit4FailedBefore.class.getName(), "test1");
-        mListener.testStarted(EasyMock.eq(tid));
-        mListener.testFailed(EasyMock.eq(tid), (String) EasyMock.anyObject());
-        mListener.testEnded(EasyMock.eq(tid), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
 
-        // Second class run properly
-        mListener.testRunStarted(EasyMock.anyObject(), EasyMock.eq(2));
-        TestDescription tid2 = new TestDescription(Junit4TestClass.class.getName(), "testPass5");
-        mListener.testStarted(EasyMock.eq(tid2));
-        mListener.testEnded(EasyMock.eq(tid2), (HashMap<String, Metric>) EasyMock.anyObject());
-        TestDescription tid3 = new TestDescription(Junit4TestClass.class.getName(), "testPass6");
-        mListener.testStarted(EasyMock.eq(tid3));
-        mListener.testEnded(EasyMock.eq(tid3), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-
-        EasyMock.replay(mListener);
         assertEquals(3, mHostTest.countTestCases());
         mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+
+        // First class has a test failure because of the @Before
+        verify(mListener).testRunStarted(Mockito.any(), Mockito.eq(1));
+        TestDescription tid = new TestDescription(JUnit4FailedBefore.class.getName(), "test1");
+        verify(mListener).testStarted(Mockito.eq(tid));
+        verify(mListener).testFailed(Mockito.eq(tid), (String) Mockito.any());
+        verify(mListener).testEnded(Mockito.eq(tid), (HashMap<String, Metric>) Mockito.any());
+        verify(mListener, times(2))
+                .testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
+        // Second class run properly
+        verify(mListener).testRunStarted(Mockito.any(), Mockito.eq(2));
+        TestDescription tid2 = new TestDescription(Junit4TestClass.class.getName(), "testPass5");
+        verify(mListener).testStarted(Mockito.eq(tid2));
+        verify(mListener).testEnded(Mockito.eq(tid2), (HashMap<String, Metric>) Mockito.any());
+        TestDescription tid3 = new TestDescription(Junit4TestClass.class.getName(), "testPass6");
+        verify(mListener).testStarted(Mockito.eq(tid3));
+        verify(mListener).testEnded(Mockito.eq(tid3), (HashMap<String, Metric>) Mockito.any());
     }
 
     /**
      * Test that when all tests are filtered out, we properly shard them with 0 runtime, and they
      * will be completely skipped during execution.
      */
+    @org.junit.Test
     public void testSplit_withFilter() throws Exception {
         OptionSetter setter = new OptionSetter(mHostTest);
         setter.setOptionValue("class", Junit4TestClass.class.getName());
@@ -2288,18 +2364,18 @@ public class HostTestTest extends TestCase {
         }
     }
 
+    @org.junit.Test
     public void testEarlyFailure() throws Exception {
         OptionSetter setter = new OptionSetter(mHostTest);
         setter.setOptionValue("class", "i.cannot.be.resolved");
 
-        mListener.testRunStarted(HostTestTest.class.getName() + ".TestableHostTest", 0);
-        Capture<FailureDescription> captured = new Capture<>();
-        mListener.testRunFailed(EasyMock.capture(captured));
-        mListener.testRunEnded(0L, new HashMap<String, Metric>());
-
-        EasyMock.replay(mListener);
         mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+
+        verify(mListener).testRunStarted(HostTestTest.class.getName() + ".TestableHostTest", 0);
+        ArgumentCaptor<FailureDescription> captured =
+                ArgumentCaptor.forClass(FailureDescription.class);
+        verify(mListener).testRunFailed(captured.capture());
+        verify(mListener).testRunEnded(0L, new HashMap<String, Metric>());
         assertTrue(
                 captured.getValue()
                         .getErrorMessage()
@@ -2310,6 +2386,7 @@ public class HostTestTest extends TestCase {
      * Test success case for {@link HostTest#run(TestInformation, ITestInvocationListener)}, where
      * test to run is a {@link TestSuite} and has set-options with the char ':' escaped.
      */
+    @org.junit.Test
     public void testRun_junit3TestSuite_optionEscapeColon() throws Exception {
         doReturn(new ResolvedFile(new File("/downloaded/somewhere")))
                 .when(mMockResolver)
@@ -2328,18 +2405,16 @@ public class HostTestTest extends TestCase {
         TestDescription testEscapeStrings =
                 new TestDescription(OptionEscapeColonTestCase.class.getName(), "testEscapeStrings");
 
-        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(2));
-        mListener.testStarted(EasyMock.eq(testGcsBucket));
-        mListener.testEnded(
-                EasyMock.eq(testGcsBucket), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testStarted(EasyMock.eq(testEscapeStrings));
-        mListener.testEnded(
-                EasyMock.eq(testEscapeStrings), (HashMap<String, Metric>) EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), (HashMap<String, Metric>) EasyMock.anyObject());
-
-        EasyMock.replay(mListener);
         assertEquals(2, mHostTest.countTestCases());
         mHostTest.run(mTestInfo, mListener);
-        EasyMock.verify(mListener);
+
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(2));
+        verify(mListener).testStarted(Mockito.eq(testGcsBucket));
+        verify(mListener)
+                .testEnded(Mockito.eq(testGcsBucket), (HashMap<String, Metric>) Mockito.any());
+        verify(mListener).testStarted(Mockito.eq(testEscapeStrings));
+        verify(mListener)
+                .testEnded(Mockito.eq(testEscapeStrings), (HashMap<String, Metric>) Mockito.any());
+        verify(mListener).testRunEnded(Mockito.anyLong(), (HashMap<String, Metric>) Mockito.any());
     }
 }
