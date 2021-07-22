@@ -691,4 +691,11 @@ public class SubprocessTestResultsParser implements Closeable {
     public InvocationFailedEventInfo getReportedInvocationFailedEventInfo() {
         return mReportedInvocationFailedEventInfo;
     }
+
+    /** Complete and close any left open events */
+    public void completeModuleEvents() {
+        if (mCurrentModuleContext != null) {
+            mListener.testModuleEnded();
+        }
+    }
 }
