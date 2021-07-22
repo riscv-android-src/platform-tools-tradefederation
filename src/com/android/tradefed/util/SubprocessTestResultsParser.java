@@ -22,6 +22,8 @@ import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationGrou
 import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.invoker.logger.TfObjectTracker;
 import com.android.tradefed.log.LogUtil.CLog;
+import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ILogSaverListener;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -695,6 +697,12 @@ public class SubprocessTestResultsParser implements Closeable {
     /** Complete and close any left open events */
     public void completeModuleEvents() {
         if (mCurrentModuleContext != null) {
+            // When this happens, mark a failure so retries don't incorrectly consider this module
+            // done.
+            mListener.testRunStarted("module_interrupted", 0);
+            mListener.testRunFailed(
+                    FailureDescription.create("module was interrupted. See invocation level."));
+            mListener.testRunEnded(0L, new HashMap<String, Metric>());
             mListener.testModuleEnded();
         }
     }
