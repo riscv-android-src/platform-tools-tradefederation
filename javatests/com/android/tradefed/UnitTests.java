@@ -120,6 +120,7 @@ import com.android.tradefed.device.metric.PerfettoPullerMetricCollectorTest;
 import com.android.tradefed.device.metric.RebootReasonCollectorTest;
 import com.android.tradefed.device.metric.RuntimeRestartCollectorTest;
 import com.android.tradefed.device.metric.ScreenshotOnFailureCollectorTest;
+import com.android.tradefed.device.metric.ShowmapPullerMetricCollectorTest;
 import com.android.tradefed.device.recovery.BatteryUnavailableDeviceRecoveryTest;
 import com.android.tradefed.device.recovery.RunConfigDeviceRecoveryTest;
 import com.android.tradefed.device.recovery.UsbResetMultiDeviceRecoveryTest;
@@ -578,6 +579,7 @@ import org.junit.runners.Suite.SuiteClasses;
     RebootReasonCollectorTest.class,
     RuntimeRestartCollectorTest.class,
     ScreenshotOnFailureCollectorTest.class,
+    ShowmapPullerMetricCollectorTest.class,
     HostStatsdMetricCollectorTest.class,
 
     // device.recovery
