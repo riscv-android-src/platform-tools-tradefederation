@@ -759,67 +759,6 @@ public class InstrumentationTestTest {
         inOrder.verifyNoMoreInteractions();
     }
 
-    /** Test the reboot before re-run option. */
-    @Test
-    public void testRun_rebootBeforeReRun() throws DeviceNotAvailableException {
-        mInstrumentationTest.setRerunMode(true);
-        mInstrumentationTest.setRebootBeforeReRun(true);
-
-        RunInstrumentationTestsAnswer collected =
-                (runner, listener) -> {
-                    // perform call back on listener to show run of two tests
-                    listener.testRunStarted(TEST_PACKAGE_VALUE, 2);
-                    listener.testStarted(TEST1);
-                    listener.testEnded(TEST1, EMPTY_STRING_MAP);
-                    listener.testStarted(TEST2);
-                    listener.testEnded(TEST2, EMPTY_STRING_MAP);
-                    listener.testRunEnded(1, EMPTY_STRING_MAP);
-                    return true;
-                };
-        RunInstrumentationTestsAnswer partialRun =
-                (runner, listener) -> {
-                    // perform call back on listener to show run failed - only one test
-                    listener.testRunStarted(TEST_PACKAGE_VALUE, 2);
-                    listener.testStarted(TEST1);
-                    listener.testEnded(TEST1, EMPTY_STRING_MAP);
-                    listener.testRunFailed(RUN_ERROR_MSG);
-                    listener.testRunEnded(1, EMPTY_STRING_MAP);
-                    return true;
-                };
-        RunInstrumentationTestsAnswer rerun =
-                (runner, listener) -> {
-                    // perform call back on listeners to show run remaining test was run
-                    listener.testRunStarted(TEST_PACKAGE_VALUE, 1);
-                    listener.testStarted(TEST2);
-                    listener.testEnded(TEST2, EMPTY_STRING_MAP);
-                    listener.testRunEnded(1, EMPTY_STRING_MAP);
-                    return true;
-                };
-
-        doAnswer(collected)
-                .doAnswer(partialRun)
-                .doAnswer(rerun)
-                .when(mMockTestDevice)
-                .runInstrumentationTests(
-                        any(IRemoteAndroidTestRunner.class), any(ITestInvocationListener.class));
-
-        mInstrumentationTest.run(mTestInfo, mMockListener);
-
-        InOrder inOrder = Mockito.inOrder(mMockListener, mMockTestDevice);
-        inOrder.verify(mMockListener).testRunStarted(TEST_PACKAGE_VALUE, 2);
-        inOrder.verify(mMockListener).testStarted(eq(TEST1), anyLong());
-        inOrder.verify(mMockListener).testEnded(eq(TEST1), anyLong(), eq(EMPTY_STRING_MAP));
-        inOrder.verify(mMockListener)
-                .testRunFailed(
-                        FailureDescription.create(RUN_ERROR_MSG, FailureStatus.TEST_FAILURE));
-        inOrder.verify(mMockListener).testRunEnded(1, EMPTY_STRING_MAP);
-        inOrder.verify(mMockTestDevice).reboot();
-        inOrder.verify(mMockListener).testRunStarted(TEST_PACKAGE_VALUE, 0, 1);
-        inOrder.verify(mMockListener).testStarted(eq(TEST2), anyLong());
-        inOrder.verify(mMockListener).testEnded(eq(TEST2), anyLong(), eq(EMPTY_STRING_MAP));
-        inOrder.verify(mMockListener).testRunEnded(1, EMPTY_STRING_MAP);
-    }
-
     /**
      * Test resuming a test run when first run is aborted due to {@link DeviceNotAvailableException}
      */

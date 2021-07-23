@@ -166,11 +166,6 @@ public class InstrumentationTest
             "fails to complete.")
     private boolean mIsRerunMode = true;
 
-    @Option(name = "resume",
-            description = "Schedule unexecuted tests for resumption on another device " +
-            "if first device becomes unavailable.")
-    private boolean mIsResumeMode = false;
-
     @Option(name = "install-file",
             description="Optional file path to apk file that contains the tests.")
     private File mInstallFile = null;
@@ -205,15 +200,13 @@ public class InstrumentationTest
     )
     private int mReRunUsingTestFileAttempts = 3;
 
+    // Remove when we are sure there are no more usage. Inop for now.
+    @Deprecated
     @Option(
         name = "fallback-to-serial-rerun",
         description = "Rerun tests serially after rerun from file failed."
     )
     private boolean mFallbackToSerialRerun = false;
-
-    @Option(name = "reboot-before-rerun", description =
-            "Reboot a device before re-running instrumentations.")
-    private boolean mRebootBeforeReRun = false;
 
     @Option(name = AbiFormatter.FORCE_ABI_STRING,
             description = AbiFormatter.FORCE_ABI_DESCRIPTION,
@@ -545,13 +538,6 @@ public class InstrumentationTest
     }
 
     /**
-     * Optionally, set the resume mode.
-     */
-    public void setResumeMode(boolean resume) {
-        mIsResumeMode = resume;
-    }
-
-    /**
      * Get the shell timeout in ms.
      */
     long getShellTimeout() {
@@ -653,16 +639,6 @@ public class InstrumentationTest
     /** Sets the --rerun-from-file option. */
     public void setReRunUsingTestFile(boolean reRunUsingTestFile) {
         mReRunUsingTestFile = reRunUsingTestFile;
-    }
-
-    /** Sets the --fallback-to-serial-rerun option. */
-    public void setFallbackToSerialRerun(boolean reRunSerially) {
-        mFallbackToSerialRerun = reRunSerially;
-    }
-
-    /** Sets the --reboot-before-rerun option. */
-    public void setRebootBeforeReRun(boolean rebootBeforeReRun) {
-        mRebootBeforeReRun = rebootBeforeReRun;
     }
 
     /** Allows to add more custom listeners to the runner */
@@ -1048,12 +1024,8 @@ public class InstrumentationTest
             CLog.d("No tests to re-run, all tests executed at least once.");
             return;
         }
-        if (mRebootBeforeReRun) {
-            mDevice.reboot();
-        } else {
-            // Ensure device is online and responsive before retrying.
-            mDevice.waitForDeviceAvailable();
-        }
+        // Ensure device is online and responsive before retrying.
+        mDevice.waitForDeviceAvailable();
 
         IRemoteTest testReRunner = null;
         try {
@@ -1078,8 +1050,7 @@ public class InstrumentationTest
     @VisibleForTesting
     IRemoteTest getTestReRunner(Collection<TestDescription> tests) throws ConfigurationException {
         if (mReRunUsingTestFile) {
-            return new InstrumentationFileTest(
-                    this, tests, mFallbackToSerialRerun, mReRunUsingTestFileAttempts);
+            return new InstrumentationFileTest(this, tests, mReRunUsingTestFileAttempts);
         } else {
             // Since the same runner is reused we must ensure TEST_FILE_INST_ARGS_KEY is not set.
             // Otherwise, the runner will attempt to execute tests from file.

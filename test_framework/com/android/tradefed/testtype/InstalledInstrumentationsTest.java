@@ -88,11 +88,6 @@ public class InstalledInstrumentationsTest
             "fails to complete.")
     private boolean mIsRerunMode = true;
 
-    @Option(name = "resume",
-            description = "Schedule unexecuted tests for resumption on another device " +
-            "if first device becomes unavailable.")
-    private boolean mIsResumeMode = false;
-
     /** @deprecated delete when we are sure it's not used anywhere. */
     @Deprecated
     @Option(name = "send-coverage", description = "Send coverage target info to test listeners.")
@@ -153,10 +148,6 @@ public class InstalledInstrumentationsTest
         description = "Rerun tests serially after rerun from file failed."
     )
     private boolean mFallbackToSerialRerun = false;
-
-    @Option(name = "reboot-before-rerun", description =
-            "Reboot a device before re-running instrumentations.")
-    private boolean mRebootBeforeReRun = false;
 
     @Option(name = "disable", description =
             "Disable the test by setting this flag to true.")
