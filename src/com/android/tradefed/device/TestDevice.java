@@ -118,7 +118,7 @@ public class TestDevice extends NativeDevice {
     /** adb shell am dumpheap <service pid> <dump file path> */
     private static final String DUMPHEAP_CMD = "am dumpheap %s %s";
     /** Time given to a file to be dumped on device side */
-    private static final long DUMPHEAP_TIME = 5000l;
+    private static final long DUMPHEAP_TIME = 5000L;
 
     /** Timeout in minutes for the package installation */
     static final long INSTALL_TIMEOUT_MINUTES = 4;

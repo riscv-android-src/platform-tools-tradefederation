@@ -150,13 +150,12 @@ public class InstrumentationTest
     private long mTestTimeout = 5 * 60 * 1000L; // default to 5 minutes
 
     @Option(
-        name = "max-timeout",
-        description =
-                "Sets the max timeout for the instrumentation to terminate. "
-                        + "For no timeout, set to 0.",
-        isTimeVal = true
-    )
-    private long mMaxTimeout = 0l;
+            name = "max-timeout",
+            description =
+                    "Sets the max timeout for the instrumentation to terminate. "
+                            + "For no timeout, set to 0.",
+            isTimeVal = true)
+    private long mMaxTimeout = 0L;
 
     @Option(name = "size",
             description="Restrict test to a specific test size.")

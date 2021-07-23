@@ -385,7 +385,7 @@ public class RunUtil implements IRunUtil {
         mInterrupter.checkInterrupted();
         RunnableNotifier runThread = new RunnableNotifier(runnable, logErrors);
         if (logErrors) {
-            if (timeout > 0l) {
+            if (timeout > 0L) {
                 CLog.d(
                         "Running command %s with timeout: %s",
                         runnable.getCommand(), TimeUtil.formatElapsedTime(timeout));
