@@ -305,6 +305,9 @@ public class BaseTestSuite extends ITestSuite {
                     "Initializing ModuleRepo\nABIs:%s\n"
                             + "Test Args:%s\nModule Args:%s\n%s\n%s",
                             mAbis, mTestArgs, mModuleArgs, includeFilters, excludeFilters);
+            if (!mFoldableStates.isEmpty()) {
+                CLog.d("Foldable states: %s", mFoldableStates);
+            }
 
             mModuleRepo =
                     createModuleLoader(
