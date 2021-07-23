@@ -277,7 +277,15 @@ public class SuiteModuleLoader {
                                 mForcedModuleParameter, mAllowOptionalParameterizedModules);
                 mForcedParameterClasses = new HashSet<>();
                 for (IModuleParameterHandler parameter : moduleParameters.values()) {
-                    mForcedParameterClasses.add(parameter.getClass());
+                    if (parameter instanceof FoldableExpandingHandler) {
+                        for (IModuleParameterHandler fParam :
+                                ((FoldableExpandingHandler) parameter)
+                                    .expandHandler(mFoldableStates)) {
+                            mForcedParameterClasses.add(fParam.getClass());
+                        }
+                    } else {
+                        mForcedParameterClasses.add(parameter.getClass());
+                    }
                 }
             }
 

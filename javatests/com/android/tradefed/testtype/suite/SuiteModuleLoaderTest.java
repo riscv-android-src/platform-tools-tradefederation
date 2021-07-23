@@ -43,6 +43,7 @@ import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFileFilterReceiver;
 import com.android.tradefed.testtype.ITestFilterReceiver;
+import com.android.tradefed.testtype.suite.params.ModuleParameters;
 import com.android.tradefed.util.FileUtil;
 
 import org.easymock.EasyMock;
@@ -520,7 +521,40 @@ public class SuiteModuleLoaderTest {
                         .getAllMetaData()
                         .getUniqueMap()
                         .get(ConfigurationDescriptor.ACTIVE_PARAMETER_KEY));
-        assertEquals("armeabi-v7a", descriptor.getAbi().getName());
+        assertEquals("armeabi-v7a", descriptor2.getAbi().getName());
+    }
+
+    @Test
+    public void testLoad_foldable_moduleParam() throws Exception {
+        Set<DeviceFoldableState> foldableStates = new LinkedHashSet<>();
+        foldableStates.add(new DeviceFoldableState(0, "DEFAULT"));
+        foldableStates.add(new DeviceFoldableState(1, "CLOSED"));
+        foldableStates.add(new DeviceFoldableState(2, "OPEN"));
+        createFoldableModuleConfig("basemodule");
+
+        mRepo =
+                new SuiteModuleLoader(
+                        new LinkedHashMap<String, LinkedHashSet<SuiteTestFilter>>(),
+                        new LinkedHashMap<String, LinkedHashSet<SuiteTestFilter>>(),
+                        new ArrayList<>(),
+                        new ArrayList<>());
+        mRepo.setParameterizedModules(true);
+        mRepo.setModuleParameter(ModuleParameters.ALL_FOLDABLE_STATES);
+        mRepo.setFoldableStates(foldableStates);
+
+        List<String> patterns = new ArrayList<>();
+        patterns.add(".*.config");
+        patterns.add(".*.xml");
+        LinkedHashMap<String, IConfiguration> res =
+                mRepo.loadConfigsFromDirectory(
+                        Arrays.asList(mTestsDir), mAbis, null, null, patterns);
+        assertEquals(2, res.size());
+        // Full module was excluded completely, only foldable are created
+        IConfiguration foldable1 = res.get("armeabi-v7a basemodule[foldable:1:CLOSED]");
+        assertNotNull(foldable1);
+
+        IConfiguration foldable2 = res.get("armeabi-v7a basemodule[foldable:2:OPEN]");
+        assertNotNull(foldable2);
     }
 
     /**
