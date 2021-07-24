@@ -31,6 +31,7 @@ LOCAL_ERROR_PRONE_FLAGS:= -XDandroidCompatible=false \
                           -Xep:JUnit4ClassUsedInJUnit3:ERROR \
                           -Xep:JUnitAmbiguousTestClass:ERROR \
                           -Xep:LongLiteralLowerCaseSuffix:ERROR \
+                          -Xep:MissingCasesInEnumSwitch:ERROR \
                           -Xep:MissingFail:ERROR \
                           -Xep:MissingOverride:ERROR \
                           -Xep:ModifiedButNotUsed:ERROR \
