@@ -175,7 +175,13 @@ public final class GlobalTestFilter {
 
     private Set<String> filtersFromGlobal(Set<String> filters) {
         Set<String> globalFilters = new LinkedHashSet<>();
-        filters.forEach(f->globalFilters.add(SuiteTestFilter.createFrom(f).getTest()));
+        filters.forEach(f->{
+                    SuiteTestFilter suiteFilter = SuiteTestFilter.createFrom(f);
+                    if (!Strings.isNullOrEmpty(suiteFilter.getTest())) {
+                        globalFilters.add(suiteFilter.getTest());
+                    }
+                }
+        );
         return globalFilters;
     }
 }
