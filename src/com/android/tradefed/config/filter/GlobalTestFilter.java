@@ -23,6 +23,7 @@ import com.android.tradefed.service.TradefedFeatureClient;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFilterReceiver;
 import com.android.tradefed.testtype.suite.BaseTestSuite;
+import com.android.tradefed.testtype.suite.SuiteTestFilter;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
@@ -120,12 +121,12 @@ public final class GlobalTestFilter {
     /** Apply the global filters to the test. */
     public void applyFiltersToTest(ITestFilterReceiver filterableTest) {
         Set<String> includeFilters = new LinkedHashSet<>(filterableTest.getIncludeFilters());
-        includeFilters.addAll(mIncludeFilters);
+        includeFilters.addAll(filtersFromGlobal(mIncludeFilters));
         filterableTest.clearIncludeFilters();
         filterableTest.addAllIncludeFilters(includeFilters);
 
         Set<String> excludeFilters = new LinkedHashSet<>(filterableTest.getExcludeFilters());
-        excludeFilters.addAll(mExcludeFilters);
+        excludeFilters.addAll(filtersFromGlobal(mExcludeFilters));
         filterableTest.clearExcludeFilters();
         filterableTest.addAllExcludeFilters(excludeFilters);
     }
@@ -170,5 +171,11 @@ public final class GlobalTestFilter {
             return new ArrayList<String>();
         }
         return Arrays.asList(value.split("\n"));
+    }
+
+    private Set<String> filtersFromGlobal(Set<String> filters) {
+        Set<String> globalFilters = new LinkedHashSet<>();
+        filters.forEach(f->globalFilters.add(SuiteTestFilter.createFrom(f).getTest()));
+        return globalFilters;
     }
 }
