@@ -19,11 +19,15 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.cluster.ClusterCommand.RequestType;
@@ -76,9 +80,6 @@ import com.google.api.client.testing.http.MockLowLevelHttpRequest;
 import com.google.api.client.testing.http.MockLowLevelHttpResponse;
 import com.google.common.collect.ImmutableMap;
 
-import org.easymock.Capture;
-import org.easymock.EasyMock;
-import org.easymock.IArgumentMatcher;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -88,7 +89,12 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.AdditionalMatchers;
+import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatcher;
+import org.mockito.Mock;
 import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -119,12 +125,51 @@ public class ClusterCommandSchedulerTest {
     private static final String TASK_ID = "task_id";
     private static final String CMD_LINE = "test";
     private static final String DEVICE_SERIAL = "serial";
+    private static final Set<String> deviceSerials =
+            new HashSet<String>(Arrays.asList(ClusterCommandSchedulerTest.DEVICE_SERIAL));
+
+    private static final boolean eventMatches(
+            ClusterCommandEvent event, ClusterCommandEvent.Type type) {
+        return TASK_ID.equals(event.getCommandTaskId())
+                && ClusterCommandSchedulerTest.deviceSerials.equals(event.getDeviceSerials())
+                && (event.getType() == type);
+    }
+
+    private static final class IsInvocationInitiated
+            implements ArgumentMatcher<ClusterCommandEvent> {
+        @Override
+        public boolean matches(ClusterCommandEvent event) {
+            return eventMatches(event, ClusterCommandEvent.Type.InvocationInitiated);
+        }
+    }
+
+    private static final class IsInvocationStarted implements ArgumentMatcher<ClusterCommandEvent> {
+        @Override
+        public boolean matches(ClusterCommandEvent event) {
+            return eventMatches(event, ClusterCommandEvent.Type.InvocationStarted);
+        }
+    }
+
+    private static final class IsInvocationEnded implements ArgumentMatcher<ClusterCommandEvent> {
+        @Override
+        public boolean matches(ClusterCommandEvent event) {
+            return eventMatches(event, ClusterCommandEvent.Type.InvocationEnded);
+        }
+    }
+
+    private static final class IsInvocationCompleted
+            implements ArgumentMatcher<ClusterCommandEvent> {
+        @Override
+        public boolean matches(ClusterCommandEvent event) {
+            return eventMatches(event, ClusterCommandEvent.Type.InvocationCompleted);
+        }
+    }
 
     @Rule public TestLogData mTestLog = new TestLogData();
 
-    private IDeviceManager mMockDeviceManager;
-    private IHostOptions mMockHostOptions;
-    private IRestApiHelper mMockApiHelper;
+    @Mock IDeviceManager mMockDeviceManager;
+    @Mock IHostOptions mMockHostOptions;
+    @Mock IRestApiHelper mMockApiHelper;
     private IClusterClient mMockClusterClient;
     private ClusterOptions mMockClusterOptions;
 
@@ -148,11 +193,11 @@ public class ClusterCommandSchedulerTest {
 
     @Before
     public void setUp() throws Exception {
-        mMockHostUploader = EasyMock.createMock(IClusterEventUploader.class);
-        mMockDeviceManager = EasyMock.createMock(IDeviceManager.class);
-        mMockHostOptions = EasyMock.createMock(IHostOptions.class);
-        mMockApiHelper = EasyMock.createMock(IRestApiHelper.class);
-        mMockEventUploader = EasyMock.createMock(ICommandEventUploader.class);
+        MockitoAnnotations.initMocks(this);
+
+        mMockHostUploader = mock(IClusterEventUploader.class);
+        mMockEventUploader = mock(ICommandEventUploader.class);
+
         mMockClusterOptions = new ClusterOptions();
         mMockClusterOptions.setCheckFlashingPermitsLease(false);
         mMockClusterOptions.setClusterId(CLUSTER_ID);
@@ -181,7 +226,6 @@ public class ClusterCommandSchedulerTest {
 
         mScheduler =
                 new ClusterCommandScheduler() {
-
                     @Override
                     public IClusterOptions getClusterOptions() {
                         return mMockClusterOptions;
@@ -273,12 +317,10 @@ public class ClusterCommandSchedulerTest {
         deviceList.add(createDevice("product3", "variant3", DeviceAllocationState.Available));
         deviceList.add(createDevice("product3", "variant3", DeviceAllocationState.Allocated));
         deviceList.add(createDevice("product3", "variant3", DeviceAllocationState.Unavailable));
-        EasyMock.expect(mMockDeviceManager.listAllDevices()).andReturn(deviceList);
+        when(mMockDeviceManager.listAllDevices()).thenReturn(deviceList);
 
-        EasyMock.replay(mMockDeviceManager);
         final MultiMap<String, DeviceDescriptor> deviceMap =
                 mScheduler.getDevices(mMockDeviceManager, false);
-        EasyMock.verify(mMockDeviceManager);
 
         assertTrue(deviceMap.containsKey("product1:variant1"));
         assertEquals(1, deviceMap.get("product1:variant1").size());
@@ -297,12 +339,10 @@ public class ClusterCommandSchedulerTest {
         deviceList.add(createDevice("product3", "variant3", DeviceAllocationState.Available));
         deviceList.add(createDevice("product3", "variant3", DeviceAllocationState.Allocated));
         deviceList.add(createDevice("product3", "variant3", DeviceAllocationState.Unavailable));
-        EasyMock.expect(mMockDeviceManager.listAllDevices()).andReturn(deviceList);
+        when(mMockDeviceManager.listAllDevices()).thenReturn(deviceList);
 
-        EasyMock.replay(mMockDeviceManager);
         final MultiMap<String, DeviceDescriptor> deviceMap =
                 mScheduler.getDevices(mMockDeviceManager, true);
-        EasyMock.verify(mMockDeviceManager);
 
         assertTrue(deviceMap.containsKey("product1:variant1"));
         assertEquals(1, deviceMap.get("product1:variant1").size());
@@ -324,12 +364,10 @@ public class ClusterCommandSchedulerTest {
         deviceList.add(createDevice("product2", "variant2", DeviceAllocationState.Allocated));
         deviceList.add(createDevice("product3", "variant3", DeviceAllocationState.Available));
         deviceList.add(createDevice("product3", "variant3", DeviceAllocationState.Unavailable));
-        EasyMock.expect(mMockDeviceManager.listAllDevices()).andReturn(deviceList);
+        when(mMockDeviceManager.listAllDevices()).thenReturn(deviceList);
 
-        EasyMock.replay(mMockDeviceManager);
         final MultiMap<String, DeviceDescriptor> deviceMap =
                 mScheduler.getDevices(mMockDeviceManager, true);
-        EasyMock.verify(mMockDeviceManager);
 
         assertFalse(deviceMap.containsKey("product1:variant1"));
         assertFalse(deviceMap.containsKey("product2:variant2"));
@@ -343,12 +381,10 @@ public class ClusterCommandSchedulerTest {
         deviceList.add(createDevice("product1", "variant1", DeviceAllocationState.Allocated));
         deviceList.add(createDevice("product2", "variant2", DeviceAllocationState.Unavailable));
         deviceList.add(createDevice("product3", "variant3", DeviceAllocationState.Ignored));
-        EasyMock.expect(mMockDeviceManager.listAllDevices()).andReturn(deviceList);
+        when(mMockDeviceManager.listAllDevices()).thenReturn(deviceList);
 
-        EasyMock.replay(mMockDeviceManager);
         final MultiMap<String, DeviceDescriptor> deviceMap =
                 mScheduler.getDevices(mMockDeviceManager, true);
-        EasyMock.verify(mMockDeviceManager);
 
         assertTrue(deviceMap.isEmpty());
     }
@@ -356,7 +392,6 @@ public class ClusterCommandSchedulerTest {
     private JSONObject createCommandTask(
             String requestId, String commandId, String taskId, String attemptId, String commandLine)
             throws JSONException {
-
         JSONObject ret = new JSONObject();
         ret.put(REQUEST_ID, requestId);
         ret.put(COMMAND_ID, commandId);
@@ -397,30 +432,29 @@ public class ClusterCommandSchedulerTest {
         mMockClusterOptions.getNextClusterIds().add("cluster2");
         mMockClusterOptions.getNextClusterIds().add("cluster3");
 
-        Capture<JSONObject> capture = new Capture<>();
+        ArgumentCaptor<JSONObject> capture = ArgumentCaptor.forClass(JSONObject.class);
         // Create some mock responses for the expected REST API calls
         JSONObject product1Response =
                 createLeaseResponse(createCommandTask("1", "2", "3", "4", "command line 1"));
-        EasyMock.expect(
-                        mMockApiHelper.execute(
-                                EasyMock.eq("POST"),
-                                EasyMock.aryEq(new String[] {"tasks", "leasehosttasks"}),
-                                EasyMock.eq(
-                                        ImmutableMap.of(
-                                                "cluster",
-                                                CLUSTER_ID,
-                                                "hostname",
-                                                ClusterHostUtil.getHostName(),
-                                                "num_tasks",
-                                                Integer.toString(3))),
-                                EasyMock.capture(capture)))
-                .andReturn(buildHttpResponse(product1Response.toString()));
-        EasyMock.expect(mMockHostOptions.getAvailablePermits(PermitLimitType.CONCURRENT_FLASHER))
-                .andReturn(1);
-        EasyMock.expect(mMockHostOptions.getAvailablePermits(PermitLimitType.CONCURRENT_DOWNLOAD))
-                .andReturn(5);
+        when(mMockApiHelper.execute(
+                        Mockito.eq("POST"),
+                        AdditionalMatchers.aryEq(new String[] {"tasks", "leasehosttasks"}),
+                        Mockito.eq(
+                                ImmutableMap.of(
+                                        "cluster",
+                                        CLUSTER_ID,
+                                        "hostname",
+                                        ClusterHostUtil.getHostName(),
+                                        "num_tasks",
+                                        Integer.toString(3))),
+                        capture.capture()))
+                .thenReturn(buildHttpResponse(product1Response.toString()));
+        when(mMockHostOptions.getAvailablePermits(PermitLimitType.CONCURRENT_FLASHER))
+                .thenReturn(1);
+        when(mMockHostOptions.getAvailablePermits(PermitLimitType.CONCURRENT_DOWNLOAD))
+                .thenReturn(5);
         // Actually fetch commands
-        EasyMock.replay(mMockApiHelper, mMockEventUploader, mMockHostOptions);
+
         final List<ClusterCommand> commands = mScheduler.fetchHostCommands(deviceMap);
 
         // Verity the http request body is correct.
@@ -434,8 +468,7 @@ public class ClusterCommandSchedulerTest {
         assertEquals("s3", deviceInfos.getJSONObject(2).get("device_serial"));
         assertEquals("cluster2", clusterIds.getString(0));
         assertEquals("cluster3", clusterIds.getString(1));
-        // Verify that the commands were fetched
-        EasyMock.verify(mMockApiHelper, mMockEventUploader, mMockHostOptions);
+
         // expect 1 command allocated per device type based on availability and fetching algorithm
         assertEquals("commands size mismatch", 1, commands.size());
         ClusterCommand command = commands.get(0);
@@ -460,32 +493,31 @@ public class ClusterCommandSchedulerTest {
 
         mMockClusterOptions.getNextClusterIds().add("cluster2");
         mMockClusterOptions.setCheckFlashingPermitsLease(true);
-        Capture<JSONObject> capture = new Capture<>();
+        ArgumentCaptor<JSONObject> capture = ArgumentCaptor.forClass(JSONObject.class);
         // Create some mock responses for the expected REST API calls
         JSONObject product1Response =
                 createLeaseResponse(createCommandTask("1", "2", "3", "4", "command line 1"));
-        EasyMock.expect(
-                        mMockApiHelper.execute(
-                                EasyMock.eq("POST"),
-                                EasyMock.aryEq(new String[] {"tasks", "leasehosttasks"}),
-                                EasyMock.eq(
-                                        ImmutableMap.of(
-                                                "cluster",
-                                                CLUSTER_ID,
-                                                "hostname",
-                                                ClusterHostUtil.getHostName(),
-                                                "num_tasks",
-                                                Integer.toString(1))),
-                                EasyMock.capture(capture)))
-                .andReturn(buildHttpResponse(product1Response.toString()));
-        EasyMock.expect(mMockHostOptions.getAvailablePermits(PermitLimitType.CONCURRENT_FLASHER))
-                .andReturn(1);
-        EasyMock.expect(mMockHostOptions.getAvailablePermits(PermitLimitType.CONCURRENT_DOWNLOAD))
-                .andReturn(5);
+        when(mMockApiHelper.execute(
+                        Mockito.eq("POST"),
+                        AdditionalMatchers.aryEq(new String[] {"tasks", "leasehosttasks"}),
+                        Mockito.eq(
+                                ImmutableMap.of(
+                                        "cluster",
+                                        CLUSTER_ID,
+                                        "hostname",
+                                        ClusterHostUtil.getHostName(),
+                                        "num_tasks",
+                                        Integer.toString(1))),
+                        capture.capture()))
+                .thenReturn(buildHttpResponse(product1Response.toString()));
+        when(mMockHostOptions.getAvailablePermits(PermitLimitType.CONCURRENT_FLASHER))
+                .thenReturn(1);
+        when(mMockHostOptions.getAvailablePermits(PermitLimitType.CONCURRENT_DOWNLOAD))
+                .thenReturn(5);
 
         // Actually fetch commands
-        EasyMock.replay(mMockApiHelper, mMockEventUploader, mMockDeviceManager, mMockHostOptions);
         final List<ClusterCommand> commands = mScheduler.fetchHostCommands(deviceMap);
+
         assertEquals(1, commands.size());
         ClusterCommand command = commands.get(0);
         assertEquals("1", command.getRequestId());
@@ -617,69 +649,20 @@ public class ClusterCommandSchedulerTest {
                 getExecCommandArgs());
     }
 
-    static ClusterCommandEvent checkClusterCommandEvent(
-            ClusterCommandEvent.Type type, Set<String> deviceSerials) {
-        EasyMock.reportMatcher(
-                new IArgumentMatcher() {
-                    @Override
-                    public boolean matches(Object object) {
-                        if (!(object instanceof ClusterCommandEvent)) {
-                            return false;
-                        }
-
-                        ClusterCommandEvent actual = (ClusterCommandEvent) object;
-                        return (TASK_ID.equals(actual.getCommandTaskId())
-                                && deviceSerials.equals(actual.getDeviceSerials())
-                                && actual.getType() == type);
-                    }
-
-                    @Override
-                    public void appendTo(StringBuffer buffer) {
-                        buffer.append("checkEvent(");
-                        buffer.append(type);
-                        buffer.append(")");
-                    }
-                });
-        return null;
-    }
-
-    static ClusterCommandEvent checkClusterCommandEvent(ClusterCommandEvent.Type type) {
-        Set<String> deviceSerials = new HashSet<String>();
-        deviceSerials.add(DEVICE_SERIAL);
-        return checkClusterCommandEvent(type, deviceSerials);
-    }
-
     @Test
     public void testInvocationEventHandler() {
         ClusterCommand mockCommand = new ClusterCommand(COMMAND_ID, TASK_ID, CMD_LINE);
         IInvocationContext context = new InvocationContext();
-        ITestDevice mockTestDevice = EasyMock.createMock(ITestDevice.class);
-        EasyMock.expect(mockTestDevice.getSerialNumber()).andReturn(DEVICE_SERIAL);
-        EasyMock.expect(mockTestDevice.getIDevice()).andReturn(new StubDevice(DEVICE_SERIAL));
+        ITestDevice mockTestDevice = mock(ITestDevice.class);
+        when(mockTestDevice.getSerialNumber()).thenReturn(DEVICE_SERIAL);
+        when(mockTestDevice.getIDevice()).thenReturn(new StubDevice(DEVICE_SERIAL));
         context.addAllocatedDevice("", mockTestDevice);
-        IBuildInfo mockBuildInfo = EasyMock.createMock(IBuildInfo.class);
+        IBuildInfo mockBuildInfo = mock(IBuildInfo.class);
         context.addDeviceBuildInfo("", mockBuildInfo);
         ClusterCommandScheduler.InvocationEventHandler handler =
                 mScheduler.new InvocationEventHandler(mockCommand);
         mMockClusterOptions.setCollectEarlyTestSummary(true);
 
-        mMockEventUploader.postEvent(
-                checkClusterCommandEvent(ClusterCommandEvent.Type.InvocationInitiated));
-        mMockEventUploader.flush();
-        mMockEventUploader.postEvent(
-                checkClusterCommandEvent(ClusterCommandEvent.Type.InvocationStarted));
-        mMockEventUploader.flush();
-        mMockEventUploader.postEvent(
-                checkClusterCommandEvent(ClusterCommandEvent.Type.TestRunInProgress));
-        EasyMock.expectLastCall().anyTimes();
-        mMockEventUploader.postEvent(
-                checkClusterCommandEvent(ClusterCommandEvent.Type.InvocationEnded));
-        mMockEventUploader.flush();
-        Capture<ClusterCommandEvent> capture = new Capture<>();
-        mMockEventUploader.postEvent(EasyMock.capture(capture));
-        mMockEventUploader.flush();
-
-        EasyMock.replay(mMockEventUploader, mockBuildInfo, mockTestDevice);
         handler.invocationInitiated(context);
         List<TestSummary> summaries = new ArrayList<>();
         summaries.add(
@@ -699,26 +682,54 @@ public class ClusterCommandSchedulerTest {
         Map<ITestDevice, FreeDeviceState> releaseMap = new HashMap<>();
         releaseMap.put(mockTestDevice, FreeDeviceState.AVAILABLE);
         handler.invocationComplete(context, releaseMap);
-        EasyMock.verify(mMockEventUploader, mockBuildInfo, mockTestDevice);
-        ClusterCommandEvent capturedEvent = capture.getValue();
-        assertTrue(capturedEvent.getType().equals(ClusterCommandEvent.Type.InvocationCompleted));
-        // Ensure we have not raised an unexpected error
-        assertNull(capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_ERROR));
-        assertEquals(
-                "0", capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_FAILED_TEST_COUNT));
-        assertEquals(
-                "1", capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_PASSED_TEST_COUNT));
-        assertEquals(
-                "100",
-                capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_FETCH_BUILD_TIME_MILLIS));
-        assertEquals(
-                "200", capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_SETUP_TIME_MILLIS));
-        assertEquals(
-                "URI: http://uri\n",
-                capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_SUMMARY));
-        assertEquals(
-                "1",
-                capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_LOST_DEVICE_DETECTED));
+
+        // Custom matchers are simpler than captures as there are events not of interest.
+        class IsCustomInvocationCompleted implements ArgumentMatcher<ClusterCommandEvent> {
+            @Override
+            public boolean matches(ClusterCommandEvent event) {
+                // Ensure we have not raised an unexpected error
+                return event.getType().equals(ClusterCommandEvent.Type.InvocationCompleted)
+                        && (null == event.getData().get(ClusterCommandEvent.DATA_KEY_ERROR))
+                        && "0"
+                                .equals(
+                                        event.getData()
+                                                .get(
+                                                        ClusterCommandEvent
+                                                                .DATA_KEY_FAILED_TEST_COUNT))
+                        && "1"
+                                .equals(
+                                        event.getData()
+                                                .get(
+                                                        ClusterCommandEvent
+                                                                .DATA_KEY_PASSED_TEST_COUNT))
+                        && "100"
+                                .equals(
+                                        event.getData()
+                                                .get(
+                                                        ClusterCommandEvent
+                                                                .DATA_KEY_FETCH_BUILD_TIME_MILLIS))
+                        && "200"
+                                .equals(
+                                        event.getData()
+                                                .get(
+                                                        ClusterCommandEvent
+                                                                .DATA_KEY_SETUP_TIME_MILLIS))
+                        && "URI: http://uri\n"
+                                .equals(event.getData().get(ClusterCommandEvent.DATA_KEY_SUMMARY))
+                        && "1"
+                                .equals(
+                                        event.getData()
+                                                .get(
+                                                        ClusterCommandEvent
+                                                                .DATA_KEY_LOST_DEVICE_DETECTED));
+            }
+        }
+
+        verify(mMockEventUploader).postEvent(argThat(new IsInvocationInitiated()));
+        verify(mMockEventUploader).postEvent(argThat(new IsInvocationStarted()));
+        verify(mMockEventUploader).postEvent(argThat(new IsInvocationEnded()));
+        verify(mMockEventUploader).postEvent(argThat(new IsCustomInvocationCompleted()));
+        verify(mMockEventUploader, times(4)).flush();
     }
 
     /** Test that the error count is the proper one. */
@@ -726,32 +737,15 @@ public class ClusterCommandSchedulerTest {
     public void testInvocationEventHandler_counting() {
         ClusterCommand mockCommand = new ClusterCommand(COMMAND_ID, TASK_ID, CMD_LINE);
         IInvocationContext context = new InvocationContext();
-        ITestDevice mockTestDevice = EasyMock.createMock(ITestDevice.class);
-        EasyMock.expect(mockTestDevice.getSerialNumber()).andReturn(DEVICE_SERIAL);
-        EasyMock.expect(mockTestDevice.getIDevice()).andReturn(new StubDevice(DEVICE_SERIAL));
-        IBuildInfo mockBuildInfo = EasyMock.createMock(IBuildInfo.class);
+        ITestDevice mockTestDevice = mock(ITestDevice.class);
+        when(mockTestDevice.getSerialNumber()).thenReturn(DEVICE_SERIAL);
+        when(mockTestDevice.getIDevice()).thenReturn(new StubDevice(DEVICE_SERIAL));
+        IBuildInfo mockBuildInfo = mock(IBuildInfo.class);
         context.addAllocatedDevice("", mockTestDevice);
         context.addDeviceBuildInfo("", mockBuildInfo);
         ClusterCommandScheduler.InvocationEventHandler handler =
                 mScheduler.new InvocationEventHandler(mockCommand);
 
-        mMockEventUploader.postEvent(
-                checkClusterCommandEvent(ClusterCommandEvent.Type.InvocationInitiated));
-        mMockEventUploader.flush();
-        mMockEventUploader.postEvent(
-                checkClusterCommandEvent(ClusterCommandEvent.Type.InvocationStarted));
-        mMockEventUploader.flush();
-        mMockEventUploader.postEvent(
-                checkClusterCommandEvent(ClusterCommandEvent.Type.TestRunInProgress));
-        EasyMock.expectLastCall().anyTimes();
-        mMockEventUploader.postEvent(
-                checkClusterCommandEvent(ClusterCommandEvent.Type.InvocationEnded));
-        mMockEventUploader.flush();
-        Capture<ClusterCommandEvent> capture = new Capture<>();
-        mMockEventUploader.postEvent(EasyMock.capture(capture));
-        mMockEventUploader.flush();
-
-        EasyMock.replay(mMockEventUploader, mockBuildInfo, mockTestDevice);
         handler.invocationInitiated(context);
         handler.invocationStarted(context);
         handler.testRunStarted("test run", 1);
@@ -775,50 +769,55 @@ public class ClusterCommandSchedulerTest {
         Map<ITestDevice, FreeDeviceState> releaseMap = new HashMap<>();
         releaseMap.put(mockTestDevice, FreeDeviceState.AVAILABLE);
         handler.invocationComplete(context, releaseMap);
-        EasyMock.verify(mMockEventUploader, mockBuildInfo, mockTestDevice);
-        ClusterCommandEvent capturedEvent = capture.getValue();
-        assertTrue(capturedEvent.getType().equals(ClusterCommandEvent.Type.InvocationCompleted));
-        // Ensure we have not raised an unexpected error
-        assertNull(capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_ERROR));
-        // We only count test failure and not assumption failures.
-        assertEquals(
-                "2", capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_FAILED_TEST_COUNT));
-        assertEquals(
-                "0", capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_PASSED_TEST_COUNT));
-        assertEquals(
-                "1",
-                capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_FAILED_TEST_RUN_COUNT));
+
+        // Custom matchers are simpler than captures as there are events not of interest.
+        class IsCustomInvocationCompleted implements ArgumentMatcher<ClusterCommandEvent> {
+            @Override
+            public boolean matches(ClusterCommandEvent event) {
+                // Ensure we have not raised an unexpected error
+                return event.getType().equals(ClusterCommandEvent.Type.InvocationCompleted)
+                        && (null == event.getData().get(ClusterCommandEvent.DATA_KEY_ERROR))
+                        && "2"
+                                .equals(
+                                        event.getData()
+                                                .get(
+                                                        ClusterCommandEvent
+                                                                .DATA_KEY_FAILED_TEST_COUNT))
+                        && "0"
+                                .equals(
+                                        event.getData()
+                                                .get(
+                                                        ClusterCommandEvent
+                                                                .DATA_KEY_PASSED_TEST_COUNT))
+                        && "1"
+                                .equals(
+                                        event.getData()
+                                                .get(
+                                                        ClusterCommandEvent
+                                                                .DATA_KEY_FAILED_TEST_RUN_COUNT));
+            }
+        }
+
+        verify(mMockEventUploader).postEvent(argThat(new IsInvocationInitiated()));
+        verify(mMockEventUploader).postEvent(argThat(new IsInvocationStarted()));
+        verify(mMockEventUploader).postEvent(argThat(new IsInvocationEnded()));
+        verify(mMockEventUploader).postEvent(argThat(new IsCustomInvocationCompleted()));
+        verify(mMockEventUploader, times(4)).flush();
     }
 
     @Test
     public void testInvocationEventHandler_longTestRun() {
         ClusterCommand mockCommand = new ClusterCommand(COMMAND_ID, TASK_ID, CMD_LINE);
         IInvocationContext context = new InvocationContext();
-        ITestDevice mockTestDevice = EasyMock.createMock(ITestDevice.class);
-        EasyMock.expect(mockTestDevice.getSerialNumber()).andReturn(DEVICE_SERIAL);
-        EasyMock.expect(mockTestDevice.getIDevice()).andReturn(new StubDevice(DEVICE_SERIAL));
+        ITestDevice mockTestDevice = mock(ITestDevice.class);
+        when(mockTestDevice.getSerialNumber()).thenReturn(DEVICE_SERIAL);
+        when(mockTestDevice.getIDevice()).thenReturn(new StubDevice(DEVICE_SERIAL));
         context.addAllocatedDevice("", mockTestDevice);
-        IBuildInfo mockBuildInfo = EasyMock.createMock(IBuildInfo.class);
+        IBuildInfo mockBuildInfo = mock(IBuildInfo.class);
         context.addDeviceBuildInfo("", mockBuildInfo);
         ClusterCommandScheduler.InvocationEventHandler handler =
                 mScheduler.new InvocationEventHandler(mockCommand);
-        mMockEventUploader.postEvent(
-                checkClusterCommandEvent(ClusterCommandEvent.Type.InvocationInitiated));
-        mMockEventUploader.flush();
-        mMockEventUploader.postEvent(
-                checkClusterCommandEvent(ClusterCommandEvent.Type.InvocationStarted));
-        mMockEventUploader.flush();
-        mMockEventUploader.postEvent(
-                checkClusterCommandEvent(ClusterCommandEvent.Type.TestRunInProgress));
-        EasyMock.expectLastCall().anyTimes();
-        mMockEventUploader.postEvent(
-                checkClusterCommandEvent(ClusterCommandEvent.Type.InvocationEnded));
-        mMockEventUploader.flush();
-        mMockEventUploader.postEvent(
-                checkClusterCommandEvent(ClusterCommandEvent.Type.InvocationCompleted));
-        mMockEventUploader.flush();
 
-        EasyMock.replay(mMockEventUploader, mockBuildInfo, mockTestDevice);
         handler.invocationInitiated(context);
         handler.invocationStarted(context);
         handler.testRunStarted("test run", 1);
@@ -830,7 +829,12 @@ public class ClusterCommandSchedulerTest {
         Map<ITestDevice, FreeDeviceState> releaseMap = new HashMap<>();
         releaseMap.put(mockTestDevice, FreeDeviceState.AVAILABLE);
         handler.invocationComplete(context, releaseMap);
-        EasyMock.verify(mMockEventUploader, mockBuildInfo, mockTestDevice);
+
+        verify(mMockEventUploader).postEvent(argThat(new IsInvocationInitiated()));
+        verify(mMockEventUploader).postEvent(argThat(new IsInvocationStarted()));
+        verify(mMockEventUploader).postEvent(argThat(new IsInvocationEnded()));
+        verify(mMockEventUploader).postEvent(argThat(new IsInvocationCompleted()));
+        verify(mMockEventUploader, times(4)).flush();
     }
 
     @Test
@@ -838,62 +842,50 @@ public class ClusterCommandSchedulerTest {
         ClusterCommand mockCommand = new ClusterCommand(COMMAND_ID, TASK_ID, CMD_LINE);
         IInvocationContext context = new InvocationContext();
 
-        ITestDevice mockTestDevice1 = EasyMock.createMock(ITestDevice.class);
-        EasyMock.expect(mockTestDevice1.getSerialNumber()).andReturn(DEVICE_SERIAL);
-        EasyMock.expect(mockTestDevice1.getIDevice()).andReturn(new StubDevice(DEVICE_SERIAL));
+        ITestDevice mockTestDevice1 = mock(ITestDevice.class);
+        when(mockTestDevice1.getSerialNumber()).thenReturn(DEVICE_SERIAL);
+        when(mockTestDevice1.getIDevice()).thenReturn(new StubDevice(DEVICE_SERIAL));
         context.addAllocatedDevice("device1", mockTestDevice1);
-        ITestDevice mockTestDevice2 = EasyMock.createMock(ITestDevice.class);
-        EasyMock.expect(mockTestDevice2.getSerialNumber()).andReturn("s2");
-        EasyMock.expect(mockTestDevice2.getIDevice()).andReturn(new StubDevice("s2"));
+        ITestDevice mockTestDevice2 = mock(ITestDevice.class);
+        when(mockTestDevice2.getSerialNumber()).thenReturn("s2");
+        when(mockTestDevice2.getIDevice()).thenReturn(new StubDevice("s2"));
         context.addAllocatedDevice("device2", mockTestDevice2);
-        IBuildInfo mockBuildInfo = EasyMock.createMock(IBuildInfo.class);
+        IBuildInfo mockBuildInfo = mock(IBuildInfo.class);
         context.addDeviceBuildInfo("", mockBuildInfo);
         ClusterCommandScheduler.InvocationEventHandler handler =
                 mScheduler.new InvocationEventHandler(mockCommand);
 
-        Set<String> deviceSerials = new HashSet<>();
-        deviceSerials.add(DEVICE_SERIAL);
-        deviceSerials.add("s2");
-        mMockEventUploader.postEvent(
-                checkClusterCommandEvent(
-                        ClusterCommandEvent.Type.InvocationInitiated, deviceSerials));
-        mMockEventUploader.flush();
-
-        EasyMock.replay(mMockEventUploader, mockBuildInfo, mockTestDevice1, mockTestDevice2);
         handler.invocationInitiated(context);
+
+        // Custom matchers are simpler than captures as there are events not of interest.
+        class IsCustomInvocationInitiated implements ArgumentMatcher<ClusterCommandEvent> {
+            @Override
+            public boolean matches(ClusterCommandEvent event) {
+                Set<String> deviceSerials = new HashSet<>();
+                deviceSerials.add(DEVICE_SERIAL);
+                deviceSerials.add("s2");
+                return event.getType().equals(ClusterCommandEvent.Type.InvocationInitiated)
+                        && deviceSerials.equals(event.getDeviceSerials());
+            }
+        }
+        verify(mMockEventUploader).postEvent(argThat(new IsCustomInvocationInitiated()));
+        verify(mMockEventUploader).flush();
     }
 
     @Test
     public void testInvocationEventHandler_withSubprocessCommandException() {
         ClusterCommand mockCommand = new ClusterCommand(COMMAND_ID, TASK_ID, CMD_LINE);
         IInvocationContext context = new InvocationContext();
-        ITestDevice mockTestDevice = EasyMock.createMock(ITestDevice.class);
-        EasyMock.expect(mockTestDevice.getSerialNumber()).andReturn(DEVICE_SERIAL);
-        EasyMock.expect(mockTestDevice.getIDevice()).andReturn(new StubDevice(DEVICE_SERIAL));
+        ITestDevice mockTestDevice = mock(ITestDevice.class);
+        when(mockTestDevice.getSerialNumber()).thenReturn(DEVICE_SERIAL);
+        when(mockTestDevice.getIDevice()).thenReturn(new StubDevice(DEVICE_SERIAL));
         context.addAllocatedDevice("", mockTestDevice);
-        IBuildInfo mockBuildInfo = EasyMock.createMock(IBuildInfo.class);
+        IBuildInfo mockBuildInfo = mock(IBuildInfo.class);
         context.addDeviceBuildInfo("", mockBuildInfo);
         ClusterCommandScheduler.InvocationEventHandler handler =
                 mScheduler.new InvocationEventHandler(mockCommand);
         mMockClusterOptions.setCollectEarlyTestSummary(true);
 
-        mMockEventUploader.postEvent(
-                checkClusterCommandEvent(ClusterCommandEvent.Type.InvocationInitiated));
-        mMockEventUploader.flush();
-        mMockEventUploader.postEvent(
-                checkClusterCommandEvent(ClusterCommandEvent.Type.InvocationStarted));
-        mMockEventUploader.flush();
-        mMockEventUploader.postEvent(
-                checkClusterCommandEvent(ClusterCommandEvent.Type.TestRunInProgress));
-        EasyMock.expectLastCall().anyTimes();
-        mMockEventUploader.postEvent(
-                checkClusterCommandEvent(ClusterCommandEvent.Type.InvocationEnded));
-        mMockEventUploader.flush();
-        Capture<ClusterCommandEvent> capture = new Capture<>();
-        mMockEventUploader.postEvent(EasyMock.capture(capture));
-        mMockEventUploader.flush();
-
-        EasyMock.replay(mMockEventUploader, mockBuildInfo, mockTestDevice);
         handler.invocationInitiated(context);
         List<TestSummary> summaries = new ArrayList<>();
         summaries.add(
@@ -909,22 +901,43 @@ public class ClusterCommandSchedulerTest {
         Map<ITestDevice, FreeDeviceState> releaseMap = new HashMap<>();
         releaseMap.put(mockTestDevice, FreeDeviceState.AVAILABLE);
         handler.invocationComplete(context, releaseMap);
-        EasyMock.verify(mMockEventUploader, mockBuildInfo, mockTestDevice);
-        ClusterCommandEvent capturedEvent = capture.getValue();
-        assertTrue(capturedEvent.getType().equals(ClusterCommandEvent.Type.InvocationCompleted));
-        assertTrue(
-                ((String) capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_ERROR))
-                        .contains("SubprocessCommandException"));
-        assertEquals(
-                "subprocess_command_error_message",
-                capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_SUBPROCESS_COMMAND_ERROR));
-        assertEquals(
-                "0", capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_FAILED_TEST_COUNT));
-        assertEquals(
-                "0", capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_PASSED_TEST_COUNT));
-        assertEquals(
-                "URI: http://uri\n",
-                capturedEvent.getData().get(ClusterCommandEvent.DATA_KEY_SUMMARY));
+
+        // Custom matchers are simpler than captures as there are events not of interest.
+        class IsCustomInvocationCompleted implements ArgumentMatcher<ClusterCommandEvent> {
+            @Override
+            public boolean matches(ClusterCommandEvent event) {
+                // Ensure we have not raised an unexpected error
+                return event.getType().equals(ClusterCommandEvent.Type.InvocationCompleted)
+                        && ((String) event.getData().get(ClusterCommandEvent.DATA_KEY_ERROR))
+                                .contains("SubprocessCommandException")
+                        && "subprocess_command_error_message"
+                                .equals(
+                                        event.getData()
+                                                .get(
+                                                        ClusterCommandEvent
+                                                                .DATA_KEY_SUBPROCESS_COMMAND_ERROR))
+                        && "0"
+                                .equals(
+                                        event.getData()
+                                                .get(
+                                                        ClusterCommandEvent
+                                                                .DATA_KEY_FAILED_TEST_COUNT))
+                        && "0"
+                                .equals(
+                                        event.getData()
+                                                .get(
+                                                        ClusterCommandEvent
+                                                                .DATA_KEY_PASSED_TEST_COUNT))
+                        && "URI: http://uri\n"
+                                .equals(event.getData().get(ClusterCommandEvent.DATA_KEY_SUMMARY));
+            }
+        }
+
+        verify(mMockEventUploader).postEvent(argThat(new IsInvocationInitiated()));
+        verify(mMockEventUploader).postEvent(argThat(new IsInvocationStarted()));
+        verify(mMockEventUploader).postEvent(argThat(new IsInvocationEnded()));
+        verify(mMockEventUploader).postEvent(argThat(new IsCustomInvocationCompleted()));
+        verify(mMockEventUploader, times(4)).flush();
     }
 
     /**
@@ -935,7 +948,6 @@ public class ClusterCommandSchedulerTest {
     public void testExecCommandsWithDryRun() {
         mScheduler =
                 new ClusterCommandScheduler() {
-
                     @Override
                     public IClusterOptions getClusterOptions() {
                         return mMockClusterOptions;
@@ -1487,8 +1499,7 @@ public class ClusterCommandSchedulerTest {
                             Configuration.TARGET_PREPARER_TYPE_NAME);
             MockTargetPreparer configObj =
                     (MockTargetPreparer)
-                            configObjs
-                                    .stream()
+                            configObjs.stream()
                                     .filter(
                                             (obj) -> {
                                                 return obj instanceof MockTargetPreparer;
@@ -1665,14 +1676,14 @@ public class ClusterCommandSchedulerTest {
     /** Tests upload events with specific host state. */
     @Test
     public void testUploadHostEventWithState() {
-        Capture<ClusterHostEvent> capture = new Capture<>();
-        mMockHostUploader.postEvent(EasyMock.capture(capture));
-        mMockHostUploader.flush();
-        EasyMock.replay(mMockHostUploader);
+        ArgumentCaptor<ClusterHostEvent> capture = ArgumentCaptor.forClass(ClusterHostEvent.class);
+
         // Ignore exceptions here, only test uploading host states.
         TestableClusterCommandScheduler scheduler = new TestableClusterCommandScheduler();
         scheduler.start();
-        EasyMock.verify(mMockHostUploader);
+
+        verify(mMockHostUploader).postEvent(capture.capture());
+        verify(mMockHostUploader).flush();
         ClusterHostEvent hostEvent = capture.getValue();
         assertNotNull(hostEvent.getHostName());
         assertNotNull(hostEvent.getTimestamp());
