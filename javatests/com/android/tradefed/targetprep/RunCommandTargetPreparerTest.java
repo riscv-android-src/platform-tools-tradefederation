@@ -17,6 +17,10 @@
 package com.android.tradefed.targetprep;
 
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.IShellOutputReceiver;
@@ -30,14 +34,15 @@ import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.RunUtil;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.util.concurrent.TimeUnit;
-
 
 /** Unit Tests for {@link RunCommandTargetPreparer} */
 @RunWith(JUnit4.class)
@@ -47,15 +52,16 @@ public class RunCommandTargetPreparerTest {
     private static final TestDeviceState ONLINE_STATE = TestDeviceState.ONLINE;
 
     private RunCommandTargetPreparer mPreparer = null;
-    private ITestDevice mMockDevice = null;
-    private IBuildInfo mMockBuildInfo = null;
+    @Mock ITestDevice mMockDevice;
+    @Mock IBuildInfo mMockBuildInfo;
     private TestInformation mTestInfo;
 
     @Before
     public void setUp() throws Exception {
+        MockitoAnnotations.initMocks(this);
+
         mPreparer = new RunCommandTargetPreparer();
-        mMockDevice = EasyMock.createMock(ITestDevice.class);
-        mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
+
         InvocationContext context = new InvocationContext();
         context.addAllocatedDevice("device", mMockDevice);
         context.addDeviceBuildInfo("device", mMockBuildInfo);
@@ -74,10 +80,9 @@ public class RunCommandTargetPreparerTest {
         CommandResult res = new CommandResult();
         res.setStatus(CommandStatus.SUCCESS);
         res.setStdout("");
-        EasyMock.expect(mMockDevice.executeShellV2Command(EasyMock.eq(command))).andReturn(res);
-        EasyMock.replay(mMockDevice, mMockBuildInfo);
+        when(mMockDevice.executeShellV2Command(Mockito.eq(command))).thenReturn(res);
+
         mPreparer.setUp(mTestInfo);
-        EasyMock.verify(mMockDevice, mMockBuildInfo);
     }
 
     /**
@@ -93,16 +98,14 @@ public class RunCommandTargetPreparerTest {
         CommandResult res = new CommandResult();
         res.setStatus(CommandStatus.SUCCESS);
         res.setStdout("");
-        EasyMock.expect(
-                        mMockDevice.executeShellV2Command(
-                                EasyMock.eq(command),
-                                EasyMock.eq(100L),
-                                EasyMock.eq(TimeUnit.MILLISECONDS),
-                                EasyMock.eq(0)))
-                .andReturn(res);
-        EasyMock.replay(mMockDevice, mMockBuildInfo);
+        when(mMockDevice.executeShellV2Command(
+                        Mockito.eq(command),
+                        Mockito.eq(100L),
+                        Mockito.eq(TimeUnit.MILLISECONDS),
+                        Mockito.eq(0)))
+                .thenReturn(res);
+
         mPreparer.setUp(mTestInfo);
-        EasyMock.verify(mMockDevice, mMockBuildInfo);
     }
 
     /**
@@ -116,9 +119,8 @@ public class RunCommandTargetPreparerTest {
         OptionSetter setter = new OptionSetter(mPreparer);
         setter.setOptionValue("run-command", command);
         setter.setOptionValue("disable", "true");
-        EasyMock.replay(mMockDevice, mMockBuildInfo);
+
         assertTrue(mPreparer.isDisabled());
-        EasyMock.verify(mMockDevice, mMockBuildInfo);
     }
 
     /**
@@ -131,10 +133,9 @@ public class RunCommandTargetPreparerTest {
         OptionSetter setter = new OptionSetter(mPreparer);
         setter.setOptionValue("teardown-command", command);
         CommandResult result = new CommandResult(CommandStatus.SUCCESS);
-        EasyMock.expect(mMockDevice.executeShellV2Command(EasyMock.eq(command))).andReturn(result);
-        EasyMock.replay(mMockDevice, mMockBuildInfo);
+        when(mMockDevice.executeShellV2Command(Mockito.eq(command))).thenReturn(result);
+
         mPreparer.tearDown(mTestInfo, null);
-        EasyMock.verify(mMockDevice, mMockBuildInfo);
     }
 
     /**
@@ -147,20 +148,24 @@ public class RunCommandTargetPreparerTest {
         final String command = "mkdir test";
         OptionSetter setter = new OptionSetter(mPreparer);
         setter.setOptionValue("run-bg-command", command);
-        IDevice mMockIDevice = EasyMock.createMock(IDevice.class);
-        EasyMock.expect(mMockIDevice.getSerialNumber()).andReturn("SERIAL").anyTimes();
-        IShellOutputReceiver mMockReceiver = EasyMock.createMock(IShellOutputReceiver.class);
-        mMockReceiver.addOutput((byte[]) EasyMock.anyObject(), EasyMock.anyInt(),
-                EasyMock.anyInt());
-        EasyMock.expect(mMockDevice.getIDevice()).andReturn(mMockIDevice).atLeastOnce();
-        EasyMock.expect(mMockDevice.getSerialNumber()).andReturn("SERIAL").atLeastOnce();
-        mMockIDevice.executeShellCommand(EasyMock.eq(command), EasyMock.same(mMockReceiver),
-                EasyMock.anyLong(), EasyMock.eq(TimeUnit.MILLISECONDS));
-        EasyMock.expect(mMockDevice.getDeviceState()).andReturn(ONLINE_STATE).atLeastOnce();
-        EasyMock.replay(mMockDevice, mMockBuildInfo);
+        IDevice mMockIDevice = mock(IDevice.class);
+        when(mMockIDevice.getSerialNumber()).thenReturn("SERIAL");
+        IShellOutputReceiver mMockReceiver = mock(IShellOutputReceiver.class);
+        mMockReceiver.addOutput((byte[]) Mockito.any(), Mockito.anyInt(), Mockito.anyInt());
+        when(mMockDevice.getIDevice()).thenReturn(mMockIDevice);
+        when(mMockDevice.getSerialNumber()).thenReturn("SERIAL");
+        mMockIDevice.executeShellCommand(
+                Mockito.eq(command),
+                Mockito.same(mMockReceiver),
+                Mockito.anyLong(),
+                Mockito.eq(TimeUnit.MILLISECONDS));
+        when(mMockDevice.getDeviceState()).thenReturn(ONLINE_STATE);
+
         mPreparer.setUp(mTestInfo);
         RunUtil.getDefault().sleep(LONG_WAIT_TIME_MS);
         mPreparer.tearDown(mTestInfo, null);
-        EasyMock.verify(mMockDevice, mMockBuildInfo);
+        verify(mMockDevice, atLeastOnce()).getIDevice();
+        verify(mMockDevice, atLeastOnce()).getSerialNumber();
+        verify(mMockDevice, atLeastOnce()).getDeviceState();
     }
 }
