@@ -20,10 +20,13 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.android.tradefed.command.CommandInterrupter;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
@@ -31,7 +34,6 @@ import com.android.tradefed.util.IRunUtil.EnvPriority;
 import com.android.tradefed.util.IRunUtil.IRunnableResult;
 import com.android.tradefed.util.RunUtil.RunnableResult;
 
-import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -111,40 +113,32 @@ public class RunUtilTest {
     /** Test success case for {@link RunUtil#runTimed(long, IRunnableResult, boolean)}. */
     @Test
     public void testRunTimed() throws Exception {
-        IRunUtil.IRunnableResult mockRunnable = EasyMock.createStrictMock(
-                IRunUtil.IRunnableResult.class);
-        EasyMock.expect(mockRunnable.getCommand()).andReturn(new ArrayList<>());
-        EasyMock.expect(mockRunnable.run()).andReturn(Boolean.TRUE);
-        mockRunnable.cancel(); // always ensure execution is cancelled
-        EasyMock.replay(mockRunnable);
-        assertEquals(CommandStatus.SUCCESS,
-                mRunUtil.runTimed(SHORT_TIMEOUT_MS, mockRunnable, true));
+        IRunUtil.IRunnableResult mockRunnable = mock(IRunUtil.IRunnableResult.class);
+        when(mockRunnable.getCommand()).thenReturn(new ArrayList<>());
+        when(mockRunnable.run()).thenReturn(Boolean.TRUE);
+
+        assertEquals(
+                CommandStatus.SUCCESS, mRunUtil.runTimed(SHORT_TIMEOUT_MS, mockRunnable, true));
     }
 
     /** Test failure case for {@link RunUtil#runTimed(long, IRunnableResult, boolean)}. */
     @Test
     public void testRunTimed_failed() throws Exception {
-        IRunUtil.IRunnableResult mockRunnable = EasyMock.createStrictMock(
-                IRunUtil.IRunnableResult.class);
-        EasyMock.expect(mockRunnable.getCommand()).andReturn(new ArrayList<>());
-        EasyMock.expect(mockRunnable.run()).andReturn(Boolean.FALSE);
-        mockRunnable.cancel(); // always ensure execution is cancelled
-        EasyMock.replay(mockRunnable);
-        assertEquals(CommandStatus.FAILED,
-                mRunUtil.runTimed(SHORT_TIMEOUT_MS, mockRunnable, true));
+        IRunUtil.IRunnableResult mockRunnable = mock(IRunUtil.IRunnableResult.class);
+        when(mockRunnable.getCommand()).thenReturn(new ArrayList<>());
+        when(mockRunnable.run()).thenReturn(Boolean.FALSE);
+
+        assertEquals(CommandStatus.FAILED, mRunUtil.runTimed(SHORT_TIMEOUT_MS, mockRunnable, true));
     }
 
     /** Test exception case for {@link RunUtil#runTimed(long, IRunnableResult, boolean)}. */
     @Test
     public void testRunTimed_exception() throws Exception {
-        IRunUtil.IRunnableResult mockRunnable = EasyMock.createStrictMock(
-                IRunUtil.IRunnableResult.class);
-        EasyMock.expect(mockRunnable.getCommand()).andReturn(new ArrayList<>());
-        EasyMock.expect(mockRunnable.run()).andThrow(new RuntimeException());
-        EasyMock.expect(mockRunnable.getResult()).andReturn(null);
-        mockRunnable.cancel(); // cancel due to exception
-        mockRunnable.cancel(); // always ensure execution is cancelled
-        EasyMock.replay(mockRunnable);
+        IRunUtil.IRunnableResult mockRunnable = mock(IRunUtil.IRunnableResult.class);
+        when(mockRunnable.getCommand()).thenReturn(new ArrayList<>());
+        when(mockRunnable.run()).thenThrow(new RuntimeException());
+        when(mockRunnable.getResult()).thenReturn(null);
+
         assertEquals(
                 CommandStatus.EXCEPTION,
                 mRunUtil.runTimed(VERY_LONG_TIMEOUT_MS, mockRunnable, true));
@@ -241,39 +235,38 @@ public class RunUtilTest {
     public void testRunEscalatingTimedRetry_timeout() throws Exception {
         // create a RunUtil fixture with methods mocked out for
         // fast execution
+        RunUtil runUtil =
+                new RunUtil() {
+                    @Override
+                    public void sleep(long time) {
+                        mSleepTime += time;
+                    }
 
-        RunUtil runUtil = new RunUtil() {
-            @Override
-            public void sleep(long time) {
-                mSleepTime += time;
-            }
+                    @Override
+                    long getCurrentTime() {
+                        return mSleepTime;
+                    }
 
-            @Override
-            long getCurrentTime() {
-                return mSleepTime;
-            }
+                    @Override
+                    public CommandStatus runTimed(
+                            long timeout, IRunUtil.IRunnableResult runnable, boolean logErrors) {
+                        try {
+                            // override parent with simple version that doesn't create a thread
+                            return runnable.run() ? CommandStatus.SUCCESS : CommandStatus.FAILED;
+                        } catch (Exception e) {
+                            return CommandStatus.EXCEPTION;
+                        }
+                    }
+                };
 
-            @Override
-            public CommandStatus runTimed(long timeout, IRunUtil.IRunnableResult runnable,
-                    boolean logErrors) {
-                try {
-                    // override parent with simple version that doesn't create a thread
-                    return runnable.run() ? CommandStatus.SUCCESS : CommandStatus.FAILED;
-                } catch (Exception e) {
-                    return CommandStatus.EXCEPTION;
-                }
-            }
-        };
-
-        IRunUtil.IRunnableResult mockRunnable = EasyMock.createStrictMock(
-                IRunUtil.IRunnableResult.class);
+        IRunUtil.IRunnableResult mockRunnable = mock(IRunUtil.IRunnableResult.class);
         // expect a call 4 times, at sleep time 0, 1, 4 and 10 ms
-        EasyMock.expect(mockRunnable.run()).andReturn(Boolean.FALSE).times(4);
-        EasyMock.replay(mockRunnable);
+        when(mockRunnable.run()).thenReturn(Boolean.FALSE);
+
         long maxTime = 10;
         assertFalse(runUtil.runEscalatingTimedRetry(1, 1, 512, maxTime, mockRunnable));
         assertEquals(maxTime, mSleepTime);
-        EasyMock.verify(mockRunnable);
+        verify(mockRunnable, times(4)).run();
     }
 
     /** Test a success case for {@link RunUtil#interrupt}. */
@@ -281,7 +274,7 @@ public class RunUtilTest {
     public void testInterrupt() {
         final String message = "it is alright now";
         mRunUtil.allowInterrupt(true);
-        try{
+        try {
             mRunUtil.interrupt(
                     Thread.currentThread(), message, InfraErrorIdentifier.TRADEFED_SHUTTING_DOWN);
             fail("RunInterruptedException was expected, but not thrown.");
@@ -297,7 +290,7 @@ public class RunUtilTest {
     @Test
     public void testInterrupt_delayed() {
         final String message = "it is alright now";
-        try{
+        try {
             mRunUtil.allowInterrupt(false);
             mRunUtil.interrupt(
                     Thread.currentThread(), message, InfraErrorIdentifier.TRADEFED_SHUTTING_DOWN);
@@ -353,10 +346,10 @@ public class RunUtilTest {
         CommandResult result =
                 spyUtil.runTimedCmd(LONG_TIMEOUT_MS, stdoutStream, stderrStream, command);
         assertEquals(CommandStatus.SUCCESS, result.getStatus());
-        assertEquals(result.getStdout(),
-                "redirected to " + stdoutStream.getClass().getSimpleName());
-        assertEquals(result.getStderr(),
-                "redirected to " + stderrStream.getClass().getSimpleName());
+        assertEquals(
+                result.getStdout(), "redirected to " + stdoutStream.getClass().getSimpleName());
+        assertEquals(
+                result.getStderr(), "redirected to " + stderrStream.getClass().getSimpleName());
         assertTrue(stdout.exists());
         assertTrue(stderr.exists());
         try {
@@ -443,7 +436,8 @@ public class RunUtilTest {
 
         // RunUtil delegates to CommandInterrupter#allowInterruptAsync
         Mockito.verify(interrupter)
-                .allowInterruptAsync(eq(thread), eq(123L), eq(TimeUnit.MILLISECONDS));
+                .allowInterruptAsync(
+                        Mockito.eq(thread), Mockito.eq(123L), Mockito.eq(TimeUnit.MILLISECONDS));
         Mockito.verifyNoMoreInteractions(interrupter);
     }
 
