@@ -51,6 +51,7 @@ import com.android.tradefed.result.error.ErrorIdentifier;
 import com.android.tradefed.result.proto.FileProtoResultReporter;
 import com.android.tradefed.result.proto.ProtoResultParser;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
+import com.android.tradefed.service.TradefedFeatureServer;
 import com.android.tradefed.targetprep.BuildError;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.testtype.SubprocessTfLauncher;
@@ -328,6 +329,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
         tfCmdBuilder.append(" " + SystemUtil.REMOTE_VM_VARIABLE + "=1");
         // Disable clearcut in the remote
         tfCmdBuilder.append(" " + ClearcutClient.DISABLE_CLEARCUT_KEY + "=1");
+        tfCmdBuilder.append(" START_FEATURE_SERVER=1");
         tfCmdBuilder.append(" ENTRY_CLASS=" + CommandRunner.class.getCanonicalName());
         tfCmdBuilder.append(" ./tradefed.sh " + mRemoteTradefedDir + configFile.getName());
         if (config.getCommandOptions().shouldUseRemoteSandboxMode()) {
@@ -648,6 +650,12 @@ public class RemoteInvocationExecution extends InvocationExecution {
         config.getCommandOptions()
                 .getInvocationData()
                 .put(SubprocessTfLauncher.SUBPROCESS_TAG_NAME, "true");
+
+        // Clear the server reference as remote will run its own.
+        if (GlobalConfiguration.getInstance().getFeatureServer() != null) {
+            GlobalConfiguration.getInstance().getFeatureServer().unregisterInvocation(config);
+        }
+        config.getConfigurationDescription().removeMetadata(TradefedFeatureServer.SERVER_REFERENCE);
 
         // Unset remote-tf-version to avoid re-downloading from remote VM.
         OptionSetter deviceOptions =
