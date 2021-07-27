@@ -49,6 +49,7 @@ import com.android.tradefed.util.VersionParser;
 import com.android.tradefed.util.ZipUtil;
 import com.android.tradefed.util.keystore.IKeyStoreFactory;
 import com.android.tradefed.util.keystore.KeyStoreException;
+import com.android.tradefed.testtype.suite.TestSuiteInfo;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -1330,7 +1331,11 @@ public class Console extends Thread {
      */
     public static void startConsole(Console console, String[] args)
             throws InterruptedException, ConfigurationException {
-        ClearcutClient client = new ClearcutClient();
+        ClearcutClient client =
+                new ClearcutClient(
+                        TestSuiteInfo.getInstance().didLoadFromProperties()
+                                ? TestSuiteInfo.getInstance().getName()
+                                : "");
         Runtime.getRuntime().addShutdownHook(new TerminateClearcutClient(client));
         client.notifyTradefedStartEvent();
         TradefedFeatureServer server = null;
