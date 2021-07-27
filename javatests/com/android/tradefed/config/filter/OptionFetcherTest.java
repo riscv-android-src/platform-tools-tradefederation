@@ -82,4 +82,18 @@ public class OptionFetcherTest {
         assertEquals(IsolationGrade.REBOOT_ISOLATED,
                 ((BaseRetryDecision) mConfiguration.getRetryDecision()).getIsolationGrade());
     }
+
+    @Test
+    public void testOptionFetch_single() {
+        FeatureResponse.Builder responseBuilder = FeatureResponse.newBuilder();
+        responseBuilder.setResponse("REBOOT_ISOLATED");
+
+        when(mMockClient.triggerFeature(
+                Mockito.eq(CommandOptionsGetter.COMMAND_OPTIONS_GETTER), Mockito.any()))
+                .thenReturn(responseBuilder.build());
+        mOptionFetcher.fetchParentOptions(mConfiguration);
+
+        assertEquals(IsolationGrade.REBOOT_ISOLATED,
+                ((BaseRetryDecision) mConfiguration.getRetryDecision()).getIsolationGrade());
+    }
 }

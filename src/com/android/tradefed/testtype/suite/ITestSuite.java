@@ -312,16 +312,6 @@ public abstract class ITestSuite
     /** @deprecated to be deleted when next version is deployed */
     @Deprecated
     @Option(
-        name = "max-testcase-run-count",
-        description =
-                "If the IRemoteTest can have its testcases run multiple times, "
-                        + "the max number of runs for each testcase."
-    )
-    private int mMaxRunLimit = 1;
-
-    /** @deprecated to be deleted when next version is deployed */
-    @Deprecated
-    @Option(
         name = "retry-strategy",
         description =
                 "The retry strategy to be used when re-running some tests with "
