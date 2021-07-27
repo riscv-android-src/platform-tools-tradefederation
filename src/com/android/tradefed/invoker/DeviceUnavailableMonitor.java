@@ -73,9 +73,6 @@ public final class DeviceUnavailableMonitor implements ITestInvocationListener {
 
     /** Returns the exception if any was captured. */
     public DeviceNotAvailableException getUnavailableException() {
-        if (mInvocationFailed) {
-            return null;
-        }
         return mUnavailableException;
     }
 
