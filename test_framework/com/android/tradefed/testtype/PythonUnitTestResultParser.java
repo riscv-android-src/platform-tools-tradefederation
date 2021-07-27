@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -202,7 +203,7 @@ public class PythonUnitTestResultParser extends MultiLineReceiver {
             Set<String> excludeFilters) {
         mListeners.addAll(listeners);
         mRunName = runName;
-        mTestResultCache = new HashMap<>();
+        mTestResultCache = new LinkedHashMap<>();
         mIncludeFilters = includeFilters;
         mExcludeFilters = excludeFilters;
         mCurrentParseState = ParserState.TEST_CASE;
