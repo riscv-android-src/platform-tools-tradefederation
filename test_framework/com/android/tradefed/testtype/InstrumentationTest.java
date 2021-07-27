@@ -38,7 +38,6 @@ import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
-import com.android.tradefed.result.BugreportCollector;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
@@ -180,12 +179,6 @@ public class InstrumentationTest
             description = "Additional instrumentation arguments to provide.",
             requiredForRerun = true)
     private final Map<String, String> mInstrArgMap = new HashMap<String, String>();
-
-    @Option(name = "bugreport-on-failure", description = "Sets which failed testcase events " +
-            "cause a bugreport to be collected. a bugreport after failed testcases.  Note that " +
-            "there is _no feedback mechanism_ between the test runner and the bugreport " +
-            "collector, so use the EACH setting with due caution.")
-    private BugreportCollector.Freq mBugreportFrequency = null;
 
     @Option(
             name = "rerun-from-file",
@@ -584,18 +577,6 @@ public class InstrumentationTest
     }
 
     /**
-     * Set the frequency with which to automatically collect bugreports after test failures.
-     * <p />
-     * Note that there is _no feedback mechanism_ between the test runner and the bugreport
-     * collector, so use the EACH setting with due caution: if a large quantity of failures happen
-     * in rapid succession, the bugreport for a given one of the failures could end up being
-     * collected tens of minutes or hours after the respective failure occurred.
-     */
-    public void setBugreportFrequency(BugreportCollector.Freq freq) {
-        mBugreportFrequency = freq;
-    }
-
-    /**
      * Add an argument to provide when running the instrumentation tests.
      *
      * @param key the argument name
@@ -886,7 +867,6 @@ public class InstrumentationTest
 
         // Reruns do not create new listeners.
         if (!mIsRerun) {
-            listener = addBugreportListenerIfEnabled(listener);
 
             // TODO: Convert to device-side collectors when possible.
             for (IMetricCollector collector : mCollectors) {
@@ -940,24 +920,6 @@ public class InstrumentationTest
                     receivers);
         }
         return mDevice.runInstrumentationTests(runner, receivers);
-    }
-
-    /**
-     * Returns a listener that will collect bugreports, or the original {@code listener} if this
-     * feature is disabled.
-     */
-    ITestInvocationListener addBugreportListenerIfEnabled(ITestInvocationListener listener) {
-        if (mBugreportFrequency != null) {
-            // Collect a bugreport after EACH/FIRST failed testcase
-            BugreportCollector.Predicate pred = new BugreportCollector.Predicate(
-                    BugreportCollector.Relation.AFTER,
-                    mBugreportFrequency,
-                    BugreportCollector.Noun.FAILED_TESTCASE);
-            BugreportCollector collector = new BugreportCollector(listener, getDevice());
-            collector.addPredicate(pred);
-            listener = collector;
-        }
-        return listener;
     }
 
     /**
