@@ -15,6 +15,10 @@
  */
 package com.android.tradefed.invoker;
 
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
@@ -26,11 +30,14 @@ import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.LogSaverResultForwarder;
 import com.android.tradefed.result.TestDescription;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.InOrder;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -39,18 +46,18 @@ import java.util.HashMap;
 @RunWith(JUnit4.class)
 public class ShardListenerTest {
     private ShardListener mShardListener;
-    private ILogSaverListener mMockListener;
+    @Mock ILogSaverListener mMockListener;
     private IInvocationContext mContext;
-    private ITestDevice mMockDevice;
-    private ILogSaver mMockSaver;
+    @Mock ITestDevice mMockDevice;
+    @Mock ILogSaver mMockSaver;
 
     @Before
     public void setUp() {
-        mMockListener = EasyMock.createStrictMock(ILogSaverListener.class);
-        mMockSaver = EasyMock.createStrictMock(ILogSaver.class);
+        MockitoAnnotations.initMocks(this);
+
         mShardListener = new ShardListener(mMockListener);
-        mMockDevice = EasyMock.createMock(ITestDevice.class);
-        EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("serial");
+
+        when(mMockDevice.getSerialNumber()).thenReturn("serial");
         mContext = new InvocationContext();
         mContext.addDeviceBuildInfo("default", new BuildInfo());
         mContext.addAllocatedDevice("default", mMockDevice);
@@ -59,59 +66,82 @@ public class ShardListenerTest {
     /** Ensure that all the events given to the shardlistener are replayed on invocationEnded. */
     @Test
     public void testBufferAndReplay() {
-        mMockListener.invocationStarted(mContext);
-        mMockListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
-        TestDescription tid = new TestDescription("class1", "name1");
-        mMockListener.testStarted(tid, 0L);
-        mMockListener.testEnded(tid, 0L, new HashMap<String, Metric>());
-        mMockListener.testRunEnded(0L, new HashMap<String, Metric>());
-        mMockListener.invocationEnded(0L);
 
-        EasyMock.replay(mMockListener, mMockDevice);
+        TestDescription tid = new TestDescription("class1", "name1");
+
         mShardListener.invocationStarted(mContext);
         mShardListener.testRunStarted("run1", 1);
         mShardListener.testStarted(tid, 0L);
         mShardListener.testEnded(tid, 0L, new HashMap<String, Metric>());
         mShardListener.testRunEnded(0L, new HashMap<String, Metric>());
         mShardListener.invocationEnded(0L);
-        EasyMock.verify(mMockListener, mMockDevice);
+        InOrder inOrder = Mockito.inOrder(mMockListener);
+        inOrder.verify(mMockListener).invocationStarted(mContext);
+        inOrder.verify(mMockListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(1), Mockito.eq(0), Mockito.anyLong());
+        inOrder.verify(mMockListener).testStarted(tid, 0L);
+        inOrder.verify(mMockListener).testEnded(tid, 0L, new HashMap<String, Metric>());
+        inOrder.verify(mMockListener).testRunEnded(0L, new HashMap<String, Metric>());
+        inOrder.verify(mMockListener).invocationEnded(0L);
+
+        verify(mMockListener).invocationStarted(mContext);
+        verify(mMockListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(1), Mockito.eq(0), Mockito.anyLong());
+        verify(mMockListener).testStarted(tid, 0L);
+        verify(mMockListener).testEnded(tid, 0L, new HashMap<String, Metric>());
+        verify(mMockListener).testRunEnded(0L, new HashMap<String, Metric>());
+        verify(mMockListener).invocationEnded(0L);
     }
 
     /** Test that we can replay events even if invocationEnded hasn't be called yet. */
     @Test
     public void testPlayRuns() {
-        mMockListener.invocationStarted(mContext);
-        mMockListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
+
         TestDescription tid = new TestDescription("class1", "name1");
-        mMockListener.testStarted(tid, 0L);
-        mMockListener.testEnded(tid, 0L, new HashMap<String, Metric>());
-        mMockListener.testRunEnded(0L, new HashMap<String, Metric>());
+
         // mMockListener.invocationEnded(0L); On purpose not calling invocationEnded.
 
-        EasyMock.replay(mMockListener, mMockDevice);
         mShardListener.invocationStarted(mContext);
         mShardListener.testRunStarted("run1", 1);
         mShardListener.testStarted(tid, 0L);
         mShardListener.testEnded(tid, 0L, new HashMap<String, Metric>());
         mShardListener.testRunEnded(0L, new HashMap<String, Metric>());
         // mShardListener.invocationEnded(0L); On purpose not calling invocationEnded.
-        EasyMock.verify(mMockListener, mMockDevice);
+        InOrder inOrder = Mockito.inOrder(mMockListener);
+        inOrder.verify(mMockListener).invocationStarted(mContext);
+        inOrder.verify(mMockListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(1), Mockito.eq(0), Mockito.anyLong());
+        inOrder.verify(mMockListener).testStarted(tid, 0L);
+        inOrder.verify(mMockListener).testEnded(tid, 0L, new HashMap<String, Metric>());
+        inOrder.verify(mMockListener).testRunEnded(0L, new HashMap<String, Metric>());
+
+        verify(mMockListener).invocationStarted(mContext);
+        verify(mMockListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(1), Mockito.eq(0), Mockito.anyLong());
+        verify(mMockListener).testStarted(tid, 0L);
+        verify(mMockListener).testEnded(tid, 0L, new HashMap<String, Metric>());
+        verify(mMockListener).testRunEnded(0L, new HashMap<String, Metric>());
     }
 
     /** Ensure that replaying a log without a run (no tests ran) still works. */
     @Test
     public void testLogWithoutRun() {
-        mMockListener.invocationStarted(mContext);
-        mMockListener.logAssociation(EasyMock.eq("test-file"), EasyMock.anyObject());
-        mMockListener.invocationEnded(0L);
 
-        EasyMock.replay(mMockListener, mMockDevice);
         mShardListener.invocationStarted(mContext);
         mShardListener.logAssociation("test-file", new LogFile("path", "url", LogDataType.TEXT));
         mShardListener.invocationEnded(0L);
-        EasyMock.verify(mMockListener, mMockDevice);
+        InOrder inOrder = Mockito.inOrder(mMockListener);
+        inOrder.verify(mMockListener).invocationStarted(mContext);
+        inOrder.verify(mMockListener).logAssociation(Mockito.eq("test-file"), Mockito.any());
+        inOrder.verify(mMockListener).invocationEnded(0L);
+
+        verify(mMockListener).invocationStarted(mContext);
+        verify(mMockListener).logAssociation(Mockito.eq("test-file"), Mockito.any());
+        verify(mMockListener).invocationEnded(0L);
     }
 
     /** Test that the buffering of events is properly done in respect to the modules too. */
@@ -121,33 +151,11 @@ public class ShardListenerTest {
         LogFile moduleLog2 = new LogFile("path2", "url2", LogDataType.TEXT);
         IInvocationContext module1 = new InvocationContext();
         IInvocationContext module2 = new InvocationContext();
-        mMockListener.invocationStarted(mContext);
-        mMockListener.testModuleStarted(module1);
-        mMockListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
-        TestDescription tid = new TestDescription("class1", "name1");
-        mMockListener.testStarted(tid, 0L);
-        mMockListener.testEnded(tid, 0L, new HashMap<String, Metric>());
-        mMockListener.testRunEnded(0L, new HashMap<String, Metric>());
-        mMockListener.testRunStarted(
-                EasyMock.eq("run2"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
-        mMockListener.testStarted(tid, 0L);
-        mMockListener.testEnded(tid, 0L, new HashMap<String, Metric>());
-        mMockListener.testRunEnded(0L, new HashMap<String, Metric>());
-        mMockListener.logAssociation("module-log1", moduleLog1);
-        mMockListener.testModuleEnded();
-        // expectation on second module
-        mMockListener.testModuleStarted(module2);
-        mMockListener.testRunStarted(
-                EasyMock.eq("run3"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
-        mMockListener.testStarted(tid, 0L);
-        mMockListener.testEnded(tid, 0L, new HashMap<String, Metric>());
-        mMockListener.testRunEnded(0L, new HashMap<String, Metric>());
-        mMockListener.logAssociation("module-log2", moduleLog2);
-        mMockListener.testModuleEnded();
-        mMockListener.invocationEnded(0L);
 
-        EasyMock.replay(mMockListener, mMockDevice);
+        TestDescription tid = new TestDescription("class1", "name1");
+
+        // expectation on second module
+
         mShardListener.invocationStarted(mContext);
         // 1st module
         mShardListener.testModuleStarted(module1);
@@ -171,7 +179,33 @@ public class ShardListenerTest {
         mShardListener.testModuleEnded();
 
         mShardListener.invocationEnded(0L);
-        EasyMock.verify(mMockListener, mMockDevice);
+        InOrder inOrder = Mockito.inOrder(mMockListener);
+        inOrder.verify(mMockListener).invocationStarted(mContext);
+        inOrder.verify(mMockListener).testModuleStarted(module1);
+        inOrder.verify(mMockListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(1), Mockito.eq(0), Mockito.anyLong());
+        inOrder.verify(mMockListener).testStarted(tid, 0L);
+        inOrder.verify(mMockListener).testEnded(tid, 0L, new HashMap<String, Metric>());
+        inOrder.verify(mMockListener).testRunEnded(0L, new HashMap<String, Metric>());
+        inOrder.verify(mMockListener)
+                .testRunStarted(
+                        Mockito.eq("run2"), Mockito.eq(1), Mockito.eq(0), Mockito.anyLong());
+        inOrder.verify(mMockListener).testStarted(tid, 0L);
+        inOrder.verify(mMockListener).testEnded(tid, 0L, new HashMap<String, Metric>());
+        inOrder.verify(mMockListener).testRunEnded(0L, new HashMap<String, Metric>());
+        inOrder.verify(mMockListener).logAssociation("module-log1", moduleLog1);
+        inOrder.verify(mMockListener).testModuleEnded();
+        inOrder.verify(mMockListener).testModuleStarted(module2);
+        inOrder.verify(mMockListener)
+                .testRunStarted(
+                        Mockito.eq("run3"), Mockito.eq(1), Mockito.eq(0), Mockito.anyLong());
+        inOrder.verify(mMockListener).testStarted(tid, 0L);
+        inOrder.verify(mMockListener).testEnded(tid, 0L, new HashMap<String, Metric>());
+        inOrder.verify(mMockListener).testRunEnded(0L, new HashMap<String, Metric>());
+        inOrder.verify(mMockListener).logAssociation("module-log2", moduleLog2);
+        inOrder.verify(mMockListener).testModuleEnded();
+        inOrder.verify(mMockListener).invocationEnded(0L);
     }
 
     @Test
@@ -180,33 +214,11 @@ public class ShardListenerTest {
         LogFile moduleLog2 = new LogFile("path2", "url2", LogDataType.TEXT);
         IInvocationContext module1 = new InvocationContext();
         IInvocationContext module2 = new InvocationContext();
-        mMockListener.invocationStarted(mContext);
-        mMockListener.testModuleStarted(module1);
-        mMockListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
-        TestDescription tid = new TestDescription("class1", "name1");
-        mMockListener.testStarted(tid, 0L);
-        mMockListener.testEnded(tid, 0L, new HashMap<String, Metric>());
-        mMockListener.testRunEnded(0L, new HashMap<String, Metric>());
-        mMockListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(1), EasyMock.eq(1), EasyMock.anyLong());
-        mMockListener.testStarted(tid, 0L);
-        mMockListener.testEnded(tid, 0L, new HashMap<String, Metric>());
-        mMockListener.testRunEnded(0L, new HashMap<String, Metric>());
-        mMockListener.logAssociation("moduleLog1", moduleLog1);
-        mMockListener.logAssociation("moduleLog1", moduleLog2);
-        mMockListener.testModuleEnded();
-        // expectation on second module
-        mMockListener.testModuleStarted(module2);
-        mMockListener.testRunStarted(
-                EasyMock.eq("run2"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
-        mMockListener.testStarted(tid, 0L);
-        mMockListener.testEnded(tid, 0L, new HashMap<String, Metric>());
-        mMockListener.testRunEnded(0L, new HashMap<String, Metric>());
-        mMockListener.testModuleEnded();
-        mMockListener.invocationEnded(0L);
 
-        EasyMock.replay(mMockListener, mMockDevice);
+        TestDescription tid = new TestDescription("class1", "name1");
+
+        // expectation on second module
+
         mShardListener.setSupportGranularResults(true);
         mShardListener.invocationStarted(mContext);
         // 1st module
@@ -231,100 +243,83 @@ public class ShardListenerTest {
         mShardListener.testModuleEnded();
 
         mShardListener.invocationEnded(0L);
-        EasyMock.verify(mMockListener, mMockDevice);
+        InOrder inOrder = Mockito.inOrder(mMockListener);
+        inOrder.verify(mMockListener).invocationStarted(mContext);
+        inOrder.verify(mMockListener).testModuleStarted(module1);
+        inOrder.verify(mMockListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(1), Mockito.eq(0), Mockito.anyLong());
+        inOrder.verify(mMockListener).testStarted(tid, 0L);
+        inOrder.verify(mMockListener).testEnded(tid, 0L, new HashMap<String, Metric>());
+        inOrder.verify(mMockListener).testRunEnded(0L, new HashMap<String, Metric>());
+        inOrder.verify(mMockListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(1), Mockito.eq(1), Mockito.anyLong());
+        inOrder.verify(mMockListener).testStarted(tid, 0L);
+        inOrder.verify(mMockListener).testEnded(tid, 0L, new HashMap<String, Metric>());
+        inOrder.verify(mMockListener).testRunEnded(0L, new HashMap<String, Metric>());
+        inOrder.verify(mMockListener).logAssociation("moduleLog1", moduleLog1);
+        inOrder.verify(mMockListener).logAssociation("moduleLog1", moduleLog2);
+        inOrder.verify(mMockListener).testModuleEnded();
+        inOrder.verify(mMockListener).testModuleStarted(module2);
+        inOrder.verify(mMockListener)
+                .testRunStarted(
+                        Mockito.eq("run2"), Mockito.eq(1), Mockito.eq(0), Mockito.anyLong());
+        inOrder.verify(mMockListener).testStarted(tid, 0L);
+        inOrder.verify(mMockListener).testEnded(tid, 0L, new HashMap<String, Metric>());
+        inOrder.verify(mMockListener).testRunEnded(0L, new HashMap<String, Metric>());
+        inOrder.verify(mMockListener).testModuleEnded();
+        inOrder.verify(mMockListener).invocationEnded(0L);
     }
 
     /** Test the full ordering structure during a sharded pattern. */
     @Test
     public void testLogOrderingForSharding() throws Exception {
         // Force ordering check
-        ILogSaverListener mockListener = EasyMock.createStrictMock(ILogSaverListener.class);
-        mockListener.setLogSaver(mMockSaver);
+        ILogSaverListener mockListener = mock(ILogSaverListener.class);
 
-        mMockSaver.invocationStarted(mContext);
-        EasyMock.expectLastCall().times(2);
+        when(mockListener.getSummary()).thenReturn(null);
 
-        mockListener.invocationStarted(mContext);
-        EasyMock.expect(mockListener.getSummary()).andReturn(null);
-        mockListener.testLog(
-                EasyMock.eq("run-file"), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
         LogFile runFile = new LogFile("path", "url", false, LogDataType.TEXT, 0L);
-        EasyMock.expect(
-                        mMockSaver.saveLogData(
-                                EasyMock.eq("run-file"),
-                                EasyMock.eq(LogDataType.TEXT),
-                                EasyMock.anyObject()))
-                .andReturn(runFile);
-        mockListener.testLogSaved(
-                EasyMock.eq("run-file"),
-                EasyMock.eq(LogDataType.TEXT),
-                EasyMock.anyObject(),
-                EasyMock.eq(runFile));
+        when(mMockSaver.saveLogData(
+                        Mockito.eq("run-file"), Mockito.eq(LogDataType.TEXT), Mockito.any()))
+                .thenReturn(runFile);
 
-        mockListener.testLog(
-                EasyMock.eq("test-file"), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
         LogFile testFile = new LogFile("path", "url", false, LogDataType.TEXT, 0L);
-        EasyMock.expect(
-                        mMockSaver.saveLogData(
-                                EasyMock.eq("test-file"),
-                                EasyMock.eq(LogDataType.TEXT),
-                                EasyMock.anyObject()))
-                .andReturn(testFile);
-        mockListener.testLogSaved(
-                EasyMock.eq("test-file"),
-                EasyMock.eq(LogDataType.TEXT),
-                EasyMock.anyObject(),
-                EasyMock.eq(testFile));
+        when(mMockSaver.saveLogData(
+                        Mockito.eq("test-file"), Mockito.eq(LogDataType.TEXT), Mockito.any()))
+                .thenReturn(testFile);
 
-        mockListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         TestDescription tid = new TestDescription("class1", "name1");
-        mockListener.testStarted(tid, 0L);
+
         // Log association played in order for the test.
-        mockListener.logAssociation("test-file", testFile);
-        mockListener.testEnded(tid, 0L, new HashMap<String, Metric>());
+
         // Log association to re-associate file to the run.
-        mockListener.logAssociation("run-file", runFile);
-        mockListener.testRunEnded(0L, new HashMap<String, Metric>());
 
         // The log not associated to the run are replay at invocation level.
-        mockListener.testLog(
-                EasyMock.eq("host_log_of_shard"),
-                EasyMock.eq(LogDataType.TEXT),
-                EasyMock.anyObject());
+
         LogFile invocFile = new LogFile("path", "url", false, LogDataType.TEXT, 0L);
-        EasyMock.expect(
-                        mMockSaver.saveLogData(
-                                EasyMock.eq("host_log_of_shard"),
-                                EasyMock.eq(LogDataType.TEXT),
-                                EasyMock.anyObject()))
-                .andReturn(invocFile);
-        mockListener.testLogSaved(
-                EasyMock.eq("host_log_of_shard"),
-                EasyMock.eq(LogDataType.TEXT),
-                EasyMock.anyObject(),
-                EasyMock.eq(invocFile));
-        mockListener.logAssociation("host_log_of_shard", invocFile);
-        mockListener.invocationEnded(0L);
-        EasyMock.expect(mockListener.getSummary()).andReturn(null);
+        when(mMockSaver.saveLogData(
+                        Mockito.eq("host_log_of_shard"),
+                        Mockito.eq(LogDataType.TEXT),
+                        Mockito.any()))
+                .thenReturn(invocFile);
+
+        when(mockListener.getSummary()).thenReturn(null);
 
         // TODO: Fix the name of end_host_log for each shard
-        EasyMock.expect(
-                        mMockSaver.saveLogData(
-                                EasyMock.eq(TestInvocation.TRADEFED_END_HOST_LOG),
-                                EasyMock.eq(LogDataType.HOST_LOG),
-                                EasyMock.anyObject()))
-                .andReturn(invocFile);
-        mMockSaver.invocationEnded(0L);
-        EasyMock.expect(
-                        mMockSaver.saveLogData(
-                                EasyMock.eq(TestInvocation.TRADEFED_END_HOST_LOG),
-                                EasyMock.eq(LogDataType.HOST_LOG),
-                                EasyMock.anyObject()))
-                .andReturn(invocFile);
-        mMockSaver.invocationEnded(0L);
+        when(mMockSaver.saveLogData(
+                        Mockito.eq(TestInvocation.TRADEFED_END_HOST_LOG),
+                        Mockito.eq(LogDataType.HOST_LOG),
+                        Mockito.any()))
+                .thenReturn(invocFile);
 
-        EasyMock.replay(mockListener, mMockSaver, mMockDevice);
+        when(mMockSaver.saveLogData(
+                        Mockito.eq(TestInvocation.TRADEFED_END_HOST_LOG),
+                        Mockito.eq(LogDataType.HOST_LOG),
+                        Mockito.any()))
+                .thenReturn(invocFile);
+
         // Setup of sharding
         LogSaverResultForwarder originalInvocation =
                 new LogSaverResultForwarder(mMockSaver, Arrays.asList(mockListener));
@@ -352,6 +347,50 @@ public class ShardListenerTest {
                 new ByteArrayInputStreamSource("test".getBytes()));
         shardedInvocation.invocationEnded(0L);
 
-        EasyMock.verify(mockListener, mMockSaver, mMockDevice);
+        InOrder inOrder = Mockito.inOrder(mMockSaver, mockListener);
+        inOrder.verify(mockListener).setLogSaver(mMockSaver);
+        inOrder.verify(mMockSaver).invocationStarted(mContext);
+        inOrder.verify(mockListener).invocationStarted(mContext);
+        inOrder.verify(mockListener).getSummary();
+        inOrder.verify(mockListener)
+                .testLog(Mockito.eq("run-file"), Mockito.eq(LogDataType.TEXT), Mockito.any());
+        inOrder.verify(mockListener)
+                .testLogSaved(
+                        Mockito.eq("run-file"),
+                        Mockito.eq(LogDataType.TEXT),
+                        Mockito.any(),
+                        Mockito.eq(runFile));
+        inOrder.verify(mockListener)
+                .testLog(Mockito.eq("test-file"), Mockito.eq(LogDataType.TEXT), Mockito.any());
+        inOrder.verify(mockListener)
+                .testLogSaved(
+                        Mockito.eq("test-file"),
+                        Mockito.eq(LogDataType.TEXT),
+                        Mockito.any(),
+                        Mockito.eq(testFile));
+        inOrder.verify(mockListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(1), Mockito.eq(0), Mockito.anyLong());
+        inOrder.verify(mockListener).testStarted(tid, 0L);
+        inOrder.verify(mockListener).logAssociation("test-file", testFile);
+        inOrder.verify(mockListener).testEnded(tid, 0L, new HashMap<String, Metric>());
+        inOrder.verify(mockListener).logAssociation("run-file", runFile);
+        inOrder.verify(mockListener).testRunEnded(0L, new HashMap<String, Metric>());
+        inOrder.verify(mockListener)
+                .testLog(
+                        Mockito.eq("host_log_of_shard"),
+                        Mockito.eq(LogDataType.TEXT),
+                        Mockito.any());
+        inOrder.verify(mockListener)
+                .testLogSaved(
+                        Mockito.eq("host_log_of_shard"),
+                        Mockito.eq(LogDataType.TEXT),
+                        Mockito.any(),
+                        Mockito.eq(invocFile));
+        inOrder.verify(mockListener).logAssociation("host_log_of_shard", invocFile);
+        inOrder.verify(mockListener).invocationEnded(0L);
+        inOrder.verify(mockListener).getSummary();
+        inOrder.verify(mMockSaver).invocationEnded(0L);
+        inOrder.verify(mMockSaver).invocationEnded(0L);
     }
 }
