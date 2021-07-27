@@ -17,6 +17,7 @@ package com.android.tradefed.postprocessor;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.verify;
 
 import com.android.tradefed.metrics.proto.MetricMeasurement.DataType;
 import com.android.tradefed.metrics.proto.MetricMeasurement.DoubleValues;
@@ -25,12 +26,14 @@ import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.metrics.proto.MetricMeasurement.NumericValues;
 import com.android.tradefed.result.ITestInvocationListener;
 
-import org.easymock.Capture;
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.util.HashMap;
 
@@ -39,28 +42,29 @@ import java.util.HashMap;
 public class AveragePostProcessorTest {
 
     private AveragePostProcessor mProcessor;
-    private ITestInvocationListener mMockListener;
+    @Mock ITestInvocationListener mMockListener;
     private ITestInvocationListener mMainListener;
     private HashMap<String, Metric> mMetrics;
 
     @Before
     public void setUp() {
+        MockitoAnnotations.initMocks(this);
+
         mProcessor = new AveragePostProcessor();
-        mMockListener = EasyMock.createMock(ITestInvocationListener.class);
+
         mMainListener = mProcessor.init(mMockListener);
         mMetrics = new HashMap<>();
     }
 
     @Test
     public void testAverage_double() {
-        Capture<HashMap<String, Metric>> captured = new Capture<>();
-        mMockListener.testRunEnded(EasyMock.eq(15L), EasyMock.capture(captured));
+        ArgumentCaptor<HashMap<String, Metric>> captured = ArgumentCaptor.forClass(HashMap.class);
 
         mMetrics.put("key1", createDoubleListMetric());
 
-        EasyMock.replay(mMockListener);
         mMainListener.testRunEnded(15L, mMetrics);
-        EasyMock.verify(mMockListener);
+
+        verify(mMockListener).testRunEnded(Mockito.eq(15L), captured.capture());
 
         HashMap<String, Metric> result = captured.getValue();
         // We added one metric but end up with two
@@ -76,14 +80,13 @@ public class AveragePostProcessorTest {
 
     @Test
     public void testAverage_long() {
-        Capture<HashMap<String, Metric>> captured = new Capture<>();
-        mMockListener.testRunEnded(EasyMock.eq(15L), EasyMock.capture(captured));
+        ArgumentCaptor<HashMap<String, Metric>> captured = ArgumentCaptor.forClass(HashMap.class);
 
         mMetrics.put("key1", createLongListMetric());
 
-        EasyMock.replay(mMockListener);
         mMainListener.testRunEnded(15L, mMetrics);
-        EasyMock.verify(mMockListener);
+
+        verify(mMockListener).testRunEnded(Mockito.eq(15L), captured.capture());
 
         HashMap<String, Metric> result = captured.getValue();
         // We added one metric but end up with two
