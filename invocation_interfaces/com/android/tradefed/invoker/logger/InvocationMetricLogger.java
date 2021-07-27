@@ -37,6 +37,8 @@ public class InvocationMetricLogger {
         STAGE_TESTS_BYTES("stage_tests_bytes", true),
         STAGE_TESTS_INDIVIDUAL_DOWNLOADS("stage_tests_individual_downloads", true),
         SERVER_REFERENCE("server_reference", false),
+        INSTRUMENTATION_RERUN_FROM_FILE("instrumentation_rerun_from_file", true),
+        INSTRUMENTATION_RERUN_SERIAL("instrumentation_rerun_serial", true),
         // -- Disk memory usage --
         // Approximate peak disk space usage of the invocation
         // Represent files that would usually live for the full invocation (min usage)

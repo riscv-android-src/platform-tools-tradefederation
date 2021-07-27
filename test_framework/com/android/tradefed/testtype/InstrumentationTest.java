@@ -37,6 +37,8 @@ import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.invoker.TestInformation;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.CollectingTestListener;
 import com.android.tradefed.result.ITestInvocationListener;
@@ -1012,8 +1014,14 @@ public class InstrumentationTest
     @VisibleForTesting
     IRemoteTest getTestReRunner(Collection<TestDescription> tests) throws ConfigurationException {
         if (mReRunUsingTestFile) {
+            // Track the feature usage
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.INSTRUMENTATION_RERUN_FROM_FILE, 1);
             return new InstrumentationFileTest(this, tests, mReRunUsingTestFileAttempts);
         } else {
+            // Track the feature usage
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.INSTRUMENTATION_RERUN_SERIAL, 1);
             // Since the same runner is reused we must ensure TEST_FILE_INST_ARGS_KEY is not set.
             // Otherwise, the runner will attempt to execute tests from file.
             mInstrArgMap.remove(TEST_FILE_INST_ARGS_KEY);
