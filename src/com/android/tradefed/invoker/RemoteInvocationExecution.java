@@ -80,6 +80,7 @@ import java.util.List;
 /** Implementation of {@link InvocationExecution} that drives a remote execution. */
 public class RemoteInvocationExecution extends InvocationExecution {
 
+    public static final String START_FEATURE_SERVER = "START_FEATURE_SERVER";
     public static final long PUSH_TF_TIMEOUT = 150000L;
     public static final long PULL_RESULT_TIMEOUT = 180000L;
     public static final long REMOTE_PROCESS_RUNNING_WAIT = 15000L;
@@ -329,7 +330,7 @@ public class RemoteInvocationExecution extends InvocationExecution {
         tfCmdBuilder.append(" " + SystemUtil.REMOTE_VM_VARIABLE + "=1");
         // Disable clearcut in the remote
         tfCmdBuilder.append(" " + ClearcutClient.DISABLE_CLEARCUT_KEY + "=1");
-        tfCmdBuilder.append(" START_FEATURE_SERVER=1");
+        tfCmdBuilder.append(" " + START_FEATURE_SERVER + "=1");
         tfCmdBuilder.append(" ENTRY_CLASS=" + CommandRunner.class.getCanonicalName());
         tfCmdBuilder.append(" ./tradefed.sh " + mRemoteTradefedDir + configFile.getName());
         if (config.getCommandOptions().shouldUseRemoteSandboxMode()) {
