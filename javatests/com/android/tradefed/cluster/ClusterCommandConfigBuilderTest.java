@@ -237,7 +237,8 @@ public class ClusterCommandConfigBuilderTest {
     @Test
     public void testBuild_extraOptions() throws IOException, ConfigurationException, JSONException {
         mCommand.getExtraOptions().put("key", "hello");
-        mCommand.getExtraOptions().put("key", "world");
+        mCommand.getExtraOptions().put("key", "${E1}");
+        mTestEnvironment.addEnvVar("E1", "world");
 
         builder.build();
         // extra options with same key were injected
