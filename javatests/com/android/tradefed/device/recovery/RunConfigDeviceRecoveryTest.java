@@ -16,6 +16,17 @@
 package com.android.tradefed.device.recovery;
 
 import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
+
+import static org.junit.Assert.assertEquals;
 
 import com.android.ddmlib.IDevice;
 import com.android.tradefed.command.ICommandScheduler;
@@ -26,8 +37,6 @@ import com.android.tradefed.device.IDeviceManager;
 import com.android.tradefed.device.IManagedTestDevice;
 import com.android.tradefed.device.ITestDevice;
 
-import org.easymock.Capture;
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -48,12 +57,12 @@ public class RunConfigDeviceRecoveryTest {
 
     @Before
     public void setup() throws Exception {
-        mMockTestDevice = EasyMock.createMock(IManagedTestDevice.class);
-        mMockIDevice = EasyMock.createMock(IDevice.class);
-        mMockDeviceManager = EasyMock.createMock(IDeviceManager.class);
-        mMockScheduler = EasyMock.createMock(ICommandScheduler.class);
-        EasyMock.expect(mMockTestDevice.getSerialNumber()).andStubReturn("serial");
-        EasyMock.expect(mMockTestDevice.getIDevice()).andStubReturn(mMockIDevice);
+        mMockTestDevice = mock(IManagedTestDevice.class);
+        mMockIDevice = mock(IDevice.class);
+        mMockDeviceManager = mock(IDeviceManager.class);
+        mMockScheduler = mock(ICommandScheduler.class);
+        when(mMockTestDevice.getSerialNumber()).thenReturn("serial");
+        when(mMockTestDevice.getIDevice()).thenReturn(mMockIDevice);
         mRecoverer =
                 new RunConfigDeviceRecovery() {
                     @Override
@@ -74,78 +83,56 @@ public class RunConfigDeviceRecoveryTest {
     public void testRecoverDevice_allocated() {
         List<IManagedTestDevice> devices = new ArrayList<>();
         devices.add(mMockTestDevice);
-        EasyMock.expect(mMockTestDevice.getAllocationState())
-                .andReturn(DeviceAllocationState.Allocated);
-        replay();
+        when(mMockTestDevice.getAllocationState()).thenReturn(DeviceAllocationState.Allocated);
         mRecoverer.recoverDevices(devices);
-        verify();
     }
 
     @Test
     public void testRecoverDevice_offline() throws Exception {
         List<IManagedTestDevice> devices = new ArrayList<>();
         devices.add(mMockTestDevice);
-        EasyMock.expect(mMockTestDevice.getAllocationState())
-                .andReturn(DeviceAllocationState.Available);
-        ITestDevice device = EasyMock.createMock(ITestDevice.class);
-        EasyMock.expect(mMockDeviceManager.forceAllocateDevice("serial")).andReturn(device);
+        when(mMockTestDevice.getAllocationState()).thenReturn(DeviceAllocationState.Available);
+        ITestDevice device = mock(ITestDevice.class);
+        when(mMockDeviceManager.forceAllocateDevice("serial")).thenReturn(device);
 
-        mMockScheduler.execCommand(EasyMock.anyObject(), EasyMock.eq(device), EasyMock.anyObject());
-
-        replay();
         mRecoverer.recoverDevices(devices);
-        verify();
+
+        verify(mMockScheduler).execCommand(Mockito.any(), Mockito.eq(device), Mockito.any());
     }
 
     /** Test that FastbootDevice are considered for recovery. */
     @Test
     public void testRecoverDevice_fastboot() throws Exception {
-        EasyMock.reset(mMockTestDevice);
-        EasyMock.expect(mMockTestDevice.getIDevice()).andStubReturn(new FastbootDevice("serial"));
-        EasyMock.expect(mMockTestDevice.getSerialNumber()).andStubReturn("serial");
+        Mockito.reset(mMockTestDevice);
+        when(mMockTestDevice.getIDevice()).thenReturn(new FastbootDevice("serial"));
+        when(mMockTestDevice.getSerialNumber()).thenReturn("serial");
         List<IManagedTestDevice> devices = new ArrayList<>();
         devices.add(mMockTestDevice);
-        EasyMock.expect(mMockTestDevice.getAllocationState())
-                .andReturn(DeviceAllocationState.Available);
-        ITestDevice device = EasyMock.createMock(ITestDevice.class);
-        EasyMock.expect(mMockDeviceManager.forceAllocateDevice("serial")).andReturn(device);
+        when(mMockTestDevice.getAllocationState()).thenReturn(DeviceAllocationState.Available);
+        ITestDevice device = mock(ITestDevice.class);
+        when(mMockDeviceManager.forceAllocateDevice("serial")).thenReturn(device);
 
-        mMockScheduler.execCommand(EasyMock.anyObject(), EasyMock.eq(device), EasyMock.anyObject());
-
-        replay();
         mRecoverer.recoverDevices(devices);
-        verify();
+
+        verify(mMockScheduler).execCommand(Mockito.any(), Mockito.eq(device), Mockito.any());
     }
 
     @Test
     public void testRecoverDevice_run() throws Exception {
         List<IManagedTestDevice> devices = new ArrayList<>();
         devices.add(mMockTestDevice);
-        EasyMock.expect(mMockTestDevice.getAllocationState())
-                .andReturn(DeviceAllocationState.Available);
+        when(mMockTestDevice.getAllocationState()).thenReturn(DeviceAllocationState.Available);
 
-        ITestDevice device = EasyMock.createMock(ITestDevice.class);
-        EasyMock.expect(mMockDeviceManager.forceAllocateDevice("serial")).andReturn(device);
+        ITestDevice device = mock(ITestDevice.class);
+        when(mMockDeviceManager.forceAllocateDevice("serial")).thenReturn(device);
 
-        Capture<String[]> captured = new Capture<>();
-        mMockScheduler.execCommand(
-                EasyMock.anyObject(), EasyMock.eq(device), EasyMock.capture(captured));
+        ArgumentCaptor<String[]> captured = ArgumentCaptor.forClass(String[].class);
 
-        replay(device);
         mRecoverer.recoverDevices(devices);
-        verify(device);
+
+        verify(mMockScheduler).execCommand(Mockito.any(), Mockito.eq(device), captured.capture());
 
         String[] args = captured.getValue();
         assertEquals("empty", args[0]);
-    }
-
-    private void replay(Object... mocks) {
-        EasyMock.replay(mMockTestDevice, mMockIDevice, mMockDeviceManager, mMockScheduler);
-        EasyMock.replay(mocks);
-    }
-
-    private void verify(Object... mocks) {
-        EasyMock.verify(mMockTestDevice, mMockIDevice, mMockDeviceManager, mMockScheduler);
-        EasyMock.verify(mocks);
     }
 }
