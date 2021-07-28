@@ -92,23 +92,16 @@ public class InstalledInstrumentationsTest
     @Option(name = "send-coverage", description = "Send coverage target info to test listeners.")
     private boolean mSendCoverage = false;
 
-    @Option(
-        name = "bugreport-on-run-failure",
-        description = "Take a bugreport if the instrumentation finish with a run failure"
-    )
-    private boolean mBugreportOnRunFailure = false;
-
+    /** @deprecated delete when we are sure it's not used anywhere. */
+    @Deprecated
     @Option(name = "screenshot-on-failure", description = "Take a screenshot on every test failure")
     private boolean mScreenshotOnFailure = false;
 
+    /** @deprecated delete when we are sure it's not used anywhere. */
+    @Deprecated
     @Option(name = "logcat-on-failure", description =
             "take a logcat snapshot on every test failure.")
     private boolean mLogcatOnFailures = false;
-
-    @Option(name = "logcat-on-failure-size", description =
-            "The max number of logcat data in bytes to capture when --logcat-on-failure is on. " +
-            "Should be an amount that can comfortably fit in memory.")
-    private int mMaxLogcatBytes = 500 * 1024; // 500K
 
     @Option(name = "class",
             description = "Only run tests in specified class")
