@@ -293,8 +293,8 @@ public class SuiteModuleLoader {
             // Need to generate a different config for each ABI as we cannot guarantee the
             // configs are idempotent. This however means we parse the same file multiple times
             for (IAbi abi : abis) {
-                // Only enable the primary abi filtering when switching to the parameterized mode
-                if (mAllowParameterizedModules && !primaryAbi && !shouldCreateMultiAbi) {
+                // Filter non-primary abi no matter what if not_multi_abi specified
+                if (!shouldCreateMultiAbi && !primaryAbi) {
                     continue;
                 }
                 String baseId = AbiUtils.createId(abi.getName(), name);
@@ -339,7 +339,8 @@ public class SuiteModuleLoader {
                     }
                     throw e;
                 }
-
+                // Use the not_multi_abi metadata even if not in parameterized mode.
+                shouldCreateMultiAbi = shouldCreateMultiAbiForBase(params);
                 // Handle parameterized modules if enabled.
                 if (mAllowParameterizedModules) {
 
@@ -355,8 +356,6 @@ public class SuiteModuleLoader {
                         // standard module.
                         continue;
                     }
-
-                    shouldCreateMultiAbi = shouldCreateMultiAbiForBase(params);
 
                     // If we find any parameterized combination.
                     for (IModuleParameterHandler param : params) {
