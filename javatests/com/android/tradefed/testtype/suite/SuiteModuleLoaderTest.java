@@ -58,7 +58,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -75,6 +74,12 @@ public class SuiteModuleLoaderTest {
                     + "    <target_preparer class=\"com.android.tradefed.testtype.suite.SuiteModuleLoaderTest$PreparerInject\" />\n"
                     + "    <test class=\"com.android.tradefed.testtype.suite.SuiteModuleLoaderTest"
                     + "$TestInject\" />\n"
+                    + "</configuration>";
+
+    private static final String TEST_NOT_MULTI_ABI_CONFIG =
+            "<configuration description=\"Runs a stub tests part of some suite\">\n"
+                    + "    <option name=\"config-descriptor:metadata\" key=\"parameter\" value=\"not_multi_abi\" />\n"
+                    + "    <test class=\"com.android.tradefed.testtype.suite.TestSuiteStub\" />\n"
                     + "</configuration>";
 
     private static final String TEST_INSTANT_CONFIG =
@@ -117,7 +122,7 @@ public class SuiteModuleLoaderTest {
                         new ArrayList<>(),
                         new ArrayList<>());
         mTestsDir = FileUtil.createTempDir("suite-module-loader-tests");
-        mAbis = new HashSet<>();
+        mAbis = new LinkedHashSet<>();
         mAbis.add(new Abi("armeabi-v7a", "32"));
         mContext = new InvocationContext();
         mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
@@ -136,6 +141,11 @@ public class SuiteModuleLoaderTest {
     private void createModuleConfig(String moduleName) throws IOException {
         File module = new File(mTestsDir, moduleName + SuiteModuleLoader.CONFIG_EXT);
         FileUtil.writeToFile(TEST_CONFIG, module);
+    }
+
+    private void createNotMultiAbiModuleConfig(String moduleName) throws IOException {
+        File module = new File(mTestsDir, moduleName + SuiteModuleLoader.CONFIG_EXT);
+        FileUtil.writeToFile(TEST_NOT_MULTI_ABI_CONFIG, module);
     }
 
     private void createInstantModuleConfig(String moduleName) throws IOException {
@@ -384,6 +394,31 @@ public class SuiteModuleLoaderTest {
 
         TestInject checker = (TestInject) config.getTests().get(0);
         assertEquals("value1", checker.testAlias);
+    }
+
+    @Test
+    public void testLoad_notMultiAbi() throws Exception {
+        createNotMultiAbiModuleConfig("module1");
+
+        mRepo =
+                new SuiteModuleLoader(
+                        new LinkedHashMap<String, LinkedHashSet<SuiteTestFilter>>(),
+                        new LinkedHashMap<String, LinkedHashSet<SuiteTestFilter>>(),
+                        new ArrayList<>(),
+                        new ArrayList<>());
+        // No parameterization
+        mRepo.setParameterizedModules(false);
+        List<String> patterns = new ArrayList<>();
+        patterns.add(".*.config");
+        patterns.add(".*.xml");
+        mAbis = new LinkedHashSet<>();
+        mAbis.add(new Abi("arm64-v8a", "64"));
+        mAbis.add(new Abi("armeabi-v7a", "32"));
+        LinkedHashMap<String, IConfiguration> res =
+                mRepo.loadConfigsFromDirectory(
+                        Arrays.asList(mTestsDir), mAbis, null, null, patterns);
+        assertEquals(1, res.size());
+        assertNotNull(res.get("arm64-v8a module1"));
     }
 
     /**
