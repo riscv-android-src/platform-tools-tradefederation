@@ -471,10 +471,7 @@ public class DeviceSelectionOptions implements IDeviceSelection {
 
         if (!serials.isEmpty() &&
                 !serials.contains(device.getSerialNumber())) {
-            addNoMatchReason(
-                    deviceSerial,
-                    String.format(
-                            "device serial does not match any requested serial(%s)", serials));
+            // Don't add a reason here, if the serial doesn't even match it's just verbose
             return false;
         }
         if (excludeSerials.contains(device.getSerialNumber())) {
