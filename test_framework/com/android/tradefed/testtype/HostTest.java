@@ -509,6 +509,10 @@ public class HostTest
                 throw new RuntimeException(e);
             }
         }
+        // TODO(olivernguyen): Clean this up after instrumenting runInstrumentationTests(...) API.
+        if (testObj instanceof IConfigurationReceiver) {
+            ((IConfigurationReceiver) testObj).setConfiguration(mConfig);
+        }
     }
 
     /** {@inheritDoc} */
