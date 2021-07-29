@@ -383,7 +383,7 @@ public class ExecutableTargetTestTest {
         setter.setOptionValue("test-command-line", testName2, testCmd2);
         setter.setOptionValue("test-command-line", testName3, testCmd3);
         // Split the shard.
-        Collection<IRemoteTest> testShards = mExecutableTargetTest.split();
+        Collection<IRemoteTest> testShards = mExecutableTargetTest.split(2);
         // Test the size of the test Shard.
         assertEquals(3, testShards.size());
         // Test the command of each shard.

@@ -277,7 +277,15 @@ public class SuiteModuleLoader {
                                 mForcedModuleParameter, mAllowOptionalParameterizedModules);
                 mForcedParameterClasses = new HashSet<>();
                 for (IModuleParameterHandler parameter : moduleParameters.values()) {
-                    mForcedParameterClasses.add(parameter.getClass());
+                    if (parameter instanceof FoldableExpandingHandler) {
+                        for (IModuleParameterHandler fParam :
+                                ((FoldableExpandingHandler) parameter)
+                                    .expandHandler(mFoldableStates)) {
+                            mForcedParameterClasses.add(fParam.getClass());
+                        }
+                    } else {
+                        mForcedParameterClasses.add(parameter.getClass());
+                    }
                 }
             }
 
@@ -285,8 +293,8 @@ public class SuiteModuleLoader {
             // Need to generate a different config for each ABI as we cannot guarantee the
             // configs are idempotent. This however means we parse the same file multiple times
             for (IAbi abi : abis) {
-                // Only enable the primary abi filtering when switching to the parameterized mode
-                if (mAllowParameterizedModules && !primaryAbi && !shouldCreateMultiAbi) {
+                // Filter non-primary abi no matter what if not_multi_abi specified
+                if (!shouldCreateMultiAbi && !primaryAbi) {
                     continue;
                 }
                 String baseId = AbiUtils.createId(abi.getName(), name);
@@ -331,7 +339,8 @@ public class SuiteModuleLoader {
                     }
                     throw e;
                 }
-
+                // Use the not_multi_abi metadata even if not in parameterized mode.
+                shouldCreateMultiAbi = shouldCreateMultiAbiForBase(params);
                 // Handle parameterized modules if enabled.
                 if (mAllowParameterizedModules) {
 
@@ -347,8 +356,6 @@ public class SuiteModuleLoader {
                         // standard module.
                         continue;
                     }
-
-                    shouldCreateMultiAbi = shouldCreateMultiAbiForBase(params);
 
                     // If we find any parameterized combination.
                     for (IModuleParameterHandler param : params) {
@@ -474,18 +481,42 @@ public class SuiteModuleLoader {
      * @param abis The Abis to consider in the filtering.
      */
     public static void addFilters(
-            Set<String> stringFilters, Map<String, LinkedHashSet<SuiteTestFilter>> filters, Set<IAbi> abis) {
+            Set<String> stringFilters, Map<String, LinkedHashSet<SuiteTestFilter>> filters,
+            Set<IAbi> abis, Set<DeviceFoldableState> foldableStates) {
         for (String filterString : stringFilters) {
-            SuiteTestFilter filter = SuiteTestFilter.createFrom(filterString);
-            String abi = filter.getAbi();
-            if (abi == null) {
-                for (IAbi a : abis) {
-                    addFilter(a.getName(), filter, filters);
+            SuiteTestFilter parentFilter = SuiteTestFilter.createFrom(filterString);
+            List<SuiteTestFilter> expanded = expandFoldableFilters(parentFilter, foldableStates);
+            for (SuiteTestFilter filter : expanded) {
+                String abi = filter.getAbi();
+                if (abi == null) {
+                    for (IAbi a : abis) {
+                        addFilter(a.getName(), filter, filters);
+                    }
+                } else {
+                    addFilter(abi, filter, filters);
                 }
-            } else {
-                addFilter(abi, filter, filters);
             }
         }
+    }
+
+    private static List<SuiteTestFilter> expandFoldableFilters(
+            SuiteTestFilter filter, Set<DeviceFoldableState> foldableStates) {
+        List<SuiteTestFilter> expandedFilters = new ArrayList<>();
+        if (foldableStates == null || foldableStates.isEmpty()) {
+            expandedFilters.add(filter);
+            return expandedFilters;
+        }
+        if (!ModuleParameters.ALL_FOLDABLE_STATES.toString().equals(filter.getParameterName())) {
+            expandedFilters.add(filter);
+            return expandedFilters;
+        }
+        for (DeviceFoldableState state : foldableStates) {
+            String name = filter.getBaseName() + "[" + state.toString() + "]";
+            expandedFilters.add(
+                    new SuiteTestFilter(
+                            filter.getShardIndex(), filter.getAbi(), name, filter.getTest()));
+        }
+        return expandedFilters;
     }
 
     private static void addFilter(

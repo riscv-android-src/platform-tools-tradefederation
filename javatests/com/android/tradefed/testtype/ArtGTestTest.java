@@ -16,34 +16,37 @@
 
 package com.android.tradefed.testtype;
 
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.android.ddmlib.IShellOutputReceiver;
-import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.DeviceNotAvailableException;
-import com.android.tradefed.device.MockFileUtil;
-import com.android.tradefed.targetprep.ArtChrootPreparer;
+import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.result.ITestInvocationListener;
+import com.android.tradefed.targetprep.ArtChrootPreparer;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 /** Unit tests for {@link ArtGTest}. */
 @RunWith(JUnit4.class)
 public class ArtGTestTest {
-    private ITestInvocationListener mMockInvocationListener = null;
-    private IShellOutputReceiver mMockReceiver = null;
-    private ITestDevice mMockITestDevice = null;
+    @Mock ITestInvocationListener mMockInvocationListener;
+    @Mock IShellOutputReceiver mMockReceiver;
+    @Mock ITestDevice mMockITestDevice;
     private GTest mGTest;
     private TestInformation mTestInfo;
 
     @Before
     public void setUp() throws Exception {
-        mMockInvocationListener = EasyMock.createMock(ITestInvocationListener.class);
-        mMockReceiver = EasyMock.createMock(IShellOutputReceiver.class);
-        mMockITestDevice = EasyMock.createMock(ITestDevice.class);
+        MockitoAnnotations.initMocks(this);
+
         mGTest =
                 new ArtGTest() {
                     @Override
@@ -56,15 +59,7 @@ public class ArtGTestTest {
         mGTest.setNativeTestDevicePath(ArtChrootPreparer.CHROOT_PATH);
         mTestInfo = TestInformation.newBuilder().build();
 
-        EasyMock.expect(mMockITestDevice.getSerialNumber()).andStubReturn("serial");
-    }
-
-    private void replayMocks() {
-        EasyMock.replay(mMockInvocationListener, mMockITestDevice);
-    }
-
-    private void verifyMocks() {
-        EasyMock.verify(mMockInvocationListener, mMockITestDevice);
+        when(mMockITestDevice.getSerialNumber()).thenReturn("serial");
     }
 
     @Test
@@ -73,23 +68,22 @@ public class ArtGTestTest {
         final String test1 = "test1";
         final String testPath1 = String.format("%s/%s", nativeTestPath, test1);
 
-        MockFileUtil.setMockDirContents(mMockITestDevice, nativeTestPath, test1);
-        EasyMock.expect(mMockITestDevice.doesFileExist(nativeTestPath)).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath)).andReturn(true);
-        EasyMock.expect(mMockITestDevice.isDirectory(testPath1)).andReturn(false);
-        EasyMock.expect(mMockITestDevice.isExecutable(testPath1)).andReturn(true);
+        when(mMockITestDevice.doesFileExist(nativeTestPath)).thenReturn(true);
+        when(mMockITestDevice.isDirectory(nativeTestPath)).thenReturn(true);
+        when(mMockITestDevice.isDirectory(testPath1)).thenReturn(false);
+        when(mMockITestDevice.isExecutable(testPath1)).thenReturn(true);
 
         String[] files = new String[] {"test1"};
-        EasyMock.expect(mMockITestDevice.getChildren(nativeTestPath)).andReturn(files);
-        mMockITestDevice.executeShellCommand(
-                EasyMock.startsWith("chroot /data/local/tmp/art-test-chroot /test1"),
-                EasyMock.anyObject(),
-                EasyMock.anyLong(),
-                EasyMock.anyObject(),
-                EasyMock.anyInt());
+        when(mMockITestDevice.getChildren(nativeTestPath)).thenReturn(files);
 
-        replayMocks();
         mGTest.run(mTestInfo, mMockInvocationListener);
-        verifyMocks();
+
+        verify(mMockITestDevice)
+                .executeShellCommand(
+                        Mockito.startsWith("chroot /data/local/tmp/art-test-chroot /test1"),
+                        Mockito.any(),
+                        Mockito.anyLong(),
+                        Mockito.any(),
+                        Mockito.anyInt());
     }
 }

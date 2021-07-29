@@ -18,6 +18,10 @@ package com.android.tradefed.testtype.suite;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.android.ddmlib.IDevice;
 import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
@@ -47,11 +51,13 @@ import com.android.tradefed.util.testmapping.TestInfo;
 import com.android.tradefed.util.testmapping.TestMapping;
 import com.android.tradefed.util.testmapping.TestOption;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.io.File;
 import java.io.IOException;
@@ -88,24 +94,26 @@ public class TestMappingSuiteRunnerTest {
     private OptionSetter mMainlineOptionSetter;
     private TestMappingSuiteRunner mRunner2;
     private TestMappingSuiteRunner mMainlineRunner;
-    private IDeviceBuildInfo mBuildInfo;
-    private ITestDevice mMockDevice;
+    @Mock IDeviceBuildInfo mBuildInfo;
+    @Mock ITestDevice mMockDevice;
     private TestInformation mTestInfo;
     private IConfiguration mStubMainConfiguration;
 
     private static final String TEST_MAINLINE_CONFIG =
-        "<configuration description=\"Runs a stub tests part of some suite\">\n"
-            + "    <option name=\"config-descriptor:metadata\" key=\"mainline-param\" value=\"mod1.apk\" />"
-            + "    <option name=\"config-descriptor:metadata\" key=\"mainline-param\" value=\"mod2.apk\" />"
-            + "    <option name=\"config-descriptor:metadata\" key=\"mainline-param\" value=\"mod1.apk+mod2.apk\" />"
-            + "    <option name=\"config-descriptor:metadata\" key=\"mainline-param\" value=\"mod1.apk+mod2.apk+mod3.apk\" />"
-            + "    <test class=\"com.android.tradefed.testtype.HostTest\" />\n"
-            + "</configuration>";
+            "<configuration description=\"Runs a stub tests part of some suite\">\n"
+                + "    <option name=\"config-descriptor:metadata\" key=\"mainline-param\""
+                + " value=\"mod1.apk\" />    <option name=\"config-descriptor:metadata\""
+                + " key=\"mainline-param\" value=\"mod2.apk\" />    <option"
+                + " name=\"config-descriptor:metadata\" key=\"mainline-param\""
+                + " value=\"mod1.apk+mod2.apk\" />    <option name=\"config-descriptor:metadata\""
+                + " key=\"mainline-param\" value=\"mod1.apk+mod2.apk+mod3.apk\" />    <test"
+                + " class=\"com.android.tradefed.testtype.HostTest\" />\n"
+                + "</configuration>";
 
     @Before
     public void setUp() throws Exception {
-        mMockDevice = EasyMock.createMock(ITestDevice.class);
-        mBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
+        MockitoAnnotations.initMocks(this);
+
         mRunner = new AbiTestMappingSuite();
         mRunner.setBuild(mBuildInfo);
         mRunner.setDevice(mMockDevice);
@@ -129,14 +137,12 @@ public class TestMappingSuiteRunnerTest {
         context.addDeviceBuildInfo(ConfigurationDef.DEFAULT_DEVICE_NAME, mBuildInfo);
         mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
 
-        EasyMock.expect(mBuildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR)).andReturn(null)
-                .anyTimes();
-        EasyMock.expect(mBuildInfo.getTestsDir()).andReturn(new File(NON_EXISTING_DIR)).anyTimes();
-        EasyMock.expect(mMockDevice.getProperty(EasyMock.anyObject())).andReturn(ABI_1);
-        EasyMock.expect(mMockDevice.getProperty(EasyMock.anyObject())).andReturn(ABI_2);
-        EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(EasyMock.createMock(IDevice.class));
-        EasyMock.expect(mMockDevice.getFoldableStates()).andStubReturn(new HashSet<>());
-        EasyMock.replay(mBuildInfo, mMockDevice);
+        when(mBuildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR)).thenReturn(null);
+        when(mBuildInfo.getTestsDir()).thenReturn(new File(NON_EXISTING_DIR));
+        when(mMockDevice.getProperty(Mockito.any())).thenReturn(ABI_1);
+        when(mMockDevice.getProperty(Mockito.any())).thenReturn(ABI_2);
+        when(mMockDevice.getIDevice()).thenReturn(mock(IDevice.class));
+        when(mMockDevice.getFoldableStates()).thenReturn(new HashSet<>());
     }
 
     /**
@@ -154,9 +160,7 @@ public class TestMappingSuiteRunnerTest {
         }
     }
 
-    /**
-     * Test TestMappingSuiteRunner that create a fake IConfiguration with fake a test object.
-     */
+    /** Test TestMappingSuiteRunner that create a fake IConfiguration with fake a test object. */
     public static class FakeTestMappingSuiteRunner extends TestMappingSuiteRunner {
         @Override
         public Set<IAbi> getAbis(ITestDevice device) throws DeviceNotAvailableException {
@@ -167,8 +171,8 @@ public class TestMappingSuiteRunnerTest {
         }
 
         @Override
-        public LinkedHashMap<String, IConfiguration> loadingStrategy(Set<IAbi> abis,
-            List<File> testsDirs, String suitePrefix, String suiteTag) {
+        public LinkedHashMap<String, IConfiguration> loadingStrategy(
+                Set<IAbi> abis, List<File> testsDirs, String suitePrefix, String suiteTag) {
             LinkedHashMap<String, IConfiguration> testConfig = new LinkedHashMap<>();
             try {
                 IConfiguration config =
@@ -177,7 +181,6 @@ public class TestMappingSuiteRunnerTest {
                 config.setTest(new StubTest());
                 config.getConfigurationDescription().setModuleName(TEST_CONFIG_NAME);
                 testConfig.put(TEST_CONFIG_NAME, config);
-
             } catch (ConfigurationException e) {
                 throw new RuntimeException(e);
             }
@@ -185,9 +188,7 @@ public class TestMappingSuiteRunnerTest {
         }
     }
 
-    /**
-     * Test TestMappingSuiteRunner that create a fake IConfiguration with fake a test object.
-     */
+    /** Test TestMappingSuiteRunner that create a fake IConfiguration with fake a test object. */
     public static class FakeMainlineTMSR extends TestMappingSuiteRunner {
         @Override
         public Set<IAbi> getAbis(ITestDevice device) throws DeviceNotAvailableException {
@@ -231,30 +232,26 @@ public class TestMappingSuiteRunnerTest {
             File zipFile = Paths.get(tempDir.getAbsolutePath(), TEST_MAPPINGS_ZIP).toFile();
             ZipUtil.createZip(filesToZip, zipFile);
 
-            IDeviceBuildInfo mockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
-            EasyMock.expect(mockBuildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR))
-                    .andStubReturn(null);
-            EasyMock.expect(mockBuildInfo.getTestsDir())
-                    .andStubReturn(new File("non-existing-dir"));
-            EasyMock.expect(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).andReturn(zipFile);
+            IDeviceBuildInfo mockBuildInfo = mock(IDeviceBuildInfo.class);
+            when(mockBuildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR)).thenReturn(null);
+            when(mockBuildInfo.getTestsDir()).thenReturn(new File("non-existing-dir"));
+            when(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).thenReturn(zipFile);
 
             mRunner.setBuild(mockBuildInfo);
-            EasyMock.replay(mockBuildInfo);
 
             LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
 
             for (IConfiguration config : configMap.values()) {
                 ConfigurationDescriptor configDesc = config.getConfigurationDescription();
                 assertEquals(
-                        configDesc.getMetaData(
-                                RemoteTestTimeOutEnforcer.REMOTE_TEST_TIMEOUT_OPTION).get(0),
-                        "PT15M"
-                );
-                for(IRemoteTest test : config.getTests()) {
+                        configDesc
+                                .getMetaData(RemoteTestTimeOutEnforcer.REMOTE_TEST_TIMEOUT_OPTION)
+                                .get(0),
+                        "PT15M");
+                for (IRemoteTest test : config.getTests()) {
                     assertNotNull(configDesc.getMetaData(Integer.toString(test.hashCode())));
                 }
             }
-            EasyMock.verify(mockBuildInfo);
         } finally {
             FileUtil.recursiveDelete(tempDir);
         }
@@ -329,15 +326,12 @@ public class TestMappingSuiteRunnerTest {
             File zipFile = Paths.get(tempDir.getAbsolutePath(), TEST_MAPPINGS_ZIP).toFile();
             ZipUtil.createZip(filesToZip, zipFile);
 
-            IDeviceBuildInfo mockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
-            EasyMock.expect(mockBuildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR))
-                    .andStubReturn(null);
-            EasyMock.expect(mockBuildInfo.getTestsDir())
-                    .andStubReturn(new File("non-existing-dir"));
-            EasyMock.expect(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).andReturn(zipFile);
+            IDeviceBuildInfo mockBuildInfo = mock(IDeviceBuildInfo.class);
+            when(mockBuildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR)).thenReturn(null);
+            when(mockBuildInfo.getTestsDir()).thenReturn(new File("non-existing-dir"));
+            when(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).thenReturn(zipFile);
 
             mRunner.setBuild(mockBuildInfo);
-            EasyMock.replay(mockBuildInfo);
 
             LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
 
@@ -360,8 +354,6 @@ public class TestMappingSuiteRunnerTest {
                                 .getMetaData(TestMapping.TEST_SOURCES)
                                 .size());
             }
-
-            EasyMock.verify(mockBuildInfo);
         } finally {
             FileUtil.recursiveDelete(tempDir);
         }
@@ -399,15 +391,12 @@ public class TestMappingSuiteRunnerTest {
             File zipFile = Paths.get(tempDir.getAbsolutePath(), TEST_MAPPINGS_ZIP).toFile();
             ZipUtil.createZip(filesToZip, zipFile);
 
-            IDeviceBuildInfo mockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
-            EasyMock.expect(mockBuildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR))
-                    .andStubReturn(null);
-            EasyMock.expect(mockBuildInfo.getTestsDir())
-                    .andStubReturn(new File("non-existing-dir"));
-            EasyMock.expect(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).andReturn(zipFile);
+            IDeviceBuildInfo mockBuildInfo = mock(IDeviceBuildInfo.class);
+            when(mockBuildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR)).thenReturn(null);
+            when(mockBuildInfo.getTestsDir()).thenReturn(new File("non-existing-dir"));
+            when(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).thenReturn(zipFile);
 
             mRunner.setBuild(mockBuildInfo);
-            EasyMock.replay(mockBuildInfo);
 
             LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
 
@@ -432,8 +421,6 @@ public class TestMappingSuiteRunnerTest {
                                 .getMetaData(TestMapping.TEST_SOURCES)
                                 .size());
             }
-
-            EasyMock.verify(mockBuildInfo);
         } finally {
             FileUtil.recursiveDelete(tempDir);
         }
@@ -471,14 +458,12 @@ public class TestMappingSuiteRunnerTest {
             File zipFile = Paths.get(tempDir.getAbsolutePath(), TEST_MAPPINGS_ZIP).toFile();
             ZipUtil.createZip(filesToZip, zipFile);
 
-            IDeviceBuildInfo mockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
-            EasyMock.expect(mockBuildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR))
-                    .andReturn(null);
-            EasyMock.expect(mockBuildInfo.getTestsDir()).andReturn(new File("non-existing-dir"));
-            EasyMock.expect(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).andReturn(zipFile);
+            IDeviceBuildInfo mockBuildInfo = mock(IDeviceBuildInfo.class);
+            when(mockBuildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR)).thenReturn(null);
+            when(mockBuildInfo.getTestsDir()).thenReturn(new File("non-existing-dir"));
+            when(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).thenReturn(zipFile);
 
             mRunner.setBuild(mockBuildInfo);
-            EasyMock.replay(mockBuildInfo);
 
             // No test should be found with keyword key_2, loadTests method shall raise
             // RuntimeException.
@@ -519,14 +504,12 @@ public class TestMappingSuiteRunnerTest {
             File zipFile = Paths.get(tempDir.getAbsolutePath(), TEST_MAPPINGS_ZIP).toFile();
             ZipUtil.createZip(filesToZip, zipFile);
 
-            IDeviceBuildInfo mockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
-            EasyMock.expect(mockBuildInfo.getFile(BuildInfoFileKey.HOST_LINKED_DIR))
-                    .andReturn(null);
-            EasyMock.expect(mockBuildInfo.getTestsDir()).andReturn(new File("non-existing-dir"));
-            EasyMock.expect(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).andReturn(zipFile);
+            IDeviceBuildInfo mockBuildInfo = mock(IDeviceBuildInfo.class);
+            when(mockBuildInfo.getFile(BuildInfoFileKey.HOST_LINKED_DIR)).thenReturn(null);
+            when(mockBuildInfo.getTestsDir()).thenReturn(new File("non-existing-dir"));
+            when(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).thenReturn(zipFile);
 
             mRunner.setBuild(mockBuildInfo);
-            EasyMock.replay(mockBuildInfo);
 
             mRunner.setPrioritizeHostConfig(true);
             LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
@@ -535,8 +518,6 @@ public class TestMappingSuiteRunnerTest {
             // include-filters.
             assertTrue(mRunner.getIncludeFilter().contains("test1"));
             assertEquals(1, mRunner.getIncludeFilter().size());
-
-            EasyMock.verify(mockBuildInfo);
         } finally {
             FileUtil.recursiveDelete(tempDir);
         }
@@ -566,22 +547,19 @@ public class TestMappingSuiteRunnerTest {
             File zipFile = Paths.get(tempDir.getAbsolutePath(), TEST_MAPPINGS_ZIP).toFile();
             ZipUtil.createZip(srcDir, zipFile);
 
-            IDeviceBuildInfo mockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
-            EasyMock.expect(mockBuildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR))
-                    .andStubReturn(null);
-            EasyMock.expect(mockBuildInfo.getTestsDir())
-                    .andStubReturn(new File("non-existing-dir"));
-            EasyMock.expect(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).andReturn(zipFile);
-            EasyMock.expect(mockBuildInfo.getRemoteFiles()).andReturn(null).once();
+            IDeviceBuildInfo mockBuildInfo = mock(IDeviceBuildInfo.class);
+            when(mockBuildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR)).thenReturn(null);
+            when(mockBuildInfo.getTestsDir()).thenReturn(new File("non-existing-dir"));
+            when(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).thenReturn(zipFile);
+            when(mockBuildInfo.getRemoteFiles()).thenReturn(null);
 
             mTestInfo
                     .getContext()
                     .addDeviceBuildInfo(ConfigurationDef.DEFAULT_DEVICE_NAME, mockBuildInfo);
-            EasyMock.replay(mockBuildInfo);
 
             Collection<IRemoteTest> tests = mRunner.split(2, mTestInfo);
             assertEquals(4, tests.size());
-            EasyMock.verify(mockBuildInfo);
+            verify(mockBuildInfo, times(1)).getRemoteFiles();
         } finally {
             FileUtil.recursiveDelete(tempDir);
         }
@@ -613,17 +591,14 @@ public class TestMappingSuiteRunnerTest {
             mOptionSetter.setOptionValue("test-mapping-path", srcDir.getName());
             mOptionSetter.setOptionValue("exclude-filter", "suite/stub1");
 
-            IDeviceBuildInfo mockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
-            EasyMock.expect(mockBuildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR))
-                    .andStubReturn(null);
-            EasyMock.expect(mockBuildInfo.getTestsDir())
-                    .andStubReturn(new File("non-existing-dir"));
-            EasyMock.expect(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).andReturn(zipFile);
+            IDeviceBuildInfo mockBuildInfo = mock(IDeviceBuildInfo.class);
+            when(mockBuildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR)).thenReturn(null);
+            when(mockBuildInfo.getTestsDir()).thenReturn(new File("non-existing-dir"));
+            when(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).thenReturn(zipFile);
 
             mTestInfo
                     .getContext()
                     .addDeviceBuildInfo(ConfigurationDef.DEFAULT_DEVICE_NAME, mockBuildInfo);
-            EasyMock.replay(mockBuildInfo);
 
             Collection<IRemoteTest> tests = mRunner.split(2, mTestInfo);
             assertEquals(null, tests);
@@ -631,7 +606,6 @@ public class TestMappingSuiteRunnerTest {
             assertEquals(null, mRunner.getTestGroup());
             assertEquals(0, mRunner.getTestMappingPaths().size());
             assertEquals(false, mRunner.getUseTestMappingPath());
-            EasyMock.verify(mockBuildInfo);
         } finally {
             // Clean up the static variable due to the usage of option `test-mapping-path`.
             TestMapping.setTestMappingPaths(new ArrayList<String>());
@@ -653,12 +627,11 @@ public class TestMappingSuiteRunnerTest {
             File zipFile = Paths.get(tempDir.getAbsolutePath(), TEST_MAPPINGS_ZIP).toFile();
             ZipUtil.createZip(srcDir, zipFile);
 
-            IDeviceBuildInfo mockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
-            EasyMock.expect(mockBuildInfo.getTestsDir()).andReturn(new File("non-existing-dir"));
-            EasyMock.expect(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).andReturn(zipFile);
+            IDeviceBuildInfo mockBuildInfo = mock(IDeviceBuildInfo.class);
+            when(mockBuildInfo.getTestsDir()).thenReturn(new File("non-existing-dir"));
+            when(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).thenReturn(zipFile);
 
             mRunner.setBuild(mockBuildInfo);
-            EasyMock.replay(mockBuildInfo);
 
             mRunner.loadTests();
         } finally {
@@ -712,21 +685,17 @@ public class TestMappingSuiteRunnerTest {
             File zipFile = Paths.get(tempDir.getAbsolutePath(), TEST_MAPPINGS_ZIP).toFile();
             ZipUtil.createZip(filesToZip, zipFile);
 
-            IDeviceBuildInfo mockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
-            EasyMock.expect(mockBuildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR))
-                    .andStubReturn(null);
-            EasyMock.expect(mockBuildInfo.getTestsDir())
-                    .andStubReturn(new File("non-existing-dir"));
-            EasyMock.expect(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).andReturn(zipFile);
+            IDeviceBuildInfo mockBuildInfo = mock(IDeviceBuildInfo.class);
+            when(mockBuildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR)).thenReturn(null);
+            when(mockBuildInfo.getTestsDir()).thenReturn(new File("non-existing-dir"));
+            when(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).thenReturn(zipFile);
 
             mRunner.setBuild(mockBuildInfo);
-            EasyMock.replay(mockBuildInfo);
 
             LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
             assertEquals(2, configMap.size());
             assertTrue(configMap.containsKey(ABI_1 + " suite/stub1"));
             assertTrue(configMap.containsKey(ABI_2 + " suite/stub1"));
-            EasyMock.verify(mockBuildInfo);
         } finally {
             FileUtil.recursiveDelete(tempDir);
         }
@@ -748,7 +717,7 @@ public class TestMappingSuiteRunnerTest {
 
             File srcDir = FileUtil.createTempDir("src", tempDir);
             String srcFile =
-                File.separator + TEST_DATA_DIR + File.separator + DISABLED_PRESUBMIT_TESTS;
+                    File.separator + TEST_DATA_DIR + File.separator + DISABLED_PRESUBMIT_TESTS;
             InputStream resourceStream = this.getClass().getResourceAsStream(srcFile);
             FileUtil.saveResourceFile(resourceStream, srcDir, DISABLED_PRESUBMIT_TESTS);
 
@@ -761,19 +730,16 @@ public class TestMappingSuiteRunnerTest {
             FileUtil.saveResourceFile(resourceStream, subDir, TEST_MAPPING);
 
             List<File> filesToZip =
-                Arrays.asList(srcDir, new File(tempDir, DISABLED_PRESUBMIT_TESTS));
+                    Arrays.asList(srcDir, new File(tempDir, DISABLED_PRESUBMIT_TESTS));
             File zipFile = Paths.get(tempDir.getAbsolutePath(), TEST_MAPPINGS_ZIP).toFile();
             ZipUtil.createZip(filesToZip, zipFile);
 
-            IDeviceBuildInfo mockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
-            EasyMock.expect(mockBuildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR))
-                    .andStubReturn(null);
-            EasyMock.expect(mockBuildInfo.getTestsDir())
-                    .andStubReturn(new File("non-existing-dir"));
-            EasyMock.expect(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).andReturn(zipFile);
+            IDeviceBuildInfo mockBuildInfo = mock(IDeviceBuildInfo.class);
+            when(mockBuildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR)).thenReturn(null);
+            when(mockBuildInfo.getTestsDir()).thenReturn(new File("non-existing-dir"));
+            when(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).thenReturn(zipFile);
 
             mRunner.setBuild(mockBuildInfo);
-            EasyMock.replay(mockBuildInfo);
 
             LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
             assertEquals(4, configMap.size());
@@ -781,7 +747,6 @@ public class TestMappingSuiteRunnerTest {
             assertTrue(configMap.containsKey(ABI_1 + " suite/stub2"));
             assertTrue(configMap.containsKey(ABI_2 + " suite/stub1"));
             assertTrue(configMap.containsKey(ABI_2 + " suite/stub2"));
-            EasyMock.verify(mockBuildInfo);
         } finally {
             FileUtil.recursiveDelete(tempDir);
         }
@@ -905,21 +870,19 @@ public class TestMappingSuiteRunnerTest {
             File zipFile = Paths.get(tempDir.getAbsolutePath(), TEST_MAPPINGS_ZIP).toFile();
             ZipUtil.createZip(srcDir, zipFile);
 
-            IDeviceBuildInfo mockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
-            EasyMock.expect(mockBuildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR))
-                    .andReturn(null)
-                    .anyTimes();
-            EasyMock.expect(mockBuildInfo.getTestsDir()).andReturn(tempTestsDir).anyTimes();
-            EasyMock.expect(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).andReturn(zipFile).anyTimes();
-            EasyMock.expect(mockBuildInfo.getBuildBranch()).andReturn("branch").anyTimes();
-            EasyMock.expect(mockBuildInfo.getBuildFlavor()).andReturn("flavor").anyTimes();
-            EasyMock.expect(mockBuildInfo.getBuildId()).andReturn("id").anyTimes();
+            IDeviceBuildInfo mockBuildInfo = mock(IDeviceBuildInfo.class);
+            when(mockBuildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR)).thenReturn(null);
+            when(mockBuildInfo.getTestsDir()).thenReturn(tempTestsDir);
+            when(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).thenReturn(zipFile);
+            when(mockBuildInfo.getBuildBranch()).thenReturn("branch");
+            when(mockBuildInfo.getBuildFlavor()).thenReturn("flavor");
+            when(mockBuildInfo.getBuildId()).thenReturn("id");
 
             IInvocationContext mContext = new InvocationContext();
             mContext.addDeviceBuildInfo(ConfigurationDef.DEFAULT_DEVICE_NAME, mockBuildInfo);
             mRunner.setInvocationContext(mContext);
             mRunner.setBuild(mockBuildInfo);
-            EasyMock.replay(mockBuildInfo);
+
             LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
             assertEquals(2, configMap.size());
             assertTrue(configMap.keySet().contains("armeabi-v7a suite/stub1"));
@@ -935,7 +898,6 @@ public class TestMappingSuiteRunnerTest {
                     }
                 }
             }
-            EasyMock.verify(mockBuildInfo);
         } finally {
             FileUtil.recursiveDelete(tempDir);
             FileUtil.recursiveDelete(tempTestsDir);
@@ -943,8 +905,8 @@ public class TestMappingSuiteRunnerTest {
     }
 
     /**
-     * Test for {@link TestMappingSuiteRunner#loadTests()} that IRemoteTest
-     * object are created according to the test infos with multiple test options.
+     * Test for {@link TestMappingSuiteRunner#loadTests()} that IRemoteTest object are created
+     * according to the test infos with multiple test options.
      */
     @Test
     public void testLoadTestsForMainline() throws Exception {
@@ -957,20 +919,18 @@ public class TestMappingSuiteRunnerTest {
             File zipFile = createTestMappingZip(tempDir);
             createMainlineModuleConfig(tempTestsDir.getAbsolutePath());
 
-            IDeviceBuildInfo mockBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
-            EasyMock.expect(mockBuildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR))
-                    .andReturn(null).anyTimes();
-            EasyMock.expect(mockBuildInfo.getTestsDir()).andReturn(tempTestsDir).anyTimes();
-            EasyMock.expect(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).andReturn(zipFile).anyTimes();
-            EasyMock.expect(mockBuildInfo.getBuildBranch()).andReturn("branch").anyTimes();
-            EasyMock.expect(mockBuildInfo.getBuildFlavor()).andReturn("flavor").anyTimes();
-            EasyMock.expect(mockBuildInfo.getBuildId()).andReturn("id").anyTimes();
+            IDeviceBuildInfo mockBuildInfo = mock(IDeviceBuildInfo.class);
+            when(mockBuildInfo.getFile(BuildInfoFileKey.TARGET_LINKED_DIR)).thenReturn(null);
+            when(mockBuildInfo.getTestsDir()).thenReturn(tempTestsDir);
+            when(mockBuildInfo.getFile(TEST_MAPPINGS_ZIP)).thenReturn(zipFile);
+            when(mockBuildInfo.getBuildBranch()).thenReturn("branch");
+            when(mockBuildInfo.getBuildFlavor()).thenReturn("flavor");
+            when(mockBuildInfo.getBuildId()).thenReturn("id");
 
             IInvocationContext mContext = new InvocationContext();
             mContext.addDeviceBuildInfo(ConfigurationDef.DEFAULT_DEVICE_NAME, mockBuildInfo);
             mMainlineRunner.setInvocationContext(mContext);
             mMainlineRunner.setBuild(mockBuildInfo);
-            EasyMock.replay(mockBuildInfo);
 
             mMainlineOptionSetter.setOptionValue("enable-mainline-parameterized-modules", "true");
             mMainlineOptionSetter.setOptionValue("skip-loading-config-jar", "true");
@@ -991,8 +951,6 @@ public class TestMappingSuiteRunnerTest {
             assertTrue(test.getIncludeFilters().isEmpty());
             assertEquals(1, test.getExcludeAnnotations().size());
             assertEquals("test-annotation", test.getExcludeAnnotations().iterator().next());
-
-            EasyMock.verify(mockBuildInfo);
         } finally {
             FileUtil.recursiveDelete(tempDir);
             FileUtil.recursiveDelete(tempTestsDir);
@@ -1026,11 +984,10 @@ public class TestMappingSuiteRunnerTest {
         return info;
     }
 
-    /** Helper to create test_mappings.zip . */
+    /** Helper to create test_mappings.zip. */
     private File createTestMappingZip(File tempDir) throws IOException {
         File srcDir = FileUtil.createTempDir("src", tempDir);
-        String srcFile =
-            File.separator + TEST_DATA_DIR + File.separator + DISABLED_PRESUBMIT_TESTS;
+        String srcFile = File.separator + TEST_DATA_DIR + File.separator + DISABLED_PRESUBMIT_TESTS;
         InputStream resourceStream = this.getClass().getResourceAsStream(srcFile);
         FileUtil.saveResourceFile(resourceStream, srcDir, DISABLED_PRESUBMIT_TESTS);
 
@@ -1042,15 +999,14 @@ public class TestMappingSuiteRunnerTest {
         resourceStream = this.getClass().getResourceAsStream(srcFile);
         FileUtil.saveResourceFile(resourceStream, subDir, TEST_MAPPING);
 
-        List<File> filesToZip =
-            Arrays.asList(srcDir, new File(tempDir, DISABLED_PRESUBMIT_TESTS));
+        List<File> filesToZip = Arrays.asList(srcDir, new File(tempDir, DISABLED_PRESUBMIT_TESTS));
         File zipFile = Paths.get(tempDir.getAbsolutePath(), TEST_MAPPINGS_ZIP).toFile();
         ZipUtil.createZip(filesToZip, zipFile);
 
         return zipFile;
     }
 
-    /** Helper to create module config with parameterized mainline modules . */
+    /** Helper to create module config with parameterized mainline modules. */
     private File createMainlineModuleConfig(String tempTestsDir) throws IOException {
         File moduleConfig = new File(tempTestsDir, "test" + SuiteModuleLoader.CONFIG_EXT);
         FileUtil.writeToFile(TEST_MAINLINE_CONFIG, moduleConfig);

@@ -248,8 +248,10 @@ public class BaseTestSuite extends ITestSuite {
             }
 
             // Create and populate the filters here
-            SuiteModuleLoader.addFilters(mIncludeFilters, mIncludeFiltersParsed, mAbis);
-            SuiteModuleLoader.addFilters(mExcludeFilters, mExcludeFiltersParsed, mAbis);
+            SuiteModuleLoader.addFilters(
+                    mIncludeFilters, mIncludeFiltersParsed, mAbis, mFoldableStates);
+            SuiteModuleLoader.addFilters(
+                    mExcludeFilters, mExcludeFiltersParsed, mAbis, mFoldableStates);
 
             String includeFilters = "";
             if (mIncludeFiltersParsed.size() > MAX_FILTER_DISPLAY) {
@@ -303,6 +305,9 @@ public class BaseTestSuite extends ITestSuite {
                     "Initializing ModuleRepo\nABIs:%s\n"
                             + "Test Args:%s\nModule Args:%s\n%s\n%s",
                             mAbis, mTestArgs, mModuleArgs, includeFilters, excludeFilters);
+            if (!mFoldableStates.isEmpty()) {
+                CLog.d("Foldable states: %s", mFoldableStates);
+            }
 
             mModuleRepo =
                     createModuleLoader(
@@ -446,8 +451,10 @@ public class BaseTestSuite extends ITestSuite {
     }
 
     public void reevaluateFilters() {
-        SuiteModuleLoader.addFilters(mIncludeFilters, mIncludeFiltersParsed, mAbis);
-        SuiteModuleLoader.addFilters(mExcludeFilters, mExcludeFiltersParsed, mAbis);
+        SuiteModuleLoader.addFilters(
+                mIncludeFilters, mIncludeFiltersParsed, mAbis, mFoldableStates);
+        SuiteModuleLoader.addFilters(
+                mExcludeFilters, mExcludeFiltersParsed, mAbis, mFoldableStates);
     }
 
     /** Adds module args */

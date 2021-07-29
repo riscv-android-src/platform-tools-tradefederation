@@ -17,6 +17,9 @@
 package com.android.tradefed.targetprep;
 
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.android.tradefed.build.DeviceBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
@@ -37,12 +40,15 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.ZipUtil;
 
-import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.InOrder;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.io.File;
 import java.util.List;
@@ -52,17 +58,19 @@ import java.util.List;
 public class GsiDeviceFlashPreparerTest {
 
     private GsiDeviceFlashPreparer mPreparer;
-    private ITestDevice mMockDevice;
+    @Mock ITestDevice mMockDevice;
     private IDeviceBuildInfo mBuildInfo;
     private File mTmpDir;
     private TestInformation mTestInfo;
     private CommandResult mSuccessResult;
     private CommandResult mFailureResult;
-    private IRunUtil mMockRunUtil;
+    @Mock IRunUtil mMockRunUtil;
     private DeviceDescriptor mDeviceDescriptor;
 
     @Before
     public void setUp() throws Exception {
+        MockitoAnnotations.initMocks(this);
+
         mDeviceDescriptor =
                 new DeviceDescriptor(
                         "serial_1",
@@ -73,11 +81,11 @@ public class GsiDeviceFlashPreparerTest {
                         "unknown",
                         "unknown",
                         "unknown");
-        mMockDevice = EasyMock.createMock(ITestDevice.class);
-        EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("serial_1");
-        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andStubReturn(mDeviceDescriptor);
-        EasyMock.expect(mMockDevice.getOptions()).andReturn(new TestDeviceOptions()).anyTimes();
-        mMockRunUtil = EasyMock.createMock(IRunUtil.class);
+
+        when(mMockDevice.getSerialNumber()).thenReturn("serial_1");
+        when(mMockDevice.getDeviceDescriptor()).thenReturn(mDeviceDescriptor);
+        when(mMockDevice.getOptions()).thenReturn(new TestDeviceOptions());
+
         mPreparer =
                 new GsiDeviceFlashPreparer() {
                     @Override
@@ -113,13 +121,16 @@ public class GsiDeviceFlashPreparerTest {
 
     /** Set EasyMock expectations for a normal setup call */
     private void doSetupExpectations() throws Exception {
-        mMockRunUtil.sleep(EasyMock.anyLong());
-        mMockDevice.rebootUntilOnline();
-        EasyMock.expect(mMockDevice.enableAdbRoot()).andStubReturn(Boolean.TRUE);
-        mMockDevice.setDate(null);
-        mMockDevice.waitForDeviceAvailable(EasyMock.anyLong());
-        mMockDevice.setRecoveryMode(RecoveryMode.AVAILABLE);
-        mMockDevice.postBootSetup();
+        when(mMockDevice.enableAdbRoot()).thenReturn(Boolean.TRUE);
+    }
+
+    private void verifyExpectations() throws Exception {
+        verify(mMockRunUtil).sleep(Mockito.anyLong());
+        verify(mMockDevice).rebootUntilOnline();
+        verify(mMockDevice).setDate(null);
+        verify(mMockDevice).waitForDeviceAvailable(Mockito.anyLong());
+        verify(mMockDevice).setRecoveryMode(RecoveryMode.AVAILABLE);
+        verify(mMockDevice).postBootSetup();
     }
 
     /** Set EasyMock expectations for getting current slot */
@@ -128,8 +139,8 @@ public class GsiDeviceFlashPreparerTest {
         fastbootResult.setStatus(CommandStatus.SUCCESS);
         fastbootResult.setStderr("current-slot: _a\nfinished. total time 0.001s");
         fastbootResult.setStdout("");
-        EasyMock.expect(mMockDevice.executeLongFastbootCommand("getvar", "current-slot"))
-                .andReturn(fastbootResult);
+        when(mMockDevice.executeLongFastbootCommand("getvar", "current-slot"))
+                .thenReturn(fastbootResult);
     }
 
     /** Set EasyMock expectations for no current slot */
@@ -138,21 +149,20 @@ public class GsiDeviceFlashPreparerTest {
         fastbootResult.setStatus(CommandStatus.SUCCESS);
         fastbootResult.setStderr("current-slot: \nfinished. total time 0.001s");
         fastbootResult.setStdout("");
-        EasyMock.expect(mMockDevice.executeLongFastbootCommand("getvar", "current-slot"))
-                .andReturn(fastbootResult);
+        when(mMockDevice.executeLongFastbootCommand("getvar", "current-slot"))
+                .thenReturn(fastbootResult);
     }
 
     /* Verifies that setUp will throw TargetSetupError if there is no gki boot.img */
     @Test
     public void testSetUp_NoGsiImg() throws Exception {
-        EasyMock.replay(mMockDevice, mMockRunUtil);
+
         try {
             mPreparer.setUp(mTestInfo);
             fail("TargetSetupError is expected");
         } catch (TargetSetupError e) {
             // expected
         }
-        EasyMock.verify(mMockDevice, mMockRunUtil);
     }
 
     /* Verifies that setUp will throw exception when there is no system.img in the zip file */
@@ -163,14 +173,13 @@ public class GsiDeviceFlashPreparerTest {
         File gsiZip = FileUtil.createTempFile("gsi_image", ".zip", mTmpDir);
         ZipUtil.createZip(List.of(tmpFile), gsiZip);
         mBuildInfo.setFile("gsi_system.img", gsiZip, "0");
-        EasyMock.replay(mMockDevice, mMockRunUtil);
+
         try {
             mPreparer.setUp(mTestInfo);
             fail("TargetSetupError is expected");
         } catch (TargetSetupError e) {
             // expected
         }
-        EasyMock.verify(mMockDevice, mMockRunUtil);
     }
 
     /* Verifies that setUp can pass when there is no vbmeta.img is provided*/
@@ -180,30 +189,29 @@ public class GsiDeviceFlashPreparerTest {
         File systemImg = new File(gsiDir, "system.img");
         FileUtil.writeToFile("ddd", systemImg);
         mBuildInfo.setFile("gsi_system.img", systemImg, "0");
-        mMockDevice.waitForDeviceOnline();
-        EasyMock.expect(mMockDevice.getApiLevel()).andReturn(29);
-        mMockDevice.rebootIntoBootloader();
-        mMockRunUtil.allowInterrupt(false);
-        mMockDevice.rebootIntoFastbootd();
+
+        when(mMockDevice.getApiLevel()).thenReturn(29);
+
         doGetSlotExpectation();
-        EasyMock.expect(
-                        mMockDevice.executeLongFastbootCommand(
-                                "delete-logical-partition", "product_a"))
-                .andReturn(mSuccessResult);
-        EasyMock.expect(mMockDevice.executeLongFastbootCommand("erase", "system_a"))
-                .andReturn(mSuccessResult);
-        EasyMock.expect(
-                        mMockDevice.executeLongFastbootCommand(
-                                "flash",
-                                "system",
-                                mBuildInfo.getFile("gsi_system.img").getAbsolutePath()))
-                .andReturn(mSuccessResult);
-        EasyMock.expect(mMockDevice.executeLongFastbootCommand("-w")).andReturn(mSuccessResult);
-        mMockRunUtil.allowInterrupt(true);
+        when(mMockDevice.executeLongFastbootCommand("delete-logical-partition", "product_a"))
+                .thenReturn(mSuccessResult);
+        when(mMockDevice.executeLongFastbootCommand("erase", "system_a"))
+                .thenReturn(mSuccessResult);
+        when(mMockDevice.executeLongFastbootCommand(
+                        "flash", "system", mBuildInfo.getFile("gsi_system.img").getAbsolutePath()))
+                .thenReturn(mSuccessResult);
+        when(mMockDevice.executeLongFastbootCommand("-w")).thenReturn(mSuccessResult);
+
         doSetupExpectations();
-        EasyMock.replay(mMockDevice, mMockRunUtil);
+
         mPreparer.setUp(mTestInfo);
-        EasyMock.verify(mMockDevice, mMockRunUtil);
+
+        verifyExpectations();
+        verify(mMockDevice).waitForDeviceOnline();
+        verify(mMockDevice).rebootIntoBootloader();
+        verify(mMockRunUtil).allowInterrupt(false);
+        verify(mMockDevice).rebootIntoFastbootd();
+        verify(mMockRunUtil).allowInterrupt(true);
     }
 
     /* Verifies that preparer can flash GSI image */
@@ -216,37 +224,36 @@ public class GsiDeviceFlashPreparerTest {
         FileUtil.writeToFile("ddd", vbmetaImg);
         mBuildInfo.setFile("gsi_system.img", systemImg, "0");
         mBuildInfo.setFile("gsi_vbmeta.img", vbmetaImg, "0");
-        mMockDevice.waitForDeviceOnline();
-        EasyMock.expect(mMockDevice.getApiLevel()).andReturn(29);
-        mMockDevice.rebootIntoBootloader();
-        mMockRunUtil.allowInterrupt(false);
-        EasyMock.expect(
-                        mMockDevice.executeLongFastbootCommand(
-                                "--disable-verification",
-                                "flash",
-                                "vbmeta",
-                                mBuildInfo.getFile("gsi_vbmeta.img").getAbsolutePath()))
-                .andReturn(mSuccessResult);
-        mMockDevice.rebootIntoFastbootd();
+
+        when(mMockDevice.getApiLevel()).thenReturn(29);
+
+        when(mMockDevice.executeLongFastbootCommand(
+                        "--disable-verification",
+                        "flash",
+                        "vbmeta",
+                        mBuildInfo.getFile("gsi_vbmeta.img").getAbsolutePath()))
+                .thenReturn(mSuccessResult);
+
         doGetSlotExpectation();
-        EasyMock.expect(
-                        mMockDevice.executeLongFastbootCommand(
-                                "delete-logical-partition", "product_a"))
-                .andReturn(mSuccessResult);
-        EasyMock.expect(mMockDevice.executeLongFastbootCommand("erase", "system_a"))
-                .andReturn(mSuccessResult);
-        EasyMock.expect(
-                        mMockDevice.executeLongFastbootCommand(
-                                "flash",
-                                "system",
-                                mBuildInfo.getFile("gsi_system.img").getAbsolutePath()))
-                .andReturn(mSuccessResult);
-        EasyMock.expect(mMockDevice.executeLongFastbootCommand("-w")).andReturn(mSuccessResult);
-        mMockRunUtil.allowInterrupt(true);
+        when(mMockDevice.executeLongFastbootCommand("delete-logical-partition", "product_a"))
+                .thenReturn(mSuccessResult);
+        when(mMockDevice.executeLongFastbootCommand("erase", "system_a"))
+                .thenReturn(mSuccessResult);
+        when(mMockDevice.executeLongFastbootCommand(
+                        "flash", "system", mBuildInfo.getFile("gsi_system.img").getAbsolutePath()))
+                .thenReturn(mSuccessResult);
+        when(mMockDevice.executeLongFastbootCommand("-w")).thenReturn(mSuccessResult);
+
         doSetupExpectations();
-        EasyMock.replay(mMockDevice, mMockRunUtil);
+
         mPreparer.setUp(mTestInfo);
-        EasyMock.verify(mMockDevice, mMockRunUtil);
+
+        verifyExpectations();
+        verify(mMockDevice).waitForDeviceOnline();
+        verify(mMockDevice).rebootIntoBootloader();
+        verify(mMockRunUtil).allowInterrupt(false);
+        verify(mMockDevice).rebootIntoFastbootd();
+        verify(mMockRunUtil).allowInterrupt(true);
     }
 
     /* Verifies that preparer can flash GSI image from Zip file*/
@@ -261,37 +268,36 @@ public class GsiDeviceFlashPreparerTest {
         ZipUtil.createZip(List.of(systemImg, vbmetaImg), gsiZip);
         mBuildInfo.setFile("gsi_system.img", gsiZip, "0");
         mBuildInfo.setFile("gsi_vbmeta.img", gsiZip, "0");
-        mMockDevice.waitForDeviceOnline();
-        EasyMock.expect(mMockDevice.getApiLevel()).andReturn(29);
-        mMockDevice.rebootIntoBootloader();
-        mMockRunUtil.allowInterrupt(false);
-        EasyMock.expect(
-                        mMockDevice.executeLongFastbootCommand(
-                                EasyMock.eq("--disable-verification"),
-                                EasyMock.eq("flash"),
-                                EasyMock.eq("vbmeta"),
-                                EasyMock.matches(".*vbmeta.img")))
-                .andReturn(mSuccessResult);
-        mMockDevice.rebootIntoFastbootd();
+
+        when(mMockDevice.getApiLevel()).thenReturn(29);
+
+        when(mMockDevice.executeLongFastbootCommand(
+                        Mockito.eq("--disable-verification"),
+                        Mockito.eq("flash"),
+                        Mockito.eq("vbmeta"),
+                        Mockito.matches(".*vbmeta.img")))
+                .thenReturn(mSuccessResult);
+
         doGetSlotExpectation();
-        EasyMock.expect(
-                        mMockDevice.executeLongFastbootCommand(
-                                "delete-logical-partition", "product_a"))
-                .andReturn(mSuccessResult);
-        EasyMock.expect(mMockDevice.executeLongFastbootCommand("erase", "system_a"))
-                .andReturn(mSuccessResult);
-        EasyMock.expect(
-                        mMockDevice.executeLongFastbootCommand(
-                                EasyMock.eq("flash"),
-                                EasyMock.eq("system"),
-                                EasyMock.matches(".*system.img")))
-                .andReturn(mSuccessResult);
-        EasyMock.expect(mMockDevice.executeLongFastbootCommand("-w")).andReturn(mSuccessResult);
-        mMockRunUtil.allowInterrupt(true);
+        when(mMockDevice.executeLongFastbootCommand("delete-logical-partition", "product_a"))
+                .thenReturn(mSuccessResult);
+        when(mMockDevice.executeLongFastbootCommand("erase", "system_a"))
+                .thenReturn(mSuccessResult);
+        when(mMockDevice.executeLongFastbootCommand(
+                        Mockito.eq("flash"), Mockito.eq("system"), Mockito.matches(".*system.img")))
+                .thenReturn(mSuccessResult);
+        when(mMockDevice.executeLongFastbootCommand("-w")).thenReturn(mSuccessResult);
+
         doSetupExpectations();
-        EasyMock.replay(mMockDevice, mMockRunUtil);
+
         mPreparer.setUp(mTestInfo);
-        EasyMock.verify(mMockDevice, mMockRunUtil);
+
+        verifyExpectations();
+        verify(mMockDevice).waitForDeviceOnline();
+        verify(mMockDevice).rebootIntoBootloader();
+        verify(mMockRunUtil).allowInterrupt(false);
+        verify(mMockDevice).rebootIntoFastbootd();
+        verify(mMockRunUtil).allowInterrupt(true);
     }
 
     /* Verifies that preparer can flash GSI and GKI image */
@@ -307,44 +313,42 @@ public class GsiDeviceFlashPreparerTest {
         mBuildInfo.setFile("gsi_system.img", systemImg, "0");
         mBuildInfo.setFile("gsi_vbmeta.img", vbmetaImg, "0");
         mBuildInfo.setFile("gki_boot.img", bootImg, "0");
-        mMockDevice.waitForDeviceOnline();
-        EasyMock.expect(mMockDevice.getApiLevel()).andReturn(29);
-        mMockDevice.rebootIntoBootloader();
-        mMockRunUtil.allowInterrupt(false);
-        EasyMock.expect(
-                        mMockDevice.executeLongFastbootCommand(
-                                "--disable-verification",
-                                "flash",
-                                "vbmeta",
-                                mBuildInfo.getFile("gsi_vbmeta.img").getAbsolutePath()))
-                .andReturn(mSuccessResult);
-        mMockDevice.rebootIntoFastbootd();
+
+        when(mMockDevice.getApiLevel()).thenReturn(29);
+
+        when(mMockDevice.executeLongFastbootCommand(
+                        "--disable-verification",
+                        "flash",
+                        "vbmeta",
+                        mBuildInfo.getFile("gsi_vbmeta.img").getAbsolutePath()))
+                .thenReturn(mSuccessResult);
+
         doGetSlotExpectation();
-        EasyMock.expect(
-                        mMockDevice.executeLongFastbootCommand(
-                                "delete-logical-partition", "product_a"))
-                .andReturn(mSuccessResult);
-        EasyMock.expect(mMockDevice.executeLongFastbootCommand("erase", "system_a"))
-                .andReturn(mSuccessResult);
-        EasyMock.expect(
-                        mMockDevice.executeLongFastbootCommand(
-                                "flash",
-                                "system",
-                                mBuildInfo.getFile("gsi_system.img").getAbsolutePath()))
-                .andReturn(mSuccessResult);
-        EasyMock.expect(mMockDevice.executeLongFastbootCommand("-w")).andReturn(mSuccessResult);
-        mMockDevice.rebootIntoBootloader();
-        EasyMock.expect(
-                        mMockDevice.executeLongFastbootCommand(
-                                "flash",
-                                "boot",
-                                mBuildInfo.getFile("gki_boot.img").getAbsolutePath()))
-                .andReturn(mSuccessResult);
-        mMockRunUtil.allowInterrupt(true);
+        when(mMockDevice.executeLongFastbootCommand("delete-logical-partition", "product_a"))
+                .thenReturn(mSuccessResult);
+        when(mMockDevice.executeLongFastbootCommand("erase", "system_a"))
+                .thenReturn(mSuccessResult);
+        when(mMockDevice.executeLongFastbootCommand(
+                        "flash", "system", mBuildInfo.getFile("gsi_system.img").getAbsolutePath()))
+                .thenReturn(mSuccessResult);
+        when(mMockDevice.executeLongFastbootCommand("-w")).thenReturn(mSuccessResult);
+
+        when(mMockDevice.executeLongFastbootCommand(
+                        "flash", "boot", mBuildInfo.getFile("gki_boot.img").getAbsolutePath()))
+                .thenReturn(mSuccessResult);
+
         doSetupExpectations();
-        EasyMock.replay(mMockDevice, mMockRunUtil);
+
         mPreparer.setUp(mTestInfo);
-        EasyMock.verify(mMockDevice, mMockRunUtil);
+
+        verifyExpectations();
+        InOrder inOrder = Mockito.inOrder(mMockDevice, mMockRunUtil);
+        inOrder.verify(mMockDevice).waitForDeviceOnline();
+        inOrder.verify(mMockDevice).rebootIntoBootloader();
+        inOrder.verify(mMockRunUtil).allowInterrupt(false);
+        inOrder.verify(mMockDevice).rebootIntoFastbootd();
+        inOrder.verify(mMockDevice).rebootIntoBootloader();
+        inOrder.verify(mMockRunUtil).allowInterrupt(true);
     }
 
     /* Verifies that preparer can flash GSI and GKI image from a Zip file*/
@@ -362,44 +366,46 @@ public class GsiDeviceFlashPreparerTest {
         mBuildInfo.setFile("gsi_system.img", gsiZip, "0");
         mBuildInfo.setFile("gsi_vbmeta.img", gsiZip, "0");
         mBuildInfo.setFile("gki_boot.img", gsiZip, "0");
-        mMockDevice.waitForDeviceOnline();
-        EasyMock.expect(mMockDevice.getApiLevel()).andReturn(29);
-        mMockDevice.rebootIntoBootloader();
-        mMockRunUtil.allowInterrupt(false);
-        EasyMock.expect(
-                        mMockDevice.executeLongFastbootCommand(
-                                EasyMock.eq("--disable-verification"),
-                                EasyMock.eq("flash"),
-                                EasyMock.eq("vbmeta"),
-                                EasyMock.matches(".*/vbmeta.img")))
-                .andReturn(mSuccessResult);
-        mMockDevice.rebootIntoFastbootd();
+
+        when(mMockDevice.getApiLevel()).thenReturn(29);
+
+        when(mMockDevice.executeLongFastbootCommand(
+                        Mockito.eq("--disable-verification"),
+                        Mockito.eq("flash"),
+                        Mockito.eq("vbmeta"),
+                        Mockito.matches(".*/vbmeta.img")))
+                .thenReturn(mSuccessResult);
+
         doGetSlotExpectation();
-        EasyMock.expect(
-                        mMockDevice.executeLongFastbootCommand(
-                                "delete-logical-partition", "product_a"))
-                .andReturn(mSuccessResult);
-        EasyMock.expect(mMockDevice.executeLongFastbootCommand("erase", "system_a"))
-                .andReturn(mSuccessResult);
-        EasyMock.expect(
-                        mMockDevice.executeLongFastbootCommand(
-                                EasyMock.eq("flash"),
-                                EasyMock.eq("system"),
-                                EasyMock.matches(".*/system.img")))
-                .andReturn(mSuccessResult);
-        EasyMock.expect(mMockDevice.executeLongFastbootCommand("-w")).andReturn(mSuccessResult);
-        mMockDevice.rebootIntoBootloader();
-        EasyMock.expect(
-                        mMockDevice.executeLongFastbootCommand(
-                                EasyMock.eq("flash"),
-                                EasyMock.eq("boot"),
-                                EasyMock.matches(".*/boot-5.4.img")))
-                .andReturn(mSuccessResult);
-        mMockRunUtil.allowInterrupt(true);
+        when(mMockDevice.executeLongFastbootCommand("delete-logical-partition", "product_a"))
+                .thenReturn(mSuccessResult);
+        when(mMockDevice.executeLongFastbootCommand("erase", "system_a"))
+                .thenReturn(mSuccessResult);
+        when(mMockDevice.executeLongFastbootCommand(
+                        Mockito.eq("flash"),
+                        Mockito.eq("system"),
+                        Mockito.matches(".*/system.img")))
+                .thenReturn(mSuccessResult);
+        when(mMockDevice.executeLongFastbootCommand("-w")).thenReturn(mSuccessResult);
+
+        when(mMockDevice.executeLongFastbootCommand(
+                        Mockito.eq("flash"),
+                        Mockito.eq("boot"),
+                        Mockito.matches(".*/boot-5.4.img")))
+                .thenReturn(mSuccessResult);
+
         doSetupExpectations();
-        EasyMock.replay(mMockDevice, mMockRunUtil);
+
         mPreparer.setUp(mTestInfo);
-        EasyMock.verify(mMockDevice, mMockRunUtil);
+
+        verifyExpectations();
+        InOrder inOrder = Mockito.inOrder(mMockDevice, mMockRunUtil);
+        inOrder.verify(mMockDevice).waitForDeviceOnline();
+        inOrder.verify(mMockDevice).rebootIntoBootloader();
+        inOrder.verify(mMockRunUtil).allowInterrupt(false);
+        inOrder.verify(mMockDevice).rebootIntoFastbootd();
+        inOrder.verify(mMockDevice).rebootIntoBootloader();
+        inOrder.verify(mMockRunUtil).allowInterrupt(true);
     }
 
     /* Verifies that preparer can flash GSI image on Android 9 device*/
@@ -412,32 +418,31 @@ public class GsiDeviceFlashPreparerTest {
         FileUtil.writeToFile("ddd", vbmetaImg);
         mBuildInfo.setFile("gsi_system.img", systemImg, "0");
         mBuildInfo.setFile("gsi_vbmeta.img", vbmetaImg, "0");
-        mMockDevice.waitForDeviceOnline();
-        EasyMock.expect(mMockDevice.getApiLevel()).andReturn(28);
-        mMockDevice.rebootIntoBootloader();
-        mMockRunUtil.allowInterrupt(false);
-        EasyMock.expect(
-                        mMockDevice.executeLongFastbootCommand(
-                                "--disable-verification",
-                                "flash",
-                                "vbmeta",
-                                mBuildInfo.getFile("gsi_vbmeta.img").getAbsolutePath()))
-                .andReturn(mSuccessResult);
+
+        when(mMockDevice.getApiLevel()).thenReturn(28);
+
+        when(mMockDevice.executeLongFastbootCommand(
+                        "--disable-verification",
+                        "flash",
+                        "vbmeta",
+                        mBuildInfo.getFile("gsi_vbmeta.img").getAbsolutePath()))
+                .thenReturn(mSuccessResult);
         doGetEmptySlotExpectation();
-        EasyMock.expect(mMockDevice.executeLongFastbootCommand("erase", "system"))
-                .andReturn(mSuccessResult);
-        EasyMock.expect(
-                        mMockDevice.executeLongFastbootCommand(
-                                "flash",
-                                "system",
-                                mBuildInfo.getFile("gsi_system.img").getAbsolutePath()))
-                .andReturn(mSuccessResult);
-        EasyMock.expect(mMockDevice.executeLongFastbootCommand("-w")).andReturn(mSuccessResult);
-        mMockRunUtil.allowInterrupt(true);
+        when(mMockDevice.executeLongFastbootCommand("erase", "system")).thenReturn(mSuccessResult);
+        when(mMockDevice.executeLongFastbootCommand(
+                        "flash", "system", mBuildInfo.getFile("gsi_system.img").getAbsolutePath()))
+                .thenReturn(mSuccessResult);
+        when(mMockDevice.executeLongFastbootCommand("-w")).thenReturn(mSuccessResult);
+
         doSetupExpectations();
-        EasyMock.replay(mMockDevice, mMockRunUtil);
+
         mPreparer.setUp(mTestInfo);
-        EasyMock.verify(mMockDevice, mMockRunUtil);
+
+        verifyExpectations();
+        verify(mMockDevice).waitForDeviceOnline();
+        verify(mMockDevice).rebootIntoBootloader();
+        verify(mMockRunUtil).allowInterrupt(false);
+        verify(mMockRunUtil).allowInterrupt(true);
     }
 
     /* Verifies that preparer will throw TargetSetupError with GSI flash failure*/
@@ -450,40 +455,37 @@ public class GsiDeviceFlashPreparerTest {
         FileUtil.writeToFile("ddd", vbmetaImg);
         mBuildInfo.setFile("gsi_system.img", systemImg, "0");
         mBuildInfo.setFile("gsi_vbmeta.img", vbmetaImg, "0");
-        mMockDevice.waitForDeviceOnline();
-        EasyMock.expect(mMockDevice.getApiLevel()).andReturn(29);
-        mMockDevice.rebootIntoBootloader();
-        mMockRunUtil.allowInterrupt(false);
-        EasyMock.expect(
-                        mMockDevice.executeLongFastbootCommand(
-                                "--disable-verification",
-                                "flash",
-                                "vbmeta",
-                                mBuildInfo.getFile("gsi_vbmeta.img").getAbsolutePath()))
-                .andReturn(mSuccessResult);
-        mMockDevice.rebootIntoFastbootd();
+
+        when(mMockDevice.getApiLevel()).thenReturn(29);
+
+        when(mMockDevice.executeLongFastbootCommand(
+                        "--disable-verification",
+                        "flash",
+                        "vbmeta",
+                        mBuildInfo.getFile("gsi_vbmeta.img").getAbsolutePath()))
+                .thenReturn(mSuccessResult);
+
         doGetSlotExpectation();
-        EasyMock.expect(
-                        mMockDevice.executeLongFastbootCommand(
-                                "delete-logical-partition", "product_a"))
-                .andReturn(mSuccessResult);
-        EasyMock.expect(mMockDevice.executeLongFastbootCommand("erase", "system_a"))
-                .andReturn(mSuccessResult);
-        EasyMock.expect(
-                        mMockDevice.executeLongFastbootCommand(
-                                "flash",
-                                "system",
-                                mBuildInfo.getFile("gsi_system.img").getAbsolutePath()))
-                .andReturn(mFailureResult);
-        mMockRunUtil.allowInterrupt(true);
-        EasyMock.replay(mMockDevice, mMockRunUtil);
+        when(mMockDevice.executeLongFastbootCommand("delete-logical-partition", "product_a"))
+                .thenReturn(mSuccessResult);
+        when(mMockDevice.executeLongFastbootCommand("erase", "system_a"))
+                .thenReturn(mSuccessResult);
+        when(mMockDevice.executeLongFastbootCommand(
+                        "flash", "system", mBuildInfo.getFile("gsi_system.img").getAbsolutePath()))
+                .thenReturn(mFailureResult);
+
         try {
             mPreparer.setUp(mTestInfo);
             fail("Expect to get TargetSetupError from setUp");
         } catch (TargetSetupError e) {
             // expected
         }
-        EasyMock.verify(mMockDevice, mMockRunUtil);
+
+        verify(mMockDevice).waitForDeviceOnline();
+        verify(mMockDevice).rebootIntoBootloader();
+        verify(mMockRunUtil).allowInterrupt(false);
+        verify(mMockDevice).rebootIntoFastbootd();
+        verify(mMockRunUtil).allowInterrupt(true);
     }
 
     /* Verifies that preparer will throw DeviceNotAvailableException if device fails to boot up */
@@ -496,43 +498,42 @@ public class GsiDeviceFlashPreparerTest {
         FileUtil.writeToFile("ddd", vbmetaImg);
         mBuildInfo.setFile("gsi_system.img", systemImg, "0");
         mBuildInfo.setFile("gsi_vbmeta.img", vbmetaImg, "0");
-        mMockDevice.waitForDeviceOnline();
-        EasyMock.expect(mMockDevice.getApiLevel()).andReturn(29);
-        mMockDevice.rebootIntoBootloader();
-        mMockRunUtil.allowInterrupt(false);
-        EasyMock.expect(
-                        mMockDevice.executeLongFastbootCommand(
-                                "--disable-verification",
-                                "flash",
-                                "vbmeta",
-                                mBuildInfo.getFile("gsi_vbmeta.img").getAbsolutePath()))
-                .andReturn(mSuccessResult);
+
+        when(mMockDevice.getApiLevel()).thenReturn(29);
+
+        when(mMockDevice.executeLongFastbootCommand(
+                        "--disable-verification",
+                        "flash",
+                        "vbmeta",
+                        mBuildInfo.getFile("gsi_vbmeta.img").getAbsolutePath()))
+                .thenReturn(mSuccessResult);
         doGetSlotExpectation();
-        mMockDevice.rebootIntoFastbootd();
-        EasyMock.expect(
-                        mMockDevice.executeLongFastbootCommand(
-                                "delete-logical-partition", "product_a"))
-                .andReturn(mSuccessResult);
-        EasyMock.expect(mMockDevice.executeLongFastbootCommand("erase", "system_a"))
-                .andReturn(mSuccessResult);
-        EasyMock.expect(
-                        mMockDevice.executeLongFastbootCommand(
-                                "flash",
-                                "system",
-                                mBuildInfo.getFile("gsi_system.img").getAbsolutePath()))
-                .andReturn(mSuccessResult);
-        EasyMock.expect(mMockDevice.executeLongFastbootCommand("-w")).andReturn(mSuccessResult);
-        mMockRunUtil.allowInterrupt(true);
-        mMockRunUtil.sleep(EasyMock.anyLong());
-        mMockDevice.rebootUntilOnline();
-        EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException("test", "serial"));
-        EasyMock.replay(mMockDevice, mMockRunUtil);
+
+        when(mMockDevice.executeLongFastbootCommand("delete-logical-partition", "product_a"))
+                .thenReturn(mSuccessResult);
+        when(mMockDevice.executeLongFastbootCommand("erase", "system_a"))
+                .thenReturn(mSuccessResult);
+        when(mMockDevice.executeLongFastbootCommand(
+                        "flash", "system", mBuildInfo.getFile("gsi_system.img").getAbsolutePath()))
+                .thenReturn(mSuccessResult);
+        when(mMockDevice.executeLongFastbootCommand("-w")).thenReturn(mSuccessResult);
+
+        doThrow(new DeviceNotAvailableException("test", "serial"))
+                .when(mMockDevice)
+                .rebootUntilOnline();
+
         try {
             mPreparer.setUp(mTestInfo);
             fail("Expect to get DeviceNotAvailableException from setUp");
         } catch (DeviceNotAvailableException e) {
             // expected
         }
-        EasyMock.verify(mMockDevice, mMockRunUtil);
+
+        verify(mMockDevice).waitForDeviceOnline();
+        verify(mMockDevice).rebootIntoBootloader();
+        verify(mMockRunUtil).allowInterrupt(false);
+        verify(mMockDevice).rebootIntoFastbootd();
+        verify(mMockRunUtil).allowInterrupt(true);
+        verify(mMockRunUtil).sleep(Mockito.anyLong());
     }
 }

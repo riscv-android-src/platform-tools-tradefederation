@@ -1386,7 +1386,7 @@ public class NativeDeviceTest {
                 };
         File localFile = FileUtil.createTempFile("timezonetest", ".txt");
         try {
-            localFile.setLastModified(1470906000000l); // Thu Aug 11 09:00:00 GMT 2016
+            localFile.setLastModified(1470906000000L); // Thu Aug 11 09:00:00 GMT 2016
             IFileEntry remoteFile = EasyMock.createMock(IFileEntry.class);
             EasyMock.expect(remoteFile.getDate()).andReturn("2016-08-11");
             EasyMock.expect(remoteFile.getTime()).andReturn("18:00");
@@ -1418,7 +1418,7 @@ public class NativeDeviceTest {
                 };
         File localFile = FileUtil.createTempFile("timezonetest", ".txt");
         try {
-            localFile.setLastModified(1470906000000l); // Thu, 11 Aug 2016 09:00:00 GMT
+            localFile.setLastModified(1470906000000L); // Thu, 11 Aug 2016 09:00:00 GMT
             IFileEntry remoteFile = EasyMock.createMock(IFileEntry.class);
             EasyMock.expect(remoteFile.getDate()).andReturn("2016-08-11");
             EasyMock.expect(remoteFile.getTime()).andReturn("18:15");
@@ -1451,7 +1451,7 @@ public class NativeDeviceTest {
                 };
         File localFile = FileUtil.createTempFile("timezonetest", ".txt");
         try {
-            localFile.setLastModified(1470906000000l); // Thu, 11 Aug 2016 09:00:00 GMT
+            localFile.setLastModified(1470906000000L); // Thu, 11 Aug 2016 09:00:00 GMT
             IFileEntry remoteFile = EasyMock.createMock(IFileEntry.class);
             EasyMock.expect(remoteFile.getDate()).andReturn("2016-08-11");
             EasyMock.expect(remoteFile.getTime()).andReturn("18:10");

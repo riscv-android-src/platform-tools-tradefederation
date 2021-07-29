@@ -19,6 +19,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.verify;
 
 import com.android.tradefed.build.BuildInfoKey.BuildInfoFileKey;
 import com.android.tradefed.build.IBuildInfo;
@@ -32,13 +33,14 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.util.FileUtil;
 
-import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
 import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.io.File;
 import java.io.IOException;
@@ -55,7 +57,7 @@ public class IsolatedHostTestTest {
 
     private static final String PACKAGE = "/com/android/tradefed/referencetests";
     private IsolatedHostTest mHostTest;
-    private ITestInvocationListener mListener;
+    @Mock ITestInvocationListener mListener;
     private IBuildInfo mMockBuildInfo;
     private ServerSocket mMockServer;
     private File mMockTestDir;
@@ -90,6 +92,8 @@ public class IsolatedHostTestTest {
 
     @Before
     public void setUp() throws Exception {
+        MockitoAnnotations.initMocks(this);
+
         mHostTest =
                 new IsolatedHostTest() {
                     @Override
@@ -97,7 +101,7 @@ public class IsolatedHostTestTest {
                         return null;
                     }
                 };
-        mListener = EasyMock.createMock(ITestInvocationListener.class);
+
         mMockBuildInfo = Mockito.mock(IBuildInfo.class);
         mMockServer = Mockito.mock(ServerSocket.class);
         IInvocationContext context = new InvocationContext();
@@ -185,21 +189,17 @@ public class IsolatedHostTestTest {
         TestInformation testInfo = TestInformation.newBuilder().build();
         TestDescription test = new TestDescription(className, "test2Plus2");
 
-        // One failing test flow
-        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
-        mListener.testStarted(EasyMock.eq(test), EasyMock.anyInt());
-        mListener.testFailed(EasyMock.eq(test), (String) EasyMock.anyObject());
-        mListener.testEnded(
-                EasyMock.eq(test),
-                EasyMock.anyInt(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mListener.testLog(
-                (String) EasyMock.anyObject(), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-
-        EasyMock.replay(mListener);
         mHostTest.run(testInfo, mListener);
-        EasyMock.verify(mListener);
+
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(1));
+        verify(mListener).testStarted(Mockito.eq(test), Mockito.anyLong());
+        verify(mListener).testFailed(Mockito.eq(test), (String) Mockito.any());
+        verify(mListener)
+                .testEnded(
+                        Mockito.eq(test), Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
+        verify(mListener)
+                .testLog((String) Mockito.any(), Mockito.eq(LogDataType.TEXT), Mockito.any());
+        verify(mListener).testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
     }
 
     @Test
@@ -210,20 +210,16 @@ public class IsolatedHostTestTest {
         TestInformation testInfo = TestInformation.newBuilder().build();
         TestDescription test = new TestDescription(className, "test2Plus2");
 
-        // One passing test flow
-        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
-        mListener.testStarted(EasyMock.eq(test), EasyMock.anyInt());
-        mListener.testEnded(
-                EasyMock.eq(test),
-                EasyMock.anyInt(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mListener.testLog(
-                (String) EasyMock.anyObject(), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-
-        EasyMock.replay(mListener);
         mHostTest.run(testInfo, mListener);
-        EasyMock.verify(mListener);
+
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(1));
+        verify(mListener).testStarted(Mockito.eq(test), Mockito.anyLong());
+        verify(mListener)
+                .testEnded(
+                        Mockito.eq(test), Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
+        verify(mListener)
+                .testLog((String) Mockito.any(), Mockito.eq(LogDataType.TEXT), Mockito.any());
+        verify(mListener).testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
     }
 
     @Test
@@ -236,20 +232,16 @@ public class IsolatedHostTestTest {
         TestInformation testInfo = TestInformation.newBuilder().build();
         TestDescription test = new TestDescription(className, "test1Passing");
 
-        // One passing test flow
-        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
-        mListener.testStarted(EasyMock.eq(test), EasyMock.anyInt());
-        mListener.testEnded(
-                EasyMock.eq(test),
-                EasyMock.anyInt(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mListener.testLog(
-                (String) EasyMock.anyObject(), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-
-        EasyMock.replay(mListener);
         mHostTest.run(testInfo, mListener);
-        EasyMock.verify(mListener);
+
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(1));
+        verify(mListener).testStarted(Mockito.eq(test), Mockito.anyLong());
+        verify(mListener)
+                .testEnded(
+                        Mockito.eq(test), Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
+        verify(mListener)
+                .testLog((String) Mockito.any(), Mockito.eq(LogDataType.TEXT), Mockito.any());
+        verify(mListener).testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
     }
 
     @Test
@@ -263,26 +255,25 @@ public class IsolatedHostTestTest {
         TestDescription test1 = new TestDescription(className, "test1Passing");
         TestDescription test2 = new TestDescription(className, "test2Failing");
 
-        // One passing test followed by one failing test flow
-        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(2));
-        mListener.testStarted(EasyMock.eq(test1), EasyMock.anyInt());
-        mListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyInt(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mListener.testStarted(EasyMock.eq(test2), EasyMock.anyInt());
-        mListener.testFailed(EasyMock.eq(test2), (String) EasyMock.anyObject());
-        mListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyInt(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mListener.testLog(
-                (String) EasyMock.anyObject(), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-
-        EasyMock.replay(mListener);
         mHostTest.run(testInfo, mListener);
-        EasyMock.verify(mListener);
+
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(2));
+        verify(mListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        verify(mListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        verify(mListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        verify(mListener).testFailed(Mockito.eq(test2), (String) Mockito.any());
+        verify(mListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        verify(mListener)
+                .testLog((String) Mockito.any(), Mockito.eq(LogDataType.TEXT), Mockito.any());
+        verify(mListener).testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
     }
 
     @Test
@@ -297,25 +288,26 @@ public class IsolatedHostTestTest {
         TestDescription test2 = new TestDescription(className, "test2Failing");
 
         // One passing test followed by one failing test flow
-        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(2));
-        mListener.testStarted(EasyMock.eq(test1), EasyMock.anyInt());
-        mListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyInt(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mListener.testStarted(EasyMock.eq(test2), EasyMock.anyInt());
-        mListener.testFailed(EasyMock.eq(test2), (String) EasyMock.anyObject());
-        mListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyInt(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mListener.testLog(
-                (String) EasyMock.anyObject(), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
-        EasyMock.replay(mListener);
         mHostTest.run(testInfo, mListener);
-        EasyMock.verify(mListener);
+
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(2));
+        verify(mListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        verify(mListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        verify(mListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        verify(mListener).testFailed(Mockito.eq(test2), (String) Mockito.any());
+        verify(mListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        verify(mListener)
+                .testLog((String) Mockito.any(), Mockito.eq(LogDataType.TEXT), Mockito.any());
+        verify(mListener).testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
     }
 
     @Test
@@ -329,19 +321,17 @@ public class IsolatedHostTestTest {
         TestDescription test = new TestDescription(className, "test1Passing");
 
         // One passing test flow
-        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
-        mListener.testStarted(EasyMock.eq(test), EasyMock.anyInt());
-        mListener.testEnded(
-                EasyMock.eq(test),
-                EasyMock.anyInt(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mListener.testLog(
-                (String) EasyMock.anyObject(), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
-        EasyMock.replay(mListener);
         mHostTest.run(testInfo, mListener);
-        EasyMock.verify(mListener);
+
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(1));
+        verify(mListener).testStarted(Mockito.eq(test), Mockito.anyLong());
+        verify(mListener)
+                .testEnded(
+                        Mockito.eq(test), Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
+        verify(mListener)
+                .testLog((String) Mockito.any(), Mockito.eq(LogDataType.TEXT), Mockito.any());
+        verify(mListener).testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
     }
 
     @Test
@@ -354,12 +344,11 @@ public class IsolatedHostTestTest {
         TestInformation testInfo = TestInformation.newBuilder().build();
 
         // Typical no tests found flow
-        mListener.testLog(
-                (String) EasyMock.anyObject(), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
 
-        EasyMock.replay(mListener);
         mHostTest.run(testInfo, mListener);
-        EasyMock.verify(mListener);
+
+        verify(mListener)
+                .testLog((String) Mockito.any(), Mockito.eq(LogDataType.TEXT), Mockito.any());
     }
 
     @Test
@@ -371,12 +360,11 @@ public class IsolatedHostTestTest {
         TestInformation testInfo = TestInformation.newBuilder().build();
 
         // Typical no tests found flow
-        mListener.testLog(
-                (String) EasyMock.anyObject(), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
 
-        EasyMock.replay(mListener);
         mHostTest.run(testInfo, mListener);
-        EasyMock.verify(mListener);
+
+        verify(mListener)
+                .testLog((String) Mockito.any(), Mockito.eq(LogDataType.TEXT), Mockito.any());
     }
 
     @Test
@@ -392,19 +380,17 @@ public class IsolatedHostTestTest {
         TestDescription test = new TestDescription(className, "test1Passing");
 
         // One passing test flow
-        mListener.testRunStarted((String) EasyMock.anyObject(), EasyMock.eq(1));
-        mListener.testStarted(EasyMock.eq(test), EasyMock.anyInt());
-        mListener.testEnded(
-                EasyMock.eq(test),
-                EasyMock.anyInt(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mListener.testLog(
-                (String) EasyMock.anyObject(), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
-        EasyMock.replay(mListener);
         mHostTest.run(testInfo, mListener);
-        EasyMock.verify(mListener);
+
+        verify(mListener).testRunStarted((String) Mockito.any(), Mockito.eq(1));
+        verify(mListener).testStarted(Mockito.eq(test), Mockito.anyLong());
+        verify(mListener)
+                .testEnded(
+                        Mockito.eq(test), Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
+        verify(mListener)
+                .testLog((String) Mockito.any(), Mockito.eq(LogDataType.TEXT), Mockito.any());
+        verify(mListener).testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
     }
 
     @Test
@@ -417,13 +403,10 @@ public class IsolatedHostTestTest {
         mHostTest.addExcludeFilter(className + "#test2Failing");
         TestInformation testInfo = TestInformation.newBuilder().build();
 
-        // Typical no tests found flow
-        mListener.testLog(
-                (String) EasyMock.anyObject(), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
-
-        EasyMock.replay(mListener);
         mHostTest.run(testInfo, mListener);
-        EasyMock.verify(mListener);
+
+        verify(mListener)
+                .testLog((String) Mockito.any(), Mockito.eq(LogDataType.TEXT), Mockito.any());
     }
 
     @Test
@@ -436,25 +419,25 @@ public class IsolatedHostTestTest {
         TestDescription test1 = new TestDescription(className, "testBoolean[0]");
         TestDescription test2 = new TestDescription(className, "testBoolean[1]");
 
-        mListener.testRunStarted(EasyMock.eq(className), EasyMock.eq(2));
-        mListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mListener.testFailed(EasyMock.eq(test2), (String) EasyMock.anyObject());
-        mListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mListener.testLog(
-                (String) EasyMock.anyObject(), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-
-        EasyMock.replay(mListener);
         mHostTest.run(testInfo, mListener);
-        EasyMock.verify(mListener);
+
+        verify(mListener).testRunStarted(Mockito.eq(className), Mockito.eq(2));
+        verify(mListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        verify(mListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        verify(mListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        verify(mListener).testFailed(Mockito.eq(test2), (String) Mockito.any());
+        verify(mListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        verify(mListener)
+                .testLog((String) Mockito.any(), Mockito.eq(LogDataType.TEXT), Mockito.any());
+        verify(mListener).testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
     }
 
     @Test
@@ -467,19 +450,18 @@ public class IsolatedHostTestTest {
         TestDescription test1 = new TestDescription(className, "testBoolean[0]");
         mHostTest.addExcludeFilter(className + "#testBoolean[1]");
 
-        mListener.testRunStarted(EasyMock.eq(className), EasyMock.eq(1));
-        mListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mListener.testLog(
-                (String) EasyMock.anyObject(), EasyMock.eq(LogDataType.TEXT), EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-
-        EasyMock.replay(mListener);
         mHostTest.run(testInfo, mListener);
-        EasyMock.verify(mListener);
+
+        verify(mListener).testRunStarted(Mockito.eq(className), Mockito.eq(1));
+        verify(mListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        verify(mListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        verify(mListener)
+                .testLog((String) Mockito.any(), Mockito.eq(LogDataType.TEXT), Mockito.any());
+        verify(mListener).testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
     }
 
     @Test

@@ -265,7 +265,10 @@ public abstract class ExecutableBaseTest
 
     /** {@inheritDoc} */
     @Override
-    public final Collection<IRemoteTest> split() {
+    public final Collection<IRemoteTest> split(int shardHint) {
+        if (shardHint <= 1) {
+            return null;
+        }
         int testCount = mBinaryPaths.size() + mTestCommands.size();
         if (testCount <= 2) {
             return null;

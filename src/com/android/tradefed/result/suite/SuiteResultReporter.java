@@ -189,10 +189,10 @@ public class SuiteResultReporter extends CollectingTestListener {
         mSummary.append(String.format("PASSED            : %s\n", mPassedTests));
         mSummary.append(String.format("FAILED            : %s\n", mFailedTests));
 
-        if (mSkippedTests > 0l) {
+        if (mSkippedTests > 0L) {
             mSummary.append(String.format("IGNORED           : %s\n", mSkippedTests));
         }
-        if (mAssumeFailureTests > 0l) {
+        if (mAssumeFailureTests > 0L) {
             mSummary.append(String.format("ASSUMPTION_FAILURE: %s\n", mAssumeFailureTests));
         }
 
@@ -223,7 +223,7 @@ public class SuiteResultReporter extends CollectingTestListener {
                         return (int) (o2.getElapsedTime() - o1.getElapsedTime());
                     }
                 });
-        long totalRunTime = 0l;
+        long totalRunTime = 0L;
         mSummary.append("=============== Consumed Time ==============\n");
         for (int i = 0; i < moduleTime.size(); i++) {
             mSummary.append(
@@ -288,8 +288,8 @@ public class SuiteResultReporter extends CollectingTestListener {
             return;
         }
         mSummary.append("============== Modules Preparation Times ==============\n");
-        long totalPrep = 0l;
-        long totalTear = 0l;
+        long totalPrep = 0L;
+        long totalTear = 0L;
 
         for (String moduleName : metrics.keySet()) {
             mSummary.append(
@@ -311,7 +311,7 @@ public class SuiteResultReporter extends CollectingTestListener {
             return;
         }
         mSummary.append("============== Modules Checkers Times ==============\n");
-        long totalTime = 0l;
+        long totalTime = 0L;
         for (TestRunResult t : moduleCheckerResults) {
             mSummary.append(
                     String.format(

@@ -302,7 +302,7 @@ public class ClusterCommandConfigBuilder {
         UniqueMultiMap<String, String> extraOptions = mCommand.getExtraOptions();
         for (String key : extraOptions.keySet()) {
             for (String value : extraOptions.get(key)) {
-                config.injectOptionValue(key, value);
+                config.injectOptionValue(key, StringUtil.expand(value, envVars));
             }
         }
 

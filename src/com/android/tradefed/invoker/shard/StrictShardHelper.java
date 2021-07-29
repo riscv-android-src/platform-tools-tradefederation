@@ -302,7 +302,7 @@ public class StrictShardHelper extends ShardHelper {
         int index = 0;
         List<SortShardObj> shardTimes = new ArrayList<>();
         for (List<IRemoteTest> shard : allShards) {
-            long aggTime = 0l;
+            long aggTime = 0L;
             CLog.d("++++++++++++++++++ SHARD %s +++++++++++++++", index);
             for (IRemoteTest test : shard) {
                 if (test instanceof IRuntimeHintProvider) {
@@ -317,7 +317,7 @@ public class StrictShardHelper extends ShardHelper {
 
         Collections.sort(shardTimes);
         if ((shardTimes.get(0).mAggTime - shardTimes.get(shardTimes.size() - 1).mAggTime)
-                < 60 * 60 * 1000l) {
+                < 60 * 60 * 1000L) {
             return;
         }
 
