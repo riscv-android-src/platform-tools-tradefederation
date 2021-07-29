@@ -19,6 +19,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.when;
 
 import com.android.ddmlib.Log;
 import com.android.tradefed.result.error.InfraErrorIdentifier;
@@ -26,14 +29,15 @@ import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 
-import org.easymock.EasyMock;
-import org.easymock.IAnswer;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.InOrder;
+import org.mockito.Mock;
 import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
@@ -51,7 +55,7 @@ public class FileDownloadCacheFuncTest {
     private static final String DOWNLOADED_CONTENTS = "downloaded contents";
     protected static final String LOG_TAG = "FileDownloadCacheFuncTest";
 
-    private IFileDownloader mMockDownloader;
+    @Mock IFileDownloader mMockDownloader;
 
     private FileDownloadCache mCache;
     private File mTmpDir;
@@ -59,7 +63,8 @@ public class FileDownloadCacheFuncTest {
 
     @Before
     public void setUp() throws Exception {
-        mMockDownloader = EasyMock.createStrictMock(IFileDownloader.class);
+        MockitoAnnotations.initMocks(this);
+
         mTmpDir = FileUtil.createTempDir("functest");
         mCache = new FileDownloadCache(mTmpDir);
         mReturnedFiles = new ArrayList<File>(2);
@@ -80,23 +85,20 @@ public class FileDownloadCacheFuncTest {
     @Test
     public void testFetchRemoteFile_concurrent() throws Exception {
         // Simulate a relatively slow file download
-        IAnswer<Object> slowDownloadAnswer = new IAnswer<Object>() {
-            @Override
-            public Object answer() throws Throwable {
-                Thread.sleep(500);
-                File fileArg =  (File) EasyMock.getCurrentArguments()[1];
-                FileUtil.writeToFile(DOWNLOADED_CONTENTS, fileArg);
-                return null;
-            }
-        };
+        Answer<Object> slowDownloadAnswer =
+                invocation -> {
+                    Thread.sleep(500);
+                    File fileArg = (File) invocation.getArguments()[1];
+                    FileUtil.writeToFile(DOWNLOADED_CONTENTS, fileArg);
+                    return null;
+                };
         // Download is only called once, second thread will wait on synchronized until the download
         // is done, then link the downloaded file.
-        mMockDownloader.downloadFile(EasyMock.eq(REMOTE_PATH), EasyMock.<File>anyObject());
-        EasyMock.expectLastCall().andAnswer(slowDownloadAnswer);
-        EasyMock.expect(mMockDownloader.isFresh(EasyMock.anyObject(), EasyMock.eq(REMOTE_PATH)))
-                .andReturn(true);
+        doAnswer(slowDownloadAnswer)
+                .when(mMockDownloader)
+                .downloadFile(Mockito.eq(REMOTE_PATH), Mockito.<File>any());
+        when(mMockDownloader.isFresh(Mockito.any(), Mockito.eq(REMOTE_PATH))).thenReturn(true);
 
-        EasyMock.replay(mMockDownloader);
         Thread downloadThread1 = createDownloadThread(mMockDownloader, REMOTE_PATH);
         downloadThread1.setName("FileDownloadCacheFuncTest#testFetchRemoteFile_concurrent-1");
         Thread downloadThread2 = createDownloadThread(mMockDownloader, REMOTE_PATH);
@@ -109,11 +111,14 @@ public class FileDownloadCacheFuncTest {
         assertEquals(2, mReturnedFiles.size());
         // returned files should be identical in content, but be different files
         assertTrue(!mReturnedFiles.get(0).equals(mReturnedFiles.get(1)));
-        assertEquals(DOWNLOADED_CONTENTS, StreamUtil.getStringFromStream(new FileInputStream(
-                mReturnedFiles.get(0))));
-        assertEquals(DOWNLOADED_CONTENTS, StreamUtil.getStringFromStream(new FileInputStream(
-                mReturnedFiles.get(1))));
-        EasyMock.verify(mMockDownloader);
+        assertEquals(
+                DOWNLOADED_CONTENTS,
+                StreamUtil.getStringFromStream(new FileInputStream(mReturnedFiles.get(0))));
+        assertEquals(
+                DOWNLOADED_CONTENTS,
+                StreamUtil.getStringFromStream(new FileInputStream(mReturnedFiles.get(1))));
+        InOrder inOrder = Mockito.inOrder(mMockDownloader);
+        inOrder.verify(mMockDownloader).downloadFile(Mockito.eq(REMOTE_PATH), Mockito.<File>any());
     }
 
     /**
@@ -204,34 +209,27 @@ public class FileDownloadCacheFuncTest {
         // Block first download, and later raise an error, but allow other downloads to pass.
         final AtomicBoolean startedDownload = new AtomicBoolean(false);
         final AtomicBoolean throwException = new AtomicBoolean(false);
-        IAnswer<Object> blockedDownloadAnswer =
-                new IAnswer<Object>() {
-                    @Override
-                    public Object answer() throws Throwable {
-                        if (!startedDownload.get()) {
-                            startedDownload.set(true);
-                            while (!throwException.get()) {
-                                Thread.sleep(10);
-                            }
-                            throw new BuildRetrievalError(
-                                    "download error", InfraErrorIdentifier.ARTIFACT_DOWNLOAD_ERROR);
+        Answer<Object> blockedDownloadAnswer =
+                invocation -> {
+                    if (!startedDownload.get()) {
+                        startedDownload.set(true);
+                        while (!throwException.get()) {
+                            Thread.sleep(10);
                         }
-                        File fileArg = (File) EasyMock.getCurrentArguments()[1];
-                        FileUtil.writeToFile(DOWNLOADED_CONTENTS, fileArg);
-                        return null;
+                        throw new BuildRetrievalError(
+                                "download error", InfraErrorIdentifier.ARTIFACT_DOWNLOAD_ERROR);
                     }
+                    File fileArg = (File) invocation.getArguments()[1];
+                    FileUtil.writeToFile(DOWNLOADED_CONTENTS, fileArg);
+                    return null;
                 };
 
         // Download should be called twice. The first call will result in an error, and the second
         // will run to completion.
-        mMockDownloader.downloadFile(EasyMock.eq(REMOTE_PATH), EasyMock.<File>anyObject());
-        EasyMock.expectLastCall().andAnswer(blockedDownloadAnswer).times(2);
-        EasyMock.expect(mMockDownloader.isFresh(EasyMock.anyObject(), EasyMock.eq(REMOTE_PATH)))
-                .andReturn(true);
-
-        // Disable thread safety, otherwise the first call will block the rest.
-        EasyMock.makeThreadSafe(mMockDownloader, false);
-        EasyMock.replay(mMockDownloader);
+        doAnswer(blockedDownloadAnswer)
+                .when(mMockDownloader)
+                .downloadFile(Mockito.eq(REMOTE_PATH), Mockito.<File>any());
+        when(mMockDownloader.isFresh(Mockito.any(), Mockito.eq(REMOTE_PATH))).thenReturn(true);
 
         Thread downloadThread1 = createDownloadThread(mMockDownloader, REMOTE_PATH);
         downloadThread1.setName("FileDownloadCacheFuncTest#testFetchRemoteFile_concurrentFail-1");
@@ -262,7 +260,9 @@ public class FileDownloadCacheFuncTest {
         downloadThread3.start();
         downloadThread3.join(2000);
 
-        EasyMock.verify(mMockDownloader);
+        InOrder inOrder = Mockito.inOrder(mMockDownloader);
+        inOrder.verify(mMockDownloader, times(2))
+                .downloadFile(Mockito.eq(REMOTE_PATH), Mockito.<File>any());
     }
 
     /** Verify the cache is built from disk contents on creation */
@@ -316,7 +316,6 @@ public class FileDownloadCacheFuncTest {
             // retained
             assertFalse(file1.exists());
             assertTrue(file2.exists());
-
         } finally {
             FileUtil.recursiveDelete(cacheRoot);
         }

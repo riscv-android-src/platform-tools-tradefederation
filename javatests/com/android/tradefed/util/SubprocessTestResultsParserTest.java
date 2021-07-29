@@ -382,7 +382,7 @@ public class SubprocessTestResultsParserTest {
             resultParser.parseFile(tmp);
             EasyMock.verify(mockRunListener);
             assertEquals(subTestTag, context.getTestTag());
-            assertEquals(250l, resultParser.getStartTime().longValue());
+            assertEquals(250L, resultParser.getStartTime().longValue());
         } finally {
             StreamUtil.close(resultParser);
             FileUtil.deleteFile(tmp);

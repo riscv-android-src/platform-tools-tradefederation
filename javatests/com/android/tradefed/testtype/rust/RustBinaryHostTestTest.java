@@ -15,6 +15,11 @@
  */
 package com.android.tradefed.testtype.rust;
 
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.invoker.InvocationContext;
@@ -29,11 +34,13 @@ import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.IRunUtil;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.io.File;
 import java.util.HashMap;
@@ -42,17 +49,15 @@ import java.util.HashMap;
 @RunWith(JUnit4.class)
 public class RustBinaryHostTestTest {
     private RustBinaryHostTest mTest;
-    private IRunUtil mMockRunUtil;
-    private IBuildInfo mMockBuildInfo;
     private TestInformation mTestInfo;
-    private ITestInvocationListener mMockListener;
-    // TODO(chh): maybe we will need mFakeAdb later like PythonBinaryHostTestTest.
+    @Mock IRunUtil mMockRunUtil;
+    @Mock IBuildInfo mMockBuildInfo;
+    @Mock ITestInvocationListener mMockListener;
 
     @Before
     public void setUp() throws Exception {
-        mMockRunUtil = EasyMock.createMock(IRunUtil.class);
-        mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
-        mMockListener = EasyMock.createMock(ITestInvocationListener.class);
+        MockitoAnnotations.initMocks(this);
+
         mTest =
                 new RustBinaryHostTest() {
                     @Override
@@ -117,79 +122,60 @@ public class RustBinaryHostTestTest {
 
     /** Add mocked call "binary --list" to count the number of tests. */
     private void mockCountTests(File binary, int numOfTest) throws Exception {
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmdSilently(
-                                EasyMock.anyLong(),
-                                EasyMock.eq(binary.getAbsolutePath()),
-                                EasyMock.eq("--list")))
-                .andReturn(successResult("", runListOutput(numOfTest)));
+        when(mMockRunUtil.runTimedCmdSilently(
+                        Mockito.anyLong(),
+                        Mockito.eq(binary.getAbsolutePath()),
+                        Mockito.eq("--list")))
+                .thenReturn(successResult("", runListOutput(numOfTest)));
     }
 
     private void mockCountBenchmarks(File binary, int numOfTest) throws Exception {
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmdSilently(
-                                EasyMock.anyLong(),
-                                EasyMock.eq(binary.getAbsolutePath()),
-                                EasyMock.eq("--bench"),
-                                EasyMock.eq("--list")))
-                .andReturn(successResult("", runListBenchmarksOutput(numOfTest)));
+        when(mMockRunUtil.runTimedCmdSilently(
+                        Mockito.anyLong(),
+                        Mockito.eq(binary.getAbsolutePath()),
+                        Mockito.eq("--bench"),
+                        Mockito.eq("--list")))
+                .thenReturn(successResult("", runListBenchmarksOutput(numOfTest)));
     }
 
     /** Add mocked testRunStarted call to the listener. */
     private void mockListenerStarted(File binary, int count) throws Exception {
         mMockListener.testRunStarted(
-                EasyMock.eq(binary.getName()),
-                EasyMock.eq(count),
-                EasyMock.anyInt(),
-                EasyMock.anyLong());
+                Mockito.eq(binary.getName()),
+                Mockito.eq(count),
+                Mockito.anyInt(),
+                Mockito.anyLong());
     }
 
     /** Add mocked call to check listener log file. */
-    private void mockListenerLog(File binary, boolean error) {
+    private void verifyListenerLog(File binary, boolean error) {
         if (error) {
-            mMockListener.testLog(
-                    EasyMock.eq(binary.getName() + "-stderr"),
-                    EasyMock.eq(LogDataType.TEXT),
-                    EasyMock.anyObject());
+            verify(mMockListener)
+                    .testLog(
+                            Mockito.eq(binary.getName() + "-stderr"),
+                            Mockito.eq(LogDataType.TEXT),
+                            Mockito.any());
         }
-        mMockListener.testLog(
-                EasyMock.eq(binary.getName() + "-stdout"),
-                EasyMock.eq(LogDataType.TEXT),
-                EasyMock.anyObject());
+        verify(mMockListener)
+                .testLog(
+                        Mockito.eq(binary.getName() + "-stdout"),
+                        Mockito.eq(LogDataType.TEXT),
+                        Mockito.any());
     }
 
     private void mockTestRunExpect(File binary, CommandResult res) throws Exception {
-        mMockRunUtil.setWorkingDir(binary.getParentFile());
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(), EasyMock.eq(binary.getAbsolutePath())))
-                .andReturn(res);
+        when(mMockRunUtil.runTimedCmd(Mockito.anyLong(), Mockito.eq(binary.getAbsolutePath())))
+                .thenReturn(res);
     }
 
     private void mockBenchmarkRunExpect(File binary, String output) throws Exception {
-        CommandResult res = newCommandResult(CommandStatus.SUCCESS, "", "");
-        mMockRunUtil.setWorkingDir(binary.getParentFile());
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(),
-                                EasyMock.eq(binary.getAbsolutePath()),
-                                EasyMock.eq("--bench"),
-                                EasyMock.eq("--color"),
-                                EasyMock.eq("never")))
-                .andReturn(successResult("", output));
-    }
-
-    /** Add mocked call to testRunEnded. */
-    private void mockTestRunEnded() {
-        mMockListener.testRunEnded(
-                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-    }
-
-    /** Call replay/run/verify. */
-    private void callReplayRunVerify() throws Exception {
-        EasyMock.replay(mMockRunUtil, mMockBuildInfo, mMockListener);
-        mTest.run(mTestInfo, mMockListener);
-        EasyMock.verify(mMockRunUtil, mMockBuildInfo, mMockListener);
+        when(mMockRunUtil.runTimedCmd(
+                        Mockito.anyLong(),
+                        Mockito.eq(binary.getAbsolutePath()),
+                        Mockito.eq("--bench"),
+                        Mockito.eq("--color"),
+                        Mockito.eq("never")))
+                .thenReturn(successResult("", output));
     }
 
     /** Test that when running a rust binary the output is parsed to obtain results. */
@@ -201,12 +187,20 @@ public class RustBinaryHostTestTest {
             setter.setOptionValue("test-file", binary.getAbsolutePath());
             mockCountTests(binary, 9);
             mockListenerStarted(binary, 9);
-            mockListenerLog(binary, false);
             CommandResult res = successResult("", resultCount(6, 1, 2));
             mockTestRunExpect(binary, res);
-            mMockListener.testRunFailed("Test run incomplete. Started 2 tests, finished 0");
-            mockTestRunEnded();
-            callReplayRunVerify();
+
+            mTest.run(mTestInfo, mMockListener);
+            verify(mMockListener)
+                    .testRunStarted(
+                            Mockito.eq(binary.getName()),
+                            Mockito.eq(9),
+                            Mockito.anyInt(),
+                            Mockito.anyLong());
+            verifyListenerLog(binary, false);
+            verify(mMockListener).testRunFailed("Test run incomplete. Started 2 tests, finished 0");
+            verify(mMockListener)
+                    .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
         } finally {
             FileUtil.deleteFile(binary);
         }
@@ -218,7 +212,7 @@ public class RustBinaryHostTestTest {
      */
     @Test
     public void testRun_withAdbPath() throws Exception {
-        mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
+        mMockBuildInfo = mock(IBuildInfo.class);
         mTest.setBuild(mMockBuildInfo);
 
         File binary = FileUtil.createTempFile("rust-dir", "");
@@ -226,13 +220,20 @@ public class RustBinaryHostTestTest {
             OptionSetter setter = new OptionSetter(mTest);
             setter.setOptionValue("test-file", binary.getAbsolutePath());
             mockCountTests(binary, 9);
-            mockListenerStarted(binary, 9);
-            mockListenerLog(binary, false);
             CommandResult res = successResult("", resultCount(6, 1, 2));
             mockTestRunExpect(binary, res);
-            mMockListener.testRunFailed("Test run incomplete. Started 2 tests, finished 0");
-            mockTestRunEnded();
-            callReplayRunVerify();
+
+            mTest.run(mTestInfo, mMockListener);
+            verify(mMockListener)
+                    .testRunStarted(
+                            Mockito.eq(binary.getName()),
+                            Mockito.eq(9),
+                            Mockito.anyInt(),
+                            Mockito.anyLong());
+            verifyListenerLog(binary, false);
+            verify(mMockListener).testRunFailed("Test run incomplete. Started 2 tests, finished 0");
+            verify(mMockListener)
+                    .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
         } finally {
             FileUtil.deleteFile(binary);
         }
@@ -246,16 +247,23 @@ public class RustBinaryHostTestTest {
             OptionSetter setter = new OptionSetter(mTest);
             setter.setOptionValue("test-file", binary.getAbsolutePath());
             mockCountTests(binary, 2);
-            mockListenerStarted(binary, 2);
-            mockListenerLog(binary, true);
             CommandResult res =
                     newCommandResult(
                             CommandStatus.EXCEPTION, "Err.", "running 2 tests\nException.");
             mockTestRunExpect(binary, res);
-            mMockListener.testRunFailed("Test run incomplete. Started 2 tests, finished 0");
-            mMockListener.testRunFailed((FailureDescription) EasyMock.anyObject());
-            mockTestRunEnded();
-            callReplayRunVerify();
+
+            mTest.run(mTestInfo, mMockListener);
+            verify(mMockListener)
+                    .testRunStarted(
+                            Mockito.eq(binary.getName()),
+                            Mockito.eq(2),
+                            Mockito.anyInt(),
+                            Mockito.anyLong());
+            verifyListenerLog(binary, true);
+            verify(mMockListener).testRunFailed("Test run incomplete. Started 2 tests, finished 0");
+            verify(mMockListener).testRunFailed((FailureDescription) Mockito.any());
+            verify(mMockListener)
+                    .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
         } finally {
             FileUtil.deleteFile(binary);
         }
@@ -272,16 +280,17 @@ public class RustBinaryHostTestTest {
             OptionSetter setter = new OptionSetter(mTest);
             setter.setOptionValue("test-file", binary.getAbsolutePath());
             CommandResult listRes = newCommandResult(CommandStatus.FAILED, "", "");
-            EasyMock.expect(
-                            mMockRunUtil.runTimedCmdSilently(
-                                    EasyMock.anyLong(),
-                                    EasyMock.eq(binary.getAbsolutePath()),
-                                    EasyMock.eq("--list")))
-                    .andReturn(listRes);
-            mMockListener.testRunStarted(binary.getName(), 0);
-            mMockListener.testRunFailed((FailureDescription) EasyMock.anyObject());
-            mockTestRunEnded();
-            callReplayRunVerify();
+            when(mMockRunUtil.runTimedCmdSilently(
+                            Mockito.anyLong(),
+                            Mockito.eq(binary.getAbsolutePath()),
+                            Mockito.eq("--list")))
+                    .thenReturn(listRes);
+
+            mTest.run(mTestInfo, mMockListener);
+            verify(mMockListener).testRunStarted(Mockito.eq(binary.getName()), Mockito.eq(0));
+            verify(mMockListener).testRunFailed((FailureDescription) Mockito.any());
+            verify(mMockListener)
+                    .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
         } finally {
             FileUtil.deleteFile(binary);
         }
@@ -295,14 +304,21 @@ public class RustBinaryHostTestTest {
             OptionSetter setter = new OptionSetter(mTest);
             setter.setOptionValue("test-file", binary.getAbsolutePath());
             mockCountTests(binary, 9);
-            mockListenerStarted(binary, 9);
-            mockListenerLog(binary, false);
             CommandResult res = newCommandResult(CommandStatus.FAILED, "", resultCount(6, 1, 2));
             mockTestRunExpect(binary, res);
-            mMockListener.testRunFailed("Test run incomplete. Started 2 tests, finished 0");
-            mMockListener.testRunFailed((FailureDescription) EasyMock.anyObject());
-            mockTestRunEnded();
-            callReplayRunVerify();
+
+            mTest.run(mTestInfo, mMockListener);
+            verify(mMockListener)
+                    .testRunStarted(
+                            Mockito.eq(binary.getName()),
+                            Mockito.eq(9),
+                            Mockito.anyInt(),
+                            Mockito.anyLong());
+            verifyListenerLog(binary, false);
+            verify(mMockListener).testRunFailed("Test run incomplete. Started 2 tests, finished 0");
+            verify(mMockListener).testRunFailed((FailureDescription) Mockito.any());
+            verify(mMockListener)
+                    .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
         } finally {
             FileUtil.deleteFile(binary);
         }
@@ -317,33 +333,37 @@ public class RustBinaryHostTestTest {
             setter.setOptionValue("test-file", binary.getAbsolutePath());
             setter.setOptionValue("exclude-filter", "NotMe");
             setter.setOptionValue("exclude-filter", "Long");
-            EasyMock.expect(
-                            mMockRunUtil.runTimedCmdSilently(
-                                    EasyMock.anyLong(),
-                                    EasyMock.eq(binary.getAbsolutePath()),
-                                    EasyMock.eq("--skip"),
-                                    EasyMock.eq("NotMe"),
-                                    EasyMock.eq("--skip"),
-                                    EasyMock.eq("Long"),
-                                    EasyMock.eq("--list")))
-                    .andReturn(successResult("", runListOutput(9)));
-            mockListenerStarted(binary, 9);
-            mockListenerLog(binary, false);
-            CommandResult res = successResult("", resultCount(6, 1, 2));
-            mMockRunUtil.setWorkingDir(binary.getParentFile());
-            EasyMock.expect(
-                            mMockRunUtil.runTimedCmd(
-                                    EasyMock.anyLong(),
-                                    EasyMock.eq(binary.getAbsolutePath()),
-                                    EasyMock.eq("--skip"),
-                                    EasyMock.eq("NotMe"),
-                                    EasyMock.eq("--skip"),
-                                    EasyMock.eq("Long")))
-                    .andReturn(res);
+            when(mMockRunUtil.runTimedCmdSilently(
+                            Mockito.anyLong(),
+                            Mockito.eq(binary.getAbsolutePath()),
+                            Mockito.eq("--skip"),
+                            Mockito.eq("NotMe"),
+                            Mockito.eq("--skip"),
+                            Mockito.eq("Long"),
+                            Mockito.eq("--list")))
+                    .thenReturn(successResult("", runListOutput(9)));
 
-            mMockListener.testRunFailed("Test run incomplete. Started 2 tests, finished 0");
-            mockTestRunEnded();
-            callReplayRunVerify();
+            CommandResult res = successResult("", resultCount(6, 1, 2));
+            when(mMockRunUtil.runTimedCmd(
+                            Mockito.anyLong(),
+                            Mockito.eq(binary.getAbsolutePath()),
+                            Mockito.eq("--skip"),
+                            Mockito.eq("NotMe"),
+                            Mockito.eq("--skip"),
+                            Mockito.eq("Long")))
+                    .thenReturn(res);
+
+            mTest.run(mTestInfo, mMockListener);
+            verify(mMockListener)
+                    .testRunStarted(
+                            Mockito.eq(binary.getName()),
+                            Mockito.eq(9),
+                            Mockito.anyInt(),
+                            Mockito.anyLong());
+            verifyListenerLog(binary, false);
+            verify(mMockListener).testRunFailed("Test run incomplete. Started 2 tests, finished 0");
+            verify(mMockListener)
+                    .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
         } finally {
             FileUtil.deleteFile(binary);
         }
@@ -360,36 +380,39 @@ public class RustBinaryHostTestTest {
             setter.setOptionValue("include-filter", "MyTest#OnlyMe");
             setter.setOptionValue("exclude-filter", "Other");
             // We always pass the include-filter before exclude-filter strings.
-            EasyMock.expect(
-                            mMockRunUtil.runTimedCmdSilently(
-                                    EasyMock.anyLong(),
-                                    EasyMock.eq(binary.getAbsolutePath()),
-                                    EasyMock.eq("OnlyMe"),
-                                    EasyMock.eq("--skip"),
-                                    EasyMock.eq("NotMe"),
-                                    EasyMock.eq("--skip"),
-                                    EasyMock.eq("Other"),
-                                    EasyMock.eq("--list")))
-                    .andReturn(successResult("", runListOutput(3)));
-            mockListenerStarted(binary, 3);
+            when(mMockRunUtil.runTimedCmdSilently(
+                            Mockito.anyLong(),
+                            Mockito.eq(binary.getAbsolutePath()),
+                            Mockito.eq("OnlyMe"),
+                            Mockito.eq("--skip"),
+                            Mockito.eq("NotMe"),
+                            Mockito.eq("--skip"),
+                            Mockito.eq("Other"),
+                            Mockito.eq("--list")))
+                    .thenReturn(successResult("", runListOutput(3)));
 
-            mockListenerLog(binary, false);
             CommandResult res = successResult("", resultCount(3, 0, 0));
-            mMockRunUtil.setWorkingDir(binary.getParentFile());
-            EasyMock.expect(
-                            mMockRunUtil.runTimedCmd(
-                                    EasyMock.anyLong(),
-                                    EasyMock.eq(binary.getAbsolutePath()),
-                                    EasyMock.eq("OnlyMe"),
-                                    EasyMock.eq("--skip"),
-                                    EasyMock.eq("NotMe"),
-                                    EasyMock.eq("--skip"),
-                                    EasyMock.eq("Other")))
-                    .andReturn(res);
+            when(mMockRunUtil.runTimedCmd(
+                            Mockito.anyLong(),
+                            Mockito.eq(binary.getAbsolutePath()),
+                            Mockito.eq("OnlyMe"),
+                            Mockito.eq("--skip"),
+                            Mockito.eq("NotMe"),
+                            Mockito.eq("--skip"),
+                            Mockito.eq("Other")))
+                    .thenReturn(res);
 
-            mMockListener.testRunFailed("Test run incomplete. Started 2 tests, finished 0");
-            mockTestRunEnded();
-            callReplayRunVerify();
+            mTest.run(mTestInfo, mMockListener);
+            verify(mMockListener)
+                    .testRunStarted(
+                            Mockito.eq(binary.getName()),
+                            Mockito.eq(3),
+                            Mockito.anyInt(),
+                            Mockito.anyLong());
+            verifyListenerLog(binary, false);
+            verify(mMockListener).testRunFailed("Test run incomplete. Started 2 tests, finished 0");
+            verify(mMockListener)
+                    .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
         } finally {
             FileUtil.deleteFile(binary);
         }
@@ -408,64 +431,66 @@ public class RustBinaryHostTestTest {
             setter.setOptionValue("include-filter", "Me2");
             // Multiple include filters are run one by one with --list.
             String[] selection1 = new String[] {"test1", "test2"};
-            EasyMock.expect(
-                            mMockRunUtil.runTimedCmdSilently(
-                                    EasyMock.anyLong(),
-                                    EasyMock.eq(binary.getAbsolutePath()),
-                                    EasyMock.eq("OnlyMe"),
-                                    EasyMock.eq("--skip"),
-                                    EasyMock.eq("NotMe"),
-                                    EasyMock.eq("--skip"),
-                                    EasyMock.eq("Other"),
-                                    EasyMock.eq("--list")))
-                    .andReturn(successResult("", runListOutput(selection1)));
+            when(mMockRunUtil.runTimedCmdSilently(
+                            Mockito.anyLong(),
+                            Mockito.eq(binary.getAbsolutePath()),
+                            Mockito.eq("OnlyMe"),
+                            Mockito.eq("--skip"),
+                            Mockito.eq("NotMe"),
+                            Mockito.eq("--skip"),
+                            Mockito.eq("Other"),
+                            Mockito.eq("--list")))
+                    .thenReturn(successResult("", runListOutput(selection1)));
             String[] selection2 = new String[] {"test2", "test3", "test4"};
-            EasyMock.expect(
-                            mMockRunUtil.runTimedCmdSilently(
-                                    EasyMock.anyLong(),
-                                    EasyMock.eq(binary.getAbsolutePath()),
-                                    EasyMock.eq("Me2"),
-                                    EasyMock.eq("--skip"),
-                                    EasyMock.eq("NotMe"),
-                                    EasyMock.eq("--skip"),
-                                    EasyMock.eq("Other"),
-                                    EasyMock.eq("--list")))
-                    .andReturn(successResult("", runListOutput(selection2)));
-            // Union of selection1 and selection2 has 4 tests.
-            mockListenerStarted(binary, 4);
+            when(mMockRunUtil.runTimedCmdSilently(
+                            Mockito.anyLong(),
+                            Mockito.eq(binary.getAbsolutePath()),
+                            Mockito.eq("Me2"),
+                            Mockito.eq("--skip"),
+                            Mockito.eq("NotMe"),
+                            Mockito.eq("--skip"),
+                            Mockito.eq("Other"),
+                            Mockito.eq("--list")))
+                    .thenReturn(successResult("", runListOutput(selection2)));
 
-            // Multiple include filters are run one by one.
-            mockListenerLog(binary, false);
             CommandResult res = successResult("", resultCount(2, 0, 0));
-            mMockRunUtil.setWorkingDir(binary.getParentFile());
-            EasyMock.expect(
-                            mMockRunUtil.runTimedCmd(
-                                    EasyMock.anyLong(),
-                                    EasyMock.eq(binary.getAbsolutePath()),
-                                    EasyMock.eq("OnlyMe"),
-                                    EasyMock.eq("--skip"),
-                                    EasyMock.eq("NotMe"),
-                                    EasyMock.eq("--skip"),
-                                    EasyMock.eq("Other")))
-                    .andReturn(res);
-            mMockListener.testRunFailed("Test run incomplete. Started 2 tests, finished 0");
-            mockListenerLog(binary, false);
-            res = successResult("", resultCount(3, 0, 0));
-            mMockRunUtil.setWorkingDir(binary.getParentFile());
-            EasyMock.expect(
-                            mMockRunUtil.runTimedCmd(
-                                    EasyMock.anyLong(),
-                                    EasyMock.eq(binary.getAbsolutePath()),
-                                    EasyMock.eq("Me2"),
-                                    EasyMock.eq("--skip"),
-                                    EasyMock.eq("NotMe"),
-                                    EasyMock.eq("--skip"),
-                                    EasyMock.eq("Other")))
-                    .andReturn(res);
+            when(mMockRunUtil.runTimedCmd(
+                            Mockito.anyLong(),
+                            Mockito.eq(binary.getAbsolutePath()),
+                            Mockito.eq("OnlyMe"),
+                            Mockito.eq("--skip"),
+                            Mockito.eq("NotMe"),
+                            Mockito.eq("--skip"),
+                            Mockito.eq("Other")))
+                    .thenReturn(res);
 
-            mMockListener.testRunFailed("Test run incomplete. Started 2 tests, finished 0");
-            mockTestRunEnded();
-            callReplayRunVerify();
+            res = successResult("", resultCount(3, 0, 0));
+            when(mMockRunUtil.runTimedCmd(
+                            Mockito.anyLong(),
+                            Mockito.eq(binary.getAbsolutePath()),
+                            Mockito.eq("Me2"),
+                            Mockito.eq("--skip"),
+                            Mockito.eq("NotMe"),
+                            Mockito.eq("--skip"),
+                            Mockito.eq("Other")))
+                    .thenReturn(res);
+
+            mTest.run(mTestInfo, mMockListener);
+            verify(mMockListener)
+                    .testRunStarted(
+                            Mockito.eq(binary.getName()),
+                            Mockito.eq(4),
+                            Mockito.anyInt(),
+                            Mockito.anyLong());
+            verify(mMockListener, times(2))
+                    .testLog(
+                            Mockito.eq(binary.getName() + "-stdout"),
+                            Mockito.eq(LogDataType.TEXT),
+                            Mockito.any());
+            verify(mMockListener, times(2))
+                    .testRunFailed("Test run incomplete. Started 2 tests, finished 0");
+            verify(mMockListener)
+                    .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
         } finally {
             FileUtil.deleteFile(binary);
         }
@@ -480,8 +505,6 @@ public class RustBinaryHostTestTest {
             setter.setOptionValue("test-file", binary.getAbsolutePath());
             setter.setOptionValue("is-benchmark", "true");
             mockCountBenchmarks(binary, 2);
-            mockListenerStarted(binary, 2);
-            mockListenerLog(binary, false);
             mockBenchmarkRunExpect(
                     binary,
                     "Benchmarking test1\n"
@@ -491,14 +514,24 @@ public class RustBinaryHostTestTest {
 
             TestDescription desc1 = new TestDescription(binary.getName(), "test1");
             TestDescription desc2 = new TestDescription(binary.getName(), "test2");
-            mMockListener.testStarted(desc1);
-            mMockListener.testEnded(
-                    EasyMock.eq(desc1), EasyMock.<HashMap<String, Metric>>anyObject());
-            mMockListener.testStarted(desc2);
-            mMockListener.testEnded(
-                    EasyMock.eq(desc2), EasyMock.<HashMap<String, Metric>>anyObject());
-            mockTestRunEnded();
-            callReplayRunVerify();
+
+            mTest.run(mTestInfo, mMockListener);
+
+            verify(mMockListener)
+                    .testRunStarted(
+                            Mockito.eq(binary.getName()),
+                            Mockito.eq(2),
+                            Mockito.anyInt(),
+                            Mockito.anyLong());
+            verifyListenerLog(binary, false);
+            verify(mMockListener).testStarted(desc1);
+            verify(mMockListener)
+                    .testEnded(Mockito.eq(desc1), Mockito.<HashMap<String, Metric>>any());
+            verify(mMockListener).testStarted(desc2);
+            verify(mMockListener)
+                    .testEnded(Mockito.eq(desc2), Mockito.<HashMap<String, Metric>>any());
+            verify(mMockListener)
+                    .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
         } finally {
             FileUtil.deleteFile(binary);
         }
@@ -512,8 +545,6 @@ public class RustBinaryHostTestTest {
             setter.setOptionValue("test-file", binary.getAbsolutePath());
             setter.setOptionValue("is-benchmark", "true");
             mockCountBenchmarks(binary, 2);
-            mockListenerStarted(binary, 2);
-            mockListenerLog(binary, false);
             mockBenchmarkRunExpect(
                     binary,
                     "Benchmarking test1\n"
@@ -522,15 +553,24 @@ public class RustBinaryHostTestTest {
 
             TestDescription desc1 = new TestDescription(binary.getName(), "test1");
             TestDescription desc2 = new TestDescription(binary.getName(), "test2");
-            mMockListener.testStarted(desc1);
-            mMockListener.testFailed(EasyMock.eq(desc1), EasyMock.<String>anyObject());
-            mMockListener.testEnded(
-                    EasyMock.eq(desc1), EasyMock.<HashMap<String, Metric>>anyObject());
-            mMockListener.testStarted(desc2);
-            mMockListener.testEnded(
-                    EasyMock.eq(desc2), EasyMock.<HashMap<String, Metric>>anyObject());
-            mockTestRunEnded();
-            callReplayRunVerify();
+
+            mTest.run(mTestInfo, mMockListener);
+            verify(mMockListener)
+                    .testRunStarted(
+                            Mockito.eq(binary.getName()),
+                            Mockito.eq(2),
+                            Mockito.anyInt(),
+                            Mockito.anyLong());
+            verifyListenerLog(binary, false);
+            verify(mMockListener).testStarted(desc1);
+            verify(mMockListener).testFailed(Mockito.eq(desc1), Mockito.<String>any());
+            verify(mMockListener)
+                    .testEnded(Mockito.eq(desc1), Mockito.<HashMap<String, Metric>>any());
+            verify(mMockListener).testStarted(desc2);
+            verify(mMockListener)
+                    .testEnded(Mockito.eq(desc2), Mockito.<HashMap<String, Metric>>any());
+            verify(mMockListener)
+                    .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
         } finally {
             FileUtil.deleteFile(binary);
         }
@@ -544,8 +584,6 @@ public class RustBinaryHostTestTest {
             setter.setOptionValue("test-file", binary.getAbsolutePath());
             setter.setOptionValue("is-benchmark", "true");
             mockCountBenchmarks(binary, 2);
-            mockListenerStarted(binary, 2);
-            mockListenerLog(binary, false);
             mockBenchmarkRunExpect(
                     binary,
                     "Benchmarking test1\n"
@@ -554,16 +592,26 @@ public class RustBinaryHostTestTest {
 
             TestDescription desc1 = new TestDescription(binary.getName(), "test1");
             TestDescription desc2 = new TestDescription(binary.getName(), "test2");
-            mMockListener.testStarted(desc1);
-            mMockListener.testEnded(
-                    EasyMock.eq(desc1), EasyMock.<HashMap<String, Metric>>anyObject());
-            mMockListener.testStarted(desc2);
-            mMockListener.testFailed(EasyMock.eq(desc2), EasyMock.<String>anyObject());
-            mMockListener.testEnded(
-                    EasyMock.eq(desc2), EasyMock.<HashMap<String, Metric>>anyObject());
-            mMockListener.testRunFailed(EasyMock.<String>anyObject());
-            mockTestRunEnded();
-            callReplayRunVerify();
+
+            mTest.run(mTestInfo, mMockListener);
+
+            verify(mMockListener)
+                    .testRunStarted(
+                            Mockito.eq(binary.getName()),
+                            Mockito.eq(2),
+                            Mockito.anyInt(),
+                            Mockito.anyLong());
+            verifyListenerLog(binary, false);
+            verify(mMockListener).testStarted(desc1);
+            verify(mMockListener)
+                    .testEnded(Mockito.eq(desc1), Mockito.<HashMap<String, Metric>>any());
+            verify(mMockListener).testStarted(desc2);
+            verify(mMockListener).testFailed(Mockito.eq(desc2), Mockito.<String>any());
+            verify(mMockListener)
+                    .testEnded(Mockito.eq(desc2), Mockito.<HashMap<String, Metric>>any());
+            verify(mMockListener).testRunFailed(Mockito.<String>any());
+            verify(mMockListener)
+                    .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
         } finally {
             FileUtil.deleteFile(binary);
         }

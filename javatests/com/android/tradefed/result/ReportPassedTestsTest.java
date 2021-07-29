@@ -292,6 +292,24 @@ public class ReportPassedTestsTest {
         assertTrue(mTestLogCalled);
     }
 
+    @Test
+    public void testReport_emptyFailedModules() {
+        mExpectedString = "x86 module1\n";
+        mReporter.testModuleStarted(createModule("x86 module1"));
+        mReporter.testRunStarted("run-name", 0);
+        mReporter.testRunEnded(0L, Collections.emptyMap());
+        mReporter.testModuleEnded();
+        // Second empty module
+        mReporter.testModuleStarted(createModule("x86_64 module1"));
+        mReporter.testRunStarted("failed-name", 0);
+        mReporter.testRunFailed(FailureDescription.create("placeholder failure"));
+        mReporter.testRunEnded(0L, Collections.emptyMap());
+        mReporter.testModuleEnded();
+
+        mReporter.invocationEnded(0L);
+        assertTrue(mTestLogCalled);
+    }
+
     private IInvocationContext createModule(String id) {
         IInvocationContext context = new InvocationContext();
         context.addInvocationAttribute(ModuleDefinition.MODULE_ID, id);

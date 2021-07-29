@@ -15,6 +15,11 @@
  */
 package com.android.tradefed.targetprep;
 
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.config.OptionSetter;
@@ -24,11 +29,12 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 /** Unit Tests for {@link RestartSystemServerTargetPreparer}. */
 @RunWith(JUnit4.class)
@@ -36,13 +42,13 @@ public class RestartSystemServerTargetPreparerTest {
 
     private RestartSystemServerTargetPreparer mRestartSystemServerTargetPreparer;
     private TestInformation mTestInformation;
-    private ITestDevice mMockDevice;
-    private IBuildInfo mMockBuildInfo;
+    @Mock ITestDevice mMockDevice;
+    @Mock IBuildInfo mMockBuildInfo;
 
     @Before
     public void setUp() {
-        mMockDevice = EasyMock.createMock(ITestDevice.class);
-        mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
+        MockitoAnnotations.initMocks(this);
+
         IInvocationContext context = new InvocationContext();
         context.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
         context.addDeviceBuildInfo(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockBuildInfo);
@@ -52,37 +58,32 @@ public class RestartSystemServerTargetPreparerTest {
 
     @Test
     public void testSetUp_bootComplete() throws Exception {
-        EasyMock.expect(mMockDevice.enableAdbRoot()).andReturn(true).once();
-        EasyMock.expect(mMockDevice.executeShellCommand("setprop dev.bootcomplete 0"))
-                .andReturn(null);
-        EasyMock.expect(
-                        mMockDevice.executeShellCommand(
-                                RestartSystemServerTargetPreparer.KILL_SERVER_COMMAND))
-                .andReturn(null)
-                .once();
-        mMockDevice.waitForDeviceAvailable();
-        EasyMock.expectLastCall().once();
-        EasyMock.replay(mMockDevice, mMockBuildInfo);
+        when(mMockDevice.enableAdbRoot()).thenReturn(true);
+        when(mMockDevice.executeShellCommand("setprop dev.bootcomplete 0")).thenReturn(null);
+        when(mMockDevice.executeShellCommand(RestartSystemServerTargetPreparer.KILL_SERVER_COMMAND))
+                .thenReturn(null);
 
         mRestartSystemServerTargetPreparer.setUp(mTestInformation);
-        EasyMock.verify(mMockDevice, mMockBuildInfo);
+        verify(mMockDevice, times(1)).waitForDeviceAvailable();
+        verify(mMockDevice, times(1)).enableAdbRoot();
+        verify(mMockDevice, times(1))
+                .executeShellCommand(RestartSystemServerTargetPreparer.KILL_SERVER_COMMAND);
     }
 
     @Test(expected = DeviceNotAvailableException.class)
     public void testSetUp_bootNotComplete() throws Exception {
-        EasyMock.expect(mMockDevice.enableAdbRoot()).andReturn(true).once();
-        EasyMock.expect(mMockDevice.executeShellCommand("setprop dev.bootcomplete 0"))
-                .andReturn(null);
-        EasyMock.expect(
-                        mMockDevice.executeShellCommand(
-                                RestartSystemServerTargetPreparer.KILL_SERVER_COMMAND))
-                .andReturn(null)
-                .once();
-        mMockDevice.waitForDeviceAvailable();
-        EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException("test", "serial"));
-        EasyMock.replay(mMockDevice, mMockBuildInfo);
+        when(mMockDevice.enableAdbRoot()).thenReturn(true);
+        when(mMockDevice.executeShellCommand("setprop dev.bootcomplete 0")).thenReturn(null);
+        when(mMockDevice.executeShellCommand(RestartSystemServerTargetPreparer.KILL_SERVER_COMMAND))
+                .thenReturn(null);
+        doThrow(new DeviceNotAvailableException("test", "serial"))
+                .when(mMockDevice)
+                .waitForDeviceAvailable();
 
         mRestartSystemServerTargetPreparer.setUp(mTestInformation);
+        verify(mMockDevice, times(1)).enableAdbRoot();
+        verify(mMockDevice, times(1))
+                .executeShellCommand(RestartSystemServerTargetPreparer.KILL_SERVER_COMMAND);
     }
 
     @Test
@@ -91,20 +92,16 @@ public class RestartSystemServerTargetPreparerTest {
         optionSetter.setOptionValue("restart-setup", "false");
         optionSetter.setOptionValue("restart-teardown", "true");
 
-        EasyMock.expect(mMockDevice.enableAdbRoot()).andReturn(true).once();
-        EasyMock.expect(mMockDevice.executeShellCommand("setprop dev.bootcomplete 0"))
-                .andReturn(null);
-        EasyMock.expect(
-                        mMockDevice.executeShellCommand(
-                                RestartSystemServerTargetPreparer.KILL_SERVER_COMMAND))
-                .andReturn(null)
-                .once();
-        mMockDevice.waitForDeviceAvailable();
-        EasyMock.expectLastCall().once();
-        EasyMock.replay(mMockDevice, mMockBuildInfo);
+        when(mMockDevice.enableAdbRoot()).thenReturn(true);
+        when(mMockDevice.executeShellCommand("setprop dev.bootcomplete 0")).thenReturn(null);
+        when(mMockDevice.executeShellCommand(RestartSystemServerTargetPreparer.KILL_SERVER_COMMAND))
+                .thenReturn(null);
 
         mRestartSystemServerTargetPreparer.tearDown(mTestInformation, null);
-        EasyMock.verify(mMockDevice, mMockBuildInfo);
+        verify(mMockDevice, times(1)).waitForDeviceAvailable();
+        verify(mMockDevice, times(1)).enableAdbRoot();
+        verify(mMockDevice, times(1))
+                .executeShellCommand(RestartSystemServerTargetPreparer.KILL_SERVER_COMMAND);
     }
 
     @Test
@@ -112,9 +109,7 @@ public class RestartSystemServerTargetPreparerTest {
         OptionSetter optionSetter = new OptionSetter(mRestartSystemServerTargetPreparer);
         optionSetter.setOptionValue("restart-setup", "false");
         optionSetter.setOptionValue("restart-teardown", "false");
-        EasyMock.replay(mMockDevice, mMockBuildInfo);
 
         mRestartSystemServerTargetPreparer.setUp(mTestInformation);
-        EasyMock.verify(mMockDevice, mMockBuildInfo);
     }
 }

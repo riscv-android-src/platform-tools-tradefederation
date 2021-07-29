@@ -20,8 +20,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.android.ddmlib.IDevice;
@@ -34,8 +32,6 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
-import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
-import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.ITestLifeCycleReceiver;
 import com.android.tradefed.result.TestDescription;
@@ -45,7 +41,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
@@ -59,14 +54,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 
 /** Unit tests for {@link InstrumentationFileTest}. */
 @RunWith(JUnit4.class)
 public class InstrumentationFileTestTest {
 
     private static final String TEST_PACKAGE_VALUE = "com.foo";
-    private static final String TEST_RUN_FAILURE = "test run failure";
 
     /** The {@link InstrumentationFileTest} under test, with all dependencies mocked out */
     private InstrumentationFileTest mInstrumentationFileTest;
@@ -137,7 +130,7 @@ public class InstrumentationFileTestTest {
                 .thenAnswer(runTestResponse);
 
         mInstrumentationFileTest =
-                new InstrumentationFileTest(mMockITest, testsList, true, -1) {
+                new InstrumentationFileTest(mMockITest, testsList, -1) {
                     @Override
                     InstrumentationTest createInstrumentationTest() {
                         return mMockITest;
@@ -229,7 +222,7 @@ public class InstrumentationFileTestTest {
                 .thenAnswer(secondRunAnswer);
 
         mInstrumentationFileTest =
-                new InstrumentationFileTest(mMockITest, testsList, true, -1) {
+                new InstrumentationFileTest(mMockITest, testsList, -1) {
                     @Override
                     InstrumentationTest createInstrumentationTest() {
                         return mMockITest;
@@ -254,150 +247,6 @@ public class InstrumentationFileTestTest {
 
         mInstrumentationFileTest.run(mTestInfo, mMockListener);
         assertEquals(mMockTestDevice, mMockITest.getDevice());
-    }
-
-    /** Test re-run scenario when 2 remaining tests fail to complete and need to be run serially */
-    @Test
-    public void testRun_serialReRunOfTwoFailedToCompleteTests()
-            throws DeviceNotAvailableException, ConfigurationException {
-        mMockListener = mock(ITestInvocationListener.class);
-        final Collection<TestDescription> testsList = new ArrayList<>(1);
-        final TestDescription test1 = new TestDescription("ClassFoo1", "methodBar1");
-        final TestDescription test2 = new TestDescription("ClassFoo2", "methodBar2");
-        testsList.add(test1);
-        testsList.add(test2);
-
-        // verify the test1 and test2 started but never completed
-        RunTestAnswer firstRunAnswer =
-                new RunTestAnswer() {
-                    @Override
-                    public Boolean answer(
-                            IRemoteAndroidTestRunner runner, ITestRunListener listener) {
-                        // first and second tests started but never completed
-                        listener.testRunStarted(TEST_PACKAGE_VALUE, 2);
-                        listener.testStarted(TestDescription.convertToIdentifier(test1));
-                        listener.testStarted(TestDescription.convertToIdentifier(test2));
-                        // verify that the content of the testFile contains all expected tests
-                        verifyTestFile(testsList);
-                        return true;
-                    }
-                };
-
-        // verify successful serial execution of test1
-        RunTestAnswer firstSerialRunAnswer =
-                new RunTestAnswer() {
-                    @Override
-                    public Boolean answer(
-                            IRemoteAndroidTestRunner runner, ITestRunListener listener) {
-                        // first test started and ended successfully in serial mode
-                        listener.testRunStarted(TEST_PACKAGE_VALUE, 2);
-                        listener.testStarted(TestDescription.convertToIdentifier(test1));
-                        listener.testEnded(
-                                TestDescription.convertToIdentifier(test1), Collections.emptyMap());
-                        listener.testRunFailed(TEST_RUN_FAILURE);
-                        listener.testRunEnded(1, Collections.emptyMap());
-                        return true;
-                    }
-                };
-
-        // verify successful serial execution of test2
-        RunTestAnswer secdondSerialRunAnswer =
-                new RunTestAnswer() {
-                    @Override
-                    public Boolean answer(
-                            IRemoteAndroidTestRunner runner, ITestRunListener listener) {
-                        // Second test started and ended successfully in serial mode
-                        listener.testRunStarted(TEST_PACKAGE_VALUE, 1);
-                        listener.testStarted(TestDescription.convertToIdentifier(test2));
-                        listener.testEnded(
-                                TestDescription.convertToIdentifier(test2), Collections.emptyMap());
-                        listener.testRunEnded(1, Collections.emptyMap());
-                        return true;
-                    }
-                };
-
-        when(mMockTestDevice.runInstrumentationTests(
-                        (IRemoteAndroidTestRunner) Mockito.any(),
-                        (ITestLifeCycleReceiver) Mockito.any()))
-                .thenAnswer(firstRunAnswer)
-                .thenAnswer(firstSerialRunAnswer)
-                .thenAnswer(secdondSerialRunAnswer);
-
-        mInstrumentationFileTest =
-                new InstrumentationFileTest(mMockITest, testsList, true, -1) {
-                    @Override
-                    InstrumentationTest createInstrumentationTest() {
-                        return mMockITest;
-                    }
-
-                    @Override
-                    boolean pushFileToTestDevice(File file, String destinationPath)
-                            throws DeviceNotAvailableException {
-                        // simulate successful push and store created file
-                        mTestFile = file;
-                        return true;
-                    }
-
-                    @Override
-                    void deleteTestFileFromDevice(String pathToFile)
-                            throws DeviceNotAvailableException {
-                        // ignore
-                    }
-                };
-
-        mInstrumentationFileTest.run(mTestInfo, mMockListener);
-
-        InOrder inOrder = Mockito.inOrder(mMockListener);
-        // First run - expect test1 and test 2 to start but never finish.
-        inOrder.verify(mMockListener).testRunStarted(TEST_PACKAGE_VALUE, 2);
-        inOrder.verify(mMockListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
-        inOrder.verify(mMockListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
-
-        // re-run test1 and test2 serially - expect test1 to start and finish successfully.
-        inOrder.verify(mMockListener).testRunStarted(TEST_PACKAGE_VALUE, 2);
-        inOrder.verify(mMockListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
-        inOrder.verify(mMockListener)
-                .testEnded(
-                        Mockito.eq(test1),
-                        Mockito.anyLong(),
-                        Mockito.eq(new HashMap<String, Metric>()));
-        inOrder.verify(mMockListener)
-                .testRunEnded(Mockito.anyLong(), Mockito.eq(new HashMap<String, Metric>()));
-
-        // first serial re-run - expect test2 to start and finish successfully.
-        inOrder.verify(mMockListener).testRunStarted(TEST_PACKAGE_VALUE, 0, 1);
-        inOrder.verify(mMockListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
-        inOrder.verify(mMockListener)
-                .testEnded(
-                        Mockito.eq(test2),
-                        Mockito.anyLong(),
-                        Mockito.eq(new HashMap<String, Metric>()));
-        inOrder.verify(mMockListener)
-                .testRunEnded(Mockito.anyLong(), Mockito.eq(new HashMap<String, Metric>()));
-
-        // Verify interaction times.
-        verify(mMockTestDevice).waitForDeviceAvailable();
-        verify(mMockListener, times(2)).testRunStarted(TEST_PACKAGE_VALUE, 2);
-        verify(mMockListener, times(2)).testStarted(Mockito.eq(test1), Mockito.anyLong());
-        verify(mMockListener, times(3)).testStarted(Mockito.eq(test2), Mockito.anyLong());
-        verify(mMockListener)
-                .testEnded(
-                        Mockito.eq(test1),
-                        Mockito.anyLong(),
-                        Mockito.eq(new HashMap<String, Metric>()));
-        verify(mMockListener).testFailed(Mockito.eq(test2), Mockito.<FailureDescription>any());
-        verify(mMockListener, times(2))
-                .testEnded(
-                        Mockito.eq(test2),
-                        Mockito.anyLong(),
-                        Mockito.eq(new HashMap<String, Metric>()));
-        verify(mMockListener, times(2))
-                .testRunEnded(Mockito.anyLong(), Mockito.eq(new HashMap<String, Metric>()));
-        verify(mMockListener).testRunStarted(TEST_PACKAGE_VALUE, 0, 1);
-
-        assertEquals(mMockTestDevice, mMockITest.getDevice());
-        // test file is expected to be null since we defaulted to serial test execution
-        assertEquals(null, mMockITest.getTestFilePathOnDevice());
     }
 
     /** Test no serial re-run tests fail to complete. */
@@ -431,7 +280,7 @@ public class InstrumentationFileTestTest {
                 .thenAnswer(firstRunAnswer);
 
         mInstrumentationFileTest =
-                new InstrumentationFileTest(mMockITest, testsList, false, -1) {
+                new InstrumentationFileTest(mMockITest, testsList, -1) {
                     @Override
                     InstrumentationTest createInstrumentationTest() {
                         return mMockITest;
@@ -545,7 +394,7 @@ public class InstrumentationFileTestTest {
                 .thenAnswer(thirdRunAnswer);
 
         mInstrumentationFileTest =
-                new InstrumentationFileTest(mMockITest, testsList, false, 3) {
+                new InstrumentationFileTest(mMockITest, testsList, 3) {
                     @Override
                     InstrumentationTest createInstrumentationTest() {
                         return mMockITest;
@@ -622,7 +471,7 @@ public class InstrumentationFileTestTest {
                 .thenAnswer(secondRunAnswer);
 
         mInstrumentationFileTest =
-                new InstrumentationFileTest(mMockITest, testsList, true, -1) {
+                new InstrumentationFileTest(mMockITest, testsList, -1) {
                     @Override
                     InstrumentationTest createInstrumentationTest() {
                         return mMockITest;

@@ -300,6 +300,7 @@ public class TestMapping {
      *     returned. false to return tests that require device to run.
      * @return A {@code Set<TestInfo>} of tests set in the build artifact, test_mappings.zip.
      */
+    @SuppressWarnings("StreamResourceLeak")
     public static Set<TestInfo> getTests(
             IBuildInfo buildInfo, String testGroup, boolean hostOnly, Set<String> keywords) {
         Set<TestInfo> tests = new HashSet<TestInfo>();
@@ -347,6 +348,7 @@ public class TestMapping {
      * @return A {@code Map<String, Set<TestInfo>>} of tests in the given directory and its child
      *     directories.
      */
+    @SuppressWarnings("StreamResourceLeak")
     public static Map<String, Set<TestInfo>> getAllTests(File testMappingsDir) {
         Map<String, Set<TestInfo>> allTests = new HashMap<String, Set<TestInfo>>();
         Stream<Path> stream = null;

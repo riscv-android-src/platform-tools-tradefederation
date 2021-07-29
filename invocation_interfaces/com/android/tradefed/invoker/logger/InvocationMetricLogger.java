@@ -37,10 +37,15 @@ public class InvocationMetricLogger {
         STAGE_TESTS_BYTES("stage_tests_bytes", true),
         STAGE_TESTS_INDIVIDUAL_DOWNLOADS("stage_tests_individual_downloads", true),
         SERVER_REFERENCE("server_reference", false),
+        INSTRUMENTATION_RERUN_FROM_FILE("instrumentation_rerun_from_file", true),
+        INSTRUMENTATION_RERUN_SERIAL("instrumentation_rerun_serial", true),
+        DOWNLOAD_RETRY_COUNT("download_retry_count", true),
         // -- Disk memory usage --
         // Approximate peak disk space usage of the invocation
         // Represent files that would usually live for the full invocation (min usage)
         TEAR_DOWN_DISK_USAGE("teardown_disk_usage_bytes", false),
+        // Recovery Mode
+        AUTO_RECOVERY_MODE_COUNT("recovery_mode_count", true),
         // Represents the time we spend attempting to recover a device.
         RECOVERY_TIME("recovery_time", true),
         // Represents how often we enter the recover device routine.

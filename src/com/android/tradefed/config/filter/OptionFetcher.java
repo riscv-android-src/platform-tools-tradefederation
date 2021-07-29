@@ -16,6 +16,7 @@
 package com.android.tradefed.config.filter;
 
 import com.android.annotations.VisibleForTesting;
+import com.android.ddmlib.Log.LogLevel;
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.invoker.TestInvocation;
@@ -23,6 +24,7 @@ import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.service.TradefedFeatureClient;
 
 import com.google.common.base.Joiner;
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableSet;
 import com.proto.tradefed.feature.FeatureResponse;
 import com.proto.tradefed.feature.PartResponse;
@@ -73,12 +75,21 @@ public class OptionFetcher implements AutoCloseable {
             }
             if (rep.hasMultiPartResponse()) {
                 for (PartResponse part : rep.getMultiPartResponse().getResponsePartList()) {
-                    CLog.d("Fetched: %s=%s from parent.", part.getKey(), part.getValue());
+                    CLog.logAndDisplay(
+                            LogLevel.DEBUG, "Fetched: %s=%s from parent.",
+                            part.getKey(), part.getValue());
                     try {
                         config.injectOptionValue(part.getKey(), part.getValue());
                     } catch (ConfigurationException e) {
                         CLog.e(e);
                     }
+                }
+            } else if(!Strings.isNullOrEmpty(rep.getResponse())) {
+                // When we have a single option, we fallback here
+                try {
+                    config.injectOptionValue("retry-isolation-grade", rep.getResponse().trim());
+                } catch (ConfigurationException e) {
+                    CLog.e(e);
                 }
             }
         } catch (RuntimeException e) {

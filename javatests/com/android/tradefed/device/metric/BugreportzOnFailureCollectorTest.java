@@ -20,6 +20,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 
@@ -55,23 +56,28 @@ public class BugreportzOnFailureCollectorTest {
     @Test
     public void testCollect() throws Exception {
         TestDescription test = new TestDescription("class", "test");
+        mMockListener.testRunStarted(
+                EasyMock.eq("run-name"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
         mMockListener.testStarted(EasyMock.eq(test), EasyMock.anyLong());
         mMockListener.testFailed(EasyMock.eq(test), (String) EasyMock.anyObject());
         mMockListener.testEnded(
                 EasyMock.eq(test),
                 EasyMock.anyLong(),
                 EasyMock.<HashMap<String, Metric>>anyObject());
+        mMockListener.testRunFailed((FailureDescription) EasyMock.anyObject());
 
         EasyMock.expect(
                         mMockDevice.logBugreport(
-                                EasyMock.eq("class#test-serial-bugreportz-on-failure"),
+                                EasyMock.eq("run-name-serial-bugreportz-on-failure"),
                                 EasyMock.anyObject()))
                 .andReturn(true);
 
         EasyMock.replay(mMockListener, mMockDevice);
+        mTestListener.testRunStarted("run-name", 1);
         mTestListener.testStarted(test);
         mTestListener.testFailed(test, "I failed");
         mTestListener.testEnded(test, new HashMap<String, Metric>());
+        mTestListener.testRunFailed(FailureDescription.create("run fail"));
         EasyMock.verify(mMockListener, mMockDevice);
     }
 }

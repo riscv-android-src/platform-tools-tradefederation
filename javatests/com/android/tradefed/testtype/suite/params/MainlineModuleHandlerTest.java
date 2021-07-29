@@ -18,6 +18,7 @@ package com.android.tradefed.testtype.suite.params;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.when;
 
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Configuration;
@@ -29,12 +30,12 @@ import com.android.tradefed.targetprep.InstallApexModuleTargetPreparer;
 import com.android.tradefed.testtype.Abi;
 import com.android.tradefed.testtype.IAbi;
 
-import org.easymock.EasyMock;
-
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 /** Unit tests for {@link MainlineModuleHandler}. */
 @RunWith(JUnit4.class)
@@ -42,61 +43,61 @@ public final class MainlineModuleHandlerTest {
 
     private MainlineModuleHandler mHandler;
     private IConfiguration mConfig;
-    private IBuildInfo mMockBuildInfo;
+    @Mock IBuildInfo mMockBuildInfo;
     private IInvocationContext mContext;
     private IAbi mAbi;
 
     @Before
     public void setUp() {
+        MockitoAnnotations.initMocks(this);
+
         mConfig = new Configuration("test", "test");
-        mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
+
         mContext = new InvocationContext();
         mAbi = new Abi("armeabi-v7a", "32");
-        EasyMock.expect(mMockBuildInfo.getBuildFlavor()).andStubReturn("flavor");
-        EasyMock.expect(mMockBuildInfo.getBuildId()).andStubReturn("id");
+        when(mMockBuildInfo.getBuildFlavor()).thenReturn("flavor");
+        when(mMockBuildInfo.getBuildId()).thenReturn("id");
         mContext.addDeviceBuildInfo(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockBuildInfo);
     }
 
     /** Test that when a module configuration go through the handler it gets tuned properly. */
     @Test
     public void testApplySetup() {
-        EasyMock.expect(mMockBuildInfo.getBuildBranch()).andStubReturn("branch");
-        EasyMock.replay(mMockBuildInfo);
+        when(mMockBuildInfo.getBuildBranch()).thenReturn("branch");
+
         mHandler = new MainlineModuleHandler("mod1.apk", mAbi, mContext, false);
         mHandler.applySetup(mConfig);
         assertTrue(mConfig.getTargetPreparers().get(0) instanceof InstallApexModuleTargetPreparer);
         InstallApexModuleTargetPreparer preparer =
                 (InstallApexModuleTargetPreparer) mConfig.getTargetPreparers().get(0);
-        assertEquals(preparer.getTestsFileName().size(),  1);
+        assertEquals(preparer.getTestsFileName().size(), 1);
         assertEquals(preparer.getTestsFileName().get(0).getName(), "mod1.apk");
-        EasyMock.verify(mMockBuildInfo);
     }
 
     /** Test that when a module configuration go through the handler it gets tuned properly. */
     @Test
     public void testApplySetup_MultipleMainlineModules() {
-        EasyMock.expect(mMockBuildInfo.getBuildBranch()).andStubReturn("branch");
-        EasyMock.replay(mMockBuildInfo);
+        when(mMockBuildInfo.getBuildBranch()).thenReturn("branch");
+
         mHandler = new MainlineModuleHandler("mod1.apk+mod2.apex", mAbi, mContext, false);
         mHandler.applySetup(mConfig);
         assertTrue(mConfig.getTargetPreparers().get(0) instanceof InstallApexModuleTargetPreparer);
         InstallApexModuleTargetPreparer preparer =
                 (InstallApexModuleTargetPreparer) mConfig.getTargetPreparers().get(0);
-        assertEquals(preparer.getTestsFileName().size(),  2);
+        assertEquals(preparer.getTestsFileName().size(), 2);
         assertEquals(preparer.getTestsFileName().get(0).getName(), "mod1.apk");
         assertEquals(preparer.getTestsFileName().get(1).getName(), "mod2.apex");
-        EasyMock.verify(mMockBuildInfo);
     }
 
     /**
-     * Test for {@link MainlineModuleHandler#buildDynamicBaseLink(IBuildInfo)}
-     * implementation to throw an exception when the build information isn't correctly set.
+     * Test for {@link MainlineModuleHandler#buildDynamicBaseLink(IBuildInfo)} implementation to
+     * throw an exception when the build information isn't correctly set.
      */
     @Test
     public void testBuildDynamicBaseLink_BranchIsNotSet() throws Exception {
         try {
-            EasyMock.expect(mMockBuildInfo.getBuildBranch()).andStubReturn(null);
-            EasyMock.replay(mMockBuildInfo);
+            when(mMockBuildInfo.getBuildBranch()).thenReturn(null);
+
             mHandler = new MainlineModuleHandler("mod1.apk+mod2.apex", mAbi, mContext, false);
             fail("Should have thrown an exception.");
         } catch (IllegalArgumentException expected) {
@@ -104,8 +105,6 @@ public final class MainlineModuleHandlerTest {
             assertEquals(
                     "Missing required information to build the dynamic base link.",
                     expected.getMessage());
-        } finally {
-            EasyMock.verify(mMockBuildInfo);
         }
     }
 }

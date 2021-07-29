@@ -55,8 +55,8 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Stream;
 import java.util.zip.ZipFile;
-
 /**
  * A helper class for file related operations
  */
@@ -1175,9 +1175,11 @@ public class FileUtil {
      */
     public static Set<String> findFiles(File dir, String filter) throws IOException {
         Set<String> files = new HashSet<>();
-        Files.walk(Paths.get(dir.getAbsolutePath()), FileVisitOption.FOLLOW_LINKS)
-                .filter(path -> path.getFileName().toString().matches(filter))
-                .forEach(path -> files.add(path.toString()));
+        try (Stream<Path> stream =
+                Files.walk(Paths.get(dir.getAbsolutePath()), FileVisitOption.FOLLOW_LINKS)) {
+            stream.filter(path -> path.getFileName().toString().matches(filter))
+                    .forEach(path -> files.add(path.toString()));
+        }
         return files;
     }
 
@@ -1255,9 +1257,11 @@ public class FileUtil {
      */
     public static Set<File> findFilesObject(File dir, String filter) throws IOException {
         Set<File> files = new LinkedHashSet<>();
-        Files.walk(Paths.get(dir.getAbsolutePath()), FileVisitOption.FOLLOW_LINKS)
-                .filter(path -> path.getFileName().toString().matches(filter))
-                .forEach(path -> files.add(path.toFile()));
+        try (Stream<Path> stream =
+                Files.walk(Paths.get(dir.getAbsolutePath()), FileVisitOption.FOLLOW_LINKS)) {
+            stream.filter(path -> path.getFileName().toString().matches(filter))
+                    .forEach(path -> files.add(path.toFile()));
+        }
         return files;
     }
 
@@ -1319,11 +1323,13 @@ public class FileUtil {
         }
         Path folder = directory.getAbsoluteFile().toPath();
         try {
-            long size =
-                    Files.walk(folder, FileVisitOption.FOLLOW_LINKS)
-                            .filter(p -> p.toFile().isFile())
-                            .mapToLong(p -> p.toFile().length())
-                            .sum();
+            long size = 0;
+            try (Stream<Path> stream = Files.walk(folder, FileVisitOption.FOLLOW_LINKS)) {
+                size =
+                        stream.filter(p -> p.toFile().isFile())
+                                .mapToLong(p -> p.toFile().length())
+                                .sum();
+            }
             CLog.d(
                     "Directory '%s' has size: %s. Contains: %s",
                     directory, size, Arrays.asList(directory.list()));

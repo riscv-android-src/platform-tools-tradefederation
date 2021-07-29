@@ -40,6 +40,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Optional;
 import java.util.function.Predicate;
+import java.util.stream.Stream;
 
 @OptionClass(alias = "avd")
 public class CreateAvdPreparer extends BaseTargetPreparer implements IConfigurationReceiver {
@@ -143,17 +144,21 @@ public class CreateAvdPreparer extends BaseTargetPreparer implements IConfigurat
             return mSystemImagePath;
         }
         Path systemImagesRoot = sdk.toPath().resolve("system-images");
-        Optional<Path> firstSystemImage =
-                Files.walk(systemImagesRoot)
-                        .filter(
-                                new Predicate<Path>() {
-                                    @Override
-                                    public boolean test(Path path) {
-                                        return path.getFileName().toString().equals("system.img")
-                                                && Files.isRegularFile(path);
-                                    }
-                                })
-                        .findFirst();
+        Optional<Path> firstSystemImage;
+        try (Stream<Path> stream = Files.walk(systemImagesRoot)) {
+            firstSystemImage =
+                    stream.filter(
+                                    new Predicate<Path>() {
+                                        @Override
+                                        public boolean test(Path path) {
+                                            return path.getFileName()
+                                                            .toString()
+                                                            .equals("system.img")
+                                                    && Files.isRegularFile(path);
+                                        }
+                                    })
+                            .findFirst();
+        }
         if (!firstSystemImage.isPresent()) {
             throw new IOException("failed to find any system.img file inside " + systemImagesRoot);
         }

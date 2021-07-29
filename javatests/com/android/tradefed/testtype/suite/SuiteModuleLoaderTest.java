@@ -43,6 +43,7 @@ import com.android.tradefed.testtype.IAbi;
 import com.android.tradefed.testtype.IRemoteTest;
 import com.android.tradefed.testtype.ITestFileFilterReceiver;
 import com.android.tradefed.testtype.ITestFilterReceiver;
+import com.android.tradefed.testtype.suite.params.ModuleParameters;
 import com.android.tradefed.util.FileUtil;
 
 import org.easymock.EasyMock;
@@ -57,7 +58,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -73,6 +74,12 @@ public class SuiteModuleLoaderTest {
                     + "    <target_preparer class=\"com.android.tradefed.testtype.suite.SuiteModuleLoaderTest$PreparerInject\" />\n"
                     + "    <test class=\"com.android.tradefed.testtype.suite.SuiteModuleLoaderTest"
                     + "$TestInject\" />\n"
+                    + "</configuration>";
+
+    private static final String TEST_NOT_MULTI_ABI_CONFIG =
+            "<configuration description=\"Runs a stub tests part of some suite\">\n"
+                    + "    <option name=\"config-descriptor:metadata\" key=\"parameter\" value=\"not_multi_abi\" />\n"
+                    + "    <test class=\"com.android.tradefed.testtype.suite.TestSuiteStub\" />\n"
                     + "</configuration>";
 
     private static final String TEST_INSTANT_CONFIG =
@@ -115,7 +122,7 @@ public class SuiteModuleLoaderTest {
                         new ArrayList<>(),
                         new ArrayList<>());
         mTestsDir = FileUtil.createTempDir("suite-module-loader-tests");
-        mAbis = new HashSet<>();
+        mAbis = new LinkedHashSet<>();
         mAbis.add(new Abi("armeabi-v7a", "32"));
         mContext = new InvocationContext();
         mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
@@ -134,6 +141,11 @@ public class SuiteModuleLoaderTest {
     private void createModuleConfig(String moduleName) throws IOException {
         File module = new File(mTestsDir, moduleName + SuiteModuleLoader.CONFIG_EXT);
         FileUtil.writeToFile(TEST_CONFIG, module);
+    }
+
+    private void createNotMultiAbiModuleConfig(String moduleName) throws IOException {
+        File module = new File(mTestsDir, moduleName + SuiteModuleLoader.CONFIG_EXT);
+        FileUtil.writeToFile(TEST_NOT_MULTI_ABI_CONFIG, module);
     }
 
     private void createInstantModuleConfig(String moduleName) throws IOException {
@@ -384,6 +396,31 @@ public class SuiteModuleLoaderTest {
         assertEquals("value1", checker.testAlias);
     }
 
+    @Test
+    public void testLoad_notMultiAbi() throws Exception {
+        createNotMultiAbiModuleConfig("module1");
+
+        mRepo =
+                new SuiteModuleLoader(
+                        new LinkedHashMap<String, LinkedHashSet<SuiteTestFilter>>(),
+                        new LinkedHashMap<String, LinkedHashSet<SuiteTestFilter>>(),
+                        new ArrayList<>(),
+                        new ArrayList<>());
+        // No parameterization
+        mRepo.setParameterizedModules(false);
+        List<String> patterns = new ArrayList<>();
+        patterns.add(".*.config");
+        patterns.add(".*.xml");
+        mAbis = new LinkedHashSet<>();
+        mAbis.add(new Abi("arm64-v8a", "64"));
+        mAbis.add(new Abi("armeabi-v7a", "32"));
+        LinkedHashMap<String, IConfiguration> res =
+                mRepo.loadConfigsFromDirectory(
+                        Arrays.asList(mTestsDir), mAbis, null, null, patterns);
+        assertEquals(1, res.size());
+        assertNotNull(res.get("arm64-v8a module1"));
+    }
+
     /**
      * Test that if the base module is excluded in full, the filters of parameterized modules are
      * still populated with the proper filters.
@@ -445,13 +482,20 @@ public class SuiteModuleLoaderTest {
 
     @Test
     public void testLoad_foldable() throws Exception {
+        Set<DeviceFoldableState> foldableStates = new LinkedHashSet<>();
+        foldableStates.add(new DeviceFoldableState(0, "DEFAULT"));
+        foldableStates.add(new DeviceFoldableState(1, "CLOSED"));
+        foldableStates.add(new DeviceFoldableState(2, "OPEN"));
         Map<String, LinkedHashSet<SuiteTestFilter>> excludeFilters = new LinkedHashMap<>();
         createFoldableModuleConfig("basemodule");
         Set<String> excludeFilterString = new LinkedHashSet<>();
         excludeFilterString.add("armeabi-v7a basemodule");
         excludeFilterString.add(
                 "armeabi-v7a basemodule[foldable:1:CLOSED] NativeDnsAsyncTest#Async_Cancel");
-        SuiteModuleLoader.addFilters(excludeFilterString, excludeFilters, null);
+        // All foldable configs will get injected
+        excludeFilterString.add(
+                "armeabi-v7a basemodule[all_foldable_states] NativeDnsAsyncTest#test2");
+        SuiteModuleLoader.addFilters(excludeFilterString, excludeFilters, null, foldableStates);
 
         mRepo =
                 new SuiteModuleLoader(
@@ -460,10 +504,6 @@ public class SuiteModuleLoaderTest {
                         new ArrayList<>(),
                         new ArrayList<>());
         mRepo.setParameterizedModules(true);
-        Set<DeviceFoldableState> foldableStates = new LinkedHashSet<>();
-        foldableStates.add(new DeviceFoldableState(0, "DEFAULT"));
-        foldableStates.add(new DeviceFoldableState(1, "CLOSED"));
-        foldableStates.add(new DeviceFoldableState(2, "OPEN"));
         mRepo.setFoldableStates(foldableStates);
 
         List<String> patterns = new ArrayList<>();
@@ -477,9 +517,10 @@ public class SuiteModuleLoaderTest {
         IConfiguration foldable1 = res.get("armeabi-v7a basemodule[foldable:1:CLOSED]");
         assertNotNull(foldable1);
         TestSuiteStub stubTest = (TestSuiteStub) foldable1.getTests().get(0);
-        assertEquals(1, stubTest.getExcludeFilters().size());
-        assertEquals(
-                "NativeDnsAsyncTest#Async_Cancel", stubTest.getExcludeFilters().iterator().next());
+        assertEquals(2, stubTest.getExcludeFilters().size());
+        Iterator<String> iteFilters = stubTest.getExcludeFilters().iterator();
+        assertEquals("NativeDnsAsyncTest#Async_Cancel", iteFilters.next());
+        assertEquals("NativeDnsAsyncTest#test2", iteFilters.next());
         // Ensure that appropriate metadata are set on the module config descriptor
         ConfigurationDescriptor descriptor = foldable1.getConfigurationDescription();
         assertEquals(
@@ -498,6 +539,10 @@ public class SuiteModuleLoaderTest {
 
         IConfiguration foldable2 = res.get("armeabi-v7a basemodule[foldable:2:OPEN]");
         assertNotNull(foldable2);
+        TestSuiteStub stubTest2 = (TestSuiteStub) foldable2.getTests().get(0);
+        assertEquals(1, stubTest2.getExcludeFilters().size());
+        Iterator<String> iteFilters2 = stubTest2.getExcludeFilters().iterator();
+        assertEquals("NativeDnsAsyncTest#test2", iteFilters2.next());
         ConfigurationDescriptor descriptor2 = foldable2.getConfigurationDescription();
         assertEquals(
                 1,
@@ -511,7 +556,40 @@ public class SuiteModuleLoaderTest {
                         .getAllMetaData()
                         .getUniqueMap()
                         .get(ConfigurationDescriptor.ACTIVE_PARAMETER_KEY));
-        assertEquals("armeabi-v7a", descriptor.getAbi().getName());
+        assertEquals("armeabi-v7a", descriptor2.getAbi().getName());
+    }
+
+    @Test
+    public void testLoad_foldable_moduleParam() throws Exception {
+        Set<DeviceFoldableState> foldableStates = new LinkedHashSet<>();
+        foldableStates.add(new DeviceFoldableState(0, "DEFAULT"));
+        foldableStates.add(new DeviceFoldableState(1, "CLOSED"));
+        foldableStates.add(new DeviceFoldableState(2, "OPEN"));
+        createFoldableModuleConfig("basemodule");
+
+        mRepo =
+                new SuiteModuleLoader(
+                        new LinkedHashMap<String, LinkedHashSet<SuiteTestFilter>>(),
+                        new LinkedHashMap<String, LinkedHashSet<SuiteTestFilter>>(),
+                        new ArrayList<>(),
+                        new ArrayList<>());
+        mRepo.setParameterizedModules(true);
+        mRepo.setModuleParameter(ModuleParameters.ALL_FOLDABLE_STATES);
+        mRepo.setFoldableStates(foldableStates);
+
+        List<String> patterns = new ArrayList<>();
+        patterns.add(".*.config");
+        patterns.add(".*.xml");
+        LinkedHashMap<String, IConfiguration> res =
+                mRepo.loadConfigsFromDirectory(
+                        Arrays.asList(mTestsDir), mAbis, null, null, patterns);
+        assertEquals(2, res.size());
+        // Full module was excluded completely, only foldable are created
+        IConfiguration foldable1 = res.get("armeabi-v7a basemodule[foldable:1:CLOSED]");
+        assertNotNull(foldable1);
+
+        IConfiguration foldable2 = res.get("armeabi-v7a basemodule[foldable:2:OPEN]");
+        assertNotNull(foldable2);
     }
 
     /**

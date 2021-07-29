@@ -15,6 +15,11 @@
  */
 package com.android.tradefed.testtype.suite;
 
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.android.ddmlib.IDevice;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.Configuration;
@@ -29,11 +34,13 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.targetprep.ITargetPreparer;
 import com.android.tradefed.testtype.IRemoteTest;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -53,58 +60,39 @@ public class ModuleDefinitionMultiTest {
     private List<IRemoteTest> mTestList;
     private Map<String, List<ITargetPreparer>> mMapDeviceTargetPreparer;
 
-    private ITestDevice mDevice1;
-    private ITestDevice mDevice2;
+    @Mock ITestDevice mDevice1;
+    @Mock ITestDevice mDevice2;
 
-    private IBuildInfo mBuildInfo1;
-    private IBuildInfo mBuildInfo2;
+    @Mock IBuildInfo mBuildInfo1;
+    @Mock IBuildInfo mBuildInfo2;
 
-    private ITestInvocationListener mListener;
+    @Mock ITestInvocationListener mListener;
 
-    private ITargetPreparer mMockTargetPrep;
+    @Mock ITargetPreparer mMockTargetPrep;
 
     private IConfiguration mMultiDeviceConfiguration;
 
     @Before
     public void setUp() throws Exception {
+        MockitoAnnotations.initMocks(this);
+
         mMultiDeviceConfiguration = new Configuration("name", "description");
         List<IDeviceConfiguration> deviceConfigList = new ArrayList<>();
         deviceConfigList.add(new DeviceConfigurationHolder(DEVICE_NAME_1));
         deviceConfigList.add(new DeviceConfigurationHolder(DEVICE_NAME_2));
         mMultiDeviceConfiguration.setDeviceConfigList(deviceConfigList);
 
-        mDevice1 = EasyMock.createMock(ITestDevice.class);
-        EasyMock.expect(mDevice1.getDeviceDate()).andReturn(0L).anyTimes();
-        EasyMock.expect(mDevice1.getIDevice()).andStubReturn(EasyMock.createMock(IDevice.class));
-        mDevice2 = EasyMock.createMock(ITestDevice.class);
-        EasyMock.expect(mDevice2.getDeviceDate()).andReturn(0L).anyTimes();
-        EasyMock.expect(mDevice2.getIDevice()).andStubReturn(EasyMock.createMock(IDevice.class));
-        mBuildInfo1 = EasyMock.createMock(IBuildInfo.class);
-        mBuildInfo2 = EasyMock.createMock(IBuildInfo.class);
+        when(mDevice1.getDeviceDate()).thenReturn(0L);
+        when(mDevice1.getIDevice()).thenReturn(mock(IDevice.class));
 
-        mListener = EasyMock.createMock(ITestInvocationListener.class);
+        when(mDevice2.getDeviceDate()).thenReturn(0L);
+        when(mDevice2.getIDevice()).thenReturn(mock(IDevice.class));
 
         mTestList = new ArrayList<>();
-
-        mMockTargetPrep = EasyMock.createMock(ITargetPreparer.class);
 
         mMapDeviceTargetPreparer = new LinkedHashMap<>();
         mMapDeviceTargetPreparer.put(DEVICE_NAME_1, new ArrayList<>());
         mMapDeviceTargetPreparer.put(DEVICE_NAME_2, new ArrayList<>());
-    }
-
-    private void replayMocks() {
-        EasyMock.replay(mListener, mDevice1, mDevice2, mBuildInfo1, mBuildInfo2, mMockTargetPrep);
-        for (IRemoteTest test : mTestList) {
-            EasyMock.replay(test);
-        }
-    }
-
-    private void verifyMocks() {
-        EasyMock.verify(mListener, mDevice1, mDevice2, mBuildInfo1, mBuildInfo2, mMockTargetPrep);
-        for (IRemoteTest test : mTestList) {
-            EasyMock.verify(test);
-        }
     }
 
     /**
@@ -133,18 +121,19 @@ public class ModuleDefinitionMultiTest {
                 TestInformation.newBuilder()
                         .setInvocationContext(mModule.getModuleInvocationContext())
                         .build();
-        mListener.testRunStarted(
-                EasyMock.eq(MODULE_NAME), EasyMock.eq(0), EasyMock.eq(0), EasyMock.anyLong());
-        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
         // Target preparation is triggered against the preparer in the second device.
-        EasyMock.expect(mMockTargetPrep.isDisabled()).andReturn(false).times(2);
-        mMockTargetPrep.setUp(moduleInfo);
-        EasyMock.expect(mMockTargetPrep.isTearDownDisabled()).andReturn(true);
+        when(mMockTargetPrep.isDisabled()).thenReturn(false);
 
-        replayMocks();
+        when(mMockTargetPrep.isTearDownDisabled()).thenReturn(true);
+
         mModule.run(moduleInfo, mListener, null, null, 1);
-        verifyMocks();
+        verify(mMockTargetPrep, times(2)).isDisabled();
+        verify(mListener)
+                .testRunStarted(
+                        Mockito.eq(MODULE_NAME), Mockito.eq(0), Mockito.eq(0), Mockito.anyLong());
+        verify(mListener).testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
+        verify(mMockTargetPrep).setUp(moduleInfo);
     }
 
     /** Create a single device module running against a multi device main configuration. */
@@ -173,18 +162,19 @@ public class ModuleDefinitionMultiTest {
                 TestInformation.newBuilder()
                         .setInvocationContext(mModule.getModuleInvocationContext())
                         .build();
-        mListener.testRunStarted(
-                EasyMock.eq(MODULE_NAME), EasyMock.eq(0), EasyMock.eq(0), EasyMock.anyLong());
-        mListener.testRunEnded(EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
 
         // Target preparation is of first device in module configuration is triggered against the
         // first device from main configuration
-        EasyMock.expect(mMockTargetPrep.isDisabled()).andReturn(false).times(2);
-        mMockTargetPrep.setUp(moduleInfo);
-        EasyMock.expect(mMockTargetPrep.isTearDownDisabled()).andReturn(true);
+        when(mMockTargetPrep.isDisabled()).thenReturn(false);
 
-        replayMocks();
+        when(mMockTargetPrep.isTearDownDisabled()).thenReturn(true);
+
         mModule.run(moduleInfo, mListener, null, null, 1);
-        verifyMocks();
+        verify(mMockTargetPrep, times(2)).isDisabled();
+        verify(mListener)
+                .testRunStarted(
+                        Mockito.eq(MODULE_NAME), Mockito.eq(0), Mockito.eq(0), Mockito.anyLong());
+        verify(mListener).testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
+        verify(mMockTargetPrep).setUp(moduleInfo);
     }
 }

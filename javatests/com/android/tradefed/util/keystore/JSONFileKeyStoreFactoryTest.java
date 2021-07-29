@@ -85,7 +85,7 @@ public class JSONFileKeyStoreFactoryTest {
         setter.setOptionValue("json-key-store-file", mJsonFile.getAbsolutePath());
         IKeyStoreClient client = mFactory.createKeyStoreClient();
         assertNotNull(client);
-        mJsonFile.setLastModified(mJsonFile.lastModified() + 5000l);
+        mJsonFile.setLastModified(mJsonFile.lastModified() + 5000L);
         IKeyStoreClient client2 = mFactory.createKeyStoreClient();
         assertNotNull(client2);
         assertNotSame(client, client2);
@@ -118,7 +118,7 @@ public class JSONFileKeyStoreFactoryTest {
         setter.setOptionValue("host-based-key-store-file", mJsonFile2.getAbsolutePath());
         IKeyStoreClient client = mFactory.createKeyStoreClient();
         assertNotNull(client);
-        mJsonFile.setLastModified(mJsonFile.lastModified() + 5000l);
+        mJsonFile.setLastModified(mJsonFile.lastModified() + 5000L);
         IKeyStoreClient client2 = mFactory.createKeyStoreClient();
         assertNotNull(client2);
         assertNotSame(client, client2);
@@ -135,7 +135,7 @@ public class JSONFileKeyStoreFactoryTest {
         setter.setOptionValue("host-based-key-store-file", mJsonFile2.getAbsolutePath());
         IKeyStoreClient client = mFactory.createKeyStoreClient();
         assertNotNull(client);
-        mJsonFile2.setLastModified(mJsonFile2.lastModified() + 5000l);
+        mJsonFile2.setLastModified(mJsonFile2.lastModified() + 5000L);
         IKeyStoreClient client2 = mFactory.createKeyStoreClient();
         assertNotNull(client2);
         assertNotSame(client, client2);
