@@ -136,6 +136,10 @@ public class ClusterOptions implements IClusterOptions {
             description = "Collect early test summary from ITestSummaryListener to scheduler.")
     private boolean mCollectEarlyTestSummary = false;
 
+    @Option(name = "max-disk-usage",
+            description = "Percentage allowed disk usage before we stop leasing tasks.")
+    private long mMaximalDiskUsagePercentage = 100;
+
     /** {@inheritDoc} */
     @Override
     public String getServiceUrl() {
@@ -327,5 +331,17 @@ public class ClusterOptions implements IClusterOptions {
     @Override
     public boolean shouldCollectEarlyTestSummary() {
         return mCollectEarlyTestSummary;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public long maxDiskUsagePercentage() {
+        if (mMaximalDiskUsagePercentage > 100) {
+            return 100;
+        }
+        if (mMaximalDiskUsagePercentage < 0) {
+            return 0;
+        }
+        return mMaximalDiskUsagePercentage;
     }
 }
