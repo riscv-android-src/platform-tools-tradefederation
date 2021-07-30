@@ -106,7 +106,6 @@ public class InstallApexModuleTargetPreparerTest {
         mFakePersistentApk = FileUtil.createTempFile("fakePersistentApk", ".apk");
         mMockDevice = EasyMock.createMock(ITestDevice.class);
         mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
-        mMockBundletoolUtil = Mockito.mock(BundletoolUtil.class);
         EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn(SERIAL);
         EasyMock.expect(mMockDevice.getDeviceDescriptor()).andStubReturn(null);
         EasyMock.expect(mMockDevice.checkApiLevelAgainstNextRelease(30)).andStubReturn(true);
@@ -235,6 +234,7 @@ public class InstallApexModuleTargetPreparerTest {
         FileUtil.deleteFile(mFakeApk);
         FileUtil.deleteFile(mFakeApk2);
         FileUtil.deleteFile(mFakePersistentApk);
+        mMockBundletoolUtil = null;
     }
 
     /**
@@ -1265,6 +1265,7 @@ public class InstallApexModuleTargetPreparerTest {
         EasyMock.expectLastCall();
         List<String> trainInstallCmd = new ArrayList<>();
         trainInstallCmd.add("install-multi-package");
+        trainInstallCmd.add("--enable-rollback");
         trainInstallCmd.add("--staged");
         trainInstallCmd.add(mFakeApk.getAbsolutePath());
         trainInstallCmd.add(mFakeApk2.getAbsolutePath());
@@ -1293,6 +1294,7 @@ public class InstallApexModuleTargetPreparerTest {
 
     @Test
     public void testSetupAndTearDown_ApkAndApks() throws Exception {
+        mMockBundletoolUtil = Mockito.mock(BundletoolUtil.class);
         mInstallApexModuleTargetPreparer.addTestFileName(APK_NAME);
         mInstallApexModuleTargetPreparer.addTestFileName(SPLIT_APK__APKS_NAME);
         mFakeApkApks = File.createTempFile("fakeApk", ".apks");
@@ -1406,7 +1408,10 @@ public class InstallApexModuleTargetPreparerTest {
         Set<String> installableModules = new HashSet<>();
         installableModules.add(APEX_PACKAGE_NAME);
         EasyMock.expect(mMockDevice.getInstalledPackageNames()).andReturn(installableModules);
-        EasyMock.expect(mMockDevice.uninstallPackage(APEX_PACKAGE_NAME)).andReturn(null).once();
+        EasyMock.expect(mMockDevice.executeShellCommand("pm rollback-app " + APEX_PACKAGE_NAME))
+                .andReturn("Success")
+                .once();
+        mMockDevice.waitForDeviceAvailable();
 
         EasyMock.replay(mMockBuildInfo, mMockDevice);
         mInstallApexModuleTargetPreparer.setUp(mTestInfo);
@@ -1442,10 +1447,43 @@ public class InstallApexModuleTargetPreparerTest {
                         1,
                         "/data/apex/active/com.android.FAKE_APEX_PACKAGE_NAME@1.apex"));
         EasyMock.expect(mMockDevice.getActiveApexes()).andReturn(activatedApex).times(3);
-        EasyMock.expect(mMockDevice.uninstallPackage(APK_PACKAGE_NAME)).andReturn(null).once();
-        EasyMock.expect(mMockDevice.uninstallPackage(APEX_PACKAGE_NAME)).andReturn(null).once();
+        EasyMock.expect(mMockDevice.executeShellCommand("pm rollback-app " + APEX_PACKAGE_NAME))
+                .andReturn("Success")
+                .once();
         mMockDevice.reboot();
         EasyMock.expectLastCall();
+        Set<String> installableModules = new HashSet<>();
+        installableModules.add(APEX_PACKAGE_NAME);
+        installableModules.add(APK_PACKAGE_NAME);
+
+        EasyMock.expect(mMockDevice.getInstalledPackageNames())
+                .andReturn(installableModules)
+                .once();
+
+        mMockDevice.waitForDeviceAvailable();
+
+        EasyMock.replay(mMockBuildInfo, mMockDevice);
+        mInstallApexModuleTargetPreparer.setUp(mTestInfo);
+        mInstallApexModuleTargetPreparer.tearDown(mTestInfo, null);
+        EasyMock.verify(mMockBuildInfo, mMockDevice);
+    }
+
+    @Test(expected = RuntimeException.class)
+    public void testSetupAndTearDown_MultiInstallRollbackFail() throws Exception {
+        mInstallApexModuleTargetPreparer.addTestFileName(APEX_NAME);
+        mInstallApexModuleTargetPreparer.addTestFileName(APK_NAME);
+        mockCleanInstalledApexPackagesAndReboot();
+        mockSuccessfulInstallMultiPackageAndReboot();
+        Set<ApexInfo> activatedApex = new HashSet<ApexInfo>();
+        activatedApex.add(
+                new ApexInfo(
+                        "com.android.FAKE_APEX_PACKAGE_NAME",
+                        1,
+                        "/data/apex/active/com.android.FAKE_APEX_PACKAGE_NAME@1.apex"));
+        EasyMock.expect(mMockDevice.getActiveApexes()).andReturn(activatedApex).times(3);
+        EasyMock.expect(mMockDevice.executeShellCommand("pm rollback-app " + APEX_PACKAGE_NAME))
+                .andReturn("No available rollback")
+                .once();
         Set<String> installableModules = new HashSet<>();
         installableModules.add(APEX_PACKAGE_NAME);
         installableModules.add(APK_PACKAGE_NAME);
@@ -1462,6 +1500,7 @@ public class InstallApexModuleTargetPreparerTest {
 
     @Test
     public void testInstallUsingBundletool() throws Exception {
+        mMockBundletoolUtil = Mockito.mock(BundletoolUtil.class);
         mInstallApexModuleTargetPreparer.addTestFileName(SPLIT_APEX_APKS_NAME);
         mInstallApexModuleTargetPreparer.addTestFileName(SPLIT_APK__APKS_NAME);
         mFakeApexApks = File.createTempFile("fakeApex", ".apks");
@@ -1575,6 +1614,7 @@ public class InstallApexModuleTargetPreparerTest {
 
     @Test
     public void testInstallUsingBundletool_AbsolutePath() throws Exception {
+        mMockBundletoolUtil = Mockito.mock(BundletoolUtil.class);
         mInstallApexModuleTargetPreparer.addTestFileName(SPLIT_APEX_APKS_NAME);
         mInstallApexModuleTargetPreparer.addTestFileName(SPLIT_APK__APKS_NAME);
         mFakeApexApks = File.createTempFile("fakeApex", ".apks");
@@ -1688,6 +1728,7 @@ public class InstallApexModuleTargetPreparerTest {
 
     @Test
     public void testInstallUsingBundletool_TrainFolder() throws Exception {
+        mMockBundletoolUtil = Mockito.mock(BundletoolUtil.class);
         File trainFolder = File.createTempFile("tmpTrain", "");
         trainFolder.delete();
         trainFolder.mkdir();
@@ -1805,6 +1846,7 @@ public class InstallApexModuleTargetPreparerTest {
 
     @Test
     public void testInstallUsingBundletool_AllFilesHaveAbsolutePath() throws Exception {
+        mMockBundletoolUtil = Mockito.mock(BundletoolUtil.class);
         mFakeApexApks = File.createTempFile("fakeApex", ".apks");
         mFakeApkApks = File.createTempFile("fakeApk", ".apks");
         mInstallApexModuleTargetPreparer.addTestFile(mFakeApexApks);
@@ -1918,6 +1960,7 @@ public class InstallApexModuleTargetPreparerTest {
 
     @Test
     public void testInstallUsingBundletool_skipModuleNotPreloaded() throws Exception {
+        mMockBundletoolUtil = Mockito.mock(BundletoolUtil.class);
         mSetter.setOptionValue("ignore-if-module-not-preloaded", "true");
         mInstallApexModuleTargetPreparer.addTestFileName(SPLIT_APEX_APKS_NAME);
         mInstallApexModuleTargetPreparer.addTestFileName(SPLIT_APK__APKS_NAME);
@@ -2057,6 +2100,8 @@ public class InstallApexModuleTargetPreparerTest {
     private void mockSuccessfulInstallMultiApkWithoutReboot(List<File> apks) throws Exception {
         List<String> trainInstallCmd = new ArrayList<>();
         trainInstallCmd.add("install-multi-package");
+        trainInstallCmd.add("--enable-rollback");
+        trainInstallCmd.add("--staged");
         for (File apk : apks) {
             trainInstallCmd.add(apk.getAbsolutePath());
         }
@@ -2068,6 +2113,8 @@ public class InstallApexModuleTargetPreparerTest {
     private void mockSuccessfulInstallMultiPackageAndReboot() throws Exception {
         List<String> trainInstallCmd = new ArrayList<>();
         trainInstallCmd.add("install-multi-package");
+        trainInstallCmd.add("--enable-rollback");
+        trainInstallCmd.add("--staged");
         trainInstallCmd.add(mFakeApex.getAbsolutePath());
         trainInstallCmd.add(mFakeApk.getAbsolutePath());
         EasyMock.expect(mMockDevice.executeAdbCommand(trainInstallCmd.toArray(new String[0])))
@@ -2137,8 +2184,9 @@ public class InstallApexModuleTargetPreparerTest {
                         1,
                         "/data/apex/active/com.android.FAKE_APEX_PACKAGE_NAME@1.apex"));
         EasyMock.expect(mMockDevice.getActiveApexes()).andReturn(activatedApex).times(3);
-        EasyMock.expect(mMockDevice.uninstallPackage(APK_PACKAGE_NAME)).andReturn(null).once();
-        EasyMock.expect(mMockDevice.uninstallPackage(APEX_PACKAGE_NAME)).andReturn(null).once();
+        EasyMock.expect(mMockDevice.executeShellCommand("pm rollback-app " + APEX_PACKAGE_NAME))
+                .andReturn("Success")
+                .once();
         mMockDevice.reboot();
         EasyMock.expectLastCall();
         Set<String> installableModules = new HashSet<>();
@@ -2147,6 +2195,7 @@ public class InstallApexModuleTargetPreparerTest {
         EasyMock.expect(mMockDevice.getInstalledPackageNames())
                 .andReturn(installableModules)
                 .once();
+        mMockDevice.waitForDeviceAvailable();
 
         EasyMock.replay(mMockBuildInfo, mMockDevice);
         mInstallApexModuleTargetPreparer.setUp(mTestInfo);
@@ -2185,6 +2234,7 @@ public class InstallApexModuleTargetPreparerTest {
 
     @Test
     public void testSetupAndTearDown_skipModulesThatFailToExtract() throws Exception {
+        mMockBundletoolUtil = Mockito.mock(BundletoolUtil.class);
         mInstallApexModuleTargetPreparer.addTestFileName(APK_NAME);
         mInstallApexModuleTargetPreparer.addTestFileName(SPLIT_APK__APKS_NAME);
         mFakeApkApks = File.createTempFile("fakeApk", ".apks");
