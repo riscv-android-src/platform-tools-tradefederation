@@ -24,6 +24,10 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.android.ddmlib.AdbCommandRejectedException;
 import com.android.ddmlib.FileListingService.FileEntry;
@@ -56,12 +60,14 @@ import com.android.tradefed.util.IRunUtil;
 import com.android.tradefed.util.ProcessInfo;
 import com.android.tradefed.util.StreamUtil;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.AdditionalAnswers;
+import org.mockito.Mock;
 import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.io.File;
 import java.io.IOException;
@@ -86,20 +92,18 @@ public class NativeDeviceTest {
 
     private static final String MOCK_DEVICE_SERIAL = "serial";
     private static final String FAKE_NETWORK_SSID = "FakeNet";
-    private static final String FAKE_NETWORK_PASSWORD ="FakePass";
+    private static final String FAKE_NETWORK_PASSWORD = "FakePass";
 
-    private IDevice mMockIDevice;
+    @Mock IDevice mMockIDevice;
     private TestableAndroidNativeDevice mTestDevice;
-    private IDeviceRecovery mMockRecovery;
-    private IDeviceStateMonitor mMockStateMonitor;
-    private IRunUtil mMockRunUtil;
-    private IWifiHelper mMockWifi;
-    private IDeviceMonitor mMockDvcMonitor;
+    @Mock IDeviceRecovery mMockRecovery;
+    @Mock IDeviceStateMonitor mMockStateMonitor;
+    @Mock IRunUtil mMockRunUtil;
+    @Mock IWifiHelper mMockWifi;
+    @Mock IDeviceMonitor mMockDvcMonitor;
     private IHostOptions mHostOptions;
 
-    /**
-     * A {@link TestDevice} that is suitable for running tests against
-     */
+    /** A {@link TestDevice} that is suitable for running tests against */
     private class TestableAndroidNativeDevice extends NativeDevice {
 
         public boolean wasCalled = false;
@@ -126,34 +130,30 @@ public class NativeDeviceTest {
 
     @Before
     public void setUp() throws Exception {
+        MockitoAnnotations.initMocks(this);
+
         mHostOptions = new HostOptions();
-        mMockIDevice = EasyMock.createMock(IDevice.class);
-        EasyMock.expect(mMockIDevice.getSerialNumber()).andReturn(MOCK_DEVICE_SERIAL).anyTimes();
-        mMockRecovery = EasyMock.createMock(IDeviceRecovery.class);
-        mMockStateMonitor = EasyMock.createMock(IDeviceStateMonitor.class);
-        mMockDvcMonitor = EasyMock.createMock(IDeviceMonitor.class);
-        mMockRunUtil = EasyMock.createMock(IRunUtil.class);
-        mMockWifi = EasyMock.createMock(IWifiHelper.class);
-        mMockWifi.cleanUp();
-        EasyMock.expectLastCall().anyTimes();
+
+        when(mMockIDevice.getSerialNumber()).thenReturn(MOCK_DEVICE_SERIAL);
 
         // A TestDevice with a no-op recoverDevice() implementation
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public void recoverDevice() throws DeviceNotAvailableException {
-                // ignore
-            }
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public void recoverDevice() throws DeviceNotAvailableException {
+                        // ignore
+                    }
 
-            @Override
-            public IDevice getIDevice() {
-                return mMockIDevice;
-            }
+                    @Override
+                    public IDevice getIDevice() {
+                        return mMockIDevice;
+                    }
 
-            @Override
-            IWifiHelper createWifiHelper() {
-                return mMockWifi;
-            }
-        };
+                    @Override
+                    IWifiHelper createWifiHelper() {
+                        return mMockWifi;
+                    }
+                };
         mTestDevice.setRecovery(mMockRecovery);
         mTestDevice.setCommandTimeout(100);
         mTestDevice.setLogStartDelay(-1);
@@ -281,13 +281,14 @@ public class NativeDeviceTest {
     /** Unit test for {@link NativeDevice#pushDir(File, String)}. */
     @Test
     public void testPushDir_childFile() throws Exception {
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public boolean pushFile(File localFile, String remoteFilePath)
-                    throws DeviceNotAvailableException {
-                return true;
-            }
-        };
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public boolean pushFile(File localFile, String remoteFilePath)
+                            throws DeviceNotAvailableException {
+                        return true;
+                    }
+                };
         File testDir = FileUtil.createTempDir("pushDirTest");
         FileUtil.createTempFile("test1", ".txt", testDir);
         assertTrue(mTestDevice.pushDir(testDir, ""));
@@ -297,17 +298,20 @@ public class NativeDeviceTest {
     /** Unit test for {@link NativeDevice#pushDir(File, String)}. */
     @Test
     public void testPushDir_childDir() throws Exception {
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public String executeShellCommand(String cmd) throws DeviceNotAvailableException {
-                return "";
-            }
-            @Override
-            public boolean pushFile(File localFile, String remoteFilePath)
-                    throws DeviceNotAvailableException {
-                return false;
-            }
-        };
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public String executeShellCommand(String cmd)
+                            throws DeviceNotAvailableException {
+                        return "";
+                    }
+
+                    @Override
+                    public boolean pushFile(File localFile, String remoteFilePath)
+                            throws DeviceNotAvailableException {
+                        return false;
+                    }
+                };
         File testDir = FileUtil.createTempDir("pushDirTest");
         File subDir = FileUtil.createTempDir("testSubDir", testDir);
         FileUtil.createTempDir("test1", subDir);
@@ -350,7 +354,7 @@ public class NativeDeviceTest {
     /** Test {@link NativeDevice#pullDir(String, File)} when the remote directory is empty. */
     @Test
     public void testPullDir_nothingToDo() throws Exception {
-        final IFileEntry fakeEntry = EasyMock.createMock(IFileEntry.class);
+        final IFileEntry fakeEntry = mock(IFileEntry.class);
         mTestDevice =
                 new TestableAndroidNativeDevice() {
                     @Override
@@ -367,9 +371,9 @@ public class NativeDeviceTest {
                 };
         File dir = FileUtil.createTempDir("tf-test");
         Collection<IFileEntry> childrens = new ArrayList<>();
-        EasyMock.expect(fakeEntry.getChildren(false)).andReturn(childrens);
+        when(fakeEntry.getChildren(false)).thenReturn(childrens);
         // Empty list of childen
-        EasyMock.replay(fakeEntry);
+
         try {
             boolean res = mTestDevice.pullDir("/some_device_path/screenshots/", dir);
             assertTrue(res);
@@ -377,7 +381,6 @@ public class NativeDeviceTest {
         } finally {
             FileUtil.recursiveDelete(dir);
         }
-        EasyMock.verify(fakeEntry);
     }
 
     /**
@@ -386,8 +389,8 @@ public class NativeDeviceTest {
      */
     @Test
     public void testPullDir() throws Exception {
-        final IFileEntry fakeEntry = EasyMock.createMock(IFileEntry.class);
-        final IFileEntry fakeDir = EasyMock.createMock(IFileEntry.class);
+        final IFileEntry fakeEntry = mock(IFileEntry.class);
+        final IFileEntry fakeDir = mock(IFileEntry.class);
         mTestDevice =
                 new TestableAndroidNativeDevice() {
                     private boolean mFirstCall = true;
@@ -423,22 +426,21 @@ public class NativeDeviceTest {
                 };
         File dir = FileUtil.createTempDir("tf-test");
         Collection<IFileEntry> children = new ArrayList<>();
-        IFileEntry fakeFile = EasyMock.createMock(IFileEntry.class);
+        IFileEntry fakeFile = mock(IFileEntry.class);
         children.add(fakeFile);
-        EasyMock.expect(fakeFile.isDirectory()).andReturn(false);
-        EasyMock.expect(fakeFile.getName()).andReturn("fakeFile");
-        EasyMock.expect(fakeFile.getFullPath()).andReturn("/some_device_path/fakeFile");
+        when(fakeFile.isDirectory()).thenReturn(false);
+        when(fakeFile.getName()).thenReturn("fakeFile");
+        when(fakeFile.getFullPath()).thenReturn("/some_device_path/fakeFile");
 
         children.add(fakeDir);
-        EasyMock.expect(fakeDir.isDirectory()).andReturn(true);
-        EasyMock.expect(fakeDir.getName()).andReturn("fakeDir");
-        EasyMock.expect(fakeDir.getFullPath()).andReturn("/some_device_path/fakeDir");
+        when(fakeDir.isDirectory()).thenReturn(true);
+        when(fakeDir.getName()).thenReturn("fakeDir");
+        when(fakeDir.getFullPath()).thenReturn("/some_device_path/fakeDir");
         // #pullDir is being called on dir fakeDir to pull everything recursively.
         Collection<IFileEntry> fakeDirChildren = new ArrayList<>();
-        EasyMock.expect(fakeDir.getChildren(false)).andReturn(fakeDirChildren);
-        EasyMock.expect(fakeEntry.getChildren(false)).andReturn(children);
+        when(fakeDir.getChildren(false)).thenReturn(fakeDirChildren);
+        when(fakeEntry.getChildren(false)).thenReturn(children);
 
-        EasyMock.replay(fakeEntry, fakeFile, fakeDir);
         try {
             boolean res = mTestDevice.pullDir("/some_device_path/", dir);
             assertTrue(res);
@@ -448,14 +450,13 @@ public class NativeDeviceTest {
         } finally {
             FileUtil.recursiveDelete(dir);
         }
-        EasyMock.verify(fakeEntry, fakeFile, fakeDir);
     }
 
     /** Test pulling a directory when one of the pull fails. */
     @Test
     public void testPullDir_pullFail() throws Exception {
-        final IFileEntry fakeEntry = EasyMock.createMock(IFileEntry.class);
-        final IFileEntry fakeDir = EasyMock.createMock(IFileEntry.class);
+        final IFileEntry fakeEntry = mock(IFileEntry.class);
+        final IFileEntry fakeDir = mock(IFileEntry.class);
         mTestDevice =
                 new TestableAndroidNativeDevice() {
                     private boolean mFirstCall = true;
@@ -497,29 +498,28 @@ public class NativeDeviceTest {
                 };
         File dir = FileUtil.createTempDir("tf-test");
         Collection<IFileEntry> children = new ArrayList<>();
-        IFileEntry fakeFile = EasyMock.createMock(IFileEntry.class);
+        IFileEntry fakeFile = mock(IFileEntry.class);
         children.add(fakeFile);
-        EasyMock.expect(fakeFile.isDirectory()).andReturn(false);
-        EasyMock.expect(fakeFile.getName()).andReturn("fakeFile");
-        EasyMock.expect(fakeFile.getFullPath()).andReturn("/some_device_path/fakeFile");
+        when(fakeFile.isDirectory()).thenReturn(false);
+        when(fakeFile.getName()).thenReturn("fakeFile");
+        when(fakeFile.getFullPath()).thenReturn("/some_device_path/fakeFile");
 
         children.add(fakeDir);
-        EasyMock.expect(fakeDir.isDirectory()).andReturn(true);
-        EasyMock.expect(fakeDir.getName()).andReturn("fakeDir");
-        EasyMock.expect(fakeDir.getFullPath()).andReturn("/some_device_path/fakeDir");
+        when(fakeDir.isDirectory()).thenReturn(true);
+        when(fakeDir.getName()).thenReturn("fakeDir");
+        when(fakeDir.getFullPath()).thenReturn("/some_device_path/fakeDir");
         // #pullDir is being called on dir fakeDir to pull everything recursively.
         Collection<IFileEntry> fakeDirChildren = new ArrayList<>();
-        IFileEntry secondLevelChildren = EasyMock.createMock(IFileEntry.class);
+        IFileEntry secondLevelChildren = mock(IFileEntry.class);
         fakeDirChildren.add(secondLevelChildren);
-        EasyMock.expect(fakeDir.getChildren(false)).andReturn(fakeDirChildren);
-        EasyMock.expect(fakeEntry.getChildren(false)).andReturn(children);
+        when(fakeDir.getChildren(false)).thenReturn(fakeDirChildren);
+        when(fakeEntry.getChildren(false)).thenReturn(children);
 
-        EasyMock.expect(secondLevelChildren.isDirectory()).andReturn(false);
-        EasyMock.expect(secondLevelChildren.getName()).andReturn("secondLevelChildren");
-        EasyMock.expect(secondLevelChildren.getFullPath())
-                .andReturn("/some_device_path/fakeDir/secondLevelChildren");
+        when(secondLevelChildren.isDirectory()).thenReturn(false);
+        when(secondLevelChildren.getName()).thenReturn("secondLevelChildren");
+        when(secondLevelChildren.getFullPath())
+                .thenReturn("/some_device_path/fakeDir/secondLevelChildren");
 
-        EasyMock.replay(fakeEntry, fakeFile, fakeDir, secondLevelChildren);
         try {
             boolean res = mTestDevice.pullDir("/some_device_path/", dir);
             // If one of the pull fails, the full command is considered failed.
@@ -533,7 +533,6 @@ public class NativeDeviceTest {
         } finally {
             FileUtil.recursiveDelete(dir);
         }
-        EasyMock.verify(fakeEntry, fakeFile, fakeDir, secondLevelChildren);
     }
 
     /**
@@ -606,7 +605,7 @@ public class NativeDeviceTest {
     @Test
     public void testSwitchUserTimeout_exception() throws Exception {
         try {
-            mTestDevice.switchUser(10, 5*1000);
+            mTestDevice.switchUser(10, 5 * 1000);
         } catch (UnsupportedOperationException onse) {
             return;
         }
@@ -749,26 +748,27 @@ public class NativeDeviceTest {
     @Test
     public void testConnectToWifiNetworkIfNeeded_alreadyConnected()
             throws DeviceNotAvailableException {
-        EasyMock.expect(mMockWifi.checkConnectivity(mTestDevice.getOptions().getConnCheckUrl()))
-                .andReturn(true);
-        EasyMock.replay(mMockWifi);
-        assertTrue(mTestDevice.connectToWifiNetworkIfNeeded(FAKE_NETWORK_SSID,
-                FAKE_NETWORK_PASSWORD));
-        EasyMock.verify(mMockWifi);
+        when(mMockWifi.checkConnectivity(mTestDevice.getOptions().getConnCheckUrl()))
+                .thenReturn(true);
+
+        assertTrue(
+                mTestDevice.connectToWifiNetworkIfNeeded(FAKE_NETWORK_SSID, FAKE_NETWORK_PASSWORD));
     }
 
     /** Unit test for {@link NativeDevice#connectToWifiNetwork(String, String)}. */
     @Test
     public void testConnectToWifiNetwork_success() throws DeviceNotAvailableException {
-        EasyMock.expect(mMockWifi.connectToNetwork(FAKE_NETWORK_SSID, FAKE_NETWORK_PASSWORD,
-                mTestDevice.getOptions().getConnCheckUrl(), false)).andReturn(true);
+        when(mMockWifi.connectToNetwork(
+                        FAKE_NETWORK_SSID,
+                        FAKE_NETWORK_PASSWORD,
+                        mTestDevice.getOptions().getConnCheckUrl(),
+                        false))
+                .thenReturn(true);
         Map<String, String> fakeWifiInfo = new HashMap<String, String>();
         fakeWifiInfo.put("bssid", FAKE_NETWORK_SSID);
-        EasyMock.expect(mMockWifi.getWifiInfo()).andReturn(fakeWifiInfo);
-        EasyMock.replay(mMockWifi, mMockIDevice);
-        assertTrue(mTestDevice.connectToWifiNetwork(FAKE_NETWORK_SSID,
-                FAKE_NETWORK_PASSWORD));
-        EasyMock.verify(mMockWifi, mMockIDevice);
+        when(mMockWifi.getWifiInfo()).thenReturn(fakeWifiInfo);
+
+        assertTrue(mTestDevice.connectToWifiNetwork(FAKE_NETWORK_SSID, FAKE_NETWORK_PASSWORD));
     }
 
     /**
@@ -777,19 +777,26 @@ public class NativeDeviceTest {
      */
     @Test
     public void testConnectToWifiNetwork_failure() throws DeviceNotAvailableException {
-        EasyMock.expect(mMockWifi.connectToNetwork(FAKE_NETWORK_SSID, FAKE_NETWORK_PASSWORD,
-                mTestDevice.getOptions().getConnCheckUrl(), false)).andReturn(false)
-                .times(mTestDevice.getOptions().getWifiAttempts());
+        when(mMockWifi.connectToNetwork(
+                        FAKE_NETWORK_SSID,
+                        FAKE_NETWORK_PASSWORD,
+                        mTestDevice.getOptions().getConnCheckUrl(),
+                        false))
+                .thenReturn(false);
         Map<String, String> fakeWifiInfo = new HashMap<String, String>();
         fakeWifiInfo.put("bssid", FAKE_NETWORK_SSID);
-        EasyMock.expect(mMockWifi.getWifiInfo()).andReturn(fakeWifiInfo)
-                .times(mTestDevice.getOptions().getWifiAttempts());
-        mMockRunUtil.sleep(EasyMock.anyLong());
-        EasyMock.expectLastCall().times(mTestDevice.getOptions().getWifiAttempts() - 1);
-        EasyMock.replay(mMockWifi, mMockIDevice, mMockRunUtil);
-        assertFalse(mTestDevice.connectToWifiNetwork(FAKE_NETWORK_SSID,
-                FAKE_NETWORK_PASSWORD));
-        EasyMock.verify(mMockWifi, mMockIDevice, mMockRunUtil);
+        when(mMockWifi.getWifiInfo()).thenReturn(fakeWifiInfo);
+
+        assertFalse(mTestDevice.connectToWifiNetwork(FAKE_NETWORK_SSID, FAKE_NETWORK_PASSWORD));
+        verify(mMockRunUtil, times(mTestDevice.getOptions().getWifiAttempts() - 1))
+                .sleep(Mockito.anyLong());
+        verify(mMockWifi, times(mTestDevice.getOptions().getWifiAttempts()))
+                .connectToNetwork(
+                        FAKE_NETWORK_SSID,
+                        FAKE_NETWORK_PASSWORD,
+                        mTestDevice.getOptions().getConnCheckUrl(),
+                        false);
+        verify(mMockWifi, times(mTestDevice.getOptions().getWifiAttempts())).getWifiInfo();
     }
 
     /**
@@ -803,69 +810,72 @@ public class NativeDeviceTest {
         deviceOptionSetter.setOptionValue("max-wifi-connect-time", "10000");
         Clock mockClock = Mockito.mock(Clock.class);
         mTestDevice.setClock(mockClock);
-        EasyMock.expect(
-                        mMockWifi.connectToNetwork(
-                                FAKE_NETWORK_SSID,
-                                FAKE_NETWORK_PASSWORD,
-                                mTestDevice.getOptions().getConnCheckUrl(),
-                                false))
-                .andReturn(false)
-                .times(2);
+        when(mMockWifi.connectToNetwork(
+                        FAKE_NETWORK_SSID,
+                        FAKE_NETWORK_PASSWORD,
+                        mTestDevice.getOptions().getConnCheckUrl(),
+                        false))
+                .thenReturn(false);
         Mockito.when(mockClock.millis())
                 .thenReturn(Long.valueOf(0), Long.valueOf(6000), Long.valueOf(12000));
         Map<String, String> fakeWifiInfo = new HashMap<String, String>();
         fakeWifiInfo.put("bssid", FAKE_NETWORK_SSID);
-        EasyMock.expect(mMockWifi.getWifiInfo()).andReturn(fakeWifiInfo).times(2);
+        when(mMockWifi.getWifiInfo()).thenReturn(fakeWifiInfo);
 
-        EasyMock.replay(mMockWifi, mMockIDevice);
         assertFalse(mTestDevice.connectToWifiNetwork(FAKE_NETWORK_SSID, FAKE_NETWORK_PASSWORD));
-        EasyMock.verify(mMockWifi, mMockIDevice);
+        verify(mMockWifi, times(2))
+                .connectToNetwork(
+                        FAKE_NETWORK_SSID,
+                        FAKE_NETWORK_PASSWORD,
+                        mTestDevice.getOptions().getConnCheckUrl(),
+                        false);
+        verify(mMockWifi, times(2)).getWifiInfo();
         Mockito.verify(mockClock, Mockito.times(3)).millis();
     }
 
     /** Unit test for {@link NativeDevice#connectToWifiNetwork(String, String, boolean)}. */
     @Test
     public void testConnectToWifiNetwork_scanSsid() throws DeviceNotAvailableException {
-        EasyMock.expect(mMockWifi.connectToNetwork(FAKE_NETWORK_SSID, FAKE_NETWORK_PASSWORD,
-                mTestDevice.getOptions().getConnCheckUrl(), true)).andReturn(true);
+        when(mMockWifi.connectToNetwork(
+                        FAKE_NETWORK_SSID,
+                        FAKE_NETWORK_PASSWORD,
+                        mTestDevice.getOptions().getConnCheckUrl(),
+                        true))
+                .thenReturn(true);
         Map<String, String> fakeWifiInfo = new HashMap<String, String>();
         fakeWifiInfo.put("bssid", FAKE_NETWORK_SSID);
-        EasyMock.expect(mMockWifi.getWifiInfo()).andReturn(fakeWifiInfo);
-        EasyMock.replay(mMockWifi, mMockIDevice);
-        assertTrue(mTestDevice.connectToWifiNetwork(FAKE_NETWORK_SSID,
-                FAKE_NETWORK_PASSWORD, true));
-        EasyMock.verify(mMockWifi, mMockIDevice);
+        when(mMockWifi.getWifiInfo()).thenReturn(fakeWifiInfo);
+
+        assertTrue(
+                mTestDevice.connectToWifiNetwork(FAKE_NETWORK_SSID, FAKE_NETWORK_PASSWORD, true));
     }
 
     /** Unit test for {@link NativeDevice#checkWifiConnection(String)}. */
     @Test
     public void testCheckWifiConnection() throws DeviceNotAvailableException {
-        EasyMock.expect(mMockWifi.isWifiEnabled()).andReturn(true);
-        EasyMock.expect(mMockWifi.getSSID()).andReturn("\"" + FAKE_NETWORK_SSID + "\"");
-        EasyMock.expect(mMockWifi.hasValidIp()).andReturn(true);
-        EasyMock.expect(mMockWifi.checkConnectivity(mTestDevice.getOptions().getConnCheckUrl()))
-                .andReturn(true);
-        EasyMock.replay(mMockWifi, mMockIDevice);
+        when(mMockWifi.isWifiEnabled()).thenReturn(true);
+        when(mMockWifi.getSSID()).thenReturn("\"" + FAKE_NETWORK_SSID + "\"");
+        when(mMockWifi.hasValidIp()).thenReturn(true);
+        when(mMockWifi.checkConnectivity(mTestDevice.getOptions().getConnCheckUrl()))
+                .thenReturn(true);
+
         assertTrue(mTestDevice.checkWifiConnection(FAKE_NETWORK_SSID));
-        EasyMock.verify(mMockWifi, mMockIDevice);
     }
 
     /** Unit test for {@link NativeDevice#checkWifiConnection(String)} for a failure. */
     @Test
     public void testCheckWifiConnection_failure() throws DeviceNotAvailableException {
-        EasyMock.expect(mMockWifi.isWifiEnabled()).andReturn(false);
-        EasyMock.replay(mMockWifi, mMockIDevice);
+        when(mMockWifi.isWifiEnabled()).thenReturn(false);
+
         assertFalse(mTestDevice.checkWifiConnection(FAKE_NETWORK_SSID));
-        EasyMock.verify(mMockWifi, mMockIDevice);
     }
 
     /** Unit test for {@link NativeDevice#isWifiEnabled()}. */
     @Test
     public void testIsWifiEnabled() throws DeviceNotAvailableException {
-        EasyMock.expect(mMockWifi.isWifiEnabled()).andReturn(true);
-        EasyMock.replay(mMockWifi, mMockIDevice);
+        when(mMockWifi.isWifiEnabled()).thenReturn(true);
+
         assertTrue(mTestDevice.isWifiEnabled());
-        EasyMock.verify(mMockWifi, mMockIDevice);
     }
 
     /**
@@ -873,41 +883,39 @@ public class NativeDeviceTest {
      */
     @Test
     public void testIsWifiEnabled_exception() throws DeviceNotAvailableException {
-        EasyMock.expect(mMockWifi.isWifiEnabled()).andThrow(new RuntimeException());
-        EasyMock.replay(mMockWifi, mMockIDevice);
+        when(mMockWifi.isWifiEnabled()).thenThrow(new RuntimeException());
+
         assertFalse(mTestDevice.isWifiEnabled());
-        EasyMock.verify(mMockWifi, mMockIDevice);
     }
 
     /** Unit test for {@link NativeDevice#disconnectFromWifi()}. */
     @Test
     public void testDisconnectFromWifi() throws DeviceNotAvailableException {
-        EasyMock.expect(mMockWifi.disconnectFromNetwork()).andReturn(true);
-        EasyMock.replay(mMockWifi, mMockIDevice);
+        when(mMockWifi.disconnectFromNetwork()).thenReturn(true);
+
         assertTrue(mTestDevice.disconnectFromWifi());
-        EasyMock.verify(mMockWifi, mMockIDevice);
     }
 
     /** Unit test for {@link NativeDevice#enableNetworkMonitor()}. */
     @Test
     public void testEnableNetworkMonitor() throws DeviceNotAvailableException {
-        EasyMock.expect(mMockWifi.stopMonitor()).andReturn(null);
-        EasyMock.expect(mMockWifi.startMonitor(EasyMock.anyLong(),
-                EasyMock.eq(mTestDevice.getOptions().getConnCheckUrl()))).andReturn(true);
-        EasyMock.replay(mMockWifi, mMockIDevice);
+        when(mMockWifi.stopMonitor()).thenReturn(null);
+        when(mMockWifi.startMonitor(
+                        Mockito.anyLong(), Mockito.eq(mTestDevice.getOptions().getConnCheckUrl())))
+                .thenReturn(true);
+
         assertTrue(mTestDevice.enableNetworkMonitor());
-        EasyMock.verify(mMockWifi, mMockIDevice);
     }
 
     /** Unit test for {@link NativeDevice#enableNetworkMonitor()} in case of failure. */
     @Test
     public void testEnableNetworkMonitor_failure() throws DeviceNotAvailableException {
-        EasyMock.expect(mMockWifi.stopMonitor()).andReturn(null);
-        EasyMock.expect(mMockWifi.startMonitor(EasyMock.anyLong(),
-                EasyMock.eq(mTestDevice.getOptions().getConnCheckUrl()))).andReturn(false);
-        EasyMock.replay(mMockWifi, mMockIDevice);
+        when(mMockWifi.stopMonitor()).thenReturn(null);
+        when(mMockWifi.startMonitor(
+                        Mockito.anyLong(), Mockito.eq(mTestDevice.getOptions().getConnCheckUrl())))
+                .thenReturn(false);
+
         assertFalse(mTestDevice.enableNetworkMonitor());
-        EasyMock.verify(mMockWifi, mMockIDevice);
     }
 
     /** Unit test for {@link NativeDevice#disableNetworkMonitor()}. */
@@ -917,62 +925,61 @@ public class NativeDeviceTest {
         samples.add(Long.valueOf(42));
         samples.add(Long.valueOf(256));
         samples.add(Long.valueOf(-1)); // failure to connect
-        EasyMock.expect(mMockWifi.stopMonitor()).andReturn(samples);
-        EasyMock.replay(mMockWifi, mMockIDevice);
+        when(mMockWifi.stopMonitor()).thenReturn(samples);
+
         assertTrue(mTestDevice.disableNetworkMonitor());
-        EasyMock.verify(mMockWifi, mMockIDevice);
     }
 
     /** Unit test for {@link NativeDevice#reconnectToWifiNetwork()}. */
     @Test
     public void testReconnectToWifiNetwork() throws DeviceNotAvailableException {
-        EasyMock.expect(mMockWifi.checkConnectivity(mTestDevice.getOptions().getConnCheckUrl()))
-                .andReturn(false);
-        EasyMock.expect(mMockWifi.checkConnectivity(mTestDevice.getOptions().getConnCheckUrl()))
-                .andReturn(true);
-        mMockRunUtil.sleep(EasyMock.anyLong());
-        EasyMock.expectLastCall();
-        EasyMock.replay(mMockWifi, mMockIDevice, mMockRunUtil);
+        when(mMockWifi.checkConnectivity(mTestDevice.getOptions().getConnCheckUrl()))
+                .thenReturn(false, true);
+
         try {
             mTestDevice.reconnectToWifiNetwork();
         } finally {
-            EasyMock.verify(mMockWifi, mMockIDevice, mMockRunUtil);
+            verify(mMockRunUtil, times(1)).sleep(Mockito.anyLong());
         }
     }
 
     /** Unit test for {@link NativeDevice#isHeadless()}. */
     @Test
     public void testIsHeadless() throws DeviceNotAvailableException {
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public String getProperty(String name) throws DeviceNotAvailableException {
-                return "1\n";
-            }
-        };
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public String getProperty(String name) throws DeviceNotAvailableException {
+                        return "1\n";
+                    }
+                };
         assertTrue(mTestDevice.isHeadless());
     }
 
     /** Unit test for {@link NativeDevice#isHeadless()}. */
     @Test
     public void testIsHeadless_notHeadless() throws DeviceNotAvailableException {
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public String getProperty(String name) throws DeviceNotAvailableException {
-                return null;
-            }
-        };
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public String getProperty(String name) throws DeviceNotAvailableException {
+                        return null;
+                    }
+                };
         assertFalse(mTestDevice.isHeadless());
     }
 
     /** Unit test for {@link NativeDevice#getDeviceDate()}. */
     @Test
     public void testGetDeviceDate() throws DeviceNotAvailableException {
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public String executeShellCommand(String name) throws DeviceNotAvailableException {
-                return "21692641\n";
-            }
-        };
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public String executeShellCommand(String name)
+                            throws DeviceNotAvailableException {
+                        return "21692641\n";
+                    }
+                };
         assertEquals(21692641000L, mTestDevice.getDeviceDate());
     }
 
@@ -993,11 +1000,11 @@ public class NativeDeviceTest {
                         return 24;
                     }
                 };
-        ITestLogger listener = EasyMock.createMock(ITestLogger.class);
-        listener.testLog(dataName, LogDataType.BUGREPORTZ, stream);
-        EasyMock.replay(listener);
+        ITestLogger listener = mock(ITestLogger.class);
+
         assertTrue(mTestDevice.logBugreport(dataName, listener));
-        EasyMock.verify(listener);
+
+        verify(listener).testLog(dataName, LogDataType.BUGREPORTZ, stream);
     }
 
     /** Unit test for {@link NativeDevice#logBugreport(String, ITestLogger)}. */
@@ -1024,11 +1031,11 @@ public class NativeDeviceTest {
                         return 23;
                     }
                 };
-        ITestLogger listener = EasyMock.createMock(ITestLogger.class);
-        listener.testLog(dataName, LogDataType.BUGREPORT, stream);
-        EasyMock.replay(listener);
+        ITestLogger listener = mock(ITestLogger.class);
+
         assertTrue(mTestDevice.logBugreport(dataName, listener));
-        EasyMock.verify(listener);
+
+        verify(listener).testLog(dataName, LogDataType.BUGREPORT, stream);
     }
 
     /** Unit test for {@link NativeDevice#logBugreport(String, ITestLogger)}. */
@@ -1051,10 +1058,9 @@ public class NativeDeviceTest {
                         return 23;
                     }
                 };
-        ITestLogger listener = EasyMock.createMock(ITestLogger.class);
-        EasyMock.replay(listener);
+        ITestLogger listener = mock(ITestLogger.class);
+
         assertFalse(mTestDevice.logBugreport("test", listener));
-        EasyMock.verify(listener);
     }
 
     /** Unit test for {@link NativeDevice#takeBugreport()}. */
@@ -1074,12 +1080,13 @@ public class NativeDeviceTest {
     /** Unit test for {@link NativeDevice#takeBugreport()}. */
     @Test
     public void testTakeBugreport_oldDevice() throws Exception {
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public int getApiLevel() throws DeviceNotAvailableException {
-                return 19;
-            }
-        };
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        return 19;
+                    }
+                };
         Bugreport report = mTestDevice.takeBugreport();
         try {
             assertNotNull(report);
@@ -1093,20 +1100,22 @@ public class NativeDeviceTest {
     /** Unit test for {@link NativeDevice#takeBugreport()}. */
     @Test
     public void testTakeBugreport() throws Exception {
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public int getApiLevel() throws DeviceNotAvailableException {
-                return 24;
-            }
-            @Override
-            protected File getBugreportzInternal() {
-                try {
-                    return FileUtil.createTempFile("bugreportz", ".zip");
-                } catch (IOException e) {
-                    return null;
-                }
-            }
-        };
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        return 24;
+                    }
+
+                    @Override
+                    protected File getBugreportzInternal() {
+                        try {
+                            return FileUtil.createTempFile("bugreportz", ".zip");
+                        } catch (IOException e) {
+                            return null;
+                        }
+                    }
+                };
         Bugreport report = mTestDevice.takeBugreport();
         try {
             assertNotNull(report);
@@ -1119,39 +1128,48 @@ public class NativeDeviceTest {
     /** Unit test for {@link NativeDevice#getDeviceDate()}. */
     @Test
     public void testGetDeviceDate_wrongformat() throws DeviceNotAvailableException {
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public String executeShellCommand(String name) throws DeviceNotAvailableException {
-                return "WRONG\n";
-            }
-        };
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public String executeShellCommand(String name)
+                            throws DeviceNotAvailableException {
+                        return "WRONG\n";
+                    }
+                };
         assertEquals(0, mTestDevice.getDeviceDate());
     }
 
     @Test
     public void testGetBugreport_deviceUnavail() throws Exception {
         final String expectedOutput = "this is the output\r\n in two lines\r\n";
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public void executeShellCommand(
-                    String command, IShellOutputReceiver receiver,
-                    long maxTimeToOutputShellResponse, TimeUnit timeUnit, int retryAttempts)
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public void executeShellCommand(
+                            String command,
+                            IShellOutputReceiver receiver,
+                            long maxTimeToOutputShellResponse,
+                            TimeUnit timeUnit,
+                            int retryAttempts)
                             throws DeviceNotAvailableException {
-                String fakeRep = expectedOutput;
-                receiver.addOutput(fakeRep.getBytes(), 0, fakeRep.getBytes().length);
-            }
-            @Override
-            public int getApiLevel() throws DeviceNotAvailableException {
-                return 22;
-            }
-        };
+                        String fakeRep = expectedOutput;
+                        receiver.addOutput(fakeRep.getBytes(), 0, fakeRep.getBytes().length);
+                    }
+
+                    @Override
+                    public int getApiLevel() throws DeviceNotAvailableException {
+                        return 22;
+                    }
+                };
 
         // FIXME: this isn't actually causing a DeviceNotAvailableException to be thrown
-        mMockRecovery.recoverDevice(EasyMock.eq(mMockStateMonitor), EasyMock.eq(false));
-        EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException("test", "serial"));
-        EasyMock.replay(mMockRecovery, mMockIDevice);
-        assertEquals(expectedOutput, StreamUtil.getStringFromStream(
-                mTestDevice.getBugreport().createInputStream()));
+        doThrow(new DeviceNotAvailableException("test", "serial"))
+                .when(mMockRecovery)
+                .recoverDevice(Mockito.eq(mMockStateMonitor), Mockito.eq(false));
+
+        assertEquals(
+                expectedOutput,
+                StreamUtil.getStringFromStream(mTestDevice.getBugreport().createInputStream()));
     }
 
     @Test
@@ -1179,14 +1197,13 @@ public class NativeDeviceTest {
                         return null;
                     }
                 };
-        EasyMock.replay(mMockRecovery, mMockIDevice);
+
         assertEquals(0, mTestDevice.getBugreport().size());
-        EasyMock.verify(mMockRecovery, mMockIDevice);
     }
 
     @Test
     public void testGetBugreport_deviceUnavail_fallback() throws Exception {
-        final IFileEntry fakeEntry = EasyMock.createMock(IFileEntry.class);
+        final IFileEntry fakeEntry = mock(IFileEntry.class);
         mTestDevice =
                 new TestableAndroidNativeDevice() {
                     @Override
@@ -1221,14 +1238,13 @@ public class NativeDeviceTest {
                 };
         List<IFileEntry> list = new ArrayList<>();
         list.add(fakeEntry);
-        EasyMock.expect(fakeEntry.getChildren(false)).andReturn(list);
-        EasyMock.expect(fakeEntry.getName()).andReturn("bugreport-NYC-2016-08-17-10-17-00.tmp");
-        EasyMock.replay(fakeEntry, mMockRecovery, mMockIDevice);
+        when(fakeEntry.getChildren(false)).thenReturn(list);
+        when(fakeEntry.getName()).thenReturn("bugreport-NYC-2016-08-17-10-17-00.tmp");
+
         InputStreamSource res = null;
         try {
             res = mTestDevice.getBugreport();
             assertNotNull(res);
-            EasyMock.verify(fakeEntry, mMockRecovery, mMockIDevice);
         } finally {
             StreamUtil.cancel(res);
         }
@@ -1322,7 +1338,7 @@ public class NativeDeviceTest {
 
     @Test
     public void testGetBugreportz_fallBack_validation() throws Exception {
-        IFileEntry entryMock = EasyMock.createMock(IFileEntry.class);
+        IFileEntry entryMock = mock(IFileEntry.class);
         mTestDevice =
                 new TestableAndroidNativeDevice() {
                     @Override
@@ -1350,11 +1366,11 @@ public class NativeDeviceTest {
                         }
                     }
                 };
-        IFileEntry childNode = EasyMock.createMock(IFileEntry.class);
-        EasyMock.expect(entryMock.getChildren(false)).andReturn(Arrays.asList(childNode));
-        EasyMock.expect(childNode.getName()).andReturn("bugreport-test-partial.zip");
+        IFileEntry childNode = mock(IFileEntry.class);
+        when(entryMock.getChildren(false)).thenReturn(Arrays.asList(childNode));
+        when(childNode.getName()).thenReturn("bugreport-test-partial.zip");
         FileInputStreamSource f = null;
-        EasyMock.replay(entryMock, childNode);
+
         try {
             f = (FileInputStreamSource) mTestDevice.getBugreportz();
             assertNull(f);
@@ -1364,7 +1380,6 @@ public class NativeDeviceTest {
                 f.cleanFile();
             }
         }
-        EasyMock.verify(entryMock, childNode);
     }
 
     /**
@@ -1387,12 +1402,11 @@ public class NativeDeviceTest {
         File localFile = FileUtil.createTempFile("timezonetest", ".txt");
         try {
             localFile.setLastModified(1470906000000L); // Thu Aug 11 09:00:00 GMT 2016
-            IFileEntry remoteFile = EasyMock.createMock(IFileEntry.class);
-            EasyMock.expect(remoteFile.getDate()).andReturn("2016-08-11");
-            EasyMock.expect(remoteFile.getTime()).andReturn("18:00");
-            EasyMock.replay(remoteFile);
+            IFileEntry remoteFile = mock(IFileEntry.class);
+            when(remoteFile.getDate()).thenReturn("2016-08-11");
+            when(remoteFile.getTime()).thenReturn("18:00");
+
             assertTrue(testDevice.isNewer(localFile, remoteFile));
-            EasyMock.verify(remoteFile);
         } finally {
             FileUtil.deleteFile(localFile);
         }
@@ -1419,13 +1433,12 @@ public class NativeDeviceTest {
         File localFile = FileUtil.createTempFile("timezonetest", ".txt");
         try {
             localFile.setLastModified(1470906000000L); // Thu, 11 Aug 2016 09:00:00 GMT
-            IFileEntry remoteFile = EasyMock.createMock(IFileEntry.class);
-            EasyMock.expect(remoteFile.getDate()).andReturn("2016-08-11");
-            EasyMock.expect(remoteFile.getTime()).andReturn("18:15");
-            EasyMock.replay(remoteFile);
+            IFileEntry remoteFile = mock(IFileEntry.class);
+            when(remoteFile.getDate()).thenReturn("2016-08-11");
+            when(remoteFile.getTime()).thenReturn("18:15");
+
             // Should sync because after time offset correction, file is older.
             assertTrue(testDevice.isNewer(localFile, remoteFile));
-            EasyMock.verify(remoteFile);
         } finally {
             FileUtil.deleteFile(localFile);
         }
@@ -1452,12 +1465,11 @@ public class NativeDeviceTest {
         File localFile = FileUtil.createTempFile("timezonetest", ".txt");
         try {
             localFile.setLastModified(1470906000000L); // Thu, 11 Aug 2016 09:00:00 GMT
-            IFileEntry remoteFile = EasyMock.createMock(IFileEntry.class);
-            EasyMock.expect(remoteFile.getDate()).andReturn("2016-08-11");
-            EasyMock.expect(remoteFile.getTime()).andReturn("18:10");
-            EasyMock.replay(remoteFile);
+            IFileEntry remoteFile = mock(IFileEntry.class);
+            when(remoteFile.getDate()).thenReturn("2016-08-11");
+            when(remoteFile.getTime()).thenReturn("18:10");
+
             assertFalse(testDevice.isNewer(localFile, remoteFile));
-            EasyMock.verify(remoteFile);
         } finally {
             FileUtil.deleteFile(localFile);
         }
@@ -1467,12 +1479,13 @@ public class NativeDeviceTest {
     @Test
     public void testGetBuildAlias() throws DeviceNotAvailableException {
         final String alias = "alias\n";
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public String getProperty(String name) throws DeviceNotAvailableException {
-                return alias;
-            }
-        };
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public String getProperty(String name) throws DeviceNotAvailableException {
+                        return alias;
+                    }
+                };
         assertEquals(alias, mTestDevice.getBuildAlias());
     }
 
@@ -1481,16 +1494,18 @@ public class NativeDeviceTest {
     public void testGetBuildAlias_null() throws DeviceNotAvailableException {
         final String alias = null;
         final String buildId = "alias\n";
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public String getProperty(String name) throws DeviceNotAvailableException {
-                return alias;
-            }
-            @Override
-            public String getBuildId() throws DeviceNotAvailableException {
-                return buildId;
-            }
-        };
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public String getProperty(String name) throws DeviceNotAvailableException {
+                        return alias;
+                    }
+
+                    @Override
+                    public String getBuildId() throws DeviceNotAvailableException {
+                        return buildId;
+                    }
+                };
         assertEquals(buildId, mTestDevice.getBuildAlias());
     }
 
@@ -1499,16 +1514,18 @@ public class NativeDeviceTest {
     public void testGetBuildAlias_empty() throws DeviceNotAvailableException {
         final String alias = "";
         final String buildId = "alias\n";
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public String getProperty(String name) throws DeviceNotAvailableException {
-                return alias;
-            }
-            @Override
-            public String getBuildId() throws DeviceNotAvailableException {
-                return buildId;
-            }
-        };
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public String getProperty(String name) throws DeviceNotAvailableException {
+                        return alias;
+                    }
+
+                    @Override
+                    public String getBuildId() throws DeviceNotAvailableException {
+                        return buildId;
+                    }
+                };
         assertEquals(buildId, mTestDevice.getBuildAlias());
     }
 
@@ -1516,12 +1533,13 @@ public class NativeDeviceTest {
     @Test
     public void testGetBuildId() throws DeviceNotAvailableException {
         final String buildId = "299865";
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public String getProperty(String name) throws DeviceNotAvailableException {
-                return buildId;
-            }
-        };
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public String getProperty(String name) throws DeviceNotAvailableException {
+                        return buildId;
+                    }
+                };
         assertEquals(buildId, mTestDevice.getBuildId());
     }
 
@@ -1529,12 +1547,13 @@ public class NativeDeviceTest {
     @Test
     public void testGetBuildId_null() throws DeviceNotAvailableException {
         final String buildId = null;
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public String getProperty(String name) throws DeviceNotAvailableException {
-                return buildId;
-            }
-        };
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public String getProperty(String name) throws DeviceNotAvailableException {
+                        return buildId;
+                    }
+                };
         assertEquals(IBuildInfo.UNKNOWN_BUILD_ID, mTestDevice.getBuildId());
     }
 
@@ -1542,12 +1561,13 @@ public class NativeDeviceTest {
     @Test
     public void testGetBuildFlavor() throws DeviceNotAvailableException {
         final String flavor = "ham-user";
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public String getProperty(String name) throws DeviceNotAvailableException {
-                return flavor;
-            }
-        };
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public String getProperty(String name) throws DeviceNotAvailableException {
+                        return flavor;
+                    }
+                };
         assertEquals(flavor, mTestDevice.getBuildFlavor());
     }
 
@@ -1557,20 +1577,21 @@ public class NativeDeviceTest {
         final String productName = "prod";
         final String buildType = "buildtype";
         String expected = String.format("%s-%s", productName, buildType);
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public String getProperty(String name) throws DeviceNotAvailableException {
-                if ("ro.build.flavor".equals(name)) {
-                    return null;
-                } else if ("ro.product.name".equals(name)) {
-                    return productName;
-                } else if ("ro.build.type".equals(name)) {
-                    return buildType;
-                } else {
-                    return null;
-                }
-            }
-        };
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public String getProperty(String name) throws DeviceNotAvailableException {
+                        if ("ro.build.flavor".equals(name)) {
+                            return null;
+                        } else if ("ro.product.name".equals(name)) {
+                            return productName;
+                        } else if ("ro.build.type".equals(name)) {
+                            return buildType;
+                        } else {
+                            return null;
+                        }
+                    }
+                };
         assertEquals(expected, mTestDevice.getBuildFlavor());
     }
 
@@ -1579,20 +1600,21 @@ public class NativeDeviceTest {
     public void testGetBuildFlavor_null() throws DeviceNotAvailableException {
         final String productName = null;
         final String buildType = "buildtype";
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public String getProperty(String name) throws DeviceNotAvailableException {
-                if ("ro.build.flavor".equals(name)) {
-                    return "";
-                } else if ("ro.product.name".equals(name)) {
-                    return productName;
-                } else if ("ro.build.type".equals(name)) {
-                    return buildType;
-                } else {
-                    return null;
-                }
-            }
-        };
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public String getProperty(String name) throws DeviceNotAvailableException {
+                        if ("ro.build.flavor".equals(name)) {
+                            return "";
+                        } else if ("ro.product.name".equals(name)) {
+                            return productName;
+                        } else if ("ro.build.type".equals(name)) {
+                            return buildType;
+                        } else {
+                            return null;
+                        }
+                    }
+                };
         assertNull(mTestDevice.getBuildFlavor());
     }
 
@@ -1600,72 +1622,69 @@ public class NativeDeviceTest {
     @Test
     public void testDoAdbReboot_emulator() throws Exception {
         final String into = "bootloader";
-        mMockIDevice.reboot(into);
-        EasyMock.expectLastCall();
-        EasyMock.replay(mMockIDevice);
+
         mTestDevice.doAdbReboot(RebootMode.REBOOT_INTO_BOOTLOADER, "");
-        EasyMock.verify(mMockIDevice);
+        verify(mMockIDevice, times(1)).reboot(into);
     }
 
     /** Unit test for {@link NativeDevice#doReboot(RebootMode, String)} ()}. */
     @Test
     public void testDoReboot() throws Exception {
-        NativeDevice testDevice = new NativeDevice(mMockIDevice,
-                mMockStateMonitor, mMockDvcMonitor) {
-            @Override
-            public TestDeviceState getDeviceState() {
-                return TestDeviceState.ONLINE;
-            }
-        };
-        mMockIDevice.reboot(null);
-        EasyMock.expectLastCall();
-        EasyMock.expect(mMockStateMonitor.waitForDeviceNotAvailable(EasyMock.anyLong()))
-                .andReturn(true);
-        EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+        NativeDevice testDevice =
+                new NativeDevice(mMockIDevice, mMockStateMonitor, mMockDvcMonitor) {
+                    @Override
+                    public TestDeviceState getDeviceState() {
+                        return TestDeviceState.ONLINE;
+                    }
+                };
+
+        when(mMockStateMonitor.waitForDeviceNotAvailable(Mockito.anyLong())).thenReturn(true);
+
         testDevice.doReboot(RebootMode.REBOOT_FULL, null);
-        EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+        verify(mMockIDevice, times(1)).reboot(null);
     }
 
     /** Unit test for {@link NativeDevice#doReboot(RebootMode, String)} ()}. */
     @Test
     public void testDoReboot_skipped() throws Exception {
-        NativeDevice testDevice = new NativeDevice(mMockIDevice,
-                mMockStateMonitor, mMockDvcMonitor) {
-            @Override
-            public TestDeviceState getDeviceState() {
-                mOptions = new TestDeviceOptions() {
+        NativeDevice testDevice =
+                new NativeDevice(mMockIDevice, mMockStateMonitor, mMockDvcMonitor) {
                     @Override
-                    public boolean shouldDisableReboot() {
-                        return true;
+                    public TestDeviceState getDeviceState() {
+                        mOptions =
+                                new TestDeviceOptions() {
+                                    @Override
+                                    public boolean shouldDisableReboot() {
+                                        return true;
+                                    }
+                                };
+                        return TestDeviceState.ONLINE;
                     }
                 };
-                return TestDeviceState.ONLINE;
-            }
-        };
-        EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+
         testDevice.doReboot(RebootMode.REBOOT_FULL, null);
-        EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
     }
 
     /** Unit test for {@link NativeDevice#doReboot(RebootMode, String)} ()}. */
     @Test
     public void testDoReboot_fastboot() throws Exception {
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public TestDeviceState getDeviceState() {
-                return TestDeviceState.FASTBOOT;
-            }
-            @Override
-            public CommandResult executeFastbootCommand(String... cmdArgs)
-                    throws DeviceNotAvailableException, UnsupportedOperationException {
-                wasCalled = true;
-                return new CommandResult();
-            }
-        };
-        EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public TestDeviceState getDeviceState() {
+                        return TestDeviceState.FASTBOOT;
+                    }
+
+                    @Override
+                    public CommandResult executeFastbootCommand(String... cmdArgs)
+                            throws DeviceNotAvailableException, UnsupportedOperationException {
+                        wasCalled = true;
+                        return new CommandResult();
+                    }
+                };
+
         mTestDevice.doReboot(RebootMode.REBOOT_FULL, null);
         assertTrue(mTestDevice.wasCalled);
-        EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
     }
 
     /** Unit test for {@link NativeDevice#rebootIntoSideload()}}. */
@@ -1679,13 +1698,11 @@ public class NativeDeviceTest {
                     }
                 };
         String into = "sideload";
-        mMockIDevice.reboot(into);
-        EasyMock.expectLastCall();
-        EasyMock.expect(mMockStateMonitor.waitForDeviceInSideload(EasyMock.anyLong()))
-                .andReturn(true);
-        EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+
+        when(mMockStateMonitor.waitForDeviceInSideload(Mockito.anyLong())).thenReturn(true);
+
         testDevice.rebootIntoSideload();
-        EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+        verify(mMockIDevice, times(1)).reboot(into);
     }
 
     /** Unit test for {@link NativeDevice#rebootIntoBootloader()}}. */
@@ -1704,14 +1721,12 @@ public class NativeDeviceTest {
                     }
                 };
         String into = "bootloader";
-        mMockIDevice.reboot(into);
-        EasyMock.expectLastCall();
-        mMockStateMonitor.setFastbootSerialNumber(MOCK_DEVICE_SERIAL);
-        EasyMock.expect(mMockStateMonitor.waitForDeviceBootloader(EasyMock.anyLong()))
-                .andReturn(true);
-        EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+
+        when(mMockStateMonitor.waitForDeviceBootloader(Mockito.anyLong())).thenReturn(true);
+
         testDevice.rebootIntoBootloader();
-        EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+        verify(mMockIDevice, times(1)).reboot(into);
+        verify(mMockStateMonitor).setFastbootSerialNumber(MOCK_DEVICE_SERIAL);
     }
 
     /**
@@ -1741,13 +1756,13 @@ public class NativeDeviceTest {
                         return MOCK_DEVICE_SERIAL;
                     }
                 };
-        mMockStateMonitor.setFastbootSerialNumber(MOCK_DEVICE_SERIAL);
-        EasyMock.expect(mMockStateMonitor.waitForDeviceBootloader(EasyMock.anyLong()))
-                .andReturn(true);
-        EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+
+        when(mMockStateMonitor.waitForDeviceBootloader(Mockito.anyLong())).thenReturn(true);
+
         testDevice.rebootIntoBootloader();
         assertTrue(testDevice.wasCalled);
-        EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+
+        verify(mMockStateMonitor).setFastbootSerialNumber(MOCK_DEVICE_SERIAL);
     }
 
     /** Unit test for {@link NativeDevice#rebootIntoFastbootd()}}. */
@@ -1766,14 +1781,12 @@ public class NativeDeviceTest {
                     }
                 };
         String into = "fastboot";
-        mMockIDevice.reboot(into);
-        EasyMock.expectLastCall();
-        mMockStateMonitor.setFastbootSerialNumber(MOCK_DEVICE_SERIAL);
-        EasyMock.expect(mMockStateMonitor.waitForDeviceBootloader(EasyMock.anyLong()))
-                .andReturn(true);
-        EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+
+        when(mMockStateMonitor.waitForDeviceBootloader(Mockito.anyLong())).thenReturn(true);
+
         testDevice.rebootIntoFastbootd();
-        EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+        verify(mMockIDevice, times(1)).reboot(into);
+        verify(mMockStateMonitor).setFastbootSerialNumber(MOCK_DEVICE_SERIAL);
     }
 
     /**
@@ -1803,136 +1816,153 @@ public class NativeDeviceTest {
                         return MOCK_DEVICE_SERIAL;
                     }
                 };
-        mMockStateMonitor.setFastbootSerialNumber(MOCK_DEVICE_SERIAL);
-        EasyMock.expect(mMockStateMonitor.waitForDeviceBootloader(EasyMock.anyLong()))
-                .andReturn(true);
-        EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+
+        when(mMockStateMonitor.waitForDeviceBootloader(Mockito.anyLong())).thenReturn(true);
+
         testDevice.rebootIntoFastbootd();
         assertTrue(testDevice.wasCalled);
-        EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+
+        verify(mMockStateMonitor).setFastbootSerialNumber(MOCK_DEVICE_SERIAL);
     }
 
     /** Unit test for {@link NativeDevice#unlockDevice()} already decrypted. */
     @Test
     public void testUnlockDevice_skipping() throws Exception {
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public boolean isEncryptionSupported() throws DeviceNotAvailableException {
-                return true;
-            }
-            @Override
-            public boolean isDeviceEncrypted() throws DeviceNotAvailableException {
-                return false;
-            }
-        };
-        EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public boolean isEncryptionSupported() throws DeviceNotAvailableException {
+                        return true;
+                    }
+
+                    @Override
+                    public boolean isDeviceEncrypted() throws DeviceNotAvailableException {
+                        return false;
+                    }
+                };
+
         assertTrue(mTestDevice.unlockDevice());
-        EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
     }
 
     /** Unit test for {@link NativeDevice#unlockDevice()}. */
     @Test
     public void testUnlockDevice() throws Exception {
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public boolean isEncryptionSupported() throws DeviceNotAvailableException {
-                return true;
-            }
-            @Override
-            public boolean isDeviceEncrypted() throws DeviceNotAvailableException {
-                return true;
-            }
-            @Override
-            public boolean enableAdbRoot() throws DeviceNotAvailableException {
-                return true;
-            }
-            @Override
-            public String executeShellCommand(String command) throws DeviceNotAvailableException {
-                return "200 checkpw -1";
-            }
-        };
-        EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public boolean isEncryptionSupported() throws DeviceNotAvailableException {
+                        return true;
+                    }
+
+                    @Override
+                    public boolean isDeviceEncrypted() throws DeviceNotAvailableException {
+                        return true;
+                    }
+
+                    @Override
+                    public boolean enableAdbRoot() throws DeviceNotAvailableException {
+                        return true;
+                    }
+
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        return "200 checkpw -1";
+                    }
+                };
+
         assertTrue(mTestDevice.unlockDevice());
-        EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
     }
 
     /** Unit test for {@link NativeDevice#unlockDevice()}. */
     @Test
     public void testUnlockDevice_garbageOutput() throws Exception {
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public boolean isEncryptionSupported() throws DeviceNotAvailableException {
-                return true;
-            }
-            @Override
-            public boolean isDeviceEncrypted() throws DeviceNotAvailableException {
-                return true;
-            }
-            @Override
-            public boolean enableAdbRoot() throws DeviceNotAvailableException {
-                return true;
-            }
-            @Override
-            public String executeShellCommand(String command) throws DeviceNotAvailableException {
-                return "gdsgdgggsgdg not working";
-            }
-        };
-        EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public boolean isEncryptionSupported() throws DeviceNotAvailableException {
+                        return true;
+                    }
+
+                    @Override
+                    public boolean isDeviceEncrypted() throws DeviceNotAvailableException {
+                        return true;
+                    }
+
+                    @Override
+                    public boolean enableAdbRoot() throws DeviceNotAvailableException {
+                        return true;
+                    }
+
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        return "gdsgdgggsgdg not working";
+                    }
+                };
+
         assertFalse(mTestDevice.unlockDevice());
-        EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
     }
 
     /** Unit test for {@link NativeDevice#unlockDevice()}. */
     @Test
     public void testUnlockDevice_emptyOutput() throws Exception {
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public boolean isEncryptionSupported() throws DeviceNotAvailableException {
-                return true;
-            }
-            @Override
-            public boolean isDeviceEncrypted() throws DeviceNotAvailableException {
-                return true;
-            }
-            @Override
-            public boolean enableAdbRoot() throws DeviceNotAvailableException {
-                return true;
-            }
-            @Override
-            public String executeShellCommand(String command) throws DeviceNotAvailableException {
-                return "";
-            }
-        };
-        EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public boolean isEncryptionSupported() throws DeviceNotAvailableException {
+                        return true;
+                    }
+
+                    @Override
+                    public boolean isDeviceEncrypted() throws DeviceNotAvailableException {
+                        return true;
+                    }
+
+                    @Override
+                    public boolean enableAdbRoot() throws DeviceNotAvailableException {
+                        return true;
+                    }
+
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        return "";
+                    }
+                };
+
         assertFalse(mTestDevice.unlockDevice());
-        EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
     }
 
     /** Unit test for {@link NativeDevice#unlockDevice()}. */
     @Test
     public void testUnlockDevice_goodOutputPasswordEnteredCorrectly() throws Exception {
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public boolean isEncryptionSupported() throws DeviceNotAvailableException {
-                return true;
-            }
-            @Override
-            public boolean isDeviceEncrypted() throws DeviceNotAvailableException {
-                return true;
-            }
-            @Override
-            public boolean enableAdbRoot() throws DeviceNotAvailableException {
-                return true;
-            }
-            @Override
-            public String executeShellCommand(String command) throws DeviceNotAvailableException {
-                return "200 encryption 0";
-            }
-        };
-        EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable()).andReturn(mMockIDevice);
-        EasyMock.replay(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public boolean isEncryptionSupported() throws DeviceNotAvailableException {
+                        return true;
+                    }
+
+                    @Override
+                    public boolean isDeviceEncrypted() throws DeviceNotAvailableException {
+                        return true;
+                    }
+
+                    @Override
+                    public boolean enableAdbRoot() throws DeviceNotAvailableException {
+                        return true;
+                    }
+
+                    @Override
+                    public String executeShellCommand(String command)
+                            throws DeviceNotAvailableException {
+                        return "200 encryption 0";
+                    }
+                };
+        when(mMockStateMonitor.waitForDeviceAvailable()).thenReturn(mMockIDevice);
+
         assertTrue(mTestDevice.unlockDevice());
-        EasyMock.verify(mMockIDevice, mMockStateMonitor, mMockDvcMonitor);
     }
 
     /**
@@ -1941,8 +1971,9 @@ public class NativeDeviceTest {
      */
     @Test
     public void testParseDfOutput_mountWithNumber() {
-        String dfOutput = "Filesystem     1K-blocks   Used Available Use% Mounted on\n" +
-                "/dev/fuse       31154688 100576  31054112   1% /storage/3134-3433";
+        String dfOutput =
+                "Filesystem     1K-blocks   Used Available Use% Mounted on\n"
+                        + "/dev/fuse       31154688 100576  31054112   1% /storage/3134-3433";
         Long res = mTestDevice.parseFreeSpaceFromModernOutput(dfOutput);
         assertNotNull(res);
         assertEquals(31054112L, res.longValue());
@@ -1954,8 +1985,9 @@ public class NativeDeviceTest {
      */
     @Test
     public void testParseDfOutput() {
-        String dfOutput = "Filesystem     1K-blocks   Used Available Use% Mounted on\n" +
-                "/dev/fuse       31154688 100576  31054112   1% /storage/sdcard58";
+        String dfOutput =
+                "Filesystem     1K-blocks   Used Available Use% Mounted on\n"
+                        + "/dev/fuse       31154688 100576  31054112   1% /storage/sdcard58";
         Long res = mTestDevice.parseFreeSpaceFromModernOutput(dfOutput);
         assertNotNull(res);
         assertEquals(31054112L, res.longValue());
@@ -1967,8 +1999,9 @@ public class NativeDeviceTest {
      */
     @Test
     public void testParseDfOutput_wrongMount() {
-        String dfOutput = "Filesystem     1K-blocks   Used Available Use% Mounted on\n" +
-                "/dev/fuse       31154688 100576  31054112   1% \test\\wrongpath";
+        String dfOutput =
+                "Filesystem     1K-blocks   Used Available Use% Mounted on\n"
+                        + "/dev/fuse       31154688 100576  31054112   1% \test\\wrongpath";
         Long res = mTestDevice.parseFreeSpaceFromModernOutput(dfOutput);
         assertNull(res);
     }
@@ -1979,8 +2012,9 @@ public class NativeDeviceTest {
      */
     @Test
     public void testParseDfOutput_filesystemWithNumber() {
-        String dfOutput = "Filesystem     1K-blocks   Used Available Use% Mounted on\n" +
-                "/dev/dm-1       31154688 100576  31054112   1% /";
+        String dfOutput =
+                "Filesystem     1K-blocks   Used Available Use% Mounted on\n"
+                        + "/dev/dm-1       31154688 100576  31054112   1% /";
         Long res = mTestDevice.parseFreeSpaceFromModernOutput(dfOutput);
         assertNotNull(res);
         assertEquals(31054112L, res.longValue());
@@ -2109,12 +2143,13 @@ public class NativeDeviceTest {
     @Test
     public void testGetDeviceDescriptor() {
         final String serial = "Test";
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public IDevice getIDevice() {
-                return new StubDevice(serial);
-            }
-        };
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public IDevice getIDevice() {
+                        return new StubDevice(serial);
+                    }
+                };
         DeviceDescriptor desc = mTestDevice.getDeviceDescriptor();
         assertTrue(desc.isStubDevice());
         assertEquals(serial, desc.getSerial());
@@ -2129,12 +2164,12 @@ public class NativeDeviceTest {
     public void testPullFile() throws Exception {
         final String fakeRemotePath = "/test/";
         SyncService s = Mockito.mock(SyncService.class);
-        EasyMock.expect(mMockIDevice.getSyncService()).andReturn(s);
-        EasyMock.replay(mMockIDevice);
+        when(mMockIDevice.getSyncService()).thenReturn(s);
+
         File tmpFile = FileUtil.createTempFile("pull", ".test");
         try {
             boolean res = mTestDevice.pullFile(fakeRemotePath, tmpFile);
-            EasyMock.verify(mMockIDevice);
+
             Mockito.verify(s)
                     .pullFile(
                             Mockito.eq(fakeRemotePath),
@@ -2155,8 +2190,8 @@ public class NativeDeviceTest {
     public void testPullFile_fails() throws Exception {
         final String fakeRemotePath = "/test/";
         SyncService s = Mockito.mock(SyncService.class);
-        EasyMock.expect(mMockIDevice.getSyncService()).andReturn(s);
-        EasyMock.replay(mMockIDevice);
+        when(mMockIDevice.getSyncService()).thenReturn(s);
+
         File tmpFile = FileUtil.createTempFile("pull", ".test");
         doThrow(new SyncException(SyncError.CANCELED))
                 .when(s)
@@ -2166,7 +2201,7 @@ public class NativeDeviceTest {
                         Mockito.any(ISyncProgressMonitor.class));
         try {
             boolean res = mTestDevice.pullFile(fakeRemotePath, tmpFile);
-            EasyMock.verify(mMockIDevice);
+
             Mockito.verify(s)
                     .pullFile(
                             Mockito.eq(fakeRemotePath),
@@ -2185,13 +2220,14 @@ public class NativeDeviceTest {
     @Test
     public void testPullFile_returnFileSuccess() throws Exception {
         final String fakeRemotePath = "/test/";
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public boolean pullFile(String remoteFilePath, File localFile)
-                    throws DeviceNotAvailableException {
-                return true;
-            }
-        };
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public boolean pullFile(String remoteFilePath, File localFile)
+                            throws DeviceNotAvailableException {
+                        return true;
+                    }
+                };
         File res = mTestDevice.pullFile(fakeRemotePath);
         try {
             assertNotNull(res);
@@ -2206,13 +2242,14 @@ public class NativeDeviceTest {
     @Test
     public void testPullFile_returnNull() throws Exception {
         final String fakeRemotePath = "/test/";
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public boolean pullFile(String remoteFilePath, File localFile)
-                    throws DeviceNotAvailableException {
-                return false;
-            }
-        };
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public boolean pullFile(String remoteFilePath, File localFile)
+                            throws DeviceNotAvailableException {
+                        return false;
+                    }
+                };
         File res = mTestDevice.pullFile(fakeRemotePath);
         try {
             assertNull(res);
@@ -2228,13 +2265,14 @@ public class NativeDeviceTest {
     @Test
     public void testPullFileContents_returnFileSuccess() throws Exception {
         final String fakeRemotePath = "/test/";
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public boolean pullFile(String remoteFilePath, File localFile)
-                    throws DeviceNotAvailableException {
-                return true;
-            }
-        };
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public boolean pullFile(String remoteFilePath, File localFile)
+                            throws DeviceNotAvailableException {
+                        return true;
+                    }
+                };
         String res = mTestDevice.pullFileContents(fakeRemotePath);
         assertNotNull(res);
     }
@@ -2246,13 +2284,14 @@ public class NativeDeviceTest {
     @Test
     public void testPullFileContents_returnNull() throws Exception {
         final String fakeRemotePath = "/test/";
-        mTestDevice = new TestableAndroidNativeDevice() {
-            @Override
-            public boolean pullFile(String remoteFilePath, File localFile)
-                    throws DeviceNotAvailableException {
-                return false;
-            }
-        };
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    public boolean pullFile(String remoteFilePath, File localFile)
+                            throws DeviceNotAvailableException {
+                        return false;
+                    }
+                };
         String res = mTestDevice.pullFileContents(fakeRemotePath);
         assertNull(res);
     }
@@ -2265,12 +2304,12 @@ public class NativeDeviceTest {
     public void testPushFile() throws Exception {
         final String fakeRemotePath = "/test/";
         SyncService s = Mockito.mock(SyncService.class);
-        EasyMock.expect(mMockIDevice.getSyncService()).andReturn(s);
-        EasyMock.replay(mMockIDevice);
+        when(mMockIDevice.getSyncService()).thenReturn(s);
+
         File tmpFile = FileUtil.createTempFile("push", ".test");
         try {
             boolean res = mTestDevice.pushFile(tmpFile, fakeRemotePath);
-            EasyMock.verify(mMockIDevice);
+
             Mockito.verify(s)
                     .pushFile(
                             Mockito.eq(tmpFile.getAbsolutePath()),
@@ -2291,8 +2330,8 @@ public class NativeDeviceTest {
     public void testPushFile_fails() throws Exception {
         final String fakeRemotePath = "/test/";
         SyncService s = Mockito.mock(SyncService.class);
-        EasyMock.expect(mMockIDevice.getSyncService()).andReturn(s);
-        EasyMock.replay(mMockIDevice);
+        when(mMockIDevice.getSyncService()).thenReturn(s);
+
         File tmpFile = FileUtil.createTempFile("push", ".test");
         doThrow(new SyncException(SyncError.CANCELED))
                 .when(s)
@@ -2302,7 +2341,7 @@ public class NativeDeviceTest {
                         Mockito.any(ISyncProgressMonitor.class));
         try {
             boolean res = mTestDevice.pushFile(tmpFile, fakeRemotePath);
-            EasyMock.verify(mMockIDevice);
+
             Mockito.verify(s)
                     .pushFile(
                             Mockito.eq(tmpFile.getAbsolutePath()),
@@ -2321,9 +2360,8 @@ public class NativeDeviceTest {
         final String fakePid = "914";
         TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
         doReturn(fakePid).when(spy).executeShellCommand("pidof system_server");
-        EasyMock.replay(mMockIDevice);
+
         assertEquals(fakePid, spy.getProcessPid("system_server"));
-        EasyMock.verify(mMockIDevice);
     }
 
     /** Test get Process pid by process name with adb shell return of extra new line */
@@ -2332,9 +2370,8 @@ public class NativeDeviceTest {
         final String fakePid = "914";
         TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
         doReturn(fakePid + "\n").when(spy).executeShellCommand("pidof system_server");
-        EasyMock.replay(mMockIDevice);
+
         assertEquals(fakePid, spy.getProcessPid("system_server"));
-        EasyMock.verify(mMockIDevice);
     }
 
     /** Test get Process pid return null with invalid shell command output */
@@ -2342,9 +2379,8 @@ public class NativeDeviceTest {
     public void testGetProcessPidInvalidOutput() throws Exception {
         TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
         doReturn("invalid output").when(spy).executeShellCommand("pidof system_server");
-        EasyMock.replay(mMockIDevice);
+
         assertNull(spy.getProcessPid("system_server"));
-        EasyMock.verify(mMockIDevice);
     }
 
     /** Test get Process pid return null with shell command empty output */
@@ -2352,9 +2388,8 @@ public class NativeDeviceTest {
     public void testGetProcessPidEmptyOutput() throws Exception {
         TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
         doReturn("").when(spy).executeShellCommand("pidof system_server");
-        EasyMock.replay(mMockIDevice);
+
         assertNull(spy.getProcessPid("system_server"));
-        EasyMock.verify(mMockIDevice);
     }
 
     /** Test get ProcessInfo by process name */
@@ -2367,12 +2402,11 @@ public class NativeDeviceTest {
         doReturn("12:07:32").when(spy).executeShellCommand("ps -p " + fakePid + " -o stime=");
         doReturn(fakeCreationTime).when(spy).executeShellCommand("date -d\"12:07:32\" +%s");
         doReturn("system").when(spy).executeShellCommand("stat -c%U /proc/" + fakePid);
-        EasyMock.replay(mMockIDevice);
+
         assertEquals(Integer.parseInt(fakePid), spy.getProcessByName("system_server").getPid());
         assertEquals(
                 Long.parseLong(fakeCreationTime),
                 spy.getProcessByName("system_server").getStartTime());
-        EasyMock.verify(mMockIDevice);
     }
 
     /** Test get ProcessInfo by process name return null for invalid process */
@@ -2380,9 +2414,8 @@ public class NativeDeviceTest {
     public void testGetProcessByNameInvalidProcess() throws Exception {
         TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
         doReturn("").when(spy).executeShellCommand("pidof system_server");
-        EasyMock.replay(mMockIDevice);
+
         assertNull(spy.getProcessByName("system_server"));
-        EasyMock.verify(mMockIDevice);
     }
 
     /** Test get ProcessInfo by process name return null for invalid process */
@@ -2391,93 +2424,83 @@ public class NativeDeviceTest {
         TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
         doReturn("120").when(spy).executeShellCommand("pidof system_server");
         doReturn("").when(spy).executeShellCommand("ps -p 120 -o stime=");
-        EasyMock.replay(mMockIDevice);
+
         assertNull(spy.getProcessByName("system_server"));
-        EasyMock.verify(mMockIDevice);
     }
 
     @Test
     public void testGetIntProperty() throws Exception {
         TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
         doReturn("123").when(spy).getProperty("ro.test.prop");
-        EasyMock.replay(mMockIDevice);
+
         assertEquals(123, spy.getIntProperty("ro.test.prop", -1));
-        EasyMock.verify(mMockIDevice);
     }
 
     @Test
     public void testGetIntPropertyNotAnIntegerPropertyReturnsDefaultValue() throws Exception {
         TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
         doReturn("not-an-int").when(spy).getProperty("ro.test.prop");
-        EasyMock.replay(mMockIDevice);
+
         assertEquals(-1, spy.getIntProperty("ro.test.prop", -1));
-        EasyMock.verify(mMockIDevice);
     }
 
     @Test
     public void testGetIntPropertyUnknownPropertyReturnsDefaultValue() throws Exception {
         TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
         doReturn(null).when(spy).getProperty("ro.test.prop");
-        EasyMock.replay(mMockIDevice);
+
         assertEquals(-1, spy.getIntProperty("ro.test.prop", -1));
-        EasyMock.verify(mMockIDevice);
     }
 
     @Test
     public void testGetBooleanPropertyReturnsTrue() throws Exception {
         TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
         doReturn("true").when(spy).getProperty("ro.test.prop");
-        EasyMock.replay(mMockIDevice);
+
         assertTrue(spy.getBooleanProperty("ro.test.prop", false));
-        EasyMock.verify(mMockIDevice);
     }
 
     @Test
     public void testGetBooleanPropertyReturnsFalse() throws Exception {
         TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
         doReturn("no").when(spy).getProperty("ro.test.prop");
-        EasyMock.replay(mMockIDevice);
+
         assertFalse(spy.getBooleanProperty("ro.test.prop", true));
-        EasyMock.verify(mMockIDevice);
     }
 
     @Test
     public void testGetBooleanPropertyUnknownPropertyReturnsDefaultValue() throws Exception {
         TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
         doReturn(null).when(spy).getProperty("ro.test.prop");
-        EasyMock.replay(mMockIDevice);
+
         assertTrue(spy.getBooleanProperty("ro.test.prop", true));
-        EasyMock.verify(mMockIDevice);
     }
 
     @Test
     public void testGetBooleanPropertyInvalidValueReturnsDefaultValue() throws Exception {
         TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
         doReturn("123").when(spy).getProperty("ro.test.prop");
-        EasyMock.replay(mMockIDevice);
+
         assertTrue(spy.getBooleanProperty("ro.test.prop", true));
-        EasyMock.verify(mMockIDevice);
     }
 
     @Test
     public void testGetProperty_noOutput() throws Exception {
         CommandResult res = new CommandResult(CommandStatus.SUCCESS);
         res.setStdout("\n");
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                100,
-                                (OutputStream) null,
-                                null,
-                                "adb",
-                                "-s",
-                                "serial",
-                                "shell",
-                                "getprop",
-                                "test"))
-                .andReturn(res);
-        EasyMock.replay(mMockRunUtil, mMockIDevice);
+        when(mMockRunUtil.runTimedCmd(
+                        100,
+                        (OutputStream) null,
+                        null,
+                        "adb",
+                        "-s",
+                        "serial",
+                        "shell",
+                        "getprop",
+                        "test"))
+                .thenReturn(res);
+
         assertNull(mTestDevice.getProperty("test"));
-        EasyMock.verify(mMockRunUtil, mMockIDevice);
     }
 
     /** Test get boot history */
@@ -2496,9 +2519,8 @@ public class NativeDeviceTest {
         history.put(1556238008L, "reboot");
         history.put(1556237796L, "reboot");
         history.put(1556237725L, "reboot");
-        EasyMock.replay(mMockIDevice);
+
         assertEquals(history, spy.getBootHistory());
-        EasyMock.verify(mMockIDevice);
     }
 
     /** Test get empty boot history */
@@ -2506,9 +2528,8 @@ public class NativeDeviceTest {
     public void testGetBootHistoryEmpty() throws Exception {
         TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
         doReturn("").when(spy).getProperty(DeviceProperties.BOOT_REASON_HISTORY);
-        EasyMock.replay(mMockIDevice);
+
         assertTrue(spy.getBootHistory().isEmpty());
-        EasyMock.verify(mMockIDevice);
     }
 
     /** Test get invalid boot history */
@@ -2516,9 +2537,8 @@ public class NativeDeviceTest {
     public void testGetBootHistoryInvalid() throws Exception {
         TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
         doReturn("invalid output").when(spy).getProperty(DeviceProperties.BOOT_REASON_HISTORY);
-        EasyMock.replay(mMockIDevice);
+
         assertTrue(spy.getBootHistory().isEmpty());
-        EasyMock.verify(mMockIDevice);
     }
 
     /** Test get boot history since */
@@ -2534,9 +2554,8 @@ public class NativeDeviceTest {
                 .getProperty(DeviceProperties.BOOT_REASON_HISTORY);
         Map<Long, String> history = new LinkedHashMap<Long, String>();
         history.put(1556587278L, "kernel_panic");
-        EasyMock.replay(mMockIDevice);
+
         assertEquals(history, spy.getBootHistorySince(1556238009L, TimeUnit.SECONDS));
-        EasyMock.verify(mMockIDevice);
     }
 
     /** Test {@link NativeDevice#getBootHistorySince(long, TimeUnit)} on an edge condition. */
@@ -2548,10 +2567,9 @@ public class NativeDeviceTest {
                 .getProperty(DeviceProperties.BOOT_REASON_HISTORY);
         Map<Long, String> history = new LinkedHashMap<Long, String>();
         history.put(1579678463L, "reboot");
-        EasyMock.replay(mMockIDevice);
+
         // For the same value we should expect it to be part of the reboot.
         assertEquals(history, spy.getBootHistorySince(1579678463, TimeUnit.SECONDS));
-        EasyMock.verify(mMockIDevice);
     }
 
     /** Test get boot history since */
@@ -2567,9 +2585,8 @@ public class NativeDeviceTest {
                 .getProperty(DeviceProperties.BOOT_REASON_HISTORY);
         Map<Long, String> history = new LinkedHashMap<Long, String>();
         history.put(1556587278L, "kernel_panic");
-        EasyMock.replay(mMockIDevice);
+
         assertEquals(history, spy.getBootHistorySince(1556238009000L, TimeUnit.MILLISECONDS));
-        EasyMock.verify(mMockIDevice);
     }
 
     /** Test deviceSoftRestartedSince */
@@ -2587,14 +2604,13 @@ public class NativeDeviceTest {
                                 + "        reboot,,1556237725\n")
                 .when(spy)
                 .getProperty(DeviceProperties.BOOT_REASON_HISTORY);
-        EasyMock.replay(mMockIDevice);
+
         assertFalse(spy.deviceSoftRestartedSince(1559091923L, TimeUnit.SECONDS));
         assertFalse(spy.deviceSoftRestartedSince(1559091923000L, TimeUnit.MILLISECONDS));
         assertFalse(spy.deviceSoftRestartedSince(1559091922L, TimeUnit.SECONDS));
         assertFalse(spy.deviceSoftRestartedSince(1559091922000L, TimeUnit.MILLISECONDS));
         assertTrue(spy.deviceSoftRestartedSince(1559091920L, TimeUnit.SECONDS));
         assertTrue(spy.deviceSoftRestartedSince(1559091920000L, TimeUnit.MILLISECONDS));
-        EasyMock.verify(mMockIDevice);
     }
 
     /** Test deviceSoftRestartedSince return true with system_server stopped */
@@ -2620,11 +2636,11 @@ public class NativeDeviceTest {
                                 + "        reboot,,1556237725\n")
                 .when(spy)
                 .getProperty(DeviceProperties.BOOT_REASON_HISTORY);
-        EasyMock.replay(mMockIDevice);
+
         try {
             spy.deviceSoftRestartedSince(1559091922L, TimeUnit.SECONDS);
         } catch (RuntimeException e) {
-            //expected
+            // expected
             return;
         }
         fail("RuntimeException is expected");
@@ -2645,9 +2661,8 @@ public class NativeDeviceTest {
                                 + "        reboot,,1556237725\n")
                 .when(spy)
                 .getProperty(DeviceProperties.BOOT_REASON_HISTORY);
-        EasyMock.replay(mMockIDevice);
+
         assertFalse(spy.deviceSoftRestartedSince(1559091921L, TimeUnit.SECONDS));
-        EasyMock.verify(mMockIDevice);
     }
 
     /** Test deviceSoftRestartedSince return false with normal reboot */
@@ -2665,9 +2680,8 @@ public class NativeDeviceTest {
                                 + "        reboot,,1556237725\n")
                 .when(spy)
                 .getProperty(DeviceProperties.BOOT_REASON_HISTORY);
-        EasyMock.replay(mMockIDevice);
+
         assertTrue(spy.deviceSoftRestartedSince(1559091921L, TimeUnit.SECONDS));
-        EasyMock.verify(mMockIDevice);
     }
 
     /** Test deviceSoftRestarted given the previous system_server {@link ProcessInfo} */
@@ -2687,10 +2701,9 @@ public class NativeDeviceTest {
                                 + "        reboot,,1556237725\n")
                 .when(spy)
                 .getProperty(DeviceProperties.BOOT_REASON_HISTORY);
-        EasyMock.replay(mMockIDevice);
+
         assertTrue(spy.deviceSoftRestarted(prev1));
         assertFalse(spy.deviceSoftRestarted(prev2));
-        EasyMock.verify(mMockIDevice);
     }
 
     /** Test deviceSoftRestarted return true with system_server stopped */
@@ -2718,11 +2731,11 @@ public class NativeDeviceTest {
                                 + "        reboot,,1556237725\n")
                 .when(spy)
                 .getProperty(DeviceProperties.BOOT_REASON_HISTORY);
-        EasyMock.replay(mMockIDevice);
+
         try {
             spy.deviceSoftRestarted(new ProcessInfo("system", 123, "system_server", 1559000000L));
         } catch (RuntimeException e) {
-            //expected
+            // expected
             return;
         }
         fail("Abnormal reboot is detected, RuntimeException is expected");
@@ -2743,11 +2756,10 @@ public class NativeDeviceTest {
                                 + "        reboot,,1556237725\n")
                 .when(spy)
                 .getProperty(DeviceProperties.BOOT_REASON_HISTORY);
-        EasyMock.replay(mMockIDevice);
+
         assertFalse(
                 spy.deviceSoftRestarted(
                         new ProcessInfo("system", 123, "system_server", 1559000000L)));
-        EasyMock.verify(mMockIDevice);
     }
 
     /** Test deviceSoftRestarted return true if system_server restarted after normal reboot */
@@ -2765,11 +2777,10 @@ public class NativeDeviceTest {
                                 + "        reboot,,1556237725\n")
                 .when(spy)
                 .getProperty(DeviceProperties.BOOT_REASON_HISTORY);
-        EasyMock.replay(mMockIDevice);
+
         assertTrue(
                 spy.deviceSoftRestarted(
                         new ProcessInfo("system", 123, "system_server", 1559000000L)));
-        EasyMock.verify(mMockIDevice);
     }
 
     /** Test validating valid MAC addresses */
@@ -2792,19 +2803,40 @@ public class NativeDeviceTest {
     @Test
     public void testGetMacAddress() throws Exception {
         String address = "58:a2:b5:7d:49:24";
-        IDevice device = new StubDevice(MOCK_DEVICE_SERIAL) {
-            @Override
-            public void executeShellCommand(String command, IShellOutputReceiver receiver)
-                    throws TimeoutException, AdbCommandRejectedException,
-                    ShellCommandUnresponsiveException, IOException {
-                receiver.addOutput(address.getBytes(), 0, address.length());
-            }
-        };
-        mMockIDevice.executeShellCommand(EasyMock.anyObject(), EasyMock.anyObject());
-        EasyMock.expectLastCall().andDelegateTo(device).anyTimes();
-        EasyMock.replay(mMockIDevice);
+        IDevice device =
+                new StubDevice(MOCK_DEVICE_SERIAL) {
+                    @Override
+                    public void executeShellCommand(String command, IShellOutputReceiver receiver)
+                            throws TimeoutException, AdbCommandRejectedException,
+                                    ShellCommandUnresponsiveException, IOException {
+                        receiver.addOutput(address.getBytes(), 0, address.length());
+                    }
+                };
+        mMockIDevice = mock(IDevice.class, AdditionalAnswers.delegatesTo(device));
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    IHostOptions getHostOptions() {
+                        return new HostOptions() {
+                            @Override
+                            public String getNetworkInterface() {
+                                return "en0";
+                            }
+                        };
+                    }
+
+                    @Override
+                    public boolean isAdbTcp() {
+                        return true;
+                    }
+
+                    @Override
+                    public boolean isAdbRoot() throws DeviceNotAvailableException {
+                        return true;
+                    }
+                };
+
         assertEquals(address, mTestDevice.getMacAddress());
-        EasyMock.verify(mMockIDevice);
     }
 
     /** Test querying a device MAC address when the device is in fastboot */
@@ -2818,33 +2850,55 @@ public class NativeDeviceTest {
     /** Test querying a device MAC address but failing to do so */
     @Test
     public void testGetMacAddress_failure() throws Exception {
-        IDevice device = new StubDevice(MOCK_DEVICE_SERIAL) {
-            @Override
-            public void executeShellCommand(String command, IShellOutputReceiver receiver)
-                    throws TimeoutException, AdbCommandRejectedException,
-                    ShellCommandUnresponsiveException, IOException {
-                throw new IOException();
-            }
-        };
-        mMockIDevice.executeShellCommand(EasyMock.anyObject(), EasyMock.anyObject());
-        EasyMock.expectLastCall().andDelegateTo(device).anyTimes();
-        EasyMock.replay(mMockIDevice);
+        IDevice device =
+                new StubDevice(MOCK_DEVICE_SERIAL) {
+                    @Override
+                    public void executeShellCommand(String command, IShellOutputReceiver receiver)
+                            throws TimeoutException, AdbCommandRejectedException,
+                                    ShellCommandUnresponsiveException, IOException {
+                        throw new IOException();
+                    }
+                };
+        mMockIDevice = mock(IDevice.class, AdditionalAnswers.delegatesTo(device));
+        mTestDevice =
+                new TestableAndroidNativeDevice() {
+                    @Override
+                    IHostOptions getHostOptions() {
+                        return new HostOptions() {
+                            @Override
+                            public String getNetworkInterface() {
+                                return "en0";
+                            }
+                        };
+                    }
+
+                    @Override
+                    public boolean isAdbTcp() {
+                        return true;
+                    }
+
+                    @Override
+                    public boolean isAdbRoot() throws DeviceNotAvailableException {
+                        return true;
+                    }
+                };
+
         assertNull(mTestDevice.getMacAddress());
-        EasyMock.verify(mMockIDevice);
     }
 
     /** Test querying a device MAC address for a stub device */
     @Test
     public void testGetMacAddress_stubDevice() throws Exception {
         String address = "58:a2:b5:7d:49:24";
-        IDevice device = new StubDevice(MOCK_DEVICE_SERIAL) {
-            @Override
-            public void executeShellCommand(String command, IShellOutputReceiver receiver)
-                    throws TimeoutException, AdbCommandRejectedException,
-                    ShellCommandUnresponsiveException, IOException {
-                receiver.addOutput(address.getBytes(), 0, address.length());
-            }
-        };
+        IDevice device =
+                new StubDevice(MOCK_DEVICE_SERIAL) {
+                    @Override
+                    public void executeShellCommand(String command, IShellOutputReceiver receiver)
+                            throws TimeoutException, AdbCommandRejectedException,
+                                    ShellCommandUnresponsiveException, IOException {
+                        receiver.addOutput(address.getBytes(), 0, address.length());
+                    }
+                };
         mTestDevice =
                 new TestableAndroidNativeDevice() {
                     @Override
@@ -2938,21 +2992,20 @@ public class NativeDeviceTest {
         SimpleDateFormat format = new SimpleDateFormat("MM-dd HH:mm:ss.mmm");
         String dateFormatted = format.format(new Date(date));
 
-        mMockIDevice.executeShellCommand(
-                EasyMock.eq(String.format("logcat -v threadtime -t '%s'", dateFormatted)),
-                EasyMock.anyObject());
-        EasyMock.replay(mMockIDevice);
         InputStreamSource res = mTestDevice.getLogcatSince(date);
         StreamUtil.close(res);
-        EasyMock.verify(mMockIDevice);
+
+        verify(mMockIDevice)
+                .executeShellCommand(
+                        Mockito.eq(String.format("logcat -v threadtime -t '%s'", dateFormatted)),
+                        Mockito.any());
     }
 
     @Test
     public void testGetProductVariant() throws Exception {
         setGetPropertyExpectation(DeviceProperties.VARIANT, "variant");
-        EasyMock.replay(mMockIDevice);
+
         assertEquals("variant", mTestDevice.getProductVariant());
-        EasyMock.verify(mMockIDevice);
     }
 
     @Test
@@ -2997,14 +3050,11 @@ public class NativeDeviceTest {
         OutputStream stdout = null, stderr = null;
         CommandResult res = new CommandResult();
         res.setStatus(CommandStatus.SUCCESS);
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                100, stdout, stderr, "adb", "-s", "serial", "shell", "some",
-                                "command"))
-                .andReturn(res);
-        EasyMock.replay(mMockRunUtil, mMockIDevice);
+        when(mMockRunUtil.runTimedCmd(
+                        100, stdout, stderr, "adb", "-s", "serial", "shell", "some", "command"))
+                .thenReturn(res);
+
         assertNotNull(mTestDevice.executeShellV2Command("some command"));
-        EasyMock.verify(mMockRunUtil, mMockIDevice);
     }
 
     /**
@@ -3017,20 +3067,19 @@ public class NativeDeviceTest {
         CommandResult res = new CommandResult();
         res.setStatus(CommandStatus.TIMED_OUT);
         res.setStderr("timed out");
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                200L, stdout, stderr, "adb", "-s", "serial", "shell", "some",
-                                "command"))
-                .andReturn(res)
-                .times(2);
-        EasyMock.replay(mMockRunUtil, mMockIDevice);
+        when(mMockRunUtil.runTimedCmd(
+                        200L, stdout, stderr, "adb", "-s", "serial", "shell", "some", "command"))
+                .thenReturn(res);
+
         try {
             mTestDevice.executeShellV2Command("some command", 200L, TimeUnit.MILLISECONDS, 1);
             fail("Should have thrown an exception.");
         } catch (DeviceUnresponsiveException e) {
             // expected
         }
-        EasyMock.verify(mMockRunUtil, mMockIDevice);
+        verify(mMockRunUtil, times(2))
+                .runTimedCmd(
+                        200L, stdout, stderr, "adb", "-s", "serial", "shell", "some", "command");
     }
 
     /**
@@ -3043,19 +3092,18 @@ public class NativeDeviceTest {
         CommandResult res = new CommandResult();
         res.setStatus(CommandStatus.FAILED);
         res.setStderr("timed out");
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                200L, stdout, stderr, "adb", "-s", "serial", "shell", "some",
-                                "command"))
-                .andReturn(res)
-                .times(1);
-        EasyMock.replay(mMockRunUtil, mMockIDevice);
+        when(mMockRunUtil.runTimedCmd(
+                        200L, stdout, stderr, "adb", "-s", "serial", "shell", "some", "command"))
+                .thenReturn(res);
+
         CommandResult result =
                 mTestDevice.executeShellV2Command("some command", 200L, TimeUnit.MILLISECONDS, 1);
         assertNotNull(result);
         // The final result is what RunUtil returned, so it contains full status information.
         assertSame(res, result);
-        EasyMock.verify(mMockRunUtil, mMockIDevice);
+        verify(mMockRunUtil, times(1))
+                .runTimedCmd(
+                        200L, stdout, stderr, "adb", "-s", "serial", "shell", "some", "command");
     }
 
     /** Unit test for {@link INativeDevice#setProperty(String, String)}. */
@@ -3071,20 +3119,18 @@ public class NativeDeviceTest {
                 };
         CommandResult res = new CommandResult();
         res.setStatus(CommandStatus.SUCCESS);
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                120000,
-                                stdout,
-                                stderr,
-                                "adb",
-                                "-s",
-                                "serial",
-                                "shell",
-                                "setprop test 'value'"))
-                .andReturn(res);
-        EasyMock.replay(mMockRunUtil, mMockIDevice);
+        when(mMockRunUtil.runTimedCmd(
+                        120000,
+                        stdout,
+                        stderr,
+                        "adb",
+                        "-s",
+                        "serial",
+                        "shell",
+                        "setprop test 'value'"))
+                .thenReturn(res);
+
         assertTrue(mTestDevice.setProperty("test", "value"));
-        EasyMock.verify(mMockRunUtil, mMockIDevice);
     }
 
     /**
@@ -3184,10 +3230,8 @@ public class NativeDeviceTest {
         TestableAndroidNativeDevice spy = Mockito.spy(mTestDevice);
         doReturn(false).when(spy).isAdbRoot();
 
-        EasyMock.replay(mMockIDevice);
         List<File> result = spy.getTombstones();
         assertEquals(0, result.size());
-        EasyMock.verify(mMockIDevice);
     }
 
     /** Test {@link NativeDevice#getTombstones()}. */
@@ -3202,10 +3246,8 @@ public class NativeDeviceTest {
         doReturn(new File("tomb1_test")).when(spy).pullFile("/data/tombstones/tomb1");
         doReturn(new File("tomb2_test")).when(spy).pullFile("/data/tombstones/tomb2");
 
-        EasyMock.replay(mMockIDevice);
         List<File> result = spy.getTombstones();
         assertEquals(2, result.size());
-        EasyMock.verify(mMockIDevice);
     }
 
     /** Test {@link NativeDevice#getLaunchApiLevel()} with ro.product.first_api_level being set. */
@@ -3219,9 +3261,8 @@ public class NativeDeviceTest {
                         return 29;
                     }
                 };
-        EasyMock.replay(mMockIDevice);
+
         assertEquals(23, mTestDevice.getLaunchApiLevel());
-        EasyMock.verify(mMockIDevice);
     }
 
     /**
@@ -3237,9 +3278,8 @@ public class NativeDeviceTest {
                         return 29;
                     }
                 };
-        EasyMock.replay(mMockIDevice);
+
         assertEquals(29, mTestDevice.getLaunchApiLevel());
-        EasyMock.verify(mMockIDevice);
     }
 
     /** Test {@link NativeDevice#getLaunchApiLevel()} with NumberFormatException be asserted. */
@@ -3253,27 +3293,24 @@ public class NativeDeviceTest {
                         return 29;
                     }
                 };
-        EasyMock.replay(mMockIDevice);
+
         assertEquals(29, mTestDevice.getLaunchApiLevel());
-        EasyMock.verify(mMockIDevice);
     }
 
     private void setGetPropertyExpectation(String property, String value) {
         CommandResult stubResult = new CommandResult(CommandStatus.SUCCESS);
         stubResult.setStdout(value);
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(),
-                                (OutputStream) EasyMock.isNull(),
-                                EasyMock.isNull(),
-                                EasyMock.eq("adb"),
-                                EasyMock.eq("-s"),
-                                EasyMock.eq("serial"),
-                                EasyMock.eq("shell"),
-                                EasyMock.eq("getprop"),
-                                EasyMock.eq(property)))
-                .andReturn(stubResult);
-        EasyMock.replay(mMockRunUtil);
+        when(mMockRunUtil.runTimedCmd(
+                        Mockito.anyLong(),
+                        (OutputStream) Mockito.isNull(),
+                        Mockito.isNull(),
+                        Mockito.eq("adb"),
+                        Mockito.eq("-s"),
+                        Mockito.eq("serial"),
+                        Mockito.eq("shell"),
+                        Mockito.eq("getprop"),
+                        Mockito.eq(property)))
+                .thenReturn(stubResult);
     }
 
     /** Test {@link NativeDevice#getFastbootSerialNumber()} with USB adb. */
@@ -3286,9 +3323,8 @@ public class NativeDeviceTest {
                         return false;
                     }
                 };
-        EasyMock.replay(mMockIDevice);
+
         assertEquals(MOCK_DEVICE_SERIAL, mTestDevice.getFastbootSerialNumber());
-        EasyMock.verify(mMockIDevice);
     }
 
     /** Test {@link NativeDevice#getFastbootSerialNumber()} with non-root TCP adb. */
@@ -3304,6 +3340,7 @@ public class NativeDeviceTest {
                         receiver.addOutput(address.getBytes(), 0, address.length());
                     }
                 };
+        mMockIDevice = mock(IDevice.class, AdditionalAnswers.delegatesTo(device));
         mTestDevice =
                 new TestableAndroidNativeDevice() {
                     @Override
@@ -3336,12 +3373,8 @@ public class NativeDeviceTest {
                         return true;
                     }
                 };
-        mMockIDevice.executeShellCommand(EasyMock.anyObject(), EasyMock.anyObject());
-        EasyMock.expectLastCall().andDelegateTo(device).anyTimes();
-        EasyMock.replay(mMockIDevice);
         assertEquals(
                 "tcp:fe80:0:0:0:230:1bff:feba:8128%en0", mTestDevice.getFastbootSerialNumber());
-        EasyMock.verify(mMockIDevice);
     }
 
     /** Test {@link NativeDevice#getFastbootSerialNumber()} with root TCP adb. */
@@ -3357,6 +3390,7 @@ public class NativeDeviceTest {
                         receiver.addOutput(address.getBytes(), 0, address.length());
                     }
                 };
+        mMockIDevice = mock(IDevice.class, AdditionalAnswers.delegatesTo(device));
         mTestDevice =
                 new TestableAndroidNativeDevice() {
                     @Override
@@ -3379,12 +3413,7 @@ public class NativeDeviceTest {
                         return true;
                     }
                 };
-
-        mMockIDevice.executeShellCommand(EasyMock.anyObject(), EasyMock.anyObject());
-        EasyMock.expectLastCall().andDelegateTo(device).anyTimes();
-        EasyMock.replay(mMockIDevice);
         assertEquals(
                 "tcp:fe80:0:0:0:230:1bff:feba:8128%en0", mTestDevice.getFastbootSerialNumber());
-        EasyMock.verify(mMockIDevice);
     }
 }
