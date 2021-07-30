@@ -112,6 +112,11 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
             description = "Whether to wipe device after GKI boot image flash.")
     private boolean mShouldWipeDevice = true;
 
+    @Option(
+            name = "boot-header-version",
+            description = "The version of the boot.img header. Set to 4 by default.")
+    private int mBootHeaderVersion = 4;
+
     private File mBootImg = null;
 
     /** {@inheritDoc} */
@@ -284,10 +289,11 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
             mBootImg = FileUtil.createTempFile("boot", ".img", tmpDir);
             String cmd =
                     String.format(
-                            "%s --kernel %s --header_version 3 --base 0x00000000 "
+                            "%s --kernel %s --header_version %d --base 0x00000000 "
                                     + "--pagesize 4096 --ramdisk %s -o %s",
                             mkbootimg.getAbsolutePath(),
                             buildInfo.getFile(KERNEL_IMAGE),
+                            mBootHeaderVersion,
                             buildInfo.getFile(mRamdiskImageName),
                             mBootImg.getAbsolutePath());
             executeHostCommand(device, cmd);
