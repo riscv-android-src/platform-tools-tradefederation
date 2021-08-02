@@ -287,7 +287,6 @@ import com.android.tradefed.testtype.HostGTestTest;
 import com.android.tradefed.testtype.HostTestTest;
 import com.android.tradefed.testtype.InstalledInstrumentationsTestTest;
 import com.android.tradefed.testtype.InstrumentationFileTestTest;
-import com.android.tradefed.testtype.InstrumentationSerialTestTest;
 import com.android.tradefed.testtype.InstrumentationTestTest;
 import com.android.tradefed.testtype.IsolatedHostTestTest;
 import com.android.tradefed.testtype.JarHostTestTest;
@@ -795,7 +794,6 @@ import org.junit.runners.Suite.SuiteClasses;
     HostGTestTest.class,
     HostTestTest.class,
     InstalledInstrumentationsTestTest.class,
-    InstrumentationSerialTestTest.class,
     InstrumentationFileTestTest.class,
     InstrumentationTestTest.class,
     IsolatedHostTestTest.class,

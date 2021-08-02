@@ -195,14 +195,6 @@ public class InstrumentationTest
     )
     private int mReRunUsingTestFileAttempts = 3;
 
-    // Remove when we are sure there are no more usage. Inop for now.
-    @Deprecated
-    @Option(
-        name = "fallback-to-serial-rerun",
-        description = "Rerun tests serially after rerun from file failed."
-    )
-    private boolean mFallbackToSerialRerun = false;
-
     @Option(name = AbiFormatter.FORCE_ABI_STRING,
             description = AbiFormatter.FORCE_ABI_DESCRIPTION,
             importance = Importance.IF_UNSET)
@@ -393,7 +385,7 @@ public class InstrumentationTest
      * separated test classes and methods (format: com.foo.Class#method) to be run.
      * If set, will automatically attempt to re-run tests using this test file
      * via {@link InstrumentationFileTest} instead of executing separate adb commands for each
-     * remaining test via {@link InstrumentationSerialTest}"
+     * remaining test via rerun.
      */
     public void setTestFilePathOnDevice(String testFilePathOnDevice) {
         mTestFilePathOnDevice = testFilePathOnDevice;
@@ -998,6 +990,10 @@ public class InstrumentationTest
             CLog.e("Failed to create test runner: %s", e.getMessage());
             return;
         }
+        if (testReRunner == null) {
+            CLog.d("No internal rerun configured");
+            return;
+        }
 
         if (mNativeCoverageListener != null) {
             mNativeCoverageListener.setCollectOnTestEnd(false);
@@ -1019,13 +1015,10 @@ public class InstrumentationTest
                     InvocationMetricKey.INSTRUMENTATION_RERUN_FROM_FILE, 1);
             return new InstrumentationFileTest(this, tests, mReRunUsingTestFileAttempts);
         } else {
-            // Track the feature usage
+            // Track the feature usage which is deprecated now.
             InvocationMetricLogger.addInvocationMetrics(
                     InvocationMetricKey.INSTRUMENTATION_RERUN_SERIAL, 1);
-            // Since the same runner is reused we must ensure TEST_FILE_INST_ARGS_KEY is not set.
-            // Otherwise, the runner will attempt to execute tests from file.
-            mInstrArgMap.remove(TEST_FILE_INST_ARGS_KEY);
-            return new InstrumentationSerialTest(this, tests);
+            return null;
         }
     }
 

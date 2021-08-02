@@ -42,7 +42,7 @@ import java.util.Map;
  * methods in a file pushed to device (expected format: com.android.foo.FooClassName#testMethodName)
  * <p>
  * Note: Requires a runner that supports test execution from a file. Will default to serial tests
- * execution via {@link InstrumentationSerialTest} if any issues with file creation are encountered
+ * execution via rerun if any issues with file creation are encountered
  * or if all tests in the created file fail to successfully finish execution.
  */
 class InstrumentationFileTest implements IRemoteTest {
