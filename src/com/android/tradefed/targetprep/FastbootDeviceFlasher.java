@@ -22,6 +22,8 @@ import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.IManagedTestDevice;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.TestDeviceState;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger;
+import com.android.tradefed.invoker.logger.InvocationMetricLogger.InvocationMetricKey;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.result.error.ErrorIdentifier;
@@ -147,6 +149,14 @@ public class FastbootDeviceFlasher implements IDeviceFlasher {
     @Override
     public void flash(ITestDevice device, IDeviceBuildInfo deviceBuild) throws TargetSetupError,
             DeviceNotAvailableException {
+        boolean initialStateFastbootD =
+                supportsFlashingInFastbootD() &&
+                TestDeviceState.FASTBOOTD.equals(device.getDeviceState());
+        if (initialStateFastbootD) {
+            CLog.i("Using flashing from fastbootd");
+            InvocationMetricLogger.addInvocationMetrics(
+                    InvocationMetricKey.FLASHING_FROM_FASTBOOTD, 1);
+        }
 
         CLog.i("Flashing device %s with build %s", device.getSerialNumber(),
                 deviceBuild.getDeviceBuildId());
@@ -155,7 +165,9 @@ public class FastbootDeviceFlasher implements IDeviceFlasher {
         String systemBuildId = device.getBuildId();
         String systemBuildFlavor = device.getBuildFlavor();
 
-        device.rebootIntoBootloader();
+        if (!initialStateFastbootD) {
+            device.rebootIntoBootloader();
+        }
 
         downloadFlashingResources(device, deviceBuild);
         preFlashSetup(device, deviceBuild);
