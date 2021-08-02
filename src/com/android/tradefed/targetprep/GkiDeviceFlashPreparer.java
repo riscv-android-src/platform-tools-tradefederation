@@ -114,8 +114,8 @@ public class GkiDeviceFlashPreparer extends BaseTargetPreparer {
 
     @Option(
             name = "boot-header-version",
-            description = "The version of the boot.img header. Set to 4 by default.")
-    private int mBootHeaderVersion = 4;
+            description = "The version of the boot.img header. Set to 3 by default.")
+    private int mBootHeaderVersion = 3;
 
     private File mBootImg = null;
 
