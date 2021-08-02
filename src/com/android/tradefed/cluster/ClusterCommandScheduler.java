@@ -611,10 +611,11 @@ public class ClusterCommandScheduler extends CommandScheduler {
             return true;
         }
         File rootPartition = new File("/");
-        long usage =
+        long freeSpace =
             (long) (rootPartition.getUsableSpace() * 100.0) / rootPartition.getTotalSpace();
+        long usage = 100L - freeSpace;
         if (usage > getClusterOptions().maxDiskUsagePercentage()) {
-            CLog.i("Disk space utilization is '%s'%%. Stop leasing.", usage);
+            CLog.i("Disk space utilization is '%s%%'. Stop leasing.", usage);
             return false;
         }
         return true;
