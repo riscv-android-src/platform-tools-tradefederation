@@ -338,6 +338,7 @@ import com.android.tradefed.testtype.suite.module.CarModuleControllerTest;
 import com.android.tradefed.testtype.suite.module.DeviceFeatureModuleControllerTest;
 import com.android.tradefed.testtype.suite.module.MinApiLevelModuleControllerTest;
 import com.android.tradefed.testtype.suite.module.NativeBridgeModuleControllerTest;
+import com.android.tradefed.testtype.suite.module.PackageInstalledModuleControllerTest;
 import com.android.tradefed.testtype.suite.module.ShippingApiLevelModuleControllerTest;
 import com.android.tradefed.testtype.suite.params.InstantAppHandlerTest;
 import com.android.tradefed.testtype.suite.params.MainlineModuleHandlerTest;
@@ -859,6 +860,7 @@ import org.junit.runners.Suite.SuiteClasses;
     DeviceFeatureModuleControllerTest.class,
     MinApiLevelModuleControllerTest.class,
     NativeBridgeModuleControllerTest.class,
+    PackageInstalledModuleControllerTest.class,
     ShippingApiLevelModuleControllerTest.class,
 
     // testtype/suite/params
