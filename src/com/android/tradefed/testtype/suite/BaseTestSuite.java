@@ -673,9 +673,17 @@ public class BaseTestSuite extends ITestSuite {
                 return false;
             }
             for (IRemoteTest test : module.getTests()) {
-                if (test instanceof ITestFileFilterReceiver
-                        && ((ITestFileFilterReceiver) test).getExcludeTestFile() != null) {
+                if (test instanceof ITestFileFilterReceiver) {
                     File excludeFilterFile = ((ITestFileFilterReceiver) test).getExcludeTestFile();
+                    if (excludeFilterFile == null) {
+                        try {
+                            excludeFilterFile = FileUtil.createTempFile("exclude-filter", ".txt");
+                        } catch (IOException e) {
+                            throw new HarnessRuntimeException(
+                                    e.getMessage(), e, InfraErrorIdentifier.FAIL_TO_CREATE_FILE);
+                        }
+                        ((ITestFileFilterReceiver) test).setExcludeTestFile(excludeFilterFile);
+                    }
                     try {
                         FileUtil.writeToFile(filter.getTest() + "\n", excludeFilterFile, true);
                     } catch (IOException e) {

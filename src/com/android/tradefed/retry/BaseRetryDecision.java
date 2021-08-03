@@ -26,6 +26,7 @@ import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.device.StubDevice;
 import com.android.tradefed.device.cloud.RemoteAndroidVirtualDevice;
 import com.android.tradefed.device.internal.DeviceResetHandler;
+import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.logger.CurrentInvocation;
 import com.android.tradefed.invoker.logger.CurrentInvocation.IsolationGrade;
@@ -36,6 +37,7 @@ import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
 import com.android.tradefed.result.error.DeviceErrorIdentifier;
+import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.sandbox.SandboxOptions;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.testtype.IRemoteTest;
@@ -443,9 +445,17 @@ public class BaseRetryDecision implements IRetryDecision, IConfigurationReceiver
         // Exclude all passed tests for the retry.
         for (TestDescription testCase : passedTests) {
             String filter = String.format("%s#%s", testCase.getClassName(), testCase.getTestName());
-            if (test instanceof ITestFileFilterReceiver &&
-                    ((ITestFileFilterReceiver) test).getExcludeTestFile() != null) {
+            if (test instanceof ITestFileFilterReceiver) {
                 File excludeFilterFile = ((ITestFileFilterReceiver) test).getExcludeTestFile();
+                if (excludeFilterFile == null) {
+                    try {
+                        excludeFilterFile = FileUtil.createTempFile("exclude-filter", ".txt");
+                    } catch (IOException e) {
+                        throw new HarnessRuntimeException(
+                                e.getMessage(), e, InfraErrorIdentifier.FAIL_TO_CREATE_FILE);
+                    }
+                    ((ITestFileFilterReceiver) test).setExcludeTestFile(excludeFilterFile);
+                }
                 try {
                     FileUtil.writeToFile(filter + "\n", excludeFilterFile, true);
                 } catch (IOException e) {
