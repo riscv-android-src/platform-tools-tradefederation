@@ -251,6 +251,7 @@ public class SandboxedInvocationExecutionTest {
         mConfig.setBuildProvider(mMockProvider);
         mConfig.setTargetPreparers(Arrays.asList(mMockPreparer, mMockCleaner));
         mConfig.setConfigurationObject(Configuration.SANDBOX_TYPE_NAME, mMockSandbox);
+        mConfig.setCommandLine(new String[] {"confif-name", "--option1"});
 
         doReturn(new LogFile("file", "url", LogDataType.TEXT))
                 .when(mMockLogSaver)
