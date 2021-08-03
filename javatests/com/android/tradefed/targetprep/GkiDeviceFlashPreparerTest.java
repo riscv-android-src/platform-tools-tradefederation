@@ -204,7 +204,7 @@ public class GkiDeviceFlashPreparerTest {
                         eq("--kernel"),
                         eq(kernelImage.getAbsolutePath()),
                         eq("--header_version"),
-                        eq("4"),
+                        eq("3"),
                         eq("--base"),
                         eq("0x00000000"),
                         eq("--pagesize"),
