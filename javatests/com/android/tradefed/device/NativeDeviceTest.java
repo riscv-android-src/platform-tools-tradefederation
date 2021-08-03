@@ -284,7 +284,8 @@ public class NativeDeviceTest {
         mTestDevice =
                 new TestableAndroidNativeDevice() {
                     @Override
-                    public boolean pushFile(File localFile, String remoteFilePath)
+                    public boolean pushFileInternal(
+                            File localFile, String remoteFilePath, boolean skipContentProvider)
                             throws DeviceNotAvailableException {
                         return true;
                     }
