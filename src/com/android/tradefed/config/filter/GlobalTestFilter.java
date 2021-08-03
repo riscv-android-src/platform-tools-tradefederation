@@ -170,7 +170,7 @@ public final class GlobalTestFilter {
         if (Strings.isNullOrEmpty(value)) {
             return new ArrayList<String>();
         }
-        return Arrays.asList(value.split("\n"));
+        return Arrays.asList(value.split(","));
     }
 
     private Set<String> filtersFromGlobal(Set<String> filters) {
