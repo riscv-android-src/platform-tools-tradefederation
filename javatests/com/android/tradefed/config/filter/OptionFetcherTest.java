@@ -96,4 +96,30 @@ public class OptionFetcherTest {
         assertEquals(IsolationGrade.REBOOT_ISOLATED,
                 ((BaseRetryDecision) mConfiguration.getRetryDecision()).getIsolationGrade());
     }
+
+    /**
+     * Test that if we receive an option value that doesn't exist we do not throw an exception
+     * and simply ignore it.
+     */
+    @Test
+    public void testOptionFetch_notExist() {
+        FeatureResponse.Builder responseBuilder = FeatureResponse.newBuilder();
+        responseBuilder.setMultiPartResponse(
+                MultiPartResponse.newBuilder()
+                    .addResponsePart(PartResponse.newBuilder()
+                            .setKey("filter-previous-passed").setValue("true"))
+                    .addResponsePart(PartResponse.newBuilder()
+                            .setKey("retry-isolation-grade").setValue("REBOOT_ISOLATED"))
+                    .addResponsePart(PartResponse.newBuilder()
+                            .setKey("does-not-exist-yet").setValue("newvalue")));
+
+        when(mMockClient.triggerFeature(
+                Mockito.eq(CommandOptionsGetter.COMMAND_OPTIONS_GETTER), Mockito.any()))
+                .thenReturn(responseBuilder.build());
+        mOptionFetcher.fetchParentOptions(mConfiguration);
+
+        assertTrue(mConfiguration.getCommandOptions().filterPreviousPassedTests());
+        assertEquals(IsolationGrade.REBOOT_ISOLATED,
+                ((BaseRetryDecision) mConfiguration.getRetryDecision()).getIsolationGrade());
+    }
 }
