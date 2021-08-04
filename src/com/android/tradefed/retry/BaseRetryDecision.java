@@ -598,7 +598,8 @@ public class BaseRetryDecision implements IRetryDecision, IConfigurationReceiver
         reSetupModule(module, true);
     }
 
-    private void isolateRetry(List<ITestDevice> devices) throws DeviceNotAvailableException {
+    @VisibleForTesting
+    protected void isolateRetry(List<ITestDevice> devices) throws DeviceNotAvailableException {
         DeviceResetHandler handler = new DeviceResetHandler(mContext);
         for (ITestDevice device : devices) {
             boolean resetSuccess = handler.resetDevice(device);
