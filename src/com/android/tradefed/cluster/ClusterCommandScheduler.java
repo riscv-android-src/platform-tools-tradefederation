@@ -606,6 +606,21 @@ public class ClusterCommandScheduler extends CommandScheduler {
         return true;
     }
 
+    private boolean checkDiskSpace() {
+        if (getClusterOptions().maxDiskUsagePercentage() == 100L) {
+            return true;
+        }
+        File rootPartition = new File("/");
+        long freeSpace =
+            (long) (rootPartition.getUsableSpace() * 100.0) / rootPartition.getTotalSpace();
+        long usage = 100L - freeSpace;
+        if (usage > getClusterOptions().maxDiskUsagePercentage()) {
+            CLog.i("Disk space utilization is '%s%%'. Stop leasing.", usage);
+            return false;
+        }
+        return true;
+    }
+
     /**
      * Fetches commands for devices from the Tradefed Cluster's leasehosttasks API.
      *
@@ -622,6 +637,10 @@ public class ClusterCommandScheduler extends CommandScheduler {
             return Collections.<ClusterCommand>emptyList();
         }
         if (!arePermitsAvailableToSchedule()) {
+            return Collections.<ClusterCommand>emptyList();
+        }
+        // Check disk space before scheduling
+        if (!checkDiskSpace()) {
             return Collections.<ClusterCommand>emptyList();
         }
 

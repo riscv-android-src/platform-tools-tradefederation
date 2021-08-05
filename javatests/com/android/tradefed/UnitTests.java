@@ -287,7 +287,6 @@ import com.android.tradefed.testtype.HostGTestTest;
 import com.android.tradefed.testtype.HostTestTest;
 import com.android.tradefed.testtype.InstalledInstrumentationsTestTest;
 import com.android.tradefed.testtype.InstrumentationFileTestTest;
-import com.android.tradefed.testtype.InstrumentationSerialTestTest;
 import com.android.tradefed.testtype.InstrumentationTestTest;
 import com.android.tradefed.testtype.IsolatedHostTestTest;
 import com.android.tradefed.testtype.JarHostTestTest;
@@ -339,6 +338,7 @@ import com.android.tradefed.testtype.suite.module.CarModuleControllerTest;
 import com.android.tradefed.testtype.suite.module.DeviceFeatureModuleControllerTest;
 import com.android.tradefed.testtype.suite.module.MinApiLevelModuleControllerTest;
 import com.android.tradefed.testtype.suite.module.NativeBridgeModuleControllerTest;
+import com.android.tradefed.testtype.suite.module.PackageInstalledModuleControllerTest;
 import com.android.tradefed.testtype.suite.module.ShippingApiLevelModuleControllerTest;
 import com.android.tradefed.testtype.suite.params.InstantAppHandlerTest;
 import com.android.tradefed.testtype.suite.params.MainlineModuleHandlerTest;
@@ -795,7 +795,6 @@ import org.junit.runners.Suite.SuiteClasses;
     HostGTestTest.class,
     HostTestTest.class,
     InstalledInstrumentationsTestTest.class,
-    InstrumentationSerialTestTest.class,
     InstrumentationFileTestTest.class,
     InstrumentationTestTest.class,
     IsolatedHostTestTest.class,
@@ -861,6 +860,7 @@ import org.junit.runners.Suite.SuiteClasses;
     DeviceFeatureModuleControllerTest.class,
     MinApiLevelModuleControllerTest.class,
     NativeBridgeModuleControllerTest.class,
+    PackageInstalledModuleControllerTest.class,
     ShippingApiLevelModuleControllerTest.class,
 
     // testtype/suite/params

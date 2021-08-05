@@ -1291,10 +1291,16 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public boolean pushFile(final File localFile, final String remoteFilePath)
             throws DeviceNotAvailableException {
+        return pushFileInternal(localFile, remoteFilePath, false);
+    }
+
+    @VisibleForTesting
+    boolean pushFileInternal(final File localFile, final String remoteFilePath,
+            boolean skipContentProvider) throws DeviceNotAvailableException {
         long startTime = System.currentTimeMillis();
         InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.PUSH_FILE_COUNT, 1);
         try {
-            if (isSdcardOrEmulated(remoteFilePath)) {
+            if (!skipContentProvider && isSdcardOrEmulated(remoteFilePath)) {
                 ContentProviderHandler handler = getContentProvider();
                 if (handler != null) {
                     return handler.pushFile(localFile, remoteFilePath);
@@ -1729,7 +1735,7 @@ public class NativeDevice implements IManagedTestDevice {
                     return false;
                 }
             } else if (childFile.isFile()) {
-                if (!pushFile(childFile, remotePath)) {
+                if (!pushFileInternal(childFile, remotePath, true)) {
                     return false;
                 }
             }

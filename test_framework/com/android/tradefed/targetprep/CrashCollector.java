@@ -92,7 +92,12 @@ public class CrashCollector extends TestFilePushSetup implements ITestLoggerRece
         // in a same config
         clearTestFileName();
         addTestFileName(mCrashCollectorPath);
-        super.setUp(testInfo);
+        try {
+            super.setUp(testInfo);
+        } catch (TargetSetupError | BuildError e) {
+            // Avoid exception since we want the no-throw if file is missing behavior
+            CLog.e(e);
+        }
         if (getFailedToPushFiles().contains(mCrashCollectorPath)) {
             CLog.w("Failed to push crash collector binary. Skipping the collection.");
             return;

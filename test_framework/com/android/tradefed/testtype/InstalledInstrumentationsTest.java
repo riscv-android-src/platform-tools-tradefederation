@@ -129,12 +129,6 @@ public class InstalledInstrumentationsTest
             "Max attempts to rerun tests from file. -1 means rerun from file infinitely.")
     private int mReRunUsingTestFileAttempts = -1;
 
-    @Option(
-        name = "fallback-to-serial-rerun",
-        description = "Rerun tests serially after rerun from file failed."
-    )
-    private boolean mFallbackToSerialRerun = false;
-
     @Option(name = "disable", description =
             "Disable the test by setting this flag to true.")
     private boolean mDisable = false;
