@@ -82,4 +82,7 @@ public interface IClusterOptions {
 
     /** Returns whether scheduler should collect early test summary. */
     public boolean shouldCollectEarlyTestSummary();
+
+    /** Maximal disk usage percentage before we stop leasing additional new tasks. */
+    public long maxDiskUsagePercentage();
 }

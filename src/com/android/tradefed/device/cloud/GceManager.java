@@ -348,9 +348,11 @@ public class GceManager {
                 TestDeviceOptions.getExtraParamsByInstanceType(
                         getTestDeviceOptions().getInstanceType(),
                         getTestDeviceOptions().getBaseImage()));
-        if (ipDevice == null) {
+        if (getAvdConfigFile() != null) {
             gceArgs.add("--config_file");
             gceArgs.add(getAvdConfigFile().getAbsolutePath());
+        }
+        if (ipDevice == null) {
             if (getTestDeviceOptions().getServiceAccountJsonKeyFile() != null) {
                 gceArgs.add("--service_account_json_private_key_path");
                 gceArgs.add(

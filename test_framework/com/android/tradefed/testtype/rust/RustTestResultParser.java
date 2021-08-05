@@ -85,7 +85,8 @@ public class RustTestResultParser extends MultiLineReceiver {
     static final Pattern COMPLETE_PATTERN =
             Pattern.compile("test result: (.*) (\\d+) passed; (\\d+) failed; (\\d+) ignored;.*");
 
-    static final Pattern RUST_ONE_LINE_RESULT = Pattern.compile("test (\\S*) \\.\\.\\. (\\S*)");
+    static final Pattern RUST_ONE_LINE_RESULT =
+            Pattern.compile("test (\\S*) (?:- should panic )?\\.\\.\\. (\\S*)");
 
     static final Pattern RUNNING_PATTERN = Pattern.compile("running (.*) test[s]?");
 
