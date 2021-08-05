@@ -123,7 +123,7 @@ public class InstalledInstrumentationsTest
                         + "when re-running instrumentations for tests that failed to run in "
                         + "previous attempts. "
     )
-    private boolean mReRunUsingTestFile = true;
+    private boolean mReRunUsingTestFile = false;
 
     @Option(name = "rerun-from-file-attempts", description =
             "Max attempts to rerun tests from file. -1 means rerun from file infinitely.")
