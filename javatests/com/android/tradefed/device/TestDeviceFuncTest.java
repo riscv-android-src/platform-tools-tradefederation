@@ -21,6 +21,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.mock;
 
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log;
@@ -40,7 +41,6 @@ import com.android.tradefed.util.ProcessInfo;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.StreamUtil;
 
-import org.easymock.EasyMock;
 import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -573,9 +573,8 @@ public class TestDeviceFuncTest implements IDeviceTest {
             assertEquals(TestDeviceState.FASTBOOT, mMonitor.getDeviceState());
             // substitute recovery mechanism to ensure recovery is not called when bad command
             // is passed
-            IDeviceRecovery mockRecovery = EasyMock.createStrictMock(IDeviceRecovery.class);
+            IDeviceRecovery mockRecovery = mock(IDeviceRecovery.class);
             mTestDevice.setRecovery(mockRecovery);
-            EasyMock.replay(mockRecovery);
             assertEquals(
                     CommandStatus.FAILED,
                     mTestDevice.executeFastbootCommand("badcommand").getStatus());
