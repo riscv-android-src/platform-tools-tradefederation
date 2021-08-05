@@ -288,6 +288,52 @@ public class GceManagerTest {
 
     /** Test {@link GceManager#buildGceCmd(File, IBuildInfo, String)}. */
     @Test
+    public void testBuildGceCommandWithSpecifiedImages() throws Exception {
+        IBuildInfo mMockBuildInfo = mock(IBuildInfo.class);
+        when(mMockBuildInfo.getBuildAttributes())
+                .thenReturn(Collections.<String, String>emptyMap());
+        when(mMockBuildInfo.getBuildFlavor()).thenReturn("TARGET");
+        when(mMockBuildInfo.getBuildBranch()).thenReturn("BRANCH");
+        when(mMockBuildInfo.getBuildId()).thenReturn("BUILDID");
+
+        File reportFile = null;
+
+        try {
+            OptionSetter setter = new OptionSetter(mOptions);
+            setter.setOptionValue("gce-driver-param", "--cvd-host-package");
+            setter.setOptionValue("gce-driver-param", "gs://cvd-host-package.tar.gz");
+            setter.setOptionValue("gce-driver-param", "--local-image");
+            setter.setOptionValue("gce-driver-param", "gs://cvd-cuttlefish-android-os.tar.gz");
+            mGceManager =
+                    new GceManager(mMockDeviceDesc, mOptions, mMockBuildInfo) {
+                        @Override
+                        IRunUtil getRunUtil() {
+                            return mMockRunUtil;
+                        }
+                    };
+            reportFile = FileUtil.createTempFile("test-gce-cmd", "report");
+            List<String> result = mGceManager.buildGceCmd(reportFile, mMockBuildInfo, null, null);
+            List<String> expected =
+                    ArrayUtil.list(
+                            mOptions.getAvdDriverBinary().getAbsolutePath(),
+                            "create",
+                            "--cvd-host-package",
+                            "gs://cvd-host-package.tar.gz",
+                            "--local-image",
+                            "gs://cvd-cuttlefish-android-os.tar.gz",
+                            "--config_file",
+                            mGceManager.getAvdConfigFile().getAbsolutePath(),
+                            "--report_file",
+                            reportFile.getAbsolutePath(),
+                            "-v");
+            assertEquals(expected, result);
+        } finally {
+            FileUtil.deleteFile(reportFile);
+        }
+    }
+
+    /** Test {@link GceManager#buildGceCmd(File, IBuildInfo, String)}. */
+    @Test
     public void testBuildGceCommandWithGceDriverParam() throws Exception {
         IBuildInfo mMockBuildInfo = mock(IBuildInfo.class);
         when(mMockBuildInfo.getBuildAttributes())
