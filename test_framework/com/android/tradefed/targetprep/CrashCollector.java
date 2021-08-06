@@ -46,8 +46,8 @@ public class CrashCollector extends TestFilePushSetup implements ITestLoggerRece
     private LargeOutputReceiver mCrashReceiver;
 
     @Option(name = "crash-collector-path",
-            description = "Path to crashcollector binary in test artifact bundle.")
-    private String mCrashCollectorPath = "local/tmp/crashcollector";
+            description = "Path to crashcollector binary on device.")
+    private String mCrashCollectorPath = "/data/local/tmp/crashcollector";
 
     @Option(name = "crash-collector-binary",
             description = "The name of crashcollector binary in test artifact bundle.")
@@ -91,7 +91,7 @@ public class CrashCollector extends TestFilePushSetup implements ITestLoggerRece
         // in parent class TestFilePushSetup when this class is used together with TestFilePushSetup
         // in a same config
         clearTestFileName();
-        addTestFileName(mCrashCollectorPath);
+        addTestFileName(mCrashCollectorBinary);
         try {
             super.setUp(testInfo);
         } catch (TargetSetupError | BuildError e) {
@@ -102,8 +102,7 @@ public class CrashCollector extends TestFilePushSetup implements ITestLoggerRece
             CLog.w("Failed to push crash collector binary. Skipping the collection.");
             return;
         }
-        String crashCollectorPath = String.format("/data/%s/%s",
-                mCrashCollectorPath, mCrashCollectorBinary);
+        String crashCollectorPath = mCrashCollectorPath;
         device.executeShellCommand("chmod 755 " + crashCollectorPath);
         mCrashReceiver = new LargeOutputReceiver("crash-collector",
                 device.getSerialNumber(), mMaxCrashLogSize);
