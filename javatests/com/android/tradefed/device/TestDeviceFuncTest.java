@@ -21,6 +21,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.junit.Assume.assumeFalse;
 import static org.mockito.Mockito.mock;
 
 import com.android.ddmlib.IDevice;
@@ -73,6 +74,11 @@ public class TestDeviceFuncTest implements IDeviceTest {
     private IDeviceStateMonitor mMonitor;
     /** Expect bugreports to be at least a meg. */
     private static final int MIN_BUGREPORT_BYTES = 1024 * 1024;
+
+    private void assumeNotVirtualDevice() throws DeviceNotAvailableException {
+        assumeFalse(getDevice() instanceof RemoteAndroidDevice);
+        return;
+    }
 
     @Override
     public void setDevice(ITestDevice device) {
@@ -539,6 +545,9 @@ public class TestDeviceFuncTest implements IDeviceTest {
             Log.i(LOG_TAG, "Fastboot not enabled skipping testExecuteFastbootCommand_deviceInAdb");
             return;
         }
+
+        assumeNotVirtualDevice();
+
         long origTimeout = mTestDevice.getCommandTimeout();
         try {
             assertEquals(TestDeviceState.ONLINE, mMonitor.getDeviceState());
@@ -567,6 +576,9 @@ public class TestDeviceFuncTest implements IDeviceTest {
             Log.i(LOG_TAG, "Fastboot not enabled skipping testExecuteFastbootCommand_badCommand");
             return;
         }
+
+        assumeNotVirtualDevice();
+
         IDeviceRecovery origRecovery = mTestDevice.getRecovery();
         try {
             mTestDevice.rebootIntoBootloader();
@@ -593,6 +605,9 @@ public class TestDeviceFuncTest implements IDeviceTest {
             Log.i(LOG_TAG, "Fastboot not enabled skipping testRebootInBootloader");
             return;
         }
+
+        assumeNotVirtualDevice();
+
         try {
             mTestDevice.rebootIntoBootloader();
             assertEquals(TestDeviceState.FASTBOOT, mMonitor.getDeviceState());
@@ -620,6 +635,9 @@ public class TestDeviceFuncTest implements IDeviceTest {
             Log.i(LOG_TAG, "Fastboot not enabled skipping testRebootInRecovery");
             return;
         }
+
+        assumeNotVirtualDevice();
+
         try {
             mTestDevice.rebootIntoRecovery();
             assertEquals(TestDeviceState.RECOVERY, mMonitor.getDeviceState());
@@ -868,6 +886,10 @@ public class TestDeviceFuncTest implements IDeviceTest {
             Log.i(LOG_TAG, "Fastboot not enabled skipping testGetFileEntry_recovery");
             return;
         }
+
+        // Recovery not implemented on Cuttlefish / Goldfish
+        assumeNotVirtualDevice();
+
         try {
             getDevice().rebootIntoBootloader();
             // expect recovery to kick in, and reboot device back to adb so the call works
