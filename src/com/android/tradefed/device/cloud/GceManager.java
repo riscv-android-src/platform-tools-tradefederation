@@ -250,6 +250,7 @@ public class GceManager {
                     GceAvdInfo.parseGceInfoFromFile(
                             reportFile, mDeviceDescriptor, mDeviceOptions.getRemoteAdbPort());
             if (getTestDeviceOptions().useOxygen()) {
+                mBuildInfo.addBuildAttribute(GCE_INSTANCE_NAME_KEY, mGceAvdInfo.instanceName());
                 // Save GCE hostname to build info for releasing Oxygen cuttlefish in the parent
                 // process if needed.
                 mBuildInfo.addBuildAttribute(GCE_HOSTNAME_KEY, mGceAvdInfo.hostAndPort().getHost());
