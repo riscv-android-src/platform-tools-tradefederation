@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.android.tradefed.cluster;
 
 import com.android.annotations.VisibleForTesting;
@@ -45,7 +46,6 @@ import com.android.tradefed.util.StringEscapeUtils;
 import com.android.tradefed.util.StringUtil;
 import com.android.tradefed.util.SubprocessEventHelper.InvocationFailedEventInfo;
 import com.android.tradefed.util.SubprocessTestResultsParser;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -337,12 +337,17 @@ public class ClusterCommandLauncher
 
         final Integer shardCount = mConfiguration.getCommandOptions().getShardCount();
         final Integer shardIndex = mConfiguration.getCommandOptions().getShardIndex();
+        final Integer deviceCount = mInvocationContext.getDevices().size();
+
         if (shardCount != null && shardCount > 1) {
-            cmdArgs.add("--shard-count");
-            cmdArgs.add(Integer.toString(shardCount));
             if (shardIndex != null) {
+                cmdArgs.add("--shard-count");
+                cmdArgs.add(Integer.toString(shardCount));
                 cmdArgs.add("--shard-index");
                 cmdArgs.add(Integer.toString(shardIndex));
+            } else {
+                cmdArgs.add("--shard-count");
+                cmdArgs.add(Integer.toString(deviceCount));
             }
         }
 
