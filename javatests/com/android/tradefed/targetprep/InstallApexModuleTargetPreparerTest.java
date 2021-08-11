@@ -561,7 +561,12 @@ public class InstallApexModuleTargetPreparerTest {
         EasyMock.expect(mMockDevice.executeShellCommand(
                 String.format("pm path %s", APK_PACKAGE_NAME)))
                 .andReturn("package:/system/app/fakeApk/fakeApk.apk").anyTimes();
-        EasyMock.expect(mMockDevice.installPackage((File) EasyMock.anyObject(), EasyMock.eq(true)))
+        EasyMock.expect(
+                        mMockDevice.installPackage(
+                                (File) EasyMock.anyObject(),
+                                EasyMock.eq(true),
+                                EasyMock.eq("--enable-rollback"),
+                                EasyMock.eq("--staged")))
                 .andReturn(null)
                 .once();
         Set<String> installableModules = new HashSet<>();
@@ -587,7 +592,12 @@ public class InstallApexModuleTargetPreparerTest {
         EasyMock.expect(mMockDevice.executeShellCommand(
                 String.format("pm path %s", APK_PACKAGE_NAME)))
                 .andReturn("package:/system/app/fakeApk/fakeApk.apk").anyTimes();
-        EasyMock.expect(mMockDevice.installPackage((File) EasyMock.anyObject(), EasyMock.eq(true)))
+        EasyMock.expect(
+                        mMockDevice.installPackage(
+                                (File) EasyMock.anyObject(),
+                                EasyMock.eq(true),
+                                EasyMock.eq("--enable-rollback"),
+                                EasyMock.eq("--staged")))
                 .andReturn(null)
                 .once();
         Set<String> installableModules = new HashSet<>();
@@ -1186,14 +1196,19 @@ public class InstallApexModuleTargetPreparerTest {
         EasyMock.expect(mMockDevice.executeShellV2Command("ls " + STAGING_DATA_DIR)).andReturn(res);
         mMockDevice.reboot();
         EasyMock.expectLastCall();
-        //TODO:add back once new adb is deployed to the lab
+        // TODO:add back once new adb is deployed to the lab
         // List<String> trainInstallCmd = new ArrayList<>();
         // trainInstallCmd.add("install-multi-package");
         // trainInstallCmd.add(mFakeApk.getAbsolutePath());
         // EasyMock.expect(mMockDevice.executeAdbCommand(trainInstallCmd.toArray(new String[0])))
         //         .andReturn("Success")
         //         .once();
-        EasyMock.expect(mMockDevice.installPackage((File) EasyMock.anyObject(), EasyMock.eq(true)))
+        EasyMock.expect(
+                        mMockDevice.installPackage(
+                                (File) EasyMock.anyObject(),
+                                EasyMock.eq(true),
+                                EasyMock.eq("--enable-rollback"),
+                                EasyMock.eq("--staged")))
                 .andReturn(null)
                 .once();
         EasyMock.expect(mMockDevice.uninstallPackage(APK_PACKAGE_NAME)).andReturn(null).once();
@@ -2074,14 +2089,19 @@ public class InstallApexModuleTargetPreparerTest {
     }
 
     private void mockSuccessfulInstallPackageAndReboot(File f) throws Exception {
-        //TODO:add back once new adb is deployed to the lab
+        // TODO:add back once new adb is deployed to the lab
         // List<String> trainInstallCmd = new ArrayList<>();
         // trainInstallCmd.add("install-multi-package");
         // trainInstallCmd.add(f.getAbsolutePath());
         // EasyMock.expect(mMockDevice.executeAdbCommand(trainInstallCmd.toArray(new String[0])))
         //         .andReturn("Success")
         //         .once();
-        EasyMock.expect(mMockDevice.installPackage((File) EasyMock.anyObject(), EasyMock.eq(true)))
+        EasyMock.expect(
+                        mMockDevice.installPackage(
+                                (File) EasyMock.anyObject(),
+                                EasyMock.eq(true),
+                                EasyMock.eq("--enable-rollback"),
+                                EasyMock.eq("--staged")))
                 .andReturn(null)
                 .once();
         mMockDevice.reboot();
@@ -2089,8 +2109,12 @@ public class InstallApexModuleTargetPreparerTest {
     }
 
     private void mockSuccessfulInstallPersistentPackageAndReboot(File f) throws Exception {
-        EasyMock.expect(mMockDevice.installPackage((File) EasyMock.anyObject(),
-                EasyMock.eq(true), EasyMock.eq("--staged")))
+        EasyMock.expect(
+                        mMockDevice.installPackage(
+                                (File) EasyMock.anyObject(),
+                                EasyMock.eq(true),
+                                EasyMock.eq("--enable-rollback"),
+                                EasyMock.eq("--staged")))
                 .andReturn(null)
                 .once();
         mMockDevice.reboot();
@@ -2276,7 +2300,12 @@ public class InstallApexModuleTargetPreparerTest {
                 .thenReturn(null);
 
         // Only install apk, throw no error for apks.
-        EasyMock.expect(mMockDevice.installPackage((File) EasyMock.anyObject(), EasyMock.eq(true)))
+        EasyMock.expect(
+                        mMockDevice.installPackage(
+                                (File) EasyMock.anyObject(),
+                                EasyMock.eq(true),
+                                EasyMock.eq("--enable-rollback"),
+                                EasyMock.eq("--staged")))
                 .andReturn(null)
                 .once();
         EasyMock.expect(mMockDevice.uninstallPackage(APK_PACKAGE_NAME)).andReturn(null).once();

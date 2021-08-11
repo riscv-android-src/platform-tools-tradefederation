@@ -568,16 +568,10 @@ public class InstallApexModuleTargetPreparer extends SuiteApkInstaller {
         if (containsApex(testAppFileNames.keySet())) {
             mTestApexInfoList = collectApexInfoFromApexModules(testAppFileNames, testInfo);
         }
-        if (containsPersistentApk(testAppFileNames.keySet(), testInfo)) {
-            // When there is a persistent apk in the train, use '--staged' to install full train
-            // Otherwise, do normal install without '--staged'
-            installTrain(
-                    testInfo,
-                    new ArrayList<>(testAppFileNames.keySet()),
-                    new String[] {"--staged"});
-            return;
-        }
-        installTrain(testInfo, new ArrayList<>(testAppFileNames.keySet()), new String[] {});
+        installTrain(
+                testInfo,
+                new ArrayList<>(testAppFileNames.keySet()),
+                new String[] {ENABLE_ROLLBACK_INSTALL_OPTION, STAGED_INSTALL_OPTION});
     }
 
     /**
