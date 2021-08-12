@@ -19,6 +19,8 @@ package com.android.tradefed.command;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log;
@@ -47,13 +49,16 @@ import com.android.tradefed.util.RunInterruptedException;
 import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
 
-import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.AdditionalMatchers;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -66,12 +71,13 @@ public class CommandSchedulerFuncTest {
     private static final long WAIT_TIMEOUT_MS = 30 * 1000;
     /** the {@link CommandScheduler} under test, with all dependencies mocked out */
     private CommandScheduler mCommandScheduler;
+
     private MeasuredInvocation mMockTestInvoker;
     private MockDeviceManager mMockDeviceManager;
     private List<IDeviceConfiguration> mMockDeviceConfig;
-    private IConfiguration mSlowConfig;
-    private IConfiguration mFastConfig;
-    private IConfigurationFactory mMockConfigFactory;
+    @Mock IConfiguration mSlowConfig;
+    @Mock IConfiguration mFastConfig;
+    @Mock IConfigurationFactory mMockConfigFactory;
     private CommandOptions mCommandOptions;
     private DeviceSelectionOptions mDeviceOptions;
     private boolean mInterruptible = false;
@@ -88,6 +94,8 @@ public class CommandSchedulerFuncTest {
 
     @Before
     public void setUp() throws Exception {
+        MockitoAnnotations.initMocks(this);
+
         mDeviceOptions = new DeviceSelectionOptions();
         mMockDeviceConfig = new ArrayList<IDeviceConfiguration>();
         mMockConfig = new DeviceConfigurationHolder("device");
@@ -96,38 +104,31 @@ public class CommandSchedulerFuncTest {
         mMockDeviceConfig.add(mMockConfig);
 
         mInterruptible = false;
-        mSlowConfig = EasyMock.createNiceMock(IConfiguration.class);
-        mFastConfig = EasyMock.createNiceMock(IConfiguration.class);
+
         mMockDeviceManager = new MockDeviceManager(1);
         mMockTestInvoker = new MeasuredInvocation();
-        mMockConfigFactory = EasyMock.createMock(IConfigurationFactory.class);
+
         mCommandOptions = new CommandOptions();
         mCommandOptions.setLoopMode(true);
         mCommandOptions.setMinLoopTime(0);
-        EasyMock.expect(mSlowConfig.getCommandOptions()).andStubReturn(mCommandOptions);
-        EasyMock.expect(mSlowConfig.getTestInvocationListeners())
-                .andStubReturn(new ArrayList<ITestInvocationListener>());
-        EasyMock.expect(mFastConfig.getCommandOptions()).andStubReturn(mCommandOptions);
-        EasyMock.expect(mFastConfig.getTestInvocationListeners())
-                .andStubReturn(new ArrayList<ITestInvocationListener>());
-        EasyMock.expect(mSlowConfig.getDeviceRequirements()).andStubReturn(
-                new DeviceSelectionOptions());
-        EasyMock.expect(mFastConfig.getDeviceRequirements()).andStubReturn(
-                new DeviceSelectionOptions());
-        EasyMock.expect(mSlowConfig.getDeviceConfig()).andStubReturn(mMockDeviceConfig);
-        EasyMock.expect(mSlowConfig.getDeviceConfigByName(EasyMock.eq("device")))
-                .andStubReturn(mMockConfig);
-        EasyMock.expect(mSlowConfig.getCommandLine()).andStubReturn("");
-        EasyMock.expect(mFastConfig.getDeviceConfigByName(EasyMock.eq("device")))
-                .andStubReturn(mMockConfig);
-        EasyMock.expect(mFastConfig.getDeviceConfig()).andStubReturn(mMockDeviceConfig);
-        EasyMock.expect(mFastConfig.getCommandLine()).andStubReturn("");
-        EasyMock.expect(mSlowConfig.getConfigurationDescription())
-                .andStubReturn(new ConfigurationDescriptor());
-        EasyMock.expect(mFastConfig.getConfigurationDescription())
-                .andStubReturn(new ConfigurationDescriptor());
-        EasyMock.expect(mFastConfig.getTests()).andStubReturn(new ArrayList<>());
-        EasyMock.expect(mSlowConfig.getTests()).andStubReturn(new ArrayList<>());
+        when(mSlowConfig.getCommandOptions()).thenReturn(mCommandOptions);
+        when(mSlowConfig.getTestInvocationListeners())
+                .thenReturn(new ArrayList<ITestInvocationListener>());
+        when(mFastConfig.getCommandOptions()).thenReturn(mCommandOptions);
+        when(mFastConfig.getTestInvocationListeners())
+                .thenReturn(new ArrayList<ITestInvocationListener>());
+        when(mSlowConfig.getDeviceRequirements()).thenReturn(new DeviceSelectionOptions());
+        when(mFastConfig.getDeviceRequirements()).thenReturn(new DeviceSelectionOptions());
+        when(mSlowConfig.getDeviceConfig()).thenReturn(mMockDeviceConfig);
+        when(mSlowConfig.getDeviceConfigByName(Mockito.eq("device"))).thenReturn(mMockConfig);
+        when(mSlowConfig.getCommandLine()).thenReturn("");
+        when(mFastConfig.getDeviceConfigByName(Mockito.eq("device"))).thenReturn(mMockConfig);
+        when(mFastConfig.getDeviceConfig()).thenReturn(mMockDeviceConfig);
+        when(mFastConfig.getCommandLine()).thenReturn("");
+        when(mSlowConfig.getConfigurationDescription()).thenReturn(new ConfigurationDescriptor());
+        when(mFastConfig.getConfigurationDescription()).thenReturn(new ConfigurationDescriptor());
+        when(mFastConfig.getTests()).thenReturn(new ArrayList<>());
+        when(mSlowConfig.getTests()).thenReturn(new ArrayList<>());
 
         mCommandScheduler =
                 new CommandScheduler() {
@@ -184,16 +185,17 @@ public class CommandSchedulerFuncTest {
         String[] fastConfigArgs = new String[] {"fastConfig"};
         String[] slowConfigArgs = new String[] {"slowConfig"};
         List<String> nullArg = null;
-        EasyMock.expect(
-                mMockConfigFactory.createConfigurationFromArgs(EasyMock.aryEq(fastConfigArgs),
-                EasyMock.eq(nullArg), (IKeyStoreClient)EasyMock.anyObject()))
-                .andReturn(mFastConfig).anyTimes();
-        EasyMock.expect(
-                mMockConfigFactory.createConfigurationFromArgs(EasyMock.aryEq(slowConfigArgs),
-                EasyMock.eq(nullArg), (IKeyStoreClient)EasyMock.anyObject()))
-                .andReturn(mSlowConfig).anyTimes();
+        when(mMockConfigFactory.createConfigurationFromArgs(
+                        AdditionalMatchers.aryEq(fastConfigArgs),
+                        Mockito.eq(nullArg),
+                        (IKeyStoreClient) Mockito.any()))
+                .thenReturn(mFastConfig);
+        when(mMockConfigFactory.createConfigurationFromArgs(
+                        AdditionalMatchers.aryEq(slowConfigArgs),
+                        Mockito.eq(nullArg),
+                        (IKeyStoreClient) Mockito.any()))
+                .thenReturn(mSlowConfig);
 
-        EasyMock.replay(mFastConfig, mSlowConfig, mMockConfigFactory);
         mCommandScheduler.start();
         mCommandScheduler.addCommand(fastConfigArgs);
         mCommandScheduler.addCommand(slowConfigArgs);
@@ -204,8 +206,11 @@ public class CommandSchedulerFuncTest {
         mCommandScheduler.shutdown();
         mCommandScheduler.join(WAIT_TIMEOUT_MS);
 
-        Log.i(LOG_TAG, String.format("fast times %d slow times %d",
-                mMockTestInvoker.mFastCount, mMockTestInvoker.mSlowCount));
+        Log.i(
+                LOG_TAG,
+                String.format(
+                        "fast times %d slow times %d",
+                        mMockTestInvoker.mFastCount, mMockTestInvoker.mSlowCount));
         // assert that fast config has executed roughly twice as much as slow config. Allow for
         // some variance since the execution time of each config (governed via Thread.sleep) will
         // not be 100% accurate
@@ -270,31 +275,29 @@ public class CommandSchedulerFuncTest {
     /** Test that the Invocation is not interruptible even when Battery is low. */
     @Test
     public void testBatteryLowLevel() throws Throwable {
-        ITestDevice mockDevice = EasyMock.createNiceMock(ITestDevice.class);
-        EasyMock.expect(mockDevice.getSerialNumber()).andReturn("serial").anyTimes();
+        ITestDevice mockDevice = mock(ITestDevice.class);
+        when(mockDevice.getSerialNumber()).thenReturn("serial");
         IDevice mockIDevice = new StubDevice("serial");
-        EasyMock.expect(mockDevice.getIDevice()).andReturn(mockIDevice).anyTimes();
-        EasyMock.expect(mockDevice.getDeviceState()).andReturn(
-                TestDeviceState.ONLINE).anyTimes();
+        when(mockDevice.getIDevice()).thenReturn(mockIDevice);
+        when(mockDevice.getDeviceState()).thenReturn(TestDeviceState.ONLINE);
 
-        TestDeviceOptions testDeviceOptions= new TestDeviceOptions();
+        TestDeviceOptions testDeviceOptions = new TestDeviceOptions();
         testDeviceOptions.setCutoffBattery(20);
         mMockConfig.addSpecificConfig(testDeviceOptions);
         assertTrue(testDeviceOptions.getCutoffBattery() == 20);
-        EasyMock.expect(mSlowConfig.getDeviceOptions()).andReturn(testDeviceOptions).anyTimes();
+        when(mSlowConfig.getDeviceOptions()).thenReturn(testDeviceOptions);
 
-        EasyMock.replay(mockDevice);
         mMockDeviceManager.clearAllDevices();
         mMockDeviceManager.addDevice(mockDevice);
 
         String[] slowConfigArgs = new String[] {"slowConfig"};
         List<String> nullArg = null;
-        EasyMock.expect(
-                mMockConfigFactory.createConfigurationFromArgs(EasyMock.aryEq(slowConfigArgs),
-                EasyMock.eq(nullArg), (IKeyStoreClient)EasyMock.anyObject()))
-                .andReturn(mSlowConfig).anyTimes();
+        when(mMockConfigFactory.createConfigurationFromArgs(
+                        AdditionalMatchers.aryEq(slowConfigArgs),
+                        Mockito.eq(nullArg),
+                        (IKeyStoreClient) Mockito.any()))
+                .thenReturn(mSlowConfig);
 
-        EasyMock.replay(mFastConfig, mSlowConfig, mMockConfigFactory);
         mCommandScheduler.start();
         mCommandScheduler.addCommand(slowConfigArgs);
 
@@ -312,31 +315,29 @@ public class CommandSchedulerFuncTest {
     /** Test that the Invocation is interruptible when Battery is low. */
     @Test
     public void testBatteryLowLevel_interruptible() throws Throwable {
-        ITestDevice mockDevice = EasyMock.createNiceMock(ITestDevice.class);
-        EasyMock.expect(mockDevice.getSerialNumber()).andReturn("serial").anyTimes();
+        ITestDevice mockDevice = mock(ITestDevice.class);
+        when(mockDevice.getSerialNumber()).thenReturn("serial");
         IDevice mockIDevice = new StubDevice("serial");
-        EasyMock.expect(mockDevice.getBattery()).andReturn(10);
-        EasyMock.expect(mockDevice.getIDevice()).andReturn(mockIDevice).anyTimes();
-        EasyMock.expect(mockDevice.getDeviceState()).andReturn(
-                TestDeviceState.ONLINE).anyTimes();
+        when(mockDevice.getBattery()).thenReturn(10);
+        when(mockDevice.getIDevice()).thenReturn(mockIDevice);
+        when(mockDevice.getDeviceState()).thenReturn(TestDeviceState.ONLINE);
 
-        TestDeviceOptions testDeviceOptions= new TestDeviceOptions();
+        TestDeviceOptions testDeviceOptions = new TestDeviceOptions();
         testDeviceOptions.setCutoffBattery(20);
         mMockConfig.addSpecificConfig(testDeviceOptions);
-        EasyMock.expect(mSlowConfig.getDeviceOptions()).andReturn(testDeviceOptions).anyTimes();
+        when(mSlowConfig.getDeviceOptions()).thenReturn(testDeviceOptions);
 
-        EasyMock.replay(mockDevice);
         mMockDeviceManager.clearAllDevices();
         mMockDeviceManager.addDevice(mockDevice);
 
         String[] slowConfigArgs = new String[] {"slowConfig"};
         List<String> nullArg = null;
-        EasyMock.expect(
-                mMockConfigFactory.createConfigurationFromArgs(EasyMock.aryEq(slowConfigArgs),
-                EasyMock.eq(nullArg), (IKeyStoreClient)EasyMock.anyObject()))
-                .andReturn(mSlowConfig).anyTimes();
+        when(mMockConfigFactory.createConfigurationFromArgs(
+                        AdditionalMatchers.aryEq(slowConfigArgs),
+                        Mockito.eq(nullArg),
+                        (IKeyStoreClient) Mockito.any()))
+                .thenReturn(mSlowConfig);
 
-        EasyMock.replay(mFastConfig, mSlowConfig, mMockConfigFactory);
         mCommandScheduler.start();
         mInterruptible = true;
         mCommandScheduler.addCommand(slowConfigArgs);
@@ -358,23 +359,25 @@ public class CommandSchedulerFuncTest {
     public void testShutdown_interruptible() throws Throwable {
         String[] slowConfigArgs = new String[] {"slowConfig"};
         List<String> nullArg = null;
-        EasyMock.expect(
-                mMockConfigFactory.createConfigurationFromArgs(EasyMock.aryEq(slowConfigArgs),
-                EasyMock.eq(nullArg), (IKeyStoreClient)EasyMock.anyObject()))
-                .andReturn(mSlowConfig).anyTimes();
+        when(mMockConfigFactory.createConfigurationFromArgs(
+                        AdditionalMatchers.aryEq(slowConfigArgs),
+                        Mockito.eq(nullArg),
+                        (IKeyStoreClient) Mockito.any()))
+                .thenReturn(mSlowConfig);
 
-        EasyMock.replay(mFastConfig, mSlowConfig, mMockConfigFactory);
         mCommandScheduler.start();
         mInterruptible = true;
         mCommandScheduler.addCommand(slowConfigArgs);
 
-        Thread test = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                RunUtil.getDefault().sleep(500);
-                mCommandScheduler.shutdownHard();
-            }
-        });
+        Thread test =
+                new Thread(
+                        new Runnable() {
+                            @Override
+                            public void run() {
+                                RunUtil.getDefault().sleep(500);
+                                mCommandScheduler.shutdownHard();
+                            }
+                        });
         test.setName("CommandSchedulerFuncTest#testShutdown_interruptible");
         test.start();
         synchronized (mMockTestInvoker) {
@@ -434,23 +437,25 @@ public class CommandSchedulerFuncTest {
                 };
         String[] slowConfigArgs = new String[] {"slowConfig"};
         List<String> nullArg = null;
-        EasyMock.expect(
-                mMockConfigFactory.createConfigurationFromArgs(EasyMock.aryEq(slowConfigArgs),
-                EasyMock.eq(nullArg), (IKeyStoreClient)EasyMock.anyObject()))
-                .andReturn(mSlowConfig).anyTimes();
+        when(mMockConfigFactory.createConfigurationFromArgs(
+                        AdditionalMatchers.aryEq(slowConfigArgs),
+                        Mockito.eq(nullArg),
+                        (IKeyStoreClient) Mockito.any()))
+                .thenReturn(mSlowConfig);
 
-        EasyMock.replay(mFastConfig, mSlowConfig, mMockConfigFactory);
         mCommandScheduler.start();
         mInterruptible = false;
         mCommandScheduler.addCommand(slowConfigArgs);
 
-        Thread shutdownThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                RunUtil.getDefault().sleep(1000);
-                mCommandScheduler.shutdownHard();
-            }
-        });
+        Thread shutdownThread =
+                new Thread(
+                        new Runnable() {
+                            @Override
+                            public void run() {
+                                RunUtil.getDefault().sleep(1000);
+                                mCommandScheduler.shutdownHard();
+                            }
+                        });
         shutdownThread.setName("CommandSchedulerFuncTest#testShutdown_notInterruptible");
         shutdownThread.start();
         synchronized (li) {
@@ -549,23 +554,25 @@ public class CommandSchedulerFuncTest {
                 };
         String[] slowConfigArgs = new String[] {"slowConfig"};
         List<String> nullArg = null;
-        EasyMock.expect(
-                mMockConfigFactory.createConfigurationFromArgs(EasyMock.aryEq(slowConfigArgs),
-                EasyMock.eq(nullArg), (IKeyStoreClient)EasyMock.anyObject()))
-                .andReturn(mSlowConfig).anyTimes();
+        when(mMockConfigFactory.createConfigurationFromArgs(
+                        AdditionalMatchers.aryEq(slowConfigArgs),
+                        Mockito.eq(nullArg),
+                        (IKeyStoreClient) Mockito.any()))
+                .thenReturn(mSlowConfig);
 
-        EasyMock.replay(mFastConfig, mSlowConfig, mMockConfigFactory);
         mCommandScheduler.start();
         mInterruptible = false;
         mCommandScheduler.addCommand(slowConfigArgs);
 
-        Thread shutdownThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                RunUtil.getDefault().sleep(1000);
-                mCommandScheduler.shutdownHard();
-            }
-        });
+        Thread shutdownThread =
+                new Thread(
+                        new Runnable() {
+                            @Override
+                            public void run() {
+                                RunUtil.getDefault().sleep(1000);
+                                mCommandScheduler.shutdownHard();
+                            }
+                        });
         shutdownThread.setName("CommandSchedulerFuncTest#testShutdown_notInterruptible_timeout");
         shutdownThread.start();
         synchronized (li) {
@@ -613,12 +620,12 @@ public class CommandSchedulerFuncTest {
                 };
         String[] slowConfigArgs = new String[] {"slowConfig"};
         List<String> nullArg = null;
-        EasyMock.expect(
-                mMockConfigFactory.createConfigurationFromArgs(EasyMock.aryEq(slowConfigArgs),
-                EasyMock.eq(nullArg), (IKeyStoreClient)EasyMock.anyObject()))
-                .andReturn(mSlowConfig).anyTimes();
+        when(mMockConfigFactory.createConfigurationFromArgs(
+                        AdditionalMatchers.aryEq(slowConfigArgs),
+                        Mockito.eq(nullArg),
+                        (IKeyStoreClient) Mockito.any()))
+                .thenReturn(mSlowConfig);
 
-        EasyMock.replay(mFastConfig, mSlowConfig, mMockConfigFactory);
         mCommandScheduler.start();
         mInterruptible = true;
         mCommandScheduler.addCommand(slowConfigArgs);

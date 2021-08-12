@@ -147,11 +147,16 @@ public class ParentSandboxInvocationExecution extends InvocationExecution {
         } finally {
             if (!success) {
                 String instanceName = null;
+                // hostname is only needed for Oxygen cuttlefish cleanup.
+                String hostname = null;
                 boolean cleaned = false;
                 for (IBuildInfo build : info.getContext().getBuildInfos()) {
                     if (build.getBuildAttributes().get(GceManager.GCE_INSTANCE_NAME_KEY) != null) {
                         instanceName =
                                 build.getBuildAttributes().get(GceManager.GCE_INSTANCE_NAME_KEY);
+                    }
+                    if (build.getBuildAttributes().get(GceManager.GCE_HOSTNAME_KEY) != null) {
+                        hostname = build.getBuildAttributes().get(GceManager.GCE_HOSTNAME_KEY);
                     }
                     if (build.getBuildAttributes().get(GceManager.GCE_INSTANCE_CLEANED_KEY)
                             != null) {
@@ -162,7 +167,10 @@ public class ParentSandboxInvocationExecution extends InvocationExecution {
                     // TODO: Handle other devices if needed.
                     TestDeviceOptions options = config.getDeviceConfig().get(0).getDeviceOptions();
                     CLog.w("Instance was not cleaned in sandbox subprocess, cleaning it now.");
-                    boolean res = GceManager.AcloudShutdown(options, getRunUtil(), instanceName);
+
+                    boolean res =
+                            GceManager.AcloudShutdown(
+                                    options, getRunUtil(), instanceName, hostname);
                     if (res) {
                         info.getBuildInfo()
                                 .addBuildAttribute(GceManager.GCE_INSTANCE_CLEANED_KEY, "true");

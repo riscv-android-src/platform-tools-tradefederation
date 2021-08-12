@@ -187,7 +187,7 @@ public class InstrumentationTest
             description =
                     "Use test file instead of separate adb commands for each test when re-running"
                         + " instrumentations for tests that failed to run in previous attempts. ")
-    private boolean mReRunUsingTestFile = true;
+    private boolean mReRunUsingTestFile = false;
 
     @Option(
         name = "rerun-from-file-attempts",

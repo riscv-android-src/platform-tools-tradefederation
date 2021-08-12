@@ -21,12 +21,25 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.when;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.IRunUtil;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -39,12 +52,13 @@ import java.util.Map;
 @RunWith(JUnit4.class)
 public class FastbootHelperTest {
 
-    private IRunUtil mMockRunUtil;
+    @Mock IRunUtil mMockRunUtil;
     private FastbootHelper mFastbootHelper;
 
     @Before
     public void setUp() throws Exception {
-        mMockRunUtil = EasyMock.createMock(IRunUtil.class);
+        MockitoAnnotations.initMocks(this);
+
         mFastbootHelper = new FastbootHelper(mMockRunUtil, "fastboot");
     }
 
@@ -124,11 +138,11 @@ public class FastbootHelperTest {
     public void testIsFastbootAvailable_oldVersion() {
         CommandResult fakeRes = new CommandResult(CommandStatus.FAILED);
         fakeRes.setStderr("Help doesn't exists. usage: fastboot");
-        EasyMock.expect(mMockRunUtil.runTimedCmdSilently(EasyMock.anyLong(),
-                EasyMock.eq("fastboot"), EasyMock.eq("help"))).andReturn(fakeRes);
-        EasyMock.replay(mMockRunUtil);
+        when(mMockRunUtil.runTimedCmdSilently(
+                        Mockito.anyLong(), Mockito.eq("fastboot"), Mockito.eq("help")))
+                .thenReturn(fakeRes);
+
         assertTrue(mFastbootHelper.isFastbootAvailable());
-        EasyMock.verify(mMockRunUtil);
     }
 
     /** Test that an older version of fastboot is still accepted */
@@ -136,11 +150,11 @@ public class FastbootHelperTest {
     public void testIsFastbootAvailable_noBinary() {
         CommandResult fakeRes = new CommandResult(CommandStatus.FAILED);
         fakeRes.setStderr("No command 'fastboot' found");
-        EasyMock.expect(mMockRunUtil.runTimedCmdSilently(EasyMock.anyLong(),
-                EasyMock.eq("fastboot"), EasyMock.eq("help"))).andReturn(fakeRes);
-        EasyMock.replay(mMockRunUtil);
+        when(mMockRunUtil.runTimedCmdSilently(
+                        Mockito.anyLong(), Mockito.eq("fastboot"), Mockito.eq("help")))
+                .thenReturn(fakeRes);
+
         assertFalse(mFastbootHelper.isFastbootAvailable());
-        EasyMock.verify(mMockRunUtil);
     }
 
     /** Test that get device returns null if command fails. */
@@ -149,15 +163,11 @@ public class FastbootHelperTest {
         CommandResult fakeRes = new CommandResult(CommandStatus.FAILED);
         fakeRes.setStdout("");
         fakeRes.setStderr("");
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmdSilently(
-                                EasyMock.anyLong(),
-                                EasyMock.eq("fastboot"),
-                                EasyMock.eq("devices")))
-                .andReturn(fakeRes);
-        EasyMock.replay(mMockRunUtil);
+        when(mMockRunUtil.runTimedCmdSilently(
+                        Mockito.anyLong(), Mockito.eq("fastboot"), Mockito.eq("devices")))
+                .thenReturn(fakeRes);
+
         assertTrue(mFastbootHelper.getDevices().isEmpty());
-        EasyMock.verify(mMockRunUtil);
     }
 
     /** Test {@link FastbootHelper#executeCommand(String, String)} return the stdout on success. */
@@ -166,11 +176,15 @@ public class FastbootHelperTest {
         final String expectedStdout = "stdout";
         CommandResult fakeRes = new CommandResult(CommandStatus.SUCCESS);
         fakeRes.setStdout(expectedStdout);
-        EasyMock.expect(mMockRunUtil.runTimedCmd(EasyMock.anyLong(), EasyMock.eq("fastboot"),
-                EasyMock.eq("-s"), EasyMock.eq("SERIAL"), EasyMock.eq("wipe"))).andReturn(fakeRes);
-        EasyMock.replay(mMockRunUtil);
+        when(mMockRunUtil.runTimedCmd(
+                        Mockito.anyLong(),
+                        Mockito.eq("fastboot"),
+                        Mockito.eq("-s"),
+                        Mockito.eq("SERIAL"),
+                        Mockito.eq("wipe")))
+                .thenReturn(fakeRes);
+
         assertEquals(expectedStdout, mFastbootHelper.executeCommand("SERIAL", "wipe"));
-        EasyMock.verify(mMockRunUtil);
     }
 
     /** Test {@link FastbootHelper#executeCommand(String, String)} return null on failure */
@@ -178,11 +192,15 @@ public class FastbootHelperTest {
     public void testExecuteCommand_fail() {
         CommandResult fakeRes = new CommandResult(CommandStatus.FAILED);
         fakeRes.setStderr("error");
-        EasyMock.expect(mMockRunUtil.runTimedCmd(EasyMock.anyLong(), EasyMock.eq("fastboot"),
-                EasyMock.eq("-s"), EasyMock.eq("SERIAL"), EasyMock.eq("wipe"))).andReturn(fakeRes);
-        EasyMock.replay(mMockRunUtil);
+        when(mMockRunUtil.runTimedCmd(
+                        Mockito.anyLong(),
+                        Mockito.eq("fastboot"),
+                        Mockito.eq("-s"),
+                        Mockito.eq("SERIAL"),
+                        Mockito.eq("wipe")))
+                .thenReturn(fakeRes);
+
         assertNull(mFastbootHelper.executeCommand("SERIAL", "wipe"));
-        EasyMock.verify(mMockRunUtil);
     }
 
     @Test
@@ -190,17 +208,13 @@ public class FastbootHelperTest {
         CommandResult fakeRes = new CommandResult(CommandStatus.SUCCESS);
         fakeRes.setStdout("04035EEB0B01F01C        fastboot\n" + "HT99PP800024    fastbootd\n");
         fakeRes.setStderr("");
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmdSilently(
-                                EasyMock.anyLong(),
-                                EasyMock.eq("fastboot"),
-                                EasyMock.eq("devices")))
-                .andReturn(fakeRes);
-        EasyMock.replay(mMockRunUtil);
+        when(mMockRunUtil.runTimedCmdSilently(
+                        Mockito.anyLong(), Mockito.eq("fastboot"), Mockito.eq("devices")))
+                .thenReturn(fakeRes);
+
         Map<String, Boolean> result = mFastbootHelper.getBootloaderAndFastbootdDevices();
         assertEquals(2, result.size());
         assertFalse(result.get("04035EEB0B01F01C"));
         assertTrue(result.get("HT99PP800024"));
-        EasyMock.verify(mMockRunUtil);
     }
 }

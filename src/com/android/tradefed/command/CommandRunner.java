@@ -27,6 +27,7 @@ import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.service.TradefedFeatureServer;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.SerializationUtil;
+import com.android.tradefed.testtype.suite.TestSuiteInfo;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -107,7 +108,11 @@ public class CommandRunner {
         try {
             initGlobalConfig(args);
 
-            ClearcutClient client = new ClearcutClient();
+            ClearcutClient client =
+                    new ClearcutClient(
+                            TestSuiteInfo.getInstance().didLoadFromProperties()
+                                    ? TestSuiteInfo.getInstance().getName()
+                                    : "");
             Runtime.getRuntime().addShutdownHook(new TerminateClearcutClient(client));
             client.notifyTradefedStartEvent();
             TradefedFeatureServer server = null;

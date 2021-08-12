@@ -65,6 +65,7 @@ import java.util.regex.Pattern;
 /** Helper that manages the GCE calls to start/stop and collect logs from GCE. */
 public class GceManager {
     public static final String GCE_INSTANCE_NAME_KEY = "gce-instance-name";
+    public static final String GCE_HOSTNAME_KEY = "gce-hostname";
     public static final String GCE_INSTANCE_CLEANED_KEY = "gce-instance-clean-called";
 
     private static final long BUGREPORT_TIMEOUT = 15 * 60 * 1000L;
@@ -201,11 +202,14 @@ public class GceManager {
                                     getTestDeviceOptions().getGceCmdTimeout(),
                                     gceArgs.toArray(new String[gceArgs.size()]));
             CLog.i("GCE driver stderr: %s", cmd.getStderr());
-            String instanceName = extractInstanceName(cmd.getStderr());
-            if (instanceName != null) {
-                mBuildInfo.addBuildAttribute(GCE_INSTANCE_NAME_KEY, instanceName);
-            } else {
-                CLog.w("Could not extract an instance name for the gce device.");
+            String instanceName = null;
+            if (!getTestDeviceOptions().useOxygen()) {
+                instanceName = extractInstanceName(cmd.getStderr());
+                if (instanceName != null) {
+                    mBuildInfo.addBuildAttribute(GCE_INSTANCE_NAME_KEY, instanceName);
+                } else {
+                    CLog.w("Could not extract an instance name for the gce device.");
+                }
             }
             if (CommandStatus.TIMED_OUT.equals(cmd.getStatus())) {
                 String errors =
@@ -245,6 +249,12 @@ public class GceManager {
             mGceAvdInfo =
                     GceAvdInfo.parseGceInfoFromFile(
                             reportFile, mDeviceDescriptor, mDeviceOptions.getRemoteAdbPort());
+            if (getTestDeviceOptions().useOxygen()) {
+                mBuildInfo.addBuildAttribute(GCE_INSTANCE_NAME_KEY, mGceAvdInfo.instanceName());
+                // Save GCE hostname to build info for releasing Oxygen cuttlefish in the parent
+                // process if needed.
+                mBuildInfo.addBuildAttribute(GCE_HOSTNAME_KEY, mGceAvdInfo.hostAndPort().getHost());
+            }
             return mGceAvdInfo;
         } catch (IOException e) {
             throw new TargetSetupError(
@@ -311,11 +321,16 @@ public class GceManager {
             }
         }
 
-        /* If args passed by gce-driver-param contain build-target or build_target, there is no need
-        to pass the build info from device BuildInfo to gce arguments. Otherwise, generate gce args
-        from device BuildInfo. Please refer to acloud arguments for the supported format:
+        /* If args passed by gce-driver-param contain build-target or build_target, or
+        gce-driver-param includes local-image and cvd-host-package to side load prebuilt virtual
+        device images, there is no need to pass the build info from device BuildInfo to gce
+        arguments. Otherwise, generate gce args from device BuildInfo. Please refer to acloud
+        arguments for the supported format:
         https://android.googlesource.com/platform/tools/acloud/+/refs/heads/master/create/create_args.py  */
-        if (!gceDriverParams.contains("--build-target")
+        if (gceDriverParams.contains("--cvd-host-package")
+                && gceDriverParams.contains("--local-image")) {
+            CLog.i("Virtual device is created by specified prebuilt image files.");
+        } else if (!gceDriverParams.contains("--build-target")
                 && !gceDriverParams.contains("--build_target")) {
             gceArgs.add("--build-target");
             if (b.getBuildAttributes().containsKey("build_target")) {
@@ -413,8 +428,14 @@ public class GceManager {
             CLog.d("No instance to shutdown.");
             return false;
         }
+        // hostname is needed for Oxygen cuttlefish to shutdown.
+        String hostname = null;
+        if (mGceAvdInfo != null && mGceAvdInfo.hostAndPort() != null) {
+            hostname = mGceAvdInfo.hostAndPort().getHost();
+        }
         try {
-            boolean res = AcloudShutdown(getTestDeviceOptions(), getRunUtil(), instanceName);
+            boolean res =
+                    AcloudShutdown(getTestDeviceOptions(), getRunUtil(), instanceName, hostname);
             // Be more lenient if instance name was not reported officially and we still attempt
             // to clean it.
             if (res || notFromGceAvd) {
@@ -432,10 +453,11 @@ public class GceManager {
      * @param options The {@link TestDeviceOptions} for the Acloud options
      * @param runUtil The {@link IRunUtil} to run Acloud
      * @param instanceName The instance to shutdown.
+     * @param hostname hostname of the instance, only used for Oxygen cuttlefish.
      * @return True if successful
      */
     public static boolean AcloudShutdown(
-            TestDeviceOptions options, IRunUtil runUtil, String instanceName) {
+            TestDeviceOptions options, IRunUtil runUtil, String instanceName, String hostname) {
         List<String> gceArgs = ArrayUtil.list(options.getAvdDriverBinary().getAbsolutePath());
         gceArgs.add("delete");
         // Add extra args.
@@ -443,6 +465,15 @@ public class GceManager {
         File config = null;
         try {
             config = FileUtil.createTempFile(options.getAvdConfigFile().getName(), "config");
+            if (options.useOxygen()) {
+                if (Strings.isNullOrEmpty(hostname)) {
+                    CLog.w("`hostname` is needed for releasing Oxygen cuttlefish.");
+                    return false;
+                }
+                gceArgs.add("--oxygen");
+                gceArgs.add("--ip");
+                gceArgs.add(hostname);
+            }
             gceArgs.add("--instance_names");
             gceArgs.add(instanceName);
             gceArgs.add("--config_file");
