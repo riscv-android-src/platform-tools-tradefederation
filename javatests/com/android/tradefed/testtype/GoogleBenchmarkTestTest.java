@@ -15,6 +15,8 @@
  */
 package com.android.tradefed.testtype;
 
+import com.android.tradefed.config.ConfigurationException;
+import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.CollectingOutputReceiver;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
@@ -48,6 +50,7 @@ public class GoogleBenchmarkTestTest extends TestCase {
     private GoogleBenchmarkTest mGoogleBenchmarkTest;
     private TestInformation mTestInfo;
     private TestDescription mDummyTest;
+    private OptionSetter mSetter;
 
     /**
      * Helper to initialize the various EasyMocks we'll need.
@@ -554,6 +557,49 @@ public class GoogleBenchmarkTestTest extends TestCase {
         mMockInvocationListener.testRunEnded(
                 EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
         EasyMock.expectLastCall();
+        replayMocks();
+
+        mGoogleBenchmarkTest.run(mTestInfo, mMockInvocationListener);
+        verifyMocks();
+    }
+
+    /** Test the run method for a couple tests which set ld-library-path */
+    public void testRun_withLDLibPath() throws ConfigurationException, DeviceNotAvailableException {
+        final String nativeTestPath = GoogleBenchmarkTest.DEFAULT_TEST_PATH;
+        final String test1 = "test1";
+        mSetter = new OptionSetter(mGoogleBenchmarkTest);
+        mSetter.setOptionValue("ld-library-path", "my/ld/path");
+        MockFileUtil.setMockDirContents(mMockITestDevice, nativeTestPath, test1);
+        EasyMock.expect(mMockITestDevice.doesFileExist(nativeTestPath)).andReturn(true);
+        EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath)).andReturn(true);
+        EasyMock.expect(mMockITestDevice.isDirectory(nativeTestPath + "/test1")).andReturn(false);
+        String[] files = new String[] {"test1"};
+        EasyMock.expect(mMockITestDevice.getChildren(nativeTestPath)).andReturn(files);
+        EasyMock.expect(mMockITestDevice.executeShellCommand(EasyMock.contains("chmod")))
+                .andReturn("")
+                .times(1);
+        mMockITestDevice.executeShellCommand(
+                EasyMock.contains(test1),
+                EasyMock.same(mMockReceiver),
+                EasyMock.anyLong(),
+                (TimeUnit) EasyMock.anyObject(),
+                EasyMock.anyInt());
+
+        EasyMock.expect(
+                        mMockITestDevice.executeShellCommand(
+                                String.format(
+                                        "LD_LIBRARY_PATH=my/ld/path %s/test1"
+                                                + " --benchmark_list_tests=true",
+                                        nativeTestPath)))
+                .andReturn("method1\nmethod2\nmethod3");
+
+        mMockInvocationListener.testRunStarted(test1, 3);
+        mMockInvocationListener.testStarted(mDummyTest);
+        mMockInvocationListener.testEnded(
+                EasyMock.eq(mDummyTest), EasyMock.<HashMap<String, String>>anyObject());
+        mMockInvocationListener.testRunEnded(
+                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
+        EasyMock.expectLastCall().times(1);
         replayMocks();
 
         mGoogleBenchmarkTest.run(mTestInfo, mMockInvocationListener);
