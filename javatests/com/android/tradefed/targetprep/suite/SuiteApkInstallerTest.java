@@ -18,8 +18,10 @@ package com.android.tradefed.targetprep.suite;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
@@ -31,7 +33,6 @@ import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.targetprep.TargetSetupError;
 import com.android.tradefed.util.FileUtil;
 
-import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -146,17 +147,16 @@ public class SuiteApkInstallerTest {
      */
     @Test
     public void testGetLocalPathForFileName_testsDir() throws Exception {
-        IDeviceBuildInfo deviceBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
+        IDeviceBuildInfo deviceBuildInfo = mock(IDeviceBuildInfo.class);
         File tmpDir = null;
         try {
             tmpDir = FileUtil.createTempDir("test");
             mTestInfo.executionFiles().put(FilesKey.TESTS_DIRECTORY, tmpDir);
             File tmpApk = FileUtil.createTempFile("suite-apk-installer", ".apk", tmpDir);
-            EasyMock.replay(deviceBuildInfo);
+
             mTestInfo.getContext().addDeviceBuildInfo("device", deviceBuildInfo);
             File apk = mPreparer.getLocalPathForFilename(mTestInfo, tmpApk.getName());
             assertEquals(tmpApk.getAbsolutePath(), apk.getAbsolutePath());
-            EasyMock.verify(deviceBuildInfo);
         } finally {
             FileUtil.recursiveDelete(tmpDir);
         }
@@ -181,22 +181,20 @@ public class SuiteApkInstallerTest {
      */
     @Test
     public void testGetLocalPathForFileName_remoteZip() throws Exception {
-        IDeviceBuildInfo deviceBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
+        IDeviceBuildInfo deviceBuildInfo = mock(IDeviceBuildInfo.class);
         File tmpDir = null;
         try {
             tmpDir = FileUtil.createTempDir("test");
             mTestInfo.executionFiles().put(FilesKey.TESTS_DIRECTORY, tmpDir);
             // Change the name so direct file search will return null.
             File tmpApk = FileUtil.createTempFile("suite-apk-installer-2", ".apk", tmpDir);
-            EasyMock.expect(
-                            deviceBuildInfo.stageRemoteFile(
-                                    EasyMock.eq("suite-apk-installer.apk"), EasyMock.eq(tmpDir)))
-                    .andReturn(tmpApk);
+            when(deviceBuildInfo.stageRemoteFile(
+                            Mockito.eq("suite-apk-installer.apk"), Mockito.eq(tmpDir)))
+                    .thenReturn(tmpApk);
             mTestInfo.getContext().addDeviceBuildInfo("device", deviceBuildInfo);
-            EasyMock.replay(deviceBuildInfo);
+
             File apk = mPreparer.getLocalPathForFilename(mTestInfo, "suite-apk-installer.apk");
             assertEquals(tmpApk.getAbsolutePath(), apk.getAbsolutePath());
-            EasyMock.verify(deviceBuildInfo);
         } finally {
             FileUtil.recursiveDelete(tmpDir);
         }
