@@ -16,18 +16,31 @@
 
 package com.android.tradefed.targetprep;
 
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.android.tradefed.build.IDeviceBuildInfo;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 
-import junit.framework.TestCase;
-
-import org.easymock.EasyMock;
-import org.easymock.IMocksControl;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
+import org.mockito.InOrder;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.io.File;
 
-public class SystemUpdaterDeviceFlasherTest extends TestCase {
+@RunWith(JUnit4.class)
+public class SystemUpdaterDeviceFlasherTest {
 
     private static final String A_BUILD_ID = "1";
 
@@ -35,72 +48,80 @@ public class SystemUpdaterDeviceFlasherTest extends TestCase {
 
     private SystemUpdaterDeviceFlasher mFlasher;
 
-    private IMocksControl mControl;
+    @Mock ITestDevice mMockDevice;
+    @Mock IDeviceBuildInfo mMockDeviceBuild;
 
-    private IDeviceBuildInfo mMockDeviceBuild;
+    private InOrder mInOrder;
 
-    private ITestDevice mMockDevice;
+    @Before
+    public void setUp() throws Exception {
+        MockitoAnnotations.initMocks(this);
+        mInOrder = inOrder(mMockDevice, mMockDeviceBuild);
 
-    @Override
-    protected void setUp() throws Exception {
-        super.setUp();
-        ITestsZipInstaller mockZipInstaller = EasyMock.createMock(ITestsZipInstaller.class);
+        ITestsZipInstaller mockZipInstaller = mock(ITestsZipInstaller.class);
         mFlasher = new SystemUpdaterDeviceFlasher();
         mFlasher.setTestsZipInstaller(mockZipInstaller);
-        mControl = EasyMock.createStrictControl();
-        mControl.checkOrder(false);
-        mMockDevice = mControl.createMock(ITestDevice.class);
-        mMockDeviceBuild = mControl.createMock(IDeviceBuildInfo.class);
-        EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn(TEST_STRING);
-        EasyMock.expect(mMockDevice.getProductType()).andStubReturn(TEST_STRING);
-        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andStubReturn(null);
+        when(mMockDevice.getSerialNumber()).thenReturn(TEST_STRING);
+        when(mMockDevice.getProductType()).thenReturn(TEST_STRING);
+        when(mMockDevice.getDeviceDescriptor()).thenReturn(null);
     }
 
+    @Test
     public void testFlash() throws DeviceNotAvailableException, TargetSetupError {
         yieldDifferentBuilds(true);
         File fakeImage = new File("fakeImageFile");
-        mControl.checkOrder(true);
-        EasyMock.expect(mMockDeviceBuild.getOtaPackageFile()).andReturn(fakeImage);
-        EasyMock.expect(mMockDevice.pushFile(fakeImage, "/cache/update.zip")).andReturn(true);
-        String commandsRegex = "echo +--update_package +> +/cache/recovery/command +&& *"
-                + "echo +/cache/update.zip +>> +/cache/recovery/command";
-        EasyMock.expect(mMockDevice.executeShellCommand(EasyMock.matches(commandsRegex))).andReturn(
-                "foo");
-        mMockDevice.rebootIntoRecovery();
-        mMockDevice.waitForDeviceAvailable();
-        mMockDevice.reboot();
+        when(mMockDeviceBuild.getOtaPackageFile()).thenReturn(fakeImage);
+        when(mMockDevice.pushFile(fakeImage, "/cache/update.zip")).thenReturn(true);
+        String commandsRegex =
+                "echo +--update_package +> +/cache/recovery/command +&& *"
+                        + "echo +/cache/update.zip +>> +/cache/recovery/command";
+        when(mMockDevice.executeShellCommand(Mockito.matches(commandsRegex))).thenReturn("foo");
 
-        mControl.replay();
         mFlasher.flash(mMockDevice, mMockDeviceBuild);
-        mControl.verify();
+
+        mInOrder.verify(mMockDeviceBuild).getOtaPackageFile();
+        mInOrder.verify(mMockDevice)
+                .pushFile(Mockito.eq(fakeImage), Mockito.eq("/cache/update.zip"));
+        mInOrder.verify(mMockDevice).executeShellCommand(Mockito.matches(commandsRegex));
+        mInOrder.verify(mMockDevice).rebootIntoRecovery();
+        mInOrder.verify(mMockDevice).waitForDeviceAvailable();
+        mInOrder.verify(mMockDevice).reboot();
     }
 
+    @Test
     public void testFlash_noOta() throws DeviceNotAvailableException {
         yieldDifferentBuilds(true);
-        EasyMock.expect(mMockDeviceBuild.getOtaPackageFile()).andReturn(null);
+        when(mMockDeviceBuild.getOtaPackageFile()).thenReturn(null);
 
-        mControl.replay();
         try {
             mFlasher.flash(mMockDevice, mMockDeviceBuild);
-            fail("didn't throw expected exception when OTA is missing: "
-                    + TargetSetupError.class.getSimpleName());
+            fail(
+                    "didn't throw expected exception when OTA is missing: "
+                            + TargetSetupError.class.getSimpleName());
         } catch (TargetSetupError e) {
             assertTrue(true);
         } finally {
-            mControl.verify();
+            verify(mMockDeviceBuild).getOtaPackageFile();
         }
     }
 
+    @Test
     public void testFlashSameBuild() throws DeviceNotAvailableException, TargetSetupError {
         yieldDifferentBuilds(false);
-        mControl.replay();
         mFlasher.flash(mMockDevice, mMockDeviceBuild);
-        mControl.verify();
+
+        mInOrder.verify(mMockDeviceBuild, times(0)).getOtaPackageFile();
+        mInOrder.verify(mMockDevice, times(0))
+                .pushFile(Mockito.any(), Mockito.eq("/cache/update.zip"));
+        mInOrder.verify(mMockDevice, times(0)).executeShellCommand(Mockito.any());
+        mInOrder.verify(mMockDevice, times(0)).rebootIntoRecovery();
+        mInOrder.verify(mMockDevice, times(0)).waitForDeviceAvailable();
+        mInOrder.verify(mMockDevice, times(0)).reboot();
     }
 
     private void yieldDifferentBuilds(boolean different) throws DeviceNotAvailableException {
-        EasyMock.expect(mMockDevice.getBuildId()).andReturn(A_BUILD_ID).anyTimes();
-        EasyMock.expect(mMockDeviceBuild.getDeviceBuildId()).andReturn(
-                (different ? A_BUILD_ID + 1 : A_BUILD_ID)).anyTimes();
+        when(mMockDevice.getBuildId()).thenReturn(A_BUILD_ID);
+        when(mMockDeviceBuild.getDeviceBuildId())
+                .thenReturn((different ? A_BUILD_ID + 1 : A_BUILD_ID));
     }
 }
