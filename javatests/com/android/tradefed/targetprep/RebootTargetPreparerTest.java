@@ -15,32 +15,37 @@
  */
 package com.android.tradefed.targetprep;
 
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 /** Unit Tests for {@link RebootTargetPreparer}. */
 @RunWith(JUnit4.class)
 public class RebootTargetPreparerTest {
 
     private RebootTargetPreparer mRebootTargetPreparer;
-    private ITestDevice mMockDevice;
-    private IBuildInfo mMockBuildInfo;
+    @Mock ITestDevice mMockDevice;
+    @Mock IBuildInfo mMockBuildInfo;
     private TestInformation mTestInfo;
 
     @Before
     public void setUp() {
+        MockitoAnnotations.initMocks(this);
+
         mRebootTargetPreparer = new RebootTargetPreparer();
-        mMockDevice = EasyMock.createMock(ITestDevice.class);
-        mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
+
         IInvocationContext context = new InvocationContext();
         context.addAllocatedDevice("device", mMockDevice);
         context.addDeviceBuildInfo("device", mMockBuildInfo);
@@ -49,11 +54,8 @@ public class RebootTargetPreparerTest {
 
     @Test
     public void testSetUp() throws Exception {
-        mMockDevice.reboot();
-        EasyMock.expectLastCall().once();
-        EasyMock.replay(mMockDevice, mMockBuildInfo);
 
         mRebootTargetPreparer.setUp(mTestInfo);
-        EasyMock.verify(mMockDevice, mMockBuildInfo);
+        verify(mMockDevice, times(1)).reboot();
     }
 }
