@@ -19,6 +19,11 @@ package com.android.tradefed.targetprep;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.android.ddmlib.IDevice;
 import com.android.tradefed.build.DeviceBuildInfo;
@@ -41,12 +46,14 @@ import com.android.tradefed.targetprep.IDeviceFlasher.UserDataFlashOption;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
 
-import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.io.File;
 import java.util.Arrays;
@@ -55,11 +62,11 @@ import java.util.Arrays;
 @RunWith(JUnit4.class)
 public class DeviceFlashPreparerTest {
 
-    private IDeviceFlasher mMockFlasher;
+    @Mock IDeviceFlasher mMockFlasher;
     private DeviceFlashPreparer mDeviceFlashPreparer;
-    private ITestDevice mMockDevice;
+    @Mock ITestDevice mMockDevice;
     private IDeviceBuildInfo mMockBuildInfo;
-    private IHostOptions mMockHostOptions;
+    @Mock IHostOptions mMockHostOptions;
     private File mTmpDir;
     private boolean mFlashingMetricsReported;
     private TestInformation mTestInfo;
@@ -67,39 +74,45 @@ public class DeviceFlashPreparerTest {
 
     @Before
     public void setUp() throws Exception {
-        mMockFlasher = EasyMock.createMock(IDeviceFlasher.class);
-        mMockDevice = EasyMock.createMock(ITestDevice.class);
-        EasyMock.expect(mMockDevice.getSerialNumber()).andReturn("foo").anyTimes();
-        EasyMock.expect(mMockDevice.getOptions()).andReturn(new TestDeviceOptions()).anyTimes();
-        EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(EasyMock.createMock(IDevice.class));
+        MockitoAnnotations.initMocks(this);
+
+        when(mMockDevice.getSerialNumber()).thenReturn("foo");
+        when(mMockDevice.getOptions()).thenReturn(new TestDeviceOptions());
+        when(mMockDevice.getIDevice()).thenReturn(mock(IDevice.class));
         mMockBuildInfo = new DeviceBuildInfo("0", "");
         mMockBuildInfo.setDeviceImageFile(new File("foo"), "0");
         mMockBuildInfo.setBuildFlavor("flavor");
-        mMockHostOptions = EasyMock.createMock(IHostOptions.class);
+
         mFlashingMetricsReported = false;
-        mDeviceFlashPreparer = new DeviceFlashPreparer() {
-            @Override
-            protected IDeviceFlasher createFlasher(ITestDevice device) {
-                return mMockFlasher;
-            }
+        mDeviceFlashPreparer =
+                new DeviceFlashPreparer() {
+                    @Override
+                    protected IDeviceFlasher createFlasher(ITestDevice device) {
+                        return mMockFlasher;
+                    }
 
-            @Override
-            int getDeviceBootPollTimeMs() {
-                return 100;
-            }
+                    @Override
+                    int getDeviceBootPollTimeMs() {
+                        return 100;
+                    }
 
-            @Override
-            protected IHostOptions getHostOptions() {
-                return mMockHostOptions;
-            }
+                    @Override
+                    protected IHostOptions getHostOptions() {
+                        return mMockHostOptions;
+                    }
 
-            @Override
-            protected void reportFlashMetrics(String branch, String buildFlavor, String buildId,
-                    String serial, long queueTime, long flashingTime,
-                    CommandStatus flashingStatus) {
-                mFlashingMetricsReported = true;
-            }
-        };
+                    @Override
+                    protected void reportFlashMetrics(
+                            String branch,
+                            String buildFlavor,
+                            String buildId,
+                            String serial,
+                            long queueTime,
+                            long flashingTime,
+                            CommandStatus flashingStatus) {
+                        mFlashingMetricsReported = true;
+                    }
+                };
         mSetter = new OptionSetter(mDeviceFlashPreparer);
         // Reset default settings
         mSetter.setOptionValue("device-boot-time", "100");
@@ -121,35 +134,33 @@ public class DeviceFlashPreparerTest {
     @Test
     public void testSetup() throws Exception {
         doSetupExpectations();
-        mMockFlasher.setShouldFlashRamdisk(false);
+
         // report flashing success in normal case
-        EasyMock.expect(mMockFlasher.getSystemFlashingStatus())
-            .andReturn(CommandStatus.SUCCESS).anyTimes();
-        EasyMock.replay(mMockFlasher, mMockDevice);
+        when(mMockFlasher.getSystemFlashingStatus()).thenReturn(CommandStatus.SUCCESS);
+
         mDeviceFlashPreparer.setUp(mTestInfo);
-        EasyMock.verify(mMockFlasher, mMockDevice);
+
+        verify(mMockFlasher).setShouldFlashRamdisk(false);
         assertTrue("should report flashing metrics in normal case", mFlashingMetricsReported);
     }
 
-    /**
-     * Set EasyMock expectations for a normal setup call
-     */
+    /** Set EasyMock expectations for a normal setup call */
     private void doSetupExpectations() throws TargetSetupError, DeviceNotAvailableException {
         mMockDevice.setRecoveryMode(RecoveryMode.ONLINE);
         mMockFlasher.overrideDeviceOptions(mMockDevice);
         mMockFlasher.setForceSystemFlash(false);
-        mMockFlasher.setDataWipeSkipList(Arrays.asList(new String[]{}));
+        mMockFlasher.setDataWipeSkipList(Arrays.asList(new String[] {}));
         mMockFlasher.flash(mMockDevice, mMockBuildInfo);
-        mMockFlasher.setWipeTimeout(EasyMock.anyLong());
+        mMockFlasher.setWipeTimeout(Mockito.anyLong());
         mMockDevice.waitForDeviceOnline();
-        EasyMock.expect(mMockDevice.enableAdbRoot()).andStubReturn(Boolean.TRUE);
+        when(mMockDevice.enableAdbRoot()).thenReturn(Boolean.TRUE);
         mMockDevice.setDate(null);
-        EasyMock.expect(mMockDevice.getBuildId()).andReturn(mMockBuildInfo.getBuildId());
-        EasyMock.expect(mMockDevice.getBuildFlavor()).andReturn(mMockBuildInfo.getBuildFlavor());
-        EasyMock.expect(mMockDevice.isEncryptionSupported()).andStubReturn(Boolean.TRUE);
-        EasyMock.expect(mMockDevice.isDeviceEncrypted()).andStubReturn(Boolean.FALSE);
+        when(mMockDevice.getBuildId()).thenReturn(mMockBuildInfo.getBuildId());
+        when(mMockDevice.getBuildFlavor()).thenReturn(mMockBuildInfo.getBuildFlavor());
+        when(mMockDevice.isEncryptionSupported()).thenReturn(Boolean.TRUE);
+        when(mMockDevice.isDeviceEncrypted()).thenReturn(Boolean.FALSE);
         mMockDevice.clearLogcat();
-        mMockDevice.waitForDeviceAvailable(EasyMock.anyLong());
+        mMockDevice.waitForDeviceAvailable(Mockito.anyLong());
         mMockDevice.setRecoveryMode(RecoveryMode.AVAILABLE);
         mMockDevice.postBootSetup();
     }
@@ -161,16 +172,13 @@ public class DeviceFlashPreparerTest {
     @Test
     public void testSetUp_nonDevice() throws Exception {
         try {
-            mTestInfo
-                    .getContext()
-                    .addDeviceBuildInfo("device", EasyMock.createMock(IBuildInfo.class));
-            EasyMock.replay(mMockDevice);
+            mTestInfo.getContext().addDeviceBuildInfo("device", mock(IBuildInfo.class));
+
             mDeviceFlashPreparer.setUp(mTestInfo);
             fail("IllegalArgumentException not thrown");
         } catch (IllegalArgumentException e) {
             // expected
         }
-        EasyMock.verify(mMockDevice);
     }
 
     /**
@@ -181,43 +189,42 @@ public class DeviceFlashPreparerTest {
     public void testSetUp_noRamdisk() throws Exception {
         mSetter.setOptionValue("flash-ramdisk", "true");
         try {
-            EasyMock.replay(mMockDevice);
             mDeviceFlashPreparer.setUp(mTestInfo);
             fail("HarnessRuntimeException not thrown");
         } catch (HarnessRuntimeException e) {
             // expected
         }
-        EasyMock.verify(mMockDevice);
     }
 
     /** Test {@link DeviceFlashPreparer#setUp(TestInformation)} when build does not boot. */
     @Test
     public void testSetup_buildError() throws Exception {
-        mMockDevice.setRecoveryMode(RecoveryMode.ONLINE);
-        mMockFlasher.overrideDeviceOptions(mMockDevice);
-        mMockFlasher.setForceSystemFlash(false);
-        mMockFlasher.setDataWipeSkipList(Arrays.asList(new String[]{}));
-        mMockFlasher.setShouldFlashRamdisk(false);
-        mMockFlasher.flash(mMockDevice, mMockBuildInfo);
-        mMockFlasher.setWipeTimeout(EasyMock.anyLong());
-        mMockDevice.waitForDeviceOnline();
-        EasyMock.expect(mMockDevice.enableAdbRoot()).andStubReturn(Boolean.TRUE);
-        mMockDevice.setDate(null);
-        EasyMock.expect(mMockDevice.getBuildId()).andReturn(mMockBuildInfo.getBuildId());
-        EasyMock.expect(mMockDevice.getBuildFlavor()).andReturn(mMockBuildInfo.getBuildFlavor());
-        EasyMock.expect(mMockDevice.isEncryptionSupported()).andStubReturn(Boolean.TRUE);
-        EasyMock.expect(mMockDevice.isDeviceEncrypted()).andStubReturn(Boolean.FALSE);
-        mMockDevice.clearLogcat();
-        mMockDevice.waitForDeviceAvailable(EasyMock.anyLong());
-        EasyMock.expectLastCall().andThrow(new DeviceUnresponsiveException("foo", "fakeserial"));
-        mMockDevice.setRecoveryMode(RecoveryMode.AVAILABLE);
-        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andReturn(
-                new DeviceDescriptor("SERIAL", false, DeviceAllocationState.Available, "unknown",
-                        "unknown", "unknown", "unknown", "unknown"));
+
+        when(mMockDevice.enableAdbRoot()).thenReturn(Boolean.TRUE);
+
+        when(mMockDevice.getBuildId()).thenReturn(mMockBuildInfo.getBuildId());
+        when(mMockDevice.getBuildFlavor()).thenReturn(mMockBuildInfo.getBuildFlavor());
+        when(mMockDevice.isEncryptionSupported()).thenReturn(Boolean.TRUE);
+        when(mMockDevice.isDeviceEncrypted()).thenReturn(Boolean.FALSE);
+
+        doThrow(new DeviceUnresponsiveException("foo", "fakeserial"))
+                .when(mMockDevice)
+                .waitForDeviceAvailable(Mockito.anyLong());
+
+        when(mMockDevice.getDeviceDescriptor())
+                .thenReturn(
+                        new DeviceDescriptor(
+                                "SERIAL",
+                                false,
+                                DeviceAllocationState.Available,
+                                "unknown",
+                                "unknown",
+                                "unknown",
+                                "unknown",
+                                "unknown"));
         // report SUCCESS since device was flashed successfully (but didn't boot up)
-        EasyMock.expect(mMockFlasher.getSystemFlashingStatus())
-            .andReturn(CommandStatus.SUCCESS).anyTimes();
-        EasyMock.replay(mMockFlasher, mMockDevice);
+        when(mMockFlasher.getSystemFlashingStatus()).thenReturn(CommandStatus.SUCCESS);
+
         try {
             mDeviceFlashPreparer.setUp(mTestInfo);
             fail("DeviceFlashPreparerTest not thrown");
@@ -226,8 +233,20 @@ public class DeviceFlashPreparerTest {
             // DeviceFailedToBootError properly masquerades as a BuildError.
             assertTrue(e instanceof DeviceFailedToBootError);
         }
-        EasyMock.verify(mMockFlasher, mMockDevice);
-        assertTrue("should report flashing metrics with device boot failure",
+
+        verify(mMockDevice).setRecoveryMode(RecoveryMode.ONLINE);
+        verify(mMockFlasher).overrideDeviceOptions(mMockDevice);
+        verify(mMockFlasher).setForceSystemFlash(false);
+        verify(mMockFlasher).setDataWipeSkipList(Arrays.asList(new String[] {}));
+        verify(mMockFlasher).setShouldFlashRamdisk(false);
+        verify(mMockFlasher).flash(mMockDevice, mMockBuildInfo);
+        verify(mMockFlasher).setWipeTimeout(Mockito.anyLong());
+        verify(mMockDevice).waitForDeviceOnline();
+        verify(mMockDevice).setDate(null);
+        verify(mMockDevice).clearLogcat();
+        verify(mMockDevice).setRecoveryMode(RecoveryMode.AVAILABLE);
+        assertTrue(
+                "should report flashing metrics with device boot failure",
                 mFlashingMetricsReported);
     }
 
@@ -237,26 +256,29 @@ public class DeviceFlashPreparerTest {
      */
     @Test
     public void testSetup_flashException() throws Exception {
-        mMockDevice.setRecoveryMode(RecoveryMode.ONLINE);
-        mMockFlasher.overrideDeviceOptions(mMockDevice);
-        mMockFlasher.setForceSystemFlash(false);
-        mMockFlasher.setDataWipeSkipList(Arrays.asList(new String[]{}));
-        mMockFlasher.setShouldFlashRamdisk(false);
-        mMockFlasher.flash(mMockDevice, mMockBuildInfo);
-        EasyMock.expectLastCall().andThrow(new DeviceNotAvailableException("test", "serial"));
-        mMockFlasher.setWipeTimeout(EasyMock.anyLong());
+
+        doThrow(new DeviceNotAvailableException("test", "serial"))
+                .when(mMockFlasher)
+                .flash(mMockDevice, mMockBuildInfo);
+
         // report exception
-        EasyMock.expect(mMockFlasher.getSystemFlashingStatus())
-            .andReturn(CommandStatus.EXCEPTION).anyTimes();
-        EasyMock.replay(mMockFlasher, mMockDevice);
+        when(mMockFlasher.getSystemFlashingStatus()).thenReturn(CommandStatus.EXCEPTION);
+
         try {
             mDeviceFlashPreparer.setUp(mTestInfo);
             fail("DeviceNotAvailableException not thrown");
         } catch (DeviceNotAvailableException e) {
             // expected
         }
-        EasyMock.verify(mMockFlasher, mMockDevice);
-        assertTrue("should report flashing metrics with device flash failure",
+
+        verify(mMockDevice).setRecoveryMode(RecoveryMode.ONLINE);
+        verify(mMockFlasher).overrideDeviceOptions(mMockDevice);
+        verify(mMockFlasher).setForceSystemFlash(false);
+        verify(mMockFlasher).setDataWipeSkipList(Arrays.asList(new String[] {}));
+        verify(mMockFlasher).setShouldFlashRamdisk(false);
+        verify(mMockFlasher).setWipeTimeout(Mockito.anyLong());
+        assertTrue(
+                "should report flashing metrics with device flash failure",
                 mFlashingMetricsReported);
     }
 
@@ -267,12 +289,13 @@ public class DeviceFlashPreparerTest {
     @Test
     public void testSetup_flashSkipped() throws Exception {
         doSetupExpectations();
-        mMockFlasher.setShouldFlashRamdisk(false);
+
         // report flashing status as null (for not flashing system partitions)
-        EasyMock.expect(mMockFlasher.getSystemFlashingStatus()).andReturn(null).anyTimes();
-        EasyMock.replay(mMockFlasher, mMockDevice);
+        when(mMockFlasher.getSystemFlashingStatus()).thenReturn(null);
+
         mDeviceFlashPreparer.setUp(mTestInfo);
-        EasyMock.verify(mMockFlasher, mMockDevice);
+
+        verify(mMockFlasher).setShouldFlashRamdisk(false);
         assertFalse("should not report flashing metrics in normal case", mFlashingMetricsReported);
     }
 
@@ -287,15 +310,11 @@ public class DeviceFlashPreparerTest {
         mMockBuildInfo.setRamdiskFile(new File("foo"), "0");
         doSetupExpectations();
         // report flashing success in normal case
-        EasyMock.expect(mMockFlasher.getSystemFlashingStatus())
-                .andReturn(CommandStatus.SUCCESS)
-                .anyTimes();
-        mMockFlasher.setShouldFlashRamdisk(true);
-        mMockFlasher.setRamdiskPartition("boot");
-        EasyMock.expectLastCall();
-        EasyMock.replay(mMockFlasher, mMockDevice);
+        when(mMockFlasher.getSystemFlashingStatus()).thenReturn(CommandStatus.SUCCESS);
+
         mDeviceFlashPreparer.setUp(mTestInfo);
-        EasyMock.verify(mMockFlasher, mMockDevice);
+        verify(mMockFlasher, times(1)).setRamdiskPartition("boot");
+        verify(mMockFlasher).setShouldFlashRamdisk(true);
     }
 
     /**
@@ -310,14 +329,10 @@ public class DeviceFlashPreparerTest {
         mMockBuildInfo.setRamdiskFile(new File("foo"), "0");
         doSetupExpectations();
         // report flashing success in normal case
-        EasyMock.expect(mMockFlasher.getSystemFlashingStatus())
-                .andReturn(CommandStatus.SUCCESS)
-                .anyTimes();
-        mMockFlasher.setShouldFlashRamdisk(true);
-        mMockFlasher.setRamdiskPartition("vendor_boot");
-        EasyMock.expectLastCall();
-        EasyMock.replay(mMockFlasher, mMockDevice);
+        when(mMockFlasher.getSystemFlashingStatus()).thenReturn(CommandStatus.SUCCESS);
+
         mDeviceFlashPreparer.setUp(mTestInfo);
-        EasyMock.verify(mMockFlasher, mMockDevice);
+        verify(mMockFlasher, times(1)).setRamdiskPartition("vendor_boot");
+        verify(mMockFlasher).setShouldFlashRamdisk(true);
     }
 }
