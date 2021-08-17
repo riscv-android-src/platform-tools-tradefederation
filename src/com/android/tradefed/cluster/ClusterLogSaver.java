@@ -130,6 +130,7 @@ public class ClusterLogSaver implements ILogSaver {
     }
 
     /** Returns a Path stream for all files under a directory matching a given pattern. */
+    @SuppressWarnings("StreamResourceLeak")
     private Stream<Path> getPathStream(final File dir, final Pattern pattern) throws IOException {
         return Files.find(
                 dir.toPath(),

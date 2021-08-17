@@ -18,6 +18,7 @@ package com.android.tradefed.targetprep;
 
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.when;
 
 import com.android.tradefed.build.DeviceBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
@@ -32,11 +33,12 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.testtype.InstrumentationTest;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import java.util.HashMap;
 
@@ -45,16 +47,17 @@ import java.util.HashMap;
 public class InstrumentationPreparerTest {
 
     private InstrumentationPreparer mInstrumentationPreparer;
-    private ITestDevice mMockDevice;
+    @Mock ITestDevice mMockDevice;
     private IDeviceBuildInfo mMockBuildInfo;
     private InstrumentationTest mMockITest;
     private TestInformation mTestInfo;
 
     @Before
     public void setUp() throws Exception {
-        mMockDevice = EasyMock.createMock(ITestDevice.class);
-        EasyMock.expect(mMockDevice.getSerialNumber()).andReturn("foo").anyTimes();
-        mMockBuildInfo = new DeviceBuildInfo("0","");
+        MockitoAnnotations.initMocks(this);
+
+        when(mMockDevice.getSerialNumber()).thenReturn("foo");
+        mMockBuildInfo = new DeviceBuildInfo("0", "");
         IInvocationContext context = new InvocationContext();
         context.addAllocatedDevice("device", mMockDevice);
         context.addDeviceBuildInfo("device", mMockBuildInfo);
@@ -75,15 +78,15 @@ public class InstrumentationPreparerTest {
                         listener.testRunEnded(0, new HashMap<String, Metric>());
                     }
                 };
-        mInstrumentationPreparer = new InstrumentationPreparer() {
-            @Override
-            InstrumentationTest createInstrumentationTest() {
-                return mMockITest;
-            }
-        };
-        EasyMock.replay(mMockDevice);
+        mInstrumentationPreparer =
+                new InstrumentationPreparer() {
+                    @Override
+                    InstrumentationTest createInstrumentationTest() {
+                        return mMockITest;
+                    }
+                };
+
         mInstrumentationPreparer.setUp(mTestInfo);
-        EasyMock.verify(mMockDevice);
     }
 
     @Test
@@ -101,24 +104,33 @@ public class InstrumentationPreparerTest {
                         listener.testRunEnded(0, new HashMap<String, Metric>());
                     }
                 };
-        mInstrumentationPreparer = new InstrumentationPreparer() {
-            @Override
-            InstrumentationTest createInstrumentationTest() {
-                return mMockITest;
-            }
-        };
-        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andStubReturn(new DeviceDescriptor(
-                "SERIAL", false, DeviceAllocationState.Available, "unknown", "unknown", "unknown",
-                "unknown", "unknown"));
-        EasyMock.replay(mMockDevice);
+        mInstrumentationPreparer =
+                new InstrumentationPreparer() {
+                    @Override
+                    InstrumentationTest createInstrumentationTest() {
+                        return mMockITest;
+                    }
+                };
+        when(mMockDevice.getDeviceDescriptor())
+                .thenReturn(
+                        new DeviceDescriptor(
+                                "SERIAL",
+                                false,
+                                DeviceAllocationState.Available,
+                                "unknown",
+                                "unknown",
+                                "unknown",
+                                "unknown",
+                                "unknown"));
+
         try {
             mInstrumentationPreparer.setUp(mTestInfo);
             fail("BuildError not thrown");
-        } catch(final BuildError e) {
-            assertTrue("The exception message does not contain failed test names",
+        } catch (final BuildError e) {
+            assertTrue(
+                    "The exception message does not contain failed test names",
                     e.getMessage().contains(test.toString()));
             // expected
         }
-        EasyMock.verify(mMockDevice);
     }
 }

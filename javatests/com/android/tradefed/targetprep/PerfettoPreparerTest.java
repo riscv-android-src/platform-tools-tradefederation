@@ -16,6 +16,7 @@
 package com.android.tradefed.targetprep;
 
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.when;
 
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
@@ -24,11 +25,13 @@ import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.util.FileUtil;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.io.File;
 import java.io.IOException;
@@ -40,15 +43,16 @@ public class PerfettoPreparerTest {
     private static final String DEVICE_CONFIG_PATH = "/data/misc/perfetto-traces/trace_config.pb";
 
     private PerfettoPreparer mPreparer = null;
-    private ITestDevice mMockDevice = null;
+    @Mock ITestDevice mMockDevice = null;
     private OptionSetter mOptionSetter = null;
     private TestInformation mTestInfo;
 
     @Before
     public void setUp() throws Exception {
-        mMockDevice = EasyMock.createStrictMock(ITestDevice.class);
-        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andStubReturn(null);
-        EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("SERIAL");
+        MockitoAnnotations.initMocks(this);
+
+        when(mMockDevice.getDeviceDescriptor()).thenReturn(null);
+        when(mMockDevice.getSerialNumber()).thenReturn("SERIAL");
         mPreparer = new PerfettoPreparer();
         mOptionSetter = new OptionSetter(mPreparer);
         IInvocationContext context = new InvocationContext();
@@ -59,43 +63,37 @@ public class PerfettoPreparerTest {
     /** When there's nothing to be done, expect no exception to be thrown */
     @Test
     public void testNoop() throws Exception {
-        EasyMock.replay(mMockDevice);
         mPreparer.setUp(mTestInfo);
-        EasyMock.verify(mMockDevice);
     }
 
     /** Test if exception is thrown if the local perfetto binary file doen't exist */
     @Test
     public void testLocalPerfettoBinaryNoExist() throws Exception {
         mOptionSetter.setOptionValue("binary-perfetto-config", "dummy.txt");
-        EasyMock.replay(mMockDevice);
+
         try {
             mPreparer.setUp(mTestInfo);
             fail("TargetSetupError not thrown");
         } catch (TargetSetupError e) {
             // expected
         }
-        EasyMock.verify(mMockDevice);
     }
 
-    /** Test no exception is thrown if the local binary perfetto file is passed*/
+    /** Test no exception is thrown if the local binary perfetto file is passed */
     @Test
     public void testLocalPerfettoBinaryValid() throws Exception {
         // Doesn't have to be binary file for testing purpose.
         File perfettoTextFile = createPerfettoFile(true);
         mOptionSetter.setOptionValue("binary-perfetto-config", perfettoTextFile.getPath());
-        EasyMock.expect(
-                mMockDevice.pushFile(
-                        (File) EasyMock.anyObject(), EasyMock.eq(DEVICE_CONFIG_PATH)))
-                .andReturn(Boolean.TRUE);
-        EasyMock.replay(mMockDevice);
+        when(mMockDevice.pushFile((File) Mockito.any(), Mockito.eq(DEVICE_CONFIG_PATH)))
+                .thenReturn(Boolean.TRUE);
+
         try {
             // Should not throw any exception.
             mPreparer.setUp(mTestInfo);
         } finally {
             perfettoTextFile.delete();
         }
-        EasyMock.verify(mMockDevice);
     }
 
     /**

@@ -31,6 +31,7 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
@@ -210,7 +211,8 @@ public class TfTestLauncherTest {
         verify(mMockBuildInfo, times(1)).getBuildBranch();
         verify(mMockListener).testRunStarted("temporaryFiles", 1);
         verify(mMockListener).testStarted((TestDescription) Mockito.any());
-        verify(mMockListener).testFailed((TestDescription) Mockito.any(), (String) Mockito.any());
+        verify(mMockListener).testFailed((TestDescription) Mockito.any(),
+                (FailureDescription) Mockito.any());
         verify(mMockListener)
                 .testEnded(
                         (TestDescription) Mockito.any(), Mockito.eq(new HashMap<String, Metric>()));
@@ -234,7 +236,8 @@ public class TfTestLauncherTest {
         verify(mMockBuildInfo, times(1)).getBuildBranch();
         verify(mMockListener).testRunStarted("temporaryFiles", 1);
         verify(mMockListener).testStarted((TestDescription) Mockito.any());
-        verify(mMockListener).testFailed((TestDescription) Mockito.any(), (String) Mockito.any());
+        verify(mMockListener).testFailed((TestDescription) Mockito.any(),
+                (FailureDescription) Mockito.any());
         verify(mMockListener)
                 .testEnded(
                         (TestDescription) Mockito.any(), Mockito.eq(new HashMap<String, Metric>()));

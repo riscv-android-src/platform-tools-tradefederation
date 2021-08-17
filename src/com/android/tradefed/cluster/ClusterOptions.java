@@ -101,6 +101,11 @@ public class ClusterOptions implements IClusterOptions {
     private boolean mCheckFlashingPermitsOnLease = true;
 
     @Option(
+            name = "check-permits-on-lease",
+            description = "Check all available permits types when leasing tasks")
+    private boolean mCheckPermitsOnLease = true;
+
+    @Option(
             name = "invocation-heartbeat-interval",
             isTimeVal = true,
             description = "The time interval between invocation heartbeats")
@@ -130,6 +135,10 @@ public class ClusterOptions implements IClusterOptions {
             name = "collect-early-test-summary",
             description = "Collect early test summary from ITestSummaryListener to scheduler.")
     private boolean mCollectEarlyTestSummary = false;
+
+    @Option(name = "max-disk-usage",
+            description = "Percentage allowed disk usage before we stop leasing tasks.")
+    private long mMaximalDiskUsagePercentage = 100;
 
     /** {@inheritDoc} */
     @Override
@@ -165,6 +174,12 @@ public class ClusterOptions implements IClusterOptions {
     @Override
     public boolean checkFlashingPermitsOnLease() {
         return mCheckFlashingPermitsOnLease;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean checkPermitsOnLease() {
+        return mCheckPermitsOnLease;
     }
 
     /** {@inheritDoc} */
@@ -316,5 +331,17 @@ public class ClusterOptions implements IClusterOptions {
     @Override
     public boolean shouldCollectEarlyTestSummary() {
         return mCollectEarlyTestSummary;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public long maxDiskUsagePercentage() {
+        if (mMaximalDiskUsagePercentage > 100) {
+            return 100;
+        }
+        if (mMaximalDiskUsagePercentage < 0) {
+            return 0;
+        }
+        return mMaximalDiskUsagePercentage;
     }
 }

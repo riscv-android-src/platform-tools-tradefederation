@@ -37,6 +37,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -80,14 +81,14 @@ public class TestSuiteStub
     protected List<TestDescription> mShardedTestToRun;
     protected Integer mShardIndex = null;
 
-    private Set<String> mIncludeAnnotationFilter = new HashSet<>();
+    private Set<String> mIncludeAnnotationFilter = new LinkedHashSet<>();
 
     @Option(
             name = "exclude-annotation",
             description = "The notAnnotation class name of the test name to run, can be repeated")
-    private Set<String> mExcludeAnnotationFilter = new HashSet<>();
+    private Set<String> mExcludeAnnotationFilter = new LinkedHashSet<>();
 
-    private Set<String> mExcludeFilters = new HashSet<>();
+    private Set<String> mExcludeFilters = new LinkedHashSet<>();
 
     /** Tests attempt. */
     private void testAttempt(ITestInvocationListener listener) throws DeviceNotAvailableException {

@@ -42,7 +42,7 @@ import java.util.Map;
  * methods in a file pushed to device (expected format: com.android.foo.FooClassName#testMethodName)
  * <p>
  * Note: Requires a runner that supports test execution from a file. Will default to serial tests
- * execution via {@link InstrumentationSerialTest} if any issues with file creation are encountered
+ * execution via rerun if any issues with file creation are encountered
  * or if all tests in the created file fail to successfully finish execution.
  */
 class InstrumentationFileTest implements IRemoteTest {
@@ -63,8 +63,6 @@ class InstrumentationFileTest implements IRemoteTest {
 
     private int mMaxAttemps;
 
-    private boolean mRetrySerially;
-
     /**
      * Creates a {@link InstrumentationFileTest}.
      *
@@ -75,7 +73,6 @@ class InstrumentationFileTest implements IRemoteTest {
     InstrumentationFileTest(
             InstrumentationTest instrumentationTest,
             Collection<TestDescription> testsToRun,
-            boolean retrySerially,
             int maxAttempts)
             throws ConfigurationException {
         // reuse the InstrumentationTest class to perform actual test run
@@ -92,7 +89,6 @@ class InstrumentationFileTest implements IRemoteTest {
         // keep local copy of tests to be run
         mTests = testsToRun;
         mAttemps = 0;
-        mRetrySerially = retrySerially;
         mMaxAttemps = maxAttempts;
     }
 
@@ -126,14 +122,8 @@ class InstrumentationFileTest implements IRemoteTest {
             CLog.d("Try to run tests from file for the %d/%d attempts",
                     mAttemps, mMaxAttemps);
         } else if (mMaxAttemps > 0) {
-            if (mRetrySerially) {
-                CLog.d("Running tests from file exceeded max attempts."
-                        + " Try to run tests serially.");
-                reRunTestsSerially(mInstrumentationTest, testInfo, listener);
-            } else {
-                CLog.d("Running tests from file exceeded max attempts. Ignore the rest tests");
-                return;
-            }
+            CLog.d("Running tests from file exceeded max attempts. Ignore the rest tests");
+            return;
         }
         File testFile = null;
         try {
@@ -169,21 +159,11 @@ class InstrumentationFileTest implements IRemoteTest {
                         testFile.getAbsolutePath(), mFilePathOnDevice);
                 runTests(mInstrumentationTest, testInfo, listener);
             } else {
-                if (mRetrySerially) {
-                    CLog.e("Failed to push file to device, re-running tests serially");
-                    reRunTestsSerially(mInstrumentationTest, testInfo, listener);
-                } else {
-                    CLog.e("Failed to push file to device, ignore the rest of tests");
-                }
-            }
-        } catch (IOException e) {
-            if (mRetrySerially) {
-                CLog.e("Failed to run tests from file, re-running tests serially: %s",
-                        e.getMessage());
-                reRunTestsSerially(mInstrumentationTest, testInfo, listener);
-            } else {
                 CLog.e("Failed to push file to device, ignore the rest of tests");
             }
+        } catch (IOException e) {
+            CLog.e("Failed to push file to device, ignore the rest of tests");
+            CLog.e(e);
         } finally {
             // clean up test file, if it was created
             FileUtil.deleteFile(testFile);
@@ -208,27 +188,9 @@ class InstrumentationFileTest implements IRemoteTest {
                 // re-run remaining tests from file
                 writeTestsToFileAndRun(mTests, testInfo, listener);
             } else if (!mTests.isEmpty()) {
-                if (mRetrySerially) {
-                    CLog.e("all remaining tests failed to run from file, re-running tests serially");
-                    reRunTestsSerially(runner, testInfo, listener);
-                } else {
-                    CLog.e("all remaining tests failed to run from file, will be ignored");
-                }
+                CLog.e("all remaining tests failed to run from file, will be ignored");
             }
         }
-    }
-
-    /** Re-runs remaining tests one-by-one */
-    private void reRunTestsSerially(
-            InstrumentationTest runner, TestInformation testInfo, ITestInvocationListener listener)
-            throws DeviceNotAvailableException {
-        // clear file path arguments to ensure it won't get used.
-        runner.setTestFilePathOnDevice(null);
-        // enforce serial re-run
-        runner.setReRunUsingTestFile(false);
-        // Set tests to run
-        runner.setTestsToRun(mTests);
-        runner.run(testInfo, listener);
     }
 
     /**

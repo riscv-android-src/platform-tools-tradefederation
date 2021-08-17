@@ -69,14 +69,18 @@ public abstract class FilePullerDeviceMetricCollector extends BaseDeviceMetricCo
         name = "collect-on-run-ended-only",
         description =
                 "Attempt to collect the files on test run end only instead of on both test cases "
-                        + "and test run ended."
+                        + "and test run ended. This is safer since test case level collection isn't"
+                        + " synchronous."
     )
-    private boolean mCollectOnRunEndedOnly = false;
+    private boolean mCollectOnRunEndedOnly = true;
+    public Map<String, String> mTestCaseMetrics = new HashMap<String, String>();
 
     @Override
     public void onTestEnd(DeviceMetricData testData,
             Map<String, Metric> currentTestCaseMetrics) {
         if (mCollectOnRunEndedOnly) {
+            // Track test cases metrics in case we don't process here.
+            mTestCaseMetrics.putAll(TfMetricProtoUtil.compatibleConvert(currentTestCaseMetrics));
             return;
         }
         processMetricRequest(testData, currentTestCaseMetrics);
@@ -86,6 +90,7 @@ public abstract class FilePullerDeviceMetricCollector extends BaseDeviceMetricCo
     public void onTestRunEnd(
             DeviceMetricData runData, final Map<String, Metric> currentRunMetrics) {
         processMetricRequest(runData, currentRunMetrics);
+        mTestCaseMetrics = new HashMap<>();
     }
 
     /** Adds additional pattern keys to the pull from the device. */
@@ -125,6 +130,7 @@ public abstract class FilePullerDeviceMetricCollector extends BaseDeviceMetricCo
             Map<String, Metric> metrics) {
         Map<String, String> currentMetrics = TfMetricProtoUtil
                 .compatibleConvert(metrics);
+        currentMetrics.putAll(mTestCaseMetrics);
         if (mKeys.isEmpty() && mDirectoryKeys.isEmpty()) {
             return;
         }

@@ -15,6 +15,10 @@
  */
 package com.android.tradefed.targetprep;
 
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.android.ddmlib.IDevice;
 import com.android.tradefed.build.IBuildInfo;
 import com.android.tradefed.config.OptionSetter;
@@ -23,29 +27,31 @@ import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 /** Unit Tests for {@link RootTargetPreparer}. */
 @RunWith(JUnit4.class)
 public class RootTargetPreparerTest {
 
     private RootTargetPreparer mRootTargetPreparer;
-    private ITestDevice mMockDevice;
-    private IDevice mMockIDevice;
-    private IBuildInfo mMockBuildInfo;
+    @Mock ITestDevice mMockDevice;
+    @Mock IDevice mMockIDevice;
+    @Mock IBuildInfo mMockBuildInfo;
     private TestInformation mTestInfo;
 
     @Before
     public void setUp() {
+        MockitoAnnotations.initMocks(this);
+
         mRootTargetPreparer = new RootTargetPreparer();
-        mMockDevice = EasyMock.createMock(ITestDevice.class);
-        mMockIDevice = EasyMock.createMock(IDevice.class);
-        EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(mMockIDevice);
-        mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
+
+        when(mMockDevice.getIDevice()).thenReturn(mMockIDevice);
+
         IInvocationContext context = new InvocationContext();
         context.addAllocatedDevice("device", mMockDevice);
         context.addDeviceBuildInfo("device", mMockBuildInfo);
@@ -54,32 +60,31 @@ public class RootTargetPreparerTest {
 
     @Test
     public void testSetUpSuccess_rootBefore() throws Exception {
-        EasyMock.expect(mMockDevice.isAdbRoot()).andReturn(true).once();
-        EasyMock.replay(mMockDevice, mMockBuildInfo);
+        when(mMockDevice.isAdbRoot()).thenReturn(true);
 
         mRootTargetPreparer.setUp(mTestInfo);
         mRootTargetPreparer.tearDown(mTestInfo, null);
-        EasyMock.verify(mMockDevice, mMockBuildInfo);
+        verify(mMockDevice, times(1)).isAdbRoot();
     }
 
     @Test
     public void testSetUpSuccess_notRootBefore() throws Exception {
-        EasyMock.expect(mMockDevice.isAdbRoot()).andReturn(false).once();
-        EasyMock.expect(mMockDevice.enableAdbRoot()).andReturn(true).once();
-        EasyMock.expect(mMockDevice.disableAdbRoot()).andReturn(true).once();
-        EasyMock.replay(mMockDevice, mMockBuildInfo);
+        when(mMockDevice.isAdbRoot()).thenReturn(false);
+        when(mMockDevice.enableAdbRoot()).thenReturn(true);
+        when(mMockDevice.disableAdbRoot()).thenReturn(true);
 
         mRootTargetPreparer.setUp(mTestInfo);
         mRootTargetPreparer.tearDown(mTestInfo, null);
-        EasyMock.verify(mMockDevice, mMockBuildInfo);
+        verify(mMockDevice, times(1)).isAdbRoot();
+        verify(mMockDevice, times(1)).enableAdbRoot();
+        verify(mMockDevice, times(1)).disableAdbRoot();
     }
 
     @Test(expected = TargetSetupError.class)
     public void testSetUpFail() throws Exception {
-        EasyMock.expect(mMockDevice.isAdbRoot()).andReturn(false).once();
-        EasyMock.expect(mMockDevice.enableAdbRoot()).andReturn(false).once();
-        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andReturn(null).once();
-        EasyMock.replay(mMockDevice, mMockBuildInfo);
+        when(mMockDevice.isAdbRoot()).thenReturn(false);
+        when(mMockDevice.enableAdbRoot()).thenReturn(false);
+        when(mMockDevice.getDeviceDescriptor()).thenReturn(null);
 
         mRootTargetPreparer.setUp(mTestInfo);
     }
@@ -89,14 +94,15 @@ public class RootTargetPreparerTest {
         OptionSetter setter = new OptionSetter(mRootTargetPreparer);
         setter.setOptionValue("force-root", "false");
 
-        EasyMock.expect(mMockDevice.isAdbRoot()).andReturn(true).once();
-        EasyMock.expect(mMockDevice.disableAdbRoot()).andReturn(true).once();
-        EasyMock.expect(mMockDevice.enableAdbRoot()).andReturn(true).once();
-        EasyMock.replay(mMockDevice, mMockBuildInfo);
+        when(mMockDevice.isAdbRoot()).thenReturn(true);
+        when(mMockDevice.disableAdbRoot()).thenReturn(true);
+        when(mMockDevice.enableAdbRoot()).thenReturn(true);
 
         mRootTargetPreparer.setUp(mTestInfo);
         mRootTargetPreparer.tearDown(mTestInfo, null);
-        EasyMock.verify(mMockDevice, mMockBuildInfo);
+        verify(mMockDevice, times(1)).isAdbRoot();
+        verify(mMockDevice, times(1)).disableAdbRoot();
+        verify(mMockDevice, times(1)).enableAdbRoot();
     }
 
     @Test
@@ -104,12 +110,11 @@ public class RootTargetPreparerTest {
         OptionSetter setter = new OptionSetter(mRootTargetPreparer);
         setter.setOptionValue("force-root", "false");
 
-        EasyMock.expect(mMockDevice.isAdbRoot()).andReturn(false).once();
-        EasyMock.replay(mMockDevice, mMockBuildInfo);
+        when(mMockDevice.isAdbRoot()).thenReturn(false);
 
         mRootTargetPreparer.setUp(mTestInfo);
         mRootTargetPreparer.tearDown(mTestInfo, null);
-        EasyMock.verify(mMockDevice, mMockBuildInfo);
+        verify(mMockDevice, times(1)).isAdbRoot();
     }
 
     @Test(expected = TargetSetupError.class)
@@ -117,10 +122,9 @@ public class RootTargetPreparerTest {
         OptionSetter setter = new OptionSetter(mRootTargetPreparer);
         setter.setOptionValue("force-root", "false");
 
-        EasyMock.expect(mMockDevice.isAdbRoot()).andReturn(true).once();
-        EasyMock.expect(mMockDevice.disableAdbRoot()).andReturn(false).once();
-        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andReturn(null).once();
-        EasyMock.replay(mMockDevice, mMockBuildInfo);
+        when(mMockDevice.isAdbRoot()).thenReturn(true);
+        when(mMockDevice.disableAdbRoot()).thenReturn(false);
+        when(mMockDevice.getDeviceDescriptor()).thenReturn(null);
 
         mRootTargetPreparer.setUp(mTestInfo);
     }
@@ -130,11 +134,10 @@ public class RootTargetPreparerTest {
         OptionSetter setter = new OptionSetter(mRootTargetPreparer);
         setter.setOptionValue("throw-on-error", "false");
 
-        EasyMock.expect(mMockDevice.isAdbRoot()).andReturn(false).once();
-        EasyMock.expect(mMockDevice.enableAdbRoot()).andReturn(false).once();
-        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andReturn(null).once();
-        EasyMock.expect(mMockDevice.disableAdbRoot()).andReturn(true).once();
-        EasyMock.replay(mMockDevice, mMockBuildInfo);
+        when(mMockDevice.isAdbRoot()).thenReturn(false);
+        when(mMockDevice.enableAdbRoot()).thenReturn(false);
+        when(mMockDevice.getDeviceDescriptor()).thenReturn(null);
+        when(mMockDevice.disableAdbRoot()).thenReturn(true);
 
         mRootTargetPreparer.setUp(mTestInfo);
         mRootTargetPreparer.tearDown(mTestInfo, null);
@@ -146,14 +149,16 @@ public class RootTargetPreparerTest {
         setter.setOptionValue("force-root", "false");
         setter.setOptionValue("throw-on-error", "false");
 
-        EasyMock.expect(mMockDevice.isAdbRoot()).andReturn(true).once();
-        EasyMock.expect(mMockDevice.disableAdbRoot()).andReturn(false).once();
-        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andReturn(null).once();
-        EasyMock.expect(mMockDevice.enableAdbRoot()).andReturn(true).once();
-        EasyMock.replay(mMockDevice, mMockBuildInfo);
+        when(mMockDevice.isAdbRoot()).thenReturn(true);
+        when(mMockDevice.disableAdbRoot()).thenReturn(false);
+        when(mMockDevice.getDeviceDescriptor()).thenReturn(null);
+        when(mMockDevice.enableAdbRoot()).thenReturn(true);
 
         mRootTargetPreparer.setUp(mTestInfo);
         mRootTargetPreparer.tearDown(mTestInfo, null);
-        EasyMock.verify(mMockDevice, mMockBuildInfo);
+        verify(mMockDevice, times(1)).isAdbRoot();
+        verify(mMockDevice, times(1)).disableAdbRoot();
+        verify(mMockDevice, times(1)).getDeviceDescriptor();
+        verify(mMockDevice, times(1)).enableAdbRoot();
     }
 }

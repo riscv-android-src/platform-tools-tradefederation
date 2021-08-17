@@ -16,23 +16,31 @@
 
 package com.android.tradefed.device.metric;
 
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
 import com.android.tradefed.result.ITestInvocationListener;
-import com.android.tradefed.util.IRunUtil;
+import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.CommandStatus;
 import com.android.tradefed.util.FileUtil;
-import com.android.tradefed.result.LogDataType;
+import com.android.tradefed.util.IRunUtil;
 
-import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -41,18 +49,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-
-/**
- * Unit tests for {@link AtraceCollector},
- */
+/** Unit tests for {@link AtraceCollector}, */
 @RunWith(JUnit4.class)
 public final class AtraceCollectorTest {
-    private ITestDevice mMockDevice;
+    @Mock ITestDevice mMockDevice;
     private AtraceCollector mAtrace;
     private OptionSetter mOptionSetter;
-    private ITestInvocationListener mMockTestLogger;
-    private IInvocationContext mMockInvocationContext;
-    private IRunUtil mMockRunUtil;
+    @Mock ITestInvocationListener mMockTestLogger;
+    @Mock IInvocationContext mMockInvocationContext;
+    @Mock IRunUtil mMockRunUtil;
     private File mDummyBinary;
     private File mDummyMetricPng;
     private File mDummyMetricText;
@@ -63,22 +68,17 @@ public final class AtraceCollectorTest {
 
     @Before
     public void setUp() throws Exception {
-        mMockDevice = EasyMock.createNiceMock(ITestDevice.class);
-        mMockTestLogger = EasyMock.createMock(ITestInvocationListener.class);
-        mMockInvocationContext = EasyMock.createNiceMock(IInvocationContext.class);
-        mMockRunUtil = EasyMock.createMock(IRunUtil.class);
+        MockitoAnnotations.initMocks(this);
 
         mAtrace = new AtraceCollector();
         mOptionSetter = new OptionSetter(mAtrace);
         mOptionSetter.setOptionValue("categories", M_CATEGORIES);
 
-        EasyMock.expect(mMockDevice.pullFile((String) EasyMock.anyObject()))
-                .andStubReturn(new File(M_TRACE_PATH_NAME));
-        EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn(M_SERIAL_NO);
+        when(mMockDevice.pullFile((String) Mockito.any())).thenReturn(new File(M_TRACE_PATH_NAME));
+        when(mMockDevice.getSerialNumber()).thenReturn(M_SERIAL_NO);
 
-        EasyMock.expect(mMockInvocationContext.getDevices())
-                .andStubReturn(Arrays.asList(mMockDevice));
-        EasyMock.replay(mMockInvocationContext);
+        when(mMockInvocationContext.getDevices()).thenReturn(Arrays.asList(mMockDevice));
+
         mAtrace.init(mMockInvocationContext, mMockTestLogger);
         mDummyBinary = File.createTempFile("tmp", "bin");
         mDummyBinary.setExecutable(true);
@@ -97,24 +97,19 @@ public final class AtraceCollectorTest {
      * Test {@link AtraceCollector#onTestStart(DeviceMetricData)} to see if atrace collection
      * started correctly.
      *
-     * <p>
-     * Expect that atrace was started in async mode with compression on.
-     * </p>
+     * <p>Expect that atrace was started in async mode with compression on.
      */
     @Test
     public void testStartsAtraceOnSetupNoOptions() throws Exception {
-        mMockDevice.executeShellCommand(
-                EasyMock.eq("atrace --async_start -z " + M_CATEGORIES),
-                EasyMock.anyObject(),
-                EasyMock.eq(1L),
-                EasyMock.anyObject(),
-                EasyMock.eq(1));
-        EasyMock.expectLastCall().times(1);
-
-        EasyMock.replay(mMockDevice);
 
         mAtrace.onTestStart(new DeviceMetricData(mMockInvocationContext));
-        EasyMock.verify(mMockDevice);
+        verify(mMockDevice, times(1))
+                .executeShellCommand(
+                        Mockito.eq("atrace --async_start -z " + M_CATEGORIES),
+                        Mockito.any(),
+                        Mockito.eq(1L),
+                        Mockito.any(),
+                        Mockito.eq(1));
     }
 
     /**
@@ -125,96 +120,82 @@ public final class AtraceCollectorTest {
      */
     @Test
     public void testStartsAtraceOnSetupNoCompression() throws Exception {
-        mMockDevice.executeShellCommand(
-                EasyMock.eq("atrace --async_start " + M_CATEGORIES),
-                EasyMock.anyObject(),
-                EasyMock.eq(1L),
-                EasyMock.anyObject(),
-                EasyMock.eq(1));
-        EasyMock.expectLastCall().times(1);
-
-        EasyMock.replay(mMockDevice);
 
         mOptionSetter.setOptionValue("compress-dump", "false");
         mAtrace.onTestStart(new DeviceMetricData(mMockInvocationContext));
-        EasyMock.verify(mMockDevice);
+        verify(mMockDevice, times(1))
+                .executeShellCommand(
+                        Mockito.eq("atrace --async_start " + M_CATEGORIES),
+                        Mockito.any(),
+                        Mockito.eq(1L),
+                        Mockito.any(),
+                        Mockito.eq(1));
     }
 
     /**
      * Test {@link AtraceCollector#onTestStart(DeviceMetricData)} to see if atrace collection
      * started correctly with some tracing categories.
      *
-     * <p>
-     * Expect that supplied categories options were included in the command
-     * when starting atrace.
-     * </p>
+     * <p>Expect that supplied categories options were included in the command when starting atrace.
      */
     @Test
     public void testStartsAtraceOnSetupCategoriesOption() throws Exception {
-        mMockDevice.executeShellCommand(
-                EasyMock.eq("atrace --async_start -z " + M_CATEGORIES),
-                EasyMock.anyObject(),
-                EasyMock.eq(1L),
-                EasyMock.anyObject(),
-                EasyMock.eq(1));
-        EasyMock.expectLastCall().times(1);
-
-        EasyMock.replay(mMockDevice);
 
         mAtrace.onTestStart(new DeviceMetricData(mMockInvocationContext));
-        EasyMock.verify(mMockDevice);
+        verify(mMockDevice, times(1))
+                .executeShellCommand(
+                        Mockito.eq("atrace --async_start -z " + M_CATEGORIES),
+                        Mockito.any(),
+                        Mockito.eq(1L),
+                        Mockito.any(),
+                        Mockito.eq(1));
     }
 
     /**
      * Test {@link AtraceCollector#onTestStart(DeviceMetricData)} to see if atrace collection
      * started correctly with multiple tracing categories.
      *
-     * <p>
-     * Expect that supplied categories options were included in the command
-     * when starting atrace.
-     * </p>
+     * <p>Expect that supplied categories options were included in the command when starting atrace.
      */
     @Test
     public void testStartsAtraceOnSetupMultipleCategoriesOption() throws Exception {
         String freqCategory = "freq";
         String schedCategory = "sched";
         String expectedCategories = M_CATEGORIES + " " + freqCategory + " " + schedCategory;
-        mMockDevice.executeShellCommand(
-                EasyMock.eq("atrace --async_start -z " + expectedCategories),
-                EasyMock.anyObject(), EasyMock.eq(1L), EasyMock.anyObject(), EasyMock.eq(1));
-        EasyMock.expectLastCall().times(1);
-
-        EasyMock.replay(mMockDevice);
 
         mOptionSetter.setOptionValue("categories", freqCategory);
         mOptionSetter.setOptionValue("categories", schedCategory);
         mAtrace.onTestStart(new DeviceMetricData(mMockInvocationContext));
-        EasyMock.verify(mMockDevice);
+        verify(mMockDevice, times(1))
+                .executeShellCommand(
+                        Mockito.eq("atrace --async_start -z " + expectedCategories),
+                        Mockito.any(),
+                        Mockito.eq(1L),
+                        Mockito.any(),
+                        Mockito.eq(1));
     }
 
     /**
      * Test {@link AtraceCollector#onTestStart(DeviceMetricData)} to see if atrace collection
      * started with no tracing categories does not do anything.
      *
-     * <p>
-     * Expect that no commands are issued to the device when no categories are set
-     * </p>
+     * <p>Expect that no commands are issued to the device when no categories are set
      */
     @Test
     public void testStartsAtraceWithNoCategoriesOption() throws Exception {
-        mMockDevice.executeShellCommand(
-                (String) EasyMock.anyObject(),
-                EasyMock.anyObject(), EasyMock.anyLong(), EasyMock.anyObject(), EasyMock.anyInt());
-        EasyMock.expectLastCall()
-                .andThrow(new Error("should not be called"))
-                .anyTimes();
-        EasyMock.replay(mMockDevice);
+        doThrow(new Error("should not be called"))
+                .when(mMockDevice)
+                .executeShellCommand(
+                        (String) Mockito.any(),
+                        Mockito.any(),
+                        Mockito.anyLong(),
+                        Mockito.any(),
+                        Mockito.anyInt());
 
         AtraceCollector atrace = new AtraceCollector();
         atrace.onTestStart(new DeviceMetricData(mMockInvocationContext));
         atrace.onTestEnd(
                 new DeviceMetricData(mMockInvocationContext), new HashMap<String, Metric>());
-        EasyMock.verify(mMockDevice);
     }
 
     /**
@@ -226,22 +207,21 @@ public final class AtraceCollectorTest {
      */
     @Test
     public void testStopsAtraceDuringTearDown() throws Exception {
-        mMockDevice.executeShellCommand(
-                EasyMock.eq("atrace --async_stop -o " + M_DEFAULT_LOG_PATH),
-                EasyMock.anyObject(),
-                EasyMock.eq(60L),
-                EasyMock.anyObject(),
-                EasyMock.eq(1));
-        EasyMock.expectLastCall().times(1);
-        EasyMock.expect(mMockDevice.pullFile(EasyMock.eq(M_DEFAULT_LOG_PATH)))
-                .andReturn(new File("/tmp/potato"))
-                .once();
-        mMockDevice.deleteFile(M_DEFAULT_LOG_PATH);
 
-        EasyMock.replay(mMockDevice);
+        when(mMockDevice.pullFile(Mockito.eq(M_DEFAULT_LOG_PATH)))
+                .thenReturn(new File("/tmp/potato"));
+
         mAtrace.onTestEnd(
                 new DeviceMetricData(mMockInvocationContext), new HashMap<String, Metric>());
-        EasyMock.verify(mMockDevice);
+        verify(mMockDevice, times(1))
+                .executeShellCommand(
+                        Mockito.eq("atrace --async_stop -o " + M_DEFAULT_LOG_PATH),
+                        Mockito.any(),
+                        Mockito.eq(60L),
+                        Mockito.any(),
+                        Mockito.eq(1));
+        verify(mMockDevice, times(1)).pullFile(Mockito.eq(M_DEFAULT_LOG_PATH));
+        verify(mMockDevice).deleteFile(M_DEFAULT_LOG_PATH);
     }
 
     /**
@@ -253,22 +233,21 @@ public final class AtraceCollectorTest {
      */
     @Test
     public void testPreserveFileOnDeviceOption() throws Exception {
-        mMockDevice.executeShellCommand(
-                EasyMock.eq("atrace --async_stop -o " + M_DEFAULT_LOG_PATH),
-                EasyMock.anyObject(),
-                EasyMock.eq(60L),
-                EasyMock.anyObject(),
-                EasyMock.eq(1));
-        EasyMock.expectLastCall().times(1);
-        EasyMock.expect(mMockDevice.pullFile(EasyMock.eq(M_DEFAULT_LOG_PATH)))
-                .andReturn(new File("/tmp/potato"))
-                .once();
 
-        EasyMock.replay(mMockDevice);
+        when(mMockDevice.pullFile(Mockito.eq(M_DEFAULT_LOG_PATH)))
+                .thenReturn(new File("/tmp/potato"));
+
         mOptionSetter.setOptionValue("preserve-ondevice-log", "true");
         mAtrace.onTestEnd(
                 new DeviceMetricData(mMockInvocationContext), new HashMap<String, Metric>());
-        EasyMock.verify(mMockDevice);
+        verify(mMockDevice, times(1))
+                .executeShellCommand(
+                        Mockito.eq("atrace --async_stop -o " + M_DEFAULT_LOG_PATH),
+                        Mockito.any(),
+                        Mockito.eq(60L),
+                        Mockito.any(),
+                        Mockito.eq(1));
+        verify(mMockDevice, times(1)).pullFile(Mockito.eq(M_DEFAULT_LOG_PATH));
     }
 
     /**
@@ -279,12 +258,11 @@ public final class AtraceCollectorTest {
      */
     @Test
     public void testLogPullFail() throws Exception {
-        EasyMock.expect(mMockDevice.pullFile((String) EasyMock.anyObject()))
-                .andReturn(null).once();
-        EasyMock.replay(mMockDevice);
+        when(mMockDevice.pullFile((String) Mockito.any())).thenReturn(null);
 
         mAtrace.onTestEnd(
                 new DeviceMetricData(mMockInvocationContext), new HashMap<String, Metric>());
+        verify(mMockDevice, times(1)).pullFile((String) Mockito.any());
     }
 
     /**
@@ -295,20 +273,17 @@ public final class AtraceCollectorTest {
      */
     @Test
     public void testUploadsLogWithCompression() throws Exception {
-        EasyMock.expect(mMockDevice.pullFile((String) EasyMock.anyObject()))
-                .andStubReturn(new File("/tmp/potato"));
-        EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn(M_SERIAL_NO);
-        mMockTestLogger.testLog(
-                EasyMock.eq("atrace" + M_SERIAL_NO),
-                EasyMock.eq(LogDataType.ATRACE),
-                EasyMock.anyObject());
-        EasyMock.expectLastCall().times(1);
-        EasyMock.replay(mMockDevice, mMockTestLogger);
+        when(mMockDevice.pullFile((String) Mockito.any())).thenReturn(new File("/tmp/potato"));
+        when(mMockDevice.getSerialNumber()).thenReturn(M_SERIAL_NO);
 
         mAtrace.onTestEnd(
                 new DeviceMetricData(mMockInvocationContext), new HashMap<String, Metric>());
 
-        EasyMock.verify(mMockTestLogger);
+        verify(mMockTestLogger, times(1))
+                .testLog(
+                        Mockito.eq("atrace" + M_SERIAL_NO),
+                        Mockito.eq(LogDataType.ATRACE),
+                        Mockito.any());
     }
 
     /**
@@ -319,21 +294,18 @@ public final class AtraceCollectorTest {
      */
     @Test
     public void testUploadsLogWithoutCompression() throws Exception {
-        EasyMock.expect(mMockDevice.pullFile((String) EasyMock.anyObject()))
-                .andStubReturn(new File("/tmp/potato"));
-        EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn(M_SERIAL_NO);
-        mMockTestLogger.testLog(
-                EasyMock.eq("atrace" + M_SERIAL_NO),
-                EasyMock.eq(LogDataType.TEXT),
-                EasyMock.anyObject());
-        EasyMock.expectLastCall().times(1);
-        EasyMock.replay(mMockDevice, mMockTestLogger);
+        when(mMockDevice.pullFile((String) Mockito.any())).thenReturn(new File("/tmp/potato"));
+        when(mMockDevice.getSerialNumber()).thenReturn(M_SERIAL_NO);
 
         mOptionSetter.setOptionValue("compress-dump", "false");
         mAtrace.onTestEnd(
                 new DeviceMetricData(mMockInvocationContext), new HashMap<String, Metric>());
 
-        EasyMock.verify(mMockTestLogger);
+        verify(mMockTestLogger, times(1))
+                .testLog(
+                        Mockito.eq("atrace" + M_SERIAL_NO),
+                        Mockito.eq(LogDataType.TEXT),
+                        Mockito.any());
     }
 
     /**
@@ -347,24 +319,14 @@ public final class AtraceCollectorTest {
         int num_devices = 3;
         List<ITestDevice> devices = new ArrayList<ITestDevice>();
         for (int i = 0; i < num_devices; i++) {
-            ITestDevice device = EasyMock.createNiceMock(ITestDevice.class);
-            EasyMock.expect(device.getSerialNumber()).andStubReturn(M_SERIAL_NO);
-            EasyMock.expect(device.pullFile((String) EasyMock.anyObject()))
-                    .andStubReturn(new File("/tmp/potato"));
-            EasyMock.replay(device);
+            ITestDevice device = mock(ITestDevice.class);
+            when(device.getSerialNumber()).thenReturn(M_SERIAL_NO);
+            when(device.pullFile((String) Mockito.any())).thenReturn(new File("/tmp/potato"));
+
             devices.add(device);
         }
-        IInvocationContext mockInvocationContext =
-            EasyMock.createNiceMock(IInvocationContext.class);
-        EasyMock.expect(mockInvocationContext.getDevices())
-                .andStubReturn(devices);
-
-        mMockTestLogger.testLog(
-            (String) EasyMock.anyObject(),
-            EasyMock.eq(LogDataType.ATRACE),
-            EasyMock.anyObject());
-        EasyMock.expectLastCall().times(num_devices);
-        EasyMock.replay(mMockTestLogger, mockInvocationContext);
+        IInvocationContext mockInvocationContext = mock(IInvocationContext.class);
+        when(mockInvocationContext.getDevices()).thenReturn(devices);
 
         AtraceCollector atrace = new AtraceCollector();
         OptionSetter optionSetter = new OptionSetter(atrace);
@@ -373,7 +335,8 @@ public final class AtraceCollectorTest {
         atrace.onTestEnd(
                 new DeviceMetricData(mMockInvocationContext), new HashMap<String, Metric>());
 
-        EasyMock.verify(mMockTestLogger);
+        verify(mMockTestLogger, times(num_devices))
+                .testLog((String) Mockito.any(), Mockito.eq(LogDataType.ATRACE), Mockito.any());
     }
 
     /**
@@ -387,24 +350,15 @@ public final class AtraceCollectorTest {
         CommandResult commandResult = new CommandResult(CommandStatus.SUCCESS);
         commandResult.setStdout("stdout");
         commandResult.setStderr("stderr");
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.eq(60L),
-                                EasyMock.eq(mDummyBinary.getAbsolutePath()),
-                                EasyMock.eq("-i"),
-                                EasyMock.eq(M_TRACE_PATH_NAME),
-                                EasyMock.eq("--switch1")))
-                .andReturn(commandResult)
-                .times(1);
+        when(mMockRunUtil.runTimedCmd(
+                        Mockito.eq(60L),
+                        Mockito.eq(mDummyBinary.getAbsolutePath()),
+                        Mockito.eq("-i"),
+                        Mockito.eq(M_TRACE_PATH_NAME),
+                        Mockito.eq("--switch1")))
+                .thenReturn(commandResult);
 
-        mMockTestLogger.testLog(
-                EasyMock.eq("atrace" + M_SERIAL_NO),
-                EasyMock.eq(LogDataType.ATRACE),
-                EasyMock.anyObject());
-        EasyMock.expectLastCall().times(1);
-        EasyMock.replay(mMockTestLogger, mMockRunUtil, mMockDevice);
-
-        //test
+        // test
         mOptionSetter.setOptionValue("post-process-binary", mDummyBinary.getAbsolutePath());
         mOptionSetter.setOptionValue("post-process-input-file-key", "TRACEF");
         mOptionSetter.setOptionValue("post-process-args", "-i");
@@ -415,7 +369,18 @@ public final class AtraceCollectorTest {
         mAtrace.onTestEnd(
                 new DeviceMetricData(mMockInvocationContext), new HashMap<String, Metric>());
 
-        EasyMock.verify(mMockTestLogger, mMockRunUtil);
+        verify(mMockTestLogger, times(1))
+                .testLog(
+                        Mockito.eq("atrace" + M_SERIAL_NO),
+                        Mockito.eq(LogDataType.ATRACE),
+                        Mockito.any());
+        verify(mMockRunUtil, times(1))
+                .runTimedCmd(
+                        Mockito.eq(60L),
+                        Mockito.eq(mDummyBinary.getAbsolutePath()),
+                        Mockito.eq("-i"),
+                        Mockito.eq(M_TRACE_PATH_NAME),
+                        Mockito.eq("--switch1"));
     }
 
     /**
@@ -429,21 +394,12 @@ public final class AtraceCollectorTest {
         CommandResult commandResult = new CommandResult(CommandStatus.SUCCESS);
         commandResult.setStdout("stdout");
         commandResult.setStderr("stderr");
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.eq(60L),
-                                EasyMock.eq(mDummyBinary.getAbsolutePath()),
-                                EasyMock.eq(M_TRACE_PATH_NAME),
-                                EasyMock.eq("--switch1")))
-                .andReturn(commandResult)
-                .times(1);
-
-        mMockTestLogger.testLog(
-                EasyMock.eq("atrace" + M_SERIAL_NO),
-                EasyMock.eq(LogDataType.ATRACE),
-                EasyMock.anyObject());
-        EasyMock.expectLastCall().times(1);
-        EasyMock.replay(mMockTestLogger, mMockRunUtil, mMockDevice);
+        when(mMockRunUtil.runTimedCmd(
+                        Mockito.eq(60L),
+                        Mockito.eq(mDummyBinary.getAbsolutePath()),
+                        Mockito.eq(M_TRACE_PATH_NAME),
+                        Mockito.eq("--switch1")))
+                .thenReturn(commandResult);
 
         mOptionSetter.setOptionValue("post-process-binary", mDummyBinary.getAbsolutePath());
         mOptionSetter.setOptionValue("post-process-input-file-key", "TRACEF");
@@ -454,7 +410,17 @@ public final class AtraceCollectorTest {
         mAtrace.onTestEnd(
                 new DeviceMetricData(mMockInvocationContext), new HashMap<String, Metric>());
 
-        EasyMock.verify(mMockTestLogger, mMockRunUtil);
+        verify(mMockTestLogger, times(1))
+                .testLog(
+                        Mockito.eq("atrace" + M_SERIAL_NO),
+                        Mockito.eq(LogDataType.ATRACE),
+                        Mockito.any());
+        verify(mMockRunUtil, times(1))
+                .runTimedCmd(
+                        Mockito.eq(60L),
+                        Mockito.eq(mDummyBinary.getAbsolutePath()),
+                        Mockito.eq(M_TRACE_PATH_NAME),
+                        Mockito.eq("--switch1"));
     }
 
     /**
@@ -467,22 +433,13 @@ public final class AtraceCollectorTest {
     public void testExecutesPostProcessParNoStderr() throws Exception {
         CommandResult commandResult = new CommandResult(CommandStatus.SUCCESS);
         commandResult.setStdout("stdout");
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.eq(180000L),
-                                EasyMock.eq(mDummyBinary.getAbsolutePath()),
-                                EasyMock.eq("-i"),
-                                EasyMock.eq(M_TRACE_PATH_NAME),
-                                EasyMock.eq("--switch1")))
-                .andReturn(commandResult)
-                .times(1);
-
-        mMockTestLogger.testLog(
-                EasyMock.eq("atrace" + M_SERIAL_NO),
-                EasyMock.eq(LogDataType.ATRACE),
-                EasyMock.anyObject());
-        EasyMock.expectLastCall().times(1);
-        EasyMock.replay(mMockTestLogger, mMockRunUtil, mMockDevice);
+        when(mMockRunUtil.runTimedCmd(
+                        Mockito.eq(180000L),
+                        Mockito.eq(mDummyBinary.getAbsolutePath()),
+                        Mockito.eq("-i"),
+                        Mockito.eq(M_TRACE_PATH_NAME),
+                        Mockito.eq("--switch1")))
+                .thenReturn(commandResult);
 
         mOptionSetter.setOptionValue("post-process-binary", mDummyBinary.getAbsolutePath());
         mOptionSetter.setOptionValue("post-process-input-file-key", "TRACEF");
@@ -494,7 +451,18 @@ public final class AtraceCollectorTest {
         mAtrace.onTestEnd(
                 new DeviceMetricData(mMockInvocationContext), new HashMap<String, Metric>());
 
-        EasyMock.verify(mMockTestLogger, mMockRunUtil);
+        verify(mMockTestLogger, times(1))
+                .testLog(
+                        Mockito.eq("atrace" + M_SERIAL_NO),
+                        Mockito.eq(LogDataType.ATRACE),
+                        Mockito.any());
+        verify(mMockRunUtil, times(1))
+                .runTimedCmd(
+                        Mockito.eq(180000L),
+                        Mockito.eq(mDummyBinary.getAbsolutePath()),
+                        Mockito.eq("-i"),
+                        Mockito.eq(M_TRACE_PATH_NAME),
+                        Mockito.eq("--switch1"));
     }
 
     /**
@@ -508,22 +476,13 @@ public final class AtraceCollectorTest {
         CommandResult commandResult = new CommandResult(CommandStatus.FAILED);
         commandResult.setStderr("stderr");
 
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.eq(60000L),
-                                EasyMock.eq(mDummyBinary.getAbsolutePath()),
-                                EasyMock.eq("-i"),
-                                EasyMock.eq(M_TRACE_PATH_NAME),
-                                EasyMock.eq("--switch1")))
-                .andReturn(commandResult)
-                .times(1);
-
-        mMockTestLogger.testLog(
-                EasyMock.eq("atrace" + M_SERIAL_NO),
-                EasyMock.eq(LogDataType.ATRACE),
-                EasyMock.anyObject());
-        EasyMock.expectLastCall().times(1);
-        EasyMock.replay(mMockTestLogger, mMockRunUtil, mMockDevice);
+        when(mMockRunUtil.runTimedCmd(
+                        Mockito.eq(60000L),
+                        Mockito.eq(mDummyBinary.getAbsolutePath()),
+                        Mockito.eq("-i"),
+                        Mockito.eq(M_TRACE_PATH_NAME),
+                        Mockito.eq("--switch1")))
+                .thenReturn(commandResult);
 
         mOptionSetter.setOptionValue("post-process-binary", mDummyBinary.getAbsolutePath());
         mOptionSetter.setOptionValue("post-process-input-file-key", "TRACEF");
@@ -535,7 +494,18 @@ public final class AtraceCollectorTest {
         mAtrace.onTestEnd(
                 new DeviceMetricData(mMockInvocationContext), new HashMap<String, Metric>());
 
-        EasyMock.verify(mMockTestLogger, mMockRunUtil);
+        verify(mMockTestLogger, times(1))
+                .testLog(
+                        Mockito.eq("atrace" + M_SERIAL_NO),
+                        Mockito.eq(LogDataType.ATRACE),
+                        Mockito.any());
+        verify(mMockRunUtil, times(1))
+                .runTimedCmd(
+                        Mockito.eq(60000L),
+                        Mockito.eq(mDummyBinary.getAbsolutePath()),
+                        Mockito.eq("-i"),
+                        Mockito.eq(M_TRACE_PATH_NAME),
+                        Mockito.eq("--switch1"));
     }
 
     /**
@@ -548,22 +518,13 @@ public final class AtraceCollectorTest {
     public void testExecutesPostProcessParTimeout() throws Exception {
         CommandResult commandResult = new CommandResult(CommandStatus.TIMED_OUT);
 
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.eq(3661000L),
-                                EasyMock.eq(mDummyBinary.getAbsolutePath()),
-                                EasyMock.eq("-i"),
-                                EasyMock.eq(M_TRACE_PATH_NAME),
-                                EasyMock.eq("--switch1")))
-                .andReturn(commandResult)
-                .times(1);
-
-        mMockTestLogger.testLog(
-                EasyMock.eq("atrace" + M_SERIAL_NO),
-                EasyMock.eq(LogDataType.ATRACE),
-                EasyMock.anyObject());
-        EasyMock.expectLastCall().times(1);
-        EasyMock.replay(mMockTestLogger, mMockRunUtil, mMockDevice);
+        when(mMockRunUtil.runTimedCmd(
+                        Mockito.eq(3661000L),
+                        Mockito.eq(mDummyBinary.getAbsolutePath()),
+                        Mockito.eq("-i"),
+                        Mockito.eq(M_TRACE_PATH_NAME),
+                        Mockito.eq("--switch1")))
+                .thenReturn(commandResult);
 
         mOptionSetter.setOptionValue("post-process-binary", mDummyBinary.getAbsolutePath());
         mOptionSetter.setOptionValue("post-process-input-file-key", "TRACEF");
@@ -575,7 +536,18 @@ public final class AtraceCollectorTest {
         mAtrace.onTestEnd(
                 new DeviceMetricData(mMockInvocationContext), new HashMap<String, Metric>());
 
-        EasyMock.verify(mMockTestLogger, mMockRunUtil);
+        verify(mMockTestLogger, times(1))
+                .testLog(
+                        Mockito.eq("atrace" + M_SERIAL_NO),
+                        Mockito.eq(LogDataType.ATRACE),
+                        Mockito.any());
+        verify(mMockRunUtil, times(1))
+                .runTimedCmd(
+                        Mockito.eq(3661000L),
+                        Mockito.eq(mDummyBinary.getAbsolutePath()),
+                        Mockito.eq("-i"),
+                        Mockito.eq(M_TRACE_PATH_NAME),
+                        Mockito.eq("--switch1"));
     }
 
     /**
@@ -589,20 +561,7 @@ public final class AtraceCollectorTest {
         CommandResult commandResult = new CommandResult(CommandStatus.SUCCESS);
         commandResult.setStdout("line1\nt:" + mDummyMetricPng.getAbsolutePath());
         commandResult.setStderr("stderr");
-        EasyMock.expect(mMockRunUtil.runTimedCmd(EasyMock.anyLong(), EasyMock.anyObject()))
-                .andReturn(commandResult)
-                .times(1);
-
-        mMockTestLogger.testLog(
-                EasyMock.eq("atrace" + M_SERIAL_NO),
-                EasyMock.eq(LogDataType.ATRACE),
-                EasyMock.anyObject());
-        EasyMock.expectLastCall().times(1);
-        mMockTestLogger.testLog(
-                EasyMock.eq(FileUtil.getBaseName(mDummyMetricPng.getName())),
-                EasyMock.eq(LogDataType.PNG),
-                EasyMock.anyObject());
-        EasyMock.replay(mMockTestLogger, mMockRunUtil, mMockDevice);
+        when(mMockRunUtil.runTimedCmd(Mockito.anyLong(), Mockito.any())).thenReturn(commandResult);
 
         mOptionSetter.setOptionValue("post-process-binary", mDummyBinary.getAbsolutePath());
         mOptionSetter.setOptionValue("post-process-output-file-regex", "t:(.*)");
@@ -611,7 +570,17 @@ public final class AtraceCollectorTest {
         mAtrace.onTestEnd(
                 new DeviceMetricData(mMockInvocationContext), new HashMap<String, Metric>());
 
-        EasyMock.verify(mMockTestLogger, mMockRunUtil);
+        verify(mMockTestLogger, times(1))
+                .testLog(
+                        Mockito.eq("atrace" + M_SERIAL_NO),
+                        Mockito.eq(LogDataType.ATRACE),
+                        Mockito.any());
+        verify(mMockRunUtil, times(1)).runTimedCmd(Mockito.anyLong(), Mockito.any());
+        verify(mMockTestLogger)
+                .testLog(
+                        Mockito.eq(FileUtil.getBaseName(mDummyMetricPng.getName())),
+                        Mockito.eq(LogDataType.PNG),
+                        Mockito.any());
     }
 
     /**
@@ -625,16 +594,7 @@ public final class AtraceCollectorTest {
         CommandResult commandResult = new CommandResult(CommandStatus.SUCCESS);
         commandResult.setStdout("text\nt:" + mDummyMetricPng.getAbsolutePath());
         commandResult.setStderr("stderr");
-        EasyMock.expect(mMockRunUtil.runTimedCmd(EasyMock.anyLong(), EasyMock.anyObject()))
-                .andReturn(commandResult)
-                .times(1);
-
-        mMockTestLogger.testLog(
-                EasyMock.eq("atrace" + M_SERIAL_NO),
-                EasyMock.eq(LogDataType.ATRACE),
-                EasyMock.anyObject());
-        EasyMock.expectLastCall().times(1);
-        EasyMock.replay(mMockTestLogger, mMockRunUtil, mMockDevice);
+        when(mMockRunUtil.runTimedCmd(Mockito.anyLong(), Mockito.any())).thenReturn(commandResult);
 
         mOptionSetter.setOptionValue("post-process-binary", mDummyBinary.getAbsolutePath());
         mOptionSetter.setOptionValue("post-process-output-file-regex", "t:.*");
@@ -643,7 +603,12 @@ public final class AtraceCollectorTest {
         mAtrace.onTestEnd(
                 new DeviceMetricData(mMockInvocationContext), new HashMap<String, Metric>());
 
-        EasyMock.verify(mMockTestLogger, mMockRunUtil);
+        verify(mMockTestLogger, times(1))
+                .testLog(
+                        Mockito.eq("atrace" + M_SERIAL_NO),
+                        Mockito.eq(LogDataType.ATRACE),
+                        Mockito.any());
+        verify(mMockRunUtil, times(1)).runTimedCmd(Mockito.anyLong(), Mockito.any());
     }
 
     /**
@@ -656,16 +621,7 @@ public final class AtraceCollectorTest {
     public void testProcessesMetricOutputWithFileNotFound() throws Exception {
         CommandResult commandResult = new CommandResult(CommandStatus.SUCCESS);
         commandResult.setStdout("text\nt:/file/not/found.txt");
-        EasyMock.expect(mMockRunUtil.runTimedCmd(EasyMock.anyLong(), EasyMock.anyObject()))
-                .andReturn(commandResult)
-                .times(1);
-
-        mMockTestLogger.testLog(
-                EasyMock.eq("atrace" + M_SERIAL_NO),
-                EasyMock.eq(LogDataType.ATRACE),
-                EasyMock.anyObject());
-        EasyMock.expectLastCall().times(1);
-        EasyMock.replay(mMockTestLogger, mMockRunUtil, mMockDevice);
+        when(mMockRunUtil.runTimedCmd(Mockito.anyLong(), Mockito.any())).thenReturn(commandResult);
 
         mOptionSetter.setOptionValue("post-process-binary", mDummyBinary.getAbsolutePath());
         mOptionSetter.setOptionValue("post-process-output-file-regex", "t:(.*)");
@@ -674,7 +630,12 @@ public final class AtraceCollectorTest {
         mAtrace.onTestEnd(
                 new DeviceMetricData(mMockInvocationContext), new HashMap<String, Metric>());
 
-        EasyMock.verify(mMockTestLogger, mMockRunUtil);
+        verify(mMockTestLogger, times(1))
+                .testLog(
+                        Mockito.eq("atrace" + M_SERIAL_NO),
+                        Mockito.eq(LogDataType.ATRACE),
+                        Mockito.any());
+        verify(mMockRunUtil, times(1)).runTimedCmd(Mockito.anyLong(), Mockito.any());
     }
 
     /**
@@ -692,26 +653,7 @@ public final class AtraceCollectorTest {
                         + "\nZAZ:"
                         + mDummyMetricText.getAbsolutePath());
         commandResult.setStderr("stderr");
-        EasyMock.expect(mMockRunUtil.runTimedCmd(EasyMock.anyLong(), EasyMock.anyObject()))
-                .andReturn(commandResult)
-                .times(1);
-
-        mMockTestLogger.testLog(
-                EasyMock.eq("atrace" + M_SERIAL_NO),
-                EasyMock.eq(LogDataType.ATRACE),
-                EasyMock.anyObject());
-        EasyMock.expectLastCall().times(1);
-        mMockTestLogger.testLog(
-                EasyMock.eq(FileUtil.getBaseName(mDummyMetricPng.getName())),
-                EasyMock.eq(LogDataType.PNG),
-                EasyMock.anyObject());
-        EasyMock.expectLastCall().times(1);
-        mMockTestLogger.testLog(
-                EasyMock.eq(FileUtil.getBaseName(mDummyMetricText.getName())),
-                EasyMock.eq(LogDataType.TEXT),
-                EasyMock.anyObject());
-        EasyMock.expectLastCall().times(1);
-        EasyMock.replay(mMockTestLogger, mMockRunUtil, mMockDevice);
+        when(mMockRunUtil.runTimedCmd(Mockito.anyLong(), Mockito.any())).thenReturn(commandResult);
 
         mOptionSetter.setOptionValue("post-process-binary", mDummyBinary.getAbsolutePath());
         mOptionSetter.setOptionValue("post-process-output-file-regex", "t:(.*)");
@@ -721,6 +663,21 @@ public final class AtraceCollectorTest {
         mAtrace.onTestEnd(
                 new DeviceMetricData(mMockInvocationContext), new HashMap<String, Metric>());
 
-        EasyMock.verify(mMockTestLogger, mMockRunUtil);
+        verify(mMockTestLogger, times(1))
+                .testLog(
+                        Mockito.eq("atrace" + M_SERIAL_NO),
+                        Mockito.eq(LogDataType.ATRACE),
+                        Mockito.any());
+        verify(mMockTestLogger, times(1))
+                .testLog(
+                        Mockito.eq(FileUtil.getBaseName(mDummyMetricPng.getName())),
+                        Mockito.eq(LogDataType.PNG),
+                        Mockito.any());
+        verify(mMockTestLogger, times(1))
+                .testLog(
+                        Mockito.eq(FileUtil.getBaseName(mDummyMetricText.getName())),
+                        Mockito.eq(LogDataType.TEXT),
+                        Mockito.any());
+        verify(mMockRunUtil, times(1)).runTimedCmd(Mockito.anyLong(), Mockito.any());
     }
 }

@@ -47,6 +47,7 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestResult;
 import com.android.tradefed.result.TestRunResult;
+import com.android.tradefed.result.error.DeviceErrorIdentifier;
 import com.android.tradefed.retry.BaseRetryDecision;
 import com.android.tradefed.retry.IRetryDecision;
 import com.android.tradefed.retry.RetryStatistics;
@@ -962,7 +963,13 @@ public class GranularRetriableTestWrapperTest {
     /** Test to reset multi-devices at the last intra-module retry. */
     @Test
     public void testIntraModuleRun_resetMultiDevicesAtLastIntraModuleRetry() throws Exception {
-        BaseRetryDecision decision = new BaseRetryDecision();
+        BaseRetryDecision decision = new BaseRetryDecision() {
+            @Override
+            protected void isolateRetry(List<ITestDevice> devices)
+                    throws DeviceNotAvailableException {
+                // Do nothing to fake success
+            }
+        };
         OptionSetter setter = new OptionSetter(decision);
         setter.setOptionValue("reset-at-last-retry", "true");
         setter.setOptionValue("retry-strategy", "RETRY_ANY_FAILURE");
@@ -976,7 +983,6 @@ public class GranularRetriableTestWrapperTest {
         ITestDevice noneAVDDevice = EasyMock.createMock(ITestDevice.class);
 
         RemoteAndroidVirtualDevice avdDevice = Mockito.mock(RemoteAndroidVirtualDevice.class);
-        Mockito.when(avdDevice.powerwashGce()).thenReturn(true);
 
         ModuleDefinition module = Mockito.mock(ModuleDefinition.class);
         // Should call suite level preparers.
@@ -1000,7 +1006,15 @@ public class GranularRetriableTestWrapperTest {
     /** Test to reset device at the last intra-module retry failed due to preparer failure. */
     @Test
     public void testIntraModuleRun_resetFailed_preparerFailure() throws Exception {
-        BaseRetryDecision decision = new BaseRetryDecision();
+        BaseRetryDecision decision = new BaseRetryDecision() {
+            @Override
+            protected void isolateRetry(List<ITestDevice> devices)
+                    throws DeviceNotAvailableException {
+                throw new DeviceNotAvailableException(
+                        "Reset failure", "device1",
+                        DeviceErrorIdentifier.DEVICE_FAILED_TO_RESET);
+            }
+        };
         OptionSetter setter = new OptionSetter(decision);
         setter.setOptionValue("reset-at-last-retry", "true");
         setter.setOptionValue("retry-strategy", "RETRY_ANY_FAILURE");
@@ -1029,7 +1043,7 @@ public class GranularRetriableTestWrapperTest {
             granularTestWrapper.run(mModuleInfo, new CollectingTestListener());
             fail("Exception should be raised when reset is failed.");
         } catch (DeviceNotAvailableException e) {
-            assertTrue(e.getMessage().startsWith("Failed to reset devices before retry: "));
+            assertTrue(e.getMessage().contains("Reset failure"));
         }
     }
 
@@ -1038,7 +1052,15 @@ public class GranularRetriableTestWrapperTest {
     public void testIntraModuleRun_resetFailed_powerwashFailure() throws Exception {
         ModuleDefinition module = Mockito.mock(ModuleDefinition.class);
         Mockito.when(module.getModuleInvocationContext()).thenReturn(mModuleInvocationContext);
-        BaseRetryDecision decision = new BaseRetryDecision();
+        BaseRetryDecision decision = new BaseRetryDecision() {
+            @Override
+            protected void isolateRetry(List<ITestDevice> devices)
+                    throws DeviceNotAvailableException {
+                throw new DeviceNotAvailableException(
+                        "Failed to powerwash device: device1", "device1",
+                        DeviceErrorIdentifier.DEVICE_FAILED_TO_RESET);
+            }
+        };
         OptionSetter setter = new OptionSetter(decision);
         setter.setOptionValue("reset-at-last-retry", "true");
         setter.setOptionValue("retry-strategy", "RETRY_ANY_FAILURE");

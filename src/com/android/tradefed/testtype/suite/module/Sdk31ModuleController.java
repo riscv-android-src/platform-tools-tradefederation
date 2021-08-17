@@ -13,7 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.tradefed.targetprep;
+package com.android.tradefed.testtype.suite.module;
 
-/** Interface for performing lab setup type work */
-public interface ILabPreparer extends ITargetPreparer {}
+/**
+ * Only run tests if the device under test is SDK version 31 or above.
+ *
+ * <p>Use by adding this line to your AndroidTest.xml: <object type="module_controller"
+ * class="com.android.tradefed.testtype.suite.module.Sdk31ModuleController" />
+ */
+public class Sdk31ModuleController extends MinSdkModuleController {
+    public Sdk31ModuleController() {
+        super(31);
+    }
+}

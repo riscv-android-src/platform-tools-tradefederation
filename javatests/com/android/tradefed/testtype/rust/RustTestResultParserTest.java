@@ -54,6 +54,7 @@ public class RustTestResultParserTest extends RustParserTestBase {
     public void testRegexTestCase() {
         String[] goodPatterns = {
             "test some_test ... ok",
+            "test some_test - should panic ... ok",
             "test some_test ... pass",
             "test other-test ... fail",
             "test any ... FAIL",
@@ -62,6 +63,10 @@ public class RustTestResultParserTest extends RustParserTestBase {
         };
         String[] wrongPatterns = {
             " test some_test ... ok",
+            "test some_test  - should panic ... ok",
+            "test some_test -  should panic ... ok",
+            "test some_test - should panic  ... ok",
+            "test some_test - something else ... ok",
             "test  other-test ... fail",
             "test any ...  FAIL",
             "test some_test  ... ignored",

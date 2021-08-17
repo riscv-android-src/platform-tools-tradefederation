@@ -20,6 +20,9 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.IBuildInfo;
@@ -45,11 +48,13 @@ import com.android.tradefed.util.AbiUtils;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.ZipUtil;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -60,9 +65,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-/**
- * Unit tests for {@link TfSuiteRunner}.
- */
+/** Unit tests for {@link TfSuiteRunner}. */
 @RunWith(JUnit4.class)
 public class TfSuiteRunnerTest {
 
@@ -74,13 +77,15 @@ public class TfSuiteRunnerTest {
 
     private TfSuiteRunner mRunner;
     private IConfiguration mStubMainConfiguration;
-    private ILogSaver mMockLogSaver;
+    @Mock ILogSaver mMockLogSaver;
     private TestInformation mTestInfo;
 
     @Before
     public void setUp() {
+        MockitoAnnotations.initMocks(this);
+
         mRunner = new TestTfSuiteRunner();
-        mMockLogSaver = EasyMock.createMock(ILogSaver.class);
+
         mStubMainConfiguration = new Configuration("stub", "stub");
         mStubMainConfiguration.setLogSaver(mMockLogSaver);
         mRunner.setConfiguration(mStubMainConfiguration);
@@ -113,7 +118,7 @@ public class TfSuiteRunnerTest {
         OptionSetter setter = new OptionSetter(mRunner);
         setter.setOptionValue("suite-config-prefix", "suite");
         setter.setOptionValue("run-suite-tag", "example-suite");
-        LinkedHashMap <String, IConfiguration> configMap = mRunner.loadTests();
+        LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
         assertEquals(4, configMap.size());
         assertTrue(configMap.containsKey("arm64-v8a suite/stub1"));
         assertTrue(configMap.containsKey("armeabi-v7a suite/stub1"));
@@ -130,7 +135,7 @@ public class TfSuiteRunnerTest {
         OptionSetter setter = new OptionSetter(mRunner);
         setter.setOptionValue("suite-config-prefix", "suite");
         setter.setOptionValue("run-suite-tag", "example-suite2");
-        LinkedHashMap <String, IConfiguration> configMap = mRunner.loadTests();
+        LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
         assertEquals(2, configMap.size());
         assertTrue(configMap.containsKey("arm64-v8a suite/stub1"));
         assertTrue(configMap.containsKey("armeabi-v7a suite/stub1"));
@@ -225,7 +230,7 @@ public class TfSuiteRunnerTest {
         OptionSetter setter = new OptionSetter(mRunner);
         setter.setOptionValue("suite-config-prefix", "suite");
         setter.setOptionValue("run-suite-tag", "example-suite3");
-        ITestInvocationListener listener = EasyMock.createMock(ITestInvocationListener.class);
+        ITestInvocationListener listener = mock(ITestInvocationListener.class);
         mRunner.setDevice(mock(ITestDevice.class));
         mRunner.setBuild(mock(IBuildInfo.class));
         mRunner.setSystemStatusChecker(new ArrayList<>());
@@ -235,25 +240,25 @@ public class TfSuiteRunnerTest {
         TestInformation testInfo =
                 TestInformation.newBuilder().setInvocationContext(context).build();
         // runs the expanded suite
-        listener.testModuleStarted(EasyMock.anyObject());
-        listener.testRunStarted(
-                EasyMock.eq("arm64-v8a suite/stub1"),
-                EasyMock.eq(0),
-                EasyMock.eq(0),
-                EasyMock.anyLong());
-        listener.testRunEnded(EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-        listener.testModuleEnded();
-        listener.testModuleStarted(EasyMock.anyObject());
-        listener.testRunStarted(
-                EasyMock.eq("armeabi-v7a suite/stub1"),
-                EasyMock.eq(0),
-                EasyMock.eq(0),
-                EasyMock.anyLong());
-        listener.testRunEnded(EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-        listener.testModuleEnded();
-        EasyMock.replay(listener);
+
         mRunner.run(testInfo, listener);
-        EasyMock.verify(listener);
+
+        verify(listener, times(2)).testModuleStarted(Mockito.any());
+        verify(listener)
+                .testRunStarted(
+                        Mockito.eq("arm64-v8a suite/stub1"),
+                        Mockito.eq(0),
+                        Mockito.eq(0),
+                        Mockito.anyLong());
+        verify(listener)
+                .testRunStarted(
+                        Mockito.eq("armeabi-v7a suite/stub1"),
+                        Mockito.eq(0),
+                        Mockito.eq(0),
+                        Mockito.anyLong());
+        verify(listener, times(2)).testRunEnded(
+                Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
+        verify(listener, times(2)).testModuleEnded();
     }
 
     /**
@@ -285,11 +290,10 @@ public class TfSuiteRunnerTest {
             setter.setOptionValue("run-suite-tag", "example-suite");
             setter.setOptionValue("additional-tests-zip", additionalTestsZipFile.getAbsolutePath());
 
-            IDeviceBuildInfo deviceBuildInfo = EasyMock.createMock(IDeviceBuildInfo.class);
-            EasyMock.expect(deviceBuildInfo.getTestsDir()).andReturn(deviceTestDir);
+            IDeviceBuildInfo deviceBuildInfo = mock(IDeviceBuildInfo.class);
+            when(deviceBuildInfo.getTestsDir()).thenReturn(deviceTestDir);
             mRunner.setBuild(deviceBuildInfo);
 
-            EasyMock.replay(deviceBuildInfo);
             LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
             assertEquals(8, configMap.size());
             // The keySet should be stable and always ensure the same order of files.
@@ -303,7 +307,6 @@ public class TfSuiteRunnerTest {
             assertEquals("armeabi-v7a suite/stub1", keyList.get(5));
             assertEquals("arm64-v8a suite/stub2", keyList.get(6));
             assertEquals("armeabi-v7a suite/stub2", keyList.get(7));
-            EasyMock.verify(deviceBuildInfo);
         } finally {
             FileUtil.recursiveDelete(deviceTestDir);
             FileUtil.recursiveDelete(tmpDir);
@@ -317,16 +320,15 @@ public class TfSuiteRunnerTest {
      */
     @Test
     public void testLoadTestsForMultiAbi() throws Exception {
-        ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
+        ITestDevice mockDevice = mock(ITestDevice.class);
         mRunner.setDevice(mockDevice);
         OptionSetter setter = new OptionSetter(mRunner);
         setter.setOptionValue("suite-config-prefix", "suite");
         setter.setOptionValue("run-suite-tag", "example-suite-abi");
-        EasyMock.replay(mockDevice);
+
         LinkedHashMap<String, IConfiguration> configMap = mRunner.loadTests();
         assertEquals(2, configMap.size());
         assertTrue(configMap.containsKey("arm64-v8a suite/stubAbi"));
         assertTrue(configMap.containsKey("armeabi-v7a suite/stubAbi"));
-        EasyMock.verify(mockDevice);
     }
 }

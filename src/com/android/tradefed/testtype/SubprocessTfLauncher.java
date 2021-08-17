@@ -26,9 +26,11 @@ import com.android.tradefed.config.proxy.AutomatedReporters;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.error.HarnessRuntimeException;
 import com.android.tradefed.invoker.IInvocationContext;
+import com.android.tradefed.invoker.RemoteInvocationExecution;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
 import com.android.tradefed.metrics.proto.MetricMeasurement.Metric;
+import com.android.tradefed.result.FailureDescription;
 import com.android.tradefed.result.FileInputStreamSource;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
@@ -273,6 +275,7 @@ public abstract class SubprocessTfLauncher
         mRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_VARIABLE);
         mRunUtil.unsetEnvVariable(GlobalConfiguration.GLOBAL_CONFIG_SERVER_CONFIG_VARIABLE);
         mRunUtil.unsetEnvVariable(ANDROID_SERIAL_VAR);
+        mRunUtil.unsetEnvVariable(RemoteInvocationExecution.START_FEATURE_SERVER);
         for (String variable : AutomatedReporters.REPORTER_MAPPING) {
             mRunUtil.unsetEnvVariable(variable);
         }
@@ -350,8 +353,8 @@ public abstract class SubprocessTfLauncher
         FileOutputStream stderr = null;
 
         boolean exception = false;
-        long startTime = 0l;
-        long elapsedTime = -1l;
+        long startTime = 0L;
+        long elapsedTime = -1L;
         try {
             stdoutFile = FileUtil.createTempFile("stdout_subprocess_", ".log");
             stderrFile = FileUtil.createTempFile("stderr_subprocess_", ".log");
@@ -386,7 +389,7 @@ public abstract class SubprocessTfLauncher
                 // We possibly allow for a little more time if the thread is still processing
                 // events.
                 if (!eventParser.joinReceiver(EVENT_THREAD_JOIN_TIMEOUT_MS)) {
-                    elapsedTime = -1l;
+                    elapsedTime = -1L;
                     throw new RuntimeException(
                             String.format(
                                     "Event receiver thread did not complete:" + "\n%s",
@@ -394,7 +397,7 @@ public abstract class SubprocessTfLauncher
                 }
             } else if (protoReceiver != null) {
                 if (!protoReceiver.joinReceiver(EVENT_THREAD_JOIN_TIMEOUT_MS)) {
-                    elapsedTime = -1l;
+                    elapsedTime = -1L;
                     throw new RuntimeException(
                             String.format(
                                     "Event receiver thread did not complete:" + "\n%s",
@@ -495,7 +498,7 @@ public abstract class SubprocessTfLauncher
                     String.format(
                             "Found some output in stderr:\n%s",
                             FileUtil.readStringFromFile(stdErrFile));
-            listener.testFailed(tid, trace);
+            listener.testFailed(tid, FailureDescription.create(trace));
         }
         listener.testEnded(tid, new HashMap<String, Metric>());
         listener.testRunEnded(0, new HashMap<String, Metric>());

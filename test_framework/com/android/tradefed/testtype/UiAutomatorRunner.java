@@ -60,7 +60,7 @@ public class UiAutomatorRunner implements IRemoteAndroidTestRunner {
     private String[] mJarPaths;
     private String mPackageName;
     // default to no timeout
-    private long mMaxTimeout = 0l;
+    private long mMaxTimeout = 0L;
     private long mMaxTimeToOutputResponse = 0;
     private IDevice mRemoteDevice;
     private String mRunName;

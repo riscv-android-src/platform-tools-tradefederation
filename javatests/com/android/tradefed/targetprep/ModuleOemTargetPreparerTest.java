@@ -17,6 +17,9 @@ package com.android.tradefed.targetprep;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.android.tradefed.command.remote.DeviceDescriptor;
 import com.android.tradefed.device.ITestDevice;
@@ -24,20 +27,19 @@ import com.android.tradefed.device.ITestDevice.ApexInfo;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
-import com.android.tradefed.util.BundletoolUtil;
 import com.android.tradefed.util.CommandResult;
 import com.android.tradefed.util.FileUtil;
 
-import java.util.Arrays;
-import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.mockito.Mockito;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import java.io.File;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -46,9 +48,8 @@ import java.util.Set;
 public class ModuleOemTargetPreparerTest {
     private static final String SERIAL = "serial";
     private ModuleOemTargetPreparer mModuleOemTargetPreparer;
-    private ITestDevice mMockDevice;
+    @Mock ITestDevice mMockDevice;
     private TestInformation mTestInfo;
-    private BundletoolUtil mMockBundletoolUtil;
     private File mFakeApex;
     private File mFakeApk;
 
@@ -62,12 +63,13 @@ public class ModuleOemTargetPreparerTest {
 
     @Before
     public void setUp() throws Exception {
+        MockitoAnnotations.initMocks(this);
+
         mFakeApex = FileUtil.createTempFile("fakeApex", ".apex");
         mFakeApk = FileUtil.createTempFile("fakeApk", ".apk");
-        mMockDevice = EasyMock.createMock(ITestDevice.class);
-        mMockBundletoolUtil = Mockito.mock(BundletoolUtil.class);
-        EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn(SERIAL);
-        EasyMock.expect(mMockDevice.getDeviceDescriptor()).andStubReturn(null);
+
+        when(mMockDevice.getSerialNumber()).thenReturn(SERIAL);
+        when(mMockDevice.getDeviceDescriptor()).thenReturn(null);
         IInvocationContext context = new InvocationContext();
         context.addAllocatedDevice("device", mMockDevice);
         mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
@@ -140,16 +142,13 @@ public class ModuleOemTargetPreparerTest {
     public void testGetApexModulePackageName() throws Exception {
         String expected = APEX_PACKAGE_NAME;
         File moduleFile = File.createTempFile("fakeApex", ".apex");
-        EasyMock.expect(mMockDevice.executeShellCommand(String.format("pm path %s", expected)))
-                .andReturn("package:/system/apex/com.google.android.fake")
-                .anyTimes();
-        EasyMock.replay(mMockDevice);
+        when(mMockDevice.executeShellCommand(String.format("pm path %s", expected)))
+                .thenReturn("package:/system/apex/com.google.android.fake");
 
         String result =
                 mModuleOemTargetPreparer.parsePackageName(
                         moduleFile, mMockDevice.getDeviceDescriptor());
         assertEquals(expected, result);
-        EasyMock.verify(mMockDevice);
     }
 
     /** Test module could be remamed. */
@@ -158,10 +157,9 @@ public class ModuleOemTargetPreparerTest {
         File moduleFile = File.createTempFile("fakeApex", ".apex");
         String newName =
                 mModuleOemTargetPreparer.renameFile(mMockDevice, moduleFile, APEX_PACKAGE_NAME);
-        EasyMock.replay(mMockDevice);
+
         String expect = APEX_PACKAGE_NAME + ".apex";
         assertEquals(expect, newName);
-        EasyMock.verify(mMockDevice);
     }
 
     /** Test could get apk modules on device. */
@@ -182,51 +180,42 @@ public class ModuleOemTargetPreparerTest {
     @Test
     public void testPushedModuleSuccess() throws Exception {
         ApexInfo fakeApexData = new ApexInfo(APEX_PACKAGE_NAME, 1, APEX_PATH);
-        EasyMock.expect(mMockDevice.getActiveApexes())
-                .andReturn(new HashSet<>(Arrays.asList(fakeApexData)))
-                .atLeastOnce();
+        when(mMockDevice.getActiveApexes()).thenReturn(new HashSet<>(Arrays.asList(fakeApexData)));
         CommandResult re = new CommandResult();
         re.setStdout("Success");
-        EasyMock.expect(mMockDevice.executeShellV2Command("push " + mFakeApex))
-                .andReturn(re)
-                .anyTimes();
+        when(mMockDevice.executeShellV2Command("push " + mFakeApex)).thenReturn(re);
 
         Set<String> installableModules = new HashSet<>();
         installableModules.add(APEX_PACKAGE_NAME);
         installableModules.add(APK_PACKAGE_NAME);
-        EasyMock.expect(mMockDevice.getInstalledPackageNames()).andReturn(installableModules);
+        when(mMockDevice.getInstalledPackageNames()).thenReturn(installableModules);
 
-        EasyMock.replay(mMockDevice);
         mModuleOemTargetPreparer.setUp(mTestInfo);
-        EasyMock.verify(mMockDevice);
+        verify(mMockDevice, atLeastOnce()).getActiveApexes();
     }
 
     /** Test module pushed fail and throw exceptions. */
     @Test
     public void testModulePushFail() throws Exception {
         mModuleOemTargetPreparer.addTestFileName(APEX_NAME);
-        EasyMock.expect(mMockDevice.getActiveApexes())
-                .andReturn(new HashSet<ITestDevice.ApexInfo>());
+        when(mMockDevice.getActiveApexes()).thenReturn(new HashSet<ITestDevice.ApexInfo>());
         Set<String> installableModules = new HashSet<>();
         installableModules.add(APEX_PACKAGE_NAME);
-        EasyMock.expect(mMockDevice.getInstalledPackageNames()).andReturn(installableModules);
+        when(mMockDevice.getInstalledPackageNames()).thenReturn(installableModules);
 
         try {
-            EasyMock.replay(mMockDevice);
             mModuleOemTargetPreparer.setUp(mTestInfo);
             fail("Should have thrown a TargetSetupError.");
         } catch (TargetSetupError expected) {
             // throw exceptions
         } finally {
-            EasyMock.verify(mMockDevice);
         }
     }
 
     /** Test that teardown without setup does not cause a NPE. */
     @Test
     public void testTearDown() throws Exception {
-        EasyMock.replay(mMockDevice);
+
         mModuleOemTargetPreparer.tearDown(mTestInfo, null);
-        EasyMock.verify(mMockDevice);
     }
 }

@@ -133,12 +133,21 @@ public interface IBuildInfo extends Serializable {
     public Map<String, String> getBuildAttributes();
 
     /**
-     * Add a build attribute
+     * Add a build attribute. This doesn't allow overriding an existing attributeName.
      *
      * @param attributeName the unique attribute name
      * @param attributeValue the attribute value
      */
     public void addBuildAttribute(String attributeName, String attributeValue);
+
+    /**
+     * Remove a given attributeName from tracking.
+     *
+     * @param attributeName the attribute to stop tracking
+     */
+    public default void removeBuildAttribute(String attributeName) {
+        // Empty by default.
+    }
 
     /**
      * Add build attributes

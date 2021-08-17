@@ -19,6 +19,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.when;
 
 import com.android.tradefed.build.DeviceBuildInfo;
 import com.android.tradefed.build.IDeviceBuildInfo;
@@ -29,11 +30,12 @@ import com.android.tradefed.invoker.InvocationContext;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.targetprep.TargetSetupError;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import java.io.File;
 
@@ -45,13 +47,14 @@ public class MergeMultiBuildTargetPreparerTest {
     private MergeMultiBuildTargetPreparer mPreparer;
     private IDeviceBuildInfo mMockInfo1;
     private IDeviceBuildInfo mMockInfo2;
-    private ITestDevice mMockDevice1;
+    @Mock ITestDevice mMockDevice1;
     private TestInformation mTestInfo;
 
     @Before
     public void setUp() {
-        mMockDevice1 = EasyMock.createMock(ITestDevice.class);
-        EasyMock.expect(mMockDevice1.getDeviceDescriptor()).andStubReturn(null);
+        MockitoAnnotations.initMocks(this);
+
+        when(mMockDevice1.getDeviceDescriptor()).thenReturn(null);
         mMockInfo1 = new DeviceBuildInfo("id1", "target1");
         mMockInfo2 = new DeviceBuildInfo("id2", "target2");
         IInvocationContext context = new InvocationContext();
@@ -147,7 +150,6 @@ public class MergeMultiBuildTargetPreparerTest {
         setter.setOptionValue("src-device", "device1");
         setter.setOptionValue("dest-device", "doesnotexists");
         try {
-            EasyMock.replay(mMockDevice1);
             mPreparer.setUp(mTestInfo);
             fail("Should have thrown an exception.");
         } catch (TargetSetupError expected) {
@@ -155,7 +157,6 @@ public class MergeMultiBuildTargetPreparerTest {
                     "Could not find a build associated with 'doesnotexists'",
                     expected.getMessage());
         }
-        EasyMock.verify(mMockDevice1);
     }
 
     /** Test if the provider device name is not found in the list. */
@@ -165,7 +166,6 @@ public class MergeMultiBuildTargetPreparerTest {
         setter.setOptionValue("src-device", "doesnotexists1");
         setter.setOptionValue("dest-device", "device2");
         try {
-            EasyMock.replay(mMockDevice1);
             mPreparer.setUp(mTestInfo);
             fail("Should have thrown an exception.");
         } catch (TargetSetupError expected) {
@@ -173,6 +173,5 @@ public class MergeMultiBuildTargetPreparerTest {
                     "Could not find a build associated with 'doesnotexists1'",
                     expected.getMessage());
         }
-        EasyMock.verify(mMockDevice1);
     }
 }

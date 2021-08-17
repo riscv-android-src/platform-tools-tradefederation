@@ -587,6 +587,40 @@ public class ClusterCommandScheduler extends CommandScheduler {
         return availableFlashingPermits;
     }
 
+    private boolean arePermitsAvailableToSchedule() {
+        if (!getClusterOptions().checkPermitsOnLease()) {
+            return true;
+        }
+        for (PermitLimitType permit : PermitLimitType.values()) {
+            if (getClusterOptions().checkFlashingPermitsOnLease()
+                    && PermitLimitType.CONCURRENT_FLASHER.equals(permit)) {
+                // Already checked by dedicated flashing logic
+                continue;
+            }
+            if (getHostOptions().getAvailablePermits(permit) <= 0) {
+                CLog.i("There is no available '%s' permits. Not leasing any additional commands.",
+                        permit);
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean checkDiskSpace() {
+        if (getClusterOptions().maxDiskUsagePercentage() == 100L) {
+            return true;
+        }
+        File rootPartition = new File("/");
+        long freeSpace =
+            (long) (rootPartition.getUsableSpace() * 100.0) / rootPartition.getTotalSpace();
+        long usage = 100L - freeSpace;
+        if (usage > getClusterOptions().maxDiskUsagePercentage()) {
+            CLog.i("Disk space utilization is '%s%%'. Stop leasing.", usage);
+            return false;
+        }
+        return true;
+    }
+
     /**
      * Fetches commands for devices from the Tradefed Cluster's leasehosttasks API.
      *
@@ -600,6 +634,13 @@ public class ClusterCommandScheduler extends CommandScheduler {
         // Don't try to lease if there are no flasher permits available
         if (availableFlashingPermits == 0) {
             CLog.i("There is no available flashing permits. Not lease any additional commands.");
+            return Collections.<ClusterCommand>emptyList();
+        }
+        if (!arePermitsAvailableToSchedule()) {
+            return Collections.<ClusterCommand>emptyList();
+        }
+        // Check disk space before scheduling
+        if (!checkDiskSpace()) {
             return Collections.<ClusterCommand>emptyList();
         }
 
