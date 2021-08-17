@@ -29,6 +29,7 @@ import com.android.tradefed.util.proto.TfMetricProtoUtil;
 import com.android.tradefed.util.StringEscapeUtils;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Strings;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -91,7 +92,16 @@ public class GoogleBenchmarkTest implements IDeviceTest, IRemoteTest, ITestFilte
             description = "The benchmark (regex) filters used to match benchmarks to exclude.")
     private Set<String> mExcludeFilters = new LinkedHashSet<>();
 
+    @Option(
+            name = "ld-library-path",
+            description =
+                    "LD_LIBRARY_PATH value to include in the Google Benchmark Test execution"
+                            + " command.")
+    private String mLdLibraryPath = null;
+
     private ITestDevice mDevice = null;
+
+    private String mLdCommand = "";
 
     /**
      * {@inheritDoc}
@@ -201,7 +211,8 @@ public class GoogleBenchmarkTest implements IDeviceTest, IRemoteTest, ITestFilte
             try {
                 String cmd =
                         String.format(
-                                "%s%s %s",
+                                "%s%s%s %s",
+                                mLdCommand,
                                 root,
                                 getFilterFlagForTests(filteredTests),
                                 GBENCHMARK_JSON_OUTPUT_FORMAT);
@@ -251,7 +262,8 @@ public class GoogleBenchmarkTest implements IDeviceTest, IRemoteTest, ITestFilte
             throws DeviceNotAvailableException {
         String cmd =
                 String.format(
-                        "%s%s %s",
+                        "%s%s%s %s",
+                        mLdCommand,
                         fullBinaryPath,
                         getFilterFlagForFilters(filters),
                         GBENCHMARK_LIST_TESTS_OPTION);
@@ -320,6 +332,10 @@ public class GoogleBenchmarkTest implements IDeviceTest, IRemoteTest, ITestFilte
             throw new IllegalArgumentException("Device has not been set");
         }
         String testPath = getTestPath();
+        if (!Strings.isNullOrEmpty(mLdLibraryPath)) {
+            mLdCommand = String.format("LD_LIBRARY_PATH=%s ", mLdLibraryPath);
+        }
+
         if (!mDevice.doesFileExist(testPath)) {
             CLog.w(String.format("Could not find native benchmark test directory %s in %s!",
                     testPath, mDevice.getSerialNumber()));
