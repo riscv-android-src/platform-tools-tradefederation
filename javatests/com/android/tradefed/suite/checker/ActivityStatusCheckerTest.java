@@ -16,6 +16,8 @@
 package com.android.tradefed.suite.checker;
 
 import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.log.ITestLogger;
@@ -24,55 +26,66 @@ import com.android.tradefed.result.InputStreamSource;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.suite.checker.StatusCheckerResult.CheckStatus;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.InOrder;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 /** Unit tests for {@link ActivityStatusChecker}. */
 @RunWith(JUnit4.class)
 public class ActivityStatusCheckerTest {
     private ActivityStatusChecker mChecker;
-    private ITestLogger mMockLogger;
-    private ITestDevice mMockDevice;
+    @Mock ITestLogger mMockLogger;
+    @Mock ITestDevice mMockDevice;
 
     @Before
     public void setUp() {
-        mMockLogger = EasyMock.createStrictMock(ITestLogger.class);
+        MockitoAnnotations.initMocks(this);
+
         mChecker = new ActivityStatusChecker();
         mChecker.setTestLogger(mMockLogger);
-        mMockDevice = EasyMock.createStrictMock(ITestDevice.class);
     }
 
     /** Test that the status checker is a success if the home/launcher activity is on top. */
     @Test
     public void testCheckerLauncherHomeScreen() throws Exception {
-        EasyMock.expect(mMockDevice.executeShellCommand(EasyMock.anyObject()))
-                .andReturn(
-                        "  mCurrentFocus=Window{46dd15 u0 com.google.android.apps.nexuslauncher/"
-                                + "com.google.android.apps.nexuslauncher.NexusLauncherActivity}\n"
-                                + "  mFocusedApp=AppWindowToken{37e3c39 token=Token{312ce85 ActivityRecord{a9437fc "
-                                + "u0 com.google.android.apps.nexuslauncher/.NexusLauncherActivity t2}}}");
-        EasyMock.replay(mMockLogger, mMockDevice);
+        when(mMockDevice.executeShellCommand(Mockito.any()))
+                .thenReturn(
+                        "  mCurrentFocus=Window{46dd15 u0"
+                            + " com.google.android.apps.nexuslauncher/com.google.android."
+                                    + "apps.nexuslauncher.NexusLauncherActivity}\n"
+                            + "  mFocusedApp=AppWindowToken{37e3c39 token=Token{312ce85"
+                            + " ActivityRecord{a9437fc u0"
+                            + " com.google.android.apps.nexuslauncher/.NexusLauncherActivity"
+                            + " t2}}}");
+
         assertEquals(CheckStatus.SUCCESS, mChecker.postExecutionCheck(mMockDevice).getStatus());
-        EasyMock.verify(mMockLogger, mMockDevice);
     }
 
     /** Test that if another activity is on top, then we fail the checker and take a screenshot. */
     @Test
     public void testCheckerOtherActivity() throws Exception {
-        EasyMock.expect(mMockDevice.executeShellCommand(EasyMock.anyObject()))
-                .andReturn(
-                        "mCurrentFocus=Window{52b89df u0 com.android.chrome/org.chromium.chrome."
-                                + "browser.ChromeTabbedActivity}\n"
-                                + "  mFocusedApp=AppWindowToken{955b485 token=Token{6bebd1b ActivityRecord{fd30b2a "
-                                + "u0 com.android.chrome/org.chromium.chrome.browser.ChromeTabbedActivity t7}}}");
+        when(mMockDevice.executeShellCommand(Mockito.any()))
+                .thenReturn(
+                        "mCurrentFocus=Window{52b89df u0"
+                            + " com.android.chrome/org.chromium.chrome.browser.ChromeTabbedActivity}\n"
+                            + "  mFocusedApp=AppWindowToken{955b485 token=Token{6bebd1b"
+                            + " ActivityRecord{fd30b2a u0"
+                            + " com.android.chrome/org.chromium.chrome.browser.ChromeTabbedActivity"
+                            + " t7}}}");
         InputStreamSource fake = new ByteArrayInputStreamSource("fakedata".getBytes());
-        EasyMock.expect(mMockDevice.getScreenshot(EasyMock.anyObject())).andReturn(fake);
-        mMockLogger.testLog("status_checker_front_activity", LogDataType.JPEG, fake);
-        EasyMock.replay(mMockLogger, mMockDevice);
+        when(mMockDevice.getScreenshot(Mockito.any())).thenReturn(fake);
+
         assertEquals(CheckStatus.FAILED, mChecker.postExecutionCheck(mMockDevice).getStatus());
-        EasyMock.verify(mMockLogger, mMockDevice);
+        InOrder inOrder = Mockito.inOrder(mMockDevice, mMockLogger);
+        inOrder.verify(mMockDevice).getScreenshot(Mockito.any());
+        inOrder.verify(mMockLogger)
+                .testLog("status_checker_front_activity", LogDataType.JPEG, fake);
+
+        verify(mMockLogger).testLog("status_checker_front_activity", LogDataType.JPEG, fake);
     }
 }

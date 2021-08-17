@@ -54,6 +54,6 @@ public class HeapHostMonitorTest {
         assertNotNull(mArgsLogged.get(HeapHostMonitor.HEAP_KEY));
         // make sure it's a positive number
         long mem = Long.parseLong(mArgsLogged.get(HeapHostMonitor.HEAP_KEY));
-        assertTrue(mem > 0l);
+        assertTrue(mem > 0L);
     }
 }

@@ -29,7 +29,6 @@ import com.android.tradefed.device.metric.IMetricCollector;
 import com.android.tradefed.device.metric.IMetricCollectorReceiver;
 import com.android.tradefed.invoker.TestInformation;
 import com.android.tradefed.log.LogUtil.CLog;
-import com.android.tradefed.result.BugreportCollector;
 import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.TestRunResult;
@@ -88,39 +87,21 @@ public class InstalledInstrumentationsTest
             "fails to complete.")
     private boolean mIsRerunMode = true;
 
-    @Option(name = "resume",
-            description = "Schedule unexecuted tests for resumption on another device " +
-            "if first device becomes unavailable.")
-    private boolean mIsResumeMode = false;
-
     /** @deprecated delete when we are sure it's not used anywhere. */
     @Deprecated
     @Option(name = "send-coverage", description = "Send coverage target info to test listeners.")
     private boolean mSendCoverage = false;
 
-    @Option(name = "bugreport-on-failure", description = "Sets which failed testcase events " +
-            "cause a bugreport to be collected. a bugreport after failed testcases.  Note that " +
-            "there is _no feedback mechanism_ between the test runner and the bugreport " +
-            "collector, so use the EACH setting with due caution.")
-    private BugreportCollector.Freq mBugreportFrequency = null;
-
-    @Option(
-        name = "bugreport-on-run-failure",
-        description = "Take a bugreport if the instrumentation finish with a run failure"
-    )
-    private boolean mBugreportOnRunFailure = false;
-
+    /** @deprecated delete when we are sure it's not used anywhere. */
+    @Deprecated
     @Option(name = "screenshot-on-failure", description = "Take a screenshot on every test failure")
     private boolean mScreenshotOnFailure = false;
 
+    /** @deprecated delete when we are sure it's not used anywhere. */
+    @Deprecated
     @Option(name = "logcat-on-failure", description =
             "take a logcat snapshot on every test failure.")
     private boolean mLogcatOnFailures = false;
-
-    @Option(name = "logcat-on-failure-size", description =
-            "The max number of logcat data in bytes to capture when --logcat-on-failure is on. " +
-            "Should be an amount that can comfortably fit in memory.")
-    private int mMaxLogcatBytes = 500 * 1024; // 500K
 
     @Option(name = "class",
             description = "Only run tests in specified class")
@@ -142,21 +123,11 @@ public class InstalledInstrumentationsTest
                         + "when re-running instrumentations for tests that failed to run in "
                         + "previous attempts. "
     )
-    private boolean mReRunUsingTestFile = true;
+    private boolean mReRunUsingTestFile = false;
 
     @Option(name = "rerun-from-file-attempts", description =
             "Max attempts to rerun tests from file. -1 means rerun from file infinitely.")
     private int mReRunUsingTestFileAttempts = -1;
-
-    @Option(
-        name = "fallback-to-serial-rerun",
-        description = "Rerun tests serially after rerun from file failed."
-    )
-    private boolean mFallbackToSerialRerun = false;
-
-    @Option(name = "reboot-before-rerun", description =
-            "Reboot a device before re-running instrumentations.")
-    private boolean mRebootBeforeReRun = false;
 
     @Option(name = "disable", description =
             "Disable the test by setting this flag to true.")

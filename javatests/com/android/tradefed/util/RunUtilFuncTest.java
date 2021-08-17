@@ -32,9 +32,9 @@ import java.io.Writer;
  */
 public class RunUtilFuncTest extends TestCase {
 
-    private static final long VERY_SHORT_TIMEOUT_MS = 10l;
-    private static final long SHORT_TIMEOUT_MS = 500l;
-    private static final long LONG_TIMEOUT_MS = 5000l;
+    private static final long VERY_SHORT_TIMEOUT_MS = 10L;
+    private static final long SHORT_TIMEOUT_MS = 500L;
+    private static final long LONG_TIMEOUT_MS = 5000L;
 
     private abstract class MyRunnable implements IRunUtil.IRunnableResult {
         boolean mCanceled = false;
@@ -114,7 +114,7 @@ public class RunUtilFuncTest extends TestCase {
     public void testRunTimedCmd_noTimeout() {
         // When there is no timeout, max_poll interval will be 30sec so we need a test with more
         // than 30sec
-        CommandResult result = RunUtil.getDefault().runTimedCmd(0l, "sleep", "35");
+        CommandResult result = RunUtil.getDefault().runTimedCmd(0L, "sleep", "35");
         assertTrue(CommandStatus.SUCCESS.equals(result.getStatus()));
         assertTrue(result.getStdout().isEmpty());
     }

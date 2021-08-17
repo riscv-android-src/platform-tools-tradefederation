@@ -20,6 +20,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.OptionSetter;
@@ -30,21 +32,19 @@ import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.util.FileUtil;
 import com.android.tradefed.util.SubprocessTestResultsParser;
 
-import org.easymock.Capture;
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-/**
- * Unit Tests for {@link SubprocessResultsReporter}
- */
+/** Unit Tests for {@link SubprocessResultsReporter} */
 @RunWith(JUnit4.class)
 public class SubprocessResultsReporterTest {
 
@@ -56,9 +56,7 @@ public class SubprocessResultsReporterTest {
         mReporter = new SubprocessResultsReporter();
     }
 
-    /**
-     * Test that when none of the option for reporting is set, nothing happen.
-     */
+    /** Test that when none of the option for reporting is set, nothing happen. */
     @Test
     public void testPrintEvent_Inop() {
         TestDescription testId = new TestDescription("com.fakeclass", "faketest");
@@ -68,9 +66,7 @@ public class SubprocessResultsReporterTest {
         mReporter.printEvent(null, null);
     }
 
-    /**
-     * Test that when a report file is specified it logs event to it.
-     */
+    /** Test that when a report file is specified it logs event to it. */
     @Test
     public void testPrintEvent_printToFile() throws Exception {
         OptionSetter setter = new OptionSetter(mReporter);
@@ -91,9 +87,7 @@ public class SubprocessResultsReporterTest {
         }
     }
 
-    /**
-     * Test that when the specified report file is not writable we throw an exception.
-     */
+    /** Test that when the specified report file is not writable we throw an exception. */
     @Test
     public void testPrintEvent_nonWritableFile() throws Exception {
         OptionSetter setter = new OptionSetter(mReporter);
@@ -106,40 +100,39 @@ public class SubprocessResultsReporterTest {
             mReporter.testRunStarted("TEST", 5);
             fail("Should have thrown an exception.");
         } catch (RuntimeException expected) {
-            assertEquals(String.format("report file: %s is not writable",
-                    tmpReportFile.getAbsolutePath()), expected.getMessage());
+            assertEquals(
+                    String.format(
+                            "report file: %s is not writable", tmpReportFile.getAbsolutePath()),
+                    expected.getMessage());
         } finally {
             FileUtil.deleteFile(tmpReportFile);
         }
     }
 
-    /**
-     * Test that events sent through the socket reporting part are received on the other hand.
-     */
+    /** Test that events sent through the socket reporting part are received on the other hand. */
     @Test
     public void testPrintEvent_printToSocket() throws Exception {
         TestDescription testId = new TestDescription("com.fakeclass", "faketest");
-        ITestInvocationListener mMockListener = EasyMock.createMock(ITestInvocationListener.class);
+        ITestInvocationListener mMockListener = mock(ITestInvocationListener.class);
         SubprocessTestResultsParser receiver =
                 new SubprocessTestResultsParser(mMockListener, true, new InvocationContext());
-        Capture<FailureDescription> captured = new Capture<>();
+        ArgumentCaptor<FailureDescription> captured =
+                ArgumentCaptor.forClass(FailureDescription.class);
         try {
             OptionSetter setter = new OptionSetter(mReporter);
-            setter.setOptionValue("subprocess-report-port",
-                    Integer.toString(receiver.getSocketServerPort()));
-            // mirror calls between receiver and sender.
-            mMockListener.testIgnored(testId);
-            mMockListener.testAssumptionFailure(testId, "fake trace");
-            mMockListener.testRunFailed(EasyMock.capture(captured));
-            mMockListener.invocationFailed((Throwable)EasyMock.anyObject());
-            EasyMock.replay(mMockListener);
+            setter.setOptionValue(
+                    "subprocess-report-port", Integer.toString(receiver.getSocketServerPort()));
             mReporter.testIgnored(testId);
             mReporter.testAssumptionFailure(testId, "fake trace");
             mReporter.testRunFailed("no reason");
             mReporter.invocationFailed(new Throwable());
             mReporter.close();
             receiver.joinReceiver(LONG_TIMEOUT_MS);
-            EasyMock.verify(mMockListener);
+
+            verify(mMockListener).testIgnored(testId);
+            verify(mMockListener).testAssumptionFailure(testId, "fake trace");
+            verify(mMockListener).testRunFailed(captured.capture());
+            verify(mMockListener).invocationFailed((Throwable) Mockito.any());
         } finally {
             receiver.close();
         }
@@ -157,21 +150,17 @@ public class SubprocessResultsReporterTest {
     @Test
     public void testPrintEvent_printToSocket_StructuredFailures() throws Exception {
         TestDescription testId = new TestDescription("com.fakeclass", "faketest");
-        ITestInvocationListener mMockListener = EasyMock.createMock(ITestInvocationListener.class);
+        ITestInvocationListener mMockListener = mock(ITestInvocationListener.class);
         SubprocessTestResultsParser receiver =
                 new SubprocessTestResultsParser(mMockListener, true, new InvocationContext());
-        Capture<FailureDescription> captured = new Capture<>();
-        Capture<FailureDescription> invocationFailureCaptured = new Capture<>();
+        ArgumentCaptor<FailureDescription> captured =
+                ArgumentCaptor.forClass(FailureDescription.class);
+        ArgumentCaptor<FailureDescription> invocationFailureCaptured =
+                ArgumentCaptor.forClass(FailureDescription.class);
         try {
             OptionSetter setter = new OptionSetter(mReporter);
             setter.setOptionValue(
                     "subprocess-report-port", Integer.toString(receiver.getSocketServerPort()));
-            // mirror calls between receiver and sender.
-            mMockListener.testIgnored(testId);
-            mMockListener.testAssumptionFailure(testId, "fake trace");
-            mMockListener.testRunFailed(EasyMock.capture(captured));
-            mMockListener.invocationFailed(EasyMock.capture(invocationFailureCaptured));
-            EasyMock.replay(mMockListener);
             mReporter.testIgnored(testId);
             mReporter.testAssumptionFailure(testId, "fake trace");
             FailureDescription runFailure =
@@ -191,7 +180,11 @@ public class SubprocessResultsReporterTest {
             mReporter.invocationFailed(invocationFailure);
             mReporter.close();
             receiver.joinReceiver(LONG_TIMEOUT_MS);
-            EasyMock.verify(mMockListener);
+
+            verify(mMockListener).testIgnored(testId);
+            verify(mMockListener).testAssumptionFailure(testId, "fake trace");
+            verify(mMockListener).testRunFailed(captured.capture());
+            verify(mMockListener).invocationFailed(invocationFailureCaptured.capture());
         } finally {
             receiver.close();
         }

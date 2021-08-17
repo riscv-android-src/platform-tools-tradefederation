@@ -47,7 +47,7 @@ import com.android.tradefed.command.CommandOptionsTest;
 import com.android.tradefed.command.CommandRunnerTest;
 import com.android.tradefed.command.CommandSchedulerTest;
 import com.android.tradefed.command.ConsoleTest;
-import com.android.tradefed.command.console.ConfigCompletorTest;
+import com.android.tradefed.command.console.ConfigCompleterTest;
 import com.android.tradefed.command.remote.RemoteManagerTest;
 import com.android.tradefed.command.remote.RemoteOperationTest;
 import com.android.tradefed.config.ArgsOptionParserTest;
@@ -120,6 +120,7 @@ import com.android.tradefed.device.metric.PerfettoPullerMetricCollectorTest;
 import com.android.tradefed.device.metric.RebootReasonCollectorTest;
 import com.android.tradefed.device.metric.RuntimeRestartCollectorTest;
 import com.android.tradefed.device.metric.ScreenshotOnFailureCollectorTest;
+import com.android.tradefed.device.metric.ShowmapPullerMetricCollectorTest;
 import com.android.tradefed.device.recovery.BatteryUnavailableDeviceRecoveryTest;
 import com.android.tradefed.device.recovery.RunConfigDeviceRecoveryTest;
 import com.android.tradefed.device.recovery.UsbResetMultiDeviceRecoveryTest;
@@ -228,6 +229,7 @@ import com.android.tradefed.targetprep.BaseTargetPreparerTest;
 import com.android.tradefed.targetprep.CreateUserPreparerTest;
 import com.android.tradefed.targetprep.DefaultTestsZipInstallerTest;
 import com.android.tradefed.targetprep.DeviceFlashPreparerTest;
+import com.android.tradefed.targetprep.DeviceOwnerTargetPreparerTest;
 import com.android.tradefed.targetprep.DeviceSetupTest;
 import com.android.tradefed.targetprep.DeviceStorageFillerTest;
 import com.android.tradefed.targetprep.DeviceStringPusherTest;
@@ -286,7 +288,6 @@ import com.android.tradefed.testtype.HostGTestTest;
 import com.android.tradefed.testtype.HostTestTest;
 import com.android.tradefed.testtype.InstalledInstrumentationsTestTest;
 import com.android.tradefed.testtype.InstrumentationFileTestTest;
-import com.android.tradefed.testtype.InstrumentationSerialTestTest;
 import com.android.tradefed.testtype.InstrumentationTestTest;
 import com.android.tradefed.testtype.IsolatedHostTestTest;
 import com.android.tradefed.testtype.JarHostTestTest;
@@ -338,6 +339,7 @@ import com.android.tradefed.testtype.suite.module.CarModuleControllerTest;
 import com.android.tradefed.testtype.suite.module.DeviceFeatureModuleControllerTest;
 import com.android.tradefed.testtype.suite.module.MinApiLevelModuleControllerTest;
 import com.android.tradefed.testtype.suite.module.NativeBridgeModuleControllerTest;
+import com.android.tradefed.testtype.suite.module.PackageInstalledModuleControllerTest;
 import com.android.tradefed.testtype.suite.module.ShippingApiLevelModuleControllerTest;
 import com.android.tradefed.testtype.suite.params.InstantAppHandlerTest;
 import com.android.tradefed.testtype.suite.params.MainlineModuleHandlerTest;
@@ -479,7 +481,7 @@ import org.junit.runners.Suite.SuiteClasses;
     ConsoleTest.class,
 
     // command.console
-    ConfigCompletorTest.class,
+    ConfigCompleterTest.class,
 
     // command.remote
     RemoteManagerTest.class,
@@ -578,6 +580,7 @@ import org.junit.runners.Suite.SuiteClasses;
     RebootReasonCollectorTest.class,
     RuntimeRestartCollectorTest.class,
     ScreenshotOnFailureCollectorTest.class,
+    ShowmapPullerMetricCollectorTest.class,
     HostStatsdMetricCollectorTest.class,
 
     // device.recovery
@@ -705,6 +708,7 @@ import org.junit.runners.Suite.SuiteClasses;
     CreateUserPreparerTest.class,
     DefaultTestsZipInstallerTest.class,
     DeviceFlashPreparerTest.class,
+    DeviceOwnerTargetPreparerTest.class,
     DeviceSetupTest.class,
     DeviceStorageFillerTest.class,
     DeviceStringPusherTest.class,
@@ -793,7 +797,6 @@ import org.junit.runners.Suite.SuiteClasses;
     HostGTestTest.class,
     HostTestTest.class,
     InstalledInstrumentationsTestTest.class,
-    InstrumentationSerialTestTest.class,
     InstrumentationFileTestTest.class,
     InstrumentationTestTest.class,
     IsolatedHostTestTest.class,
@@ -859,6 +862,7 @@ import org.junit.runners.Suite.SuiteClasses;
     DeviceFeatureModuleControllerTest.class,
     MinApiLevelModuleControllerTest.class,
     NativeBridgeModuleControllerTest.class,
+    PackageInstalledModuleControllerTest.class,
     ShippingApiLevelModuleControllerTest.class,
 
     // testtype/suite/params

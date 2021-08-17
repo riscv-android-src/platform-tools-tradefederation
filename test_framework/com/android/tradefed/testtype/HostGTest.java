@@ -228,6 +228,7 @@ public class HostGTest extends GTestBase implements IBuildReceiver {
                     // No need to handle it as the parser would have reported it already.
                     CLog.e("Command run failed with exit code %s", exitCode);
                 }
+                break;
             default:
                 break;
         }

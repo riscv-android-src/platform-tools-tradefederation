@@ -15,62 +15,65 @@
  */
 package com.android.tradefed.device;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.when;
+
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.IShellOutputReceiver;
 import com.android.tradefed.util.RunUtil;
 
-import junit.framework.TestCase;
-
-import org.easymock.EasyMock;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
-/**
- * Unit Tests for {@link BackgroundDeviceAction}.
- */
-public class BackgroundDeviceActionTest extends TestCase {
+/** Unit Tests for {@link BackgroundDeviceAction}. */
+@RunWith(JUnit4.class)
+public class BackgroundDeviceActionTest {
 
     private static final String MOCK_DEVICE_SERIAL = "serial";
     private static final int SHORT_WAIT_TIME_MS = 100;
     private static final int LONG_WAIT_TIME_MS = 200;
     private static final long JOIN_WAIT_TIME_MS = 5000;
 
-    private IShellOutputReceiver mMockReceiver;
-    private IDevice mMockIDevice;
-    private ITestDevice mMockTestDevice;
+    @Mock IShellOutputReceiver mMockReceiver;
+    @Mock IDevice mMockIDevice;
+    @Mock ITestDevice mMockTestDevice;
 
     private BackgroundDeviceAction mBackgroundAction;
 
     private TestDeviceState mDeviceState = TestDeviceState.ONLINE;
 
-    @Override
-    protected void setUp() throws Exception {
-        super.setUp();
+    @Before
+    public void setUp() throws Exception {
+        MockitoAnnotations.initMocks(this);
+
         mDeviceState = TestDeviceState.ONLINE;
-        mMockReceiver = EasyMock.createMock(IShellOutputReceiver.class);
-        mMockReceiver.addOutput((byte[])EasyMock.anyObject(), EasyMock.anyInt(), EasyMock.anyInt());
-        EasyMock.expectLastCall().anyTimes();
-        mMockIDevice = EasyMock.createMock(IDevice.class);
-        EasyMock.expect(mMockIDevice.getSerialNumber()).andReturn(MOCK_DEVICE_SERIAL).anyTimes();
-        mMockTestDevice = EasyMock.createMock(ITestDevice.class);
-        EasyMock.expect(mMockTestDevice.getSerialNumber()).andReturn(MOCK_DEVICE_SERIAL)
-                .anyTimes();
-        EasyMock.expect(mMockTestDevice.getIDevice()).andReturn(mMockIDevice).anyTimes();
+
+        when(mMockIDevice.getSerialNumber()).thenReturn(MOCK_DEVICE_SERIAL);
+
+        when(mMockTestDevice.getSerialNumber()).thenReturn(MOCK_DEVICE_SERIAL);
+        when(mMockTestDevice.getIDevice()).thenReturn(mMockIDevice);
     }
 
     /**
-     * test {@link BackgroundDeviceAction#run()} should properly run and stop following the
-     * thread life cycle
+     * test {@link BackgroundDeviceAction#run()} should properly run and stop following the thread
+     * life cycle
      */
+    @Test
     public void testBackgroundActionComplete() throws Exception {
         String action = "";
-        EasyMock.expect(mMockTestDevice.getDeviceState()).andReturn(TestDeviceState.ONLINE)
-                .anyTimes();
-        mMockIDevice.executeShellCommand(EasyMock.eq(action), EasyMock.same(mMockReceiver),
-                EasyMock.anyLong(), EasyMock.eq(TimeUnit.MILLISECONDS));
-        EasyMock.expectLastCall().anyTimes();
-        EasyMock.replay(mMockTestDevice, mMockIDevice, mMockReceiver);
+        when(mMockTestDevice.getDeviceState()).thenReturn(TestDeviceState.ONLINE);
+
         mBackgroundAction =
                 new BackgroundDeviceAction(action, "desc", mMockTestDevice, mMockReceiver, 0);
         mBackgroundAction.start();
@@ -86,24 +89,30 @@ public class BackgroundDeviceActionTest extends TestCase {
      * test {@link BackgroundDeviceAction#run()} if shell throw an exception, thread will not
      * terminate but will go through {@link BackgroundDeviceAction#waitForDeviceRecovery(String)}
      */
+    @Test
     public void testBackgroundAction_shellException() throws Exception {
         String action = "";
-        EasyMock.expect(mMockTestDevice.getDeviceState()).andStubReturn(mDeviceState);
-        mMockIDevice.executeShellCommand(EasyMock.eq(action), EasyMock.same(mMockReceiver),
-                EasyMock.anyLong(), EasyMock.eq(TimeUnit.MILLISECONDS));
-        EasyMock.expectLastCall().andThrow(new IOException()).anyTimes();
-        EasyMock.replay(mMockTestDevice, mMockIDevice, mMockReceiver);
+        when(mMockTestDevice.getDeviceState()).thenReturn(mDeviceState);
+        doThrow(new IOException())
+                .when(mMockIDevice)
+                .executeShellCommand(
+                        Mockito.eq(action),
+                        Mockito.same(mMockReceiver),
+                        Mockito.anyLong(),
+                        Mockito.eq(TimeUnit.MILLISECONDS));
+
         mBackgroundAction =
                 new BackgroundDeviceAction(action, "desc", mMockTestDevice, mMockReceiver, 0) {
-            @Override
-            protected void waitForDeviceRecovery(String exceptionType) {
-                mDeviceState = TestDeviceState.NOT_AVAILABLE;
-            }
-            @Override
-            public synchronized boolean isCancelled() {
-                return super.isCancelled();
-            }
-        };
+                    @Override
+                    protected void waitForDeviceRecovery(String exceptionType) {
+                        mDeviceState = TestDeviceState.NOT_AVAILABLE;
+                    }
+
+                    @Override
+                    public synchronized boolean isCancelled() {
+                        return super.isCancelled();
+                    }
+                };
         mBackgroundAction.start();
         RunUtil.getDefault().sleep(LONG_WAIT_TIME_MS);
         assertTrue(mBackgroundAction.isAlive());
@@ -118,18 +127,21 @@ public class BackgroundDeviceActionTest extends TestCase {
      * test {@link BackgroundDeviceAction#waitForDeviceRecovery(String)} should not block if device
      * is online.
      */
+    @Test
     public void testwaitForDeviceRecovery_online() throws Exception {
         String action = "";
-        EasyMock.expect(mMockTestDevice.getDeviceState()).andReturn(mDeviceState);
-        EasyMock.replay(mMockTestDevice, mMockIDevice, mMockReceiver);
+        when(mMockTestDevice.getDeviceState()).thenReturn(mDeviceState);
+
         mBackgroundAction =
                 new BackgroundDeviceAction(action, "desc", mMockTestDevice, mMockReceiver, 0);
-        Thread test = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                mBackgroundAction.waitForDeviceRecovery("IOException");
-            }
-        });
+        Thread test =
+                new Thread(
+                        new Runnable() {
+                            @Override
+                            public void run() {
+                                mBackgroundAction.waitForDeviceRecovery("IOException");
+                            }
+                        });
         test.setName(getClass().getCanonicalName() + "#testwaitForDeviceRecovery_online");
         test.start();
         // Specify a timeout for join, not to be stuck if broken.
@@ -139,22 +151,25 @@ public class BackgroundDeviceActionTest extends TestCase {
     }
 
     /**
-     * test {@link BackgroundDeviceAction#waitForDeviceRecovery(String)} should  block if device
-     * is offline.
+     * test {@link BackgroundDeviceAction#waitForDeviceRecovery(String)} should block if device is
+     * offline.
      */
+    @Test
     public void testwaitForDeviceRecovery_blockOffline() throws Exception {
         String action = "";
         mDeviceState = TestDeviceState.NOT_AVAILABLE;
-        EasyMock.expect(mMockTestDevice.getDeviceState()).andReturn(mDeviceState).anyTimes();
-        EasyMock.replay(mMockTestDevice, mMockIDevice, mMockReceiver);
+        when(mMockTestDevice.getDeviceState()).thenReturn(mDeviceState);
+
         mBackgroundAction =
                 new BackgroundDeviceAction(action, "desc", mMockTestDevice, mMockReceiver, 0);
-        Thread test = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                mBackgroundAction.waitForDeviceRecovery("IOException");
-            }
-        });
+        Thread test =
+                new Thread(
+                        new Runnable() {
+                            @Override
+                            public void run() {
+                                mBackgroundAction.waitForDeviceRecovery("IOException");
+                            }
+                        });
         test.setName(getClass().getCanonicalName() + "#testwaitForDeviceRecovery_blockOffline");
         test.start();
         // Specify a timeout for join, not to be stuck.

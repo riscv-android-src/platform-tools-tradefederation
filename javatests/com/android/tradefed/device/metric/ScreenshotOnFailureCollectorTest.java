@@ -15,6 +15,9 @@
  */
 package com.android.tradefed.device.metric;
 
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.android.ddmlib.IDevice;
 import com.android.tradefed.config.ConfigurationDef;
 import com.android.tradefed.device.ITestDevice;
@@ -28,11 +31,11 @@ import com.android.tradefed.result.ITestInvocationListener;
 import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.TestDescription;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mockito;
 
 import java.util.HashMap;
 
@@ -48,61 +51,55 @@ public class ScreenshotOnFailureCollectorTest {
 
     @Before
     public void setUp() {
-        mMockDevice = EasyMock.createMock(ITestDevice.class);
-        mMockListener = EasyMock.createMock(ITestInvocationListener.class);
+        mMockDevice = Mockito.mock(ITestDevice.class);
+        mMockListener = Mockito.mock(ITestInvocationListener.class);
         mCollector = new ScreenshotOnFailureCollector();
         mContext = new InvocationContext();
         mContext.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
-        EasyMock.expect(mMockDevice.getIDevice()).andStubReturn(EasyMock.createMock(IDevice.class));
-        EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("serial");
+        when(mMockDevice.getIDevice()).thenReturn(Mockito.mock(IDevice.class));
+        when(mMockDevice.getSerialNumber()).thenReturn("serial");
     }
 
     @Test
     public void testCollect() throws Exception {
         TestDescription test = new TestDescription("class", "test");
-        mMockListener.testStarted(EasyMock.eq(test), EasyMock.anyLong());
-        mMockListener.testFailed(EasyMock.eq(test), (String) EasyMock.anyObject());
-        mMockListener.testEnded(
-                EasyMock.eq(test),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
+        when(mMockDevice.getDeviceState()).thenReturn(TestDeviceState.ONLINE);
+        when(mMockDevice.getRecoveryMode()).thenReturn(RecoveryMode.AVAILABLE);
+        when(mMockDevice.getScreenshot())
+                .thenReturn(new ByteArrayInputStreamSource("".getBytes()));
 
-        EasyMock.expect(mMockDevice.getDeviceState()).andReturn(TestDeviceState.ONLINE);
-        EasyMock.expect(mMockDevice.getRecoveryMode()).andReturn(RecoveryMode.AVAILABLE);
-        mMockDevice.setRecoveryMode(RecoveryMode.NONE);
-        EasyMock.expect(mMockDevice.getScreenshot())
-                .andReturn(new ByteArrayInputStreamSource("".getBytes()));
-        mMockListener.testLog(
-                EasyMock.eq("class#test-serial-screenshot-on-failure"),
-                EasyMock.eq(LogDataType.PNG),
-                EasyMock.anyObject());
-        mMockDevice.setRecoveryMode(RecoveryMode.AVAILABLE);
-
-        EasyMock.replay(mMockListener, mMockDevice);
         mTestListener = mCollector.init(mContext, mMockListener);
         mTestListener.testStarted(test);
         mTestListener.testFailed(test, "I failed");
         mTestListener.testEnded(test, new HashMap<String, Metric>());
-        EasyMock.verify(mMockListener, mMockDevice);
+        verify(mMockListener).testStarted(Mockito.eq(test), Mockito.anyLong());
+        verify(mMockListener).testFailed(Mockito.eq(test), (String) Mockito.any());
+        verify(mMockListener).testEnded(
+                Mockito.eq(test),
+                Mockito.anyLong(),
+                Mockito.<HashMap<String, Metric>>any());
+        verify(mMockDevice).setRecoveryMode(RecoveryMode.NONE);
+        verify(mMockListener).testLog(
+                Mockito.eq("class#test-serial-screenshot-on-failure"),
+                Mockito.eq(LogDataType.PNG),
+                Mockito.any());
+        verify(mMockDevice).setRecoveryMode(RecoveryMode.AVAILABLE);
     }
 
     @Test
     public void testCollect_skipOffline() throws Exception {
         TestDescription test = new TestDescription("class", "test");
-        mMockListener.testStarted(EasyMock.eq(test), EasyMock.anyLong());
-        mMockListener.testFailed(EasyMock.eq(test), (String) EasyMock.anyObject());
-        mMockListener.testEnded(
-                EasyMock.eq(test),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
+        when(mMockDevice.getDeviceState()).thenReturn(TestDeviceState.NOT_AVAILABLE);
 
-        EasyMock.expect(mMockDevice.getDeviceState()).andReturn(TestDeviceState.NOT_AVAILABLE);
-
-        EasyMock.replay(mMockListener, mMockDevice);
         mTestListener = mCollector.init(mContext, mMockListener);
         mTestListener.testStarted(test);
         mTestListener.testFailed(test, "I failed");
         mTestListener.testEnded(test, new HashMap<String, Metric>());
-        EasyMock.verify(mMockListener, mMockDevice);
+        verify(mMockListener).testStarted(Mockito.eq(test), Mockito.anyLong());
+        verify(mMockListener).testFailed(Mockito.eq(test), (String) Mockito.any());
+        verify(mMockListener).testEnded(
+                Mockito.eq(test),
+                Mockito.anyLong(),
+                Mockito.<HashMap<String, Metric>>any());
     }
 }

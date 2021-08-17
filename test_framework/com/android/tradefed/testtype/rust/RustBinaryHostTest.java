@@ -219,6 +219,7 @@ public class RustBinaryHostTest extends RustTestBase implements IBuildReceiver {
         }
 
         CLog.d("Running test with filter '%s'", filter);
+        getRunUtil().setWorkingDir(file.getParentFile());
         CommandResult result =
                 getRunUtil().runTimedCmd(mTestTimeout, commandLine.toArray(new String[0]));
         if (!CommandStatus.SUCCESS.equals(result.getStatus())) {

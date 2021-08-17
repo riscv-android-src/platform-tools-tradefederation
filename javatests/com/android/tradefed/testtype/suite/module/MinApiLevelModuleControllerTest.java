@@ -16,42 +16,45 @@
 package com.android.tradefed.testtype.suite.module;
 
 import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.when;
 
 import com.android.ddmlib.IDevice;
-import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.ConfigurationDef;
+import com.android.tradefed.config.ConfigurationException;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.device.DeviceNotAvailableException;
 import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.invoker.IInvocationContext;
 import com.android.tradefed.invoker.InvocationContext;
-import com.android.tradefed.testtype.suite.module.IModuleController.RunStrategy;
 import com.android.tradefed.testtype.suite.ModuleDefinition;
+import com.android.tradefed.testtype.suite.module.IModuleController.RunStrategy;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 /** Unit tests for {@link MinApiLevelModuleController}. */
 @RunWith(JUnit4.class)
 public class MinApiLevelModuleControllerTest {
     private MinApiLevelModuleController mController;
     private IInvocationContext mContext;
-    private ITestDevice mMockDevice;
-    private IDevice mMockIDevice;
+    @Mock ITestDevice mMockDevice;
+    @Mock IDevice mMockIDevice;
     private String mApiLevelProp;
 
     @Before
     public void setUp() {
+        MockitoAnnotations.initMocks(this);
+
         mController = new MinApiLevelModuleController();
-        mMockDevice = EasyMock.createMock(ITestDevice.class);
+
         mContext = new InvocationContext();
         mContext.addAllocatedDevice(ConfigurationDef.DEFAULT_DEVICE_NAME, mMockDevice);
         mContext.addInvocationAttribute(ModuleDefinition.MODULE_ABI, "arm64-v8a");
         mContext.addInvocationAttribute(ModuleDefinition.MODULE_NAME, "module1");
-        mMockIDevice = EasyMock.createMock(IDevice.class);
     }
 
     /** Test Api Level is lower than min-api-level */
@@ -59,14 +62,13 @@ public class MinApiLevelModuleControllerTest {
     public void testDeviceApiLevelLowerThanMinApiLevel()
             throws DeviceNotAvailableException, ConfigurationException {
         mApiLevelProp = "ro.build.version.sdk";
-        EasyMock.expect(mMockDevice.getIDevice()).andReturn(mMockIDevice);
-        EasyMock.expect(mMockDevice.getProperty(mApiLevelProp)).andReturn("28");
-        EasyMock.replay(mMockDevice);
+        when(mMockDevice.getIDevice()).thenReturn(mMockIDevice);
+        when(mMockDevice.getProperty(mApiLevelProp)).thenReturn("28");
+
         OptionSetter setter = new OptionSetter(mController);
         setter.setOptionValue("api-level-prop", mApiLevelProp);
         setter.setOptionValue("min-api-level", "29");
         assertEquals(RunStrategy.FULL_MODULE_BYPASS, mController.shouldRunModule(mContext));
-        EasyMock.verify(mMockDevice);
     }
 
     /** Test Api Level is higher than min-api-level */
@@ -74,14 +76,13 @@ public class MinApiLevelModuleControllerTest {
     public void testDeviceApiLevelHigherThanMinApiLevel()
             throws DeviceNotAvailableException, ConfigurationException {
         mApiLevelProp = "ro.product.first_api_level";
-        EasyMock.expect(mMockDevice.getIDevice()).andReturn(mMockIDevice);
-        EasyMock.expect(mMockDevice.getProperty(mApiLevelProp)).andReturn("28");
-        EasyMock.replay(mMockDevice);
+        when(mMockDevice.getIDevice()).thenReturn(mMockIDevice);
+        when(mMockDevice.getProperty(mApiLevelProp)).thenReturn("28");
+
         OptionSetter setter = new OptionSetter(mController);
         setter.setOptionValue("api-level-prop", mApiLevelProp);
         setter.setOptionValue("min-api-level", "27");
         assertEquals(RunStrategy.RUN, mController.shouldRunModule(mContext));
-        EasyMock.verify(mMockDevice);
     }
 
     /** Test when ro.vndk.version returns a string code name */
@@ -89,14 +90,13 @@ public class MinApiLevelModuleControllerTest {
     public void testVndkVersionHasStringCodeName()
             throws DeviceNotAvailableException, ConfigurationException {
         mApiLevelProp = "ro.vndk.version";
-        EasyMock.expect(mMockDevice.getIDevice()).andReturn(mMockIDevice);
-        EasyMock.expect(mMockDevice.getProperty(mApiLevelProp)).andReturn("S");
-        EasyMock.replay(mMockDevice);
+        when(mMockDevice.getIDevice()).thenReturn(mMockIDevice);
+        when(mMockDevice.getProperty(mApiLevelProp)).thenReturn("S");
+
         OptionSetter setter = new OptionSetter(mController);
         setter.setOptionValue("api-level-prop", mApiLevelProp);
         setter.setOptionValue("min-api-level", "31");
         assertEquals(RunStrategy.RUN, mController.shouldRunModule(mContext));
-        EasyMock.verify(mMockDevice);
     }
 
     /** Test Api Level cannot be found in the Device */
@@ -104,13 +104,12 @@ public class MinApiLevelModuleControllerTest {
     public void testDeviceApiLevelNotFound()
             throws DeviceNotAvailableException, ConfigurationException {
         mApiLevelProp = "ro.product.first_api_level";
-        EasyMock.expect(mMockDevice.getIDevice()).andReturn(mMockIDevice);
-        EasyMock.expect(mMockDevice.getProperty(mApiLevelProp)).andReturn(null);
-        EasyMock.replay(mMockDevice);
+        when(mMockDevice.getIDevice()).thenReturn(mMockIDevice);
+        when(mMockDevice.getProperty(mApiLevelProp)).thenReturn(null);
+
         OptionSetter setter = new OptionSetter(mController);
         setter.setOptionValue("api-level-prop", mApiLevelProp);
         setter.setOptionValue("min-api-level", "27");
         assertEquals(RunStrategy.FULL_MODULE_BYPASS, mController.shouldRunModule(mContext));
-        EasyMock.verify(mMockDevice);
     }
 }

@@ -124,7 +124,7 @@ public final class SandboxOptions {
             name = START_AVD_IN_PARENT,
             description =
                     "Whether or not to start the avd device in the parent sandbox")
-    private boolean mStartAvdInParent = false;
+    private boolean mStartAvdInParent = true;
 
     /**
      * Returns the provided directories containing the Trade Federation version to use for

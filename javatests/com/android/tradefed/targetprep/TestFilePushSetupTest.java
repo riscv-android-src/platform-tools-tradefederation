@@ -16,6 +16,15 @@
 
 package com.android.tradefed.targetprep;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.DeviceBuildInfo;
 import com.android.tradefed.device.DeviceNotAvailableException;
@@ -29,10 +38,14 @@ import com.android.tradefed.util.FileUtil;
 
 import com.google.common.io.Files;
 
-import junit.framework.TestCase;
-
-import org.easymock.EasyMock;
-import org.easymock.IAnswer;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -40,10 +53,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * A test for {@link TestFilePushSetup}.
- */
-public class TestFilePushSetupTest extends TestCase {
+/** A test for {@link TestFilePushSetup}. */
+@RunWith(JUnit4.class)
+public class TestFilePushSetupTest {
 
     private Map<String, ItemType> mFiles;
     private List<String> mDeviceLocationList;
@@ -52,12 +64,13 @@ public class TestFilePushSetupTest extends TestCase {
     private static final String ALT_FILENAME1 = "foobar";
     private static final String ALT_FILENAME2 = "barfoo";
 
-    private ITestDevice mMockDevice;
+    @Mock ITestDevice mMockDevice;
     private TestInformation mTestInfo;
 
-    @Override
-    protected void setUp() throws Exception {
-        super.setUp();
+    @Before
+    public void setUp() throws Exception {
+        MockitoAnnotations.initMocks(this);
+
         mFiles = new HashMap<String, ItemType>();
         mFiles.put("app/AndroidCommonTests.apk", ItemType.FILE);
         mFiles.put("app/GalleryTests.apk", ItemType.FILE);
@@ -74,44 +87,39 @@ public class TestFilePushSetupTest extends TestCase {
         assertTrue("failed to create temp file", mAltDirFile1.createNewFile());
         mAltDirFile2 = new File(tmpBase, ALT_FILENAME2);
         assertTrue("failed to create temp file", mAltDirFile2.createNewFile());
-        mMockDevice = EasyMock.createMock(ITestDevice.class);
-        EasyMock.expect(mMockDevice.getSerialNumber()).andStubReturn("SERIAL");
+
+        when(mMockDevice.getSerialNumber()).thenReturn("SERIAL");
     }
 
-    @Override
-    protected void tearDown() throws Exception {
+    @After
+    public void tearDown() throws Exception {
         mFakeTestsZipFolder.cleanUp();
         File tmpDir = mAltDirFile1.getParentFile();
         FileUtil.deleteFile(mAltDirFile1);
         FileUtil.deleteFile(mAltDirFile2);
         FileUtil.recursiveDelete(tmpDir);
-        super.tearDown();
     }
 
+    @Test
     public void testSetup() throws TargetSetupError, BuildError, DeviceNotAvailableException {
         TestFilePushSetup testFilePushSetup = new TestFilePushSetup();
         DeviceBuildInfo stubBuild = new DeviceBuildInfo("0", "stub");
         stubBuild.setTestsDir(mFakeTestsZipFolder.getBasePath(), "0");
         assertFalse(mFiles.isEmpty());
         assertFalse(mDeviceLocationList.isEmpty());
-        ITestDevice device = EasyMock.createMock(ITestDevice.class);
-        EasyMock.expect(device.pushDir((File) EasyMock.anyObject(), (String) EasyMock.anyObject()))
-                .andAnswer(new IAnswer<Boolean>() {
-                    @Override
-                    public Boolean answer() throws Throwable {
-                        return mDeviceLocationList.remove(EasyMock.getCurrentArguments()[1]);
-                    }
-                });
-        EasyMock.expect(device.pushFile((File) EasyMock.anyObject(),
-                (String) EasyMock.anyObject())).andAnswer(new IAnswer<Boolean>() {
-                    @Override
-                    public Boolean answer() throws Throwable {
-                        return mDeviceLocationList.remove(EasyMock.getCurrentArguments()[1]);
-                    }
-                }).times(3);
-        EasyMock.expect(device.executeShellCommand((String) EasyMock.anyObject()))
-                .andReturn("").times(4);
-        EasyMock.replay(device);
+        ITestDevice device = mock(ITestDevice.class);
+        when(device.pushDir((File) Mockito.any(), (String) Mockito.any()))
+                .thenAnswer(
+                        invocation -> {
+                            return mDeviceLocationList.remove(invocation.getArguments()[1]);
+                        });
+        when(device.pushFile((File) Mockito.any(), (String) Mockito.any()))
+                .thenAnswer(
+                        invocation -> {
+                            return mDeviceLocationList.remove(invocation.getArguments()[1]);
+                        });
+        when(device.executeShellCommand((String) Mockito.any())).thenReturn("");
+
         for (String file : mFiles.keySet()) {
             testFilePushSetup.addTestFileName(file);
         }
@@ -122,31 +130,30 @@ public class TestFilePushSetupTest extends TestCase {
         mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
         testFilePushSetup.setUp(mTestInfo);
         assertTrue(mDeviceLocationList.isEmpty());
-        EasyMock.verify(device);
+        verify(device, times(4)).executeShellCommand((String) Mockito.any());
     }
 
-    /**
-     * Test that setup throws an exception if provided with something else than DeviceBuildInfo
-     */
+    /** Test that setup throws an exception if provided with something else than DeviceBuildInfo */
+    @Test
     public void testSetup_notDeviceBuildInfo() throws Exception {
         TestFilePushSetup testFilePushSetup = new TestFilePushSetup();
         BuildInfo stubBuild = new BuildInfo("stub", "stub");
         IInvocationContext context = new InvocationContext();
-        context.addAllocatedDevice("device", EasyMock.createMock(ITestDevice.class));
+        context.addAllocatedDevice("device", mock(ITestDevice.class));
         context.addDeviceBuildInfo("device", stubBuild);
         mTestInfo = TestInformation.newBuilder().setInvocationContext(context).build();
         try {
             testFilePushSetup.setUp(mTestInfo);
             fail("should have thrown an exception");
         } catch (IllegalArgumentException expected) {
-            assertEquals("Provided buildInfo is not a com.android.tradefed.build.IDeviceBuildInfo",
+            assertEquals(
+                    "Provided buildInfo is not a com.android.tradefed.build.IDeviceBuildInfo",
                     expected.getMessage());
         }
     }
 
-    /**
-     * Test that an exception is thrown if the file doesn't exist in extracted test dir
-     */
+    /** Test that an exception is thrown if the file doesn't exist in extracted test dir */
+    @Test
     public void testThrowIfNotFound() throws Exception {
         TestFilePushSetup setup = new TestFilePushSetup();
         setup.setThrowIfNoFile(true);
@@ -170,9 +177,10 @@ public class TestFilePushSetupTest extends TestCase {
     }
 
     /**
-     * Test that no exception is thrown if the file doesn't exist in extracted test dir
-     * given that the option "throw-if-not-found" is set to false.
+     * Test that no exception is thrown if the file doesn't exist in extracted test dir given that
+     * the option "throw-if-not-found" is set to false.
      */
+    @Test
     public void testThrowIfNotFound_false() throws Exception {
         TestFilePushSetup setup = new TestFilePushSetup();
         setup.setThrowIfNoFile(false);

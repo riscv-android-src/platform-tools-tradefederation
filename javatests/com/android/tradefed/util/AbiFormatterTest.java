@@ -18,13 +18,15 @@ package com.android.tradefed.util;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.android.tradefed.device.ITestDevice;
 
-import org.easymock.EasyMock;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mockito;
 
 /** Unit tests for the {@link AbiFormatter} utility class */
 @RunWith(JUnit4.class)
@@ -48,48 +50,48 @@ public class AbiFormatterTest {
     /** Verify that {@link AbiFormatter#getDefaultAbi} works as expected. */
     @Test
     public void testGetDefaultAbi() throws Exception {
-        ITestDevice device = EasyMock.createMock(ITestDevice.class);
+        ITestDevice device = mock(ITestDevice.class);
 
-        EasyMock.expect(device.getProperty("ro.product.cpu.abilist32")).andReturn(null);
-        EasyMock.expect(device.getProperty("ro.product.cpu.abi")).andReturn(null);
-        EasyMock.replay(device);
+        when(device.getProperty("ro.product.cpu.abilist32")).thenReturn(null);
+        when(device.getProperty("ro.product.cpu.abi")).thenReturn(null);
+
         assertEquals(null, AbiFormatter.getDefaultAbi(device, "32"));
 
-        EasyMock.reset(device);
-        EasyMock.expect(device.getProperty(EasyMock.eq("ro.product.cpu.abilist32")))
-                .andReturn("abi,abi2,abi3");
-        EasyMock.replay(device);
+        Mockito.reset(device);
+        when(device.getProperty(Mockito.eq("ro.product.cpu.abilist32")))
+                .thenReturn("abi,abi2,abi3");
+
         assertEquals("abi", AbiFormatter.getDefaultAbi(device, "32"));
 
-        EasyMock.reset(device);
-        EasyMock.expect(device.getProperty(EasyMock.eq("ro.product.cpu.abilist64"))).andReturn("");
-        EasyMock.expect(device.getProperty("ro.product.cpu.abi")).andReturn(null);
-        EasyMock.replay(device);
+        Mockito.reset(device);
+        when(device.getProperty(Mockito.eq("ro.product.cpu.abilist64"))).thenReturn("");
+        when(device.getProperty("ro.product.cpu.abi")).thenReturn(null);
+
         assertEquals(null, AbiFormatter.getDefaultAbi(device, "64"));
     }
 
     /** Verify that {@link AbiFormatter#getSupportedAbis} works as expected. */
     @Test
     public void testGetSupportedAbis() throws Exception {
-        ITestDevice device = EasyMock.createMock(ITestDevice.class);
+        ITestDevice device = mock(ITestDevice.class);
 
-        EasyMock.expect(device.getProperty("ro.product.cpu.abilist32")).andReturn("abi1,abi2");
-        EasyMock.replay(device);
+        when(device.getProperty("ro.product.cpu.abilist32")).thenReturn("abi1,abi2");
+
         String[] supportedAbiArray = AbiFormatter.getSupportedAbis(device, "32");
         assertEquals("abi1", supportedAbiArray[0]);
         assertEquals("abi2", supportedAbiArray[1]);
 
-        EasyMock.reset(device);
-        EasyMock.expect(device.getProperty("ro.product.cpu.abilist32")).andReturn(null);
-        EasyMock.expect(device.getProperty("ro.product.cpu.abi")).andReturn("abi");
-        EasyMock.replay(device);
+        Mockito.reset(device);
+        when(device.getProperty("ro.product.cpu.abilist32")).thenReturn(null);
+        when(device.getProperty("ro.product.cpu.abi")).thenReturn("abi");
+
         supportedAbiArray = AbiFormatter.getSupportedAbis(device, "32");
         assertEquals("abi", supportedAbiArray[0]);
 
-        EasyMock.reset(device);
-        EasyMock.expect(device.getProperty("ro.product.cpu.abilist")).andReturn("");
-        EasyMock.expect(device.getProperty("ro.product.cpu.abi")).andReturn("abi");
-        EasyMock.replay(device);
+        Mockito.reset(device);
+        when(device.getProperty("ro.product.cpu.abilist")).thenReturn("");
+        when(device.getProperty("ro.product.cpu.abi")).thenReturn("abi");
+
         supportedAbiArray = AbiFormatter.getSupportedAbis(device, "");
         assertEquals("abi", supportedAbiArray[0]);
     }
@@ -97,12 +99,12 @@ public class AbiFormatterTest {
     /** Verify that {@link AbiFormatter#getSupportedAbis} works as expected. */
     @Test
     public void testGetSupportedAbis_null() throws Exception {
-        ITestDevice device = EasyMock.createMock(ITestDevice.class);
-        EasyMock.expect(device.getProperty("ro.product.cpu.abilist")).andReturn(null);
-        EasyMock.expect(device.getProperty("ro.product.cpu.abi")).andReturn(null);
-        EasyMock.replay(device);
+        ITestDevice device = mock(ITestDevice.class);
+        when(device.getProperty("ro.product.cpu.abilist")).thenReturn(null);
+        when(device.getProperty("ro.product.cpu.abi")).thenReturn(null);
+
         String[] supportedAbiArray = AbiFormatter.getSupportedAbis(device, "");
-        EasyMock.verify(device);
+
         assertEquals(0, supportedAbiArray.length);
     }
 }

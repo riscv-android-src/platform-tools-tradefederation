@@ -190,6 +190,11 @@ public class BuildInfo implements IBuildInfo {
         mBuildAttributes.put(attributeName, attributeValue);
     }
 
+    @Override
+    public void removeBuildAttribute(String attributeName) {
+        mBuildAttributes.remove(attributeName);
+    }
+
     /** {@inheritDoc} */
     @Override
     public void addBuildAttributes(Map<String, String> buildAttributes) {

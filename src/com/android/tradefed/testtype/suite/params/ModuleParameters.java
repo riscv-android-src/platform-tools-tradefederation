@@ -30,7 +30,11 @@ public enum ModuleParameters {
     // Multi-user
     MULTIUSER("multiuser", "multiuser_family"),
     RUN_ON_WORK_PROFILE("run_on_work_profile", "run_on_work_profile_family"),
-    RUN_ON_SECONDARY_USER("run_on_secondary_user", "run_on_secondary_user_family");
+    RUN_ON_SECONDARY_USER("run_on_secondary_user", "run_on_secondary_user_family"),
+
+    // Foldable mode
+    ALL_FOLDABLE_STATES("all_foldable_states", "foldable_family"),
+    NO_FOLDABLE_STATES("no_foldable_states", "foldable_family");
 
     public static final String INSTANT_APP_FAMILY = "instant_app_family";
     public static final String MULTI_ABI_FAMILY = "multi_abi_family";

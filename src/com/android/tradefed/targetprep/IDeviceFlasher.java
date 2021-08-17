@@ -144,4 +144,11 @@ public interface IDeviceFlasher {
     public default boolean shouldFlashRamdisk() {
         return false;
     }
+
+    /**
+     * Whether the device that implements the flasher can be flashed in fastbootd mode.
+     */
+    public default boolean supportsFlashingInFastbootD() {
+        return false;
+    }
 }

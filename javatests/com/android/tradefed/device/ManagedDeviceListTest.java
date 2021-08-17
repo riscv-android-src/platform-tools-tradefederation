@@ -18,15 +18,17 @@ package com.android.tradefed.device;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.android.ddmlib.IDevice;
 import com.android.tradefed.device.IManagedTestDevice.DeviceEventResponse;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mockito;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -44,7 +46,7 @@ public class ManagedDeviceListTest {
             @Override
             public IManagedTestDevice createDevice(IDevice stubDevice) {
                 // use real TestDevice to get allocation state machine
-                return new TestDevice(stubDevice, EasyMock.createNiceMock(
+                return new TestDevice(stubDevice, Mockito.mock(
                         IDeviceStateMonitor.class), null);
             }
 
@@ -122,19 +124,17 @@ public class ManagedDeviceListTest {
      */
     @Test
     public void testUpdateFastbootState() {
-        IManagedTestDevice mockDevice = EasyMock.createMock(IManagedTestDevice.class);
-        EasyMock.expect(mockDevice.getSerialNumber()).andReturn("serial1");
-        mockDevice.setDeviceState(TestDeviceState.FASTBOOT);
-        EasyMock.expectLastCall();
+        IManagedTestDevice mockDevice = Mockito.mock(IManagedTestDevice.class);
+        when(mockDevice.getSerialNumber()).thenReturn("serial1");
         mManagedDeviceList.add(mockDevice);
         assertEquals(1, mManagedDeviceList.size());
-        EasyMock.replay(mockDevice);
+
         Set<String> serialFastbootSet = new HashSet<>();
         serialFastbootSet.add("serial1");
         mManagedDeviceList.updateFastbootStates(serialFastbootSet, false);
-        EasyMock.verify(mockDevice);
         // Device is still showing in the list of device
         assertEquals(1, mManagedDeviceList.size());
+        verify(mockDevice).setDeviceState(TestDeviceState.FASTBOOT);
     }
 
     /**
@@ -143,20 +143,18 @@ public class ManagedDeviceListTest {
      */
     @Test
     public void testUpdateFastbootState_gone() {
-        IManagedTestDevice mockDevice = EasyMock.createMock(IManagedTestDevice.class);
-        EasyMock.expect(mockDevice.getSerialNumber()).andStubReturn("serial1");
-        EasyMock.expect(mockDevice.getDeviceState()).andReturn(TestDeviceState.FASTBOOT);
-        mockDevice.setDeviceState(TestDeviceState.NOT_AVAILABLE);
-        EasyMock.expectLastCall();
+        IManagedTestDevice mockDevice = Mockito.mock(IManagedTestDevice.class);
+        when(mockDevice.getSerialNumber()).thenReturn("serial1");
+        when(mockDevice.getDeviceState()).thenReturn(TestDeviceState.FASTBOOT);
         DeviceEventResponse der = new DeviceEventResponse(DeviceAllocationState.Unknown, true);
-        EasyMock.expect(mockDevice.handleAllocationEvent(DeviceEvent.DISCONNECTED)).andReturn(der);
+        when(mockDevice.handleAllocationEvent(DeviceEvent.DISCONNECTED)).thenReturn(der);
         mManagedDeviceList.add(mockDevice);
         assertEquals(1, mManagedDeviceList.size());
-        EasyMock.replay(mockDevice);
+
         Set<String> serialFastbootSet = new HashSet<>();
         mManagedDeviceList.updateFastbootStates(serialFastbootSet, false);
-        EasyMock.verify(mockDevice);
         // Device has been removed from list
         assertEquals(0, mManagedDeviceList.size());
+        verify(mockDevice).setDeviceState(TestDeviceState.NOT_AVAILABLE);
     }
 }

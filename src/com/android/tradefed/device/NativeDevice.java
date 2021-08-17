@@ -313,11 +313,18 @@ public class NativeDevice implements IManagedTestDevice {
         private long mTimeout;
         private File mPipeAsInput; // Used in pushFile, uses local file as input to "content write"
         private OutputStream mPipeToOutput; // Used in pullFile, to pipe content from "content read"
+        private OutputStream mPipeToError;
 
-        AdbShellAction(String[] cmd, File pipeAsInput, OutputStream pipeToOutput, long timeout) {
+        AdbShellAction(
+                String[] cmd,
+                File pipeAsInput,
+                OutputStream pipeToOutput,
+                OutputStream pipeToError,
+                long timeout) {
             mCmd = cmd;
             mPipeAsInput = pipeAsInput;
             mPipeToOutput = pipeToOutput;
+            mPipeToError = pipeToError;
             mTimeout = timeout;
         }
 
@@ -326,8 +333,7 @@ public class NativeDevice implements IManagedTestDevice {
             if (mPipeAsInput != null) {
                 mResult = getRunUtil().runTimedCmdWithInputRedirect(mTimeout, mPipeAsInput, mCmd);
             } else {
-                mResult =
-                        getRunUtil().runTimedCmd(mTimeout, mPipeToOutput, /* stderr= */ null, mCmd);
+                mResult = getRunUtil().runTimedCmd(mTimeout, mPipeToOutput, mPipeToError, mCmd);
             }
             if (mResult.getStatus() == CommandStatus.EXCEPTION) {
                 throw new IOException(mResult.getStderr());
@@ -911,12 +917,34 @@ public class NativeDevice implements IManagedTestDevice {
             final TimeUnit timeUnit,
             int retryAttempts)
             throws DeviceNotAvailableException {
+        return executeShellV2Command(
+                cmd,
+                pipeAsInput,
+                pipeToOutput,
+                /*pipeToError=*/ null,
+                maxTimeoutForCommand,
+                timeUnit,
+                retryAttempts);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public CommandResult executeShellV2Command(
+            String cmd,
+            File pipeAsInput,
+            OutputStream pipeToOutput,
+            OutputStream pipeToError,
+            final long maxTimeoutForCommand,
+            final TimeUnit timeUnit,
+            int retryAttempts)
+            throws DeviceNotAvailableException {
         final String[] fullCmd = buildAdbShellCommand(cmd);
         AdbShellAction adbActionV2 =
                 new AdbShellAction(
                         fullCmd,
                         pipeAsInput,
                         pipeToOutput,
+                        pipeToError,
                         timeUnit.toMillis(maxTimeoutForCommand));
         performDeviceAction(String.format("adb %s", fullCmd[4]), adbActionV2, retryAttempts);
         return adbActionV2.mResult;
@@ -1263,10 +1291,16 @@ public class NativeDevice implements IManagedTestDevice {
     @Override
     public boolean pushFile(final File localFile, final String remoteFilePath)
             throws DeviceNotAvailableException {
+        return pushFileInternal(localFile, remoteFilePath, false);
+    }
+
+    @VisibleForTesting
+    boolean pushFileInternal(final File localFile, final String remoteFilePath,
+            boolean skipContentProvider) throws DeviceNotAvailableException {
         long startTime = System.currentTimeMillis();
         InvocationMetricLogger.addInvocationMetrics(InvocationMetricKey.PUSH_FILE_COUNT, 1);
         try {
-            if (isSdcardOrEmulated(remoteFilePath)) {
+            if (!skipContentProvider && isSdcardOrEmulated(remoteFilePath)) {
                 ContentProviderHandler handler = getContentProvider();
                 if (handler != null) {
                     return handler.pushFile(localFile, remoteFilePath);
@@ -1701,7 +1735,7 @@ public class NativeDevice implements IManagedTestDevice {
                     return false;
                 }
             } else if (childFile.isFile()) {
-                if (!pushFile(childFile, remotePath)) {
+                if (!pushFileInternal(childFile, remotePath, true)) {
                     return false;
                 }
             }
@@ -5266,6 +5300,16 @@ public class NativeDevice implements IManagedTestDevice {
             }
         }
         return tombstones;
+    }
+
+    @Override
+    public Set<DeviceFoldableState> getFoldableStates() throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for foldable states.");
+    }
+
+    @Override
+    public DeviceFoldableState getCurrentFoldableState() throws DeviceNotAvailableException {
+        throw new UnsupportedOperationException("No support for foldable states.");
     }
 
     /** Validate that pid is an integer and not empty. */

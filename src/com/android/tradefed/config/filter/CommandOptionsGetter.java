@@ -16,11 +16,13 @@
 package com.android.tradefed.config.filter;
 
 import com.android.tradefed.command.ICommandOptions;
+import com.android.tradefed.config.Configuration;
 import com.android.tradefed.config.IConfiguration;
 import com.android.tradefed.config.IConfigurationReceiver;
 import com.android.tradefed.config.Option;
 import com.android.tradefed.config.OptionSetter;
 import com.android.tradefed.retry.IRetryDecision;
+import com.android.tradefed.sandbox.SandboxOptions;
 import com.android.tradefed.service.IRemoteFeature;
 
 import com.proto.tradefed.feature.ErrorInfo;
@@ -74,7 +76,10 @@ public class CommandOptionsGetter implements IRemoteFeature, IConfigurationRecei
         // Capture options of CommandOptions & RetryDecision
         ICommandOptions commandOptions = mConfig.getCommandOptions();
         IRetryDecision retryOptions = mConfig.getRetryDecision();
-        List<Object> optionObjects = Arrays.asList(commandOptions, retryOptions);
+        SandboxOptions sandboxOptions =
+                (SandboxOptions) mConfig
+                    .getConfigurationObject(Configuration.SANBOX_OPTIONS_TYPE_NAME);
+        List<Object> optionObjects = Arrays.asList(commandOptions, retryOptions, sandboxOptions);
 
         List<PartResponse> partResponses = new ArrayList<>();
         for (Object o : optionObjects) {

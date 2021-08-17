@@ -22,6 +22,7 @@ import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.IBuildInfo;
@@ -38,7 +39,6 @@ import com.android.tradefed.util.IRunUtil;
 
 import com.google.common.net.HostAndPort;
 
-import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -65,7 +65,7 @@ public class GceSshTunnelMonitorTest {
 
     @Before
     public void setUp() throws Exception {
-        mMockDevice = EasyMock.createMock(ITestDevice.class);
+        mMockDevice = Mockito.mock(ITestDevice.class);
         mMockBuildInfo = new BuildInfo();
         mHost = HostAndPort.fromHost("127.0.0.1");
         mMockRunUtil = Mockito.mock(IRunUtil.class);
@@ -96,14 +96,13 @@ public class GceSshTunnelMonitorTest {
     public void testInitGce_noSsshKey() throws Exception {
         // delete file to simulate missing key.
         FileUtil.deleteFile(mSshKeyFile);
-        EasyMock.replay(mMockDevice);
+
         try {
             mMonitor.initGce();
             fail("Should have thrown an exception");
         } catch (RuntimeException expected) {
             // expected
         }
-        EasyMock.verify(mMockDevice);
     }
 
     /** Test that {@link GceSshTunnelMonitor#initGce()} on a success case. */
@@ -115,9 +114,8 @@ public class GceSshTunnelMonitorTest {
                 .when(mMockRunUtil)
                 .runTimedCmdSilentlyRetry(
                         Mockito.anyLong(), Mockito.anyLong(), Mockito.anyInt(), Mockito.any());
-        EasyMock.replay(mMockDevice);
+
         mMonitor.initGce();
-        EasyMock.verify(mMockDevice);
         verify(mMockRunUtil, atLeastOnce())
                 .runTimedCmdSilentlyRetry(
                         Mockito.anyLong(), Mockito.anyLong(), Mockito.anyInt(), capture.capture());
@@ -134,14 +132,13 @@ public class GceSshTunnelMonitorTest {
                 .when(mMockRunUtil)
                 .runTimedCmdSilentlyRetry(
                         Mockito.anyLong(), Mockito.anyLong(), Mockito.anyInt(), Mockito.any());
-        EasyMock.replay(mMockDevice);
+
         try {
             mMonitor.initGce();
             fail("Should have thrown an exception.");
         } catch (RuntimeException expected) {
             assertEquals("failed to stop adbd", expected.getMessage());
         }
-        EasyMock.verify(mMockDevice);
     }
 
     /**
@@ -150,14 +147,13 @@ public class GceSshTunnelMonitorTest {
      */
     @Test
     public void testCreateSshTunnel() throws Exception {
-        IManagedTestDevice mockDevice = EasyMock.createMock(IManagedTestDevice.class);
-        EasyMock.expect(mockDevice.getSerialNumber()).andReturn("INIT_SERIAL");
-        mockDevice.setIDevice((RemoteAvdIDevice) EasyMock.anyObject());
+        IManagedTestDevice mockDevice = Mockito.mock(IManagedTestDevice.class);
+        when(mockDevice.getSerialNumber()).thenReturn("INIT_SERIAL");
+        mockDevice.setIDevice((RemoteAvdIDevice) Mockito.any());
         mockDevice.setFastbootEnabled(false);
         doReturn(null).when(mMockRunUtil).runCmdInBackground(Mockito.anyList());
-        EasyMock.replay(mockDevice);
+
         mMonitor.createSshTunnel(mockDevice, mHost.getHost(), mHost.getPortOrDefault(5555));
-        EasyMock.verify(mockDevice);
         assertNotNull(
                 mMockBuildInfo.getBuildAttributes().get(GceSshTunnelMonitor.VIRTUAL_DEVICE_SERIAL));
     }

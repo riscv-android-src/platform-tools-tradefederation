@@ -15,13 +15,22 @@
  */
 package com.android.tradefed.command;
 
-import static org.easymock.EasyMock.getCurrentArguments;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.android.ddmlib.IDevice;
 import com.android.tradefed.command.CommandFileParser.CommandLine;
@@ -62,14 +71,15 @@ import com.android.tradefed.util.RunUtil;
 import com.android.tradefed.util.keystore.DryRunKeyStore;
 import com.android.tradefed.util.keystore.IKeyStoreClient;
 
-import org.easymock.EasyMock;
-import org.easymock.IAnswer;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.AdditionalMatchers;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -82,23 +92,23 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-
 /** Unit tests for {@link CommandScheduler}. */
 @RunWith(JUnit4.class)
 public class CommandSchedulerTest {
 
     private CommandScheduler mScheduler;
-    private ITestInvocation mMockInvocation;
-    private MockDeviceManager mMockManager;
-    private IConfigurationFactory mMockConfigFactory;
-    private IConfiguration mMockConfiguration;
+    @Mock ITestInvocation mMockInvocation;
+    private MockDeviceManager mFakeDeviceManager;
+    @Mock IConfigurationFactory mMockConfigFactory;
+    @Mock IConfiguration mMockConfiguration;
     private CommandOptions mCommandOptions;
     private DeviceSelectionOptions mDeviceOptions;
-    private CommandFileParser mMockCmdFileParser;
-    private List<IDeviceConfiguration> mMockDeviceConfig;
-    private ConfigurationDescriptor mMockConfigDescriptor;
-    private IKeyStoreClient mMockKeyStoreClient;
+    private CommandFileParser mCommandFileParser;
+    private List<IDeviceConfiguration> mDeviceConfigList;
+    private ConfigurationDescriptor mConfigDescriptor;
+    @Mock IKeyStoreClient mMockKeyStoreClient;
     private IInvocationContext mContext;
+    private boolean mIsFirstInvoke = true; // For testRun_rescheduled()
 
     class TestableCommandScheduler extends CommandScheduler {
 
@@ -109,7 +119,7 @@ public class CommandSchedulerTest {
 
         @Override
         protected IDeviceManager getDeviceManager() {
-            return mMockManager;
+            return mFakeDeviceManager;
         }
 
         @Override
@@ -149,7 +159,7 @@ public class CommandSchedulerTest {
 
         @Override
         CommandFileParser createCommandFileParser() {
-            return mMockCmdFileParser;
+            return mCommandFileParser;
         }
 
         @Override
@@ -160,17 +170,14 @@ public class CommandSchedulerTest {
 
     @Before
     public void setUp() throws Exception {
-        mMockInvocation = EasyMock.createMock(ITestInvocation.class);
-        EasyMock.expect(mMockInvocation.getExitInfo()).andStubReturn(new ExitInformation());
-        mMockManager = new MockDeviceManager(0);
-        mMockConfigFactory = EasyMock.createMock(IConfigurationFactory.class);
-        mMockKeyStoreClient = EasyMock.createMock(IKeyStoreClient.class);
-        mMockConfiguration = EasyMock.createMock(IConfiguration.class);
-        EasyMock.expect(mMockConfiguration.getTests()).andStubReturn(new ArrayList<>());
-        EasyMock.expect(
-                        mMockConfiguration.getConfigurationObject(
-                                ProxyConfiguration.PROXY_CONFIG_TYPE_KEY))
-                .andStubReturn(null);
+        MockitoAnnotations.initMocks(this);
+
+        when(mMockInvocation.getExitInfo()).thenReturn(new ExitInformation());
+
+        mFakeDeviceManager = new MockDeviceManager(0);
+        when(mMockConfiguration.getTests()).thenReturn(new ArrayList<>());
+        when(mMockConfiguration.getConfigurationObject(ProxyConfiguration.PROXY_CONFIG_TYPE_KEY))
+                .thenReturn(null);
         mCommandOptions = new CommandOptions();
         // Avoid any issue related to env. variable.
         mDeviceOptions =
@@ -180,8 +187,8 @@ public class CommandSchedulerTest {
                         return null;
                     }
                 };
-        mMockDeviceConfig = new ArrayList<IDeviceConfiguration>();
-        mMockConfigDescriptor = new ConfigurationDescriptor();
+        mDeviceConfigList = new ArrayList<IDeviceConfiguration>();
+        mConfigDescriptor = new ConfigurationDescriptor();
         mContext = new InvocationContext();
 
         mScheduler = new TestableCommandScheduler();
@@ -195,34 +202,11 @@ public class CommandSchedulerTest {
         }
     }
 
-    /**
-     * Switch all mock objects to replay mode
-     */
-    private void replayMocks(Object... additionalMocks) {
-        EasyMock.replay(
-                mMockConfigFactory, mMockConfiguration, mMockInvocation, mMockKeyStoreClient);
-        for (Object mock : additionalMocks) {
-            EasyMock.replay(mock);
-        }
-    }
-
-    /**
-     * Verify all mock objects
-     */
-    private void verifyMocks(Object... additionalMocks) {
-        EasyMock.verify(
-                mMockConfigFactory, mMockConfiguration, mMockInvocation, mMockKeyStoreClient);
-        for (Object mock : additionalMocks) {
-            EasyMock.verify(mock);
-        }
-        mMockManager.assertDevicesFreed();
-    }
-
     /** Test {@link CommandScheduler#run()} when no configs have been added */
     @Test
     public void testRun_empty() throws InterruptedException {
-        mMockManager.setNumDevices(1);
-        replayMocks();
+        mFakeDeviceManager.setNumDevices(1);
+
         mScheduler.start();
         while (!mScheduler.isAlive()) {
             Thread.sleep(10);
@@ -230,7 +214,8 @@ public class CommandSchedulerTest {
         mScheduler.shutdown();
         // expect run not to block
         mScheduler.join();
-        verifyMocks();
+
+        mFakeDeviceManager.assertDevicesFreed();
     }
 
     /** Test {@link CommandScheduler#addCommand(String[])} when help mode is specified */
@@ -238,30 +223,44 @@ public class CommandSchedulerTest {
     public void testAddConfig_configHelp() throws ConfigurationException {
         String[] args = new String[] {"test"};
         mCommandOptions.setHelpMode(true);
-        setCreateConfigExpectations(args, 1);
-        // expect
-        mMockConfigFactory.printHelpForConfig(EasyMock.aryEq(args), EasyMock.eq(true),
-                EasyMock.eq(System.out));
-        replayMocks();
+        setCreateConfigExpectations(args);
+
         mScheduler.start();
         mScheduler.addCommand(args);
-        verifyMocks();
+
+        verify(mMockConfigFactory)
+                .printHelpForConfig(AdditionalMatchers.aryEq(args), eq(true), eq(System.out));
+
+        verify(mMockConfigFactory, times(1))
+                .createConfigurationFromArgs(
+                        AdditionalMatchers.aryEq(args), isNull(), (IKeyStoreClient) any());
+        mFakeDeviceManager.assertDevicesFreed();
     }
 
     /** Test {@link CommandScheduler#run()} when one config has been added */
     @Test
     public void testRun_oneConfig() throws Throwable {
         String[] args = new String[] {"test"};
-        mMockManager.setNumDevices(2);
-        setCreateConfigExpectations(args, 1);
-        setExpectedInvokeCalls(1);
-        mMockConfiguration.validateOptions();
-        replayMocks();
+        mFakeDeviceManager.setNumDevices(2);
+        setCreateConfigExpectations(args);
+
         mScheduler.start();
         mScheduler.addCommand(args);
         mScheduler.shutdownOnEmpty();
         mScheduler.join();
-        verifyMocks();
+        verify(mMockInvocation, times(1))
+                .invoke(
+                        (IInvocationContext) any(),
+                        (IConfiguration) any(),
+                        (IRescheduler) any(),
+                        (ITestInvocationListener) any());
+
+        verify(mMockConfiguration).validateOptions();
+
+        verify(mMockConfigFactory, times(1))
+                .createConfigurationFromArgs(
+                        AdditionalMatchers.aryEq(args), isNull(), (IKeyStoreClient) any());
+        mFakeDeviceManager.assertDevicesFreed();
     }
 
     /**
@@ -271,16 +270,21 @@ public class CommandSchedulerTest {
     @Test
     public void testRemoveAllCommands() throws Throwable {
         String[] args = new String[] {"test"};
-        mMockManager.setNumDevices(0);
-        setCreateConfigExpectations(args, 1);
-        mMockConfiguration.validateOptions();
-        replayMocks();
+        mFakeDeviceManager.setNumDevices(0);
+        setCreateConfigExpectations(args);
+
         mScheduler.start();
         mScheduler.addCommand(args);
         assertEquals(1, mScheduler.getAllCommandsSize());
         mScheduler.removeAllCommands();
         assertEquals(0, mScheduler.getAllCommandsSize());
-        verifyMocks();
+
+        verify(mMockConfiguration).validateOptions();
+
+        verify(mMockConfigFactory, times(1))
+                .createConfigurationFromArgs(
+                        AdditionalMatchers.aryEq(args), isNull(), (IKeyStoreClient) any());
+        mFakeDeviceManager.assertDevicesFreed();
     }
 
     /** Test {@link CommandScheduler#run()} when one config has been added in dry-run mode */
@@ -288,17 +292,13 @@ public class CommandSchedulerTest {
     public void testRun_dryRun() throws Throwable {
         String[] dryRunArgs = new String[] {"--dry-run"};
         mCommandOptions.setDryRunMode(true);
-        mMockManager.setNumDevices(2);
-        setCreateConfigExpectations(dryRunArgs, 1);
+        mFakeDeviceManager.setNumDevices(2);
+        setCreateConfigExpectations(dryRunArgs);
 
         // add a second command, to verify the first dry-run command did not get added
         String[] args2 = new String[] {"test"};
-        setCreateConfigExpectations(args2, 1);
-        setExpectedInvokeCalls(1);
-        mMockConfiguration.validateOptions();
-        EasyMock.expectLastCall().times(2);
+        setCreateConfigExpectations(args2);
 
-        replayMocks();
         mScheduler.start();
         assertFalse(mScheduler.addCommand(dryRunArgs));
         // the same config object is being used, so clear its state
@@ -306,7 +306,18 @@ public class CommandSchedulerTest {
         assertTrue(mScheduler.addCommand(args2));
         mScheduler.shutdownOnEmpty();
         mScheduler.join();
-        verifyMocks();
+        verify(mMockInvocation, times(1))
+                .invoke(
+                        (IInvocationContext) any(),
+                        (IConfiguration) any(),
+                        (IRescheduler) any(),
+                        (ITestInvocationListener) any());
+        verify(mMockConfiguration, times(2)).validateOptions();
+
+        verify(mMockConfigFactory, times(1))
+                .createConfigurationFromArgs(
+                        AdditionalMatchers.aryEq(dryRunArgs), isNull(), (IKeyStoreClient) any());
+        mFakeDeviceManager.assertDevicesFreed();
     }
 
     /**
@@ -325,15 +336,14 @@ public class CommandSchedulerTest {
                 };
         String[] dryRunArgs =
                 new String[] {"empty", "--noisy-dry-run", "--min-loop-time", "USE_KEYSTORE@fake"};
-        mMockManager.setNumDevices(2);
-        //setCreateConfigExpectations(dryRunArgs, 1);
+        mFakeDeviceManager.setNumDevices(2);
 
-        replayMocks();
         mScheduler.start();
         assertFalse(mScheduler.addCommand(dryRunArgs));
         mScheduler.shutdownOnEmpty();
         mScheduler.join();
-        verifyMocks();
+
+        mFakeDeviceManager.assertDevicesFreed();
     }
 
     /**
@@ -343,30 +353,20 @@ public class CommandSchedulerTest {
     @Test
     @SuppressWarnings("unchecked")
     public void testExecCommand() throws Throwable {
-        String[] args = new String[] {
-            "foo"
-        };
-        setCreateConfigExpectations(args, 1);
-        mMockInvocation.invoke(
-                (IInvocationContext) EasyMock.anyObject(),
-                (IConfiguration) EasyMock.anyObject(),
-                (IRescheduler) EasyMock.anyObject(),
-                (ITestInvocationListener) EasyMock.anyObject(),
-                EasyMock.anyObject());
-        EasyMock.expectLastCall().times(1);
-        mMockConfiguration.validateOptions();
-        IDevice mockIDevice = EasyMock.createMock(IDevice.class);
-        ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
-        EasyMock.expect(mockDevice.getSerialNumber()).andStubReturn("serial");
-        EasyMock.expect(mockDevice.getDeviceState()).andStubReturn(TestDeviceState.ONLINE);
-        mockDevice.setRecoveryMode(EasyMock.eq(RecoveryMode.AVAILABLE));
-        EasyMock.expect(mockDevice.getIDevice()).andStubReturn(mockIDevice);
-        IScheduledInvocationListener mockListener = EasyMock
-                .createMock(IScheduledInvocationListener.class);
-        mockListener.invocationInitiated((IInvocationContext) EasyMock.anyObject());
-        mockListener.invocationComplete((IInvocationContext)EasyMock.anyObject(),
-                (Map<ITestDevice, FreeDeviceState>)EasyMock.anyObject());
-        EasyMock.expect(mockDevice.waitForDeviceShell(EasyMock.anyLong())).andReturn(true);
+        String[] args = new String[] {"foo"};
+        setCreateConfigExpectations(args);
+
+        IDevice mockIDevice = mock(IDevice.class);
+        ITestDevice mockDevice = mock(ITestDevice.class);
+        when(mockDevice.getSerialNumber()).thenReturn("serial");
+        when(mockDevice.getDeviceState()).thenReturn(TestDeviceState.ONLINE);
+        mockDevice.setRecoveryMode(eq(RecoveryMode.AVAILABLE));
+        when(mockDevice.getIDevice()).thenReturn(mockIDevice);
+        IScheduledInvocationListener mockListener = mock(IScheduledInvocationListener.class);
+        mockListener.invocationInitiated((IInvocationContext) any());
+        mockListener.invocationComplete(
+                (IInvocationContext) any(), (Map<ITestDevice, FreeDeviceState>) any());
+        when(mockDevice.waitForDeviceShell(anyLong())).thenReturn(true);
         mScheduler =
                 new TestableCommandScheduler() {
                     @Override
@@ -380,26 +380,24 @@ public class CommandSchedulerTest {
                         return results;
                     }
                 };
-        replayMocks(mockDevice, mockListener);
+
         mScheduler.start();
         mScheduler.execCommand(mockListener, args);
         mScheduler.shutdownOnEmpty();
-        mScheduler.join(2*1000);
-        verifyMocks(mockListener);
-    }
+        mScheduler.join(2 * 1000);
+        verify(mMockInvocation, times(1))
+                .invoke(
+                        (IInvocationContext) any(),
+                        (IConfiguration) any(),
+                        (IRescheduler) any(),
+                        (ITestInvocationListener) any(),
+                        any());
+        verify(mMockConfiguration).validateOptions();
 
-    /**
-     * Sets the number of expected
-     * {@link ITestInvocation#invoke(IInvocationContext, IConfiguration, IRescheduler,
-     *      ITestInvocationListener[])} calls
-     *
-     * @param times
-     */
-    private void setExpectedInvokeCalls(int times) throws Throwable {
-        mMockInvocation.invoke((IInvocationContext)EasyMock.anyObject(),
-                (IConfiguration)EasyMock.anyObject(), (IRescheduler)EasyMock.anyObject(),
-                (ITestInvocationListener)EasyMock.anyObject());
-        EasyMock.expectLastCall().times(times);
+        verify(mMockConfigFactory, times(1))
+                .createConfigurationFromArgs(
+                        AdditionalMatchers.aryEq(args), isNull(), (IKeyStoreClient) any());
+        mFakeDeviceManager.assertDevicesFreed();
     }
 
     /**
@@ -410,23 +408,31 @@ public class CommandSchedulerTest {
     @Test
     public void testRun_configSerial() throws Throwable {
         String[] args = new String[] {"test"};
-        mMockManager.setNumDevices(2);
-        setCreateConfigExpectations(args, 2);
+        mFakeDeviceManager.setNumDevices(2);
+        setCreateConfigExpectations(args);
         // allocate and free a device to get its serial
-        ITestDevice dev = mMockManager.allocateDevice();
+        ITestDevice dev = mFakeDeviceManager.allocateDevice();
         mDeviceOptions.addSerial(dev.getSerialNumber());
-        setExpectedInvokeCalls(1);
         mMockConfiguration.validateOptions();
-        mMockConfiguration.validateOptions();
-        replayMocks();
+
         mScheduler.start();
         mScheduler.addCommand(args);
         mScheduler.addCommand(args);
-        mMockManager.freeDevice(dev, FreeDeviceState.AVAILABLE);
+        mFakeDeviceManager.freeDevice(dev, FreeDeviceState.AVAILABLE);
 
         mScheduler.shutdownOnEmpty();
         mScheduler.join();
-        verifyMocks();
+        verify(mMockInvocation, times(2))
+                .invoke(
+                        (IInvocationContext) any(),
+                        (IConfiguration) any(),
+                        (IRescheduler) any(),
+                        (ITestInvocationListener) any());
+        verify(mMockConfiguration, times(3)).validateOptions();
+        verify(mMockConfigFactory, times(2))
+                .createConfigurationFromArgs(
+                        AdditionalMatchers.aryEq(args), isNull(), (IKeyStoreClient) any());
+        mFakeDeviceManager.assertDevicesFreed();
     }
 
     /**
@@ -438,67 +444,81 @@ public class CommandSchedulerTest {
     @Test
     public void testRun_configExcludeSerial() throws Throwable {
         String[] args = new String[] {"test"};
-        mMockManager.setNumDevices(2);
-        setCreateConfigExpectations(args, 2);
+        mFakeDeviceManager.setNumDevices(2);
+        setCreateConfigExpectations(args);
         // allocate and free a device to get its serial
-        ITestDevice dev = mMockManager.allocateDevice();
+        ITestDevice dev = mFakeDeviceManager.allocateDevice();
         mDeviceOptions.addExcludeSerial(dev.getSerialNumber());
-        ITestDevice expectedDevice = mMockManager.allocateDevice();
-        setExpectedInvokeCalls(1);
+        ITestDevice expectedDevice = mFakeDeviceManager.allocateDevice();
         mMockConfiguration.validateOptions();
-        mMockConfiguration.validateOptions();
-        replayMocks();
+
         mScheduler.start();
         mScheduler.addCommand(args);
         mScheduler.addCommand(args);
-        mMockManager.freeDevice(dev, FreeDeviceState.AVAILABLE);
-        mMockManager.freeDevice(expectedDevice, FreeDeviceState.AVAILABLE);
+        mFakeDeviceManager.freeDevice(dev, FreeDeviceState.AVAILABLE);
+        mFakeDeviceManager.freeDevice(expectedDevice, FreeDeviceState.AVAILABLE);
         mScheduler.shutdownOnEmpty();
         mScheduler.join();
-        verifyMocks();
+        verify(mMockInvocation, times(2))
+                .invoke(
+                        (IInvocationContext) any(),
+                        (IConfiguration) any(),
+                        (IRescheduler) any(),
+                        (ITestInvocationListener) any());
+        verify(mMockConfiguration, times(3)).validateOptions();
+        verify(mMockConfigFactory, times(2))
+                .createConfigurationFromArgs(
+                        AdditionalMatchers.aryEq(args), isNull(), (IKeyStoreClient) any());
+        mFakeDeviceManager.assertDevicesFreed();
     }
 
     /** Test {@link CommandScheduler#run()} when one config has been rescheduled */
     @Test
     public void testRun_rescheduled() throws Throwable {
         String[] args = new String[] {"test"};
-        mMockManager.setNumDevices(2);
-        setCreateConfigExpectations(args, 1);
-        mMockConfiguration.validateOptions();
-        final IConfiguration rescheduledConfig = EasyMock.createMock(IConfiguration.class);
-        EasyMock.expect(rescheduledConfig.getCommandOptions()).andStubReturn(mCommandOptions);
-        EasyMock.expect(rescheduledConfig.getDeviceRequirements()).andStubReturn(
-                mDeviceOptions);
-        EasyMock.expect(rescheduledConfig.getDeviceConfig()).andStubReturn(mMockDeviceConfig);
-        EasyMock.expect(rescheduledConfig.getCommandLine()).andStubReturn("");
-        EasyMock.expect(rescheduledConfig.getConfigurationDescription())
-            .andStubReturn(mMockConfigDescriptor);
+        mFakeDeviceManager.setNumDevices(2);
+        setCreateConfigExpectations(args);
 
-        // an ITestInvocationn#invoke response for calling reschedule
-        IAnswer<Object> rescheduleAndThrowAnswer = new IAnswer<Object>() {
-            @Override
-            public Object answer() throws Throwable {
-                IRescheduler rescheduler =  (IRescheduler) EasyMock.getCurrentArguments()[2];
-                rescheduler.scheduleConfig(rescheduledConfig);
-                throw new DeviceNotAvailableException("not avail", "fakeserial");
-            }
-        };
+        final IConfiguration mockRescheduledConfig = mock(IConfiguration.class);
+        when(mockRescheduledConfig.getCommandOptions()).thenReturn(mCommandOptions);
+        when(mockRescheduledConfig.getDeviceRequirements()).thenReturn(mDeviceOptions);
+        when(mockRescheduledConfig.getDeviceConfig()).thenReturn(mDeviceConfigList);
+        when(mockRescheduledConfig.getCommandLine()).thenReturn("");
+        when(mockRescheduledConfig.getConfigurationDescription()).thenReturn(mConfigDescriptor);
 
-        mMockInvocation.invoke(EasyMock.<IInvocationContext>anyObject(),
-                EasyMock.<IConfiguration>anyObject(), EasyMock.<IRescheduler>anyObject(),
-                EasyMock.<ITestInvocationListener>anyObject());
-        EasyMock.expectLastCall().andAnswer(rescheduleAndThrowAnswer);
+        // The first call sets recheduler and throws. The second call is successful.
+        doAnswer(
+                        invocation -> {
+                            if (mIsFirstInvoke) {
+                                mIsFirstInvoke = false;
 
-        // expect one more success call
-        setExpectedInvokeCalls(1);
+                                IRescheduler rescheduler =
+                                        (IRescheduler) invocation.getArguments()[2];
+                                rescheduler.scheduleConfig(mockRescheduledConfig);
+                                throw new DeviceNotAvailableException("not avail", "fakeserial");
+                            } else {
+                                return null;
+                            }
+                        })
+                .when(mMockInvocation)
+                .invoke(
+                        (IInvocationContext) any(),
+                        (IConfiguration) any(),
+                        (IRescheduler) any(),
+                        (ITestInvocationListener) any());
 
-        replayMocks(rescheduledConfig);
         mScheduler.start();
         mScheduler.addCommand(args);
         mScheduler.shutdownOnEmpty();
         mScheduler.join();
 
-        EasyMock.verify(mMockConfigFactory, mMockConfiguration, mMockInvocation);
+        verify(mMockConfiguration).validateOptions();
+        verify(mMockInvocation, times(2))
+                .invoke(
+                        (IInvocationContext) any(),
+                        (IConfiguration) any(),
+                        (IRescheduler) any(),
+                        (ITestInvocationListener) any());
     }
 
     /**
@@ -509,19 +529,19 @@ public class CommandSchedulerTest {
     @Test
     public void testAddCommandFile() throws ConfigurationException {
         // set number of devices to 0 so we can verify command presence
-        mMockManager.setNumDevices(0);
+        mFakeDeviceManager.setNumDevices(0);
         List<String> extraArgs = Arrays.asList("--bar");
-        setCreateConfigExpectations(new String[] {"foo", "--bar"}, 1);
+        setCreateConfigExpectations(new String[] {"foo", "--bar"});
         mMockConfiguration.validateOptions();
-        final List<CommandLine> cmdFileContent = Arrays.asList(new CommandLine(
-                Arrays.asList("foo"), null, 0));
-        mMockCmdFileParser = new CommandFileParser() {
-            @Override
-            public List<CommandLine> parseFile(File cmdFile) {
-                return cmdFileContent;
-            }
-        };
-        replayMocks();
+        final List<CommandLine> cmdFileContent =
+                Arrays.asList(new CommandLine(Arrays.asList("foo"), null, 0));
+        mCommandFileParser =
+                new CommandFileParser() {
+                    @Override
+                    public List<CommandLine> parseFile(File cmdFile) {
+                        return cmdFileContent;
+                    }
+                };
 
         mScheduler.start();
         mScheduler.addCommandFile("mycmd.txt", extraArgs);
@@ -539,35 +559,34 @@ public class CommandSchedulerTest {
     @Test
     public void testAddCommandFile_reload() throws ConfigurationException {
         // set number of devices to 0 so we can verify command presence
-        mMockManager.setNumDevices(0);
-        String[] addCommandArgs = new String[]{"fromcommand"};
+        mFakeDeviceManager.setNumDevices(0);
+        String[] addCommandArgs = new String[] {"fromcommand"};
         List<String> extraArgs = Arrays.asList("--bar");
 
-        setCreateConfigExpectations(addCommandArgs, 1);
+        setCreateConfigExpectations(addCommandArgs);
         String[] cmdFile1Args = new String[] {"fromFile1", "--bar"};
-        setCreateConfigExpectations(cmdFile1Args, 1);
+        setCreateConfigExpectations(cmdFile1Args);
         String[] cmdFile2Args = new String[] {"fromFile2", "--bar"};
-        setCreateConfigExpectations(cmdFile2Args, 1);
+        setCreateConfigExpectations(cmdFile2Args);
 
-        mMockConfiguration.validateOptions();
-        EasyMock.expectLastCall().times(3);
+        final List<CommandLine> cmdFileContent1 =
+                Arrays.asList(new CommandLine(Arrays.asList("fromFile1"), null, 0));
+        final List<CommandLine> cmdFileContent2 =
+                Arrays.asList(new CommandLine(Arrays.asList("fromFile2"), null, 0));
+        mCommandFileParser =
+                new CommandFileParser() {
+                    boolean firstCall = true;
 
-        final List<CommandLine> cmdFileContent1 = Arrays.asList(new CommandLine(
-                Arrays.asList("fromFile1"), null, 0));
-        final List<CommandLine> cmdFileContent2 = Arrays.asList(new CommandLine(
-                Arrays.asList("fromFile2"), null, 0));
-        mMockCmdFileParser = new CommandFileParser() {
-            boolean firstCall = true;
-            @Override
-            public List<CommandLine> parseFile(File cmdFile) {
-                if (firstCall) {
-                    firstCall = false;
-                    return cmdFileContent1;
-                }
-                return cmdFileContent2;
-            }
-        };
-        replayMocks();
+                    @Override
+                    public List<CommandLine> parseFile(File cmdFile) {
+                        if (firstCall) {
+                            firstCall = false;
+                            return cmdFileContent1;
+                        }
+                        return cmdFileContent2;
+                    }
+                };
+
         mScheduler.start();
         mScheduler.setCommandFileReload(true);
         mScheduler.addCommand(addCommandArgs);
@@ -587,28 +606,28 @@ public class CommandSchedulerTest {
         Collections.sort(cmds, new CommandTrackerIdComparator());
         Assert.assertArrayEquals(addCommandArgs, cmds.get(0).getArgs());
         Assert.assertArrayEquals(cmdFile2Args, cmds.get(1).getArgs());
+        verify(mMockConfiguration, times(3)).validateOptions();
     }
 
     /** Verify attempts to add the same commmand file in reload mode are rejected */
     @Test
     public void testAddCommandFile_twice() throws ConfigurationException {
         // set number of devices to 0 so we can verify command presence
-        mMockManager.setNumDevices(0);
+        mFakeDeviceManager.setNumDevices(0);
         String[] cmdFile1Args = new String[] {"fromFile1"};
-        setCreateConfigExpectations(cmdFile1Args, 1);
-        setCreateConfigExpectations(cmdFile1Args, 1);
-        mMockConfiguration.validateOptions();
-        EasyMock.expectLastCall().times(2);
+        setCreateConfigExpectations(cmdFile1Args);
+        setCreateConfigExpectations(cmdFile1Args);
 
-        final List<CommandLine> cmdFileContent1 = Arrays.asList(new CommandLine(
-                Arrays.asList("fromFile1"), null, 0));
-        mMockCmdFileParser = new CommandFileParser() {
-            @Override
-            public List<CommandLine> parseFile(File cmdFile) {
-                return cmdFileContent1;
-            }
-        };
-        replayMocks();
+        final List<CommandLine> cmdFileContent1 =
+                Arrays.asList(new CommandLine(Arrays.asList("fromFile1"), null, 0));
+        mCommandFileParser =
+                new CommandFileParser() {
+                    @Override
+                    public List<CommandLine> parseFile(File cmdFile) {
+                        return cmdFileContent1;
+                    }
+                };
+
         mScheduler.start();
         mScheduler.setCommandFileReload(true);
         mScheduler.addCommandFile("mycmd.txt", Collections.<String>emptyList());
@@ -625,12 +644,13 @@ public class CommandSchedulerTest {
         cmds = mScheduler.getCommandTrackers();
         assertEquals(1, cmds.size());
         Assert.assertArrayEquals(cmdFile1Args, cmds.get(0).getArgs());
+        verify(mMockConfiguration, times(2)).validateOptions();
     }
 
     /** Test {@link CommandScheduler#shutdown()} when no devices are available. */
     @Test
     public void testShutdown() throws Exception {
-        mMockManager.setNumDevices(0);
+        mFakeDeviceManager.setNumDevices(0);
         mScheduler.start();
         while (!mScheduler.isAlive()) {
             Thread.sleep(10);
@@ -642,30 +662,23 @@ public class CommandSchedulerTest {
         // test will hang if not successful
     }
 
-    /**
-     * Set EasyMock expectations for a create configuration call.
-     */
-    private void setCreateConfigExpectations(String[] args, int times)
-            throws ConfigurationException {
+    /** Set EasyMock expectations for a create configuration call. */
+    private void setCreateConfigExpectations(String[] args) throws ConfigurationException {
         List<String> nullArg = null;
-        EasyMock.expect(
-                mMockConfigFactory.createConfigurationFromArgs(EasyMock.aryEq(args),
-                EasyMock.eq(nullArg), (IKeyStoreClient)EasyMock.anyObject()))
-                .andReturn(mMockConfiguration)
-                .times(times);
-        EasyMock.expect(mMockConfiguration.getCommandOptions()).andStubReturn(mCommandOptions);
-        EasyMock.expect(mMockConfiguration.getDeviceRequirements()).andStubReturn(
-                mDeviceOptions);
-        EasyMock.expect(mMockConfiguration.getDeviceConfig()).andStubReturn(mMockDeviceConfig);
-        EasyMock.expect(mMockConfiguration.getCommandLine()).andStubReturn("");
-        EasyMock.expect(mMockConfiguration.getConfigurationDescription())
-            .andStubReturn(mMockConfigDescriptor);
+        when(mMockConfigFactory.createConfigurationFromArgs(
+                        AdditionalMatchers.aryEq(args), isNull(), (IKeyStoreClient) any()))
+                .thenReturn(mMockConfiguration);
+        when(mMockConfiguration.getCommandOptions()).thenReturn(mCommandOptions);
+        when(mMockConfiguration.getDeviceRequirements()).thenReturn(mDeviceOptions);
+        when(mMockConfiguration.getDeviceConfig()).thenReturn(mDeviceConfigList);
+        when(mMockConfiguration.getCommandLine()).thenReturn("");
+        when(mMockConfiguration.getConfigurationDescription()).thenReturn(mConfigDescriptor);
 
         // Assume all legacy test are single device
-        if (mMockDeviceConfig.isEmpty()) {
+        if (mDeviceConfigList.isEmpty()) {
             IDeviceConfiguration mockConfig = new DeviceConfigurationHolder("device");
             mockConfig.addSpecificConfig(mDeviceOptions);
-            mMockDeviceConfig.add(mockConfig);
+            mDeviceConfigList.add(mockConfig);
         }
     }
 
@@ -673,18 +686,28 @@ public class CommandSchedulerTest {
     @Test
     public void testDeviceReleased() throws Throwable {
         String[] args = new String[] {"test"};
-        mMockManager.setNumDevices(1);
-        assertTrue(mMockManager.getQueueOfAvailableDeviceSize() == 1);
-        setCreateConfigExpectations(args, 1);
-        setExpectedInvokeCalls(1);
-        mMockConfiguration.validateOptions();
-        replayMocks();
+        mFakeDeviceManager.setNumDevices(1);
+        assertTrue(mFakeDeviceManager.getQueueOfAvailableDeviceSize() == 1);
+        setCreateConfigExpectations(args);
+
         mScheduler.start();
         mScheduler.addCommand(args);
         mScheduler.shutdownOnEmpty();
         mScheduler.join();
-        verifyMocks();
-        assertTrue(mMockManager.getQueueOfAvailableDeviceSize() == 1);
+        verify(mMockInvocation, times(1))
+                .invoke(
+                        (IInvocationContext) any(),
+                        (IConfiguration) any(),
+                        (IRescheduler) any(),
+                        (ITestInvocationListener) any());
+
+        verify(mMockConfiguration).validateOptions();
+
+        verify(mMockConfigFactory, times(1))
+                .createConfigurationFromArgs(
+                        AdditionalMatchers.aryEq(args), isNull(), (IKeyStoreClient) any());
+        mFakeDeviceManager.assertDevicesFreed();
+        assertTrue(mFakeDeviceManager.getQueueOfAvailableDeviceSize() == 1);
     }
 
     /**
@@ -694,40 +717,33 @@ public class CommandSchedulerTest {
     @Test
     public void testDeviceReleasedEarly() throws Throwable {
         String[] args = new String[] {"test"};
-        mMockManager.setNumDevices(1);
-        assertTrue(mMockManager.getQueueOfAvailableDeviceSize() == 1);
-        setCreateConfigExpectations(args, 2);
+        mFakeDeviceManager.setNumDevices(1);
+        assertTrue(mFakeDeviceManager.getQueueOfAvailableDeviceSize() == 1);
+        setCreateConfigExpectations(args);
 
-        mMockInvocation.invoke(
-                (IInvocationContext) EasyMock.anyObject(),
-                (IConfiguration) EasyMock.anyObject(),
-                (IRescheduler) EasyMock.anyObject(),
-                (ITestInvocationListener) EasyMock.anyObject());
-        EasyMock.expectLastCall()
-                .andAnswer(
-                        new IAnswer<Object>() {
-                            @Override
-                            public Object answer() throws Throwable {
-                                IInvocationContext context =
-                                        (IInvocationContext) getCurrentArguments()[0];
-                                IScheduledInvocationListener listener =
-                                        (IScheduledInvocationListener) getCurrentArguments()[3];
-                                Map<ITestDevice, FreeDeviceState> deviceStates = new HashMap<>();
-                                for (ITestDevice device : context.getDevices()) {
-                                    deviceStates.put(device, FreeDeviceState.AVAILABLE);
-                                }
-                                context.markReleasedEarly();
-                                listener.releaseDevices(context, deviceStates);
-                                RunUtil.getDefault().sleep(500);
-                                return null;
+        doAnswer(
+                        invocation -> {
+                            IInvocationContext context =
+                                    (IInvocationContext) invocation.getArguments()[0];
+                            IScheduledInvocationListener listener =
+                                    (IScheduledInvocationListener) invocation.getArguments()[3];
+                            Map<ITestDevice, FreeDeviceState> deviceStates = new HashMap<>();
+                            for (ITestDevice device : context.getDevices()) {
+                                deviceStates.put(device, FreeDeviceState.AVAILABLE);
                             }
-                        });
-        // Second invocation runs properly
-        setExpectedInvokeCalls(1);
+                            context.markReleasedEarly();
+                            listener.releaseDevices(context, deviceStates);
+                            RunUtil.getDefault().sleep(500);
+                            return null;
+                        })
+                .when(mMockInvocation)
+                .invoke(
+                        (IInvocationContext) any(),
+                        (IConfiguration) any(),
+                        (IRescheduler) any(),
+                        (ITestInvocationListener) any());
 
-        mMockConfiguration.validateOptions();
-        EasyMock.expectLastCall().times(2);
-        replayMocks();
+        // Second invocation runs properly
         mScheduler.start();
         mScheduler.addCommand(args);
         RunUtil.getDefault().sleep(100);
@@ -735,8 +751,18 @@ public class CommandSchedulerTest {
         RunUtil.getDefault().sleep(200);
         mScheduler.shutdown();
         mScheduler.join();
-        verifyMocks();
-        assertTrue(mMockManager.getQueueOfAvailableDeviceSize() == 1);
+        verify(mMockInvocation, times(2))
+                .invoke(
+                        (IInvocationContext) any(),
+                        (IConfiguration) any(),
+                        (IRescheduler) any(),
+                        (ITestInvocationListener) any());
+        verify(mMockConfiguration, times(2)).validateOptions();
+        verify(mMockConfigFactory, times(2))
+                .createConfigurationFromArgs(
+                        AdditionalMatchers.aryEq(args), isNull(), (IKeyStoreClient) any());
+        mFakeDeviceManager.assertDevicesFreed();
+        assertTrue(mFakeDeviceManager.getQueueOfAvailableDeviceSize() == 1);
         assertNull(mScheduler.getLastInvocationThrowable());
     }
 
@@ -747,39 +773,34 @@ public class CommandSchedulerTest {
     @Test
     public void testDeviceReleasedEarly_conflict() throws Throwable {
         String[] args = new String[] {"test"};
-        mMockManager.setNumDevices(1);
-        assertTrue(mMockManager.getQueueOfAvailableDeviceSize() == 1);
-        setCreateConfigExpectations(args, 2);
-        EasyMock.reset(mMockInvocation);
-        EasyMock.expect(mMockInvocation.getExitInfo()).andReturn(null);
-        mMockInvocation.invoke(
-                (IInvocationContext) EasyMock.anyObject(),
-                (IConfiguration) EasyMock.anyObject(),
-                (IRescheduler) EasyMock.anyObject(),
-                (ITestInvocationListener) EasyMock.anyObject());
-        EasyMock.expectLastCall()
-                .andAnswer(
-                        new IAnswer<Object>() {
-                            @Override
-                            public Object answer() throws Throwable {
-                                IInvocationContext context =
-                                        (IInvocationContext) getCurrentArguments()[0];
-                                IScheduledInvocationListener listener =
-                                        (IScheduledInvocationListener) getCurrentArguments()[3];
-                                Map<ITestDevice, FreeDeviceState> deviceStates = new HashMap<>();
-                                for (ITestDevice device : context.getDevices()) {
-                                    deviceStates.put(device, FreeDeviceState.AVAILABLE);
-                                }
-                                // Device is released early but this is not marked properly in
-                                // context
-                                listener.releaseDevices(context, deviceStates);
-                                RunUtil.getDefault().sleep(500);
-                                return null;
+        mFakeDeviceManager.setNumDevices(1);
+        assertTrue(mFakeDeviceManager.getQueueOfAvailableDeviceSize() == 1);
+        setCreateConfigExpectations(args);
+        reset(mMockInvocation);
+        when(mMockInvocation.getExitInfo()).thenReturn(null);
+        doAnswer(
+                        invocation -> {
+                            IInvocationContext context =
+                                    (IInvocationContext) invocation.getArguments()[0];
+                            IScheduledInvocationListener listener =
+                                    (IScheduledInvocationListener) invocation.getArguments()[3];
+                            Map<ITestDevice, FreeDeviceState> deviceStates = new HashMap<>();
+                            for (ITestDevice device : context.getDevices()) {
+                                deviceStates.put(device, FreeDeviceState.AVAILABLE);
                             }
-                        });
-        mMockConfiguration.validateOptions();
-        EasyMock.expectLastCall().times(2);
-        replayMocks();
+                            // Device is released early but this is not marked properly in
+                            // context
+                            listener.releaseDevices(context, deviceStates);
+                            RunUtil.getDefault().sleep(500);
+                            return null;
+                        })
+                .when(mMockInvocation)
+                .invoke(
+                        (IInvocationContext) any(),
+                        (IConfiguration) any(),
+                        (IRescheduler) any(),
+                        (ITestInvocationListener) any());
+
         mScheduler.start();
         mScheduler.addCommand(args);
         RunUtil.getDefault().sleep(100);
@@ -787,8 +808,13 @@ public class CommandSchedulerTest {
         RunUtil.getDefault().sleep(200);
         mScheduler.shutdown();
         mScheduler.join();
-        verifyMocks();
-        assertTrue(mMockManager.getQueueOfAvailableDeviceSize() == 1);
+        verify(mMockConfiguration, times(2)).validateOptions();
+
+        verify(mMockConfigFactory, times(2))
+                .createConfigurationFromArgs(
+                        AdditionalMatchers.aryEq(args), isNull(), (IKeyStoreClient) any());
+        mFakeDeviceManager.assertDevicesFreed();
+        assertTrue(mFakeDeviceManager.getQueueOfAvailableDeviceSize() == 1);
         assertNotNull(mScheduler.getLastInvocationThrowable());
         assertEquals(
                 "Attempting invocation on device serial0 when one is already running",
@@ -802,18 +828,23 @@ public class CommandSchedulerTest {
     @Test
     public void testDeviceReleased_unavailable() throws Throwable {
         String[] args = new String[] {"test"};
-        mMockManager.setNumDevicesCustom(1, TestDeviceState.NOT_AVAILABLE, IDevice.class);
-        assertEquals(1, mMockManager.getQueueOfAvailableDeviceSize());
-        setCreateConfigExpectations(args, 1);
-        setExpectedInvokeCalls(1);
+        mFakeDeviceManager.setNumDevicesCustom(1, TestDeviceState.NOT_AVAILABLE, IDevice.class);
+        assertEquals(1, mFakeDeviceManager.getQueueOfAvailableDeviceSize());
+        setCreateConfigExpectations(args);
         mMockConfiguration.validateOptions();
-        replayMocks();
+
         mScheduler.start();
         mScheduler.addCommand(args);
         mScheduler.shutdownOnEmpty();
         mScheduler.join();
-        EasyMock.verify(mMockConfigFactory, mMockConfiguration, mMockInvocation);
-        assertTrue(mMockManager.getQueueOfAvailableDeviceSize() == 0);
+        verify(mMockInvocation, times(1))
+                .invoke(
+                        (IInvocationContext) any(),
+                        (IConfiguration) any(),
+                        (IRescheduler) any(),
+                        (ITestInvocationListener) any());
+
+        assertTrue(mFakeDeviceManager.getQueueOfAvailableDeviceSize() == 0);
     }
 
     /**
@@ -822,54 +853,69 @@ public class CommandSchedulerTest {
     @Test
     public void testDeviceReleased_unavailableMulti() throws Throwable {
         String[] args = new String[] {"test"};
-        mMockManager.setNumDevicesCustom(2, TestDeviceState.NOT_AVAILABLE, IDevice.class);
-        assertTrue(mMockManager.getQueueOfAvailableDeviceSize() == 2);
-        setCreateConfigExpectations(args, 1);
-        setExpectedInvokeCalls(1);
+        mFakeDeviceManager.setNumDevicesCustom(2, TestDeviceState.NOT_AVAILABLE, IDevice.class);
+        assertTrue(mFakeDeviceManager.getQueueOfAvailableDeviceSize() == 2);
+        setCreateConfigExpectations(args);
         mMockConfiguration.validateOptions();
-        replayMocks();
+
         mScheduler.start();
         mScheduler.addCommand(args);
         mScheduler.shutdownOnEmpty();
         mScheduler.join();
-        EasyMock.verify(mMockConfigFactory, mMockConfiguration, mMockInvocation);
-        assertTrue(mMockManager.getQueueOfAvailableDeviceSize() == 1);
+        verify(mMockInvocation, times(1))
+                .invoke(
+                        (IInvocationContext) any(),
+                        (IConfiguration) any(),
+                        (IRescheduler) any(),
+                        (ITestInvocationListener) any());
+
+        assertTrue(mFakeDeviceManager.getQueueOfAvailableDeviceSize() == 1);
     }
 
     /** Test that the TCP device NOT available are NOT released. */
     @Test
     public void testTcpDevice_NotReleased() throws Throwable {
         String[] args = new String[] {"test"};
-        mMockManager.setNumDevicesStub(1, TestDeviceState.NOT_AVAILABLE, new TcpDevice("serial"));
-        assertTrue(mMockManager.getQueueOfAvailableDeviceSize() == 1);
-        setCreateConfigExpectations(args, 1);
-        setExpectedInvokeCalls(1);
+        mFakeDeviceManager.setNumDevicesStub(
+                1, TestDeviceState.NOT_AVAILABLE, new TcpDevice("serial"));
+        assertTrue(mFakeDeviceManager.getQueueOfAvailableDeviceSize() == 1);
+        setCreateConfigExpectations(args);
         mMockConfiguration.validateOptions();
-        replayMocks();
+
         mScheduler.start();
         mScheduler.addCommand(args);
         mScheduler.shutdownOnEmpty();
         mScheduler.join();
-        assertTrue(mMockManager.getQueueOfAvailableDeviceSize() == 1);
-        EasyMock.verify(mMockConfigFactory, mMockConfiguration, mMockInvocation);
+        assertTrue(mFakeDeviceManager.getQueueOfAvailableDeviceSize() == 1);
+        verify(mMockInvocation, times(1))
+                .invoke(
+                        (IInvocationContext) any(),
+                        (IConfiguration) any(),
+                        (IRescheduler) any(),
+                        (ITestInvocationListener) any());
     }
 
     /** Test that the TCP device NOT available selected for a run is NOT released. */
     @Test
     public void testTcpDevice_NotReleasedMulti() throws Throwable {
         String[] args = new String[] {"test"};
-        mMockManager.setNumDevicesStub(2, TestDeviceState.NOT_AVAILABLE, new TcpDevice("serial"));
-        assertTrue(mMockManager.getQueueOfAvailableDeviceSize() == 2);
-        setCreateConfigExpectations(args, 1);
-        setExpectedInvokeCalls(1);
+        mFakeDeviceManager.setNumDevicesStub(
+                2, TestDeviceState.NOT_AVAILABLE, new TcpDevice("serial"));
+        assertTrue(mFakeDeviceManager.getQueueOfAvailableDeviceSize() == 2);
+        setCreateConfigExpectations(args);
         mMockConfiguration.validateOptions();
-        replayMocks();
+
         mScheduler.start();
         mScheduler.addCommand(args);
         mScheduler.shutdownOnEmpty();
         mScheduler.join();
-        assertTrue(mMockManager.getQueueOfAvailableDeviceSize() == 2);
-        EasyMock.verify(mMockConfigFactory, mMockConfiguration, mMockInvocation);
+        assertTrue(mFakeDeviceManager.getQueueOfAvailableDeviceSize() == 2);
+        verify(mMockInvocation, times(1))
+                .invoke(
+                        (IInvocationContext) any(),
+                        (IConfiguration) any(),
+                        (IRescheduler) any(),
+                        (ITestInvocationListener) any());
     }
 
     /** Test that the Stub device NOT available are NOT released. */
@@ -877,37 +923,46 @@ public class CommandSchedulerTest {
     public void testStubDevice_NotReleased() throws Throwable {
         String[] args = new String[] {"test"};
         IDevice stub = new StubDevice("emulator-5554", true);
-        mMockManager.setNumDevicesStub(1, TestDeviceState.NOT_AVAILABLE, stub);
-        assertTrue(mMockManager.getQueueOfAvailableDeviceSize() == 1);
-        setCreateConfigExpectations(args, 1);
-        setExpectedInvokeCalls(1);
+        mFakeDeviceManager.setNumDevicesStub(1, TestDeviceState.NOT_AVAILABLE, stub);
+        assertTrue(mFakeDeviceManager.getQueueOfAvailableDeviceSize() == 1);
+        setCreateConfigExpectations(args);
         mMockConfiguration.validateOptions();
-        replayMocks();
+
         mScheduler.start();
         mScheduler.addCommand(args);
         mScheduler.shutdownOnEmpty();
         mScheduler.join();
-        assertTrue(mMockManager.getQueueOfAvailableDeviceSize() == 1);
-        EasyMock.verify(mMockConfigFactory, mMockConfiguration, mMockInvocation);
+        assertTrue(mFakeDeviceManager.getQueueOfAvailableDeviceSize() == 1);
+        verify(mMockInvocation, times(1))
+                .invoke(
+                        (IInvocationContext) any(),
+                        (IConfiguration) any(),
+                        (IRescheduler) any(),
+                        (ITestInvocationListener) any());
     }
 
     /** Test that a device recovery state is reset when returned to the available queue. */
     @Test
     public void testDeviceRecoveryState() throws Throwable {
         String[] args = new String[] {"test"};
-        mMockManager.setNumDevicesCustomRealNoRecovery(1, IDevice.class);
-        assertEquals(1, mMockManager.getQueueOfAvailableDeviceSize());
-        setCreateConfigExpectations(args, 1);
-        setExpectedInvokeCalls(1);
+        mFakeDeviceManager.setNumDevicesCustomRealNoRecovery(1, IDevice.class);
+        assertEquals(1, mFakeDeviceManager.getQueueOfAvailableDeviceSize());
+        setCreateConfigExpectations(args);
         mMockConfiguration.validateOptions();
-        replayMocks();
+
         mScheduler.start();
         mScheduler.addCommand(args);
         mScheduler.shutdownOnEmpty();
         mScheduler.join();
-        EasyMock.verify(mMockConfigFactory, mMockConfiguration, mMockInvocation);
-        assertEquals(1, mMockManager.getQueueOfAvailableDeviceSize());
-        ITestDevice t = mMockManager.allocateDevice();
+        verify(mMockInvocation, times(1))
+                .invoke(
+                        (IInvocationContext) any(),
+                        (IConfiguration) any(),
+                        (IRescheduler) any(),
+                        (ITestInvocationListener) any());
+
+        assertEquals(1, mFakeDeviceManager.getQueueOfAvailableDeviceSize());
+        ITestDevice t = mFakeDeviceManager.allocateDevice();
         assertTrue(t.getRecoveryMode().equals(RecoveryMode.AVAILABLE));
     }
 
@@ -915,19 +970,24 @@ public class CommandSchedulerTest {
     @Test
     public void testDevice_unresponsive() throws Throwable {
         String[] args = new String[] {"test"};
-        mMockManager.setNumDevicesUnresponsive(1);
-        assertEquals(1, mMockManager.getQueueOfAvailableDeviceSize());
-        setCreateConfigExpectations(args, 1);
-        setExpectedInvokeCalls(1);
+        mFakeDeviceManager.setNumDevicesUnresponsive(1);
+        assertEquals(1, mFakeDeviceManager.getQueueOfAvailableDeviceSize());
+        setCreateConfigExpectations(args);
         mMockConfiguration.validateOptions();
-        replayMocks();
+
         mScheduler.start();
         mScheduler.addCommand(args);
         mScheduler.shutdownOnEmpty();
         mScheduler.join();
-        EasyMock.verify(mMockConfigFactory, mMockConfiguration, mMockInvocation);
+        verify(mMockInvocation, times(1))
+                .invoke(
+                        (IInvocationContext) any(),
+                        (IConfiguration) any(),
+                        (IRescheduler) any(),
+                        (ITestInvocationListener) any());
+
         // Device does not return to the list since it's unavailable.
-        assertEquals(0, mMockManager.getQueueOfAvailableDeviceSize());
+        assertEquals(0, mFakeDeviceManager.getQueueOfAvailableDeviceSize());
     }
 
     /**
@@ -937,19 +997,27 @@ public class CommandSchedulerTest {
     @Test
     public void testDisplayCommandQueue() throws Throwable {
         String[] args = new String[] {"empty"};
-        setCreateConfigExpectations(args, 1);
-        mMockConfiguration.validateOptions();
-        replayMocks();
+        setCreateConfigExpectations(args);
+
         mScheduler.start();
         mScheduler.addCommand(args);
         OutputStream res = new ByteArrayOutputStream();
         PrintWriter pw = new PrintWriter(res);
         mScheduler.displayCommandQueue(pw);
-        verifyMocks();
+
+        verify(mMockConfiguration).validateOptions();
+
+        verify(mMockConfigFactory, times(1))
+                .createConfigurationFromArgs(
+                        AdditionalMatchers.aryEq(args), isNull(), (IKeyStoreClient) any());
+        mFakeDeviceManager.assertDevicesFreed();
         pw.flush();
-        assertEquals("Id  Config  Created  Exec time  State            Sleep time  Rescheduled  "
-                + "Loop   \n1   empty   0m:00    0m:00      Wait_for_device  N/A         false  "
-                + "      false  \n", res.toString());
+        assertEquals(
+                "Id  Config  Created  Exec time  State            Sleep time  Rescheduled  Loop  "
+                    + " \n"
+                    + "1   empty   0m:00    0m:00      Wait_for_device  N/A         false       "
+                    + " false  \n",
+                res.toString());
         mScheduler.shutdown();
     }
 
@@ -962,14 +1030,20 @@ public class CommandSchedulerTest {
         String[] args = new String[] {"empty"};
         OutputStream res = new ByteArrayOutputStream();
         PrintWriter pw = new PrintWriter(res);
-        setCreateConfigExpectations(args, 1);
-        mMockConfiguration.validateOptions();
-        mMockConfiguration.dumpXml(EasyMock.anyObject());
-        replayMocks();
+        setCreateConfigExpectations(args);
+
+        mMockConfiguration.dumpXml(any());
+
         mScheduler.start();
         mScheduler.addCommand(args);
         mScheduler.dumpCommandsXml(pw, null);
-        verifyMocks();
+
+        verify(mMockConfiguration).validateOptions();
+
+        verify(mMockConfigFactory, times(1))
+                .createConfigurationFromArgs(
+                        AdditionalMatchers.aryEq(args), isNull(), (IKeyStoreClient) any());
+        mFakeDeviceManager.assertDevicesFreed();
         pw.flush();
         String filename = res.toString().replace("Saved command dump to ", "").trim();
         File test = new File(filename);
@@ -988,15 +1062,20 @@ public class CommandSchedulerTest {
     @Test
     public void testDisplayCommandsInfo() throws Throwable {
         String[] args = new String[] {"empty"};
-        setCreateConfigExpectations(args, 1);
-        mMockConfiguration.validateOptions();
-        replayMocks();
+        setCreateConfigExpectations(args);
+
         mScheduler.start();
         mScheduler.addCommand(args);
         OutputStream res = new ByteArrayOutputStream();
         PrintWriter pw = new PrintWriter(res);
         mScheduler.displayCommandsInfo(pw, null);
-        verifyMocks();
+
+        verify(mMockConfiguration).validateOptions();
+
+        verify(mMockConfigFactory, times(1))
+                .createConfigurationFromArgs(
+                        AdditionalMatchers.aryEq(args), isNull(), (IKeyStoreClient) any());
+        mFakeDeviceManager.assertDevicesFreed();
         pw.flush();
         assertEquals("Command 1: [0m:00] empty\n", res.toString());
         mScheduler.shutdown();
@@ -1009,9 +1088,9 @@ public class CommandSchedulerTest {
     @Test
     public void testGetInvocationInfo_null() throws Throwable {
         String[] args = new String[] {"empty", "test"};
-        setCreateConfigExpectations(args, 1);
+        setCreateConfigExpectations(args);
         mMockConfiguration.validateOptions();
-        replayMocks();
+
         mScheduler.start();
         mScheduler.addCommand(args);
         assertNull(mScheduler.getInvocationInfo(999));
@@ -1021,13 +1100,13 @@ public class CommandSchedulerTest {
     @Test
     public void testAllocateDevices() throws Exception {
         String[] args = new String[] {"foo", "test"};
-        mMockManager.setNumDevices(1);
-        setCreateConfigExpectations(args, 1);
+        mFakeDeviceManager.setNumDevices(1);
+        setCreateConfigExpectations(args);
         mMockConfiguration.validateOptions();
-        replayMocks();
+
         mScheduler.start();
         DeviceAllocationResult results =
-                mScheduler.allocateDevices(mMockConfiguration, mMockManager);
+                mScheduler.allocateDevices(mMockConfiguration, mFakeDeviceManager);
         assertTrue(results.wasAllocationSuccessful());
         Map<String, ITestDevice> devices = results.getAllocatedDevices();
         assertEquals(1, devices.size());
@@ -1037,8 +1116,8 @@ public class CommandSchedulerTest {
     @Test
     public void testAllocateDevices_replicated() throws Exception {
         String[] args = new String[] {"foo", "test"};
-        mMockManager.setNumDevices(3);
-        setCreateConfigExpectations(args, 1);
+        mFakeDeviceManager.setNumDevices(3);
+        setCreateConfigExpectations(args);
         OptionSetter setter = new OptionSetter(mCommandOptions);
         setter.setOptionValue("replicate-parent-setup", "true");
         mCommandOptions.setShardCount(3);
@@ -1046,16 +1125,15 @@ public class CommandSchedulerTest {
         for (int i = 0; i < 2; i++) {
             IConfiguration configReplicat = new Configuration("test", "test");
             configReplicat.setDeviceConfig(new DeviceConfigurationHolder("serial"));
-            EasyMock.expect(
-                            mMockConfiguration.partialDeepClone(
-                                    Arrays.asList(Configuration.DEVICE_NAME), mMockKeyStoreClient))
-                    .andReturn(configReplicat);
+            when(mMockConfiguration.partialDeepClone(
+                            Arrays.asList(Configuration.DEVICE_NAME), mMockKeyStoreClient))
+                    .thenReturn(configReplicat);
         }
-        mMockConfiguration.setDeviceConfigList(EasyMock.anyObject());
-        replayMocks();
+        mMockConfiguration.setDeviceConfigList(any());
+
         mScheduler.start();
         DeviceAllocationResult results =
-                mScheduler.allocateDevices(mMockConfiguration, mMockManager);
+                mScheduler.allocateDevices(mMockConfiguration, mFakeDeviceManager);
         assertTrue(results.wasAllocationSuccessful());
         Map<String, ITestDevice> devices = results.getAllocatedDevices();
         // With replicated setup, all devices get allocated.
@@ -1075,20 +1153,20 @@ public class CommandSchedulerTest {
     public void testAllocateDevices_multipleDevices() throws Exception {
         String[] args = new String[] {"foo", "test"};
 
-        mMockManager.setNumDevices(2);
-        mMockDeviceConfig.add(createDeviceConfig("serial0"));
-        mMockDeviceConfig.add(createDeviceConfig("serial1"));
+        mFakeDeviceManager.setNumDevices(2);
+        mDeviceConfigList.add(createDeviceConfig("serial0"));
+        mDeviceConfigList.add(createDeviceConfig("serial1"));
 
-        setCreateConfigExpectations(args, 1);
+        setCreateConfigExpectations(args);
         mMockConfiguration.validateOptions();
-        replayMocks();
+
         mScheduler.start();
         DeviceAllocationResult results =
-                mScheduler.allocateDevices(mMockConfiguration, mMockManager);
+                mScheduler.allocateDevices(mMockConfiguration, mFakeDeviceManager);
         assertTrue(results.wasAllocationSuccessful());
         Map<String, ITestDevice> devices = results.getAllocatedDevices();
         assertEquals(2, devices.size());
-        assertEquals(0, mMockManager.getQueueOfAvailableDeviceSize());
+        assertEquals(0, mFakeDeviceManager.getQueueOfAvailableDeviceSize());
         mScheduler.shutdown();
     }
 
@@ -1096,20 +1174,20 @@ public class CommandSchedulerTest {
     public void testAllocateDevices_multipleDevices_failed() throws Exception {
         String[] args = new String[] {"foo", "test"};
 
-        mMockManager.setNumDevices(2);
-        mMockDeviceConfig.add(createDeviceConfig("serial0"));
-        mMockDeviceConfig.add(createDeviceConfig("not_exist_serial"));
+        mFakeDeviceManager.setNumDevices(2);
+        mDeviceConfigList.add(createDeviceConfig("serial0"));
+        mDeviceConfigList.add(createDeviceConfig("not_exist_serial"));
 
-        setCreateConfigExpectations(args, 1);
+        setCreateConfigExpectations(args);
         mMockConfiguration.validateOptions();
-        replayMocks();
+
         mScheduler.start();
         DeviceAllocationResult results =
-                mScheduler.allocateDevices(mMockConfiguration, mMockManager);
+                mScheduler.allocateDevices(mMockConfiguration, mFakeDeviceManager);
         assertFalse(results.wasAllocationSuccessful());
         Map<String, ITestDevice> devices = results.getAllocatedDevices();
         assertEquals(0, devices.size());
-        assertEquals(2, mMockManager.getQueueOfAvailableDeviceSize());
+        assertEquals(2, mFakeDeviceManager.getQueueOfAvailableDeviceSize());
         mScheduler.shutdown();
     }
 
@@ -1120,31 +1198,43 @@ public class CommandSchedulerTest {
     @Test
     @SuppressWarnings("unchecked")
     public void testExecCommand_multipleDevices() throws Throwable {
-        String[] args = new String[] {
-            "foo"
-        };
-        mMockManager.setNumDevices(2);
-        mMockDeviceConfig.add(createDeviceConfig("serial0"));
-        mMockDeviceConfig.add(createDeviceConfig("serial1"));
-        setCreateConfigExpectations(args, 1);
-        mMockConfiguration.validateOptions();
-        mMockInvocation.invoke((IInvocationContext)EasyMock.anyObject(),
-                (IConfiguration)EasyMock.anyObject(), (IRescheduler)EasyMock.anyObject(),
-                (ITestInvocationListener)EasyMock.anyObject(),
+        String[] args = new String[] {"foo"};
+        mFakeDeviceManager.setNumDevices(2);
+        mDeviceConfigList.add(createDeviceConfig("serial0"));
+        mDeviceConfigList.add(createDeviceConfig("serial1"));
+        setCreateConfigExpectations(args);
+
+        mMockInvocation.invoke(
+                (IInvocationContext) any(),
+                (IConfiguration) any(),
+                (IRescheduler) any(),
+                (ITestInvocationListener) any(),
                 // This is FreeDeviceHandler.
-                (IScheduledInvocationListener)EasyMock.anyObject());
-        IScheduledInvocationListener mockListener = EasyMock
-                .createMock(IScheduledInvocationListener.class);
-        mockListener.invocationInitiated((IInvocationContext) EasyMock.anyObject());
-        mockListener.invocationComplete((IInvocationContext)EasyMock.anyObject(),
-                (Map<ITestDevice, FreeDeviceState>)EasyMock.anyObject());
-        replayMocks(mockListener);
+                (IScheduledInvocationListener) any());
+        IScheduledInvocationListener mockListener = mock(IScheduledInvocationListener.class);
+        mockListener.invocationInitiated((IInvocationContext) any());
+        mockListener.invocationComplete(
+                (IInvocationContext) any(), (Map<ITestDevice, FreeDeviceState>) any());
+        verify(mMockInvocation, times(1))
+                .invoke(
+                        (IInvocationContext) any(),
+                        (IConfiguration) any(),
+                        (IRescheduler) any(),
+                        (ITestInvocationListener) any(),
+                        // This is FreeDeviceHandler.
+                        (IScheduledInvocationListener) any());
 
         mScheduler.start();
         mScheduler.execCommand(mockListener, args);
         mScheduler.shutdownOnEmpty();
         mScheduler.join(2 * 1000);
-        verifyMocks(mockListener);
+
+        verify(mMockConfiguration).validateOptions();
+
+        verify(mMockConfigFactory, times(1))
+                .createConfigurationFromArgs(
+                        AdditionalMatchers.aryEq(args), isNull(), (IKeyStoreClient) any());
+        mFakeDeviceManager.assertDevicesFreed();
     }
 
     /**
@@ -1153,17 +1243,13 @@ public class CommandSchedulerTest {
      */
     @Test
     public void testExecCommand_multipleDevices_noDevice() throws Throwable {
-        String[] args = new String[] {
-            "foo"
-        };
-        mMockManager.setNumDevices(2);
-        mMockDeviceConfig.add(createDeviceConfig("serial0"));
-        mMockDeviceConfig.add(createDeviceConfig("not_exist_serial"));
-        setCreateConfigExpectations(args, 1);
-        mMockConfiguration.validateOptions();
-        IScheduledInvocationListener mockListener = EasyMock
-                .createMock(IScheduledInvocationListener.class);
-        replayMocks(mockListener);
+        String[] args = new String[] {"foo"};
+        mFakeDeviceManager.setNumDevices(2);
+        mDeviceConfigList.add(createDeviceConfig("serial0"));
+        mDeviceConfigList.add(createDeviceConfig("not_exist_serial"));
+        setCreateConfigExpectations(args);
+
+        IScheduledInvocationListener mockListener = mock(IScheduledInvocationListener.class);
 
         mScheduler.start();
         try {
@@ -1174,7 +1260,13 @@ public class CommandSchedulerTest {
         }
         mScheduler.shutdownOnEmpty();
         mScheduler.join(2 * 1000);
-        verifyMocks(mockListener);
+
+        verify(mMockConfiguration).validateOptions();
+
+        verify(mMockConfigFactory, times(1))
+                .createConfigurationFromArgs(
+                        AdditionalMatchers.aryEq(args), isNull(), (IKeyStoreClient) any());
+        mFakeDeviceManager.assertDevicesFreed();
     }
 
     /**
@@ -1187,34 +1279,24 @@ public class CommandSchedulerTest {
                 new String[] {
                     "foo", "--invocation-data", "test",
                 };
-        setCreateConfigExpectations(args, 1);
+        setCreateConfigExpectations(args);
         OptionSetter setter = new OptionSetter(mCommandOptions);
         // If invocation-data are added and we are in a versioned invocation, the data should not
         // be added again.
         setter.setOptionValue("invocation-data", "key", "value");
-        mMockConfigDescriptor.setSandboxed(true);
-
-        mMockInvocation.invoke(
-                (IInvocationContext) EasyMock.anyObject(),
-                (IConfiguration) EasyMock.anyObject(),
-                (IRescheduler) EasyMock.anyObject(),
-                (ITestInvocationListener) EasyMock.anyObject(),
-                EasyMock.anyObject());
-        EasyMock.expectLastCall().times(1);
+        mConfigDescriptor.setSandboxed(true);
 
         mMockConfiguration.validateOptions();
-        IDevice mockIDevice = EasyMock.createMock(IDevice.class);
-        ITestDevice mockDevice = EasyMock.createMock(ITestDevice.class);
-        EasyMock.expect(mockDevice.getSerialNumber()).andStubReturn("serial");
-        EasyMock.expect(mockDevice.getDeviceState()).andStubReturn(TestDeviceState.ONLINE);
-        mockDevice.setRecoveryMode(EasyMock.eq(RecoveryMode.AVAILABLE));
-        EasyMock.expect(mockDevice.getIDevice()).andStubReturn(mockIDevice);
-        IScheduledInvocationListener mockListener =
-                EasyMock.createMock(IScheduledInvocationListener.class);
-        mockListener.invocationInitiated((InvocationContext) EasyMock.anyObject());
-        mockListener.invocationComplete(
-                (IInvocationContext) EasyMock.anyObject(), EasyMock.anyObject());
-        EasyMock.expect(mockDevice.waitForDeviceShell(EasyMock.anyLong())).andReturn(true);
+        IDevice mockIDevice = mock(IDevice.class);
+        ITestDevice mockDevice = mock(ITestDevice.class);
+        when(mockDevice.getSerialNumber()).thenReturn("serial");
+        when(mockDevice.getDeviceState()).thenReturn(TestDeviceState.ONLINE);
+        mockDevice.setRecoveryMode(eq(RecoveryMode.AVAILABLE));
+        when(mockDevice.getIDevice()).thenReturn(mockIDevice);
+        IScheduledInvocationListener mockListener = mock(IScheduledInvocationListener.class);
+        mockListener.invocationInitiated((InvocationContext) any());
+        mockListener.invocationComplete((IInvocationContext) any(), any());
+        when(mockDevice.waitForDeviceShell(anyLong())).thenReturn(true);
 
         mScheduler =
                 new TestableCommandScheduler() {
@@ -1230,12 +1312,23 @@ public class CommandSchedulerTest {
                     }
                 };
 
-        replayMocks(mockDevice, mockListener);
         mScheduler.start();
         mScheduler.execCommand(mockListener, args);
         mScheduler.shutdownOnEmpty();
         mScheduler.join(2 * 1000);
-        verifyMocks(mockListener);
+        verify(mMockInvocation, times(1))
+                .invoke(
+                        (IInvocationContext) any(),
+                        (IConfiguration) any(),
+                        (IRescheduler) any(),
+                        (ITestInvocationListener) any(),
+                        // This is FreeDeviceHandler.
+                        (IScheduledInvocationListener) any());
+
+        verify(mMockConfigFactory, times(1))
+                .createConfigurationFromArgs(
+                        AdditionalMatchers.aryEq(args), isNull(), (IKeyStoreClient) any());
+        mFakeDeviceManager.assertDevicesFreed();
 
         // only attribute is invocation ID
         assertEquals(1, mContext.getAttributes().size());

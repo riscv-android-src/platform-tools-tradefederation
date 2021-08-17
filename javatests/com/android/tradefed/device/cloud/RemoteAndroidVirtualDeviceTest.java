@@ -20,8 +20,11 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.IDevice.DeviceState;
@@ -49,13 +52,14 @@ import com.android.tradefed.util.MultiMap;
 
 import com.google.common.net.HostAndPort;
 
-import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.Mock;
 import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.io.File;
 import java.io.IOException;
@@ -70,12 +74,12 @@ public class RemoteAndroidVirtualDeviceTest {
 
     private static final String MOCK_DEVICE_SERIAL = "localhost:1234";
     private static final long WAIT_FOR_TUNNEL_TIMEOUT = 10;
-    private IDevice mMockIDevice;
-    private ITestLogger mTestLogger;
-    private IDeviceStateMonitor mMockStateMonitor;
-    private IRunUtil mMockRunUtil;
-    private IDeviceMonitor mMockDvcMonitor;
-    private IDeviceRecovery mMockRecovery;
+    @Mock IDevice mMockIDevice;
+    @Mock ITestLogger mTestLogger;
+    @Mock IDeviceStateMonitor mMockStateMonitor;
+    @Mock IRunUtil mMockRunUtil;
+    @Mock IDeviceMonitor mMockDvcMonitor;
+    @Mock IDeviceRecovery mMockRecovery;
     private RemoteAndroidVirtualDevice mTestDevice;
     private GceSshTunnelMonitor mGceSshMonitor;
     private boolean mUseRealTunnel = false;
@@ -124,14 +128,11 @@ public class RemoteAndroidVirtualDeviceTest {
 
     @Before
     public void setUp() throws Exception {
+        MockitoAnnotations.initMocks(this);
+
         mUseRealTunnel = false;
-        mTestLogger = EasyMock.createMock(ITestLogger.class);
-        mMockIDevice = EasyMock.createMock(IDevice.class);
-        EasyMock.expect(mMockIDevice.getSerialNumber()).andReturn(MOCK_DEVICE_SERIAL).anyTimes();
-        mMockRecovery = EasyMock.createMock(IDeviceRecovery.class);
-        mMockStateMonitor = EasyMock.createMock(IDeviceStateMonitor.class);
-        mMockDvcMonitor = EasyMock.createMock(IDeviceMonitor.class);
-        mMockRunUtil = EasyMock.createMock(IRunUtil.class);
+
+        when(mMockIDevice.getSerialNumber()).thenReturn(MOCK_DEVICE_SERIAL);
 
         // A TestDevice with a no-op recoverDevice() implementation
         mTestDevice = new TestableRemoteAndroidVirtualDevice();
@@ -191,14 +192,13 @@ public class RemoteAndroidVirtualDeviceTest {
                         };
                     }
                 };
-        EasyMock.replay(mMockRunUtil);
+
         try {
             mTestDevice.launchGce(mMockBuildInfo, null);
             fail("A TargetSetupError should have been thrown");
         } catch (TargetSetupError expected) {
             assertEquals(expectedException, expected.getMessage());
         }
-        EasyMock.verify(mMockRunUtil);
     }
 
     /**
@@ -208,9 +208,8 @@ public class RemoteAndroidVirtualDeviceTest {
     @Test
     public void testWaitForTunnelOnline() throws Exception {
         doReturn(true).when(mGceSshMonitor).isTunnelAlive();
-        EasyMock.replay(mMockRunUtil);
+
         mTestDevice.waitForTunnelOnline(WAIT_FOR_TUNNEL_TIMEOUT);
-        EasyMock.verify(mMockRunUtil);
     }
 
     /**
@@ -219,17 +218,15 @@ public class RemoteAndroidVirtualDeviceTest {
      */
     @Test
     public void testWaitForTunnelOnline_notOnline() throws Exception {
-        mMockRunUtil.sleep(EasyMock.anyLong());
-        EasyMock.expectLastCall().anyTimes();
+
         doReturn(false).when(mGceSshMonitor).isTunnelAlive();
-        EasyMock.replay(mMockRunUtil);
+
         try {
             mTestDevice.waitForTunnelOnline(WAIT_FOR_TUNNEL_TIMEOUT);
             fail("Should have thrown an exception.");
         } catch (DeviceNotAvailableException expected) {
             // expected.
         }
-        EasyMock.verify(mMockRunUtil);
     }
 
     /**
@@ -239,7 +236,7 @@ public class RemoteAndroidVirtualDeviceTest {
     @Test
     public void testWaitForTunnelOnline_tunnelTerminated() throws Exception {
         mGceSshMonitor = null;
-        EasyMock.replay(mMockRunUtil);
+
         try {
             mTestDevice.waitForTunnelOnline(WAIT_FOR_TUNNEL_TIMEOUT);
             fail("Should have thrown an exception.");
@@ -249,13 +246,12 @@ public class RemoteAndroidVirtualDeviceTest {
                             "Tunnel did not come back online after %sms", WAIT_FOR_TUNNEL_TIMEOUT),
                     expected.getMessage());
         }
-        EasyMock.verify(mMockRunUtil);
     }
 
     /** Test {@link RemoteAndroidVirtualDevice#preInvocationSetup(IBuildInfo)}. */
     @Test
     public void testPreInvocationSetup() throws Exception {
-        IBuildInfo mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
+        IBuildInfo mMockBuildInfo = mock(IBuildInfo.class);
         mTestDevice =
                 new TestableRemoteAndroidVirtualDevice() {
                     @Override
@@ -285,12 +281,10 @@ public class RemoteAndroidVirtualDeviceTest {
                         return mGceHandler;
                     }
                 };
-        EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable(EasyMock.anyLong()))
-                .andReturn(mMockIDevice);
-        EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.ONLINE);
-        replayMocks(mMockBuildInfo);
+        when(mMockStateMonitor.waitForDeviceAvailable(Mockito.anyLong())).thenReturn(mMockIDevice);
+        when(mMockIDevice.getState()).thenReturn(DeviceState.ONLINE);
+
         mTestDevice.preInvocationSetup(mMockBuildInfo, null);
-        verifyMocks(mMockBuildInfo);
     }
 
     /**
@@ -299,7 +293,7 @@ public class RemoteAndroidVirtualDeviceTest {
      */
     @Test
     public void testPreInvocationSetup_fails() throws Exception {
-        IBuildInfo mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
+        IBuildInfo mMockBuildInfo = mock(IBuildInfo.class);
         mTestDevice =
                 new TestableRemoteAndroidVirtualDevice() {
                     @Override
@@ -314,17 +308,16 @@ public class RemoteAndroidVirtualDeviceTest {
                         return true;
                     }
                 };
-        EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable(EasyMock.anyLong()))
-                .andReturn(mMockIDevice);
-        EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.OFFLINE).times(2);
-        replayMocks(mMockBuildInfo);
+        when(mMockStateMonitor.waitForDeviceAvailable(Mockito.anyLong())).thenReturn(mMockIDevice);
+        when(mMockIDevice.getState()).thenReturn(DeviceState.OFFLINE);
+
         try {
             mTestDevice.preInvocationSetup(mMockBuildInfo, null);
             fail("Should have thrown an exception.");
         } catch (DeviceNotAvailableException expected) {
             // expected
         }
-        verifyMocks(mMockBuildInfo);
+        verify(mMockIDevice, times(2)).getState();
     }
 
     /** Test {@link RemoteAndroidVirtualDevice#postInvocationTearDown(Throwable)}. */
@@ -357,22 +350,21 @@ public class RemoteAndroidVirtualDeviceTest {
                     }
                 };
         mTestDevice.setTestLogger(mTestLogger);
-        EasyMock.expect(mMockStateMonitor.waitForDeviceNotAvailable(EasyMock.anyLong()))
-                .andReturn(true);
-        mMockStateMonitor.setIDevice(EasyMock.anyObject());
+        when(mMockStateMonitor.waitForDeviceNotAvailable(Mockito.anyLong())).thenReturn(true);
 
-        mMockIDevice.executeShellCommand(
-                EasyMock.eq("logcat -v threadtime -d"), EasyMock.anyObject(),
-                EasyMock.anyLong(), EasyMock.eq(TimeUnit.MILLISECONDS));
-        mTestLogger.testLog(
-                EasyMock.eq("device_logcat_teardown_gce"),
-                EasyMock.eq(LogDataType.LOGCAT),
-                EasyMock.anyObject());
-
-        // Initial serial is not set because we call postInvoc directly.
-        replayMocks();
         mTestDevice.postInvocationTearDown(null);
-        verifyMocks();
+
+        verify(mMockStateMonitor).setIDevice(Mockito.any());
+        verify(mMockIDevice)
+                .executeShellCommand(
+                        Mockito.eq("logcat -v threadtime -d"), Mockito.any(),
+                        Mockito.anyLong(), Mockito.eq(TimeUnit.MILLISECONDS));
+        verify(mTestLogger)
+                .testLog(
+                        Mockito.eq("device_logcat_teardown_gce"),
+                        Mockito.eq(LogDataType.LOGCAT),
+                        Mockito.any());
+
         Mockito.verify(mGceSshMonitor).shutdown();
         Mockito.verify(mGceSshMonitor).joinMonitor();
     }
@@ -415,14 +407,13 @@ public class RemoteAndroidVirtualDeviceTest {
                                 GceStatus.BOOT_FAIL))
                 .when(mGceHandler)
                 .startGce(null, null);
-        EasyMock.replay(mMockRunUtil, mMockIDevice);
+
         try {
             mTestDevice.launchGce(new BuildInfo(), null);
             fail("Should have thrown an exception");
         } catch (TargetSetupError expected) {
             // expected
         }
-        EasyMock.verify(mMockRunUtil, mMockIDevice);
     }
 
     @Test
@@ -456,18 +447,9 @@ public class RemoteAndroidVirtualDeviceTest {
         doReturn(new GceAvdInfo("ins-name", null, null, "acloud error", GceStatus.BOOT_FAIL))
                 .when(mGceHandler)
                 .startGce(null, null);
-        // Each invocation bellow will dump a logcat before the shutdown.
-        mMockIDevice.executeShellCommand(
-                EasyMock.eq("logcat -v threadtime -d"), EasyMock.anyObject(),
-                EasyMock.anyLong(), EasyMock.eq(TimeUnit.MILLISECONDS));
-        mTestLogger.testLog(
-                EasyMock.eq("device_logcat_teardown_gce"),
-                EasyMock.eq(LogDataType.LOGCAT),
-                EasyMock.anyObject());
-        EasyMock.expect(mMockStateMonitor.waitForDeviceNotAvailable(EasyMock.anyLong()))
-                .andReturn(true);
-        mMockStateMonitor.setIDevice(EasyMock.anyObject());
-        EasyMock.replay(mMockRunUtil, mMockIDevice, mMockStateMonitor);
+
+        when(mMockStateMonitor.waitForDeviceNotAvailable(Mockito.anyLong())).thenReturn(true);
+
         mTestDevice.setTestLogger(mTestLogger);
         Exception expectedException = null;
         try {
@@ -478,33 +460,17 @@ public class RemoteAndroidVirtualDeviceTest {
             expectedException = expected;
         }
         mTestDevice.postInvocationTearDown(expectedException);
-        EasyMock.verify(mMockRunUtil, mMockIDevice, mMockStateMonitor);
-    }
 
-    /**
-     * Sets all member mock objects into replay mode.
-     *
-     * @param additionalMocks extra local mock objects to set to replay mode
-     */
-    private void replayMocks(Object... additionalMocks) {
-        EasyMock.replay(
-                mMockIDevice, mMockRunUtil, mMockStateMonitor, mMockDvcMonitor, mTestLogger);
-        for (Object mock : additionalMocks) {
-            EasyMock.replay(mock);
-        }
-    }
-
-    /**
-     * Verify all member mock objects.
-     *
-     * @param additionalMocks extra local mock objects to set to verify
-     */
-    private void verifyMocks(Object... additionalMocks) {
-        EasyMock.verify(
-                mMockIDevice, mMockRunUtil, mMockStateMonitor, mMockDvcMonitor, mTestLogger);
-        for (Object mock : additionalMocks) {
-            EasyMock.verify(mock);
-        }
+        verify(mMockIDevice)
+                .executeShellCommand(
+                        Mockito.eq("logcat -v threadtime -d"), Mockito.any(),
+                        Mockito.anyLong(), Mockito.eq(TimeUnit.MILLISECONDS));
+        verify(mMockStateMonitor).setIDevice(Mockito.any());
+        verify(mTestLogger)
+                .testLog(
+                        Mockito.eq("device_logcat_teardown_gce"),
+                        Mockito.eq(LogDataType.LOGCAT),
+                        Mockito.any());
     }
 
     /**
@@ -515,10 +481,10 @@ public class RemoteAndroidVirtualDeviceTest {
     public void testDeviceNotStoreShutdownState() throws Exception {
         mUseRealTunnel = true;
         IRunUtil mockRunUtil = Mockito.mock(IRunUtil.class);
-        IBuildInfo mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
-        EasyMock.expect(mMockBuildInfo.getBuildBranch()).andStubReturn("branch");
-        EasyMock.expect(mMockBuildInfo.getBuildFlavor()).andStubReturn("flavor");
-        EasyMock.expect(mMockBuildInfo.getBuildId()).andStubReturn("id");
+        IBuildInfo mMockBuildInfo = mock(IBuildInfo.class);
+        when(mMockBuildInfo.getBuildBranch()).thenReturn("branch");
+        when(mMockBuildInfo.getBuildFlavor()).thenReturn("flavor");
+        when(mMockBuildInfo.getBuildId()).thenReturn("id");
         mTestDevice =
                 new TestableRemoteAndroidVirtualDevice() {
                     @Override
@@ -559,15 +525,11 @@ public class RemoteAndroidVirtualDeviceTest {
             // We use a missing ssh to prevent the real tunnel from running.
             FileUtil.deleteFile(tmpKeyFile);
 
-            EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable(EasyMock.anyLong()))
-                    .andReturn(mMockIDevice)
-                    .times(2);
-            EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.ONLINE).times(2);
-            EasyMock.expect(mMockStateMonitor.waitForDeviceNotAvailable(EasyMock.anyLong()))
-                    .andReturn(true)
-                    .times(2);
-            mMockStateMonitor.setIDevice(EasyMock.anyObject());
-            EasyMock.expectLastCall().times(2);
+            when(mMockStateMonitor.waitForDeviceAvailable(Mockito.anyLong()))
+                    .thenReturn(mMockIDevice);
+            when(mMockIDevice.getState()).thenReturn(DeviceState.ONLINE);
+            when(mMockStateMonitor.waitForDeviceNotAvailable(Mockito.anyLong())).thenReturn(true);
+
             doReturn(
                             new GceAvdInfo(
                                     "ins-name",
@@ -578,18 +540,6 @@ public class RemoteAndroidVirtualDeviceTest {
                     .when(mGceHandler)
                     .startGce(null, null);
 
-            // Each invocation bellow will dump a logcat before the shutdown.
-            mMockIDevice.executeShellCommand(
-                    EasyMock.eq("logcat -v threadtime -d"), EasyMock.anyObject(),
-                    EasyMock.anyLong(), EasyMock.eq(TimeUnit.MILLISECONDS));
-            EasyMock.expectLastCall().times(2);
-            mTestLogger.testLog(
-                    EasyMock.eq("device_logcat_teardown_gce"),
-                    EasyMock.eq(LogDataType.LOGCAT),
-                    EasyMock.anyObject());
-            EasyMock.expectLastCall().times(2);
-
-            replayMocks(mMockBuildInfo);
             // Run device a first time
             mTestDevice.preInvocationSetup(mMockBuildInfo, null);
             mTestDevice.getGceSshMonitor().joinMonitor();
@@ -608,7 +558,19 @@ public class RemoteAndroidVirtualDeviceTest {
             // Bridge is set to null after tear down
             assertNull(mTestDevice.getGceSshMonitor());
 
-            verifyMocks(mMockBuildInfo);
+            verify(mMockStateMonitor, times(2)).setIDevice(Mockito.any());
+            verify(mMockIDevice, times(2))
+                    .executeShellCommand(
+                            Mockito.eq("logcat -v threadtime -d"), Mockito.any(),
+                            Mockito.anyLong(), Mockito.eq(TimeUnit.MILLISECONDS));
+            verify(mTestLogger, times(2))
+                    .testLog(
+                            Mockito.eq("device_logcat_teardown_gce"),
+                            Mockito.eq(LogDataType.LOGCAT),
+                            Mockito.any());
+            verify(mMockStateMonitor, times(2)).waitForDeviceAvailable(Mockito.anyLong());
+            verify(mMockIDevice, times(2)).getState();
+            verify(mMockStateMonitor, times(2)).waitForDeviceNotAvailable(Mockito.anyLong());
         } finally {
             FileUtil.deleteFile(tmpKeyFile);
         }
@@ -619,10 +581,10 @@ public class RemoteAndroidVirtualDeviceTest {
     public void testDevice_skipTearDown() throws Exception {
         mUseRealTunnel = true;
         IRunUtil mockRunUtil = Mockito.mock(IRunUtil.class);
-        IBuildInfo mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
-        EasyMock.expect(mMockBuildInfo.getBuildBranch()).andStubReturn("branch");
-        EasyMock.expect(mMockBuildInfo.getBuildFlavor()).andStubReturn("flavor");
-        EasyMock.expect(mMockBuildInfo.getBuildId()).andStubReturn("id");
+        IBuildInfo mMockBuildInfo = mock(IBuildInfo.class);
+        when(mMockBuildInfo.getBuildBranch()).thenReturn("branch");
+        when(mMockBuildInfo.getBuildFlavor()).thenReturn("flavor");
+        when(mMockBuildInfo.getBuildId()).thenReturn("id");
         mTestDevice =
                 new TestableRemoteAndroidVirtualDevice() {
                     @Override
@@ -664,12 +626,11 @@ public class RemoteAndroidVirtualDeviceTest {
             FileUtil.deleteFile(tmpKeyFile);
             setter.setOptionValue("skip-gce-teardown", "true");
 
-            EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable(EasyMock.anyLong()))
-                    .andReturn(mMockIDevice);
-            EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.ONLINE);
-            EasyMock.expect(mMockStateMonitor.waitForDeviceNotAvailable(EasyMock.anyLong()))
-                    .andReturn(true);
-            mMockStateMonitor.setIDevice(EasyMock.anyObject());
+            when(mMockStateMonitor.waitForDeviceAvailable(Mockito.anyLong()))
+                    .thenReturn(mMockIDevice);
+            when(mMockIDevice.getState()).thenReturn(DeviceState.ONLINE);
+            when(mMockStateMonitor.waitForDeviceNotAvailable(Mockito.anyLong())).thenReturn(true);
+
             doReturn(
                             new GceAvdInfo(
                                     "ins-name",
@@ -679,15 +640,7 @@ public class RemoteAndroidVirtualDeviceTest {
                                     GceStatus.SUCCESS))
                     .when(mGceHandler)
                     .startGce(null, null);
-            mMockIDevice.executeShellCommand(
-                    EasyMock.eq("logcat -v threadtime -d"), EasyMock.anyObject(),
-                    EasyMock.anyLong(), EasyMock.eq(TimeUnit.MILLISECONDS));
-            mTestLogger.testLog(
-                    EasyMock.eq("device_logcat_teardown_gce"),
-                    EasyMock.eq(LogDataType.LOGCAT),
-                    EasyMock.anyObject());
 
-            replayMocks(mMockBuildInfo);
             // Run device a first time
             mTestDevice.preInvocationSetup(mMockBuildInfo, null);
             mTestDevice.getGceSshMonitor().joinMonitor();
@@ -696,7 +649,16 @@ public class RemoteAndroidVirtualDeviceTest {
             mTestDevice.postInvocationTearDown(null);
             // shutdown was disabled, it should not have been called.
             verify(mGceHandler, never()).shutdownGce();
-            verifyMocks(mMockBuildInfo);
+            verify(mMockStateMonitor).setIDevice(Mockito.any());
+            verify(mMockIDevice)
+                    .executeShellCommand(
+                            Mockito.eq("logcat -v threadtime -d"), Mockito.any(),
+                            Mockito.anyLong(), Mockito.eq(TimeUnit.MILLISECONDS));
+            verify(mTestLogger)
+                    .testLog(
+                            Mockito.eq("device_logcat_teardown_gce"),
+                            Mockito.eq(LogDataType.LOGCAT),
+                            Mockito.any());
         } finally {
             FileUtil.deleteFile(tmpKeyFile);
         }
@@ -707,10 +669,10 @@ public class RemoteAndroidVirtualDeviceTest {
     public void testDeviceBoot_offline() throws Exception {
         mUseRealTunnel = true;
         IRunUtil mockRunUtil = Mockito.mock(IRunUtil.class);
-        IBuildInfo mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
-        EasyMock.expect(mMockBuildInfo.getBuildBranch()).andStubReturn("branch");
-        EasyMock.expect(mMockBuildInfo.getBuildFlavor()).andStubReturn("flavor");
-        EasyMock.expect(mMockBuildInfo.getBuildId()).andStubReturn("id");
+        IBuildInfo mMockBuildInfo = mock(IBuildInfo.class);
+        when(mMockBuildInfo.getBuildBranch()).thenReturn("branch");
+        when(mMockBuildInfo.getBuildFlavor()).thenReturn("flavor");
+        when(mMockBuildInfo.getBuildId()).thenReturn("id");
         mTestDevice =
                 new TestableRemoteAndroidVirtualDevice() {
                     @Override
@@ -751,12 +713,11 @@ public class RemoteAndroidVirtualDeviceTest {
             // We use a missing ssh to prevent the real tunnel from running.
             FileUtil.deleteFile(tmpKeyFile);
 
-            EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable(EasyMock.anyLong()))
-                    .andReturn(mMockIDevice);
-            EasyMock.expect(mMockIDevice.getState()).andReturn(DeviceState.OFFLINE).times(2);
-            EasyMock.expect(mMockStateMonitor.waitForDeviceNotAvailable(EasyMock.anyLong()))
-                    .andReturn(false);
-            mMockStateMonitor.setIDevice(EasyMock.anyObject());
+            when(mMockStateMonitor.waitForDeviceAvailable(Mockito.anyLong()))
+                    .thenReturn(mMockIDevice);
+            when(mMockIDevice.getState()).thenReturn(DeviceState.OFFLINE);
+            when(mMockStateMonitor.waitForDeviceNotAvailable(Mockito.anyLong())).thenReturn(false);
+
             doReturn(
                             new GceAvdInfo(
                                     "ins-name",
@@ -779,21 +740,6 @@ public class RemoteAndroidVirtualDeviceTest {
             result.setStdout("");
             doReturn(result).when(mockRunUtil).runTimedCmd(Mockito.anyLong(), Mockito.any());
 
-            // The bugreportz is logged
-            mTestLogger.testLog(
-                    EasyMock.eq("bugreportz-ssh"),
-                    EasyMock.eq(LogDataType.BUGREPORTZ),
-                    EasyMock.anyObject());
-
-            // Each invocation bellow will dump a logcat before the shutdown.
-            mMockIDevice.executeShellCommand(
-                    EasyMock.eq("logcat -v threadtime -d"), EasyMock.anyObject(),
-                    EasyMock.anyLong(), EasyMock.eq(TimeUnit.MILLISECONDS));
-            mTestLogger.testLog(
-                    EasyMock.eq("device_logcat_teardown_gce"),
-                    EasyMock.eq(LogDataType.LOGCAT),
-                    EasyMock.anyObject());
-            replayMocks(mMockBuildInfo);
             // Run device a first time
             try {
                 mTestDevice.preInvocationSetup(mMockBuildInfo, null);
@@ -805,7 +751,22 @@ public class RemoteAndroidVirtualDeviceTest {
             // We expect to find our Runtime exception for the ssh key
             assertNotNull(mTestDevice.getGceSshMonitor().getLastException());
             mTestDevice.postInvocationTearDown(null);
-            verifyMocks(mMockBuildInfo);
+            verify(mMockIDevice, times(2)).getState();
+            verify(mMockStateMonitor).setIDevice(Mockito.any());
+            verify(mTestLogger)
+                    .testLog(
+                            Mockito.eq("bugreportz-ssh"),
+                            Mockito.eq(LogDataType.BUGREPORTZ),
+                            Mockito.any());
+            verify(mMockIDevice)
+                    .executeShellCommand(
+                            Mockito.eq("logcat -v threadtime -d"), Mockito.any(),
+                            Mockito.anyLong(), Mockito.eq(TimeUnit.MILLISECONDS));
+            verify(mTestLogger)
+                    .testLog(
+                            Mockito.eq("device_logcat_teardown_gce"),
+                            Mockito.eq(LogDataType.LOGCAT),
+                            Mockito.any());
         } finally {
             FileUtil.deleteFile(tmpKeyFile);
         }
@@ -829,7 +790,6 @@ public class RemoteAndroidVirtualDeviceTest {
         OptionSetter setter = new OptionSetter(mTestDevice.getOptions());
         setter.setOptionValue(TestDeviceOptions.INSTANCE_TYPE_OPTION, "CUTTLEFISH");
 
-        replayMocks();
         List<File> tombstones = mTestDevice.getTombstones();
         try {
             assertEquals(2, tombstones.size());
@@ -838,7 +798,6 @@ public class RemoteAndroidVirtualDeviceTest {
                 FileUtil.deleteFile(f);
             }
         }
-        verifyMocks();
     }
 
     /**
@@ -847,14 +806,13 @@ public class RemoteAndroidVirtualDeviceTest {
     @Test
     public void testPowerwashNoAvdInfo() throws Exception {
         final String expectedException = "Can not get GCE AVD Info. launch GCE first? [ : ]";
-        EasyMock.replay(mMockRunUtil, mMockIDevice);
+
         try {
             mTestDevice.powerwashGce();
             fail("Should have thrown an exception");
         } catch (TargetSetupError expected) {
             assertEquals(expectedException, expected.getMessage());
         }
-        EasyMock.verify(mMockRunUtil, mMockIDevice);
     }
 
     /** Test powerwash GCE command */
@@ -882,7 +840,7 @@ public class RemoteAndroidVirtualDeviceTest {
                     }
                 };
         String instanceUser = "user1";
-        IBuildInfo mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
+        IBuildInfo mMockBuildInfo = mock(IBuildInfo.class);
         OptionSetter setter = new OptionSetter(mTestDevice.getOptions());
         setter.setOptionValue("instance-user", instanceUser);
         String powerwashCommand = String.format("/home/%s/bin/powerwash_cvd", instanceUser);
@@ -898,30 +856,27 @@ public class RemoteAndroidVirtualDeviceTest {
         OutputStream stdout = null;
         OutputStream stderr = null;
         CommandResult powerwashCmdResult = new CommandResult(CommandStatus.SUCCESS);
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(),
-                                EasyMock.eq(stdout),
-                                EasyMock.eq(stderr),
-                                EasyMock.eq("ssh"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("UserKnownHostsFile=/dev/null"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("StrictHostKeyChecking=no"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("ServerAliveInterval=10"),
-                                EasyMock.eq("-i"),
-                                EasyMock.anyObject(),
-                                EasyMock.eq(avdConnectHost),
-                                EasyMock.eq(powerwashCommand)))
-                .andReturn(powerwashCmdResult);
-        EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable(EasyMock.anyLong()))
-                .andReturn(mMockIDevice);
-        EasyMock.replay(mMockRunUtil, mMockIDevice);
+        when(mMockRunUtil.runTimedCmd(
+                        Mockito.anyLong(),
+                        Mockito.eq(stdout),
+                        Mockito.eq(stderr),
+                        Mockito.eq("ssh"),
+                        Mockito.eq("-o"),
+                        Mockito.eq("UserKnownHostsFile=/dev/null"),
+                        Mockito.eq("-o"),
+                        Mockito.eq("StrictHostKeyChecking=no"),
+                        Mockito.eq("-o"),
+                        Mockito.eq("ServerAliveInterval=10"),
+                        Mockito.eq("-i"),
+                        Mockito.any(),
+                        Mockito.eq(avdConnectHost),
+                        Mockito.eq(powerwashCommand)))
+                .thenReturn(powerwashCmdResult);
+        when(mMockStateMonitor.waitForDeviceAvailable(Mockito.anyLong())).thenReturn(mMockIDevice);
+
         // Launch GCE before powerwash.
         mTestDevice.launchGce(mMockBuildInfo, null);
         mTestDevice.powerwashGce();
-        EasyMock.verify(mMockRunUtil, mMockIDevice);
     }
 
     /** Test powerwash Oxygen GCE command */
@@ -949,7 +904,7 @@ public class RemoteAndroidVirtualDeviceTest {
                     }
                 };
         String instanceUser = "user1";
-        IBuildInfo mMockBuildInfo = EasyMock.createMock(IBuildInfo.class);
+        IBuildInfo mMockBuildInfo = mock(IBuildInfo.class);
         OptionSetter setter = new OptionSetter(mTestDevice.getOptions());
         setter.setOptionValue("instance-user", instanceUser);
         setter.setOptionValue("use-oxygen", "true");
@@ -966,52 +921,48 @@ public class RemoteAndroidVirtualDeviceTest {
         OutputStream stderr = null;
         CommandResult locateCmdResult = new CommandResult(CommandStatus.SUCCESS);
         locateCmdResult.setStdout("/tmp/cf_dir/bin/powerwash_cvd");
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(),
-                                EasyMock.eq(stdout),
-                                EasyMock.eq(stderr),
-                                EasyMock.eq("ssh"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("UserKnownHostsFile=/dev/null"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("StrictHostKeyChecking=no"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("ServerAliveInterval=10"),
-                                EasyMock.eq("-i"),
-                                EasyMock.anyObject(),
-                                EasyMock.eq(avdConnectHost),
-                                EasyMock.eq("toybox"),
-                                EasyMock.eq("find"),
-                                EasyMock.eq("/tmp"),
-                                EasyMock.eq("-name"),
-                                EasyMock.eq("powerwash_cvd")))
-                .andReturn(locateCmdResult);
+        when(mMockRunUtil.runTimedCmd(
+                        Mockito.anyLong(),
+                        Mockito.eq(stdout),
+                        Mockito.eq(stderr),
+                        Mockito.eq("ssh"),
+                        Mockito.eq("-o"),
+                        Mockito.eq("UserKnownHostsFile=/dev/null"),
+                        Mockito.eq("-o"),
+                        Mockito.eq("StrictHostKeyChecking=no"),
+                        Mockito.eq("-o"),
+                        Mockito.eq("ServerAliveInterval=10"),
+                        Mockito.eq("-i"),
+                        Mockito.any(),
+                        Mockito.eq(avdConnectHost),
+                        Mockito.eq("toybox"),
+                        Mockito.eq("find"),
+                        Mockito.eq("/tmp"),
+                        Mockito.eq("-name"),
+                        Mockito.eq("powerwash_cvd")))
+                .thenReturn(locateCmdResult);
         CommandResult powerwashCmdResult = new CommandResult(CommandStatus.SUCCESS);
-        EasyMock.expect(
-                        mMockRunUtil.runTimedCmd(
-                                EasyMock.anyLong(),
-                                EasyMock.eq(stdout),
-                                EasyMock.eq(stderr),
-                                EasyMock.eq("ssh"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("UserKnownHostsFile=/dev/null"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("StrictHostKeyChecking=no"),
-                                EasyMock.eq("-o"),
-                                EasyMock.eq("ServerAliveInterval=10"),
-                                EasyMock.eq("-i"),
-                                EasyMock.anyObject(),
-                                EasyMock.eq(avdConnectHost),
-                                EasyMock.eq("HOME=/tmp/cf_dir"),
-                                EasyMock.eq("/tmp/cf_dir/bin/powerwash_cvd")))
-                .andReturn(powerwashCmdResult);
-        EasyMock.expect(mMockStateMonitor.waitForDeviceAvailable(EasyMock.anyLong()))
-                .andReturn(mMockIDevice);
-        EasyMock.replay(mMockRunUtil, mMockIDevice);
+        when(mMockRunUtil.runTimedCmd(
+                        Mockito.anyLong(),
+                        Mockito.eq(stdout),
+                        Mockito.eq(stderr),
+                        Mockito.eq("ssh"),
+                        Mockito.eq("-o"),
+                        Mockito.eq("UserKnownHostsFile=/dev/null"),
+                        Mockito.eq("-o"),
+                        Mockito.eq("StrictHostKeyChecking=no"),
+                        Mockito.eq("-o"),
+                        Mockito.eq("ServerAliveInterval=10"),
+                        Mockito.eq("-i"),
+                        Mockito.any(),
+                        Mockito.eq(avdConnectHost),
+                        Mockito.eq("HOME=/tmp/cf_dir"),
+                        Mockito.eq("/tmp/cf_dir/bin/powerwash_cvd")))
+                .thenReturn(powerwashCmdResult);
+        when(mMockStateMonitor.waitForDeviceAvailable(Mockito.anyLong())).thenReturn(mMockIDevice);
+
         // Launch GCE before powerwash.
         mTestDevice.launchGce(mMockBuildInfo, null);
         mTestDevice.powerwashGce();
-        EasyMock.verify(mMockRunUtil, mMockIDevice);
     }
 }

@@ -147,7 +147,7 @@ java_library_host {
         "gson-prebuilt-jar",
         "guice",
         "jacoco-cli",
-        "jline-1.0",
+        "jline",
         "junit-params",
         "kxml2-2.3.0",
         "libprotobuf-java-full",

@@ -147,7 +147,7 @@ public class FakeTestTest {
     public void testRun_empty() throws Exception {
         final String name = "com.moo.cow";
         mListener.testRunStarted(EasyMock.eq(name), EasyMock.eq(0));
-        mListener.testRunEnded(EasyMock.eq(0l), EasyMock.<HashMap<String, Metric>>anyObject());
+        mListener.testRunEnded(EasyMock.eq(0L), EasyMock.<HashMap<String, Metric>>anyObject());
 
         EasyMock.replay(mListener);
         mOption.setOptionValue("run", name, "");
@@ -160,7 +160,7 @@ public class FakeTestTest {
         final String name = "com.moo.cow";
         mListener.testRunStarted(EasyMock.eq(name), EasyMock.eq(1));
         testPassExpectations(mListener, name, 1);
-        mListener.testRunEnded(EasyMock.eq(0l), EasyMock.<HashMap<String, Metric>>anyObject());
+        mListener.testRunEnded(EasyMock.eq(0L), EasyMock.<HashMap<String, Metric>>anyObject());
 
         EasyMock.replay(mListener);
         mOption.setOptionValue("run", name, "P");
@@ -173,7 +173,7 @@ public class FakeTestTest {
         final String name = "com.moo.cow";
         mListener.testRunStarted(EasyMock.eq(name), EasyMock.eq(1));
         testFailExpectations(mListener, name, 1);
-        mListener.testRunEnded(EasyMock.eq(0l), EasyMock.<HashMap<String, Metric>>anyObject());
+        mListener.testRunEnded(EasyMock.eq(0L), EasyMock.<HashMap<String, Metric>>anyObject());
 
         EasyMock.replay(mListener);
         mOption.setOptionValue("run", name, "F");
@@ -191,7 +191,7 @@ public class FakeTestTest {
         testPassExpectations(mListener, name, i++);
         testAssumptionExpectations(mListener, name, i++);
         testIgnoredExpectations(mListener, name, i++);
-        mListener.testRunEnded(EasyMock.eq(0l), EasyMock.<HashMap<String, Metric>>anyObject());
+        mListener.testRunEnded(EasyMock.eq(0L), EasyMock.<HashMap<String, Metric>>anyObject());
 
         EasyMock.replay(mListener);
         mOption.setOptionValue("run", name, "PFPAI");
@@ -212,7 +212,7 @@ public class FakeTestTest {
                 EasyMock.eq(testRunLog.getName()),
                 EasyMock.eq(LogDataType.UNKNOWN),
                 EasyMock.anyObject());
-        mListener.testRunEnded(EasyMock.eq(0l), EasyMock.<HashMap<String, Metric>>anyObject());
+        mListener.testRunEnded(EasyMock.eq(0L), EasyMock.<HashMap<String, Metric>>anyObject());
         mListener.testLog(
                 EasyMock.eq(invocationLog.getName()),
                 EasyMock.eq(LogDataType.UNKNOWN),
@@ -237,7 +237,7 @@ public class FakeTestTest {
         testFailExpectations(mListener, name, i++);
         testPassExpectations(mListener, name, i++);
         testFailExpectations(mListener, name, i++);
-        mListener.testRunEnded(EasyMock.eq(0l), EasyMock.<HashMap<String, Metric>>anyObject());
+        mListener.testRunEnded(EasyMock.eq(0L), EasyMock.<HashMap<String, Metric>>anyObject());
 
         EasyMock.replay(mListener);
         mOption.setOptionValue("run", name, "(PF)2");
@@ -262,7 +262,7 @@ public class FakeTestTest {
         testPassExpectations(mListener, name, i++);
         testFailExpectations(mListener, name, i++);
 
-        mListener.testRunEnded(EasyMock.eq(0l), EasyMock.<HashMap<String, Metric>>anyObject());
+        mListener.testRunEnded(EasyMock.eq(0L), EasyMock.<HashMap<String, Metric>>anyObject());
 
         EasyMock.replay(mListener);
         mOption.setOptionValue("run", name, "((PF)2)2");
@@ -277,20 +277,20 @@ public class FakeTestTest {
         mListener.testRunStarted(EasyMock.eq(name1), EasyMock.eq(2));
         testPassExpectations(mListener, name1, i++);
         testFailExpectations(mListener, name1, i++);
-        mListener.testRunEnded(EasyMock.eq(0l), EasyMock.<HashMap<String, Metric>>anyObject());
+        mListener.testRunEnded(EasyMock.eq(0L), EasyMock.<HashMap<String, Metric>>anyObject());
 
         final String name2 = "com.quack.duck";
         i = 1;
         mListener.testRunStarted(EasyMock.eq(name2), EasyMock.eq(2));
         testFailExpectations(mListener, name2, i++);
         testPassExpectations(mListener, name2, i++);
-        mListener.testRunEnded(EasyMock.eq(0l), EasyMock.<HashMap<String, Metric>>anyObject());
+        mListener.testRunEnded(EasyMock.eq(0L), EasyMock.<HashMap<String, Metric>>anyObject());
 
         final String name3 = "com.oink.pig";
         i = 1;
         mListener.testRunStarted(EasyMock.eq(name3), EasyMock.eq(0));
         // empty run
-        mListener.testRunEnded(EasyMock.eq(0l), EasyMock.<HashMap<String, Metric>>anyObject());
+        mListener.testRunEnded(EasyMock.eq(0L), EasyMock.<HashMap<String, Metric>>anyObject());
 
         EasyMock.replay(mListener);
         mOption.setOptionValue("run", name1, "PF");

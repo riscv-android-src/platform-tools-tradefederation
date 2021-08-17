@@ -15,32 +15,35 @@
  */
 package com.android.tradefed.util;
 
-import com.android.tradefed.device.ITestDevice;
+import static org.junit.Assert.fail;
 
+import com.android.tradefed.device.ITestDevice;
 import com.android.tradefed.util.SimplePerfUtil.SimplePerfType;
 
-import junit.framework.TestCase;
-
-import org.easymock.EasyMock;
 import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Unit tests for SimplePerfUtil
- */
-public class SimplePerfUtilTest extends TestCase {
+/** Unit tests for SimplePerfUtil */
+@RunWith(JUnit4.class)
+public class SimplePerfUtilTest {
 
     private SimplePerfUtil spu = null;
-    private ITestDevice mockDevice = null;
+    @Mock ITestDevice mockDevice;
 
-    @Override
-    protected void setUp() throws Exception {
-        super.setUp();
-        mockDevice = EasyMock.createMock(ITestDevice.class);
+    @Before
+    public void setUp() throws Exception {
+        MockitoAnnotations.initMocks(this);
     }
 
+    @Test
     public void testCommandStringPreparerWithoutParams() {
         spu = SimplePerfUtil.newInstance(mockDevice, SimplePerfType.STAT);
         String command = "ls -l";
@@ -48,6 +51,7 @@ public class SimplePerfUtilTest extends TestCase {
         Assert.assertEquals("simpleperf stat " + command, fullCommand);
     }
 
+    @Test
     public void testCommandStringPreparerWithParams() {
         spu = SimplePerfUtil.newInstance(mockDevice, SimplePerfType.RECORD);
         String command = "sleep 10";
@@ -58,16 +62,18 @@ public class SimplePerfUtilTest extends TestCase {
         params.add("perf.data");
         spu.setArgumentList(params);
         String fullCommand = spu.commandStringPreparer(command);
-        Assert.assertEquals("simpleperf record -e cpu-cycles:k --no-inherit perf.data " + command,
-                fullCommand);
+        Assert.assertEquals(
+                "simpleperf record -e cpu-cycles:k --no-inherit perf.data " + command, fullCommand);
     }
 
+    @Test
     public void testCommandStringPreparerWithNullCommand() {
         spu = SimplePerfUtil.newInstance(mockDevice, SimplePerfType.LIST);
         String fullCommand = spu.commandStringPreparer(null);
         Assert.assertEquals("simpleperf list ", fullCommand);
     }
 
+    @Test
     public void testConstructorWithNullParameter() {
         try {
             spu = SimplePerfUtil.newInstance(null, SimplePerfType.STAT);

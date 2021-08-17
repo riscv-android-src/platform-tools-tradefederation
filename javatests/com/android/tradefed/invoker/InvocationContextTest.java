@@ -20,6 +20,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.mock;
 
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.IBuildInfo;
@@ -32,7 +33,6 @@ import com.android.tradefed.util.MultiMap;
 import com.android.tradefed.util.SerializationUtil;
 import com.android.tradefed.util.UniqueMultiMap;
 
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -66,8 +66,8 @@ public class InvocationContextTest {
     /** Test the reverse look up of the device name in the configuration for an ITestDevice */
     @Test
     public void testGetDeviceName() {
-        ITestDevice device1 = EasyMock.createMock(ITestDevice.class);
-        ITestDevice device2 = EasyMock.createMock(ITestDevice.class);
+        ITestDevice device1 = mock(ITestDevice.class);
+        ITestDevice device2 = mock(ITestDevice.class);
         // assert that at init, map is empty.
         assertNull(mContext.getDeviceName(device1));
         mContext.addAllocatedDevice("test1", device1);
@@ -78,8 +78,8 @@ public class InvocationContextTest {
     /** Test the reverse look up of the device name in the configuration for an IBuildInfo */
     @Test
     public void testGetBuildInfoName() {
-        IBuildInfo build1 = EasyMock.createMock(IBuildInfo.class);
-        IBuildInfo build2 = EasyMock.createMock(IBuildInfo.class);
+        IBuildInfo build1 = mock(IBuildInfo.class);
+        IBuildInfo build2 = mock(IBuildInfo.class);
         // assert that at init, map is empty.
         assertNull(mContext.getBuildInfoName(build1));
         mContext.addDeviceBuildInfo("test1", build1);
@@ -123,7 +123,7 @@ public class InvocationContextTest {
     @Test
     public void testSerialize() throws Exception {
         assertNotNull(mContext.getDeviceBuildMap());
-        ITestDevice device = EasyMock.createMock(ITestDevice.class);
+        ITestDevice device = mock(ITestDevice.class);
         IBuildInfo info = new BuildInfo("1234", "test-target");
         mContext.addAllocatedDevice("test-device", device);
         mContext.addDeviceBuildInfo("test-device", info);
