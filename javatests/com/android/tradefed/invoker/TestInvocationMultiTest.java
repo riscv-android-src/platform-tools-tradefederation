@@ -16,6 +16,11 @@
 package com.android.tradefed.invoker;
 
 import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.BuildRetrievalError;
@@ -47,12 +52,14 @@ import com.android.tradefed.result.error.InfraErrorIdentifier;
 import com.android.tradefed.result.proto.TestRecordProto.FailureStatus;
 import com.android.tradefed.retry.BaseRetryDecision;
 
-import org.easymock.Capture;
-import org.easymock.EasyMock;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -64,12 +71,12 @@ import java.util.List;
 public class TestInvocationMultiTest {
     private TestInvocation mInvocation;
     private IInvocationContext mContext;
-    private IConfiguration mMockConfig;
-    private IRescheduler mMockRescheduler;
-    private ITestInvocationListener mMockTestListener;
-    private ILogSaver mMockLogSaver;
-    private ILeveledLogOutput mMockLogger;
-    private ILogRegistry mMockLogRegistry;
+    @Mock IConfiguration mMockConfig;
+    @Mock IRescheduler mMockRescheduler;
+    @Mock ITestInvocationListener mMockTestListener;
+    @Mock ILogSaver mMockLogSaver;
+    @Mock ILeveledLogOutput mMockLogger;
+    @Mock ILogRegistry mMockLogRegistry;
     private ConfigurationDescriptor mConfigDesc;
 
     private ITestDevice mDevice1;
@@ -81,24 +88,20 @@ public class TestInvocationMultiTest {
 
     @Before
     public void setUp() throws ConfigurationException {
+        MockitoAnnotations.initMocks(this);
+
         mContext = new InvocationContext();
         mPostProcessors = new ArrayList<>();
 
-        mMockConfig = EasyMock.createMock(IConfiguration.class);
-        EasyMock.expect(mMockConfig.getPostProcessors()).andReturn(mPostProcessors);
-        EasyMock.expect(mMockConfig.getRetryDecision()).andReturn(new BaseRetryDecision());
-        EasyMock.expect(mMockConfig.getConfigurationObject(ShardHelper.SHARED_TEST_INFORMATION))
-                .andReturn(null);
-        EasyMock.expect(mMockConfig.getConfigurationObject(ShardHelper.LAST_SHARD_DETECTOR))
-                .andReturn(null);
-        mMockConfig.setConfigurationObject(EasyMock.eq("TEST_INFORMATION"), EasyMock.anyObject());
-        EasyMock.expect(mMockConfig.getConfigurationObject("DELEGATE")).andStubReturn(null);
-        EasyMock.expect(mMockConfig.getInopOptions()).andStubReturn(new HashSet<>());
-        mMockRescheduler = EasyMock.createMock(IRescheduler.class);
-        mMockTestListener = EasyMock.createMock(ITestInvocationListener.class);
-        mMockLogSaver = EasyMock.createMock(ILogSaver.class);
-        mMockLogger = EasyMock.createMock(ILeveledLogOutput.class);
-        mMockLogRegistry = EasyMock.createMock(ILogRegistry.class);
+        when(mMockConfig.getPostProcessors()).thenReturn(mPostProcessors);
+        when(mMockConfig.getRetryDecision()).thenReturn(new BaseRetryDecision());
+        when(mMockConfig.getConfigurationObject(ShardHelper.SHARED_TEST_INFORMATION))
+                .thenReturn(null);
+        when(mMockConfig.getConfigurationObject(ShardHelper.LAST_SHARD_DETECTOR)).thenReturn(null);
+        mMockConfig.setConfigurationObject(Mockito.eq("TEST_INFORMATION"), Mockito.any());
+        when(mMockConfig.getConfigurationObject("DELEGATE")).thenReturn(null);
+        when(mMockConfig.getInopOptions()).thenReturn(new HashSet<>());
+
         mConfigDesc = new ConfigurationDescriptor();
         mInvocation =
                 new TestInvocation() {
@@ -136,31 +139,29 @@ public class TestInvocationMultiTest {
     }
 
     private void makeTwoDeviceContext() throws Exception {
-        mDevice1 = EasyMock.createMock(ITestDevice.class);
-        EasyMock.expect(mDevice1.getIDevice()).andStubReturn(new StubDevice("serial1"));
-        EasyMock.expect(mDevice1.getSerialNumber()).andStubReturn("serial1");
+        mDevice1 = mock(ITestDevice.class);
+        when(mDevice1.getIDevice()).thenReturn(new StubDevice("serial1"));
+        when(mDevice1.getSerialNumber()).thenReturn("serial1");
         mDevice1.clearLastConnectedWifiNetwork();
         DeviceConfigurationHolder holder1 = new DeviceConfigurationHolder();
-        mProvider1 = EasyMock.createMock(IBuildProvider.class);
+        mProvider1 = mock(IBuildProvider.class);
         holder1.addSpecificConfig(mProvider1);
-        EasyMock.expect(mMockConfig.getDeviceConfigByName("device1")).andStubReturn(holder1);
-        mDevice1.setOptions(EasyMock.anyObject());
-        mDevice1.setRecovery(EasyMock.anyObject());
-        EasyMock.expect(mDevice1.getLogcat())
-                .andStubReturn(new ByteArrayInputStreamSource(new byte[0]));
+        when(mMockConfig.getDeviceConfigByName("device1")).thenReturn(holder1);
+        mDevice1.setOptions(Mockito.any());
+        mDevice1.setRecovery(Mockito.any());
+        when(mDevice1.getLogcat()).thenReturn(new ByteArrayInputStreamSource(new byte[0]));
         mDevice1.clearLogcat();
 
-        mDevice2 = EasyMock.createMock(ITestDevice.class);
-        EasyMock.expect(mDevice2.getIDevice()).andStubReturn(new StubDevice("serial2"));
-        EasyMock.expect(mDevice2.getSerialNumber()).andStubReturn("serial2");
+        mDevice2 = mock(ITestDevice.class);
+        when(mDevice2.getIDevice()).thenReturn(new StubDevice("serial2"));
+        when(mDevice2.getSerialNumber()).thenReturn("serial2");
         mDevice2.clearLastConnectedWifiNetwork();
         DeviceConfigurationHolder holder2 = new DeviceConfigurationHolder();
-        mProvider2 = EasyMock.createMock(IBuildProvider.class);
+        mProvider2 = mock(IBuildProvider.class);
         holder2.addSpecificConfig(mProvider2);
-        EasyMock.expect(mMockConfig.getDeviceConfigByName("device2")).andStubReturn(holder2);
-        mDevice2.setOptions(EasyMock.anyObject());
-        EasyMock.expect(mDevice2.getLogcat())
-                .andStubReturn(new ByteArrayInputStreamSource(new byte[0]));
+        when(mMockConfig.getDeviceConfigByName("device2")).thenReturn(holder2);
+        mDevice2.setOptions(Mockito.any());
+        when(mDevice2.getLogcat()).thenReturn(new ByteArrayInputStreamSource(new byte[0]));
         mDevice2.clearLogcat();
 
         mContext.addAllocatedDevice("device1", mDevice1);
@@ -177,91 +178,60 @@ public class TestInvocationMultiTest {
 
         List<ITestInvocationListener> configListener = new ArrayList<>();
         configListener.add(mMockTestListener);
-        EasyMock.expect(mMockConfig.getTestInvocationListeners())
-                .andReturn(configListener)
-                .times(2);
-        EasyMock.expect(mMockConfig.getLogSaver()).andReturn(mMockLogSaver);
-        EasyMock.expect(mMockConfig.getLogOutput()).andStubReturn(mMockLogger);
-        EasyMock.expect(mMockConfig.getConfigurationDescription()).andReturn(mConfigDesc).times(3);
-        mMockLogger.init();
-        EasyMock.expectLastCall().times(2);
-        EasyMock.expect(mMockLogger.getLog())
-                .andReturn(new ByteArrayInputStreamSource("fake".getBytes()));
-        mMockLogger.closeLog();
-        EasyMock.expectLastCall().times(3);
+        when(mMockConfig.getTestInvocationListeners()).thenReturn(configListener);
+        when(mMockConfig.getLogSaver()).thenReturn(mMockLogSaver);
+        when(mMockConfig.getLogOutput()).thenReturn(mMockLogger);
+        when(mMockConfig.getConfigurationDescription()).thenReturn(mConfigDesc);
 
-        mMockLogRegistry.registerLogger(mMockLogger);
-        EasyMock.expectLastCall().times(2);
-        mMockLogRegistry.dumpToGlobalLog(mMockLogger);
-        mMockLogRegistry.unregisterLogger();
-        EasyMock.expectLastCall().times(3);
+        when(mMockLogger.getLog()).thenReturn(new ByteArrayInputStreamSource("fake".getBytes()));
 
-        EasyMock.expect(mMockConfig.getCommandLine()).andStubReturn("empty");
-        EasyMock.expect(mMockConfig.getCommandOptions()).andStubReturn(new CommandOptions());
-        EasyMock.expect(mMockConfig.getTests()).andStubReturn(new ArrayList<>());
-        mMockConfig.resolveDynamicOptions(EasyMock.anyObject());
-        mMockConfig.cleanConfigurationData();
+        when(mMockConfig.getCommandLine()).thenReturn("empty");
+        when(mMockConfig.getCommandOptions()).thenReturn(new CommandOptions());
+        when(mMockConfig.getTests()).thenReturn(new ArrayList<>());
+
         IBuildInfo build1 = new BuildInfo();
-        EasyMock.expect(mProvider1.getBuild()).andReturn(build1);
+        when(mProvider1.getBuild()).thenReturn(build1);
         // Second build is not found
-        EasyMock.expect(mProvider2.getBuild()).andReturn(null);
+        when(mProvider2.getBuild()).thenReturn(null);
         // The downloaded build is cleaned
-        mProvider1.cleanUp(build1);
 
-        Capture<IBuildInfo> captured = new Capture<>();
-        mProvider2.cleanUp(EasyMock.capture(captured));
+        ArgumentCaptor<IBuildInfo> captured = ArgumentCaptor.forClass(IBuildInfo.class);
 
-        mMockTestListener.invocationStarted(mContext);
-        EasyMock.expect(mMockTestListener.getSummary()).andReturn(null);
-        mMockLogSaver.invocationStarted(mContext);
+        when(mMockTestListener.getSummary()).thenReturn(null);
 
-        mMockConfig.dumpXml(EasyMock.anyObject());
-        mMockTestListener.testLog(EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject());
-        EasyMock.expect(
-                        mMockLogSaver.saveLogData(
-                                EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject()))
-                .andReturn(new LogFile("", "", LogDataType.HARNESS_CONFIG));
+        when(mMockLogSaver.saveLogData(Mockito.any(), Mockito.any(), Mockito.any()))
+                .thenReturn(new LogFile("", "", LogDataType.HARNESS_CONFIG));
 
-        mMockTestListener.invocationFailed(EasyMock.<FailureDescription>anyObject());
-        mMockTestListener.testLog(EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject());
-        EasyMock.expect(
-                        mMockLogSaver.saveLogData(
-                                EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject()))
-                .andReturn(new LogFile("", "", LogDataType.TEXT));
-        EasyMock.expect(
-                        mMockLogSaver.saveLogData(
-                                EasyMock.eq(TestInvocation.TRADEFED_END_HOST_LOG),
-                                EasyMock.anyObject(),
-                                EasyMock.anyObject()))
-                .andReturn(new LogFile("", "", LogDataType.TEXT));
-        mMockTestListener.invocationEnded(EasyMock.anyLong());
-        EasyMock.expect(mMockTestListener.getSummary()).andReturn(null);
-        mMockLogSaver.invocationEnded(EasyMock.anyLong());
+        when(mMockLogSaver.saveLogData(Mockito.any(), Mockito.any(), Mockito.any()))
+                .thenReturn(new LogFile("", "", LogDataType.TEXT));
+        when(mMockLogSaver.saveLogData(
+                        Mockito.eq(TestInvocation.TRADEFED_END_HOST_LOG),
+                        Mockito.any(),
+                        Mockito.any()))
+                .thenReturn(new LogFile("", "", LogDataType.TEXT));
 
-        EasyMock.replay(
-                mMockConfig,
-                mMockRescheduler,
-                mMockTestListener,
-                mMockLogSaver,
-                mMockLogger,
-                mMockLogRegistry,
-                mDevice1,
-                mDevice2,
-                mProvider1,
-                mProvider2);
+        when(mMockTestListener.getSummary()).thenReturn(null);
+
         mInvocation.invoke(
                 mContext, mMockConfig, mMockRescheduler, new ITestInvocationListener[] {});
-        EasyMock.verify(
-                mMockConfig,
-                mMockRescheduler,
-                mMockTestListener,
-                mMockLogSaver,
-                mMockLogger,
-                mMockLogRegistry,
-                mDevice1,
-                mDevice2,
-                mProvider1,
-                mProvider2);
+        verify(mMockLogger, times(2)).init();
+        verify(mMockLogger, times(3)).closeLog();
+        verify(mMockLogRegistry, times(2)).registerLogger(mMockLogger);
+        verify(mMockLogRegistry, times(3)).unregisterLogger();
+        verify(mMockConfig, times(2)).getTestInvocationListeners();
+        verify(mMockConfig, times(3)).getConfigurationDescription();
+        verify(mMockLogRegistry).dumpToGlobalLog(mMockLogger);
+        verify(mMockConfig).resolveDynamicOptions(Mockito.any());
+        verify(mMockConfig).cleanConfigurationData();
+        verify(mProvider1).cleanUp(build1);
+        verify(mProvider2).cleanUp(captured.capture());
+        verify(mMockTestListener).invocationStarted(mContext);
+        verify(mMockLogSaver).invocationStarted(mContext);
+        verify(mMockConfig).dumpXml(Mockito.any());
+        verify(mMockTestListener, times(2)).testLog(Mockito.any(), Mockito.any(), Mockito.any());
+        verify(mMockTestListener).invocationFailed(Mockito.<FailureDescription>any());
+        verify(mMockTestListener).invocationEnded(Mockito.anyLong());
+        verify(mMockLogSaver).invocationEnded(Mockito.anyLong());
 
         IBuildInfo stubBuild = captured.getValue();
         assertEquals(BuildInfo.UNKNOWN_BUILD_ID, stubBuild.getBuildId());
@@ -274,105 +244,77 @@ public class TestInvocationMultiTest {
      */
     @Test
     public void testResolveDynamicFails() throws Throwable {
-        mDevice1 = EasyMock.createMock(ITestDevice.class);
-        EasyMock.expect(mDevice1.getIDevice()).andStubReturn(new StubDevice("serial1"));
-        EasyMock.expect(mDevice1.getLogcat())
-                .andStubReturn(new ByteArrayInputStreamSource(new byte[0]));
-        mDevice1.clearLogcat();
-        mDevice2 = EasyMock.createMock(ITestDevice.class);
-        EasyMock.expect(mDevice2.getIDevice()).andStubReturn(new StubDevice("serial1"));
-        EasyMock.expect(mDevice2.getLogcat())
-                .andStubReturn(new ByteArrayInputStreamSource(new byte[0]));
-        mDevice2.clearLogcat();
+        mDevice1 = mock(ITestDevice.class);
+        when(mDevice1.getIDevice()).thenReturn(new StubDevice("serial1"));
+        when(mDevice1.getLogcat()).thenReturn(new ByteArrayInputStreamSource(new byte[0]));
+
+        mDevice2 = mock(ITestDevice.class);
+        when(mDevice2.getIDevice()).thenReturn(new StubDevice("serial1"));
+        when(mDevice2.getLogcat()).thenReturn(new ByteArrayInputStreamSource(new byte[0]));
+
         mContext.addAllocatedDevice("device1", mDevice1);
         mContext.addAllocatedDevice("device2", mDevice2);
 
         List<ITestInvocationListener> configListener = new ArrayList<>();
         configListener.add(mMockTestListener);
-        EasyMock.expect(mMockConfig.getTestInvocationListeners())
-                .andReturn(configListener)
-                .times(2);
-        EasyMock.expect(mMockConfig.getLogSaver()).andReturn(mMockLogSaver);
-        EasyMock.expect(mMockConfig.getLogOutput()).andStubReturn(mMockLogger);
-        EasyMock.expect(mMockConfig.getConfigurationDescription()).andReturn(mConfigDesc).times(3);
-        mMockLogger.init();
-        EasyMock.expectLastCall().times(2);
-        EasyMock.expect(mMockLogger.getLog())
-                .andReturn(new ByteArrayInputStreamSource("fake".getBytes()));
-        mMockLogger.closeLog();
-        EasyMock.expectLastCall().times(3);
+        when(mMockConfig.getTestInvocationListeners()).thenReturn(configListener);
+        when(mMockConfig.getLogSaver()).thenReturn(mMockLogSaver);
+        when(mMockConfig.getLogOutput()).thenReturn(mMockLogger);
+        when(mMockConfig.getConfigurationDescription()).thenReturn(mConfigDesc);
 
-        mMockLogRegistry.registerLogger(mMockLogger);
-        EasyMock.expectLastCall().times(2);
-        mMockLogRegistry.dumpToGlobalLog(mMockLogger);
-        mMockLogRegistry.unregisterLogger();
-        EasyMock.expectLastCall().times(3);
+        when(mMockLogger.getLog()).thenReturn(new ByteArrayInputStreamSource("fake".getBytes()));
 
-        EasyMock.expect(mMockConfig.getCommandLine()).andStubReturn("empty");
-        EasyMock.expect(mMockConfig.getCommandOptions()).andStubReturn(new CommandOptions());
-        EasyMock.expect(mMockConfig.getTests()).andStubReturn(new ArrayList<>());
+        when(mMockConfig.getCommandLine()).thenReturn("empty");
+        when(mMockConfig.getCommandOptions()).thenReturn(new CommandOptions());
+        when(mMockConfig.getTests()).thenReturn(new ArrayList<>());
 
         ConfigurationException configException = new ConfigurationException("failed to resolve");
-        mMockConfig.resolveDynamicOptions(EasyMock.anyObject());
-        EasyMock.expectLastCall().andThrow(configException);
+        doThrow(configException).when(mMockConfig).resolveDynamicOptions(Mockito.any());
 
         DeviceConfigurationHolder holder1 = new DeviceConfigurationHolder();
-        mProvider1 = EasyMock.createMock(IBuildProvider.class);
+        mProvider1 = mock(IBuildProvider.class);
         holder1.addSpecificConfig(mProvider1);
-        EasyMock.expect(mMockConfig.getDeviceConfigByName("device1")).andStubReturn(holder1);
-        EasyMock.expect(mDevice1.getSerialNumber()).andReturn("serial1");
-        mMockConfig.cleanConfigurationData();
+        when(mMockConfig.getDeviceConfigByName("device1")).thenReturn(holder1);
+        when(mDevice1.getSerialNumber()).thenReturn("serial1");
 
-        mMockTestListener.invocationStarted(mContext);
-        EasyMock.expect(mMockTestListener.getSummary()).andReturn(null);
-        mMockLogSaver.invocationStarted(mContext);
+        when(mMockTestListener.getSummary()).thenReturn(null);
 
-        mMockConfig.dumpXml(EasyMock.anyObject());
-        mMockTestListener.testLog(EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject());
-        EasyMock.expect(
-                        mMockLogSaver.saveLogData(
-                                EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject()))
-                .andReturn(new LogFile("", "", LogDataType.HARNESS_CONFIG));
+        when(mMockLogSaver.saveLogData(Mockito.any(), Mockito.any(), Mockito.any()))
+                .thenReturn(new LogFile("", "", LogDataType.HARNESS_CONFIG));
 
         FailureDescription failure =
                 FailureDescription.create(configException.getMessage(), FailureStatus.INFRA_FAILURE)
                         .setActionInProgress(ActionInProgress.FETCHING_ARTIFACTS);
-        mMockTestListener.invocationFailed(EasyMock.eq(failure));
-        mMockTestListener.testLog(EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject());
-        EasyMock.expect(
-                        mMockLogSaver.saveLogData(
-                                EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject()))
-                .andReturn(new LogFile("", "", LogDataType.TEXT));
-        EasyMock.expect(
-                        mMockLogSaver.saveLogData(
-                                EasyMock.eq(TestInvocation.TRADEFED_END_HOST_LOG),
-                                EasyMock.anyObject(),
-                                EasyMock.anyObject()))
-                .andReturn(new LogFile("", "", LogDataType.TEXT));
-        mMockTestListener.invocationEnded(EasyMock.anyLong());
-        EasyMock.expect(mMockTestListener.getSummary()).andReturn(null);
-        mMockLogSaver.invocationEnded(EasyMock.anyLong());
 
-        EasyMock.replay(
-                mMockConfig,
-                mMockRescheduler,
-                mMockTestListener,
-                mMockLogSaver,
-                mMockLogger,
-                mMockLogRegistry,
-                mDevice1,
-                mDevice2);
+        when(mMockLogSaver.saveLogData(Mockito.any(), Mockito.any(), Mockito.any()))
+                .thenReturn(new LogFile("", "", LogDataType.TEXT));
+        when(mMockLogSaver.saveLogData(
+                        Mockito.eq(TestInvocation.TRADEFED_END_HOST_LOG),
+                        Mockito.any(),
+                        Mockito.any()))
+                .thenReturn(new LogFile("", "", LogDataType.TEXT));
+
+        when(mMockTestListener.getSummary()).thenReturn(null);
+
         mInvocation.invoke(
                 mContext, mMockConfig, mMockRescheduler, new ITestInvocationListener[] {});
-        EasyMock.verify(
-                mMockConfig,
-                mMockRescheduler,
-                mMockTestListener,
-                mMockLogSaver,
-                mMockLogger,
-                mMockLogRegistry,
-                mDevice1,
-                mDevice2);
+        verify(mMockLogger, times(2)).init();
+        verify(mMockLogger, times(3)).closeLog();
+        verify(mMockLogRegistry, times(2)).registerLogger(mMockLogger);
+        verify(mMockLogRegistry, times(3)).unregisterLogger();
+        verify(mMockConfig, times(2)).getTestInvocationListeners();
+        verify(mMockConfig, times(3)).getConfigurationDescription();
+        verify(mDevice1).clearLogcat();
+        verify(mDevice2).clearLogcat();
+        verify(mMockLogRegistry).dumpToGlobalLog(mMockLogger);
+        verify(mMockConfig).cleanConfigurationData();
+        verify(mMockTestListener).invocationStarted(mContext);
+        verify(mMockLogSaver).invocationStarted(mContext);
+        verify(mMockConfig).dumpXml(Mockito.any());
+        verify(mMockTestListener, times(2)).testLog(Mockito.any(), Mockito.any(), Mockito.any());
+        verify(mMockTestListener).invocationFailed(Mockito.eq(failure));
+        verify(mMockTestListener).invocationEnded(Mockito.anyLong());
+        verify(mMockLogSaver).invocationEnded(Mockito.anyLong());
     }
 
     @Test
@@ -381,94 +323,63 @@ public class TestInvocationMultiTest {
 
         List<ITestInvocationListener> configListener = new ArrayList<>();
         configListener.add(mMockTestListener);
-        EasyMock.expect(mMockConfig.getTestInvocationListeners())
-                .andReturn(configListener)
-                .times(2);
-        EasyMock.expect(mMockConfig.getLogSaver()).andReturn(mMockLogSaver);
-        EasyMock.expect(mMockConfig.getLogOutput()).andStubReturn(mMockLogger);
-        EasyMock.expect(mMockConfig.getConfigurationDescription()).andReturn(mConfigDesc).times(3);
-        mMockLogger.init();
-        EasyMock.expectLastCall().times(2);
-        EasyMock.expect(mMockLogger.getLog())
-                .andReturn(new ByteArrayInputStreamSource("fake".getBytes()));
-        mMockLogger.closeLog();
-        EasyMock.expectLastCall().times(3);
+        when(mMockConfig.getTestInvocationListeners()).thenReturn(configListener);
+        when(mMockConfig.getLogSaver()).thenReturn(mMockLogSaver);
+        when(mMockConfig.getLogOutput()).thenReturn(mMockLogger);
+        when(mMockConfig.getConfigurationDescription()).thenReturn(mConfigDesc);
 
-        mMockLogRegistry.registerLogger(mMockLogger);
-        EasyMock.expectLastCall().times(2);
-        mMockLogRegistry.dumpToGlobalLog(mMockLogger);
-        mMockLogRegistry.unregisterLogger();
-        EasyMock.expectLastCall().times(3);
+        when(mMockLogger.getLog()).thenReturn(new ByteArrayInputStreamSource("fake".getBytes()));
 
-        EasyMock.expect(mMockConfig.getCommandLine()).andStubReturn("empty");
-        EasyMock.expect(mMockConfig.getCommandOptions()).andStubReturn(new CommandOptions());
-        EasyMock.expect(mMockConfig.getTests()).andStubReturn(new ArrayList<>());
-        mMockConfig.resolveDynamicOptions(EasyMock.anyObject());
-        mMockConfig.cleanConfigurationData();
+        when(mMockConfig.getCommandLine()).thenReturn("empty");
+        when(mMockConfig.getCommandOptions()).thenReturn(new CommandOptions());
+        when(mMockConfig.getTests()).thenReturn(new ArrayList<>());
 
-        mMockTestListener.invocationStarted(mContext);
-        EasyMock.expect(mMockTestListener.getSummary()).andReturn(null);
-        mMockLogSaver.invocationStarted(mContext);
+        when(mMockTestListener.getSummary()).thenReturn(null);
 
-        mMockConfig.dumpXml(EasyMock.anyObject());
-        mMockTestListener.testLog(EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject());
-        EasyMock.expect(
-                        mMockLogSaver.saveLogData(
-                                EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject()))
-                .andReturn(new LogFile("", "", LogDataType.HARNESS_CONFIG));
+        when(mMockLogSaver.saveLogData(Mockito.any(), Mockito.any(), Mockito.any()))
+                .thenReturn(new LogFile("", "", LogDataType.HARNESS_CONFIG));
 
-        mMockTestListener.invocationFailed(EasyMock.<FailureDescription>anyObject());
-        mMockTestListener.testLog(EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject());
-        EasyMock.expect(
-                        mMockLogSaver.saveLogData(
-                                EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject()))
-                .andReturn(new LogFile("", "", LogDataType.TEXT));
-        EasyMock.expect(
-                        mMockLogSaver.saveLogData(
-                                EasyMock.eq(TestInvocation.TRADEFED_END_HOST_LOG),
-                                EasyMock.anyObject(),
-                                EasyMock.anyObject()))
-                .andReturn(new LogFile("", "", LogDataType.TEXT));
-        mMockTestListener.invocationEnded(EasyMock.anyLong());
-        EasyMock.expect(mMockTestListener.getSummary()).andReturn(null);
-        mMockLogSaver.invocationEnded(EasyMock.anyLong());
+        when(mMockLogSaver.saveLogData(Mockito.any(), Mockito.any(), Mockito.any()))
+                .thenReturn(new LogFile("", "", LogDataType.TEXT));
+        when(mMockLogSaver.saveLogData(
+                        Mockito.eq(TestInvocation.TRADEFED_END_HOST_LOG),
+                        Mockito.any(),
+                        Mockito.any()))
+                .thenReturn(new LogFile("", "", LogDataType.TEXT));
+
+        when(mMockTestListener.getSummary()).thenReturn(null);
 
         IBuildInfo build1 = new BuildInfo();
-        EasyMock.expect(mProvider1.getBuild()).andReturn(build1);
+        when(mProvider1.getBuild()).thenReturn(build1);
         // Second build is not found
-        EasyMock.expect(mProvider2.getBuild())
-                .andThrow(
+        when(mProvider2.getBuild())
+                .thenThrow(
                         new BuildRetrievalError(
                                 "fail", InfraErrorIdentifier.ARTIFACT_DOWNLOAD_ERROR));
         // The downloaded build is cleaned
-        mProvider1.cleanUp(build1);
-        // A second build from the BuildRetrievalError is generated but still cleaned.
-        mProvider2.cleanUp(EasyMock.anyObject());
 
-        EasyMock.replay(
-                mMockConfig,
-                mMockRescheduler,
-                mMockTestListener,
-                mMockLogSaver,
-                mMockLogger,
-                mMockLogRegistry,
-                mDevice1,
-                mDevice2,
-                mProvider1,
-                mProvider2);
+        // A second build from the BuildRetrievalError is generated but still cleaned.
+
         mInvocation.invoke(
                 mContext, mMockConfig, mMockRescheduler, new ITestInvocationListener[] {});
-        EasyMock.verify(
-                mMockConfig,
-                mMockRescheduler,
-                mMockTestListener,
-                mMockLogSaver,
-                mMockLogger,
-                mMockLogRegistry,
-                mDevice1,
-                mDevice2,
-                mProvider1,
-                mProvider2);
+        verify(mMockLogger, times(2)).init();
+        verify(mMockLogger, times(3)).closeLog();
+        verify(mMockLogRegistry, times(2)).registerLogger(mMockLogger);
+        verify(mMockLogRegistry, times(3)).unregisterLogger();
+        verify(mMockConfig, times(2)).getTestInvocationListeners();
+        verify(mMockConfig, times(3)).getConfigurationDescription();
+        verify(mMockLogRegistry).dumpToGlobalLog(mMockLogger);
+        verify(mMockConfig).resolveDynamicOptions(Mockito.any());
+        verify(mMockConfig).cleanConfigurationData();
+        verify(mMockTestListener).invocationStarted(mContext);
+        verify(mMockLogSaver).invocationStarted(mContext);
+        verify(mMockConfig).dumpXml(Mockito.any());
+        verify(mMockTestListener, times(2)).testLog(Mockito.any(), Mockito.any(), Mockito.any());
+        verify(mMockTestListener).invocationFailed(Mockito.<FailureDescription>any());
+        verify(mMockTestListener).invocationEnded(Mockito.anyLong());
+        verify(mMockLogSaver).invocationEnded(Mockito.anyLong());
+        verify(mProvider1).cleanUp(build1);
+        verify(mProvider2).cleanUp(Mockito.any());
     }
 
     /**
@@ -481,95 +392,62 @@ public class TestInvocationMultiTest {
 
         List<ITestInvocationListener> configListener = new ArrayList<>();
         configListener.add(mMockTestListener);
-        EasyMock.expect(mMockConfig.getTestInvocationListeners())
-                .andReturn(configListener)
-                .times(2);
-        EasyMock.expect(mMockConfig.getLogSaver()).andReturn(mMockLogSaver);
-        EasyMock.expect(mMockConfig.getLogOutput()).andStubReturn(mMockLogger);
-        EasyMock.expect(mMockConfig.getConfigurationDescription()).andReturn(mConfigDesc).times(3);
-        mMockLogger.init();
-        EasyMock.expectLastCall().times(2);
-        EasyMock.expect(mMockLogger.getLog())
-                .andReturn(new ByteArrayInputStreamSource("fake".getBytes()));
-        mMockLogger.closeLog();
-        EasyMock.expectLastCall().times(3);
+        when(mMockConfig.getTestInvocationListeners()).thenReturn(configListener);
+        when(mMockConfig.getLogSaver()).thenReturn(mMockLogSaver);
+        when(mMockConfig.getLogOutput()).thenReturn(mMockLogger);
+        when(mMockConfig.getConfigurationDescription()).thenReturn(mConfigDesc);
 
-        mMockLogRegistry.registerLogger(mMockLogger);
-        EasyMock.expectLastCall().times(2);
-        mMockLogRegistry.dumpToGlobalLog(mMockLogger);
-        mMockLogRegistry.unregisterLogger();
-        EasyMock.expectLastCall().times(3);
+        when(mMockLogger.getLog()).thenReturn(new ByteArrayInputStreamSource("fake".getBytes()));
 
-        EasyMock.expect(mMockConfig.getCommandLine()).andStubReturn("empty");
-        EasyMock.expect(mMockConfig.getCommandOptions()).andStubReturn(new CommandOptions());
-        EasyMock.expect(mMockConfig.getTests()).andStubReturn(new ArrayList<>());
-        mMockConfig.resolveDynamicOptions(EasyMock.anyObject());
-        mMockConfig.cleanConfigurationData();
+        when(mMockConfig.getCommandLine()).thenReturn("empty");
+        when(mMockConfig.getCommandOptions()).thenReturn(new CommandOptions());
+        when(mMockConfig.getTests()).thenReturn(new ArrayList<>());
 
-        mMockTestListener.invocationStarted(mContext);
-        EasyMock.expect(mMockTestListener.getSummary()).andReturn(null);
-        mMockLogSaver.invocationStarted(mContext);
+        when(mMockTestListener.getSummary()).thenReturn(null);
 
-        mMockConfig.dumpXml(EasyMock.anyObject());
-        mMockTestListener.testLog(EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject());
-        EasyMock.expect(
-                        mMockLogSaver.saveLogData(
-                                EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject()))
-                .andReturn(new LogFile("", "", LogDataType.HARNESS_CONFIG));
+        when(mMockLogSaver.saveLogData(Mockito.any(), Mockito.any(), Mockito.any()))
+                .thenReturn(new LogFile("", "", LogDataType.HARNESS_CONFIG));
 
-        mMockTestListener.invocationFailed(EasyMock.<FailureDescription>anyObject());
-        mMockTestListener.testLog(EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject());
-        EasyMock.expect(
-                        mMockLogSaver.saveLogData(
-                                EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject()))
-                .andReturn(new LogFile("", "", LogDataType.TEXT));
-        EasyMock.expect(
-                        mMockLogSaver.saveLogData(
-                                EasyMock.eq(TestInvocation.TRADEFED_END_HOST_LOG),
-                                EasyMock.anyObject(),
-                                EasyMock.anyObject()))
-                .andReturn(new LogFile("", "", LogDataType.TEXT));
-        mMockTestListener.invocationEnded(EasyMock.anyLong());
-        EasyMock.expect(mMockTestListener.getSummary()).andReturn(null);
-        mMockLogSaver.invocationEnded(EasyMock.anyLong());
+        when(mMockLogSaver.saveLogData(Mockito.any(), Mockito.any(), Mockito.any()))
+                .thenReturn(new LogFile("", "", LogDataType.TEXT));
+        when(mMockLogSaver.saveLogData(
+                        Mockito.eq(TestInvocation.TRADEFED_END_HOST_LOG),
+                        Mockito.any(),
+                        Mockito.any()))
+                .thenReturn(new LogFile("", "", LogDataType.TEXT));
+
+        when(mMockTestListener.getSummary()).thenReturn(null);
 
         IBuildInfo build1 = new BuildInfo();
-        EasyMock.expect(mProvider1.getBuild()).andReturn(build1);
+        when(mProvider1.getBuild()).thenReturn(build1);
         // Second build is not found
-        EasyMock.expect(mProvider2.getBuild())
-                .andThrow(
+        when(mProvider2.getBuild())
+                .thenThrow(
                         new BuildRetrievalError(
                                 "fail", InfraErrorIdentifier.ARTIFACT_DOWNLOAD_ERROR));
         // The downloaded build is cleaned
-        mProvider1.cleanUp(build1);
-        EasyMock.expectLastCall().andThrow(new RuntimeException("I failed to clean!"));
+        doThrow(new RuntimeException("I failed to clean!")).when(mProvider1).cleanUp(build1);
         // A second build from the BuildRetrievalError is generated but still cleaned, even if the
         // first clean up failed.
-        mProvider2.cleanUp(EasyMock.anyObject());
 
-        EasyMock.replay(
-                mMockConfig,
-                mMockRescheduler,
-                mMockTestListener,
-                mMockLogSaver,
-                mMockLogger,
-                mMockLogRegistry,
-                mDevice1,
-                mDevice2,
-                mProvider1,
-                mProvider2);
         mInvocation.invoke(
                 mContext, mMockConfig, mMockRescheduler, new ITestInvocationListener[] {});
-        EasyMock.verify(
-                mMockConfig,
-                mMockRescheduler,
-                mMockTestListener,
-                mMockLogSaver,
-                mMockLogger,
-                mMockLogRegistry,
-                mDevice1,
-                mDevice2,
-                mProvider1,
-                mProvider2);
+        verify(mMockLogger, times(2)).init();
+        verify(mMockLogger, times(3)).closeLog();
+        verify(mMockLogRegistry, times(2)).registerLogger(mMockLogger);
+        verify(mMockLogRegistry, times(3)).unregisterLogger();
+        verify(mMockConfig, times(2)).getTestInvocationListeners();
+        verify(mMockConfig, times(3)).getConfigurationDescription();
+        verify(mMockLogRegistry).dumpToGlobalLog(mMockLogger);
+        verify(mMockConfig).resolveDynamicOptions(Mockito.any());
+        verify(mMockConfig).cleanConfigurationData();
+        verify(mMockTestListener).invocationStarted(mContext);
+        verify(mMockLogSaver).invocationStarted(mContext);
+        verify(mMockConfig).dumpXml(Mockito.any());
+        verify(mMockTestListener, times(2)).testLog(Mockito.any(), Mockito.any(), Mockito.any());
+        verify(mMockTestListener).invocationFailed(Mockito.<FailureDescription>any());
+        verify(mMockTestListener).invocationEnded(Mockito.anyLong());
+        verify(mMockLogSaver).invocationEnded(Mockito.anyLong());
+        verify(mProvider2).cleanUp(Mockito.any());
     }
 }

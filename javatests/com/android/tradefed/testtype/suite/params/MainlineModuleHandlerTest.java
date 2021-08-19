@@ -15,6 +15,8 @@
  */
 package com.android.tradefed.testtype.suite.params;
 
+import static com.google.common.truth.Truth.assertThat;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -67,6 +69,7 @@ public final class MainlineModuleHandlerTest {
 
         mHandler = new MainlineModuleHandler("mod1.apk", mAbi, mContext, false);
         mHandler.applySetup(mConfig);
+
         assertTrue(mConfig.getTargetPreparers().get(0) instanceof InstallApexModuleTargetPreparer);
         InstallApexModuleTargetPreparer preparer =
                 (InstallApexModuleTargetPreparer) mConfig.getTargetPreparers().get(0);
@@ -81,6 +84,7 @@ public final class MainlineModuleHandlerTest {
 
         mHandler = new MainlineModuleHandler("mod1.apk+mod2.apex", mAbi, mContext, false);
         mHandler.applySetup(mConfig);
+
         assertTrue(mConfig.getTargetPreparers().get(0) instanceof InstallApexModuleTargetPreparer);
         InstallApexModuleTargetPreparer preparer =
                 (InstallApexModuleTargetPreparer) mConfig.getTargetPreparers().get(0);
@@ -106,5 +110,50 @@ public final class MainlineModuleHandlerTest {
                     "Missing required information to build the dynamic base link.",
                     expected.getMessage());
         }
+    }
+
+    /**
+     * Test for {@link MainlineModuleHandler#applySetup()} anticipate returning
+     * ab://branch/flavor/id/mainline_module_{abi}/foo.apk when running in CI where
+     * ANDROID_BUILD_TOP is null.
+     */
+    @Test
+    public void testApplySetup_CompleteMainlineModulePath_inCI() {
+        when(mMockBuildInfo.getBuildBranch()).thenReturn("branch");
+
+        // In CI the System.getenv("ANDROID_BUILD_TOP") is always null.
+        mHandler = new MainlineModuleHandler("mod1.apk+mod2.apex", null, mAbi, mContext);
+        mHandler.applySetup(mConfig);
+
+        assertTrue(mConfig.getTargetPreparers().get(0) instanceof InstallApexModuleTargetPreparer);
+        InstallApexModuleTargetPreparer preparer =
+                (InstallApexModuleTargetPreparer) mConfig.getTargetPreparers().get(0);
+        assertThat(preparer.getTestsFileName().get(0).getPath())
+                .contains("ab:/branch/flavor/id/mainline_modules_arm/mod1.apk");
+        assertThat(preparer.getTestsFileName().get(1).getPath())
+                .contains("ab:/branch/flavor/id/mainline_modules_arm/mod2.apex");
+    }
+
+    /**
+     * Test for {@link MainlineModuleHandler#applySetup()} anticipate returning
+     * /android/buildtop/out/dist/mainline_modules_{abi}/foo.apk when running in local where
+     * ANDROID_BUILD_TOP always has a value.
+     */
+    @Test
+    public void testApplySetup_CompleteMainLineModulePath_inLocal() {
+        when(mMockBuildInfo.getBuildBranch()).thenReturn("branch");
+
+        mHandler =
+                new MainlineModuleHandler(
+                        "mod1.apk+mod2.apex", "/android/build/top", mAbi, mContext);
+        mHandler.applySetup(mConfig);
+
+        assertTrue(mConfig.getTargetPreparers().get(0) instanceof InstallApexModuleTargetPreparer);
+        InstallApexModuleTargetPreparer preparer =
+                (InstallApexModuleTargetPreparer) mConfig.getTargetPreparers().get(0);
+        assertThat(preparer.getTestsFileName().get(0).getPath())
+                .contains("/android/build/top/out/dist/mainline_modules_arm/mod1.apk");
+        assertThat(preparer.getTestsFileName().get(1).getPath())
+                .contains("/android/build/top/out/dist/mainline_modules_arm/mod2.apex");
     }
 }

@@ -16,64 +16,79 @@
 
 package com.android.tradefed.util.net;
 
+import static org.mockito.Mockito.when;
+
 import com.android.tradefed.util.net.IHttpHelper.DataSizeException;
 
-import junit.framework.TestCase;
-
-import org.easymock.EasyMock;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 
-/**
- * Unit tests for {@link HttpMultipartPost}.
- */
-public class HttpMultipartPostTest extends TestCase {
+/** Unit tests for {@link HttpMultipartPost}. */
+@RunWith(JUnit4.class)
+public class HttpMultipartPostTest {
 
     private File mFile;
-    private IHttpHelper mHelper;
+    @Mock IHttpHelper mHelper;
 
     private static final String CRLF = "\r\n";
 
-    @Override
+    @Before
     public void setUp() throws Exception {
-        super.setUp();
+        MockitoAnnotations.initMocks(this);
 
         mFile = File.createTempFile("http-multipart-test", null);
         PrintWriter writer = new PrintWriter(new FileOutputStream(mFile));
         writer.write("Test data");
         writer.close();
-
-        mHelper = EasyMock.createMock(IHttpHelper.class);
     }
 
+    @Test
     public void testSendRequest() throws IOException, DataSizeException {
-        String expectedContents = "--xXxXx" + CRLF
-                + "Content-Disposition: form-data; name=\"param1\"" + CRLF
-                + CRLF + "value1" + CRLF + "--xXxXx" + CRLF
-                + "Content-Disposition: form-data; name=\"param2\";filename=\""
-                + mFile.getAbsolutePath() + "\"" + CRLF
-                + "Content-Type: text/plain" + CRLF
-                + CRLF + "Test data"
-                + CRLF + "--xXxXx--" + CRLF + CRLF;
-        EasyMock.expect(mHelper.doPostWithRetry("www.example.com", expectedContents,
-                "multipart/form-data;boundary=xXxXx")).andReturn("OK");
-        EasyMock.replay(mHelper);
+        String expectedContents =
+                "--xXxXx"
+                        + CRLF
+                        + "Content-Disposition: form-data; name=\"param1\""
+                        + CRLF
+                        + CRLF
+                        + "value1"
+                        + CRLF
+                        + "--xXxXx"
+                        + CRLF
+                        + "Content-Disposition: form-data; name=\"param2\";filename=\""
+                        + mFile.getAbsolutePath()
+                        + "\""
+                        + CRLF
+                        + "Content-Type: text/plain"
+                        + CRLF
+                        + CRLF
+                        + "Test data"
+                        + CRLF
+                        + "--xXxXx--"
+                        + CRLF
+                        + CRLF;
+        when(mHelper.doPostWithRetry(
+                        "www.example.com", expectedContents, "multipart/form-data;boundary=xXxXx"))
+                .thenReturn("OK");
 
         HttpMultipartPost testPost = new HttpMultipartPost("www.example.com", mHelper);
         testPost.addParameter("param1", "value1");
         testPost.addTextFile("param2", mFile);
 
         testPost.send();
-
-        EasyMock.verify(mHelper);
     }
 
-    @Override
+    @After
     public void tearDown() throws Exception {
         mFile.delete();
-        super.tearDown();
     }
 }
