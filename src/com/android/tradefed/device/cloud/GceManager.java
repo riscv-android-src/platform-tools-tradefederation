@@ -177,7 +177,9 @@ public class GceManager {
         }
 
         // If ipDevice is specified, skip collecting serial log as the host may not be GCE instance
-        mSkipSerialLogCollection = !Strings.isNullOrEmpty(ipDevice);
+        // If Oxygen cuttlefish is used, skip collecting serial log due to lack of access.
+        mSkipSerialLogCollection =
+                (!Strings.isNullOrEmpty(ipDevice) || getTestDeviceOptions().useOxygen());
 
         // Add extra args.
         File reportFile = null;

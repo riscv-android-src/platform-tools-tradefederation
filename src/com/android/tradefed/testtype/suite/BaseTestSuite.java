@@ -700,7 +700,7 @@ public class BaseTestSuite extends ITestSuite {
 
     protected Set<DeviceFoldableState> getFoldableStates(ITestDevice device)
             throws DeviceNotAvailableException {
-        if (device.getIDevice() instanceof StubDevice) {
+        if (device == null || device.getIDevice() instanceof StubDevice) {
             return mFoldableStates;
         }
         if (!mFoldableStates.isEmpty()) {
