@@ -19,6 +19,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.build.IBuildInfo;
@@ -33,11 +36,11 @@ import com.android.tradefed.result.LogDataType;
 import com.android.tradefed.result.LogFile;
 import com.android.tradefed.result.TestDescription;
 
-import org.easymock.Capture;
-import org.easymock.EasyMock;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -74,11 +77,9 @@ public class SubprocessTestResultsParserTest {
             while ((line = reader.readLine()) != null) {
                 fileContents.add(line);
             }
-        }
-        catch (NullPointerException e) {
+        } catch (NullPointerException e) {
             CLog.e("Gest output file does not exist: " + filename);
-        }
-        catch (IOException e) {
+        } catch (IOException e) {
             CLog.e("Unable to read contents of gtest output file: " + filename);
         }
         return fileContents.toArray(new String[fileContents.size()]);
@@ -88,39 +89,35 @@ public class SubprocessTestResultsParserTest {
     @Test
     public void testParse_randomEvents() throws Exception {
         String[] contents = readInFile(SUBPROC_OUTPUT_FILE_1);
-        ITestInvocationListener mockRunListener =
-                EasyMock.createMock(ITestInvocationListener.class);
-        mockRunListener.testRunStarted(
-                EasyMock.eq("arm64-v8a CtsGestureTestCases"),
-                EasyMock.eq(4),
-                EasyMock.eq(0),
-                EasyMock.anyLong());
-        mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
-        EasyMock.expectLastCall().times(4);
-        mockRunListener.testEnded(
-                (TestDescription) EasyMock.anyObject(),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        EasyMock.expectLastCall().times(4);
-        mockRunListener.testRunEnded(
-                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-        EasyMock.expectLastCall().times(1);
-        mockRunListener.testIgnored((TestDescription) EasyMock.anyObject());
-        EasyMock.expectLastCall();
-        mockRunListener.testFailed(
-                (TestDescription) EasyMock.anyObject(), (FailureDescription) EasyMock.anyObject());
-        EasyMock.expectLastCall();
-        mockRunListener.testAssumptionFailure(
-                (TestDescription) EasyMock.anyObject(), (String) EasyMock.anyObject());
-        EasyMock.expectLastCall();
-        EasyMock.replay(mockRunListener);
+        ITestInvocationListener mockRunListener = mock(ITestInvocationListener.class);
+
         File tmp = FileUtil.createTempFile("sub", "unit");
         SubprocessTestResultsParser resultParser = null;
         try {
             resultParser =
                     new SubprocessTestResultsParser(mockRunListener, new InvocationContext());
             resultParser.processNewLines(contents);
-            EasyMock.verify(mockRunListener);
+            verify(mockRunListener, times(4))
+                    .testStarted((TestDescription) Mockito.any(), Mockito.anyLong());
+            verify(mockRunListener, times(4))
+                    .testEnded(
+                            (TestDescription) Mockito.any(),
+                            Mockito.anyLong(),
+                            Mockito.<HashMap<String, Metric>>any());
+            verify(mockRunListener, times(1))
+                    .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
+            verify(mockRunListener, times(1)).testIgnored((TestDescription) Mockito.any());
+            verify(mockRunListener, times(1))
+                    .testFailed(
+                            (TestDescription) Mockito.any(), (FailureDescription) Mockito.any());
+            verify(mockRunListener, times(1))
+                    .testAssumptionFailure((TestDescription) Mockito.any(), (String) Mockito.any());
+            verify(mockRunListener)
+                    .testRunStarted(
+                            Mockito.eq("arm64-v8a CtsGestureTestCases"),
+                            Mockito.eq(4),
+                            Mockito.eq(0),
+                            Mockito.anyLong());
         } finally {
             StreamUtil.close(resultParser);
             FileUtil.deleteFile(tmp);
@@ -130,39 +127,34 @@ public class SubprocessTestResultsParserTest {
     /** Tests the parser for cases of test starting without closing. */
     @Test
     public void testParse_invalidEventOrder() throws Exception {
-        String[] contents =  readInFile(SUBPROC_OUTPUT_FILE_2);
-        ITestInvocationListener mockRunListener =
-                EasyMock.createMock(ITestInvocationListener.class);
-        mockRunListener.testRunStarted(
-                EasyMock.eq("arm64-v8a CtsGestureTestCases"),
-                EasyMock.eq(4),
-                EasyMock.eq(0),
-                EasyMock.anyLong());
-        mockRunListener.testStarted((TestDescription) EasyMock.anyObject(), EasyMock.anyLong());
-        EasyMock.expectLastCall().times(4);
-        mockRunListener.testEnded(
-                (TestDescription) EasyMock.anyObject(),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        EasyMock.expectLastCall().times(3);
-        mockRunListener.testRunFailed((FailureDescription) EasyMock.anyObject());
-        EasyMock.expectLastCall().times(1);
-        mockRunListener.testRunEnded(
-                EasyMock.anyLong(), EasyMock.<HashMap<String, Metric>>anyObject());
-        EasyMock.expectLastCall().times(1);
-        mockRunListener.testIgnored((TestDescription) EasyMock.anyObject());
-        EasyMock.expectLastCall();
-        mockRunListener.testAssumptionFailure(
-                (TestDescription) EasyMock.anyObject(), (String) EasyMock.anyObject());
-        EasyMock.expectLastCall();
-        EasyMock.replay(mockRunListener);
+        String[] contents = readInFile(SUBPROC_OUTPUT_FILE_2);
+        ITestInvocationListener mockRunListener = mock(ITestInvocationListener.class);
+
         File tmp = FileUtil.createTempFile("sub", "unit");
         SubprocessTestResultsParser resultParser = null;
         try {
             resultParser =
                     new SubprocessTestResultsParser(mockRunListener, new InvocationContext());
             resultParser.processNewLines(contents);
-            EasyMock.verify(mockRunListener);
+            verify(mockRunListener, times(4))
+                    .testStarted((TestDescription) Mockito.any(), Mockito.anyLong());
+            verify(mockRunListener, times(3))
+                    .testEnded(
+                            (TestDescription) Mockito.any(),
+                            Mockito.anyLong(),
+                            Mockito.<HashMap<String, Metric>>any());
+            verify(mockRunListener, times(1)).testRunFailed((FailureDescription) Mockito.any());
+            verify(mockRunListener, times(1))
+                    .testRunEnded(Mockito.anyLong(), Mockito.<HashMap<String, Metric>>any());
+            verify(mockRunListener, times(1)).testIgnored((TestDescription) Mockito.any());
+            verify(mockRunListener, times(1))
+                    .testAssumptionFailure((TestDescription) Mockito.any(), (String) Mockito.any());
+            verify(mockRunListener)
+                    .testRunStarted(
+                            Mockito.eq("arm64-v8a CtsGestureTestCases"),
+                            Mockito.eq(4),
+                            Mockito.eq(0),
+                            Mockito.anyLong());
         } finally {
             StreamUtil.close(resultParser);
             FileUtil.deleteFile(tmp);
@@ -172,19 +164,8 @@ public class SubprocessTestResultsParserTest {
     /** Tests the parser for cases of test starting without closing. */
     @Test
     public void testParse_testNotStarted() throws Exception {
-        ITestInvocationListener mockRunListener =
-                EasyMock.createMock(ITestInvocationListener.class);
-        mockRunListener.testRunStarted(
-                EasyMock.eq("arm64-v8a CtsGestureTestCases"),
-                EasyMock.eq(4),
-                EasyMock.eq(0),
-                EasyMock.anyLong());
-        mockRunListener.testEnded(
-                (TestDescription) EasyMock.anyObject(),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        EasyMock.expectLastCall().times(1);
-        EasyMock.replay(mockRunListener);
+        ITestInvocationListener mockRunListener = mock(ITestInvocationListener.class);
+
         File tmp = FileUtil.createTempFile("sub", "unit");
         SubprocessTestResultsParser resultParser = null;
         try {
@@ -201,7 +182,17 @@ public class SubprocessTestResultsParserTest {
                             + "data\"}\n";
             FileUtil.writeToFile(testEnded, tmp, true);
             resultParser.parseFile(tmp);
-            EasyMock.verify(mockRunListener);
+            verify(mockRunListener, times(1))
+                    .testEnded(
+                            (TestDescription) Mockito.any(),
+                            Mockito.anyLong(),
+                            Mockito.<HashMap<String, Metric>>any());
+            verify(mockRunListener)
+                    .testRunStarted(
+                            Mockito.eq("arm64-v8a CtsGestureTestCases"),
+                            Mockito.eq(4),
+                            Mockito.eq(0),
+                            Mockito.anyLong());
         } finally {
             StreamUtil.close(resultParser);
             FileUtil.deleteFile(tmp);
@@ -211,19 +202,8 @@ public class SubprocessTestResultsParserTest {
     /** Tests the parser for a cases when there is no start/end time stamp. */
     @Test
     public void testParse_noTimeStamp() throws Exception {
-        ITestInvocationListener mockRunListener =
-                EasyMock.createMock(ITestInvocationListener.class);
-        mockRunListener.testRunStarted(
-                EasyMock.eq("arm64-v8a CtsGestureTestCases"),
-                EasyMock.eq(4),
-                EasyMock.eq(0),
-                EasyMock.anyLong());
-        mockRunListener.testStarted(EasyMock.anyObject());
-        mockRunListener.testEnded(
-                (TestDescription) EasyMock.anyObject(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        EasyMock.expectLastCall().times(1);
-        EasyMock.replay(mockRunListener);
+        ITestInvocationListener mockRunListener = mock(ITestInvocationListener.class);
+
         File tmp = FileUtil.createTempFile("sub", "unit");
         SubprocessTestResultsParser resultParser = null;
         try {
@@ -244,7 +224,17 @@ public class SubprocessTestResultsParserTest {
                             + "data\"}\n";
             FileUtil.writeToFile(testEnded, tmp, true);
             resultParser.parseFile(tmp);
-            EasyMock.verify(mockRunListener);
+            verify(mockRunListener, times(1))
+                    .testEnded(
+                            (TestDescription) Mockito.any(),
+                            Mockito.<HashMap<String, Metric>>any());
+            verify(mockRunListener)
+                    .testRunStarted(
+                            Mockito.eq("arm64-v8a CtsGestureTestCases"),
+                            Mockito.eq(4),
+                            Mockito.eq(0),
+                            Mockito.anyLong());
+            verify(mockRunListener).testStarted(Mockito.any());
         } finally {
             StreamUtil.close(resultParser);
             FileUtil.deleteFile(tmp);
@@ -254,11 +244,9 @@ public class SubprocessTestResultsParserTest {
     /** Test injecting an invocation failure and verify the callback is called. */
     @Test
     public void testParse_invocationFailed() throws Exception {
-        ITestInvocationListener mockRunListener =
-                EasyMock.createMock(ITestInvocationListener.class);
-        Capture<Throwable> cap = new Capture<Throwable>();
-        mockRunListener.invocationFailed(EasyMock.capture(cap));
-        EasyMock.replay(mockRunListener);
+        ITestInvocationListener mockRunListener = mock(ITestInvocationListener.class);
+        ArgumentCaptor<Throwable> cap = ArgumentCaptor.forClass(Throwable.class);
+
         File tmp = FileUtil.createTempFile("sub", "unit");
         SubprocessTestResultsParser resultParser = null;
         try {
@@ -275,7 +263,8 @@ public class SubprocessTestResultsParserTest {
                     + "ApkInstrumentationPreparer.run(ApkInstrumentationPreparer.java:88)\\n\"}\n";
             FileUtil.writeToFile(startRun, tmp, true);
             resultParser.parseFile(tmp);
-            EasyMock.verify(mockRunListener);
+
+            verify(mockRunListener).invocationFailed(cap.capture());
             String expected = cap.getValue().getMessage();
             assertEquals(cause, expected);
         } finally {
@@ -287,19 +276,8 @@ public class SubprocessTestResultsParserTest {
     /** Report results when received from socket. */
     @Test
     public void testParser_receiveFromSocket() throws Exception {
-        ITestInvocationListener mockRunListener =
-                EasyMock.createMock(ITestInvocationListener.class);
-        mockRunListener.testRunStarted(
-                EasyMock.eq("arm64-v8a CtsGestureTestCases"),
-                EasyMock.eq(4),
-                EasyMock.eq(0),
-                EasyMock.anyLong());
-        mockRunListener.testEnded(
-                (TestDescription) EasyMock.anyObject(),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        EasyMock.expectLastCall().times(1);
-        EasyMock.replay(mockRunListener);
+        ITestInvocationListener mockRunListener = mock(ITestInvocationListener.class);
+
         SubprocessTestResultsParser resultParser = null;
         Socket socket = null;
         try {
@@ -323,7 +301,17 @@ public class SubprocessTestResultsParserTest {
             out.flush();
             StreamUtil.close(socket);
             assertTrue(resultParser.joinReceiver(500));
-            EasyMock.verify(mockRunListener);
+            verify(mockRunListener, times(1))
+                    .testEnded(
+                            (TestDescription) Mockito.any(),
+                            Mockito.anyLong(),
+                            Mockito.<HashMap<String, Metric>>any());
+            verify(mockRunListener)
+                    .testRunStarted(
+                            Mockito.eq("arm64-v8a CtsGestureTestCases"),
+                            Mockito.eq(4),
+                            Mockito.eq(0),
+                            Mockito.anyLong());
         } finally {
             StreamUtil.close(resultParser);
             StreamUtil.close(socket);
@@ -333,15 +321,13 @@ public class SubprocessTestResultsParserTest {
     /** When the receiver thread fails to join then an exception is thrown. */
     @Test
     public void testParser_failToJoin() throws Exception {
-        ITestInvocationListener mockRunListener =
-                EasyMock.createMock(ITestInvocationListener.class);
-        EasyMock.replay(mockRunListener);
+        ITestInvocationListener mockRunListener = mock(ITestInvocationListener.class);
+
         SubprocessTestResultsParser resultParser = null;
         try {
             resultParser =
                     new SubprocessTestResultsParser(mockRunListener, true, new InvocationContext());
             assertFalse(resultParser.joinReceiver(50));
-            EasyMock.verify(mockRunListener);
         } finally {
             StreamUtil.close(resultParser);
         }
@@ -350,13 +336,12 @@ public class SubprocessTestResultsParserTest {
     /** Tests that the parser can be joined immediately if no connection was established. */
     @Test
     public void testParser_noConnection() throws Exception {
-        ITestInvocationListener listener = EasyMock.createMock(ITestInvocationListener.class);
-        EasyMock.replay(listener);
+        ITestInvocationListener listener = mock(ITestInvocationListener.class);
+
         try (SubprocessTestResultsParser parser =
                 new SubprocessTestResultsParser(listener, true, new InvocationContext())) {
             // returns immediately as a connection was not established
             assertTrue(parser.joinReceiver(50, false));
-            EasyMock.verify(listener);
         }
     }
 
@@ -367,9 +352,8 @@ public class SubprocessTestResultsParserTest {
         InvocationContext context = new InvocationContext();
         context.setTestTag("stub");
 
-        ITestInvocationListener mockRunListener =
-                EasyMock.createMock(ITestInvocationListener.class);
-        EasyMock.replay(mockRunListener);
+        ITestInvocationListener mockRunListener = mock(ITestInvocationListener.class);
+
         File tmp = FileUtil.createTempFile("sub", "unit");
         SubprocessTestResultsParser resultParser = null;
         try {
@@ -380,7 +364,7 @@ public class SubprocessTestResultsParserTest {
                             subTestTag);
             FileUtil.writeToFile(testTagEvent, tmp, true);
             resultParser.parseFile(tmp);
-            EasyMock.verify(mockRunListener);
+
             assertEquals(subTestTag, context.getTestTag());
             assertEquals(250L, resultParser.getStartTime().longValue());
         } finally {
@@ -395,9 +379,8 @@ public class SubprocessTestResultsParserTest {
         InvocationContext context = new InvocationContext();
         context.setTestTag("stub");
 
-        ITestInvocationListener mockRunListener =
-                EasyMock.createMock(ITestInvocationListener.class);
-        EasyMock.replay(mockRunListener);
+        ITestInvocationListener mockRunListener = mock(ITestInvocationListener.class);
+
         File tmp = FileUtil.createTempFile("sub", "unit");
         SubprocessTestResultsParser resultParser = null;
         try {
@@ -405,7 +388,6 @@ public class SubprocessTestResultsParserTest {
             String event = "INVOCATION_ENDED {\"foo\": \"bar\"}";
             FileUtil.writeToFile(event, tmp, true);
             resultParser.parseFile(tmp);
-            EasyMock.verify(mockRunListener);
         } finally {
             StreamUtil.close(resultParser);
             FileUtil.deleteFile(tmp);
@@ -421,9 +403,8 @@ public class SubprocessTestResultsParserTest {
         context.addDeviceBuildInfo("device1", info);
         info.addBuildAttribute("baz", "qux");
 
-        ITestInvocationListener mockRunListener =
-                EasyMock.createMock(ITestInvocationListener.class);
-        EasyMock.replay(mockRunListener);
+        ITestInvocationListener mockRunListener = mock(ITestInvocationListener.class);
+
         File tmp = FileUtil.createTempFile("sub", "unit");
         SubprocessTestResultsParser resultParser = null;
         try {
@@ -436,7 +417,6 @@ public class SubprocessTestResultsParserTest {
             assertEquals("bar", attributes.get("foo"));
             // baz=qux is not overwritten
             assertEquals("qux", attributes.get("baz"));
-            EasyMock.verify(mockRunListener);
         } finally {
             StreamUtil.close(resultParser);
             FileUtil.deleteFile(tmp);
@@ -451,9 +431,8 @@ public class SubprocessTestResultsParserTest {
         InvocationContext context = new InvocationContext();
         context.setTestTag(parentTestTag);
 
-        ITestInvocationListener mockRunListener =
-                EasyMock.createMock(ITestInvocationListener.class);
-        EasyMock.replay(mockRunListener);
+        ITestInvocationListener mockRunListener = mock(ITestInvocationListener.class);
+
         File tmp = FileUtil.createTempFile("sub", "unit");
         SubprocessTestResultsParser resultParser = null;
         try {
@@ -461,7 +440,7 @@ public class SubprocessTestResultsParserTest {
             String testTagEvent = String.format("TEST_TAG %s", subTestTag);
             FileUtil.writeToFile(testTagEvent, tmp, true);
             resultParser.parseFile(tmp);
-            EasyMock.verify(mockRunListener);
+
             assertEquals(parentTestTag, context.getTestTag());
         } finally {
             StreamUtil.close(resultParser);
@@ -472,11 +451,8 @@ public class SubprocessTestResultsParserTest {
     /** Test that module start and end is properly parsed when reported. */
     @Test
     public void testParse_moduleStarted_end() throws Exception {
-        ITestInvocationListener mockRunListener =
-                EasyMock.createMock(ITestInvocationListener.class);
-        mockRunListener.testModuleStarted(EasyMock.anyObject());
-        mockRunListener.testModuleEnded();
-        EasyMock.replay(mockRunListener);
+        ITestInvocationListener mockRunListener = mock(ITestInvocationListener.class);
+
         IInvocationContext fakeModuleContext = new InvocationContext();
         File tmp = FileUtil.createTempFile("sub", "unit");
         SubprocessTestResultsParser resultParser = null;
@@ -494,7 +470,9 @@ public class SubprocessTestResultsParserTest {
             FileUtil.writeToFile(moduleEnd, tmp, true);
 
             resultParser.parseFile(tmp);
-            EasyMock.verify(mockRunListener);
+
+            verify(mockRunListener).testModuleStarted(Mockito.any());
+            verify(mockRunListener).testModuleEnded();
         } finally {
             StreamUtil.close(resultParser);
             FileUtil.deleteFile(tmp);
@@ -505,11 +483,9 @@ public class SubprocessTestResultsParserTest {
     /** Test that logAssociation event is properly passed and parsed. */
     @Test
     public void testParse_logAssociation() throws Exception {
-        ILogSaverListener mockRunListener = EasyMock.createMock(ILogSaverListener.class);
-        Capture<LogFile> capture = new Capture<>();
-        mockRunListener.logAssociation(
-                EasyMock.eq("subprocess-dataname"), EasyMock.capture(capture));
-        EasyMock.replay(mockRunListener);
+        ILogSaverListener mockRunListener = mock(ILogSaverListener.class);
+        ArgumentCaptor<LogFile> capture = ArgumentCaptor.forClass(LogFile.class);
+
         LogFile logFile = new LogFile("path", "url", LogDataType.TEXT);
         File serializedLogFile = null;
         File tmp = FileUtil.createTempFile("sub", "unit");
@@ -524,7 +500,9 @@ public class SubprocessTestResultsParserTest {
                             serializedLogFile.getAbsolutePath());
             FileUtil.writeToFile(logAssociation, tmp, true);
             resultParser.parseFile(tmp);
-            EasyMock.verify(mockRunListener);
+
+            verify(mockRunListener)
+                    .logAssociation(Mockito.eq("subprocess-dataname"), capture.capture());
         } finally {
             StreamUtil.close(resultParser);
             FileUtil.deleteFile(serializedLogFile);
@@ -539,12 +517,8 @@ public class SubprocessTestResultsParserTest {
     /** If a log comes from subprocess but was not uploaded (no URL), we relog it. */
     @Test
     public void testParse_logAssociation_notUploaded() throws Exception {
-        ILogSaverListener mockRunListener = EasyMock.createMock(ILogSaverListener.class);
-        mockRunListener.testLog(
-                EasyMock.eq("subprocess-dataname"),
-                EasyMock.eq(LogDataType.TEXT),
-                EasyMock.anyObject());
-        EasyMock.replay(mockRunListener);
+        ILogSaverListener mockRunListener = mock(ILogSaverListener.class);
+
         File log = FileUtil.createTempFile("dataname-log-assos", ".txt");
         LogFile logFile = new LogFile(log.getAbsolutePath(), null, LogDataType.TEXT);
         File serializedLogFile = null;
@@ -560,7 +534,12 @@ public class SubprocessTestResultsParserTest {
                             serializedLogFile.getAbsolutePath());
             FileUtil.writeToFile(logAssociation, tmp, true);
             resultParser.parseFile(tmp);
-            EasyMock.verify(mockRunListener);
+
+            verify(mockRunListener)
+                    .testLog(
+                            Mockito.eq("subprocess-dataname"),
+                            Mockito.eq(LogDataType.TEXT),
+                            Mockito.any());
         } finally {
             StreamUtil.close(resultParser);
             FileUtil.deleteFile(serializedLogFile);
@@ -571,12 +550,8 @@ public class SubprocessTestResultsParserTest {
 
     @Test
     public void testParse_logAssociation_zipped() throws Exception {
-        ILogSaverListener mockRunListener = EasyMock.createMock(ILogSaverListener.class);
-        mockRunListener.testLog(
-                EasyMock.eq("subprocess-dataname"),
-                EasyMock.eq(LogDataType.TEXT),
-                EasyMock.anyObject());
-        EasyMock.replay(mockRunListener);
+        ILogSaverListener mockRunListener = mock(ILogSaverListener.class);
+
         File logDir = FileUtil.createTempDir("log-assos-dir");
         File log = FileUtil.createTempFile("dataname-log-assos", ".txt", logDir);
         File zipLog = ZipUtil.createZip(logDir);
@@ -594,7 +569,12 @@ public class SubprocessTestResultsParserTest {
                             serializedLogFile.getAbsolutePath());
             FileUtil.writeToFile(logAssociation, tmp, true);
             resultParser.parseFile(tmp);
-            EasyMock.verify(mockRunListener);
+
+            verify(mockRunListener)
+                    .testLog(
+                            Mockito.eq("subprocess-dataname"),
+                            Mockito.eq(LogDataType.TEXT),
+                            Mockito.any());
         } finally {
             StreamUtil.close(resultParser);
             FileUtil.deleteFile(serializedLogFile);
@@ -607,12 +587,8 @@ public class SubprocessTestResultsParserTest {
 
     @Test
     public void testParse_avoidDoubleLog() throws Exception {
-        ILogSaverListener mockRunListener = EasyMock.createMock(ILogSaverListener.class);
-        mockRunListener.testLog(
-                EasyMock.eq("subprocess-dataname"),
-                EasyMock.eq(LogDataType.TEXT),
-                EasyMock.anyObject());
-        EasyMock.replay(mockRunListener);
+        ILogSaverListener mockRunListener = mock(ILogSaverListener.class);
+
         File testLogFile = FileUtil.createTempFile("dataname", ".txt");
         File testLogFile2 = FileUtil.createTempFile("dataname", ".txt");
         LogFile logFile = new LogFile(testLogFile.getAbsolutePath(), "", LogDataType.TEXT);
@@ -633,7 +609,12 @@ public class SubprocessTestResultsParserTest {
                             testLogFile2.getAbsolutePath(), serializedLogFile.getAbsolutePath());
             FileUtil.writeToFile(logAssociation, tmp, true);
             resultParser.parseFile(tmp);
-            EasyMock.verify(mockRunListener);
+
+            verify(mockRunListener)
+                    .testLog(
+                            Mockito.eq("subprocess-dataname"),
+                            Mockito.eq(LogDataType.TEXT),
+                            Mockito.any());
         } finally {
             StreamUtil.close(resultParser);
             FileUtil.deleteFile(serializedLogFile);
