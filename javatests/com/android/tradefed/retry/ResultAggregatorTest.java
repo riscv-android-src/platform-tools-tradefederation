@@ -17,6 +17,8 @@ package com.android.tradefed.retry;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.android.tradefed.build.BuildInfo;
 import com.android.tradefed.config.ConfigurationDef;
@@ -34,12 +36,15 @@ import com.android.tradefed.result.TestDescription;
 import com.android.tradefed.result.retry.ISupportGranularResults;
 import com.android.tradefed.util.FileUtil;
 
-import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.InOrder;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.MockitoAnnotations;
 
 import java.io.File;
 import java.util.Arrays;
@@ -51,9 +56,9 @@ import java.util.List;
 public class ResultAggregatorTest {
 
     private TestableResultAggregator mAggregator;
-    private ILogSaverListener mAggListener;
-    private ITestDetailedReceiver mDetailedListener;
-    private ILogSaver mLogger;
+    @Mock ILogSaverListener mAggListener;
+    @Mock ITestDetailedReceiver mDetailedListener;
+    @Mock ILogSaver mLogger;
     private IInvocationContext mInvocationContext;
     private IInvocationContext mModuleContext;
 
@@ -82,9 +87,8 @@ public class ResultAggregatorTest {
 
     @Before
     public void setUp() throws Exception {
-        mAggListener = EasyMock.createStrictMock(ILogSaverListener.class);
-        mDetailedListener = EasyMock.createStrictMock(ITestDetailedReceiver.class);
-        mLogger = EasyMock.createMock(ILogSaver.class);
+        MockitoAnnotations.initMocks(this);
+
         mInvocationContext = new InvocationContext();
         mInvocationContext.addDeviceBuildInfo(
                 ConfigurationDef.DEFAULT_DEVICE_NAME, new BuildInfo());
@@ -114,94 +118,25 @@ public class ResultAggregatorTest {
         TestDescription test1 = new TestDescription("classname", "test1");
         TestDescription test2 = new TestDescription("classname", "test2");
 
-        EasyMock.expect(mDetailedListener.supportGranularResults()).andStubReturn(true);
+        when(mDetailedListener.supportGranularResults()).thenReturn(true);
 
         // Invocation level
-        mAggListener.setLogSaver(mLogger);
-        mAggListener.invocationStarted(mInvocationContext);
-        EasyMock.expect(mAggListener.getSummary()).andStubReturn(null);
-        mDetailedListener.setLogSaver(mLogger);
-        mDetailedListener.invocationStarted(mInvocationContext);
-        EasyMock.expect(mDetailedListener.getSummary()).andStubReturn(null);
-        mDetailedListener.logAssociation("before-module-log", beforeModule);
 
-        mAggListener.testModuleStarted(mModuleContext);
-        mDetailedListener.testModuleStarted(mModuleContext);
+        when(mAggListener.getSummary()).thenReturn(null);
 
-        // Detailed receives the breakdown
-        mDetailedListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
-        mDetailedListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mDetailedListener.logAssociation("test1-log", test1Log);
-        mDetailedListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mDetailedListener.logAssociation("test2-before-log", test2LogBefore);
-        mDetailedListener.testFailed(test2, FailureDescription.create("I failed. retry me."));
-        mDetailedListener.logAssociation("test2-after-log", test2LogAfter);
-        mDetailedListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.logAssociation("test-run1-before-log", testRun1LogBefore);
-        mDetailedListener.logAssociation("test-run1-after-log", testRun1LogAfter);
-        mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
-        mDetailedListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(1), EasyMock.anyLong());
-        mDetailedListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mDetailedListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
-        mDetailedListener.logAssociation("between-attempts", betweenAttemptsLog);
-        mDetailedListener.logAssociation("module-log", moduleLog);
+        when(mDetailedListener.getSummary()).thenReturn(null);
 
-        // Aggregated listeners receives the aggregated results
-        mAggListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
-        mAggListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mAggListener.logAssociation("test1-log", test1Log);
-        mAggListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mAggListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mAggListener.logAssociation("test2-before-log", test2LogBefore);
-        mAggListener.logAssociation("test2-after-log", test2LogAfter);
-        mAggListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mAggListener.logAssociation("test-run1-before-log", testRun1LogBefore);
-        mAggListener.logAssociation("test-run1-after-log", testRun1LogAfter);
-        mAggListener.testRunEnded(450L, new HashMap<String, Metric>());
-        mAggListener.logAssociation("between-attempts", betweenAttemptsLog);
-        mAggListener.logAssociation("module-log", moduleLog);
-        mAggListener.testModuleEnded();
+        when(mLogger.saveLogData(
+                        Mockito.contains("aggregated-events"),
+                        Mockito.eq(LogDataType.TF_EVENTS),
+                        Mockito.any()))
+                .thenReturn(null);
+        when(mLogger.saveLogData(
+                        Mockito.contains("detailed-events"),
+                        Mockito.eq(LogDataType.TF_EVENTS),
+                        Mockito.any()))
+                .thenReturn(null);
 
-        mDetailedListener.testModuleEnded();
-        mAggListener.logAssociation("before-module-log", beforeModule);
-        mAggListener.logAssociation("before-end", beforeEnd);
-        mAggListener.invocationEnded(500L);
-        mDetailedListener.logAssociation("before-end", beforeEnd);
-        mDetailedListener.invocationEnded(500L);
-        EasyMock.expect(
-                        mLogger.saveLogData(
-                                EasyMock.contains("aggregated-events"),
-                                EasyMock.eq(LogDataType.TF_EVENTS),
-                                EasyMock.anyObject()))
-                .andReturn(null);
-        EasyMock.expect(
-                        mLogger.saveLogData(
-                                EasyMock.contains("detailed-events"),
-                                EasyMock.eq(LogDataType.TF_EVENTS),
-                                EasyMock.anyObject()))
-                .andReturn(null);
-
-        EasyMock.replay(mAggListener, mDetailedListener, mLogger);
         mAggregator =
                 new TestableResultAggregator(
                         Arrays.asList(mAggListener, mDetailedListener),
@@ -235,7 +170,84 @@ public class ResultAggregatorTest {
         mAggregator.testModuleEnded();
         mAggregator.logAssociation("before-end", beforeEnd);
         mAggregator.invocationEnded(500L);
-        EasyMock.verify(mAggListener, mDetailedListener, mLogger);
+        InOrder inOrder = Mockito.inOrder(mDetailedListener);
+        InOrder inOrderAgg = Mockito.inOrder(mAggListener);
+        inOrderAgg.verify(mAggListener).setLogSaver(mLogger);
+        inOrderAgg.verify(mAggListener).invocationStarted(mInvocationContext);
+        inOrder.verify(mDetailedListener).setLogSaver(mLogger);
+        inOrder.verify(mDetailedListener).invocationStarted(mInvocationContext);
+        inOrder.verify(mDetailedListener).logAssociation("before-module-log", beforeModule);
+        inOrderAgg.verify(mAggListener).testModuleStarted(mModuleContext);
+        inOrder.verify(mDetailedListener).testModuleStarted(mModuleContext);
+        inOrder.verify(mDetailedListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(0), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).logAssociation("test1-log", test1Log);
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).logAssociation("test2-before-log", test2LogBefore);
+        inOrder.verify(mDetailedListener)
+                .testFailed(test2, FailureDescription.create("I failed. retry me."));
+        inOrder.verify(mDetailedListener).logAssociation("test2-after-log", test2LogAfter);
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).logAssociation("test-run1-before-log", testRun1LogBefore);
+        inOrder.verify(mDetailedListener).logAssociation("test-run1-after-log", testRun1LogAfter);
+        inOrder.verify(mDetailedListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrder.verify(mDetailedListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrder.verify(mDetailedListener).logAssociation("between-attempts", betweenAttemptsLog);
+        inOrder.verify(mDetailedListener).logAssociation("module-log", moduleLog);
+        inOrderAgg
+                .verify(mAggListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(0), Mockito.anyLong());
+        inOrderAgg.verify(mAggListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrderAgg.verify(mAggListener).logAssociation("test1-log", test1Log);
+        inOrderAgg
+                .verify(mAggListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrderAgg.verify(mAggListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrderAgg.verify(mAggListener).logAssociation("test2-before-log", test2LogBefore);
+        inOrderAgg.verify(mAggListener).logAssociation("test2-after-log", test2LogAfter);
+        inOrderAgg
+                .verify(mAggListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrderAgg.verify(mAggListener).logAssociation("test-run1-before-log", testRun1LogBefore);
+        inOrderAgg.verify(mAggListener).logAssociation("test-run1-after-log", testRun1LogAfter);
+        inOrderAgg.verify(mAggListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrderAgg.verify(mAggListener).logAssociation("between-attempts", betweenAttemptsLog);
+        inOrderAgg.verify(mAggListener).logAssociation("module-log", moduleLog);
+        inOrderAgg.verify(mAggListener).testModuleEnded();
+        inOrder.verify(mDetailedListener).testModuleEnded();
+        inOrderAgg.verify(mAggListener).logAssociation("before-module-log", beforeModule);
+        inOrderAgg.verify(mAggListener).logAssociation("before-end", beforeEnd);
+        inOrderAgg.verify(mAggListener).invocationEnded(500L);
+        inOrder.verify(mDetailedListener).logAssociation("before-end", beforeEnd);
+        inOrder.verify(mDetailedListener).invocationEnded(500L);
+
         assertEquals("run fail", mAggregator.getInvocationMetricRunError());
     }
 
@@ -244,74 +256,25 @@ public class ResultAggregatorTest {
         TestDescription test1 = new TestDescription("classname", "test1");
         TestDescription test2 = new TestDescription("classname", "test2");
 
-        EasyMock.expect(mDetailedListener.supportGranularResults()).andStubReturn(true);
+        when(mDetailedListener.supportGranularResults()).thenReturn(true);
 
         // Invocation level
-        mAggListener.setLogSaver(mLogger);
-        mAggListener.invocationStarted(mInvocationContext);
-        EasyMock.expect(mAggListener.getSummary()).andStubReturn(null);
-        mDetailedListener.setLogSaver(mLogger);
-        mDetailedListener.invocationStarted(mInvocationContext);
-        EasyMock.expect(mDetailedListener.getSummary()).andStubReturn(null);
 
-        mAggListener.testModuleStarted(mModuleContext);
-        mDetailedListener.testModuleStarted(mModuleContext);
+        when(mAggListener.getSummary()).thenReturn(null);
 
-        // Detailed receives the breakdown
-        mDetailedListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
-        mDetailedListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mDetailedListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mDetailedListener.testFailed(test2, FailureDescription.create("I failed. retry me."));
-        mDetailedListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
-        mDetailedListener.testModuleEnded();
-        mDetailedListener.testModuleStarted(mModuleContext);
-        mDetailedListener.testModuleEnded();
+        when(mDetailedListener.getSummary()).thenReturn(null);
 
-        // Aggregated listeners receives the aggregated results
-        mAggListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
-        mAggListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mAggListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mAggListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mAggListener.testFailed(test2, FailureDescription.create("I failed. retry me."));
-        mAggListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mAggListener.testRunEnded(450L, new HashMap<String, Metric>());
-        mAggListener.testModuleEnded();
-        // Module 2
-        mAggListener.testModuleStarted(mModuleContext);
-        mAggListener.testModuleEnded();
+        when(mLogger.saveLogData(
+                        Mockito.contains("aggregated-events"),
+                        Mockito.eq(LogDataType.TF_EVENTS),
+                        Mockito.any()))
+                .thenReturn(null);
+        when(mLogger.saveLogData(
+                        Mockito.contains("detailed-events"),
+                        Mockito.eq(LogDataType.TF_EVENTS),
+                        Mockito.any()))
+                .thenReturn(null);
 
-        mAggListener.invocationEnded(500L);
-        mDetailedListener.invocationEnded(500L);
-        EasyMock.expect(
-                        mLogger.saveLogData(
-                                EasyMock.contains("aggregated-events"),
-                                EasyMock.eq(LogDataType.TF_EVENTS),
-                                EasyMock.anyObject()))
-                .andReturn(null);
-        EasyMock.expect(
-                        mLogger.saveLogData(
-                                EasyMock.contains("detailed-events"),
-                                EasyMock.eq(LogDataType.TF_EVENTS),
-                                EasyMock.anyObject()))
-                .andReturn(null);
-
-        EasyMock.replay(mAggListener, mDetailedListener, mLogger);
         mAggregator =
                 new TestableResultAggregator(
                         Arrays.asList(mAggListener, mDetailedListener),
@@ -333,9 +296,64 @@ public class ResultAggregatorTest {
         mAggregator.testModuleEnded();
 
         mAggregator.invocationEnded(500L);
-        EasyMock.verify(mAggListener, mDetailedListener, mLogger);
+        InOrder inOrder = Mockito.inOrder(mDetailedListener);
+        InOrder inOrderAgg = Mockito.inOrder(mAggListener);
+        inOrderAgg.verify(mAggListener).setLogSaver(mLogger);
+        inOrderAgg.verify(mAggListener).invocationStarted(mInvocationContext);
+        inOrder.verify(mDetailedListener).setLogSaver(mLogger);
+        inOrder.verify(mDetailedListener).invocationStarted(mInvocationContext);
+        inOrderAgg.verify(mAggListener).testModuleStarted(mModuleContext);
+        inOrder.verify(mDetailedListener).testModuleStarted(mModuleContext);
+        inOrder.verify(mDetailedListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(0), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrder.verify(mDetailedListener)
+                .testFailed(test2, FailureDescription.create("I failed. retry me."));
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrder.verify(mDetailedListener).testModuleEnded();
+        inOrder.verify(mDetailedListener).testModuleStarted(mModuleContext);
+        inOrder.verify(mDetailedListener).testModuleEnded();
+        inOrderAgg
+                .verify(mAggListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(0), Mockito.anyLong());
+        inOrderAgg.verify(mAggListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrderAgg
+                .verify(mAggListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrderAgg.verify(mAggListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrderAgg
+                .verify(mAggListener)
+                .testFailed(test2, FailureDescription.create("I failed. retry me."));
+        inOrderAgg
+                .verify(mAggListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrderAgg.verify(mAggListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrderAgg.verify(mAggListener).testModuleEnded();
+        inOrderAgg.verify(mAggListener).testModuleStarted(mModuleContext);
+        inOrderAgg.verify(mAggListener).testModuleEnded();
+        inOrderAgg.verify(mAggListener).invocationEnded(500L);
+        inOrder.verify(mDetailedListener).invocationEnded(500L);
     }
-    
+
     @Test
     public void testForwarding_newResult() throws Exception {
         LogFile beforeModule = new LogFile("before-module", "url", LogDataType.TEXT);
@@ -350,95 +368,25 @@ public class ResultAggregatorTest {
         TestDescription test1 = new TestDescription("classname", "test1");
         TestDescription test2 = new TestDescription("classname", "test2");
 
-        EasyMock.expect(mDetailedListener.supportGranularResults()).andStubReturn(true);
+        when(mDetailedListener.supportGranularResults()).thenReturn(true);
 
         // Invocation level
-        mAggListener.setLogSaver(mLogger);
-        mAggListener.invocationStarted(mInvocationContext);
-        EasyMock.expect(mAggListener.getSummary()).andStubReturn(null);
-        mDetailedListener.setLogSaver(mLogger);
-        mDetailedListener.invocationStarted(mInvocationContext);
-        EasyMock.expect(mDetailedListener.getSummary()).andStubReturn(null);
-        mDetailedListener.logAssociation("before-module-log", beforeModule);
 
-        mAggListener.testModuleStarted(mModuleContext);
-        mDetailedListener.testModuleStarted(mModuleContext);
+        when(mAggListener.getSummary()).thenReturn(null);
 
-        // Detailed receives the breakdown
-        mDetailedListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
-        mDetailedListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mDetailedListener.logAssociation("test1-log", test1Log);
-        mDetailedListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mDetailedListener.logAssociation("test2-before-log", test2LogBefore);
-        mDetailedListener.testFailed(test2, FailureDescription.create("I failed. retry me."));
-        mDetailedListener.logAssociation("test2-after-log", test2LogAfter);
-        mDetailedListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.logAssociation("test-run1-before-log", testRun1LogBefore);
-        mDetailedListener.testRunFailed("run fail");
-        mDetailedListener.logAssociation("test-run1-after-log", testRun1LogAfter);
-        mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
-        mDetailedListener.logAssociation("between-attempts", betweenAttemptsLog);
-        mDetailedListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(1), EasyMock.anyLong());
-        mDetailedListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mDetailedListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
-        mDetailedListener.logAssociation("module-log", moduleLog);
+        when(mDetailedListener.getSummary()).thenReturn(null);
 
-        // Aggregated listeners receives the aggregated results
-        mAggListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
-        mAggListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mAggListener.logAssociation("test1-log", test1Log);
-        mAggListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mAggListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mAggListener.logAssociation("test2-before-log", test2LogBefore);
-        mAggListener.logAssociation("test2-after-log", test2LogAfter);
-        mAggListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mAggListener.logAssociation("test-run1-before-log", testRun1LogBefore);
-        mAggListener.logAssociation("test-run1-after-log", testRun1LogAfter);
-        mAggListener.testRunEnded(450L, new HashMap<String, Metric>());
-        mAggListener.logAssociation("between-attempts", betweenAttemptsLog);
-        mAggListener.logAssociation("module-log", moduleLog);
-        mAggListener.testModuleEnded();
+        when(mLogger.saveLogData(
+                        Mockito.contains("aggregated-events"),
+                        Mockito.eq(LogDataType.TF_EVENTS),
+                        Mockito.any()))
+                .thenReturn(null);
+        when(mLogger.saveLogData(
+                        Mockito.contains("detailed-events"),
+                        Mockito.eq(LogDataType.TF_EVENTS),
+                        Mockito.any()))
+                .thenReturn(null);
 
-        mDetailedListener.testModuleEnded();
-        mAggListener.logAssociation("before-module-log", beforeModule);
-        mAggListener.logAssociation("before-end", beforeEnd);
-        mAggListener.invocationEnded(500L);
-        mDetailedListener.logAssociation("before-end", beforeEnd);
-        mDetailedListener.invocationEnded(500L);
-        EasyMock.expect(
-                        mLogger.saveLogData(
-                                EasyMock.contains("aggregated-events"),
-                                EasyMock.eq(LogDataType.TF_EVENTS),
-                                EasyMock.anyObject()))
-                .andReturn(null);
-        EasyMock.expect(
-                        mLogger.saveLogData(
-                                EasyMock.contains("detailed-events"),
-                                EasyMock.eq(LogDataType.TF_EVENTS),
-                                EasyMock.anyObject()))
-                .andReturn(null);
-
-        EasyMock.replay(mAggListener, mDetailedListener, mLogger);
         mAggregator =
                 new TestableResultAggregator(
                         Arrays.asList(mAggListener, mDetailedListener),
@@ -473,13 +421,91 @@ public class ResultAggregatorTest {
         mAggregator.testModuleEnded();
         mAggregator.logAssociation("before-end", beforeEnd);
         mAggregator.invocationEnded(500L);
-        EasyMock.verify(mAggListener, mDetailedListener, mLogger);
+        InOrder inOrder = Mockito.inOrder(mDetailedListener);
+        InOrder inOrderAgg = Mockito.inOrder(mAggListener);
+        inOrderAgg.verify(mAggListener).setLogSaver(mLogger);
+        inOrderAgg.verify(mAggListener).invocationStarted(mInvocationContext);
+        inOrder.verify(mDetailedListener).setLogSaver(mLogger);
+        inOrder.verify(mDetailedListener).invocationStarted(mInvocationContext);
+        inOrder.verify(mDetailedListener).logAssociation("before-module-log", beforeModule);
+        inOrderAgg.verify(mAggListener).testModuleStarted(mModuleContext);
+        inOrder.verify(mDetailedListener).testModuleStarted(mModuleContext);
+        inOrder.verify(mDetailedListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(0), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).logAssociation("test1-log", test1Log);
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).logAssociation("test2-before-log", test2LogBefore);
+        inOrder.verify(mDetailedListener)
+                .testFailed(test2, FailureDescription.create("I failed. retry me."));
+        inOrder.verify(mDetailedListener).logAssociation("test2-after-log", test2LogAfter);
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).logAssociation("test-run1-before-log", testRun1LogBefore);
+        inOrder.verify(mDetailedListener).testRunFailed("run fail");
+        inOrder.verify(mDetailedListener).logAssociation("test-run1-after-log", testRun1LogAfter);
+        inOrder.verify(mDetailedListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrder.verify(mDetailedListener).logAssociation("between-attempts", betweenAttemptsLog);
+        inOrder.verify(mDetailedListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrder.verify(mDetailedListener).logAssociation("module-log", moduleLog);
+        inOrderAgg
+                .verify(mAggListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(0), Mockito.anyLong());
+        inOrderAgg.verify(mAggListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrderAgg.verify(mAggListener).logAssociation("test1-log", test1Log);
+        inOrderAgg
+                .verify(mAggListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrderAgg.verify(mAggListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrderAgg.verify(mAggListener).logAssociation("test2-before-log", test2LogBefore);
+        inOrderAgg.verify(mAggListener).logAssociation("test2-after-log", test2LogAfter);
+        inOrderAgg
+                .verify(mAggListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrderAgg.verify(mAggListener).logAssociation("test-run1-before-log", testRun1LogBefore);
+        inOrderAgg.verify(mAggListener).logAssociation("test-run1-after-log", testRun1LogAfter);
+        inOrderAgg.verify(mAggListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrderAgg.verify(mAggListener).logAssociation("between-attempts", betweenAttemptsLog);
+        inOrderAgg.verify(mAggListener).logAssociation("module-log", moduleLog);
+        inOrderAgg.verify(mAggListener).testModuleEnded();
+        inOrder.verify(mDetailedListener).testModuleEnded();
+        inOrderAgg.verify(mAggListener).logAssociation("before-module-log", beforeModule);
+        inOrderAgg.verify(mAggListener).logAssociation("before-end", beforeEnd);
+        inOrderAgg.verify(mAggListener).invocationEnded(500L);
+        inOrder.verify(mDetailedListener).logAssociation("before-end", beforeEnd);
+        inOrder.verify(mDetailedListener).invocationEnded(500L);
+
         assertNull(mAggregator.getInvocationMetricRunError());
     }
 
     @Test
     public void testForwarding_assumptionFailure() throws Exception {
-        mDetailedListener = EasyMock.createStrictMock(ITestDetailedReceiver.class);
+        mDetailedListener = mock(ITestDetailedReceiver.class);
         LogFile test1Log = new LogFile("test1", "url", LogDataType.TEXT);
         LogFile test2LogBefore = new LogFile("test2-before", "url", LogDataType.TEXT);
         LogFile test2LogAfter = new LogFile("test2-after", "url", LogDataType.TEXT);
@@ -491,96 +517,25 @@ public class ResultAggregatorTest {
         TestDescription test1 = new TestDescription("classname", "test1");
         TestDescription test2 = new TestDescription("classname", "test2");
 
-        EasyMock.expect(mDetailedListener.supportGranularResults()).andStubReturn(true);
+        when(mDetailedListener.supportGranularResults()).thenReturn(true);
 
         // Invocation level
-        mAggListener.setLogSaver(mLogger);
-        mAggListener.invocationStarted(mInvocationContext);
-        EasyMock.expect(mAggListener.getSummary()).andStubReturn(null);
-        mDetailedListener.setLogSaver(mLogger);
-        mDetailedListener.invocationStarted(mInvocationContext);
-        EasyMock.expect(mDetailedListener.getSummary()).andStubReturn(null);
 
-        mAggListener.testModuleStarted(mModuleContext);
-        mDetailedListener.testModuleStarted(mModuleContext);
+        when(mAggListener.getSummary()).thenReturn(null);
 
-        // Detailed receives the breakdown
-        mDetailedListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
-        mDetailedListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mDetailedListener.logAssociation("test1-log", test1Log);
-        mDetailedListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mDetailedListener.logAssociation("test2-before-log", test2LogBefore);
-        mDetailedListener.testFailed(test2, FailureDescription.create("I failed. retry me."));
-        mDetailedListener.logAssociation("test2-after-log", test2LogAfter);
-        mDetailedListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.logAssociation("test-run1-before-log", testRun1LogBefore);
-        mDetailedListener.logAssociation("test-run1-after-log", testRun1LogAfter);
-        mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
-        mDetailedListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(1), EasyMock.anyLong());
-        mDetailedListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mDetailedListener.testAssumptionFailure(
-                EasyMock.eq(test2), EasyMock.eq(FailureDescription.create("Assump failure")));
-        mDetailedListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
-        mDetailedListener.logAssociation("between-attempts", betweenAttemptsLog);
-        mDetailedListener.logAssociation("module-log", moduleLog);
+        when(mDetailedListener.getSummary()).thenReturn(null);
 
-        // Aggregated listeners receives the aggregated results
-        mAggListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
-        mAggListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mAggListener.logAssociation("test1-log", test1Log);
-        mAggListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mAggListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mAggListener.testAssumptionFailure(
-                EasyMock.eq(test2), (FailureDescription) EasyMock.anyObject());
-        mAggListener.logAssociation("test2-before-log", test2LogBefore);
-        mAggListener.logAssociation("test2-after-log", test2LogAfter);
-        mAggListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mAggListener.logAssociation("test-run1-before-log", testRun1LogBefore);
-        mAggListener.logAssociation("test-run1-after-log", testRun1LogAfter);
-        mAggListener.testRunEnded(450L, new HashMap<String, Metric>());
-        mAggListener.logAssociation("between-attempts", betweenAttemptsLog);
-        mAggListener.logAssociation("module-log", moduleLog);
-        mAggListener.testModuleEnded();
-        mDetailedListener.testModuleEnded();
-        mAggListener.logAssociation("before-end", beforeEnd);
-        mAggListener.invocationEnded(500L);
-        mDetailedListener.logAssociation("before-end", beforeEnd);
-        mDetailedListener.invocationEnded(500L);
+        when(mLogger.saveLogData(
+                        Mockito.contains("aggregated-events"),
+                        Mockito.eq(LogDataType.TF_EVENTS),
+                        Mockito.any()))
+                .thenReturn(null);
+        when(mLogger.saveLogData(
+                        Mockito.contains("detailed-events"),
+                        Mockito.eq(LogDataType.TF_EVENTS),
+                        Mockito.any()))
+                .thenReturn(null);
 
-        EasyMock.expect(
-                        mLogger.saveLogData(
-                                EasyMock.contains("aggregated-events"),
-                                EasyMock.eq(LogDataType.TF_EVENTS),
-                                EasyMock.anyObject()))
-                .andReturn(null);
-        EasyMock.expect(
-                        mLogger.saveLogData(
-                                EasyMock.contains("detailed-events"),
-                                EasyMock.eq(LogDataType.TF_EVENTS),
-                                EasyMock.anyObject()))
-                .andReturn(null);
-
-        EasyMock.replay(mAggListener, mDetailedListener, mLogger);
         mAggregator =
                 new TestableResultAggregator(
                         Arrays.asList(mAggListener, mDetailedListener),
@@ -614,13 +569,94 @@ public class ResultAggregatorTest {
         mAggregator.testModuleEnded();
         mAggregator.logAssociation("before-end", beforeEnd);
         mAggregator.invocationEnded(500L);
-        EasyMock.verify(mAggListener, mDetailedListener, mLogger);
+        InOrder inOrder = Mockito.inOrder(mDetailedListener);
+        InOrder inOrderAgg = Mockito.inOrder(mAggListener);
+        inOrderAgg.verify(mAggListener).setLogSaver(mLogger);
+        inOrderAgg.verify(mAggListener).invocationStarted(mInvocationContext);
+        inOrder.verify(mDetailedListener).setLogSaver(mLogger);
+        inOrder.verify(mDetailedListener).invocationStarted(mInvocationContext);
+        inOrderAgg.verify(mAggListener).testModuleStarted(mModuleContext);
+        inOrder.verify(mDetailedListener).testModuleStarted(mModuleContext);
+        inOrder.verify(mDetailedListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(0), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).logAssociation("test1-log", test1Log);
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).logAssociation("test2-before-log", test2LogBefore);
+        inOrder.verify(mDetailedListener)
+                .testFailed(test2, FailureDescription.create("I failed. retry me."));
+        inOrder.verify(mDetailedListener).logAssociation("test2-after-log", test2LogAfter);
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).logAssociation("test-run1-before-log", testRun1LogBefore);
+        inOrder.verify(mDetailedListener).logAssociation("test-run1-after-log", testRun1LogAfter);
+        inOrder.verify(mDetailedListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrder.verify(mDetailedListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrder.verify(mDetailedListener)
+                .testAssumptionFailure(
+                        Mockito.eq(test2), Mockito.eq(FailureDescription.create("Assump failure")));
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrder.verify(mDetailedListener).logAssociation("between-attempts", betweenAttemptsLog);
+        inOrder.verify(mDetailedListener).logAssociation("module-log", moduleLog);
+        inOrderAgg
+                .verify(mAggListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(0), Mockito.anyLong());
+        inOrderAgg.verify(mAggListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrderAgg.verify(mAggListener).logAssociation("test1-log", test1Log);
+        inOrderAgg
+                .verify(mAggListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrderAgg.verify(mAggListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrderAgg
+                .verify(mAggListener)
+                .testAssumptionFailure(Mockito.eq(test2), (FailureDescription) Mockito.any());
+        inOrderAgg.verify(mAggListener).logAssociation("test2-before-log", test2LogBefore);
+        inOrderAgg.verify(mAggListener).logAssociation("test2-after-log", test2LogAfter);
+        inOrderAgg
+                .verify(mAggListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrderAgg.verify(mAggListener).logAssociation("test-run1-before-log", testRun1LogBefore);
+        inOrderAgg.verify(mAggListener).logAssociation("test-run1-after-log", testRun1LogAfter);
+        inOrderAgg.verify(mAggListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrderAgg.verify(mAggListener).logAssociation("between-attempts", betweenAttemptsLog);
+        inOrderAgg.verify(mAggListener).logAssociation("module-log", moduleLog);
+        inOrderAgg.verify(mAggListener).testModuleEnded();
+        inOrder.verify(mDetailedListener).testModuleEnded();
+        inOrderAgg.verify(mAggListener).logAssociation("before-end", beforeEnd);
+        inOrderAgg.verify(mAggListener).invocationEnded(500L);
+        inOrder.verify(mDetailedListener).logAssociation("before-end", beforeEnd);
+        inOrder.verify(mDetailedListener).invocationEnded(500L);
+
         assertEquals("run fail", mAggregator.getInvocationMetricRunError());
     }
 
     @Test
     public void testForwarding_runFailure() throws Exception {
-        mDetailedListener = EasyMock.createStrictMock(ITestDetailedReceiver.class);
+        mDetailedListener = mock(ITestDetailedReceiver.class);
         TestDescription test1 = new TestDescription("classname", "test1");
         TestDescription test2 = new TestDescription("classname", "test2");
 
@@ -628,78 +664,25 @@ public class ResultAggregatorTest {
                 new MultiFailureDescription(
                         FailureDescription.create("run fail"),
                         FailureDescription.create("run fail 2"));
-        EasyMock.expect(mDetailedListener.supportGranularResults()).andStubReturn(true);
+        when(mDetailedListener.supportGranularResults()).thenReturn(true);
 
         // Invocation level
-        mAggListener.setLogSaver(mLogger);
-        mAggListener.invocationStarted(mInvocationContext);
-        EasyMock.expect(mAggListener.getSummary()).andStubReturn(null);
-        mDetailedListener.setLogSaver(mLogger);
-        mDetailedListener.invocationStarted(mInvocationContext);
-        EasyMock.expect(mDetailedListener.getSummary()).andStubReturn(null);
 
-        mAggListener.testModuleStarted(mModuleContext);
-        mDetailedListener.testModuleStarted(mModuleContext);
+        when(mAggListener.getSummary()).thenReturn(null);
 
-        // Detailed receives the breakdown
-        mDetailedListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
-        mDetailedListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mDetailedListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mDetailedListener.testFailed(test2, "I failed. retry me.");
-        mDetailedListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
-        mDetailedListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(1), EasyMock.anyLong());
-        mDetailedListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mDetailedListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testRunFailed(aggFailure);
-        mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
+        when(mDetailedListener.getSummary()).thenReturn(null);
 
-        // Aggregated listeners receives the aggregated results
-        mAggListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
-        mAggListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mAggListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mAggListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mAggListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mAggListener.testRunFailed(aggFailure);
-        mAggListener.testRunEnded(450L, new HashMap<String, Metric>());
+        when(mLogger.saveLogData(
+                        Mockito.contains("aggregated-events"),
+                        Mockito.eq(LogDataType.TF_EVENTS),
+                        Mockito.any()))
+                .thenReturn(null);
+        when(mLogger.saveLogData(
+                        Mockito.contains("detailed-events"),
+                        Mockito.eq(LogDataType.TF_EVENTS),
+                        Mockito.any()))
+                .thenReturn(null);
 
-        mAggListener.testModuleEnded();
-        mDetailedListener.testModuleEnded();
-        mAggListener.invocationEnded(500L);
-        mDetailedListener.invocationEnded(500L);
-        EasyMock.expect(
-                        mLogger.saveLogData(
-                                EasyMock.contains("aggregated-events"),
-                                EasyMock.eq(LogDataType.TF_EVENTS),
-                                EasyMock.anyObject()))
-                .andReturn(null);
-        EasyMock.expect(
-                        mLogger.saveLogData(
-                                EasyMock.contains("detailed-events"),
-                                EasyMock.eq(LogDataType.TF_EVENTS),
-                                EasyMock.anyObject()))
-                .andReturn(null);
-
-        EasyMock.replay(mAggListener, mDetailedListener, mLogger);
         mAggregator =
                 new TestableResultAggregator(
                         Arrays.asList(mAggListener, mDetailedListener),
@@ -725,7 +708,67 @@ public class ResultAggregatorTest {
 
         mAggregator.testModuleEnded();
         mAggregator.invocationEnded(500L);
-        EasyMock.verify(mAggListener, mDetailedListener, mLogger);
+        InOrder inOrder = Mockito.inOrder(mDetailedListener);
+        InOrder inOrderAgg = Mockito.inOrder(mAggListener);
+        inOrderAgg.verify(mAggListener).setLogSaver(mLogger);
+        inOrderAgg.verify(mAggListener).invocationStarted(mInvocationContext);
+        inOrder.verify(mDetailedListener).setLogSaver(mLogger);
+        inOrder.verify(mDetailedListener).invocationStarted(mInvocationContext);
+        inOrderAgg.verify(mAggListener).testModuleStarted(mModuleContext);
+        inOrder.verify(mDetailedListener).testModuleStarted(mModuleContext);
+        inOrder.verify(mDetailedListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(0), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testFailed(test2, "I failed. retry me.");
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrder.verify(mDetailedListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testRunFailed(aggFailure);
+        inOrder.verify(mDetailedListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrderAgg
+                .verify(mAggListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(0), Mockito.anyLong());
+        inOrderAgg.verify(mAggListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrderAgg
+                .verify(mAggListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrderAgg.verify(mAggListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrderAgg
+                .verify(mAggListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrderAgg.verify(mAggListener).testRunFailed(aggFailure);
+        inOrderAgg.verify(mAggListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrderAgg.verify(mAggListener).testModuleEnded();
+        inOrder.verify(mDetailedListener).testModuleEnded();
+        inOrderAgg.verify(mAggListener).invocationEnded(500L);
+        inOrder.verify(mDetailedListener).invocationEnded(500L);
+
         assertNull(mAggregator.getInvocationMetricRunError());
     }
 
@@ -734,72 +777,25 @@ public class ResultAggregatorTest {
         TestDescription test1 = new TestDescription("classname", "test1");
         TestDescription test2 = new TestDescription("classname", "test2");
 
-
-        EasyMock.expect(mDetailedListener.supportGranularResults()).andStubReturn(true);
+        when(mDetailedListener.supportGranularResults()).thenReturn(true);
 
         // Invocation level
-        mAggListener.setLogSaver(mLogger);
-        mAggListener.invocationStarted(mInvocationContext);
-        EasyMock.expect(mAggListener.getSummary()).andStubReturn(null);
-        mDetailedListener.setLogSaver(mLogger);
-        mDetailedListener.invocationStarted(mInvocationContext);
-        EasyMock.expect(mDetailedListener.getSummary()).andStubReturn(null);
 
-        mAggListener.testModuleStarted(mModuleContext);
-        mDetailedListener.testModuleStarted(mModuleContext);
+        when(mAggListener.getSummary()).thenReturn(null);
 
-        // Detailed receives the breakdown
-        mDetailedListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
-        mDetailedListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mDetailedListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mDetailedListener.testFailed(test2, "I failed. retry me.");
-        mDetailedListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testRunFailed(EasyMock.eq(FailureDescription.create("run fail")));
-        mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
+        when(mDetailedListener.getSummary()).thenReturn(null);
 
-        // Aggregated listeners receives the aggregated results
-        mAggListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
-        mAggListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mAggListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mAggListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mAggListener.testFailed(test2, FailureDescription.create("I failed. retry me."));
-        mAggListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mAggListener.testRunFailed(EasyMock.eq(FailureDescription.create("run fail")));
-        mAggListener.testRunEnded(450L, new HashMap<String, Metric>());
+        when(mLogger.saveLogData(
+                        Mockito.contains("aggregated-events"),
+                        Mockito.eq(LogDataType.TF_EVENTS),
+                        Mockito.any()))
+                .thenReturn(null);
+        when(mLogger.saveLogData(
+                        Mockito.contains("detailed-events"),
+                        Mockito.eq(LogDataType.TF_EVENTS),
+                        Mockito.any()))
+                .thenReturn(null);
 
-        mAggListener.testModuleEnded();
-        mDetailedListener.testModuleEnded();
-        mAggListener.invocationEnded(500L);
-        mDetailedListener.invocationEnded(500L);
-        EasyMock.expect(
-                        mLogger.saveLogData(
-                                EasyMock.contains("aggregated-events"),
-                                EasyMock.eq(LogDataType.TF_EVENTS),
-                                EasyMock.anyObject()))
-                .andReturn(null);
-        EasyMock.expect(
-                        mLogger.saveLogData(
-                                EasyMock.contains("detailed-events"),
-                                EasyMock.eq(LogDataType.TF_EVENTS),
-                                EasyMock.anyObject()))
-                .andReturn(null);
-
-        EasyMock.replay(mAggListener, mDetailedListener, mLogger);
         mAggregator =
                 new TestableResultAggregator(
                         Arrays.asList(mAggListener, mDetailedListener),
@@ -818,7 +814,63 @@ public class ResultAggregatorTest {
         mAggregator.testRunEnded(450L, new HashMap<String, Metric>());
         mAggregator.testModuleEnded();
         mAggregator.invocationEnded(500L);
-        EasyMock.verify(mAggListener, mDetailedListener, mLogger);
+        InOrder inOrder = Mockito.inOrder(mDetailedListener);
+        InOrder inOrderAgg = Mockito.inOrder(mAggListener);
+        inOrderAgg.verify(mAggListener).setLogSaver(mLogger);
+        inOrderAgg.verify(mAggListener).invocationStarted(mInvocationContext);
+        inOrder.verify(mDetailedListener).setLogSaver(mLogger);
+        inOrder.verify(mDetailedListener).invocationStarted(mInvocationContext);
+        inOrderAgg.verify(mAggListener).testModuleStarted(mModuleContext);
+        inOrder.verify(mDetailedListener).testModuleStarted(mModuleContext);
+        inOrder.verify(mDetailedListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(0), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testFailed(test2, "I failed. retry me.");
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener)
+                .testRunFailed(Mockito.eq(FailureDescription.create("run fail")));
+        inOrder.verify(mDetailedListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrderAgg
+                .verify(mAggListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(0), Mockito.anyLong());
+        inOrderAgg.verify(mAggListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrderAgg
+                .verify(mAggListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrderAgg.verify(mAggListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrderAgg
+                .verify(mAggListener)
+                .testFailed(test2, FailureDescription.create("I failed. retry me."));
+        inOrderAgg
+                .verify(mAggListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrderAgg
+                .verify(mAggListener)
+                .testRunFailed(Mockito.eq(FailureDescription.create("run fail")));
+        inOrderAgg.verify(mAggListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrderAgg.verify(mAggListener).testModuleEnded();
+        inOrder.verify(mDetailedListener).testModuleEnded();
+        inOrderAgg.verify(mAggListener).invocationEnded(500L);
+        inOrder.verify(mDetailedListener).invocationEnded(500L);
+
         assertNull(mAggregator.getInvocationMetricRunError());
     }
 
@@ -827,97 +879,25 @@ public class ResultAggregatorTest {
         TestDescription test1 = new TestDescription("classname", "test1");
         TestDescription test2 = new TestDescription("classname", "test2");
 
-
-        EasyMock.expect(mDetailedListener.supportGranularResults()).andStubReturn(true);
+        when(mDetailedListener.supportGranularResults()).thenReturn(true);
 
         // Invocation level
-        mAggListener.setLogSaver(mLogger);
-        mAggListener.invocationStarted(mInvocationContext);
-        EasyMock.expect(mAggListener.getSummary()).andStubReturn(null);
-        mDetailedListener.setLogSaver(mLogger);
-        mDetailedListener.invocationStarted(mInvocationContext);
-        EasyMock.expect(mDetailedListener.getSummary()).andStubReturn(null);
 
-        mAggListener.testModuleStarted(mModuleContext);
-        mDetailedListener.testModuleStarted(mModuleContext);
+        when(mAggListener.getSummary()).thenReturn(null);
 
-        // Detailed receives the breakdown
-        mDetailedListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
-        mDetailedListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mDetailedListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mDetailedListener.testFailed(test2, "I failed. retry me.");
-        mDetailedListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
-        mDetailedListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(1), EasyMock.anyLong());
-        mDetailedListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mDetailedListener.testFailed(test2, "I failed. retry me.");
-        mDetailedListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
-        mDetailedListener.testModuleEnded();
+        when(mDetailedListener.getSummary()).thenReturn(null);
 
-        mDetailedListener.testModuleStarted(mModuleContext);
-        mDetailedListener.testRunStarted(
-                EasyMock.eq("run2"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
-        mDetailedListener.testRunFailed(EasyMock.eq(FailureDescription.create("run fail")));
-        mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
+        when(mLogger.saveLogData(
+                        Mockito.contains("aggregated-events"),
+                        Mockito.eq(LogDataType.TF_EVENTS),
+                        Mockito.any()))
+                .thenReturn(null);
+        when(mLogger.saveLogData(
+                        Mockito.contains("detailed-events"),
+                        Mockito.eq(LogDataType.TF_EVENTS),
+                        Mockito.any()))
+                .thenReturn(null);
 
-        // Aggregated listeners receives the aggregated results
-        mAggListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
-        mAggListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mAggListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mAggListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mAggListener.testFailed(
-                test2,
-                new MultiFailureDescription(
-                        FailureDescription.create("I failed. retry me."),
-                        FailureDescription.create("I failed. retry me.")));
-        mAggListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mAggListener.testRunEnded(450L, new HashMap<String, Metric>());
-        mAggListener.testModuleEnded();
-
-        mAggListener.testModuleStarted(mModuleContext);
-        mAggListener.testRunStarted(
-                EasyMock.eq("run2"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
-        mAggListener.testRunFailed(EasyMock.eq(FailureDescription.create("run fail")));
-        mAggListener.testRunEnded(450L, new HashMap<String, Metric>());
-
-        mAggListener.testModuleEnded();
-        mDetailedListener.testModuleEnded();
-        mAggListener.invocationEnded(500L);
-        mDetailedListener.invocationEnded(500L);
-        EasyMock.expect(
-                        mLogger.saveLogData(
-                                EasyMock.contains("aggregated-events"),
-                                EasyMock.eq(LogDataType.TF_EVENTS),
-                                EasyMock.anyObject()))
-                .andReturn(null);
-        EasyMock.expect(
-                        mLogger.saveLogData(
-                                EasyMock.contains("detailed-events"),
-                                EasyMock.eq(LogDataType.TF_EVENTS),
-                                EasyMock.anyObject()))
-                .andReturn(null);
-
-        EasyMock.replay(mAggListener, mDetailedListener, mLogger);
         mAggregator =
                 new TestableResultAggregator(
                         Arrays.asList(mAggListener, mDetailedListener),
@@ -946,7 +926,91 @@ public class ResultAggregatorTest {
         mAggregator.testRunEnded(450L, new HashMap<String, Metric>());
         mAggregator.testModuleEnded();
         mAggregator.invocationEnded(500L);
-        EasyMock.verify(mAggListener, mDetailedListener, mLogger);
+        InOrder inOrder = Mockito.inOrder(mDetailedListener);
+        InOrder inOrderAgg = Mockito.inOrder(mAggListener);
+        inOrderAgg.verify(mAggListener).setLogSaver(mLogger);
+        inOrderAgg.verify(mAggListener).invocationStarted(mInvocationContext);
+        inOrder.verify(mDetailedListener).setLogSaver(mLogger);
+        inOrder.verify(mDetailedListener).invocationStarted(mInvocationContext);
+        inOrderAgg.verify(mAggListener).testModuleStarted(mModuleContext);
+        inOrder.verify(mDetailedListener).testModuleStarted(mModuleContext);
+        inOrder.verify(mDetailedListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(0), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testFailed(test2, "I failed. retry me.");
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrder.verify(mDetailedListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testFailed(test2, "I failed. retry me.");
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrder.verify(mDetailedListener).testModuleEnded();
+        inOrder.verify(mDetailedListener).testModuleStarted(mModuleContext);
+        inOrder.verify(mDetailedListener)
+                .testRunStarted(
+                        Mockito.eq("run2"), Mockito.eq(1), Mockito.eq(0), Mockito.anyLong());
+        inOrder.verify(mDetailedListener)
+                .testRunFailed(Mockito.eq(FailureDescription.create("run fail")));
+        inOrder.verify(mDetailedListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrderAgg
+                .verify(mAggListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(0), Mockito.anyLong());
+        inOrderAgg.verify(mAggListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrderAgg
+                .verify(mAggListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrderAgg.verify(mAggListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrderAgg
+                .verify(mAggListener)
+                .testFailed(
+                        test2,
+                        new MultiFailureDescription(
+                                FailureDescription.create("I failed. retry me."),
+                                FailureDescription.create("I failed. retry me.")));
+        inOrderAgg
+                .verify(mAggListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrderAgg.verify(mAggListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrderAgg.verify(mAggListener).testModuleEnded();
+        inOrderAgg.verify(mAggListener).testModuleStarted(mModuleContext);
+        inOrderAgg
+                .verify(mAggListener)
+                .testRunStarted(
+                        Mockito.eq("run2"), Mockito.eq(1), Mockito.eq(0), Mockito.anyLong());
+        inOrderAgg
+                .verify(mAggListener)
+                .testRunFailed(Mockito.eq(FailureDescription.create("run fail")));
+        inOrderAgg.verify(mAggListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrderAgg.verify(mAggListener).testModuleEnded();
+        inOrder.verify(mDetailedListener).testModuleEnded();
+        inOrderAgg.verify(mAggListener).invocationEnded(500L);
+        inOrder.verify(mDetailedListener).invocationEnded(500L);
+
         assertNull(mAggregator.getInvocationMetricRunError());
     }
 
@@ -957,74 +1021,26 @@ public class ResultAggregatorTest {
 
         LogFile afterRunLog = new LogFile("after-run", "url", LogDataType.TEXT);
 
-        mDetailedListener = EasyMock.createStrictMock(ITestDetailedReceiver.class);
-        EasyMock.expect(mDetailedListener.supportGranularResults()).andStubReturn(true);
+        mDetailedListener = mock(ITestDetailedReceiver.class);
+        when(mDetailedListener.supportGranularResults()).thenReturn(true);
 
         // Invocation level
-        mAggListener.setLogSaver(mLogger);
-        mAggListener.invocationStarted(mInvocationContext);
-        EasyMock.expect(mAggListener.getSummary()).andStubReturn(null);
-        mDetailedListener.setLogSaver(mLogger);
-        mDetailedListener.invocationStarted(mInvocationContext);
-        EasyMock.expect(mDetailedListener.getSummary()).andStubReturn(null);
 
-        // Detailed receives the breakdown
-        mDetailedListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
-        mDetailedListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mDetailedListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mDetailedListener.testFailed(test2, "I failed. retry me.");
-        mDetailedListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
-        mDetailedListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(1), EasyMock.anyLong());
-        mDetailedListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mDetailedListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
-        mDetailedListener.logAssociation("after-run", afterRunLog);
+        when(mAggListener.getSummary()).thenReturn(null);
 
-        // Aggregated listeners receives the aggregated results
-        mAggListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
-        mAggListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mAggListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mAggListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mAggListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mAggListener.testRunEnded(900L, new HashMap<String, Metric>());
+        when(mDetailedListener.getSummary()).thenReturn(null);
 
-        mAggListener.logAssociation("after-run", afterRunLog);
-        mAggListener.invocationEnded(500L);
-        mDetailedListener.invocationEnded(500L);
-        EasyMock.expect(
-                        mLogger.saveLogData(
-                                EasyMock.contains("aggregated-events"),
-                                EasyMock.eq(LogDataType.TF_EVENTS),
-                                EasyMock.anyObject()))
-                .andReturn(null);
-        EasyMock.expect(
-                        mLogger.saveLogData(
-                                EasyMock.contains("detailed-events"),
-                                EasyMock.eq(LogDataType.TF_EVENTS),
-                                EasyMock.anyObject()))
-                .andReturn(null);
+        when(mLogger.saveLogData(
+                        Mockito.contains("aggregated-events"),
+                        Mockito.eq(LogDataType.TF_EVENTS),
+                        Mockito.any()))
+                .thenReturn(null);
+        when(mLogger.saveLogData(
+                        Mockito.contains("detailed-events"),
+                        Mockito.eq(LogDataType.TF_EVENTS),
+                        Mockito.any()))
+                .thenReturn(null);
 
-        EasyMock.replay(mAggListener, mDetailedListener, mLogger);
         mAggregator =
                 new TestableResultAggregator(
                         Arrays.asList(mAggListener, mDetailedListener),
@@ -1048,7 +1064,63 @@ public class ResultAggregatorTest {
 
         mAggregator.logAssociation("after-run", afterRunLog);
         mAggregator.invocationEnded(500L);
-        EasyMock.verify(mAggListener, mDetailedListener, mLogger);
+        InOrder inOrder = Mockito.inOrder(mDetailedListener);
+        InOrder inOrderAgg = Mockito.inOrder(mAggListener);
+        inOrderAgg.verify(mAggListener).setLogSaver(mLogger);
+        inOrderAgg.verify(mAggListener).invocationStarted(mInvocationContext);
+        inOrder.verify(mDetailedListener).setLogSaver(mLogger);
+        inOrder.verify(mDetailedListener).invocationStarted(mInvocationContext);
+        inOrder.verify(mDetailedListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(0), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testFailed(test2, "I failed. retry me.");
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrder.verify(mDetailedListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrder.verify(mDetailedListener).logAssociation("after-run", afterRunLog);
+        inOrderAgg
+                .verify(mAggListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(0), Mockito.anyLong());
+        inOrderAgg.verify(mAggListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrderAgg
+                .verify(mAggListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrderAgg.verify(mAggListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrderAgg
+                .verify(mAggListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrderAgg.verify(mAggListener).testRunEnded(900L, new HashMap<String, Metric>());
+        inOrderAgg.verify(mAggListener).logAssociation("after-run", afterRunLog);
+        inOrderAgg.verify(mAggListener).invocationEnded(500L);
+        inOrder.verify(mDetailedListener).invocationEnded(500L);
+
         assertEquals("I failed", mAggregator.getInvocationMetricRunError());
     }
 
@@ -1061,73 +1133,25 @@ public class ResultAggregatorTest {
                 new MultiFailureDescription(
                         FailureDescription.create("I failed"),
                         FailureDescription.create("I failed 2"));
-        EasyMock.expect(mDetailedListener.supportGranularResults()).andStubReturn(true);
+        when(mDetailedListener.supportGranularResults()).thenReturn(true);
 
         // Invocation level
-        mAggListener.setLogSaver(mLogger);
-        mAggListener.invocationStarted(mInvocationContext);
-        EasyMock.expect(mAggListener.getSummary()).andStubReturn(null);
-        mDetailedListener.setLogSaver(mLogger);
-        mDetailedListener.invocationStarted(mInvocationContext);
-        EasyMock.expect(mDetailedListener.getSummary()).andStubReturn(null);
 
-        // Detailed receives the breakdown
-        mDetailedListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
-        mDetailedListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mDetailedListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mDetailedListener.testFailed(test2, "I failed. retry me.");
-        mDetailedListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
-        mDetailedListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(1), EasyMock.anyLong());
-        mDetailedListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mDetailedListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testRunFailed(aggFailure);
-        mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
+        when(mAggListener.getSummary()).thenReturn(null);
 
-        // Aggregated listeners receives the aggregated results
-        mAggListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
-        mAggListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mAggListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mAggListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mAggListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mAggListener.testRunFailed(aggFailure);
-        mAggListener.testRunEnded(900L, new HashMap<String, Metric>());
+        when(mDetailedListener.getSummary()).thenReturn(null);
 
-        mAggListener.invocationEnded(500L);
-        mDetailedListener.invocationEnded(500L);
-        EasyMock.expect(
-                        mLogger.saveLogData(
-                                EasyMock.contains("aggregated-events"),
-                                EasyMock.eq(LogDataType.TF_EVENTS),
-                                EasyMock.anyObject()))
-                .andReturn(null);
-        EasyMock.expect(
-                        mLogger.saveLogData(
-                                EasyMock.contains("detailed-events"),
-                                EasyMock.eq(LogDataType.TF_EVENTS),
-                                EasyMock.anyObject()))
-                .andReturn(null);
+        when(mLogger.saveLogData(
+                        Mockito.contains("aggregated-events"),
+                        Mockito.eq(LogDataType.TF_EVENTS),
+                        Mockito.any()))
+                .thenReturn(null);
+        when(mLogger.saveLogData(
+                        Mockito.contains("detailed-events"),
+                        Mockito.eq(LogDataType.TF_EVENTS),
+                        Mockito.any()))
+                .thenReturn(null);
 
-        EasyMock.replay(mAggListener, mDetailedListener, mLogger);
         mAggregator =
                 new TestableResultAggregator(
                         Arrays.asList(mAggListener, mDetailedListener),
@@ -1151,7 +1175,63 @@ public class ResultAggregatorTest {
         mAggregator.testRunEnded(450L, new HashMap<String, Metric>());
 
         mAggregator.invocationEnded(500L);
-        EasyMock.verify(mAggListener, mDetailedListener, mLogger);
+        InOrder inOrder = Mockito.inOrder(mDetailedListener);
+        InOrder inOrderAgg = Mockito.inOrder(mAggListener);
+        inOrderAgg.verify(mAggListener).setLogSaver(mLogger);
+        inOrderAgg.verify(mAggListener).invocationStarted(mInvocationContext);
+        inOrder.verify(mDetailedListener).setLogSaver(mLogger);
+        inOrder.verify(mDetailedListener).invocationStarted(mInvocationContext);
+        inOrder.verify(mDetailedListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(0), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testFailed(test2, "I failed. retry me.");
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrder.verify(mDetailedListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testRunFailed(aggFailure);
+        inOrder.verify(mDetailedListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrderAgg
+                .verify(mAggListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(0), Mockito.anyLong());
+        inOrderAgg.verify(mAggListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrderAgg
+                .verify(mAggListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrderAgg.verify(mAggListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrderAgg
+                .verify(mAggListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrderAgg.verify(mAggListener).testRunFailed(aggFailure);
+        inOrderAgg.verify(mAggListener).testRunEnded(900L, new HashMap<String, Metric>());
+        inOrderAgg.verify(mAggListener).invocationEnded(500L);
+        inOrder.verify(mDetailedListener).invocationEnded(500L);
+
         assertNull(mAggregator.getInvocationMetricRunError());
     }
 
@@ -1164,90 +1244,25 @@ public class ResultAggregatorTest {
                 new MultiFailureDescription(
                         FailureDescription.create("I failed"),
                         FailureDescription.create("I failed 2"));
-        EasyMock.expect(mDetailedListener.supportGranularResults()).andStubReturn(true);
+        when(mDetailedListener.supportGranularResults()).thenReturn(true);
 
         // Invocation level
-        mAggListener.setLogSaver(mLogger);
-        mAggListener.invocationStarted(mInvocationContext);
-        EasyMock.expect(mAggListener.getSummary()).andStubReturn(null);
-        mDetailedListener.setLogSaver(mLogger);
-        mDetailedListener.invocationStarted(mInvocationContext);
-        EasyMock.expect(mDetailedListener.getSummary()).andStubReturn(null);
 
-        // Detailed receives the breakdown
-        mDetailedListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
-        mDetailedListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mDetailedListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mDetailedListener.testFailed(test2, "I failed. retry me.");
-        mDetailedListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
-        mDetailedListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(1), EasyMock.anyLong());
-        mDetailedListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mDetailedListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testRunFailed(EasyMock.eq(aggFailure));
-        mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
-        mDetailedListener.testRunStarted(
-                EasyMock.eq("run2"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
-        mDetailedListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mDetailedListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
+        when(mAggListener.getSummary()).thenReturn(null);
 
-        // Aggregated listeners receives the aggregated results
-        mAggListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
-        mAggListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mAggListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mAggListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mAggListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
+        when(mDetailedListener.getSummary()).thenReturn(null);
 
-        mAggListener.testRunFailed(EasyMock.eq(aggFailure));
-        mAggListener.testRunEnded(900L, new HashMap<String, Metric>());
-        mAggListener.testRunStarted(
-                EasyMock.eq("run2"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
-        mAggListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mAggListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mAggListener.testRunEnded(450L, new HashMap<String, Metric>());
+        when(mLogger.saveLogData(
+                        Mockito.contains("aggregated-events"),
+                        Mockito.eq(LogDataType.TF_EVENTS),
+                        Mockito.any()))
+                .thenReturn(null);
+        when(mLogger.saveLogData(
+                        Mockito.contains("detailed-events"),
+                        Mockito.eq(LogDataType.TF_EVENTS),
+                        Mockito.any()))
+                .thenReturn(null);
 
-        mAggListener.invocationEnded(500L);
-        mDetailedListener.invocationEnded(500L);
-        EasyMock.expect(
-                        mLogger.saveLogData(
-                                EasyMock.contains("aggregated-events"),
-                                EasyMock.eq(LogDataType.TF_EVENTS),
-                                EasyMock.anyObject()))
-                .andReturn(null);
-        EasyMock.expect(
-                        mLogger.saveLogData(
-                                EasyMock.contains("detailed-events"),
-                                EasyMock.eq(LogDataType.TF_EVENTS),
-                                EasyMock.anyObject()))
-                .andReturn(null);
-
-        EasyMock.replay(mAggListener, mDetailedListener, mLogger);
         mAggregator =
                 new TestableResultAggregator(
                         Arrays.asList(mAggListener, mDetailedListener),
@@ -1276,7 +1291,85 @@ public class ResultAggregatorTest {
         mAggregator.testRunEnded(450L, new HashMap<String, Metric>());
 
         mAggregator.invocationEnded(500L);
-        EasyMock.verify(mAggListener, mDetailedListener, mLogger);
+        InOrder inOrder = Mockito.inOrder(mDetailedListener);
+        InOrder inOrderAgg = Mockito.inOrder(mAggListener);
+        inOrderAgg.verify(mAggListener).setLogSaver(mLogger);
+        inOrderAgg.verify(mAggListener).invocationStarted(mInvocationContext);
+        inOrder.verify(mDetailedListener).setLogSaver(mLogger);
+        inOrder.verify(mDetailedListener).invocationStarted(mInvocationContext);
+        inOrder.verify(mDetailedListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(0), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testFailed(test2, "I failed. retry me.");
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrder.verify(mDetailedListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testRunFailed(Mockito.eq(aggFailure));
+        inOrder.verify(mDetailedListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrder.verify(mDetailedListener)
+                .testRunStarted(
+                        Mockito.eq("run2"), Mockito.eq(1), Mockito.eq(0), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrderAgg
+                .verify(mAggListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(0), Mockito.anyLong());
+        inOrderAgg.verify(mAggListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrderAgg
+                .verify(mAggListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrderAgg.verify(mAggListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrderAgg
+                .verify(mAggListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrderAgg.verify(mAggListener).testRunFailed(Mockito.eq(aggFailure));
+        inOrderAgg.verify(mAggListener).testRunEnded(900L, new HashMap<String, Metric>());
+        inOrderAgg
+                .verify(mAggListener)
+                .testRunStarted(
+                        Mockito.eq("run2"), Mockito.eq(1), Mockito.eq(0), Mockito.anyLong());
+        inOrderAgg.verify(mAggListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrderAgg
+                .verify(mAggListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrderAgg.verify(mAggListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrderAgg.verify(mAggListener).invocationEnded(500L);
+        inOrder.verify(mDetailedListener).invocationEnded(500L);
+
         assertNull(mAggregator.getInvocationMetricRunError());
     }
 
@@ -1286,108 +1379,25 @@ public class ResultAggregatorTest {
         TestDescription test1 = new TestDescription("classname", "test1");
         TestDescription test2 = new TestDescription("classname", "test2");
 
-
-        EasyMock.expect(mDetailedListener.supportGranularResults()).andStubReturn(true);
+        when(mDetailedListener.supportGranularResults()).thenReturn(true);
 
         // Invocation level
-        mAggListener.setLogSaver(mLogger);
-        mAggListener.invocationStarted(mInvocationContext);
-        EasyMock.expect(mAggListener.getSummary()).andStubReturn(null);
-        mDetailedListener.setLogSaver(mLogger);
-        mDetailedListener.invocationStarted(mInvocationContext);
-        EasyMock.expect(mDetailedListener.getSummary()).andStubReturn(null);
 
-        mAggListener.testModuleStarted(mModuleContext);
-        mDetailedListener.testModuleStarted(mModuleContext);
+        when(mAggListener.getSummary()).thenReturn(null);
 
-        // Detailed receives the breakdown
-        mDetailedListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
-        mDetailedListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mDetailedListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mDetailedListener.testFailed(test2, "I failed. retry me.");
-        mDetailedListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
-        mDetailedListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(1), EasyMock.anyLong());
-        mDetailedListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mDetailedListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
+        when(mDetailedListener.getSummary()).thenReturn(null);
 
-        // Aggregated listeners receives the aggregated results
-        mAggListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
-        mAggListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mAggListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mAggListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mAggListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mAggListener.testRunEnded(450L, new HashMap<String, Metric>());
+        when(mLogger.saveLogData(
+                        Mockito.contains("aggregated-events"),
+                        Mockito.eq(LogDataType.TF_EVENTS),
+                        Mockito.any()))
+                .thenReturn(null);
+        when(mLogger.saveLogData(
+                        Mockito.contains("detailed-events"),
+                        Mockito.eq(LogDataType.TF_EVENTS),
+                        Mockito.any()))
+                .thenReturn(null);
 
-        mAggListener.testModuleEnded();
-        mDetailedListener.testModuleEnded();
-
-        // Detailed receives the breakdown for non-module
-        mDetailedListener.testRunStarted(
-                EasyMock.eq("run2"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
-        mDetailedListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mDetailedListener.testFailed(test1, "I failed. retry me.");
-        mDetailedListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
-        mDetailedListener.testRunStarted(
-                EasyMock.eq("run2"), EasyMock.eq(1), EasyMock.eq(1), EasyMock.anyLong());
-        mDetailedListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mDetailedListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
-
-        // Aggregated listeners receives the aggregated results for non-module
-        mAggListener.testRunStarted(
-                EasyMock.eq("run2"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
-        mAggListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mAggListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mAggListener.testRunEnded(900L, new HashMap<String, Metric>());
-
-        EasyMock.expect(
-                        mLogger.saveLogData(
-                                EasyMock.contains("aggregated-events"),
-                                EasyMock.eq(LogDataType.TF_EVENTS),
-                                EasyMock.anyObject()))
-                .andReturn(null);
-        EasyMock.expect(
-                        mLogger.saveLogData(
-                                EasyMock.contains("detailed-events"),
-                                EasyMock.eq(LogDataType.TF_EVENTS),
-                                EasyMock.anyObject()))
-                .andReturn(null);
-
-        mAggListener.invocationEnded(500L);
-        mDetailedListener.invocationEnded(500L);
-
-        EasyMock.replay(mAggListener, mDetailedListener, mLogger);
         mAggregator =
                 new TestableResultAggregator(
                         Arrays.asList(mAggListener, mDetailedListener),
@@ -1424,7 +1434,98 @@ public class ResultAggregatorTest {
         mAggregator.testRunEnded(450L, new HashMap<String, Metric>());
 
         mAggregator.invocationEnded(500L);
-        EasyMock.verify(mAggListener, mDetailedListener, mLogger);
+        InOrder inOrder = Mockito.inOrder(mDetailedListener);
+        InOrder inOrderAgg = Mockito.inOrder(mAggListener);
+        inOrderAgg.verify(mAggListener).setLogSaver(mLogger);
+        inOrderAgg.verify(mAggListener).invocationStarted(mInvocationContext);
+        inOrder.verify(mDetailedListener).setLogSaver(mLogger);
+        inOrder.verify(mDetailedListener).invocationStarted(mInvocationContext);
+        inOrderAgg.verify(mAggListener).testModuleStarted(mModuleContext);
+        inOrder.verify(mDetailedListener).testModuleStarted(mModuleContext);
+        inOrder.verify(mDetailedListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(0), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testFailed(test2, "I failed. retry me.");
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrder.verify(mDetailedListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrderAgg
+                .verify(mAggListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(0), Mockito.anyLong());
+        inOrderAgg.verify(mAggListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrderAgg
+                .verify(mAggListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrderAgg.verify(mAggListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrderAgg
+                .verify(mAggListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrderAgg.verify(mAggListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrderAgg.verify(mAggListener).testModuleEnded();
+        inOrder.verify(mDetailedListener).testModuleEnded();
+        inOrder.verify(mDetailedListener)
+                .testRunStarted(
+                        Mockito.eq("run2"), Mockito.eq(1), Mockito.eq(0), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testFailed(test1, "I failed. retry me.");
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrder.verify(mDetailedListener)
+                .testRunStarted(
+                        Mockito.eq("run2"), Mockito.eq(1), Mockito.eq(1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrderAgg
+                .verify(mAggListener)
+                .testRunStarted(
+                        Mockito.eq("run2"), Mockito.eq(1), Mockito.eq(0), Mockito.anyLong());
+        inOrderAgg.verify(mAggListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrderAgg
+                .verify(mAggListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrderAgg.verify(mAggListener).testRunEnded(900L, new HashMap<String, Metric>());
+        inOrderAgg.verify(mAggListener).invocationEnded(500L);
+        inOrder.verify(mDetailedListener).invocationEnded(500L);
+
         assertEquals("I failed", mAggregator.getInvocationMetricRunError());
     }
 
@@ -1434,106 +1535,25 @@ public class ResultAggregatorTest {
         TestDescription test1 = new TestDescription("classname", "test1");
         TestDescription test2 = new TestDescription("classname", "test2");
 
-
-        EasyMock.expect(mDetailedListener.supportGranularResults()).andStubReturn(true);
+        when(mDetailedListener.supportGranularResults()).thenReturn(true);
 
         // Invocation level
-        mAggListener.setLogSaver(mLogger);
-        mAggListener.invocationStarted(mInvocationContext);
-        EasyMock.expect(mAggListener.getSummary()).andStubReturn(null);
-        mDetailedListener.setLogSaver(mLogger);
-        mDetailedListener.invocationStarted(mInvocationContext);
-        EasyMock.expect(mDetailedListener.getSummary()).andStubReturn(null);
 
-        // Detailed receives the breakdown for non-module
-        mDetailedListener.testRunStarted(
-                EasyMock.eq("run2"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
-        mDetailedListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mDetailedListener.testFailed(test1, "I failed. retry me.");
-        mDetailedListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
-        mDetailedListener.testRunStarted(
-                EasyMock.eq("run2"), EasyMock.eq(1), EasyMock.eq(1), EasyMock.anyLong());
-        mDetailedListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mDetailedListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
+        when(mAggListener.getSummary()).thenReturn(null);
 
-        // Aggregated listeners receives the aggregated results for non-module
-        mAggListener.testRunStarted(
-                EasyMock.eq("run2"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
-        mAggListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mAggListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mAggListener.testRunEnded(900L, new HashMap<String, Metric>());
+        when(mDetailedListener.getSummary()).thenReturn(null);
 
-        // Detailed receives the breakdown
-        mDetailedListener.testModuleStarted(mModuleContext);
-        mDetailedListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
-        mDetailedListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mDetailedListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mDetailedListener.testFailed(test2, "I failed. retry me.");
-        mDetailedListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
-        mDetailedListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(1), EasyMock.anyLong());
-        mDetailedListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mDetailedListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
-        mDetailedListener.testModuleEnded();
+        when(mLogger.saveLogData(
+                        Mockito.contains("aggregated-events"),
+                        Mockito.eq(LogDataType.TF_EVENTS),
+                        Mockito.any()))
+                .thenReturn(null);
+        when(mLogger.saveLogData(
+                        Mockito.contains("detailed-events"),
+                        Mockito.eq(LogDataType.TF_EVENTS),
+                        Mockito.any()))
+                .thenReturn(null);
 
-        // Aggregated listeners receives the aggregated results
-        mAggListener.testModuleStarted(mModuleContext);
-        mAggListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
-        mAggListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mAggListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mAggListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mAggListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mAggListener.testRunEnded(450L, new HashMap<String, Metric>());
-        mAggListener.testModuleEnded();
-
-        mAggListener.invocationEnded(500L);
-        mDetailedListener.invocationEnded(500L);
-
-        EasyMock.expect(
-                        mLogger.saveLogData(
-                                EasyMock.contains("aggregated-events"),
-                                EasyMock.eq(LogDataType.TF_EVENTS),
-                                EasyMock.anyObject()))
-                .andReturn(null);
-        EasyMock.expect(
-                        mLogger.saveLogData(
-                                EasyMock.contains("detailed-events"),
-                                EasyMock.eq(LogDataType.TF_EVENTS),
-                                EasyMock.anyObject()))
-                .andReturn(null);
-
-        EasyMock.replay(mAggListener, mDetailedListener, mLogger);
         mAggregator =
                 new TestableResultAggregator(
                         Arrays.asList(mAggListener, mDetailedListener),
@@ -1570,7 +1590,98 @@ public class ResultAggregatorTest {
         mAggregator.testModuleEnded();
 
         mAggregator.invocationEnded(500L);
-        EasyMock.verify(mAggListener, mDetailedListener, mLogger);
+        InOrder inOrder = Mockito.inOrder(mDetailedListener);
+        InOrder inOrderAgg = Mockito.inOrder(mAggListener);
+        inOrderAgg.verify(mAggListener).setLogSaver(mLogger);
+        inOrderAgg.verify(mAggListener).invocationStarted(mInvocationContext);
+        inOrder.verify(mDetailedListener).setLogSaver(mLogger);
+        inOrder.verify(mDetailedListener).invocationStarted(mInvocationContext);
+        inOrder.verify(mDetailedListener)
+                .testRunStarted(
+                        Mockito.eq("run2"), Mockito.eq(1), Mockito.eq(0), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testFailed(test1, "I failed. retry me.");
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrder.verify(mDetailedListener)
+                .testRunStarted(
+                        Mockito.eq("run2"), Mockito.eq(1), Mockito.eq(1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrderAgg
+                .verify(mAggListener)
+                .testRunStarted(
+                        Mockito.eq("run2"), Mockito.eq(1), Mockito.eq(0), Mockito.anyLong());
+        inOrderAgg.verify(mAggListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrderAgg
+                .verify(mAggListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrderAgg.verify(mAggListener).testRunEnded(900L, new HashMap<String, Metric>());
+        inOrder.verify(mDetailedListener).testModuleStarted(mModuleContext);
+        inOrder.verify(mDetailedListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(0), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testFailed(test2, "I failed. retry me.");
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrder.verify(mDetailedListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrder.verify(mDetailedListener).testModuleEnded();
+        inOrderAgg.verify(mAggListener).testModuleStarted(mModuleContext);
+        inOrderAgg
+                .verify(mAggListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(0), Mockito.anyLong());
+        inOrderAgg.verify(mAggListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrderAgg
+                .verify(mAggListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrderAgg.verify(mAggListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrderAgg
+                .verify(mAggListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrderAgg.verify(mAggListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrderAgg.verify(mAggListener).testModuleEnded();
+        inOrderAgg.verify(mAggListener).invocationEnded(500L);
+        inOrder.verify(mDetailedListener).invocationEnded(500L);
+
         assertNull(mAggregator.getInvocationMetricRunError());
     }
 
@@ -1583,106 +1694,25 @@ public class ResultAggregatorTest {
                 new MultiFailureDescription(
                         FailureDescription.create("I failed"),
                         FailureDescription.create("I failed 2"));
-        EasyMock.expect(mDetailedListener.supportGranularResults()).andStubReturn(true);
+        when(mDetailedListener.supportGranularResults()).thenReturn(true);
 
         // Invocation level
-        mAggListener.setLogSaver(mLogger);
-        mAggListener.invocationStarted(mInvocationContext);
-        EasyMock.expect(mAggListener.getSummary()).andStubReturn(null);
-        mDetailedListener.setLogSaver(mLogger);
-        mDetailedListener.invocationStarted(mInvocationContext);
-        EasyMock.expect(mDetailedListener.getSummary()).andStubReturn(null);
 
-        // Detailed receives the breakdown for non-module
-        mDetailedListener.testRunStarted(
-                EasyMock.eq("run2"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
-        mDetailedListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mDetailedListener.testFailed(test1, "I failed. retry me.");
-        mDetailedListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
-        mDetailedListener.testRunStarted(
-                EasyMock.eq("run2"), EasyMock.eq(1), EasyMock.eq(1), EasyMock.anyLong());
-        mDetailedListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mDetailedListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testRunFailed(aggFailure);
-        mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
+        when(mAggListener.getSummary()).thenReturn(null);
 
-        // Aggregated listeners receives the aggregated results for non-module
-        mAggListener.testRunStarted(
-                EasyMock.eq("run2"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
-        mAggListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mAggListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mAggListener.testRunFailed(aggFailure);
-        mAggListener.testRunEnded(900L, new HashMap<String, Metric>());
+        when(mDetailedListener.getSummary()).thenReturn(null);
 
-        // Detailed receives the breakdown
-        mDetailedListener.testModuleStarted(mModuleContext);
-        mDetailedListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
-        mDetailedListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mDetailedListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mDetailedListener.testFailed(test2, "I failed. retry me.");
-        mDetailedListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
-        mDetailedListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(1), EasyMock.anyLong());
-        mDetailedListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mDetailedListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
-        mDetailedListener.testModuleEnded();
+        when(mLogger.saveLogData(
+                        Mockito.contains("aggregated-events"),
+                        Mockito.eq(LogDataType.TF_EVENTS),
+                        Mockito.any()))
+                .thenReturn(null);
+        when(mLogger.saveLogData(
+                        Mockito.contains("detailed-events"),
+                        Mockito.eq(LogDataType.TF_EVENTS),
+                        Mockito.any()))
+                .thenReturn(null);
 
-        // Aggregated listeners receives the aggregated results
-        mAggListener.testModuleStarted(mModuleContext);
-        mAggListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
-        mAggListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mAggListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mAggListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mAggListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mAggListener.testRunEnded(450L, new HashMap<String, Metric>());
-        mAggListener.testModuleEnded();
-
-        mAggListener.invocationEnded(500L);
-        mDetailedListener.invocationEnded(500L);
-        EasyMock.expect(
-                        mLogger.saveLogData(
-                                EasyMock.contains("aggregated-events"),
-                                EasyMock.eq(LogDataType.TF_EVENTS),
-                                EasyMock.anyObject()))
-                .andReturn(null);
-        EasyMock.expect(
-                        mLogger.saveLogData(
-                                EasyMock.contains("detailed-events"),
-                                EasyMock.eq(LogDataType.TF_EVENTS),
-                                EasyMock.anyObject()))
-                .andReturn(null);
-
-        EasyMock.replay(mAggListener, mDetailedListener, mLogger);
         mAggregator =
                 new TestableResultAggregator(
                         Arrays.asList(mAggListener, mDetailedListener),
@@ -1721,7 +1751,100 @@ public class ResultAggregatorTest {
         mAggregator.testModuleEnded();
 
         mAggregator.invocationEnded(500L);
-        EasyMock.verify(mAggListener, mDetailedListener, mLogger);
+        InOrder inOrder = Mockito.inOrder(mDetailedListener);
+        InOrder inOrderAgg = Mockito.inOrder(mAggListener);
+        inOrderAgg.verify(mAggListener).setLogSaver(mLogger);
+        inOrderAgg.verify(mAggListener).invocationStarted(mInvocationContext);
+        inOrder.verify(mDetailedListener).setLogSaver(mLogger);
+        inOrder.verify(mDetailedListener).invocationStarted(mInvocationContext);
+        inOrder.verify(mDetailedListener)
+                .testRunStarted(
+                        Mockito.eq("run2"), Mockito.eq(1), Mockito.eq(0), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testFailed(test1, "I failed. retry me.");
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrder.verify(mDetailedListener)
+                .testRunStarted(
+                        Mockito.eq("run2"), Mockito.eq(1), Mockito.eq(1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testRunFailed(aggFailure);
+        inOrder.verify(mDetailedListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrderAgg
+                .verify(mAggListener)
+                .testRunStarted(
+                        Mockito.eq("run2"), Mockito.eq(1), Mockito.eq(0), Mockito.anyLong());
+        inOrderAgg.verify(mAggListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrderAgg
+                .verify(mAggListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrderAgg.verify(mAggListener).testRunFailed(aggFailure);
+        inOrderAgg.verify(mAggListener).testRunEnded(900L, new HashMap<String, Metric>());
+        inOrder.verify(mDetailedListener).testModuleStarted(mModuleContext);
+        inOrder.verify(mDetailedListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(0), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testFailed(test2, "I failed. retry me.");
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrder.verify(mDetailedListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrder.verify(mDetailedListener).testModuleEnded();
+        inOrderAgg.verify(mAggListener).testModuleStarted(mModuleContext);
+        inOrderAgg
+                .verify(mAggListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(0), Mockito.anyLong());
+        inOrderAgg.verify(mAggListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrderAgg
+                .verify(mAggListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrderAgg.verify(mAggListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrderAgg
+                .verify(mAggListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrderAgg.verify(mAggListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrderAgg.verify(mAggListener).testModuleEnded();
+        inOrderAgg.verify(mAggListener).invocationEnded(500L);
+        inOrder.verify(mDetailedListener).invocationEnded(500L);
+
         assertNull(mAggregator.getInvocationMetricRunError());
     }
 
@@ -1732,115 +1855,25 @@ public class ResultAggregatorTest {
         TestDescription test2 = new TestDescription("classname", "test2");
         LogFile moduleLog = new LogFile("module-log", "url", LogDataType.TEXT);
 
-        EasyMock.expect(mDetailedListener.supportGranularResults()).andStubReturn(true);
+        when(mDetailedListener.supportGranularResults()).thenReturn(true);
 
         // Invocation level
-        mAggListener.setLogSaver(mLogger);
-        mAggListener.invocationStarted(mInvocationContext);
-        EasyMock.expect(mAggListener.getSummary()).andStubReturn(null);
-        mDetailedListener.setLogSaver(mLogger);
-        mDetailedListener.invocationStarted(mInvocationContext);
-        EasyMock.expect(mDetailedListener.getSummary()).andStubReturn(null);
 
-        mAggListener.testModuleStarted(mModuleContext);
-        mDetailedListener.testModuleStarted(mModuleContext);
+        when(mAggListener.getSummary()).thenReturn(null);
 
-        // Detailed receives the breakdown
-        mDetailedListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
-        mDetailedListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mDetailedListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mDetailedListener.testFailed(test2, "I failed. retry me.");
-        mDetailedListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
-        mDetailedListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(1), EasyMock.anyLong());
-        mDetailedListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mDetailedListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
-        mDetailedListener.logAssociation("module-log", moduleLog);
-        mDetailedListener.testModuleEnded();
+        when(mDetailedListener.getSummary()).thenReturn(null);
 
-        // Aggregated listeners receives the aggregated results
-        mAggListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
-        mAggListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mAggListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mAggListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mAggListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mAggListener.testRunEnded(450L, new HashMap<String, Metric>());
+        when(mLogger.saveLogData(
+                        Mockito.contains("aggregated-events"),
+                        Mockito.eq(LogDataType.TF_EVENTS),
+                        Mockito.any()))
+                .thenReturn(null);
+        when(mLogger.saveLogData(
+                        Mockito.contains("detailed-events"),
+                        Mockito.eq(LogDataType.TF_EVENTS),
+                        Mockito.any()))
+                .thenReturn(null);
 
-        mAggListener.logAssociation("module-log", moduleLog);
-        mAggListener.testModuleEnded();
-
-
-        // second module
-        mAggListener.testModuleStarted(mModuleContext);
-        mDetailedListener.testModuleStarted(mModuleContext);
-
-        mDetailedListener.testRunStarted(
-                EasyMock.eq("run2"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
-        mDetailedListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mDetailedListener.testFailed(test1, "I failed. retry me.");
-        mDetailedListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
-        mDetailedListener.testRunStarted(
-                EasyMock.eq("run2"), EasyMock.eq(1), EasyMock.eq(1), EasyMock.anyLong());
-        mDetailedListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mDetailedListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
-
-        // Aggregated listeners receives the aggregated results for non-module
-        mAggListener.testRunStarted(
-                EasyMock.eq("run2"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
-        mAggListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mAggListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mAggListener.testRunEnded(450L, new HashMap<String, Metric>());
-
-        mAggListener.testModuleEnded();
-        mDetailedListener.testModuleEnded();
-
-        mAggListener.invocationEnded(500L);
-        mDetailedListener.invocationEnded(500L);
-        EasyMock.expect(
-                        mLogger.saveLogData(
-                                EasyMock.contains("aggregated-events"),
-                                EasyMock.eq(LogDataType.TF_EVENTS),
-                                EasyMock.anyObject()))
-                .andReturn(null);
-        EasyMock.expect(
-                        mLogger.saveLogData(
-                                EasyMock.contains("detailed-events"),
-                                EasyMock.eq(LogDataType.TF_EVENTS),
-                                EasyMock.anyObject()))
-                .andReturn(null);
-
-        EasyMock.replay(mAggListener, mDetailedListener, mLogger);
         mAggregator =
                 new TestableResultAggregator(
                         Arrays.asList(mAggListener, mDetailedListener),
@@ -1881,7 +1914,104 @@ public class ResultAggregatorTest {
         mAggregator.testModuleEnded();
 
         mAggregator.invocationEnded(500L);
-        EasyMock.verify(mAggListener, mDetailedListener, mLogger);
+        InOrder inOrder = Mockito.inOrder(mDetailedListener);
+        InOrder inOrderAgg = Mockito.inOrder(mAggListener);
+        inOrderAgg.verify(mAggListener).setLogSaver(mLogger);
+        inOrderAgg.verify(mAggListener).invocationStarted(mInvocationContext);
+        inOrder.verify(mDetailedListener).setLogSaver(mLogger);
+        inOrder.verify(mDetailedListener).invocationStarted(mInvocationContext);
+        inOrderAgg.verify(mAggListener).testModuleStarted(mModuleContext);
+        inOrder.verify(mDetailedListener).testModuleStarted(mModuleContext);
+        inOrder.verify(mDetailedListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(0), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testFailed(test2, "I failed. retry me.");
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrder.verify(mDetailedListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrder.verify(mDetailedListener).logAssociation("module-log", moduleLog);
+        inOrder.verify(mDetailedListener).testModuleEnded();
+        inOrderAgg
+                .verify(mAggListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(0), Mockito.anyLong());
+        inOrderAgg.verify(mAggListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrderAgg
+                .verify(mAggListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrderAgg.verify(mAggListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrderAgg
+                .verify(mAggListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrderAgg.verify(mAggListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrderAgg.verify(mAggListener).logAssociation("module-log", moduleLog);
+        inOrderAgg.verify(mAggListener).testModuleEnded();
+        inOrderAgg.verify(mAggListener).testModuleStarted(mModuleContext);
+        inOrder.verify(mDetailedListener).testModuleStarted(mModuleContext);
+        inOrder.verify(mDetailedListener)
+                .testRunStarted(
+                        Mockito.eq("run2"), Mockito.eq(1), Mockito.eq(0), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testFailed(test1, "I failed. retry me.");
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrder.verify(mDetailedListener)
+                .testRunStarted(
+                        Mockito.eq("run2"), Mockito.eq(1), Mockito.eq(1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrderAgg
+                .verify(mAggListener)
+                .testRunStarted(
+                        Mockito.eq("run2"), Mockito.eq(1), Mockito.eq(0), Mockito.anyLong());
+        inOrderAgg.verify(mAggListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrderAgg
+                .verify(mAggListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrderAgg.verify(mAggListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrderAgg.verify(mAggListener).testModuleEnded();
+        inOrder.verify(mDetailedListener).testModuleEnded();
+        inOrderAgg.verify(mAggListener).invocationEnded(500L);
+        inOrder.verify(mDetailedListener).invocationEnded(500L);
+
         assertNull(mAggregator.getInvocationMetricRunError());
     }
 
@@ -1890,85 +2020,25 @@ public class ResultAggregatorTest {
         TestDescription test1 = new TestDescription("classname", "test1");
         TestDescription test2 = new TestDescription("classname", "test2");
 
-        EasyMock.expect(mDetailedListener.supportGranularResults()).andStubReturn(true);
+        when(mDetailedListener.supportGranularResults()).thenReturn(true);
 
         // Invocation level
-        mAggListener.setLogSaver(mLogger);
-        mAggListener.invocationStarted(mInvocationContext);
-        EasyMock.expect(mAggListener.getSummary()).andStubReturn(null);
-        mDetailedListener.setLogSaver(mLogger);
-        mDetailedListener.invocationStarted(mInvocationContext);
-        EasyMock.expect(mDetailedListener.getSummary()).andStubReturn(null);
 
-        mAggListener.testModuleStarted(mModuleContext);
-        mDetailedListener.testModuleStarted(mModuleContext);
+        when(mAggListener.getSummary()).thenReturn(null);
 
-        // Detailed receives the breakdown
-        mDetailedListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
-        mDetailedListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mDetailedListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mDetailedListener.testFailed(test2, "I failed. retry me.");
-        mDetailedListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
-        mDetailedListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(1), EasyMock.anyLong());
-        mDetailedListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mDetailedListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
-        mDetailedListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(2), EasyMock.anyLong());
-        mDetailedListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mDetailedListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
+        when(mDetailedListener.getSummary()).thenReturn(null);
 
-        // Aggregated listeners receives the aggregated results
-        mAggListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
-        mAggListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mAggListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mAggListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mAggListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mAggListener.testRunEnded(450L, new HashMap<String, Metric>());
+        when(mLogger.saveLogData(
+                        Mockito.contains("aggregated-events"),
+                        Mockito.eq(LogDataType.TF_EVENTS),
+                        Mockito.any()))
+                .thenReturn(null);
+        when(mLogger.saveLogData(
+                        Mockito.contains("detailed-events"),
+                        Mockito.eq(LogDataType.TF_EVENTS),
+                        Mockito.any()))
+                .thenReturn(null);
 
-        mAggListener.testModuleEnded();
-        mDetailedListener.testModuleEnded();
-
-        mAggListener.invocationEnded(500L);
-        mDetailedListener.invocationEnded(500L);
-        EasyMock.expect(
-                        mLogger.saveLogData(
-                                EasyMock.contains("aggregated-events"),
-                                EasyMock.eq(LogDataType.TF_EVENTS),
-                                EasyMock.anyObject()))
-                .andReturn(null);
-        EasyMock.expect(
-                        mLogger.saveLogData(
-                                EasyMock.contains("detailed-events"),
-                                EasyMock.eq(LogDataType.TF_EVENTS),
-                                EasyMock.anyObject()))
-                .andReturn(null);
-
-        EasyMock.replay(mAggListener, mDetailedListener, mLogger);
         mAggregator =
                 new TestableResultAggregator(
                         Arrays.asList(mAggListener, mDetailedListener),
@@ -2001,7 +2071,75 @@ public class ResultAggregatorTest {
         mAggregator.testModuleEnded();
 
         mAggregator.invocationEnded(500L);
-        EasyMock.verify(mAggListener, mDetailedListener, mLogger);
+        InOrder inOrder = Mockito.inOrder(mDetailedListener);
+        InOrder inOrderAgg = Mockito.inOrder(mAggListener);
+        inOrderAgg.verify(mAggListener).setLogSaver(mLogger);
+        inOrderAgg.verify(mAggListener).invocationStarted(mInvocationContext);
+        inOrder.verify(mDetailedListener).setLogSaver(mLogger);
+        inOrder.verify(mDetailedListener).invocationStarted(mInvocationContext);
+        inOrderAgg.verify(mAggListener).testModuleStarted(mModuleContext);
+        inOrder.verify(mDetailedListener).testModuleStarted(mModuleContext);
+        inOrder.verify(mDetailedListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(0), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testFailed(test2, "I failed. retry me.");
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrder.verify(mDetailedListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrder.verify(mDetailedListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(2), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrderAgg
+                .verify(mAggListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(0), Mockito.anyLong());
+        inOrderAgg.verify(mAggListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrderAgg
+                .verify(mAggListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrderAgg.verify(mAggListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrderAgg
+                .verify(mAggListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrderAgg.verify(mAggListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrderAgg.verify(mAggListener).testModuleEnded();
+        inOrder.verify(mDetailedListener).testModuleEnded();
+        inOrderAgg.verify(mAggListener).invocationEnded(500L);
+        inOrder.verify(mDetailedListener).invocationEnded(500L);
+
         assertEquals(
                 "There were 2 failures:\n  failed2\n  failed3",
                 mAggregator.getInvocationMetricRunError());
@@ -2017,89 +2155,25 @@ public class ResultAggregatorTest {
         TestDescription test1 = new TestDescription("classname", "test1");
         TestDescription test2 = new TestDescription("classname", "test2");
 
-        EasyMock.expect(mDetailedListener.supportGranularResults()).andStubReturn(true);
+        when(mDetailedListener.supportGranularResults()).thenReturn(true);
 
         // Invocation level
-        mAggListener.setLogSaver(mLogger);
-        mAggListener.invocationStarted(mInvocationContext);
-        EasyMock.expect(mAggListener.getSummary()).andStubReturn(null);
-        mDetailedListener.setLogSaver(mLogger);
-        mDetailedListener.invocationStarted(mInvocationContext);
-        EasyMock.expect(mDetailedListener.getSummary()).andStubReturn(null);
 
-        // Detailed receives the breakdown
-        mDetailedListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
-        mDetailedListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mDetailedListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mDetailedListener.testFailed(test2, "I failed. retry me.");
-        mDetailedListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        // TODO: Fix detailed reporting that should clear this failure.
-        mDetailedListener.testRunFailed(FailureDescription.create("I failed"));
-        mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
-        mDetailedListener.testRunStarted(
-                EasyMock.eq("run2"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
-        mDetailedListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mDetailedListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
-        mDetailedListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(1), EasyMock.anyLong());
-        mDetailedListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mDetailedListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mDetailedListener.testRunEnded(450L, new HashMap<String, Metric>());
+        when(mAggListener.getSummary()).thenReturn(null);
 
-        // Aggregated listeners receives the aggregated results
-        mAggListener.testRunStarted(
-                EasyMock.eq("run1"), EasyMock.eq(2), EasyMock.eq(0), EasyMock.anyLong());
-        mAggListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mAggListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mAggListener.testStarted(EasyMock.eq(test2), EasyMock.anyLong());
-        mAggListener.testEnded(
-                EasyMock.eq(test2),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mAggListener.testRunEnded(900L, new HashMap<String, Metric>());
-        mAggListener.testRunStarted(
-                EasyMock.eq("run2"), EasyMock.eq(1), EasyMock.eq(0), EasyMock.anyLong());
-        mAggListener.testStarted(EasyMock.eq(test1), EasyMock.anyLong());
-        mAggListener.testEnded(
-                EasyMock.eq(test1),
-                EasyMock.anyLong(),
-                EasyMock.<HashMap<String, Metric>>anyObject());
-        mAggListener.testRunEnded(450L, new HashMap<String, Metric>());
+        when(mDetailedListener.getSummary()).thenReturn(null);
 
-        mAggListener.invocationEnded(500L);
-        mDetailedListener.invocationEnded(500L);
-        EasyMock.expect(
-                        mLogger.saveLogData(
-                                EasyMock.contains("aggregated-events"),
-                                EasyMock.eq(LogDataType.TF_EVENTS),
-                                EasyMock.anyObject()))
-                .andReturn(null);
-        EasyMock.expect(
-                        mLogger.saveLogData(
-                                EasyMock.contains("detailed-events"),
-                                EasyMock.eq(LogDataType.TF_EVENTS),
-                                EasyMock.anyObject()))
-                .andReturn(null);
+        when(mLogger.saveLogData(
+                        Mockito.contains("aggregated-events"),
+                        Mockito.eq(LogDataType.TF_EVENTS),
+                        Mockito.any()))
+                .thenReturn(null);
+        when(mLogger.saveLogData(
+                        Mockito.contains("detailed-events"),
+                        Mockito.eq(LogDataType.TF_EVENTS),
+                        Mockito.any()))
+                .thenReturn(null);
 
-        EasyMock.replay(mAggListener, mDetailedListener, mLogger);
         mAggregator =
                 new TestableResultAggregator(
                         Arrays.asList(mAggListener, mDetailedListener),
@@ -2127,7 +2201,85 @@ public class ResultAggregatorTest {
         mAggregator.testRunEnded(450L, new HashMap<String, Metric>());
 
         mAggregator.invocationEnded(500L);
-        EasyMock.verify(mAggListener, mDetailedListener, mLogger);
+        InOrder inOrder = Mockito.inOrder(mDetailedListener);
+        InOrder inOrderAgg = Mockito.inOrder(mAggListener);
+        inOrderAgg.verify(mAggListener).setLogSaver(mLogger);
+        inOrderAgg.verify(mAggListener).invocationStarted(mInvocationContext);
+        inOrder.verify(mDetailedListener).setLogSaver(mLogger);
+        inOrder.verify(mDetailedListener).invocationStarted(mInvocationContext);
+        inOrder.verify(mDetailedListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(0), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testFailed(test2, "I failed. retry me.");
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        // TODO: Fix detailed reporting that should clear this failure.
+        inOrder.verify(mDetailedListener).testRunFailed(FailureDescription.create("I failed"));
+        inOrder.verify(mDetailedListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrder.verify(mDetailedListener)
+                .testRunStarted(
+                        Mockito.eq("run2"), Mockito.eq(1), Mockito.eq(0), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrder.verify(mDetailedListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(1), Mockito.anyLong());
+        inOrder.verify(mDetailedListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrder.verify(mDetailedListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrder.verify(mDetailedListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrderAgg
+                .verify(mAggListener)
+                .testRunStarted(
+                        Mockito.eq("run1"), Mockito.eq(2), Mockito.eq(0), Mockito.anyLong());
+        inOrderAgg.verify(mAggListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrderAgg
+                .verify(mAggListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrderAgg.verify(mAggListener).testStarted(Mockito.eq(test2), Mockito.anyLong());
+        inOrderAgg
+                .verify(mAggListener)
+                .testEnded(
+                        Mockito.eq(test2),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrderAgg.verify(mAggListener).testRunEnded(900L, new HashMap<String, Metric>());
+        inOrderAgg
+                .verify(mAggListener)
+                .testRunStarted(
+                        Mockito.eq("run2"), Mockito.eq(1), Mockito.eq(0), Mockito.anyLong());
+        inOrderAgg.verify(mAggListener).testStarted(Mockito.eq(test1), Mockito.anyLong());
+        inOrderAgg
+                .verify(mAggListener)
+                .testEnded(
+                        Mockito.eq(test1),
+                        Mockito.anyLong(),
+                        Mockito.<HashMap<String, Metric>>any());
+        inOrderAgg.verify(mAggListener).testRunEnded(450L, new HashMap<String, Metric>());
+        inOrderAgg.verify(mAggListener).invocationEnded(500L);
+        inOrder.verify(mDetailedListener).invocationEnded(500L);
+
         assertNull(mAggregator.getInvocationMetricRunError());
     }
 }
